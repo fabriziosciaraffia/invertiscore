@@ -1,8 +1,62 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import Anthropic from "@anthropic-ai/sdk";
 import type { AnalisisInput } from "@/lib/types";
+
+const UF_CLP = 38000;
+
+function calcularScore(body: AnalisisInput) {
+  const arriendoNeto = body.arriendo - body.gastos - body.contribuciones / 3;
+  const precioCLP = body.precio * UF_CLP;
+  const capRate = (arriendoNeto * 12) / precioCLP * 100;
+  const yieldBruto = (body.arriendo * 12) / precioCLP * 100;
+
+  // Rentabilidad (0-100): basado en CAP rate neto
+  // <2% = malo, 2-3% = regular, 3-4% = bueno, 4-5% = muy bueno, >5% = excelente
+  const rentabilidad = Math.min(100, Math.max(0, Math.round(capRate * 18)));
+
+  // Plusvalía (0-100): basado en precio/m² vs promedio y antigüedad
+  const precioM2UF = body.precio / body.superficie;
+  let plusvalia = 60;
+  if (precioM2UF < 50) plusvalia += 15; // bajo precio/m² = más potencial
+  else if (precioM2UF > 80) plusvalia -= 10;
+  if (body.antiguedad <= 5) plusvalia += 10;
+  else if (body.antiguedad > 20) plusvalia -= 15;
+  plusvalia = Math.min(100, Math.max(0, plusvalia));
+
+  // Riesgo (0-100, donde 100 = menor riesgo)
+  let riesgo = 60;
+  if (body.tipo.toLowerCase().includes("departamento")) riesgo += 10;
+  if (body.antiguedad <= 10) riesgo += 10;
+  else if (body.antiguedad > 25) riesgo -= 15;
+  if (capRate > 3) riesgo += 10;
+  if (body.gastos < body.arriendo * 0.2) riesgo += 5;
+  riesgo = Math.min(100, Math.max(0, riesgo));
+
+  // Ubicación (0-100): placeholder heurístico
+  let ubicacion = 65;
+  const comunasPremium = ["providencia", "las condes", "vitacura", "ñuñoa", "santiago centro", "santiago"];
+  if (comunasPremium.some(c => body.comuna.toLowerCase().includes(c))) {
+    ubicacion = 85;
+  }
+  ubicacion = Math.min(100, Math.max(0, ubicacion));
+
+  const score = Math.round(
+    rentabilidad * 0.35 + plusvalia * 0.25 + riesgo * 0.2 + ubicacion * 0.2
+  );
+
+  const resumen = `Propiedad con yield bruto de ${yieldBruto.toFixed(1)}% y CAP rate neto estimado de ${capRate.toFixed(1)}%. ` +
+    `El precio por m² es de ${precioM2UF.toFixed(1)} UF/m². ` +
+    `${capRate >= 4 ? "La rentabilidad es atractiva, superando el promedio del mercado chileno." : capRate >= 3 ? "La rentabilidad es aceptable para el mercado actual." : "La rentabilidad está por debajo del promedio, se recomienda negociar el precio o buscar mejores opciones."} ` +
+    `${body.antiguedad <= 5 ? "La baja antigüedad reduce riesgos de mantención." : body.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
+    `Se recomienda verificar gastos comunes históricos y estado de la administración antes de tomar una decisión.`;
+
+  return {
+    score: Math.min(100, Math.max(0, score)),
+    desglose: { rentabilidad, plusvalia, riesgo, ubicacion },
+    resumen,
+  };
+}
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -41,57 +95,10 @@ export async function POST(request: Request) {
 
     const body: AnalisisInput = await request.json();
 
-    // Call Claude for AI analysis
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-    });
+    // TODO: Reemplazar con Claude AI cuando haya créditos
+    // const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const aiResult = calcularScore(body);
 
-    const prompt = `Eres un experto analista de inversiones inmobiliarias en Chile. Analiza la siguiente propiedad y genera un puntaje de inversión (InvertiScore) de 0 a 100.
-
-Datos de la propiedad:
-- Nombre: ${body.nombre}
-- Tipo: ${body.tipo}
-- Ubicación: ${body.comuna}, ${body.ciudad}${body.direccion ? `, ${body.direccion}` : ""}
-- Dormitorios: ${body.dormitorios} | Baños: ${body.banos}
-- Superficie: ${body.superficie} m²
-- Antigüedad: ${body.antiguedad} años
-- Precio de venta: ${body.precio} UF
-- Arriendo mensual esperado: $${body.arriendo.toLocaleString("es-CL")} CLP
-- Gastos comunes: $${body.gastos.toLocaleString("es-CL")} CLP
-- Contribuciones trimestrales: $${body.contribuciones.toLocaleString("es-CL")} CLP
-
-Considera para tu análisis:
-- Valor UF aproximado: 38.000 CLP
-- CAP rate = (arriendo anual neto) / (precio en CLP) × 100
-- Arriendo neto = arriendo - gastos comunes - (contribuciones/3)
-- Un CAP rate sobre 4% es bueno en Chile, sobre 5% es excelente
-- Evalúa plusvalía según la comuna y ciudad
-- Evalúa riesgo según tipo de propiedad, antigüedad y ubicación
-- Evalúa ubicación según demanda de arriendo en la zona
-
-Responde ÚNICAMENTE con un JSON válido (sin markdown, sin backticks) con esta estructura exacta:
-{
-  "score": <número entero 0-100>,
-  "desglose": {
-    "rentabilidad": <número entero 0-100>,
-    "plusvalia": <número entero 0-100>,
-    "riesgo": <número entero 0-100, donde 100 = menor riesgo>,
-    "ubicacion": <número entero 0-100>
-  },
-  "resumen": "<párrafo de 3-5 oraciones con el análisis detallado, mencionando CAP rate, perspectivas de plusvalía, y recomendación>"
-}`;
-
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const aiText =
-      message.content[0].type === "text" ? message.content[0].text : "";
-    const aiResult = JSON.parse(aiText);
-
-    // Save to Supabase
     const { data, error } = await supabase
       .from("analisis")
       .insert({
