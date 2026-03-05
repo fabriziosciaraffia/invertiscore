@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,36 +9,35 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building2, ArrowLeft, TrendingUp, Shield, DollarSign, MapPin } from "lucide-react";
+import {
+  Building2,
+  ArrowLeft,
+  TrendingUp,
+  Shield,
+  DollarSign,
+  MapPin,
+} from "lucide-react";
+import type { Analisis } from "@/lib/types";
+import { DeleteButton } from "./delete-button";
 
-// Datos de ejemplo (placeholder)
-const analisisEjemplo = {
-  id: "1",
-  nombre: "Depto 2D1B Providencia",
-  fecha: "2026-02-15",
-  score: 78,
-  comuna: "Providencia",
-  ciudad: "Santiago",
-  tipo: "Departamento",
-  precio: 3500,
-  arriendo: 450000,
-  desglose: {
-    rentabilidad: 75,
-    plusvalia: 82,
-    riesgo: 70,
-    ubicacion: 85,
-  },
-  resumen:
-    "Esta propiedad presenta una buena oportunidad de inversión. La ubicación en Providencia ofrece alta demanda de arriendo y potencial de plusvalía. El CAP rate estimado de 4.2% está por sobre el promedio de la zona. Se recomienda verificar el estado de la administración del edificio y los gastos comunes históricos antes de tomar una decisión.",
-};
-
-export default function AnalisisDetallePage({
+export default async function AnalisisDetallePage({
   params,
 }: {
   params: { id: string };
 }) {
-  // En el futuro se carga desde Supabase usando params.id
-  const analisis = { ...analisisEjemplo, id: params.id };
+  const supabase = createClient();
+
+  const { data } = await supabase
+    .from("analisis")
+    .select("*")
+    .eq("id", params.id)
+    .single();
+
+  if (!data) {
+    redirect("/dashboard");
+  }
+
+  const analisis = data as Analisis;
 
   return (
     <div className="min-h-screen bg-background">
@@ -47,11 +48,14 @@ export default function AnalisisDetallePage({
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">InvertiScore</span>
           </div>
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" /> Volver al Dashboard
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <DeleteButton id={analisis.id} />
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <ArrowLeft className="h-4 w-4" /> Volver al Dashboard
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -71,11 +75,13 @@ export default function AnalisisDetallePage({
             <h1 className="text-3xl font-bold">{analisis.nombre}</h1>
             <p className="text-muted-foreground">
               {analisis.comuna}, {analisis.ciudad} · Análisis del{" "}
-              {analisis.fecha}
+              {new Date(analisis.created_at).toLocaleDateString("es-CL")}
             </p>
             <div className="mt-2 flex gap-4 text-sm text-muted-foreground">
               <span>Precio: {analisis.precio} UF</span>
-              <span>Arriendo: ${analisis.arriendo.toLocaleString("es-CL")}/mes</span>
+              <span>
+                Arriendo: ${analisis.arriendo.toLocaleString("es-CL")}/mes
+              </span>
             </div>
           </div>
         </div>

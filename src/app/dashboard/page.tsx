@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,30 +9,27 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Building2, Plus, BarChart3 } from "lucide-react";
+import { LogoutButton } from "@/components/logout-button";
+import type { Analisis } from "@/lib/types";
 
-// Datos de ejemplo (placeholder)
-const analisisEjemplo = [
-  {
-    id: "1",
-    nombre: "Depto 2D1B Providencia",
-    fecha: "2026-02-15",
-    score: 78,
-  },
-  {
-    id: "2",
-    nombre: "Casa 3D2B La Florida",
-    fecha: "2026-02-20",
-    score: 62,
-  },
-  {
-    id: "3",
-    nombre: "Depto 1D1B Santiago Centro",
-    fecha: "2026-03-01",
-    score: 85,
-  },
-];
+export default async function DashboardPage() {
+  const supabase = createClient();
 
-export default function DashboardPage() {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: analisisList } = await supabase
+    .from("analisis")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const analisis = (analisisList || []) as Analisis[];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
@@ -40,9 +39,7 @@ export default function DashboardPage() {
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">InvertiScore</span>
           </div>
-          <Button variant="ghost" size="sm">
-            Cerrar Sesión
-          </Button>
+          <LogoutButton />
         </div>
       </nav>
 
@@ -62,31 +59,47 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        {/* Lista de análisis */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {analisisEjemplo.map((analisis) => (
-            <Link key={analisis.id} href={`/analisis/${analisis.id}`}>
-              <Card className="transition-shadow hover:shadow-md">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">
-                        {analisis.nombre}
-                      </CardTitle>
-                      <CardDescription>{analisis.fecha}</CardDescription>
-                    </div>
-                    <div className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
-                      <BarChart3 className="h-4 w-4 text-primary" />
-                      <span className="text-sm font-bold text-primary">
-                        {analisis.score}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+        {analisis.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
+            <BarChart3 className="mb-4 h-12 w-12 text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Sin análisis aún</h2>
+            <p className="mb-4 text-muted-foreground">
+              Crea tu primer análisis de inversión inmobiliaria
+            </p>
+            <Link href="/analisis/nuevo">
+              <Button className="gap-2">
+                <Plus className="h-4 w-4" /> Nuevo Análisis
+              </Button>
             </Link>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {analisis.map((item) => (
+              <Link key={item.id} href={`/analisis/${item.id}`}>
+                <Card className="transition-shadow hover:shadow-md">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">
+                          {item.nombre}
+                        </CardTitle>
+                        <CardDescription>
+                          {new Date(item.created_at).toLocaleDateString("es-CL")}
+                        </CardDescription>
+                      </div>
+                      <div className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                        <span className="text-sm font-bold text-primary">
+                          {item.score}
+                        </span>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
