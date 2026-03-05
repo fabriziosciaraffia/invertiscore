@@ -34,12 +34,12 @@ export default function HomePage() {
   const [aiExpanded, setAiExpanded] = useState(false);
 
   return (
-    <div className="min-h-screen bg-white text-[#1a1a1a]">
+    <div className="snap-container bg-white text-[#1a1a1a]">
       {/* Navbar */}
-      <nav className="fixed top-0 z-50 w-full border-b border-[#e5e5e5] bg-white/90 backdrop-blur-sm">
+      <nav className="fixed top-0 z-50 w-full border-b border-[#e5e5e5]/80 bg-white/80 shadow-sm backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-[#2D6A4F]" />
+            <Building2 className="h-6 w-6 text-[#059669]" />
             <span className="font-serif text-xl font-bold text-[#1a1a1a]">
               InvertiScore
             </span>
@@ -58,7 +58,7 @@ export default function HomePage() {
             <Link href="/register">
               <Button
                 size="sm"
-                className="rounded-lg bg-[#2D6A4F] text-white hover:bg-[#245a42]"
+                className="rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]"
               >
                 Registrarse
               </Button>
@@ -96,7 +96,7 @@ export default function HomePage() {
                 href="/register"
                 onClick={() => setMobileMenuOpen(false)}
               >
-                <Button className="w-full rounded-lg bg-[#2D6A4F] text-white hover:bg-[#245a42]">
+                <Button className="w-full rounded-lg bg-[#059669] text-white hover:bg-[#047857]">
                   Registrarse
                 </Button>
               </Link>
@@ -106,16 +106,17 @@ export default function HomePage() {
       </nav>
 
       {/* Hero */}
-      <section className="pt-16">
-        <div className="container mx-auto px-4 py-20 text-center md:py-32">
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-[#2D6A4F]/20 bg-[#2D6A4F]/5 px-4 py-1.5 text-sm text-[#2D6A4F]">
+      <section className="snap-section relative bg-gradient-to-b from-white via-white to-[#ECFDF5]/60 pt-16">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(5,150,105,0.06),transparent_60%)]" />
+        <div className="container relative mx-auto px-4 py-20 text-center md:py-32">
+          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-[#059669]/20 bg-[#059669]/5 px-4 py-1.5 text-sm text-[#059669]">
             <Brain className="h-4 w-4" />
             An&aacute;lisis potenciado por IA
           </div>
           <h1 className="mx-auto max-w-4xl text-balance font-serif text-4xl font-bold tracking-tight text-[#1a1a1a] md:text-6xl lg:text-7xl">
             No vendemos deptos.
             <br />
-            <span className="text-[#2D6A4F]">
+            <span className="text-[#059669]">
               Te decimos si deber&iacute;as comprarlos.
             </span>
           </h1>
@@ -128,7 +129,7 @@ export default function HomePage() {
             <Link href="/register">
               <Button
                 size="lg"
-                className="gap-2 rounded-lg bg-[#2D6A4F] text-base text-white hover:bg-[#245a42]"
+                className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/25 hover:bg-[#047857]"
               >
                 Analiza gratis tu pr&oacute;xima inversi&oacute;n
                 <ArrowRight className="h-4 w-4" />
@@ -142,10 +143,10 @@ export default function HomePage() {
       </section>
 
       {/* El Problema */}
-      <section className="bg-[#F5F5F4]">
+      <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-white">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#2D6A4F]">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               El problema
             </p>
             <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -157,7 +158,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
               <CardHeader>
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
                   <ShieldAlert className="h-5 w-5 text-red-500" />
@@ -174,7 +175,7 @@ export default function HomePage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
               <CardHeader>
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
                   <Scale className="h-5 w-5 text-red-500" />
@@ -191,7 +192,7 @@ export default function HomePage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
               <CardHeader>
                 <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
                   <EyeOff className="h-5 w-5 text-red-500" />
@@ -213,10 +214,10 @@ export default function HomePage() {
       </section>
 
       {/* C&oacute;mo Funciona */}
-      <section>
+      <section className="snap-section bg-gradient-to-b from-white to-[#F5F5F4]/50">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#2D6A4F]">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               C&oacute;mo funciona
             </p>
             <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -225,10 +226,10 @@ export default function HomePage() {
           </div>
           <div className="mt-10 grid gap-8 md:grid-cols-3">
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#2D6A4F]/10 text-[#2D6A4F]">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
                 <ClipboardPaste className="h-6 w-6" />
               </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#2D6A4F]">
+              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
                 Paso 1
               </div>
               <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
@@ -240,10 +241,10 @@ export default function HomePage() {
               </p>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#2D6A4F]/10 text-[#2D6A4F]">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
                 <Brain className="h-6 w-6" />
               </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#2D6A4F]">
+              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
                 Paso 2
               </div>
               <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
@@ -255,10 +256,10 @@ export default function HomePage() {
               </p>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#2D6A4F]/10 text-[#2D6A4F]">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
                 <BarChart3 className="h-6 w-6" />
               </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#2D6A4F]">
+              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
                 Paso 3
               </div>
               <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
@@ -274,10 +275,10 @@ export default function HomePage() {
       </section>
 
       {/* Pricing */}
-      <section className="bg-[#F5F5F4]">
+      <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-[#ECFDF5]/30">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#2D6A4F]">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               Planes
             </p>
             <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -290,7 +291,7 @@ export default function HomePage() {
           </div>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {/* Gratis */}
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#e5e5e5] bg-white shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg text-[#1a1a1a]">Gratis</CardTitle>
                 <div className="mt-2">
@@ -300,15 +301,15 @@ export default function HomePage() {
               <CardContent className="space-y-4">
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">InvertiScore (1-100)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">3 m&eacute;tricas b&aacute;sicas</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">1 an&aacute;lisis por mes</span>
                   </li>
                   <li className="flex items-start gap-2 text-[#9ca3af]">
@@ -332,8 +333,8 @@ export default function HomePage() {
             </Card>
 
             {/* Premium */}
-            <Card className="relative border-[#2D6A4F]/30 bg-white shadow-md">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#2D6A4F] px-3 py-0.5 text-xs font-semibold text-white">
+            <Card className="relative border-[#059669]/30 bg-white shadow-lg shadow-[#059669]/10">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#059669] px-3 py-0.5 text-xs font-semibold text-white shadow-md">
                 Popular
               </div>
               <CardHeader>
@@ -348,28 +349,28 @@ export default function HomePage() {
               <CardContent className="space-y-4">
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Todo lo del plan Gratis</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Reporte completo con IA</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Pros y contras detallados</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Flujo de caja proyectado a 10 a&ntilde;os</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Comparaci&oacute;n con mercado local</span>
                   </li>
                 </ul>
                 <Link href="/register" className="block">
-                  <Button className="w-full rounded-lg bg-[#2D6A4F] text-white hover:bg-[#245a42]">
+                  <Button className="w-full rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]">
                     Obtener reporte
                   </Button>
                 </Link>
@@ -377,7 +378,7 @@ export default function HomePage() {
             </Card>
 
             {/* Inversionista */}
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#e5e5e5] bg-white shadow-md">
               <CardHeader>
                 <CardTitle className="text-lg text-[#1a1a1a]">
                   Plan Inversionista
@@ -390,23 +391,23 @@ export default function HomePage() {
               <CardContent className="space-y-4">
                 <ul className="space-y-3 text-sm">
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Todo lo del plan Premium</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Reportes ilimitados</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Alertas de oportunidades</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Seguimiento de portafolio</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#2D6A4F]" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
                     <span className="text-[#1a1a1a]">Soporte prioritario</span>
                   </li>
                 </ul>
@@ -424,48 +425,48 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Ejemplo de Reporte */}
-      <section>
+      {/* Ejemplo de Reporte - Dark contrast section */}
+      <section className="snap-section bg-[#1E293B]">
         <div className="container mx-auto px-4 py-16 md:py-24">
           <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#2D6A4F]">
+            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#34D399]">
               Ejemplo
             </p>
-            <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="font-serif text-3xl font-bold text-white md:text-4xl">
               As&iacute; se ve un InvertiScore
             </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[#6b7280]">
+            <p className="mx-auto mt-4 max-w-xl text-[#94A3B8]">
               Reporte real generado para un departamento en &Ntilde;u&ntilde;oa, Santiago.
             </p>
           </div>
           <div className="mx-auto mt-10 max-w-4xl">
-            <Card className="border-[#e5e5e5] bg-white shadow-sm">
+            <Card className="border-[#334155] bg-[#0F172A] shadow-2xl">
               <CardContent className="p-6 md:p-8">
                 {/* Header */}
                 <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
-                  <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-[#2D6A4F] bg-[#2D6A4F]/5">
+                  <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-[#059669] bg-[#059669]/10">
                     <div className="text-center">
-                      <div className="text-4xl font-bold text-[#2D6A4F]">72</div>
-                      <div className="text-[10px] text-[#6b7280]">
+                      <div className="text-4xl font-bold text-[#34D399]">72</div>
+                      <div className="text-[10px] text-[#94A3B8]">
                         InvertiScore
                       </div>
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-[#1a1a1a]">
+                    <h3 className="text-xl font-bold text-white">
                       Depto 2D1B &Ntilde;u&ntilde;oa
                     </h3>
-                    <p className="text-sm text-[#6b7280]">
+                    <p className="text-sm text-[#94A3B8]">
                       &Ntilde;u&ntilde;oa, Santiago &middot; Departamento &middot; 52 m&sup2; &middot; 8 a&ntilde;os
                     </p>
                     <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                      <span className="rounded bg-[#F5F5F4] px-2 py-0.5 text-[#1a1a1a]">
+                      <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[#CBD5E1]">
                         Precio: 3.200 UF
                       </span>
-                      <span className="rounded bg-[#F5F5F4] px-2 py-0.5 text-[#1a1a1a]">
+                      <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[#CBD5E1]">
                         Arriendo: $420.000/mes
                       </span>
-                      <span className="rounded bg-[#2D6A4F]/10 px-2 py-0.5 font-medium text-[#2D6A4F]">
+                      <span className="rounded bg-[#059669]/15 px-2 py-0.5 font-medium text-[#34D399]">
                         Yield: 5.2%
                       </span>
                     </div>
@@ -473,67 +474,67 @@ export default function HomePage() {
                 </div>
                 {/* Metrics - 2x2 on mobile, 4 cols on desktop */}
                 <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <div className="rounded-lg border border-[#e5e5e5] bg-[#F5F5F4] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#6b7280]">
-                      <DollarSign className="h-3.5 w-3.5 text-[#2D6A4F]" />
+                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
+                      <DollarSign className="h-3.5 w-3.5 text-[#34D399]" />
                       Rentabilidad
                     </div>
-                    <div className="text-xl font-bold text-[#1a1a1a]">68</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#e5e5e5]">
+                    <div className="text-xl font-bold text-white">68</div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
                       <div
-                        className="h-full rounded-full bg-[#2D6A4F]"
+                        className="h-full rounded-full bg-[#059669]"
                         style={{ width: "68%" }}
                       />
                     </div>
                   </div>
-                  <div className="rounded-lg border border-[#e5e5e5] bg-[#F5F5F4] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#6b7280]">
-                      <TrendingUp className="h-3.5 w-3.5 text-[#2D6A4F]" />
+                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
+                      <TrendingUp className="h-3.5 w-3.5 text-[#34D399]" />
                       Plusval&iacute;a
                     </div>
-                    <div className="text-xl font-bold text-[#1a1a1a]">78</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#e5e5e5]">
+                    <div className="text-xl font-bold text-white">78</div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
                       <div
-                        className="h-full rounded-full bg-[#2D6A4F]"
+                        className="h-full rounded-full bg-[#059669]"
                         style={{ width: "78%" }}
                       />
                     </div>
                   </div>
-                  <div className="rounded-lg border border-[#e5e5e5] bg-[#F5F5F4] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#6b7280]">
-                      <Shield className="h-3.5 w-3.5 text-[#2D6A4F]" />
+                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
+                      <Shield className="h-3.5 w-3.5 text-[#34D399]" />
                       Bajo Riesgo
                     </div>
-                    <div className="text-xl font-bold text-[#1a1a1a]">65</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#e5e5e5]">
+                    <div className="text-xl font-bold text-white">65</div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
                       <div
-                        className="h-full rounded-full bg-[#2D6A4F]"
+                        className="h-full rounded-full bg-[#059669]"
                         style={{ width: "65%" }}
                       />
                     </div>
                   </div>
-                  <div className="rounded-lg border border-[#e5e5e5] bg-[#F5F5F4] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#6b7280]">
-                      <MapPin className="h-3.5 w-3.5 text-[#2D6A4F]" />
+                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
+                      <MapPin className="h-3.5 w-3.5 text-[#34D399]" />
                       Ubicaci&oacute;n
                     </div>
-                    <div className="text-xl font-bold text-[#1a1a1a]">80</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#e5e5e5]">
+                    <div className="text-xl font-bold text-white">80</div>
+                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
                       <div
-                        className="h-full rounded-full bg-[#2D6A4F]"
+                        className="h-full rounded-full bg-[#059669]"
                         style={{ width: "80%" }}
                       />
                     </div>
                   </div>
                 </div>
                 {/* AI Summary with truncation on mobile */}
-                <div className="rounded-lg border border-[#e5e5e5] bg-[#F5F5F4] p-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#2D6A4F]">
+                <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#34D399]">
                     An&aacute;lisis IA
                   </p>
                   <div className="relative">
                     <p
-                      className={`text-sm leading-relaxed text-[#6b7280] ${
+                      className={`text-sm leading-relaxed text-[#94A3B8] ${
                         !aiExpanded ? "line-clamp-2 sm:line-clamp-none" : ""
                       }`}
                     >
@@ -547,7 +548,7 @@ export default function HomePage() {
                     {!aiExpanded && (
                       <button
                         onClick={() => setAiExpanded(true)}
-                        className="mt-1 text-sm font-medium text-[#2D6A4F] hover:underline sm:hidden"
+                        className="mt-1 text-sm font-medium text-[#34D399] hover:underline sm:hidden"
                       >
                         Ver m&aacute;s...
                       </button>
@@ -560,8 +561,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Social Proof */}
-      <section className="bg-[#F5F5F4]">
+      {/* Social Proof + CTA Final */}
+      <section className="snap-section bg-gradient-to-b from-white to-[#ECFDF5]/40">
         <div className="container mx-auto px-4 py-12">
           <div className="text-center">
             <div className="mb-6 flex items-center justify-center gap-2 text-[#6b7280]">
@@ -581,11 +582,8 @@ export default function HomePage() {
             </div>
           </div>
         </div>
-      </section>
 
-      {/* CTA Final */}
-      <section>
-        <div className="container mx-auto px-4 py-16 text-center md:py-24">
+        <div className="container mx-auto px-4 pb-16 pt-8 text-center md:pb-24">
           <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
             Obt&eacute;n tu InvertiScore gratis
           </h2>
@@ -597,7 +595,7 @@ export default function HomePage() {
             <Link href="/register">
               <Button
                 size="lg"
-                className="gap-2 rounded-lg bg-[#2D6A4F] text-base text-white hover:bg-[#245a42]"
+                className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/25 hover:bg-[#047857]"
               >
                 Analiza gratis tu pr&oacute;xima inversi&oacute;n
                 <ArrowRight className="h-4 w-4" />
@@ -605,12 +603,12 @@ export default function HomePage() {
             </Link>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t border-[#e5e5e5] py-8 text-center text-sm text-[#6b7280]">
-        <p>&copy; 2026 InvertiScore. Todos los derechos reservados.</p>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-[#e5e5e5] py-8 text-center text-sm text-[#6b7280]">
+          <p>&copy; 2026 InvertiScore. Todos los derechos reservados.</p>
+        </footer>
+      </section>
     </div>
   );
 }
