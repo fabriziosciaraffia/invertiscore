@@ -3,6 +3,135 @@ export interface Desglose {
   plusvalia: number;
   riesgo: number;
   ubicacion: number;
+  flujoCaja: number;
+}
+
+export interface AnalisisInput {
+  nombre: string;
+  comuna: string;
+  ciudad: string;
+  direccion?: string;
+  tipo: string;
+  dormitorios: number;
+  banos: number;
+  superficie: number;
+  superficieTotal: number;
+  antiguedad: number;
+  enConstruccion: boolean;
+  piso: number;
+  estacionamiento: string;
+  precioEstacionamiento: number;
+  bodega: boolean;
+  estadoVenta: "blanco" | "verde" | "inmediata";
+  fechaEntrega?: string;
+  cuotasPie: number;
+  montoCuota: number;
+  precio: number;
+  piePct: number;
+  plazoCredito: number;
+  tasaInteres: number;
+  gastos: number;
+  contribuciones: number;
+  provisionMantencion: number;
+  tipoRenta: "larga" | "corta";
+  arriendo: number;
+  vacanciaMeses: number;
+  // Airbnb
+  tarifaNoche: number;
+  ocupacionPct: number;
+  comisionPlataforma: number;
+  costoLimpieza: number;
+  amoblado: boolean;
+  costoAmoblado: number;
+  serviciosBasicos: number;
+}
+
+export interface MonthlyCashflow {
+  mes: number;
+  ingreso: number;
+  dividendo: number;
+  gastos: number;
+  contribuciones: number;
+  mantencion: number;
+  vacancia: number;
+  corretaje: number;
+  serviciosBasicos: number;
+  egresoTotal: number;
+  flujoNeto: number;
+  acumulado: number;
+}
+
+export interface YearProjection {
+  anio: number;
+  arriendoMensual: number;
+  flujoAnual: number;
+  flujoAcumulado: number;
+  valorPropiedad: number;
+  saldoCredito: number;
+  patrimonioNeto: number;
+}
+
+export interface ExitScenario {
+  anios: number;
+  valorVenta: number;
+  saldoCredito: number;
+  comisionVenta: number;
+  gananciaNeta: number;
+  flujoAcumulado: number;
+  retornoTotal: number;
+  multiplicadorCapital: number;
+  tir: number;
+}
+
+export interface RefinanceScenario {
+  nuevoAvaluo: number;
+  nuevoCredito: number;
+  capitalLiberado: number;
+  nuevoDividendo: number;
+  nuevoFlujoNeto: number;
+}
+
+export interface SensitivityRow {
+  variable: string;
+  variacion: string;
+  nuevoScore: number;
+  nuevoFlujo: number;
+  delta: number;
+}
+
+export interface AnalysisMetrics {
+  yieldBruto: number;
+  yieldNeto: number;
+  capRate: number;
+  cashOnCash: number;
+  precioM2: number;
+  mesesPaybackPie: number;
+  dividendo: number;
+  flujoNetoMensual: number;
+  noi: number;
+  pieCLP: number;
+  precioCLP: number;
+  ingresoMensual: number;
+  egresosMensuales: number;
+}
+
+export interface FullAnalysisResult {
+  score: number;
+  clasificacion: string;
+  clasificacionColor: string;
+  resumenEjecutivo: string;
+  desglose: Desglose;
+  metrics: AnalysisMetrics;
+  cashflowYear1: MonthlyCashflow[];
+  projections: YearProjection[];
+  exitScenario: ExitScenario;
+  refinanceScenario: RefinanceScenario;
+  sensitivity: SensitivityRow[];
+  breakEvenTasa: number;
+  valorMaximoCompra: number;
+  resumen: string;
+  pros: string[];
+  contras: string[];
 }
 
 export interface Analisis {
@@ -24,21 +153,7 @@ export interface Analisis {
   score: number;
   desglose: Desglose;
   resumen: string;
+  results?: FullAnalysisResult;
+  input_data?: AnalisisInput;
   created_at: string;
-}
-
-export interface AnalisisInput {
-  nombre: string;
-  comuna: string;
-  ciudad: string;
-  direccion?: string;
-  tipo: string;
-  dormitorios: number;
-  banos: number;
-  superficie: number;
-  antiguedad: number;
-  precio: number;
-  arriendo: number;
-  gastos: number;
-  contribuciones: number;
 }
