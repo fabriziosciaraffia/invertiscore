@@ -108,7 +108,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="snap-section relative bg-gradient-to-b from-white via-white to-[#ECFDF5]/60 pt-16">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(5,150,105,0.06),transparent_60%)]" />
-        <div className="container relative mx-auto px-4 py-20 text-center md:py-32">
+        <div className="container relative mx-auto px-4 py-12 text-center md:py-16">
           <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-[#059669]/20 bg-[#059669]/5 px-4 py-1.5 text-sm text-[#059669]">
             <Brain className="h-4 w-4" />
             An&aacute;lisis potenciado por IA
@@ -144,7 +144,7 @@ export default function HomePage() {
 
       {/* El Problema */}
       <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-white">
-        <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="mx-auto mb-4 text-center">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               El problema
@@ -215,7 +215,7 @@ export default function HomePage() {
 
       {/* C&oacute;mo Funciona */}
       <section className="snap-section bg-gradient-to-b from-white to-[#F5F5F4]/50">
-        <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="mx-auto mb-4 text-center">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               C&oacute;mo funciona
@@ -276,7 +276,7 @@ export default function HomePage() {
 
       {/* Pricing */}
       <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-[#ECFDF5]/30">
-        <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="mx-auto mb-4 text-center">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
               Planes
@@ -427,7 +427,7 @@ export default function HomePage() {
 
       {/* Ejemplo de Reporte - Dark contrast section */}
       <section className="snap-section bg-[#1E293B]">
-        <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="mx-auto mb-4 text-center">
             <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#34D399]">
               Ejemplo
@@ -563,7 +563,7 @@ export default function HomePage() {
 
       {/* Social Proof + CTA Final */}
       <section className="snap-section bg-gradient-to-b from-white to-[#ECFDF5]/40">
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <div className="mb-6 flex items-center justify-center gap-2 text-[#6b7280]">
               <Database className="h-4 w-4" />
@@ -583,7 +583,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 pb-16 pt-8 text-center md:pb-24">
+        <div className="container mx-auto px-4 pb-12 pt-6 text-center">
           <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
             Obt&eacute;n tu InvertiScore gratis
           </h2>
