@@ -36,6 +36,8 @@ export default async function AnalisisDetallePage({
 }) {
   const supabase = createClient();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data } = await supabase
     .from("analisis")
     .select("*")
@@ -49,6 +51,7 @@ export default async function AnalisisDetallePage({
   const analisis = data as Analisis;
   const results: FullAnalysisResult | null = analisis.results || null;
   const clasificacion = getClasificacionLabel(analisis.score);
+  const unlocked = user?.email === "fabriziosciaraffia@gmail.com";
 
   // Basic metrics for free section (works with or without full results)
   const precioCLP = analisis.precio * UF_CLP;
@@ -146,26 +149,28 @@ export default async function AnalisisDetallePage({
         </div>
 
         {/* ===== FREE: Section 5 - CTA ===== */}
-        <Card className="mb-8 border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold">
-                Tu InvertiScore es {analisis.score}. ¿Quieres saber por qué?
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Desbloquea el informe completo con radar de dimensiones, 8 métricas,
-                flujo de caja, proyecciones y análisis detallado.
-              </p>
-            </div>
-            <Button size="lg" className="shrink-0 gap-2">
-              <Sparkles className="h-4 w-4" />
-              Desbloquear — $4.990
-            </Button>
-          </CardContent>
-        </Card>
+        {!unlocked && (
+          <Card className="mb-8 border-primary/30 bg-primary/5">
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold">
+                  Tu InvertiScore es {analisis.score}. ¿Quieres saber por qué?
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Desbloquea el informe completo con radar de dimensiones, 8 métricas,
+                  flujo de caja, proyecciones y análisis detallado.
+                </p>
+              </div>
+              <Button size="lg" className="shrink-0 gap-2">
+                <Sparkles className="h-4 w-4" />
+                Desbloquear — $4.990
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* ===== PREMIUM: All detailed sections ===== */}
-        {results && <PremiumResults results={results} />}
+        {results && <PremiumResults results={results} unlocked={unlocked} />}
 
         {/* Fallback for old analyses without full results */}
         {!results && (

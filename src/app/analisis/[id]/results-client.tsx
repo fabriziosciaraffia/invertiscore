@@ -32,15 +32,16 @@ function PremiumOverlay() {
   );
 }
 
-function SectionCard({ title, description, icon: Icon, children, premium = false }: {
+function SectionCard({ title, description, icon: Icon, children, premium = false, unlocked = false }: {
   title: string;
   description?: string;
   icon: React.ElementType;
   children: React.ReactNode;
   premium?: boolean;
+  unlocked?: boolean;
 }) {
   return (
-    <div className={`relative mb-8 ${premium ? "" : ""}`}>
+    <div className="relative mb-8">
       <Card className="border-border/50 bg-card/50">
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -51,12 +52,12 @@ function SectionCard({ title, description, icon: Icon, children, premium = false
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
-      {premium && <PremiumOverlay />}
+      {premium && !unlocked && <PremiumOverlay />}
     </div>
   );
 }
 
-export function PremiumResults({ results }: { results: FullAnalysisResult }) {
+export function PremiumResults({ results, unlocked = false }: { results: FullAnalysisResult; unlocked?: boolean }) {
   const [projectionYears, setProjectionYears] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [cashflowView, setCashflowView] = useState(1);
@@ -108,7 +109,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
   return (
     <>
       {/* 6. Radar Chart */}
-      <SectionCard title="Dimensiones del Score" icon={Target} premium>
+      <SectionCard title="Dimensiones del Score" icon={Target} premium unlocked={unlocked}>
         <div className="mx-auto h-72 w-full max-w-md">
           <ResponsiveContainer>
             <RadarChart data={radarData}>
@@ -122,7 +123,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 7. Dashboard 8 Metrics */}
-      <SectionCard title="Métricas de Inversión" icon={BarChart3} premium>
+      <SectionCard title="Métricas de Inversión" icon={BarChart3} premium unlocked={unlocked}>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
@@ -143,7 +144,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 8. Waterfall */}
-      <SectionCard title="Cascada de Costos Mensual" description="Del arriendo bruto al flujo neto" icon={DollarSign} premium>
+      <SectionCard title="Cascada de Costos Mensual" description="Del arriendo bruto al flujo neto" icon={DollarSign} premium unlocked={unlocked}>
         <div className="h-64">
           <ResponsiveContainer>
             <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
@@ -163,7 +164,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 9. Cashflow Mes a Mes */}
-      <SectionCard title={`Flujo de Caja — Año ${cashflowView}`} description="Barras: ingresos y egresos. Línea: acumulado" icon={BarChart3} premium>
+      <SectionCard title={`Flujo de Caja — Año ${cashflowView}`} description="Barras: ingresos y egresos. Línea: acumulado" icon={BarChart3} premium unlocked={unlocked}>
         <div className="mb-3 flex gap-2">
           {[1, 2, 3].map((y) => (
             <Button key={y} variant={cashflowView === y ? "default" : "outline"} size="sm" onClick={() => setCashflowView(y)}>
@@ -191,7 +192,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 10. Proyección Multi-año */}
-      <SectionCard title="Proyección Multi-Año" description={`Horizonte: ${projectionYears} años · Plusvalía 4%/año · Arriendos +3.5%/año`} icon={Calendar} premium>
+      <SectionCard title="Proyección Multi-Año" description={`Horizonte: ${projectionYears} años · Plusvalía 4%/año · Arriendos +3.5%/año`} icon={Calendar} premium unlocked={unlocked}>
         <div className="mb-3 flex items-center gap-3">
           <span className="text-xs text-muted-foreground">Años:</span>
           <input
@@ -220,7 +221,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 11. Escenario de Salida */}
-      <SectionCard title="Escenario de Salida" icon={ArrowRightLeft} premium>
+      <SectionCard title="Escenario de Salida" icon={ArrowRightLeft} premium unlocked={unlocked}>
         <div className="mb-4 flex overflow-hidden rounded-lg border border-border">
           <button
             type="button"
@@ -277,7 +278,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 12. Sensibilidad */}
-      <SectionCard title="Análisis de Sensibilidad" description="Cómo cambia el score al variar parámetros clave" icon={Shield} premium>
+      <SectionCard title="Análisis de Sensibilidad" description="Cómo cambia el score al variar parámetros clave" icon={Shield} premium unlocked={unlocked}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -314,7 +315,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 13. Comparación zona - placeholder bars */}
-      <SectionCard title="Comparación con Zona" icon={Building2} premium>
+      <SectionCard title="Comparación con Zona" icon={Building2} premium unlocked={unlocked}>
         {(() => {
           const promedioM2 = m.precioM2 * 1.05;
           const promedioYield = m.yieldBruto * 0.9;
@@ -352,7 +353,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 14. Break-even & 15. Valor máximo */}
-      <SectionCard title="Puntos Críticos" icon={Target} premium>
+      <SectionCard title="Puntos Críticos" icon={Target} premium unlocked={unlocked}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
             <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
@@ -368,7 +369,7 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* 16. Análisis IA */}
-      <SectionCard title="Análisis Detallado" icon={Brain} premium>
+      <SectionCard title="Análisis Detallado" icon={Brain} premium unlocked={unlocked}>
         <div className="space-y-4">
           <div>
             <h4 className="mb-2 text-sm font-semibold text-emerald-400">Pros</h4>
@@ -394,20 +395,22 @@ export function PremiumResults({ results }: { results: FullAnalysisResult }) {
       </SectionCard>
 
       {/* CTA Final */}
-      <Card className="border-primary/30 bg-primary/5">
-        <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-          <Sparkles className="h-8 w-8 text-primary" />
-          <h3 className="text-xl font-bold">Desbloquea el informe completo</h3>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Accede al radar de dimensiones, 8 métricas detalladas, flujo de caja mes a mes,
-            proyecciones multi-año, escenarios de salida, análisis de sensibilidad y más.
-          </p>
-          <Button size="lg" className="gap-2">
-            <Sparkles className="h-4 w-4" />
-            Desbloquear Informe Completo — $4.990
-          </Button>
-        </CardContent>
-      </Card>
+      {!unlocked && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+            <Sparkles className="h-8 w-8 text-primary" />
+            <h3 className="text-xl font-bold">Desbloquea el informe completo</h3>
+            <p className="max-w-md text-sm text-muted-foreground">
+              Accede al radar de dimensiones, 8 métricas detalladas, flujo de caja mes a mes,
+              proyecciones multi-año, escenarios de salida, análisis de sensibilidad y más.
+            </p>
+            <Button size="lg" className="gap-2">
+              <Sparkles className="h-4 w-4" />
+              Desbloquear Informe Completo — $4.990
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </>
   );
 }
