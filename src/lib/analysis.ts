@@ -352,33 +352,35 @@ function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: 
 // Break-even & Max Purchase
 // =========================================
 
-function calcBreakEvenTasa(input: AnalisisInput): number {
-  // Find the rate at which monthly cashflow = 0
-  for (let tasa = input.tasaInteres; tasa <= 15; tasa += 0.05) {
-    const modified = { ...input, tasaInteres: tasa };
-    const m = calcMetrics(modified);
-    if (m.flujoNetoMensual <= 0) return Math.round(tasa * 100) / 100;
+function calcBreakEvenTasa(input: AnalisisInput, currentMetrics: AnalysisMetrics): number {
+  // If flow is already negative, search downward to find where flow = 0
+  // If flow is positive, search upward
+  if (currentMetrics.flujoNetoMensual <= 0) {
+    // Already negative: search downward from current rate
+    for (let tasa = input.tasaInteres; tasa >= 0; tasa -= 0.05) {
+      const modified = { ...input, tasaInteres: tasa };
+      const m = calcMetrics(modified);
+      if (m.flujoNetoMensual >= 0) return Math.round(tasa * 100) / 100;
+    }
+    return -1; // Flow is negative even at 0% rate
+  } else {
+    // Positive: search upward for where flow becomes negative
+    for (let tasa = input.tasaInteres; tasa <= 15; tasa += 0.05) {
+      const modified = { ...input, tasaInteres: tasa };
+      const m = calcMetrics(modified);
+      if (m.flujoNetoMensual <= 0) return Math.round(tasa * 100) / 100;
+    }
+    return 15;
   }
-  return 15;
 }
 
-function calcValorMaximoCompra(input: AnalisisInput): number {
-  // Given rent and rate, what price makes cashflow = 0
-  const ingresoMensual = calcIngresoMensual(input);
-  const contribucionesMes = Math.round(input.contribuciones / 3);
-  const gastosFijos = input.gastos + contribucionesMes;
-
-  // Approximate: find max price where flujo = 0
-  for (let precio = input.precio; precio >= 100; precio -= 50) {
-    const precioCLP = precio * UF_CLP;
-    const piePct = input.piePct / 100;
-    const creditoCLP = precioCLP * (1 - piePct);
-    const dividendo = calcDividendo(creditoCLP, input.tasaInteres, input.plazoCredito);
-    const mantencion = Math.round((precioCLP * 0.01) / 12);
-    const flujo = ingresoMensual - dividendo - gastosFijos - mantencion;
-    if (flujo >= 0) return precio;
-  }
-  return 0;
+function calcValorMaximoCompra(input: AnalisisInput, metrics: AnalysisMetrics): number {
+  // NOI / target CAP rate = max property value in CLP, then convert to UF
+  const targetCapRate = 0.05; // 5% target
+  const noi = metrics.noi;
+  if (noi <= 0) return 0;
+  const maxCLP = noi / targetCapRate;
+  return Math.round(maxCLP / UF_CLP);
 }
 
 // =========================================
@@ -390,42 +392,36 @@ const COMUNAS_PREMIUM = [
   "la reina", "santiago centro", "viña del mar", "con con",
 ];
 
+function lerp(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
+  const t = (value - inMin) / (inMax - inMin);
+  return outMin + clamp(t, 0, 1) * (outMax - outMin);
+}
+
 function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
-  // Rentabilidad (30%): based on yield neto and cash-on-cash
-  let rentabilidad = 50;
-  if (metrics.yieldNeto >= 5) rentabilidad = 95;
-  else if (metrics.yieldNeto >= 4) rentabilidad = 80;
-  else if (metrics.yieldNeto >= 3) rentabilidad = 65;
-  else if (metrics.yieldNeto >= 2) rentabilidad = 50;
-  else rentabilidad = 30;
-  // Cash-on-cash bonus
+  // Rentabilidad (30%): continuous interpolation on yield neto
+  let rentabilidad = lerp(metrics.yieldNeto, 1, 6, 20, 100);
+  // Cash-on-cash adjustment
   if (metrics.cashOnCash > 5) rentabilidad = Math.min(100, rentabilidad + 10);
   else if (metrics.cashOnCash < 0) rentabilidad = Math.max(0, rentabilidad - 15);
   rentabilidad = clamp(rentabilidad, 0, 100);
 
-  // Flujo de caja (25%)
-  let flujoCaja = 50;
-  if (metrics.flujoNetoMensual > 100000) flujoCaja = 90;
-  else if (metrics.flujoNetoMensual > 50000) flujoCaja = 75;
-  else if (metrics.flujoNetoMensual > 0) flujoCaja = 60;
-  else if (metrics.flujoNetoMensual > -50000) flujoCaja = 40;
-  else flujoCaja = 20;
+  // Flujo de caja (25%): continuous on flujo mensual
+  let flujoCaja = lerp(metrics.flujoNetoMensual, -100000, 150000, 10, 95);
   flujoCaja = clamp(flujoCaja, 0, 100);
 
-  // Plusvalía (20%): zone, age, development
-  let plusvalia = 55;
+  // Plusvalía (20%): base depends on premium zone
+  const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
+  let plusvalia = isPremium ? 80 : 55;
   const precioM2 = metrics.precioM2;
-  if (precioM2 < 50) plusvalia += 15;
-  else if (precioM2 > 80) plusvalia -= 10;
-  if (input.antiguedad <= 5 || input.enConstruccion) plusvalia += 10;
+  plusvalia += lerp(precioM2, 30, 100, 15, -15);
+  if (input.antiguedad < 5 || input.enConstruccion) plusvalia += 10;
   else if (input.antiguedad > 20) plusvalia -= 15;
-  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) plusvalia += 10;
   plusvalia = clamp(plusvalia, 0, 100);
 
   // Riesgo (15%): vacancy, age, expense ratio
   let riesgo = 60;
   if (input.tipo.toLowerCase().includes("departamento")) riesgo += 8;
-  if (input.antiguedad <= 10 || input.enConstruccion) riesgo += 8;
+  if (input.antiguedad < 10 || input.enConstruccion) riesgo += 8;
   else if (input.antiguedad > 25) riesgo -= 15;
   if (metrics.capRate > 3) riesgo += 8;
   const ratioGastos = metrics.ingresoMensual > 0 ? input.gastos / metrics.ingresoMensual : 1;
@@ -434,11 +430,8 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   if (input.vacanciaMeses > 2) riesgo -= 10;
   riesgo = clamp(riesgo, 0, 100);
 
-  // Ubicación (10%): premium zones, demand
-  let ubicacion = 55;
-  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) {
-    ubicacion = 85;
-  }
+  // Ubicación (10%): premium zones get 90+
+  let ubicacion = isPremium ? 92 : 55;
   ubicacion = clamp(ubicacion, 0, 100);
 
   const score = Math.round(
@@ -470,7 +463,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   if (metrics.yieldBruto >= 5) pros.push(`Yield bruto de ${metrics.yieldBruto.toFixed(1)}%, por sobre el promedio`);
   if (metrics.flujoNetoMensual > 0) pros.push(`Flujo de caja mensual positivo: $${Math.round(metrics.flujoNetoMensual).toLocaleString("es-CL")}`);
   if (metrics.cashOnCash > 5) pros.push(`Retorno sobre pie (cash-on-cash) de ${metrics.cashOnCash.toFixed(1)}%`);
-  if (input.antiguedad <= 5 || input.enConstruccion) pros.push("Propiedad nueva o en construcción, menores costos de mantención");
+  if (input.antiguedad < 5 || input.enConstruccion) pros.push("Propiedad nueva o en construcción, menores costos de mantención");
   if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) pros.push("Ubicación con alta demanda de arriendo");
   if (metrics.precioM2 < 50) pros.push(`Precio por m² (${metrics.precioM2.toFixed(1)} UF) bajo respecto al mercado`);
   if (input.bodega) pros.push("Incluye bodega, valor agregado para arriendo");
@@ -504,47 +497,36 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
   const score = calcScoreFromMetrics(input, metrics);
   const sensitivity = calcSensitivity(input, score, metrics);
-  const breakEvenTasa = calcBreakEvenTasa(input);
-  const valorMaximoCompra = calcValorMaximoCompra(input);
+  const breakEvenTasa = calcBreakEvenTasa(input, metrics);
+  const valorMaximoCompra = calcValorMaximoCompra(input, metrics);
   const { clasificacion, color: clasificacionColor } = getClasificacion(score);
   const pros = generatePros(input, metrics);
   const contras = generateContras(input, metrics);
 
-  // Score breakdown by dimension
-  let rentabilidadScore = 50;
-  if (metrics.yieldNeto >= 5) rentabilidadScore = 95;
-  else if (metrics.yieldNeto >= 4) rentabilidadScore = 80;
-  else if (metrics.yieldNeto >= 3) rentabilidadScore = 65;
-  else if (metrics.yieldNeto >= 2) rentabilidadScore = 50;
-  else rentabilidadScore = 30;
+  // Score breakdown by dimension (mirrors calcScoreFromMetrics)
+  const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
+
+  let rentabilidadScore = lerp(metrics.yieldNeto, 1, 6, 20, 100);
   if (metrics.cashOnCash > 5) rentabilidadScore = Math.min(100, rentabilidadScore + 10);
   else if (metrics.cashOnCash < 0) rentabilidadScore = Math.max(0, rentabilidadScore - 15);
 
-  let flujoCajaScore = 50;
-  if (metrics.flujoNetoMensual > 100000) flujoCajaScore = 90;
-  else if (metrics.flujoNetoMensual > 50000) flujoCajaScore = 75;
-  else if (metrics.flujoNetoMensual > 0) flujoCajaScore = 60;
-  else if (metrics.flujoNetoMensual > -50000) flujoCajaScore = 40;
-  else flujoCajaScore = 20;
+  const flujoCajaScore = lerp(metrics.flujoNetoMensual, -100000, 150000, 10, 95);
 
-  let plusvaliaScore = 55;
-  if (metrics.precioM2 < 50) plusvaliaScore += 15;
-  else if (metrics.precioM2 > 80) plusvaliaScore -= 10;
-  if (input.antiguedad <= 5 || input.enConstruccion) plusvaliaScore += 10;
+  let plusvaliaScore = isPremium ? 80 : 55;
+  plusvaliaScore += lerp(metrics.precioM2, 30, 100, 15, -15);
+  if (input.antiguedad < 5 || input.enConstruccion) plusvaliaScore += 10;
   else if (input.antiguedad > 20) plusvaliaScore -= 15;
-  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) plusvaliaScore += 10;
 
   let riesgoScore = 60;
   if (input.tipo.toLowerCase().includes("departamento")) riesgoScore += 8;
-  if (input.antiguedad <= 10 || input.enConstruccion) riesgoScore += 8;
+  if (input.antiguedad < 10 || input.enConstruccion) riesgoScore += 8;
   else if (input.antiguedad > 25) riesgoScore -= 15;
   if (metrics.capRate > 3) riesgoScore += 8;
   const ratioGastos = metrics.ingresoMensual > 0 ? input.gastos / metrics.ingresoMensual : 1;
   if (ratioGastos < 0.2) riesgoScore += 5;
   else if (ratioGastos > 0.35) riesgoScore -= 10;
 
-  let ubicacionScore = 55;
-  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) ubicacionScore = 85;
+  const ubicacionScore = isPremium ? 92 : 55;
 
   const desglose: Desglose = {
     rentabilidad: clamp(rentabilidadScore, 0, 100),
@@ -560,7 +542,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const resumen = `Propiedad con yield bruto de ${metrics.yieldBruto.toFixed(1)}% y CAP rate neto de ${metrics.capRate.toFixed(1)}%. ` +
     `El precio por m² es de ${metrics.precioM2.toFixed(1)} UF/m². ` +
     `${metrics.capRate >= 4 ? "La rentabilidad es atractiva, superando el promedio del mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable para el mercado actual." : "La rentabilidad está por debajo del promedio, se recomienda negociar el precio o buscar mejores opciones."} ` +
-    `${input.antiguedad <= 5 || input.enConstruccion ? "La baja antigüedad reduce riesgos de mantención." : input.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
+    `${input.antiguedad < 5 || input.enConstruccion ? "La baja antigüedad reduce riesgos de mantención." : input.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
     `Se recomienda verificar gastos comunes históricos y estado de la administración antes de tomar una decisión.`;
 
   return {

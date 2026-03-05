@@ -357,8 +357,14 @@ export function PremiumResults({ results, unlocked = false }: { results: FullAna
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
             <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
-            <div className="mt-1 text-2xl font-bold">{results.breakEvenTasa.toFixed(2)}%</div>
-            <p className="mt-1 text-xs text-muted-foreground">Tasa a la que el flujo mensual se vuelve negativo</p>
+            <div className="mt-1 text-2xl font-bold">
+              {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {results.breakEvenTasa === -1
+                ? "Flujo negativo incluso a tasa 0% — revisar precio o arriendo"
+                : "Tasa a la que el flujo mensual se vuelve negativo"}
+            </p>
           </div>
           <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
             <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
