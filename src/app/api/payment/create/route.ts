@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createBrowserClient } from "@supabase/supabase-js";
+
+function createAdminClient() {
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) return null;
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceRoleKey
+  );
+}
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -27,20 +38,35 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
   }
 
+  // Use admin client (bypasses RLS) if available, otherwise user client
+  const dbClient = createAdminClient() || supabase;
+
   // Mock payment: mark as premium immediately
-  const { error } = await supabase
+  const { data: updated, error } = await dbClient
     .from("analisis")
     .update({ is_premium: true })
-    .eq("id", analysisId);
+    .eq("id", analysisId)
+    .select("id, is_premium")
+    .single();
+
+  console.log("Payment update result:", { updated, error, analysisId, userId: user.id });
 
   if (error) {
     console.error("Payment update error:", error);
     return NextResponse.json({ error: `Error al procesar pago: ${error.message}` }, { status: 500 });
   }
 
+  if (!updated) {
+    return NextResponse.json({ error: "No se pudo actualizar. Verifica permisos en Supabase." }, { status: 500 });
+  }
+
+  // Revalidate the analysis page so the reload shows fresh data
+  revalidatePath(`/analisis/${analysisId}`);
+
   return NextResponse.json({
     success: true,
-    message: "Pago procesado exitosamente (mock)",
+    message: "Pago procesado exitosamente",
     analysisId,
+    is_premium: updated.is_premium,
   });
 }
