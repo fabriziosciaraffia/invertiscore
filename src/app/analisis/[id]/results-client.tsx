@@ -18,7 +18,7 @@ import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 const UF_CLP = 38800;
 
 const METRIC_TOOLTIPS: Record<string, string> = {
-  "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) x 100. Benchmark Santiago: 3.5-4.5%",
+  "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) × 100. Benchmark Santiago: 3.5-4.5%",
   "Yield Neto": "Retorno anual real descontando todos los gastos operativos (GGCC, contribuciones, mantención, vacancia). Es la métrica más honesta de rentabilidad.",
   "CAP Rate": "Net Operating Income / Precio. Estándar internacional para comparar inversiones inmobiliarias. No incluye financiamiento.",
   "Cash-on-Cash": "Retorno anual sobre TU capital invertido (el pie). Si es negativo, estás poniendo plata de tu bolsillo cada mes.",
@@ -58,6 +58,17 @@ function fmtM(n: number): string {
   if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
   if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000) + "K";
   return "$" + Math.round(n);
+}
+
+function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
+  if (currency === "UF") {
+    const uf = n / UF_CLP;
+    if (Math.abs(uf) >= 1_000) return "UF " + (uf / 1_000).toFixed(0) + "K";
+    if (Math.abs(uf) >= 100) return "UF " + Math.round(uf);
+    if (Math.abs(uf) >= 1) return "UF " + uf.toFixed(1);
+    return "UF " + uf.toFixed(2);
+  }
+  return fmtM(n);
 }
 
 function MiniScoreCircle({ score }: { score: number }) {
@@ -117,7 +128,6 @@ function recalcForSensitivity(
   const COMUNAS_PREMIUM = ["providencia", "las condes", "vitacura", "lo barnechea", "ñuñoa", "la reina", "santiago centro", "viña del mar", "con con"];
   const isPremium = COMUNAS_PREMIUM.some((c) => modified.comuna.toLowerCase().includes(c));
 
-  // Rentabilidad - same as analysis.ts
   let rentabilidadScore: number;
   if (yieldBruto >= 6) rentabilidadScore = lerp(yieldBruto, 6, 8, 90, 100);
   else if (yieldBruto >= 5) rentabilidadScore = lerp(yieldBruto, 5, 6, 70, 89);
@@ -128,7 +138,6 @@ function recalcForSensitivity(
   else if (yieldNeto < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
   rentabilidadScore = clamp(rentabilidadScore, 0, 100);
 
-  // Flujo - same as analysis.ts
   let flujoCajaScore: number;
   if (flujoNetoMensual >= 0) flujoCajaScore = lerp(flujoNetoMensual, 0, 200000, 80, 100);
   else if (flujoNetoMensual >= -200000) flujoCajaScore = lerp(flujoNetoMensual, -200000, 0, 50, 79);
@@ -235,11 +244,18 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
   );
 }
 
-export function PremiumResults({ results, unlocked = false, inputData, comuna }: {
-  results: FullAnalysisResult;
+export function PremiumResults({
+  results, unlocked = false, inputData, comuna,
+  score, freeYieldBruto, freeFlujo, freePrecioM2,
+}: {
+  results?: FullAnalysisResult | null;
   unlocked?: boolean;
   inputData?: AnalisisInput;
   comuna?: string;
+  score: number;
+  freeYieldBruto: number;
+  freeFlujo: number;
+  freePrecioM2: number;
 }) {
   const [projectionYears, setProjectionYears] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
@@ -250,49 +266,60 @@ export function PremiumResults({ results, unlocked = false, inputData, comuna }:
   const [sensArriendo, setSensArriendo] = useState(0);
   const [sensVacancia, setSensVacancia] = useState(0);
 
-  const m = results.metrics;
-  const exit = results.exitScenario;
-  const refi = results.refinanceScenario;
+  const m = results?.metrics ?? null;
+  const exit = results?.exitScenario ?? null;
+  const refi = results?.refinanceScenario ?? null;
 
   const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
+  const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
   const toggleCurrency = useCallback(() => setCurrency((c) => c === "CLP" ? "UF" : "CLP"), []);
 
+  const flujoText = useMemo(() => {
+    const f = freeFlujo;
+    const abs = Math.abs(f);
+    if (f >= 0) return "La propiedad se paga sola y genera ganancia";
+    if (abs <= 100000) return "Aporte mensual moderado para el mercado";
+    if (abs <= 300000) return "Aporte mensual significativo de tu bolsillo";
+    return "Aporte mensual elevado — evalúa bien";
+  }, [freeFlujo]);
+
   const sensResult = useMemo(
-    () => recalcForSensitivity(results, inputData, sensTasa, sensArriendo, sensVacancia),
+    () => results && inputData ? recalcForSensitivity(results, inputData, sensTasa, sensArriendo, sensVacancia) : { score: 0, flujo: 0, yieldNeto: 0 },
     [results, inputData, sensTasa, sensArriendo, sensVacancia]
   );
 
   const sensBase = useMemo(
-    () => recalcForSensitivity(results, inputData, 0, 0, 0),
+    () => results && inputData ? recalcForSensitivity(results, inputData, 0, 0, 0) : { score: 0, flujo: 0, yieldNeto: 0 },
     [results, inputData]
   );
 
   const sensPesimista = useMemo(
-    () => recalcForSensitivity(results, inputData, 1.5, -15, 2),
+    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 2) : { score: 0, flujo: 0, yieldNeto: 0 },
     [results, inputData]
   );
   const sensOptimista = useMemo(
-    () => recalcForSensitivity(results, inputData, -1, 10, 0),
+    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, 0) : { score: 0, flujo: 0, yieldNeto: 0 },
     [results, inputData]
   );
 
-  const radarData = [
+  const radarData = results ? [
     { dimension: "Rentabilidad", value: results.desglose.rentabilidad, fullMark: 100 },
     { dimension: "Flujo Caja", value: results.desglose.flujoCaja, fullMark: 100 },
     { dimension: "Plusvalía", value: results.desglose.plusvalia, fullMark: 100 },
     { dimension: "Bajo Riesgo", value: results.desglose.riesgo, fullMark: 100 },
     { dimension: "Ubicación", value: results.desglose.ubicacion, fullMark: 100 },
-  ];
+  ] : [];
 
-  const waterfallData = [
+  const waterfallData = m ? [
     { name: "Arriendo", value: m.ingresoMensual, fill: "#059669" },
     { name: "Dividendo", value: -m.dividendo, fill: "#ef4444" },
-    { name: "GGCC", value: -(m.egresosMensuales - m.dividendo - Math.round(results.metrics.precioCLP * 0.01 / 12)), fill: "#f97316" },
-    { name: "Mantención", value: -Math.round(results.metrics.precioCLP * 0.01 / 12), fill: "#f59e0b" },
+    { name: "GGCC", value: -(m.egresosMensuales - m.dividendo - Math.round(m.precioCLP * 0.01 / 12)), fill: "#f97316" },
+    { name: "Mantención", value: -Math.round(m.precioCLP * 0.01 / 12), fill: "#f59e0b" },
     { name: "Flujo Neto", value: m.flujoNetoMensual, fill: m.flujoNetoMensual >= 0 ? "#059669" : "#ef4444" },
-  ];
+  ] : [];
 
   const cashflowData = useMemo(() => {
+    if (!m || !results || !inputData) return [];
     if (cashflowYears <= 3) {
       const totalMonths = cashflowYears * 12;
       const data: { name: string; Ingreso: number; Dividendo: number; Gastos: number; Extra: number; Acumulado: number }[] = [];
@@ -342,13 +369,13 @@ export function PremiumResults({ results, unlocked = false, inputData, comuna }:
     }
   }, [cashflowYears, results, m, inputData]);
 
-  const projData = results.projections.slice(0, projectionYears).map((p) => ({
+  const projData = results ? results.projections.slice(0, projectionYears).map((p) => ({
     name: `Año ${p.anio}`,
     "Valor Propiedad": p.valorPropiedad,
     "Saldo Crédito": p.saldoCredito,
     "Patrimonio Neto": p.patrimonioNeto,
     "Flujo Acumulado": p.flujoAcumulado,
-  }));
+  })) : [];
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -357,383 +384,485 @@ export function PremiumResults({ results, unlocked = false, inputData, comuna }:
 
   return (
     <>
+      {/* Currency Toggle — above free metrics */}
       <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
 
-      {/* Radar Chart */}
-      <SectionCard title="Dimensiones del Score" icon={Target} premium unlocked={unlocked}>
-        <div className="mb-3 flex flex-wrap gap-2">
-          {radarData.map((d) => (
-            <div key={d.dimension} className="flex items-center gap-1 rounded bg-secondary/30 px-2 py-1 text-xs">
-              <span>{d.dimension}: <strong>{Math.round(d.value)}</strong></span>
-              <InfoTooltip content={RADAR_TOOLTIPS[d.dimension] || ""} />
+      {/* 3 Free Metric Boxes */}
+      <div className="mb-8 grid gap-4 sm:grid-cols-3">
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <DollarSign className="h-4 w-4 text-primary" />
+              <span>Yield Bruto</span>
+              <InfoTooltip content="Retorno anual bruto: (arriendo anual / precio) × 100. Promedio Santiago: 3.5-4.5%" />
             </div>
-          ))}
-        </div>
-        <div className="mx-auto h-72 w-full max-w-md">
-          <ResponsiveContainer>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="hsl(var(--border))" />
-              <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-              <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
-              <Radar name="Score" dataKey="value" stroke="#059669" fill="#059669" fillOpacity={0.2} strokeWidth={2} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
-
-      {/* Métricas */}
-      <SectionCard title="Métricas de Inversión" icon={BarChart3} premium unlocked={unlocked}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
-            { label: "Yield Neto", value: `${m.yieldNeto.toFixed(1)}%` },
-            { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%` },
-            { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
-            { label: "ROI Total (10a)", value: `${exit.multiplicadorCapital}x` },
-            { label: "TIR", value: `${exit.tir.toFixed(1)}%` },
-            { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
-            { label: "UF/m²", value: `${m.precioM2.toFixed(1)}` },
-          ].map(({ label, value }) => (
-            <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                {label}
-                {METRIC_TOOLTIPS[label] && <InfoTooltip content={METRIC_TOOLTIPS[label]} />}
-              </div>
-              <div className="text-lg font-bold">{value}</div>
-            </div>
-          ))}
-        </div>
-      </SectionCard>
-
-      {/* Cascada */}
-      <SectionCard title="Cascada de Costos Mensual" description="Del arriendo bruto al flujo neto" icon={DollarSign} premium unlocked={unlocked}>
-        <div className="h-64">
-          <ResponsiveContainer>
-            <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtM} />
-              <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                {waterfallData.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
-
-      {/* Flujo de Caja Dinámico */}
-      <SectionCard
-        title={`Flujo de Caja — ${cashflowYears <= 3 ? `${cashflowYears} año${cashflowYears > 1 ? "s" : ""} (mensual)` : `${cashflowYears} años (anual)`}`}
-        description="Barras: ingresos y egresos. Línea: acumulado"
-        icon={BarChart3}
-        premium
-        unlocked={unlocked}
-      >
-        <div className="mb-4 flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Horizonte:</span>
-          <input
-            type="range" min={1} max={20} value={cashflowYears}
-            onChange={(e) => setCashflowYears(Number(e.target.value))}
-            className="w-48 accent-primary"
-          />
-          <span className="text-sm font-medium">
-            {cashflowYears} año{cashflowYears > 1 ? "s" : ""}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            ({cashflowYears <= 3 ? "vista mensual" : "vista anual"})
-          </span>
-        </div>
-        <div className="h-64">
-          <ResponsiveContainer>
-            <ComposedChart data={cashflowData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={cashflowYears <= 1 ? 0 : "preserveStartEnd"} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtM} />
-              <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
-              <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="Ingreso" stackId="a" fill="#059669" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="Dividendo" stackId="b" fill="#ef4444" radius={[2, 2, 0, 0]} />
-              <Bar dataKey="Gastos" stackId="b" fill="#f97316" />
-              <Bar dataKey="Extra" stackId="b" fill="#f59e0b" />
-              <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={cashflowYears <= 3 ? { r: 2 } : false} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
-
-      {/* Proyección Multi-Año */}
-      <SectionCard title="Proyección Multi-Año" description={`Horizonte: ${projectionYears} años · Plusvalía 4%/año · Arriendos +3.5%/año`} icon={Calendar} premium unlocked={unlocked}>
-        <div className="mb-3 flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">Años:</span>
-          <input type="range" min={3} max={20} value={projectionYears} onChange={(e) => setProjectionYears(Number(e.target.value))} className="w-48 accent-primary" />
-          <span className="text-sm font-medium">{projectionYears}</span>
-        </div>
-        <div className="h-72">
-          <ResponsiveContainer>
-            <LineChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtM} />
-              <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
-              <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-              <Line type="monotone" dataKey="Valor Propiedad" stroke="#059669" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Saldo Crédito" stroke="#ef4444" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Patrimonio Neto" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="Flujo Acumulado" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </SectionCard>
-
-      {/* Escenario de Salida */}
-      <SectionCard title="Escenario de Salida" icon={ArrowRightLeft} premium unlocked={unlocked}>
-        <div className="mb-4 flex overflow-hidden rounded-lg border border-border">
-          <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "venta" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Venta</button>
-          <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "refinanciamiento" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Refinanciamiento</button>
-        </div>
-
-        {exitMode === "venta" ? (
-          <div className="space-y-3 text-sm">
-            <p className="text-xs text-muted-foreground">Escenario a {exit.anios} años con plusvalía 4%/año</p>
-            {[
-              { label: "Valor venta estimado", value: fmt(exit.valorVenta) },
-              { label: "Saldo crédito restante", value: fmt(exit.saldoCredito), negative: true },
-              { label: "Comisión venta (2%)", value: fmt(exit.comisionVenta), negative: true },
-              { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), positive: true },
-              { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), positive: exit.flujoAcumulado > 0 },
-              { label: "Retorno total", value: fmt(exit.retornoTotal), bold: true, positive: true },
-              { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, bold: true },
-              { label: "TIR", value: `${exit.tir.toFixed(1)}%`, bold: true },
-            ].map(({ label, value, negative, positive, bold }) => (
-              <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
-                <span className="text-muted-foreground">{label}</span>
-                <span className={negative ? "text-red-400" : positive ? "text-emerald-400" : ""}>{negative ? "-" : ""}{value}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-3 text-sm">
-            <p className="text-xs text-muted-foreground">Refinanciamiento a 5 años (80% nuevo avalúo)</p>
-            {[
-              { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
-              { label: "Nuevo crédito (80%)", value: fmt(refi.nuevoCredito) },
-              { label: "Capital liberado", value: fmt(refi.capitalLiberado), positive: true },
-              { label: "Nuevo dividendo", value: fmt(refi.nuevoDividendo) },
-              { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
-            ].map(({ label, value, positive }) => (
-              <div key={label} className="flex justify-between">
-                <span className="text-muted-foreground">{label}</span>
-                <span className={positive ? "text-emerald-400 font-medium" : ""}>{value}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-
-      {/* Sensibilidad Interactiva */}
-      <SectionCard title="Análisis de Sensibilidad" description="Mueve los sliders para ver cómo cambian los resultados" icon={Shield} premium unlocked={unlocked}>
-        <div className="mb-6 space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Tasa de interés</span>
-              <span className={`font-medium ${sensTasa > 0 ? "text-red-400" : sensTasa < 0 ? "text-emerald-400" : ""}`}>
-                {sensTasa > 0 ? "+" : ""}{sensTasa.toFixed(1)}%
-              </span>
-            </div>
-            <input type="range" min={-2} max={2} step={0.1} value={sensTasa} onChange={(e) => setSensTasa(Number(e.target.value))} className="w-full accent-primary" />
-            <div className="flex justify-between text-[10px] text-muted-foreground"><span>-2%</span><span>Base</span><span>+2%</span></div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Arriendo</span>
-              <span className={`font-medium ${sensArriendo > 0 ? "text-emerald-400" : sensArriendo < 0 ? "text-red-400" : ""}`}>
-                {sensArriendo > 0 ? "+" : ""}{sensArriendo}%
-              </span>
-            </div>
-            <input type="range" min={-20} max={20} step={1} value={sensArriendo} onChange={(e) => setSensArriendo(Number(e.target.value))} className="w-full accent-primary" />
-            <div className="flex justify-between text-[10px] text-muted-foreground"><span>-20%</span><span>Base</span><span>+20%</span></div>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Vacancia adicional</span>
-              <span className={`font-medium ${sensVacancia > 0 ? "text-red-400" : ""}`}>
-                +{sensVacancia} mes{sensVacancia !== 1 ? "es" : ""}
-              </span>
-            </div>
-            <input type="range" min={0} max={4} step={0.5} value={sensVacancia} onChange={(e) => setSensVacancia(Number(e.target.value))} className="w-full accent-primary" />
-            <div className="flex justify-between text-[10px] text-muted-foreground"><span>0</span><span>2</span><span>4 meses</span></div>
-          </div>
-        </div>
-
-        <div className="mb-6 grid gap-3 sm:grid-cols-3">
-          {[
-            { label: "Score", render: <MiniScoreCircle score={sensResult.score} />, better: sensResult.score > sensBase.score, worse: sensResult.score < sensBase.score },
-            { label: "Flujo Neto", render: <div className={`text-lg font-bold ${sensResult.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmtCLP(sensResult.flujo)}</div>, better: sensResult.flujo > sensBase.flujo, worse: sensResult.flujo < sensBase.flujo },
-            { label: "Yield Neto", render: <div className="text-lg font-bold">{sensResult.yieldNeto.toFixed(1)}%</div>, better: sensResult.yieldNeto > sensBase.yieldNeto, worse: sensResult.yieldNeto < sensBase.yieldNeto },
-          ].map(({ label, render, better, worse }) => (
-            <div key={label} className={`rounded-lg border p-3 text-center ${better ? "border-emerald-500/30 bg-emerald-500/5" : worse ? "border-red-500/30 bg-red-500/5" : "border-border/50 bg-secondary/30"}`}>
-              <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-              {render}
-            </div>
-          ))}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
-                <th className="pb-2 pr-4">Escenario</th>
-                <th className="pb-2 pr-4">Score</th>
-                <th className="pb-2 pr-4">Flujo Neto</th>
-                <th className="pb-2">Yield Neto</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[
-                { label: "Pesimista", desc: "+1.5% tasa, -15% arriendo, +2m vacancia", data: sensPesimista, color: "text-red-400" },
-                { label: "Base", desc: "Valores actuales", data: sensBase, color: "" },
-                { label: "Optimista", desc: "-1% tasa, +10% arriendo", data: sensOptimista, color: "text-emerald-400" },
-              ].map(({ label, desc, data, color }) => (
-                <tr key={label} className="border-b border-border/30">
-                  <td className="py-2 pr-4">
-                    <div className={`font-medium ${color}`}>{label}</div>
-                    <div className="text-[10px] text-muted-foreground">{desc}</div>
-                  </td>
-                  <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
-                  <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmtCLP(data.flujo)}</td>
-                  <td className="py-2">{data.yieldNeto.toFixed(1)}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </SectionCard>
-
-      {/* Comparación zona + Mapa */}
-      <SectionCard title="Comparación con Zona" icon={Building2} premium unlocked={unlocked}>
-        {(() => {
-          const promedioM2 = m.precioM2 * 1.05;
-          const promedioYield = m.yieldBruto * 0.9;
-          const items = [
-            { label: "Precio/m² (UF)", tuyo: m.precioM2, zona: promedioM2 },
-            { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: promedioYield },
-          ];
-          return (
-            <div className="space-y-4">
-              {items.map(({ label, tuyo, zona }) => {
-                const maxVal = Math.max(tuyo, zona);
-                return (
-                  <div key={label}>
-                    <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-                    <div className="mb-1 flex items-center gap-3">
-                      <span className="w-20 text-xs">Tu propiedad</span>
-                      <div className="h-4 flex-1 rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-primary" style={{ width: `${(tuyo / maxVal) * 100}%` }} />
-                      </div>
-                      <span className="w-12 text-right text-xs font-medium">{tuyo.toFixed(1)}</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="w-20 text-xs">Promedio zona</span>
-                      <div className="h-4 flex-1 rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${(zona / maxVal) * 100}%` }} />
-                      </div>
-                      <span className="w-12 text-right text-xs font-medium">{zona.toFixed(1)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-
-        <div className="mt-6">
-          <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="h-4 w-4" />
-            <span>Ubicación: {mapQuery}</span>
-          </div>
-          <div className="overflow-hidden rounded-lg border border-border/50">
-            <iframe
-              src={googleMapUrl}
-              width="100%"
-              height="300"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Mapa de ubicación"
-            />
-          </div>
-        </div>
-      </SectionCard>
-
-      {/* Puntos Críticos */}
-      <SectionCard title="Puntos Críticos" icon={Target} premium unlocked={unlocked}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-            <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
             <div className="mt-1 text-2xl font-bold">
-              {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
+              {freeYieldBruto.toFixed(1)}%
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {results.breakEvenTasa === -1
-                ? "Flujo negativo incluso a tasa 0% — revisar precio o arriendo"
-                : "Tasa a la que el flujo mensual se vuelve negativo"}
-            </p>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-            <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
-            <div className="mt-1 text-2xl font-bold">{results.valorMaximoCompra.toLocaleString("es-CL")} UF</div>
-            <p className="mt-1 text-xs text-muted-foreground">Precio máximo para flujo positivo con estos datos</p>
-          </div>
-        </div>
-      </SectionCard>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <span>Flujo Mensual</span>
+              <InfoTooltip content="Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención." />
+            </div>
+            <div className={`mt-1 text-2xl font-bold ${freeFlujo >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+              {freeFlujo >= 0 ? "+" : ""}{fmt(freeFlujo)}
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">{flujoText}</p>
+          </CardContent>
+        </Card>
+        <Card className="border-border/50 bg-card/50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Building2 className="h-4 w-4 text-primary" />
+              <span>{currency === "UF" ? "UF/m²" : "Precio/m²"}</span>
+              <InfoTooltip content="Precio por metro cuadrado. Permite comparar con otras propiedades de la zona." />
+            </div>
+            <div className="mt-1 text-2xl font-bold">
+              {currency === "UF"
+                ? freePrecioM2.toFixed(1)
+                : `$${Math.round(freePrecioM2 * UF_CLP).toLocaleString("es-CL")}`
+              }
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Análisis Detallado */}
-      <SectionCard title="Análisis Detallado" icon={Brain} premium unlocked={unlocked}>
-        <div className="space-y-4">
-          <div>
-            <h4 className="mb-2 text-sm font-semibold text-emerald-400">Pros</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {results.pros.map((p, i) => (
-                <li key={i}>• {p}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <h4 className="mb-2 text-sm font-semibold text-red-400">Contras</h4>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              {results.contras.map((c, i) => (
-                <li key={i}>• {c}</li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-            <h4 className="mb-2 text-sm font-semibold">Resumen</h4>
-            <p className="text-sm leading-relaxed text-muted-foreground">{results.resumen}</p>
-          </div>
-        </div>
-      </SectionCard>
-
+      {/* CTA for non-premium users */}
       {!unlocked && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-            <Sparkles className="h-8 w-8 text-primary" />
-            <h3 className="text-xl font-bold">Desbloquea el informe completo</h3>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Accede al radar de dimensiones, 8 métricas detalladas, flujo de caja mes a mes,
-              proyecciones multi-año, escenarios de salida, análisis de sensibilidad y más.
-            </p>
-            <Button size="lg" className="gap-2">
+        <Card className="mb-8 border-primary/30 bg-primary/5">
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold">
+                Tu InvertiScore es {score}. ¿Quieres saber por qué?
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Desbloquea el informe completo con radar de dimensiones, 8 métricas,
+                flujo de caja, proyecciones y análisis detallado.
+              </p>
+            </div>
+            <Button size="lg" className="shrink-0 gap-2">
               <Sparkles className="h-4 w-4" />
-              Desbloquear Informe Completo — $4.990
+              Desbloquear — $4.990
             </Button>
           </CardContent>
         </Card>
+      )}
+
+      {/* ===== PREMIUM SECTIONS ===== */}
+      {results && m && exit && refi && (
+        <>
+          {/* Radar Chart */}
+          <SectionCard title="Dimensiones del Score" icon={Target} premium unlocked={unlocked}>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {radarData.map((d) => (
+                <div key={d.dimension} className="flex items-center gap-1 rounded bg-secondary/30 px-2 py-1 text-xs">
+                  <span>{d.dimension}: <strong>{Math.round(d.value)}</strong></span>
+                  <InfoTooltip content={RADAR_TOOLTIPS[d.dimension] || ""} />
+                </div>
+              ))}
+            </div>
+            <div className="mx-auto h-72 w-full max-w-md">
+              <ResponsiveContainer>
+                <RadarChart data={radarData}>
+                  <PolarGrid stroke="hsl(var(--border))" />
+                  <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
+                  <Radar name="Score" dataKey="value" stroke="#059669" fill="#059669" fillOpacity={0.2} strokeWidth={2} />
+                </RadarChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          {/* Métricas */}
+          <SectionCard title="Métricas de Inversión" description="Los números clave de esta inversión. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} premium unlocked={unlocked}>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
+                { label: "Yield Neto", value: `${m.yieldNeto.toFixed(1)}%` },
+                { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%` },
+                { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
+                { label: "ROI Total (10a)", value: `${exit.multiplicadorCapital}x` },
+                { label: "TIR", value: `${exit.tir.toFixed(1)}%` },
+                { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
+                { label: currency === "UF" ? "UF/m²" : "CLP/m²", value: currency === "UF" ? `${m.precioM2.toFixed(1)}` : `$${Math.round(m.precioM2 * UF_CLP).toLocaleString("es-CL")}` },
+              ].map(({ label, value }) => (
+                <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    {label}
+                    {METRIC_TOOLTIPS[label] && <InfoTooltip content={METRIC_TOOLTIPS[label]} />}
+                  </div>
+                  <div className="text-lg font-bold">{value}</div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+
+          {/* Cascada */}
+          <SectionCard title="Cascada de Costos Mensual" description="Así se reparte tu arriendo: cuánto va al banco, cuánto a gastos, y cuánto te queda" icon={DollarSign} premium unlocked={unlocked}>
+            <div className="h-64">
+              <ResponsiveContainer>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {waterfallData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          {/* Flujo de Caja Dinámico */}
+          <SectionCard
+            title={`Flujo de Caja — ${cashflowYears <= 3 ? `${cashflowYears} año${cashflowYears > 1 ? "s" : ""} (mensual)` : `${cashflowYears} años (anual)`}`}
+            description="Mes a mes, cuánto entra y cuánto sale. La línea azul muestra si vas ganando o perdiendo en total."
+            icon={BarChart3}
+            premium
+            unlocked={unlocked}
+          >
+            <div className="mb-4 flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Horizonte:</span>
+              <input
+                type="range" min={1} max={20} value={cashflowYears}
+                onChange={(e) => setCashflowYears(Number(e.target.value))}
+                className="w-48 accent-primary"
+              />
+              <span className="text-sm font-medium">
+                {cashflowYears} año{cashflowYears > 1 ? "s" : ""}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                ({cashflowYears <= 3 ? "vista mensual" : "vista anual"})
+              </span>
+            </div>
+            <div className="h-64">
+              <ResponsiveContainer>
+                <ComposedChart data={cashflowData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={cashflowYears <= 1 ? 0 : "preserveStartEnd"} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  <Bar dataKey="Ingreso" stackId="a" fill="#059669" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="Dividendo" stackId="b" fill="#ef4444" radius={[2, 2, 0, 0]} />
+                  <Bar dataKey="Gastos" stackId="b" fill="#f97316" />
+                  <Bar dataKey="Extra" stackId="b" fill="#f59e0b" />
+                  <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={cashflowYears <= 3 ? { r: 2 } : false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          {/* Proyección Multi-Año */}
+          <SectionCard
+            title="Proyección Multi-Año"
+            description={`Cómo crece tu patrimonio en ${projectionYears} años. Asume que la propiedad sube 4%/año y los arriendos 3.5%/año.`}
+            icon={Calendar}
+            premium
+            unlocked={unlocked}
+          >
+            <div className="mb-3 flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">Años:</span>
+              <input type="range" min={3} max={20} value={projectionYears} onChange={(e) => setProjectionYears(Number(e.target.value))} className="w-48 accent-primary" />
+              <span className="text-sm font-medium">{projectionYears}</span>
+            </div>
+            <div className="h-72">
+              <ResponsiveContainer>
+                <LineChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
+                  <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
+                  <Line type="monotone" dataKey="Valor Propiedad" stroke="#059669" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Saldo Crédito" stroke="#ef4444" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Patrimonio Neto" stroke="#3b82f6" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="Flujo Acumulado" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 5" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          {/* Escenario de Salida */}
+          <SectionCard title="Escenario de Salida" description="¿Qué pasa cuando quieras salir de esta inversión?" icon={ArrowRightLeft} premium unlocked={unlocked}>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Toda inversión tiene un momento de salida. Acá simulamos dos opciones:
+            </p>
+            <div className="mb-4 flex overflow-hidden rounded-lg border border-border">
+              <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "venta" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Venta</button>
+              <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "refinanciamiento" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Refinanciamiento</button>
+            </div>
+
+            {exitMode === "venta" ? (
+              <div className="space-y-3 text-sm">
+                <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+                  Si vendieras la propiedad en {exit.anios} años al valor proyectado (plusvalía 4%/año), ¿cuánto ganarías después de pagar el saldo del crédito y la comisión de venta?
+                </p>
+                {[
+                  { label: "Valor venta estimado", value: fmt(exit.valorVenta) },
+                  { label: "Saldo crédito restante", value: fmt(exit.saldoCredito), negative: true },
+                  { label: "Comisión venta (2%)", value: fmt(exit.comisionVenta), negative: true },
+                  { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), positive: true },
+                  { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), positive: exit.flujoAcumulado > 0 },
+                  { label: "Retorno total", value: fmt(exit.retornoTotal), bold: true, positive: true },
+                  { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, bold: true },
+                  { label: "TIR", value: `${exit.tir.toFixed(1)}%`, bold: true },
+                ].map(({ label, value, negative, positive, bold }) => (
+                  <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className={negative ? "text-red-400" : positive ? "text-emerald-400" : ""}>{negative ? "-" : ""}{value}</span>
+                  </div>
+                ))}
+                {exit.multiplicadorCapital > 1 && (
+                  <p className="mt-2 rounded-lg bg-emerald-500/10 p-3 text-xs text-emerald-400">
+                    Tu pie se multiplicaría por {exit.multiplicadorCapital}x. Por cada peso que pusiste, recuperas {exit.multiplicadorCapital} pesos.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3 text-sm">
+                <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+                  Si en vez de vender, refinancias con el nuevo valor de mercado a los 5 años, ¿cuánto capital puedes liberar para invertir en otra propiedad sin vender esta?
+                </p>
+                {[
+                  { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
+                  { label: "Nuevo crédito (80%)", value: fmt(refi.nuevoCredito) },
+                  { label: "Capital liberado", value: fmt(refi.capitalLiberado), positive: true },
+                  { label: "Nuevo dividendo", value: fmt(refi.nuevoDividendo) },
+                  { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
+                ].map(({ label, value, positive }) => (
+                  <div key={label} className="flex justify-between">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className={positive ? "text-emerald-400 font-medium" : ""}>{value}</span>
+                  </div>
+                ))}
+                {refi.capitalLiberado > 0 && (
+                  <p className="mt-2 rounded-lg bg-blue-500/10 p-3 text-xs text-blue-400">
+                    Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión, sin vender esta propiedad.
+                  </p>
+                )}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Sensibilidad Interactiva */}
+          <SectionCard title="Análisis de Sensibilidad" description="¿Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos? Ajusta para ver." icon={Shield} premium unlocked={unlocked}>
+            <div className="mb-6 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tasa de interés</span>
+                  <span className={`font-medium ${sensTasa > 0 ? "text-red-400" : sensTasa < 0 ? "text-emerald-400" : ""}`}>
+                    {sensTasa > 0 ? "+" : ""}{sensTasa.toFixed(1)}%
+                  </span>
+                </div>
+                <input type="range" min={-2} max={2} step={0.1} value={sensTasa} onChange={(e) => setSensTasa(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-2%</span><span>Base</span><span>+2%</span></div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Arriendo</span>
+                  <span className={`font-medium ${sensArriendo > 0 ? "text-emerald-400" : sensArriendo < 0 ? "text-red-400" : ""}`}>
+                    {sensArriendo > 0 ? "+" : ""}{sensArriendo}%
+                  </span>
+                </div>
+                <input type="range" min={-20} max={20} step={1} value={sensArriendo} onChange={(e) => setSensArriendo(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-20%</span><span>Base</span><span>+20%</span></div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Vacancia adicional</span>
+                  <span className={`font-medium ${sensVacancia > 0 ? "text-red-400" : ""}`}>
+                    +{sensVacancia} mes{sensVacancia !== 1 ? "es" : ""}
+                  </span>
+                </div>
+                <input type="range" min={0} max={4} step={0.5} value={sensVacancia} onChange={(e) => setSensVacancia(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>0</span><span>2</span><span>4 meses</span></div>
+              </div>
+            </div>
+
+            <div className="mb-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { label: "Score", render: <MiniScoreCircle score={sensResult.score} />, better: sensResult.score > sensBase.score, worse: sensResult.score < sensBase.score },
+                { label: "Flujo Neto", render: <div className={`text-lg font-bold ${sensResult.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(sensResult.flujo)}</div>, better: sensResult.flujo > sensBase.flujo, worse: sensResult.flujo < sensBase.flujo },
+                { label: "Yield Neto", render: <div className="text-lg font-bold">{sensResult.yieldNeto.toFixed(1)}%</div>, better: sensResult.yieldNeto > sensBase.yieldNeto, worse: sensResult.yieldNeto < sensBase.yieldNeto },
+              ].map(({ label, render, better, worse }) => (
+                <div key={label} className={`rounded-lg border p-3 text-center ${better ? "border-emerald-500/30 bg-emerald-500/5" : worse ? "border-red-500/30 bg-red-500/5" : "border-border/50 bg-secondary/30"}`}>
+                  <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+                  {render}
+                </div>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
+                    <th className="pb-2 pr-4">Escenario</th>
+                    <th className="pb-2 pr-4">Score</th>
+                    <th className="pb-2 pr-4">Flujo Neto</th>
+                    <th className="pb-2">Yield Neto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Pesimista", desc: "+1.5% tasa, -15% arriendo, +2m vacancia", data: sensPesimista, color: "text-red-400" },
+                    { label: "Base", desc: "Valores actuales", data: sensBase, color: "" },
+                    { label: "Optimista", desc: "-1% tasa, +10% arriendo", data: sensOptimista, color: "text-emerald-400" },
+                  ].map(({ label, desc, data, color }) => (
+                    <tr key={label} className="border-b border-border/30">
+                      <td className="py-2 pr-4">
+                        <div className={`font-medium ${color}`}>{label}</div>
+                        <div className="text-[10px] text-muted-foreground">{desc}</div>
+                      </td>
+                      <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
+                      <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(data.flujo)}</td>
+                      <td className="py-2">{data.yieldNeto.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+
+          {/* Comparación zona + Mapa */}
+          <SectionCard title="Comparación con Zona" icon={Building2} premium unlocked={unlocked}>
+            {(() => {
+              const promedioM2 = m.precioM2 * 1.05;
+              const promedioYield = m.yieldBruto * 0.9;
+              const items = [
+                { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? promedioM2 : promedioM2 * UF_CLP },
+                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: promedioYield },
+              ];
+              return (
+                <div className="space-y-4">
+                  {items.map(({ label, tuyo, zona }) => {
+                    const maxVal = Math.max(tuyo, zona);
+                    const fmtVal = (v: number) => label.includes("Yield") ? v.toFixed(1) : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
+                    return (
+                      <div key={label}>
+                        <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+                        <div className="mb-1 flex items-center gap-3">
+                          <span className="w-20 text-xs">Tu propiedad</span>
+                          <div className="h-4 flex-1 rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${(tuyo / maxVal) * 100}%` }} />
+                          </div>
+                          <span className="w-16 text-right text-xs font-medium">{fmtVal(tuyo)}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="w-20 text-xs">Promedio zona</span>
+                          <div className="h-4 flex-1 rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${(zona / maxVal) * 100}%` }} />
+                          </div>
+                          <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+
+            <div className="mt-6">
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>Ubicación: {mapQuery}</span>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border/50">
+                <iframe
+                  src={googleMapUrl}
+                  width="100%"
+                  height="300"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Mapa de ubicación"
+                />
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Puntos Críticos */}
+          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} premium unlocked={unlocked}>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {results.breakEvenTasa === -1
+                    ? "Incluso a tasa 0%, el flujo es negativo. El precio es demasiado alto para este arriendo."
+                    : `Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, tu flujo mensual se vuelve negativo.`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {currency === "UF"
+                    ? `${results.valorMaximoCompra.toLocaleString("es-CL")} UF`
+                    : fmtCLP(results.valorMaximoCompra * UF_CLP)
+                  }
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Para tener flujo positivo con estos datos, no deberías pagar más de este precio.
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Análisis Detallado */}
+          <SectionCard title="Análisis Detallado" icon={Brain} premium unlocked={unlocked}>
+            <div className="space-y-4">
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {results.pros.map((p, i) => (
+                    <li key={i}>• {p}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {results.contras.map((c, i) => (
+                    <li key={i}>• {c}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">{results.resumen}</p>
+              </div>
+            </div>
+          </SectionCard>
+
+          {!unlocked && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+                <Sparkles className="h-8 w-8 text-primary" />
+                <h3 className="text-xl font-bold">Desbloquea el informe completo</h3>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Accede al radar de dimensiones, 8 métricas detalladas, flujo de caja mes a mes,
+                  proyecciones multi-año, escenarios de salida, análisis de sensibilidad y más.
+                </p>
+                <Button size="lg" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Desbloquear Informe Completo — $4.990
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
     </>
   );

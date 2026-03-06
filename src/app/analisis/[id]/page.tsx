@@ -9,16 +9,12 @@ import {
 import {
   Building2,
   ArrowLeft,
-  DollarSign,
-  BarChart3,
-  Sparkles,
 } from "lucide-react";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { DeleteButton } from "./delete-button";
 import { ScoreCircle } from "./score-circle";
 import { ShareButton } from "./share-button";
 import { PremiumResults } from "./results-client";
-import { MetricLabel } from "./metric-tooltips";
 
 const UF_CLP = 38800;
 
@@ -112,66 +108,17 @@ export default async function AnalisisDetallePage({
           </div>
         </div>
 
-        {/* ===== FREE: Section 4 - 3 Basic Metrics ===== */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <DollarSign className="h-4 w-4 text-primary" />
-                <MetricLabel label="Yield Bruto" />
-              </div>
-              <div className="mt-1 text-2xl font-bold">
-                {(results?.metrics?.yieldBruto ?? yieldBruto).toFixed(1)}%
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <BarChart3 className="h-4 w-4 text-primary" />
-                <MetricLabel label="Flujo Mensual" />
-              </div>
-              <div className={`mt-1 text-2xl font-bold ${flujoEstimado >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-                {flujoEstimado >= 0 ? "+" : ""}{fmt(flujoEstimado)}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="border-border/50 bg-card/50">
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Building2 className="h-4 w-4 text-primary" />
-                <MetricLabel label="UF/m²" />
-              </div>
-              <div className="mt-1 text-2xl font-bold">
-                {(results?.metrics?.precioM2 ?? precioM2).toFixed(1)}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* ===== FREE: Section 5 - CTA ===== */}
-        {!unlocked && (
-          <Card className="mb-8 border-primary/30 bg-primary/5">
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold">
-                  Tu InvertiScore es {analisis.score}. ¿Quieres saber por qué?
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Desbloquea el informe completo con radar de dimensiones, 8 métricas,
-                  flujo de caja, proyecciones y análisis detallado.
-                </p>
-              </div>
-              <Button size="lg" className="shrink-0 gap-2">
-                <Sparkles className="h-4 w-4" />
-                Desbloquear — $4.990
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ===== PREMIUM: All detailed sections ===== */}
-        {results && <PremiumResults results={results} unlocked={unlocked} inputData={analisis.input_data as AnalisisInput | undefined} comuna={analisis.comuna} />}
+        {/* ===== Toggle + Free Metrics + CTA + Premium sections ===== */}
+        <PremiumResults
+          results={results}
+          unlocked={unlocked}
+          inputData={analisis.input_data as AnalisisInput | undefined}
+          comuna={analisis.comuna}
+          score={analisis.score}
+          freeYieldBruto={results?.metrics?.yieldBruto ?? yieldBruto}
+          freeFlujo={flujoEstimado}
+          freePrecioM2={results?.metrics?.precioM2 ?? precioM2}
+        />
 
         {/* Fallback for old analyses without full results */}
         {!results && (

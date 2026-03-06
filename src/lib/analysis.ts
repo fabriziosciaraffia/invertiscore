@@ -513,33 +513,54 @@ function getClasificacion(score: number): { clasificacion: string; color: string
 
 function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] {
   const pros: string[] = [];
-  if (metrics.capRate >= 4) pros.push(`CAP rate neto de ${metrics.capRate.toFixed(1)}%, superior al promedio del mercado`);
-  if (metrics.yieldBruto >= 5) pros.push(`Yield bruto de ${metrics.yieldBruto.toFixed(1)}%, por sobre el promedio`);
-  if (metrics.flujoNetoMensual > 0) pros.push(`Flujo de caja mensual positivo: $${Math.round(metrics.flujoNetoMensual).toLocaleString("es-CL")}`);
-  if (metrics.cashOnCash > 5) pros.push(`Retorno sobre pie (cash-on-cash) de ${metrics.cashOnCash.toFixed(1)}%`);
+  const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
+
+  if (metrics.capRate >= 4)
+    pros.push(`El retorno neto (CAP rate ${metrics.capRate.toFixed(1)}%) supera el promedio del mercado. Buena relación entre lo que produce y lo que cuesta.`);
+  if (metrics.yieldBruto >= 5)
+    pros.push(`El arriendo representa un ${metrics.yieldBruto.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
+  if (metrics.flujoNetoMensual > 0)
+    pros.push(`Después de pagar dividendo, gastos y todos los costos, te sobran ${fmtP(metrics.flujoNetoMensual)} al mes. La propiedad se paga sola.`);
+  if (metrics.cashOnCash > 5)
+    pros.push(`Tu pie renta un ${metrics.cashOnCash.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`);
   if (input.enConstruccion || input.antiguedad <= 2) {
-    pros.push("Propiedad nueva, menores costos de mantención");
+    pros.push("Al ser nueva o casi nueva, los costos de mantención serán bajos por varios años. Menos sorpresas.");
   } else if (input.antiguedad >= 3 && input.antiguedad <= 8) {
-    pros.push("Baja antigüedad reduce riesgos de mantención");
+    pros.push("Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos.");
   }
-  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) pros.push("Ubicación con alta demanda de arriendo");
-  if (metrics.precioM2 < 50) pros.push(`Precio por m² (${metrics.precioM2.toFixed(1)} UF) bajo respecto al mercado`);
-  if (input.bodega) pros.push("Incluye bodega, valor agregado para arriendo");
-  if (input.estacionamiento === "si") pros.push("Incluye estacionamiento, mayor atractivo para arrendatarios");
-  if (pros.length === 0) pros.push("Propiedad con características estándar para el mercado");
+  if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c)))
+    pros.push("Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía.");
+  if (metrics.precioM2 < 50)
+    pros.push(`A ${metrics.precioM2.toFixed(1)} UF/m², el precio por metro cuadrado está bajo el promedio. Hay margen para que suba de valor.`);
+  if (input.bodega)
+    pros.push("Incluye bodega, lo que permite cobrar más arriendo y hace la propiedad más atractiva para familias.");
+  if (input.estacionamiento === "si")
+    pros.push("Incluye estacionamiento, un plus que facilita arrendar y permite cobrar un adicional mensual.");
+  if (pros.length === 0)
+    pros.push("Propiedad con características estándar. No tiene ventajas sobresalientes, pero tampoco riesgos mayores.");
   return pros;
 }
 
 function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string[] {
   const contras: string[] = [];
-  if (metrics.capRate < 3.5) contras.push(`CAP rate neto bajo (${metrics.capRate.toFixed(1)}%), rentabilidad ajustada`);
-  if (metrics.flujoNetoMensual < 0) contras.push(`Flujo de caja mensual negativo: -$${Math.round(Math.abs(metrics.flujoNetoMensual)).toLocaleString("es-CL")}`);
-  if (input.antiguedad > 15) contras.push(`Antigüedad de ${input.antiguedad} años puede requerir mantención significativa`);
-  if (input.gastos > metrics.ingresoMensual * 0.25) contras.push("Gastos comunes representan más del 25% del arriendo");
-  if (metrics.cashOnCash < 0) contras.push(`Retorno sobre pie negativo (${metrics.cashOnCash.toFixed(1)}%), se pierde dinero mensualmente`);
-  if (input.vacanciaMeses >= 2) contras.push(`Alta vacancia estimada (${input.vacanciaMeses} meses/año) impacta la rentabilidad`);
-  if (metrics.precioM2 > 80) contras.push(`Precio por m² elevado (${metrics.precioM2.toFixed(1)} UF), menor potencial de plusvalía`);
-  if (contras.length === 0) contras.push("Sin riesgos mayores identificados con los datos ingresados");
+  const fmtP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
+
+  if (metrics.capRate < 3.5)
+    contras.push(`El retorno neto (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.`);
+  if (metrics.flujoNetoMensual < 0)
+    contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
+  if (input.antiguedad > 15)
+    contras.push(`Con ${input.antiguedad} años de antigüedad, es probable que pronto aparezcan gastos de mantención mayores (fachada, ascensores, impermeabilización). Pregunta por el fondo de reserva del edificio.`);
+  if (input.gastos > metrics.ingresoMensual * 0.25)
+    contras.push("Los gastos comunes representan más del 25% del arriendo, lo que reduce mucho la rentabilidad. Verifica si hay cuotas extraordinarias pendientes.");
+  if (metrics.cashOnCash < 0)
+    contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
+  if (input.vacanciaMeses >= 2)
+    contras.push(`Con ${input.vacanciaMeses} meses de vacancia estimada al año, pierdes ingreso significativo. Considera si la ubicación justifica esa vacancia.`);
+  if (metrics.precioM2 > 80)
+    contras.push(`El precio por m² (${metrics.precioM2.toFixed(1)} UF) es elevado para la zona. El margen de plusvalía es menor. Compara con propiedades similares antes de decidir.`);
+  if (contras.length === 0)
+    contras.push("Sin riesgos mayores identificados. Verifica los gastos comunes reales y el estado del edificio antes de tomar la decisión.");
   return contras;
 }
 
@@ -611,14 +632,26 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     ubicacion: clamp(ubicacionScore, 0, 100),
   };
 
-  const resumenEjecutivo = `Inversión ${clasificacion.toLowerCase()} con score ${score}/100. ` +
-    `Yield neto ${metrics.yieldNeto.toFixed(1)}%, flujo mensual ${metrics.flujoNetoMensual >= 0 ? "+" : ""}$${Math.round(metrics.flujoNetoMensual).toLocaleString("es-CL")}.`;
+  const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
+  const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
-  const resumen = `Propiedad con yield bruto de ${metrics.yieldBruto.toFixed(1)}% y CAP rate neto de ${metrics.capRate.toFixed(1)}%. ` +
-    `El precio por m² es de ${metrics.precioM2.toFixed(1)} UF/m². ` +
-    `${metrics.capRate >= 4 ? "La rentabilidad es atractiva, superando el promedio del mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable para el mercado actual." : "La rentabilidad está por debajo del promedio, se recomienda negociar el precio o buscar mejores opciones."} ` +
-    `${input.enConstruccion || input.antiguedad <= 2 ? "Propiedad nueva, menores riesgos de mantención." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención." : input.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
-    `Se recomienda verificar gastos comunes históricos y estado de la administración antes de tomar una decisión.`;
+  let resumenEjecutivo: string;
+  if (metrics.flujoNetoMensual >= 0) {
+    resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia. ` +
+      `Renta un ${metrics.yieldBruto.toFixed(1)}% bruto anual. ` +
+      `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
+  } else {
+    resumenEjecutivo = `Necesitas poner ${fmtR(metrics.flujoNetoMensual)} de tu bolsillo cada mes. ` +
+      `El arriendo cubre el ${coberturaPct}% de los costos. ` +
+      `${Math.abs(metrics.flujoNetoMensual) < 100000 ? "El aporte es moderado y la plusvalía podría compensarlo." : "Evalúa si puedes mantener ese aporte mensual y si la plusvalía lo justifica."}`;
+  }
+
+  const resumen = `El arriendo genera ${fmtR(metrics.ingresoMensual)} al mes y los costos totales (dividendo + gastos + mantención) suman ${fmtR(metrics.egresosMensuales)}. ` +
+    `${metrics.flujoNetoMensual >= 0 ? `Te quedan ${fmtR(metrics.flujoNetoMensual)} de ganancia mensual.` : `Falta cubrir ${fmtR(metrics.flujoNetoMensual)} al mes de tu bolsillo.`} ` +
+    `El yield bruto es de ${metrics.yieldBruto.toFixed(1)}% y el retorno neto (CAP rate) es ${metrics.capRate.toFixed(1)}%. ` +
+    `${metrics.capRate >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena negociar el precio o buscar otras opciones."} ` +
+    `${input.enConstruccion || input.antiguedad <= 2 ? "Al ser nueva, los costos de mantención serán bajos por años." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención inesperada." : input.antiguedad > 20 ? "Ojo: la antigüedad puede traer gastos de mantención importantes pronto." : "La antigüedad es moderada."} ` +
+    `Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.`;
 
   return {
     score: clamp(score, 0, 100),
