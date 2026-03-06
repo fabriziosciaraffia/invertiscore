@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -91,11 +91,44 @@ function FieldLabel({ htmlFor, children, tip }: { htmlFor: string; children: Rea
   );
 }
 
+function CurrencyMiniToggle({ field, value, onChange }: { field: string; value: "CLP" | "UF"; onChange: (field: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(field)}
+      className="ml-1 inline-flex h-5 items-center rounded border border-border bg-muted/50 px-1.5 text-[10px] font-medium text-muted-foreground transition-colors hover:bg-muted"
+      title={`Cambiar a ${value === "CLP" ? "UF" : "CLP"}`}
+    >
+      {value}
+    </button>
+  );
+}
+
 export default function NuevoAnalisisPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [inputCurrency, setInputCurrency] = useState<"CLP" | "UF">("UF");
+  // Per-field currency toggles for monetary fields
+  const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
+    precio: "UF",
+    arriendo: "CLP",
+    gastos: "CLP",
+    contribuciones: "CLP",
+    provisionMantencion: "CLP",
+    precioEstacionamiento: "UF",
+    tarifaNoche: "CLP",
+    costoLimpieza: "CLP",
+    costoAmoblado: "CLP",
+    serviciosBasicos: "CLP",
+    montoCuota: "CLP",
+  });
+
+  const toggleFieldCurrency = (field: string) => {
+    setFieldCurrency((prev) => ({
+      ...prev,
+      [field]: prev[field] === "CLP" ? "UF" : "CLP",
+    }));
+  };
 
   const [form, setForm] = useState({
     nombreAnalisis: "",
@@ -187,13 +220,19 @@ export default function NuevoAnalisisPage() {
   }, [form.comuna, form.superficieUtil, form.precio]);
 
   // Real-time calculations
+  // Helper: convert a field value to CLP based on its currency toggle
+  const toCLP = useCallback((field: string, value: number) => {
+    return fieldCurrency[field] === "UF" ? value * UF_CLP : value;
+  }, [fieldCurrency]);
+
+  const toUF = useCallback((field: string, value: number) => {
+    return fieldCurrency[field] === "UF" ? value : value / UF_CLP;
+  }, [fieldCurrency]);
+
   const calc = useMemo(() => {
-    let precioUF: number;
-    if (inputCurrency === "UF") {
-      precioUF = parseFloat(form.precio) || 0;
-    } else {
-      precioUF = (parseFloat(form.precio) || 0) / UF_CLP;
-    }
+    const precioUF = fieldCurrency.precio === "UF"
+      ? (parseFloat(form.precio) || 0)
+      : (parseFloat(form.precio) || 0) / UF_CLP;
 
     const supUtil = parseFloat(form.superficieUtil) || 0;
     const piePct = parseFloat(form.piePct) || 20;
@@ -209,7 +248,7 @@ export default function NuevoAnalisisPage() {
     const provisionAuto = Math.round((precioCLP * 0.01) / 12);
 
     return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto };
-  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, inputCurrency]);
+  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,25 +258,23 @@ export default function NuevoAnalisisPage() {
     const supUtil = parseFloat(form.superficieUtil) || 0;
     const supTotal = parseFloat(form.superficieTotal) || supUtil;
 
-    // Convert price to UF if entered in CLP
-    const precioUF = inputCurrency === "UF"
-      ? (parseFloat(form.precio) || 0)
-      : (parseFloat(form.precio) || 0) / UF_CLP;
+    // Convert each field to the expected unit using its per-field currency
+    const precioUF = toUF("precio", parseFloat(form.precio) || 0);
 
-    // Convert arriendo to CLP if entered in UF
+    // Arriendo is always stored as CLP
     let arriendo: number;
     if (form.tipoRenta === "larga") {
-      arriendo = inputCurrency === "UF"
-        ? Math.round((parseFloat(form.arriendo) || 0) * UF_CLP)
-        : (parseFloat(form.arriendo) || 0);
+      arriendo = Math.round(toCLP("arriendo", parseFloat(form.arriendo) || 0));
     } else {
-      arriendo = parseFloat(form.arriendo) || 0;
+      arriendo = Math.round(toCLP("tarifaNoche", parseFloat(form.arriendo) || 0));
     }
 
-    const gastos = parseFloat(form.gastos) || 0;
-    const contribuciones = parseFloat(form.contribuciones) || 0;
+    const gastos = Math.round(toCLP("gastos", parseFloat(form.gastos) || 0));
+    const contribuciones = Math.round(toCLP("contribuciones", parseFloat(form.contribuciones) || 0));
     const antiguedad = form.enConstruccion ? 0 : parseFloat(form.antiguedad) || 0;
-    const provisionMantencion = parseFloat(form.provisionMantencion) || calc.provisionAuto;
+    const provisionMantencion = form.provisionMantencion
+      ? Math.round(toCLP("provisionMantencion", parseFloat(form.provisionMantencion)))
+      : calc.provisionAuto;
 
     const nombre = form.nombreAnalisis.trim() || `${form.tipo} ${form.dormitorios}D${form.banos}B ${form.comuna}`;
 
@@ -259,14 +296,14 @@ export default function NuevoAnalisisPage() {
           enConstruccion: form.enConstruccion,
           piso: Number(form.piso) || 0,
           estacionamiento: form.estacionamiento,
-          precioEstacionamiento: parseFloat(form.precioEstacionamiento) || 0,
+          precioEstacionamiento: toUF("precioEstacionamiento", parseFloat(form.precioEstacionamiento) || 0),
           bodega: form.bodega === "si",
           estadoVenta: form.estadoVenta,
           fechaEntrega: form.estadoVenta !== "inmediata"
             ? `${form.fechaEntregaAnio}-${form.fechaEntregaMes}`
             : undefined,
           cuotasPie: Number(form.cuotasPie) || 0,
-          montoCuota: parseFloat(form.montoCuota) || 0,
+          montoCuota: Math.round(toCLP("montoCuota", parseFloat(form.montoCuota) || 0)),
           precio: precioUF,
           piePct: parseFloat(form.piePct),
           plazoCredito: parseFloat(form.plazoCredito),
@@ -277,13 +314,13 @@ export default function NuevoAnalisisPage() {
           tipoRenta: form.tipoRenta,
           arriendo,
           vacanciaMeses: parseFloat(form.vacanciaMeses),
-          tarifaNoche: parseFloat(form.tarifaNoche) || 0,
+          tarifaNoche: Math.round(toCLP("tarifaNoche", parseFloat(form.tarifaNoche) || 0)),
           ocupacionPct: parseFloat(form.ocupacionPct) || 65,
           comisionPlataforma: parseFloat(form.comisionPlataforma) || 3,
-          costoLimpieza: parseFloat(form.costoLimpieza) || 0,
+          costoLimpieza: Math.round(toCLP("costoLimpieza", parseFloat(form.costoLimpieza) || 0)),
           amoblado: form.amoblado === "si",
-          costoAmoblado: parseFloat(form.costoAmoblado) || 0,
-          serviciosBasicos: parseFloat(form.serviciosBasicos) || 0,
+          costoAmoblado: Math.round(toCLP("costoAmoblado", parseFloat(form.costoAmoblado) || 0)),
+          serviciosBasicos: Math.round(toCLP("serviciosBasicos", parseFloat(form.serviciosBasicos) || 0)),
         }),
       });
 
@@ -333,21 +370,6 @@ export default function NuevoAnalisisPage() {
               {error}
             </div>
           )}
-
-          {/* Toggle CLP/UF para inputs */}
-          <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 px-4 py-3">
-            <span className="text-sm text-muted-foreground">Ingresar valores en:</span>
-            <button
-              type="button"
-              onClick={() => setInputCurrency((c) => c === "CLP" ? "UF" : "CLP")}
-              className="relative flex h-8 w-20 items-center rounded-full bg-muted p-1 transition-colors"
-            >
-              <div className={`absolute h-6 w-9 rounded-full bg-primary transition-transform ${inputCurrency === "UF" ? "translate-x-[40px]" : "translate-x-0"}`} />
-              <span className={`relative z-10 flex-1 text-center text-xs font-medium ${inputCurrency === "CLP" ? "text-primary-foreground" : "text-muted-foreground"}`}>CLP</span>
-              <span className={`relative z-10 flex-1 text-center text-xs font-medium ${inputCurrency === "UF" ? "text-primary-foreground" : "text-muted-foreground"}`}>UF</span>
-            </button>
-            {inputCurrency === "CLP" && <span className="text-xs text-muted-foreground">UF = $38.800</span>}
-          </div>
 
           {/* Nombre */}
           <div className="space-y-2">
@@ -498,7 +520,10 @@ export default function NuevoAnalisisPage() {
               </div>
               {form.estacionamiento === "opcional" && (
                 <div className="space-y-2 md:w-1/2">
-                  <Label htmlFor="precioEstacionamiento">Precio estacionamiento (UF)</Label>
+                  <div className="flex items-center">
+                    <Label htmlFor="precioEstacionamiento">Precio estacionamiento</Label>
+                    <CurrencyMiniToggle field="precioEstacionamiento" value={fieldCurrency.precioEstacionamiento} onChange={toggleFieldCurrency} />
+                  </div>
                   <Input id="precioEstacionamiento" type="number" placeholder="350" value={form.precioEstacionamiento} onChange={handleChange} />
                   <p className="text-xs text-muted-foreground">Se suma al precio total de la propiedad</p>
                 </div>
@@ -548,7 +573,10 @@ export default function NuevoAnalisisPage() {
                       <Input id="cuotasPie" type="number" placeholder="24" value={form.cuotasPie} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="montoCuota">Monto por cuota (CLP)</Label>
+                      <div className="flex items-center">
+                        <Label htmlFor="montoCuota">Monto por cuota</Label>
+                        <CurrencyMiniToggle field="montoCuota" value={fieldCurrency.montoCuota} onChange={toggleFieldCurrency} />
+                      </div>
                       <Input id="montoCuota" type="number" placeholder="500000" value={form.montoCuota} onChange={handleChange} />
                     </div>
                   </div>
@@ -563,13 +591,16 @@ export default function NuevoAnalisisPage() {
             <CardContent className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <FieldLabel htmlFor="precio" tip={inputCurrency === "UF" ? FIELD_TIPS.precio : FIELD_TIPS.precioCLP}>
-                    Precio de venta ({inputCurrency})
-                  </FieldLabel>
-                  <Input id="precio" type="number" step="0.01" placeholder={inputCurrency === "UF" ? "3.200" : "124.160.000"} value={form.precio} onChange={handleChange} required />
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor="precio" tip={fieldCurrency.precio === "UF" ? FIELD_TIPS.precio : FIELD_TIPS.precioCLP}>
+                      Precio de venta
+                    </FieldLabel>
+                    <CurrencyMiniToggle field="precio" value={fieldCurrency.precio} onChange={toggleFieldCurrency} />
+                  </div>
+                  <Input id="precio" type="number" step="0.01" placeholder={fieldCurrency.precio === "UF" ? "3200" : "124160000"} value={form.precio} onChange={handleChange} required />
                   {calc.precioUF > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {inputCurrency === "UF"
+                      {fieldCurrency.precio === "UF"
                         ? `${fmt(calc.precioCLP)} CLP`
                         : `${fmtUF(calc.precioUF)}`}
                       {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
@@ -608,21 +639,30 @@ export default function NuevoAnalisisPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <FieldLabel htmlFor="gastos" tip={FIELD_TIPS.gastos}>Gastos comunes (CLP/mes)</FieldLabel>
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor="gastos" tip={FIELD_TIPS.gastos}>Gastos comunes /mes</FieldLabel>
+                    <CurrencyMiniToggle field="gastos" value={fieldCurrency.gastos} onChange={toggleFieldCurrency} />
+                  </div>
                   <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : "80000"} value={form.gastos} onChange={handleChange} required />
                   {suggestions?.gastos && !form.gastos && (
                     <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.gastos)} · Basado en {form.comuna}</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <FieldLabel htmlFor="contribuciones" tip={FIELD_TIPS.contribuciones}>Contribuciones (CLP/trim)</FieldLabel>
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor="contribuciones" tip={FIELD_TIPS.contribuciones}>Contribuciones /trim</FieldLabel>
+                    <CurrencyMiniToggle field="contribuciones" value={fieldCurrency.contribuciones} onChange={toggleFieldCurrency} />
+                  </div>
                   <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : "150000"} value={form.contribuciones} onChange={handleChange} required />
                   {suggestions?.contribuciones && suggestions.contribuciones > 0 && !form.contribuciones && (
                     <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.contribuciones)} · Basado en precio y zona</p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <FieldLabel htmlFor="provisionMantencion" tip={FIELD_TIPS.provisionMantencion}>Provisión mantención (CLP/mes)</FieldLabel>
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor="provisionMantencion" tip={FIELD_TIPS.provisionMantencion}>Provisión mantención /mes</FieldLabel>
+                    <CurrencyMiniToggle field="provisionMantencion" value={fieldCurrency.provisionMantencion} onChange={toggleFieldCurrency} />
+                  </div>
                   <Input id="provisionMantencion" type="number" placeholder={String(calc.provisionAuto)} value={form.provisionMantencion} onChange={handleChange} />
                   <p className="text-xs text-muted-foreground">Auto: {fmt(calc.provisionAuto)} (1% anual)</p>
                 </div>
@@ -642,22 +682,30 @@ export default function NuevoAnalisisPage() {
                   Renta Corta (Airbnb)
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                {form.tipoRenta === "larga"
+                  ? "Arriendo tradicional con contrato de 12+ meses. Ingreso estable y predecible, menor gestión operativa. Ideal para inversión pasiva."
+                  : "Arriendo por noches a través de plataformas como Airbnb o Booking. Mayor ingreso potencial, pero requiere gestión activa (limpieza, check-in, comunicación) y tiene mayor vacancia estacional."}
+              </p>
 
               {form.tipoRenta === "larga" ? (
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <FieldLabel htmlFor="arriendo" tip={inputCurrency === "UF" ? FIELD_TIPS.arriendoUF : FIELD_TIPS.arriendo}>
-                        Arriendo esperado ({inputCurrency === "UF" ? "UF/mes" : "CLP/mes"})
-                      </FieldLabel>
+                      <div className="flex items-center">
+                        <FieldLabel htmlFor="arriendo" tip={fieldCurrency.arriendo === "UF" ? FIELD_TIPS.arriendoUF : FIELD_TIPS.arriendo}>
+                          Arriendo esperado /mes
+                        </FieldLabel>
+                        <CurrencyMiniToggle field="arriendo" value={fieldCurrency.arriendo} onChange={toggleFieldCurrency} />
+                      </div>
                       <Input id="arriendo" type="number" placeholder={
-                        inputCurrency === "UF"
+                        fieldCurrency.arriendo === "UF"
                           ? suggestions?.arriendo ? (suggestions.arriendo / UF_CLP).toFixed(1) : "12"
                           : suggestions?.arriendo ? String(suggestions.arriendo) : "450000"
                       } value={form.arriendo} onChange={handleChange} required />
                       {suggestions?.arriendo && !form.arriendo && (
                         <p className="text-xs text-emerald-500">
-                          Sugerido: {inputCurrency === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Basado en {form.comuna} y superficie
+                          Sugerido: {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Basado en {form.comuna} y superficie
                         </p>
                       )}
                     </div>
@@ -677,7 +725,10 @@ export default function NuevoAnalisisPage() {
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="tarifaNoche">Tarifa por noche (CLP)</Label>
+                      <div className="flex items-center">
+                        <Label htmlFor="tarifaNoche">Tarifa por noche</Label>
+                        <CurrencyMiniToggle field="tarifaNoche" value={fieldCurrency.tarifaNoche} onChange={toggleFieldCurrency} />
+                      </div>
                       <Input id="tarifaNoche" type="number" placeholder="45000" value={form.tarifaNoche} onChange={handleChange} required={form.tipoRenta === "corta"} />
                     </div>
                     <div className="space-y-2">
@@ -691,7 +742,10 @@ export default function NuevoAnalisisPage() {
                       <Input id="comisionPlataforma" type="number" step="0.1" placeholder="3" value={form.comisionPlataforma} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="costoLimpieza">Costo limpieza por estadía (CLP)</Label>
+                      <div className="flex items-center">
+                        <Label htmlFor="costoLimpieza">Costo limpieza por estadía</Label>
+                        <CurrencyMiniToggle field="costoLimpieza" value={fieldCurrency.costoLimpieza} onChange={toggleFieldCurrency} />
+                      </div>
                       <Input id="costoLimpieza" type="number" placeholder="25000" value={form.costoLimpieza} onChange={handleChange} />
                     </div>
                   </div>
@@ -705,13 +759,19 @@ export default function NuevoAnalisisPage() {
                     </div>
                     {form.amoblado === "si" && (
                       <div className="space-y-2">
-                        <Label htmlFor="costoAmoblado">Inversión amoblado (CLP)</Label>
+                        <div className="flex items-center">
+                          <Label htmlFor="costoAmoblado">Inversión amoblado</Label>
+                          <CurrencyMiniToggle field="costoAmoblado" value={fieldCurrency.costoAmoblado} onChange={toggleFieldCurrency} />
+                        </div>
                         <Input id="costoAmoblado" type="number" placeholder="3000000" value={form.costoAmoblado} onChange={handleChange} />
                       </div>
                     )}
                   </div>
                   <div className="space-y-2 md:w-1/2">
-                    <Label htmlFor="serviciosBasicos">Servicios básicos (CLP/mes)</Label>
+                    <div className="flex items-center">
+                      <Label htmlFor="serviciosBasicos">Servicios básicos /mes</Label>
+                      <CurrencyMiniToggle field="serviciosBasicos" value={fieldCurrency.serviciosBasicos} onChange={toggleFieldCurrency} />
+                    </div>
                     <Input id="serviciosBasicos" type="number" placeholder="80000" value={form.serviciosBasicos} onChange={handleChange} />
                     <p className="text-xs text-muted-foreground">Luz, agua, internet, gas</p>
                   </div>

@@ -118,6 +118,7 @@ export default async function AnalisisDetallePage({
           freeYieldBruto={results?.metrics?.yieldBruto ?? yieldBruto}
           freeFlujo={flujoEstimado}
           freePrecioM2={results?.metrics?.precioM2 ?? precioM2}
+          resumenEjecutivo={resumenEjecutivo}
         />
 
         {/* Fallback for old analyses without full results */}
