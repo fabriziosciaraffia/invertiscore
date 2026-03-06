@@ -34,7 +34,8 @@ export async function POST(request: Request) {
     .eq("id", analysisId);
 
   if (error) {
-    return NextResponse.json({ error: "Error al procesar pago", details: error.message }, { status: 500 });
+    console.error("Payment update error:", error);
+    return NextResponse.json({ error: `Error al procesar pago: ${error.message}` }, { status: 500 });
   }
 
   return NextResponse.json({
