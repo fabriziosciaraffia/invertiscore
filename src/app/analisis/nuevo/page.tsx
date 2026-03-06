@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { Building2, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
-import { COMUNAS } from "@/lib/comunas";
+import { COMUNAS, REGIONES, getMarketData } from "@/lib/comunas";
 
 const UF_CLP = 38800;
 
@@ -23,6 +24,24 @@ const ESTADOS_VENTA = [
   { value: "verde", label: "En verde (construcción iniciada)" },
   { value: "inmediata", label: "Entrega inmediata" },
 ];
+
+// Form field tooltips
+const FIELD_TIPS: Record<string, string> = {
+  precio: "Precio de venta de la propiedad en UF. Lo encuentras en la publicación o cotización.",
+  precioCLP: "Precio de venta en pesos chilenos. Lo encuentras en la publicación o cotización.",
+  piePct: "Porcentaje del precio que pagas de tu bolsillo. En Chile, los bancos financian hasta 80%, así que el pie mínimo es 20%.",
+  gastos: "Monto mensual que cobra la administración del edificio. Pregunta al corredor o revisa la publicación.",
+  contribuciones: "Impuesto territorial que se paga al SII cada trimestre. Lo puedes consultar en sii.cl con el rol de la propiedad.",
+  arriendo: "Cuánto esperas cobrar de arriendo mensual. Si no sabes, revisa arriendos similares en Portal Inmobiliario para la misma zona.",
+  arriendoUF: "Cuánto esperas cobrar de arriendo mensual en UF. Si no sabes, revisa arriendos similares en Portal Inmobiliario.",
+  tasaInteres: "Tasa real anual del crédito hipotecario. La tasa actual de referencia en Chile es ~4.72%. Puedes simularlo en el sitio de tu banco.",
+  provisionMantencion: "Reserva mensual para reparaciones y mantención. La regla general es 1% del valor de la propiedad al año, dividido en 12 meses.",
+  vacanciaMeses: "Meses al año que estimas que la propiedad estará sin arrendatario. 1 mes/año es el estándar.",
+  piso: "El piso puede influir en el arriendo (pisos altos se arriendan más fácil y caro) y en la plusvalía.",
+  antiguedad: "Los años del inmueble afectan los costos de mantención (más antiguo = más reparaciones) y la plusvalía (nuevos se aprecian más).",
+  estacionamiento: "Si incluye estacionamiento, suma valor al arriendo (~$30.000-$50.000 CLP/mes extra) y a la plusvalía.",
+  bodega: "Si incluye bodega, suma un pequeño valor al arriendo (~$10.000-$20.000 CLP/mes extra).",
+};
 
 function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasaAnual: number) {
   const credito = precioUF * (1 - piePct / 100) * UF_CLP;
@@ -34,11 +53,7 @@ function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasa
 }
 
 function Select({
-  id,
-  value,
-  onChange,
-  children,
-  required,
+  id, value, onChange, children, required,
 }: {
   id: string;
   value: string;
@@ -49,10 +64,7 @@ function Select({
   return (
     <div className="relative">
       <select
-        id={id}
-        value={value}
-        onChange={onChange}
-        required={required}
+        id={id} value={value} onChange={onChange} required={required}
         className="flex h-9 w-full appearance-none rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
       >
         {children}
@@ -70,15 +82,24 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
+function FieldLabel({ htmlFor, children, tip }: { htmlFor: string; children: React.ReactNode; tip?: string }) {
+  return (
+    <div className="flex items-center gap-1">
+      <Label htmlFor={htmlFor}>{children}</Label>
+      {tip && <InfoTooltip content={tip} />}
+    </div>
+  );
+}
+
 export default function NuevoAnalisisPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [inputCurrency, setInputCurrency] = useState<"CLP" | "UF">("UF");
 
   const [form, setForm] = useState({
-    // Nombre
     nombreAnalisis: "",
-    // Propiedad
+    region: "Metropolitana",
     comuna: "",
     ciudad: "",
     direccion: "",
@@ -93,13 +114,11 @@ export default function NuevoAnalisisPage() {
     estacionamiento: "si",
     precioEstacionamiento: "",
     bodega: "no",
-    // Estado de venta
     estadoVenta: "inmediata",
     fechaEntregaMes: "",
     fechaEntregaAnio: "",
     cuotasPie: "",
     montoCuota: "",
-    // Financiero
     precio: "",
     piePct: "20",
     plazoCredito: "25",
@@ -107,11 +126,9 @@ export default function NuevoAnalisisPage() {
     gastos: "",
     contribuciones: "",
     provisionMantencion: "",
-    // Arriendo
     tipoRenta: "larga",
     arriendo: "",
     vacanciaMeses: "1",
-    // Airbnb
     tarifaNoche: "",
     ocupacionPct: "65",
     comisionPlataforma: "3",
@@ -130,8 +147,16 @@ export default function NuevoAnalisisPage() {
     }
   };
 
+  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setForm((prev) => ({ ...prev, region: e.target.value, comuna: "", ciudad: "" }));
+  };
+
   const handleComunaChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const comuna = e.target.value;
+    if (comuna === "__otra__") {
+      setForm((prev) => ({ ...prev, comuna: "", ciudad: "" }));
+      return;
+    }
     const match = COMUNAS.find((c) => c.comuna === comuna);
     setForm((prev) => ({
       ...prev,
@@ -140,26 +165,51 @@ export default function NuevoAnalisisPage() {
     }));
   };
 
+  // Comunas filtered by region
+  const filteredComunas = useMemo(
+    () => COMUNAS.filter((c) => c.region === form.region),
+    [form.region]
+  );
+
+  // Market suggestions
+  const suggestions = useMemo(() => {
+    const supUtil = parseFloat(form.superficieUtil) || 0;
+    const precioUF = parseFloat(form.precio) || 0;
+    if (!form.comuna || supUtil <= 0) return null;
+
+    const market = getMarketData(form.comuna);
+    const arriendo = Math.round(market.arriendoPorM2 * supUtil);
+    const gastos = Math.round(market.gastosComunesPorM2 * supUtil);
+    const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * (market.contribucionesPctAnual / 100)) : 0;
+    const contribuciones = Math.round(contribAnual / 4);
+
+    return { arriendo, gastos, contribuciones };
+  }, [form.comuna, form.superficieUtil, form.precio]);
+
   // Real-time calculations
   const calc = useMemo(() => {
-    const precio = parseFloat(form.precio) || 0;
+    let precioUF: number;
+    if (inputCurrency === "UF") {
+      precioUF = parseFloat(form.precio) || 0;
+    } else {
+      precioUF = (parseFloat(form.precio) || 0) / UF_CLP;
+    }
+
     const supUtil = parseFloat(form.superficieUtil) || 0;
     const piePct = parseFloat(form.piePct) || 20;
     const plazo = parseFloat(form.plazoCredito) || 25;
     const tasa = parseFloat(form.tasaInteres) || 4.72;
 
-    const precioCLP = precio * UF_CLP;
-    const precioM2 = supUtil > 0 ? precio / supUtil : 0;
-    const pieUF = precio * (piePct / 100);
+    const precioCLP = precioUF * UF_CLP;
+    const precioM2 = supUtil > 0 ? precioUF / supUtil : 0;
+    const pieUF = precioUF * (piePct / 100);
     const pieCLP = pieUF * UF_CLP;
     const financiamientoPct = 100 - piePct;
-    const dividendo = calcDividendo(precio, piePct, plazo, tasa);
-
-    // Provision mantencion auto: 1% valor anual / 12
+    const dividendo = calcDividendo(precioUF, piePct, plazo, tasa);
     const provisionAuto = Math.round((precioCLP * 0.01) / 12);
 
-    return { precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto };
-  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres]);
+    return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto };
+  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, inputCurrency]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,8 +218,22 @@ export default function NuevoAnalisisPage() {
 
     const supUtil = parseFloat(form.superficieUtil) || 0;
     const supTotal = parseFloat(form.superficieTotal) || supUtil;
-    const precio = parseFloat(form.precio) || 0;
-    const arriendo = parseFloat(form.arriendo) || 0;
+
+    // Convert price to UF if entered in CLP
+    const precioUF = inputCurrency === "UF"
+      ? (parseFloat(form.precio) || 0)
+      : (parseFloat(form.precio) || 0) / UF_CLP;
+
+    // Convert arriendo to CLP if entered in UF
+    let arriendo: number;
+    if (form.tipoRenta === "larga") {
+      arriendo = inputCurrency === "UF"
+        ? Math.round((parseFloat(form.arriendo) || 0) * UF_CLP)
+        : (parseFloat(form.arriendo) || 0);
+    } else {
+      arriendo = parseFloat(form.arriendo) || 0;
+    }
+
     const gastos = parseFloat(form.gastos) || 0;
     const contribuciones = parseFloat(form.contribuciones) || 0;
     const antiguedad = form.enConstruccion ? 0 : parseFloat(form.antiguedad) || 0;
@@ -203,7 +267,7 @@ export default function NuevoAnalisisPage() {
             : undefined,
           cuotasPie: Number(form.cuotasPie) || 0,
           montoCuota: parseFloat(form.montoCuota) || 0,
-          precio,
+          precio: precioUF,
           piePct: parseFloat(form.piePct),
           plazoCredito: parseFloat(form.plazoCredito),
           tasaInteres: parseFloat(form.tasaInteres),
@@ -213,7 +277,6 @@ export default function NuevoAnalisisPage() {
           tipoRenta: form.tipoRenta,
           arriendo,
           vacanciaMeses: parseFloat(form.vacanciaMeses),
-          // Airbnb fields
           tarifaNoche: parseFloat(form.tarifaNoche) || 0,
           ocupacionPct: parseFloat(form.ocupacionPct) || 65,
           comisionPlataforma: parseFloat(form.comisionPlataforma) || 3,
@@ -238,11 +301,10 @@ export default function NuevoAnalisisPage() {
   };
 
   const fmt = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
-  const fmtUF = (n: number) => n.toFixed(1) + " UF";
+  const fmtUF = (n: number) => "UF " + (Math.round(n * 10) / 10).toLocaleString("es-CL");
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navbar */}
       <nav className="border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-2">
@@ -257,10 +319,9 @@ export default function NuevoAnalisisPage() {
         </div>
       </nav>
 
-      {/* Form */}
       <div className="container mx-auto max-w-3xl px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold">Nuevo An&aacute;lisis</h1>
+          <h1 className="text-3xl font-bold">Nuevo Análisis</h1>
           <p className="text-muted-foreground">
             Ingresa los datos de la propiedad para obtener tu InvertiScore
           </p>
@@ -273,52 +334,84 @@ export default function NuevoAnalisisPage() {
             </div>
           )}
 
-          {/* ===== NOMBRE DEL ANÁLISIS ===== */}
+          {/* Toggle CLP/UF para inputs */}
+          <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-card/50 px-4 py-3">
+            <span className="text-sm text-muted-foreground">Ingresar valores en:</span>
+            <button
+              type="button"
+              onClick={() => setInputCurrency((c) => c === "CLP" ? "UF" : "CLP")}
+              className="relative flex h-8 w-20 items-center rounded-full bg-muted p-1 transition-colors"
+            >
+              <div className={`absolute h-6 w-9 rounded-full bg-primary transition-transform ${inputCurrency === "UF" ? "translate-x-[40px]" : "translate-x-0"}`} />
+              <span className={`relative z-10 flex-1 text-center text-xs font-medium ${inputCurrency === "CLP" ? "text-primary-foreground" : "text-muted-foreground"}`}>CLP</span>
+              <span className={`relative z-10 flex-1 text-center text-xs font-medium ${inputCurrency === "UF" ? "text-primary-foreground" : "text-muted-foreground"}`}>UF</span>
+            </button>
+            {inputCurrency === "CLP" && <span className="text-xs text-muted-foreground">UF = $38.800</span>}
+          </div>
+
+          {/* Nombre */}
           <div className="space-y-2">
-            <Label htmlFor="nombreAnalisis">Nombre del an&aacute;lisis (opcional)</Label>
+            <Label htmlFor="nombreAnalisis">Nombre del análisis (opcional)</Label>
             <Input
               id="nombreAnalisis"
-              placeholder="Ej: Depto Providencia 2D1B, Inversi&oacute;n &Ntilde;u&ntilde;oa..."
+              placeholder="Ej: Depto Providencia 2D1B, Inversión Ñuñoa..."
               value={form.nombreAnalisis}
               onChange={handleChange}
             />
             <p className="text-xs text-muted-foreground">
-              Si no ingresas un nombre, se generar&aacute; autom&aacute;ticamente
+              Si no ingresas un nombre, se generará automáticamente
             </p>
           </div>
 
-          {/* ===== SECCION 1: DATOS DE LA PROPIEDAD ===== */}
+          {/* SECCION 1: PROPIEDAD */}
           <Card>
-            <CardHeader>
-              <CardTitle>Datos de la Propiedad</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Datos de la Propiedad</CardTitle></CardHeader>
             <CardContent className="space-y-5">
-              {/* Ubicación */}
-              <SectionTitle>Ubicaci&oacute;n</SectionTitle>
+              <SectionTitle>Ubicación</SectionTitle>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="comuna">Comuna</Label>
-                  <Select id="comuna" value={form.comuna} onChange={handleComunaChange} required>
-                    <option value="">Seleccionar comuna...</option>
-                    {COMUNAS.map((c) => (
-                      <option key={c.comuna} value={c.comuna}>
-                        {c.comuna}
-                      </option>
+                  <Label htmlFor="region">Región</Label>
+                  <Select id="region" value={form.region} onChange={handleRegionChange} required>
+                    {REGIONES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
                     ))}
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="comuna">Comuna</Label>
+                  <Select id="comuna" value={form.comuna} onChange={handleComunaChange} required>
+                    <option value="">Seleccionar comuna...</option>
+                    {filteredComunas.map((c) => (
+                      <option key={c.comuna} value={c.comuna}>{c.comuna}</option>
+                    ))}
+                    <option value="__otra__">Otra (ingresar manualmente)</option>
+                  </Select>
+                </div>
+              </div>
+              {!filteredComunas.some((c) => c.comuna === form.comuna) && form.comuna === "" && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="comuna">Nombre de la comuna</Label>
+                    <Input id="comuna" placeholder="Ej: Lo Prado" value={form.comuna} onChange={handleChange} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ciudad">Ciudad</Label>
+                    <Input id="ciudad" placeholder="Santiago" value={form.ciudad} onChange={handleChange} required />
+                  </div>
+                </div>
+              )}
+              {form.ciudad && (
+                <div className="space-y-2">
                   <Label htmlFor="ciudad">Ciudad</Label>
                   <Input id="ciudad" value={form.ciudad} onChange={handleChange} required readOnly className="bg-muted/50" />
                 </div>
-              </div>
+              )}
               <div className="space-y-2">
-                <Label htmlFor="direccion">Direcci&oacute;n (opcional)</Label>
+                <Label htmlFor="direccion">Dirección (opcional)</Label>
                 <Input id="direccion" placeholder="Ej: Av. Providencia 1234" value={form.direccion} onChange={handleChange} />
               </div>
 
-              {/* Características */}
-              <SectionTitle>Caracter&iacute;sticas</SectionTitle>
+              <SectionTitle>Características</SectionTitle>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="tipo">Tipo de propiedad</Label>
@@ -338,7 +431,7 @@ export default function NuevoAnalisisPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="banos">Ba&ntilde;os</Label>
+                    <Label htmlFor="banos">Baños</Label>
                     <Select id="banos" value={form.banos} onChange={handleChange}>
                       {[1, 2, 3].map((n) => (
                         <option key={n} value={String(n)}>{n}</option>
@@ -349,58 +442,56 @@ export default function NuevoAnalisisPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="superficieUtil">Superficie &uacute;til m&sup2;</Label>
+                  <Label htmlFor="superficieUtil">Superficie útil m²</Label>
                   <Input id="superficieUtil" type="number" placeholder="55" value={form.superficieUtil} onChange={handleChange} required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="superficieTotal">Superficie total m&sup2;</Label>
+                  <Label htmlFor="superficieTotal">Superficie total m²</Label>
                   <Input id="superficieTotal" type="number" placeholder="60" value={form.superficieTotal} onChange={handleChange} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="piso">Piso</Label>
+                  <FieldLabel htmlFor="piso" tip={FIELD_TIPS.piso}>Piso</FieldLabel>
                   <Input id="piso" type="number" placeholder="5" value={form.piso} onChange={handleChange} />
                 </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="antiguedad">Antig&uuml;edad (a&ntilde;os)</Label>
+                  <FieldLabel htmlFor="antiguedad" tip={FIELD_TIPS.antiguedad}>Antigüedad (años)</FieldLabel>
                   <div className="flex items-center gap-3">
                     <Input
-                      id="antiguedad"
-                      type="number"
-                      placeholder="5"
-                      value={form.antiguedad}
-                      onChange={handleChange}
-                      disabled={form.enConstruccion}
-                      required={!form.enConstruccion}
+                      id="antiguedad" type="number" placeholder="5"
+                      value={form.antiguedad} onChange={handleChange}
+                      disabled={form.enConstruccion} required={!form.enConstruccion}
                       className={form.enConstruccion ? "opacity-50" : ""}
                     />
                     <label className="flex shrink-0 items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        id="enConstruccion"
-                        checked={form.enConstruccion}
-                        onChange={handleChange}
-                        className="h-4 w-4 rounded border-input"
-                      />
-                      En construcci&oacute;n
+                      <input type="checkbox" id="enConstruccion" checked={form.enConstruccion} onChange={handleChange} className="h-4 w-4 rounded border-input" />
+                      En construcción
                     </label>
                   </div>
+                  {!form.enConstruccion && form.antiguedad && (
+                    <p className="text-xs text-muted-foreground">
+                      {Number(form.antiguedad) <= 5 ? "Mantención mínima, garantías vigentes" :
+                       Number(form.antiguedad) <= 15 ? "Mantención moderada, posibles reparaciones menores" :
+                       Number(form.antiguedad) <= 30 ? "Mantención alta, posibles reparaciones mayores" :
+                       "Mantención muy alta, riesgo estructural"}
+                    </p>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="estacionamiento">Estacionamiento</Label>
+                    <FieldLabel htmlFor="estacionamiento" tip={FIELD_TIPS.estacionamiento}>Estacionamiento</FieldLabel>
                     <Select id="estacionamiento" value={form.estacionamiento} onChange={handleChange}>
-                      <option value="si">S&iacute; incluido</option>
+                      <option value="si">Sí incluido</option>
                       <option value="no">No</option>
                       <option value="opcional">Opcional (extra)</option>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="bodega">Bodega</Label>
+                    <FieldLabel htmlFor="bodega" tip={FIELD_TIPS.bodega}>Bodega</FieldLabel>
                     <Select id="bodega" value={form.bodega} onChange={handleChange}>
                       <option value="no">No</option>
-                      <option value="si">S&iacute;</option>
+                      <option value="si">Sí</option>
                     </Select>
                   </div>
                 </div>
@@ -409,34 +500,24 @@ export default function NuevoAnalisisPage() {
                 <div className="space-y-2 md:w-1/2">
                   <Label htmlFor="precioEstacionamiento">Precio estacionamiento (UF)</Label>
                   <Input id="precioEstacionamiento" type="number" placeholder="350" value={form.precioEstacionamiento} onChange={handleChange} />
+                  <p className="text-xs text-muted-foreground">Se suma al precio total de la propiedad</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* ===== SECCION 2: ESTADO DE VENTA ===== */}
+          {/* SECCION 2: ESTADO DE VENTA */}
           <Card>
-            <CardHeader>
-              <CardTitle>Estado de Venta</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Estado de Venta</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="space-y-3">
                 {ESTADOS_VENTA.map((estado) => (
                   <label key={estado.value} className="flex cursor-pointer items-center gap-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50 has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5">
-                    <input
-                      type="radio"
-                      name="estadoVenta"
-                      id="estadoVenta"
-                      value={estado.value}
-                      checked={form.estadoVenta === estado.value}
-                      onChange={handleChange}
-                      className="h-4 w-4 text-primary"
-                    />
+                    <input type="radio" name="estadoVenta" id="estadoVenta" value={estado.value} checked={form.estadoVenta === estado.value} onChange={handleChange} className="h-4 w-4 text-primary" />
                     <span className="text-sm">{estado.label}</span>
                   </label>
                 ))}
               </div>
-
               {form.estadoVenta !== "inmediata" && (
                 <div className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-4">
                   <div className="grid gap-4 md:grid-cols-2">
@@ -452,9 +533,9 @@ export default function NuevoAnalisisPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="fechaEntregaAnio">A&ntilde;o</Label>
+                      <Label htmlFor="fechaEntregaAnio">Año</Label>
                       <Select id="fechaEntregaAnio" value={form.fechaEntregaAnio} onChange={handleChange}>
-                        <option value="">A&ntilde;o...</option>
+                        <option value="">Año...</option>
                         {[2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
                           <option key={y} value={String(y)}>{y}</option>
                         ))}
@@ -476,35 +557,28 @@ export default function NuevoAnalisisPage() {
             </CardContent>
           </Card>
 
-          {/* ===== SECCION 3: DATOS FINANCIEROS ===== */}
+          {/* SECCION 3: DATOS FINANCIEROS */}
           <Card>
-            <CardHeader>
-              <CardTitle>Datos Financieros</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Datos Financieros</CardTitle></CardHeader>
             <CardContent className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="precio">Precio de venta (UF)</Label>
-                  <Input id="precio" type="number" step="0.01" placeholder="3500" value={form.precio} onChange={handleChange} required />
-                  {parseFloat(form.precio) > 0 && (
+                  <FieldLabel htmlFor="precio" tip={inputCurrency === "UF" ? FIELD_TIPS.precio : FIELD_TIPS.precioCLP}>
+                    Precio de venta ({inputCurrency})
+                  </FieldLabel>
+                  <Input id="precio" type="number" step="0.01" placeholder={inputCurrency === "UF" ? "3.200" : "124.160.000"} value={form.precio} onChange={handleChange} required />
+                  {calc.precioUF > 0 && (
                     <p className="text-xs text-muted-foreground">
-                      {fmt(calc.precioCLP)} CLP
-                      {calc.precioM2 > 0 && <> &middot; {fmtUF(calc.precioM2)}/m&sup2;</>}
+                      {inputCurrency === "UF"
+                        ? `${fmt(calc.precioCLP)} CLP`
+                        : `${fmtUF(calc.precioUF)}`}
+                      {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
                     </p>
                   )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="piePct">Pie ({form.piePct}%)</Label>
-                  <input
-                    id="piePct"
-                    type="range"
-                    min="10"
-                    max="50"
-                    step="5"
-                    value={form.piePct}
-                    onChange={handleChange}
-                    className="mt-2 w-full accent-primary"
-                  />
+                  <FieldLabel htmlFor="piePct" tip={FIELD_TIPS.piePct}>Pie ({form.piePct}%)</FieldLabel>
+                  <input id="piePct" type="range" min="10" max="50" step="5" value={form.piePct} onChange={handleChange} className="mt-2 w-full accent-primary" />
                   <div className="flex justify-between text-xs text-muted-foreground">
                     <span>{fmtUF(calc.pieUF)} ({fmt(calc.pieCLP)})</span>
                     <span>Financiamiento: {calc.financiamientoPct}%</span>
@@ -513,26 +587,16 @@ export default function NuevoAnalisisPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="plazoCredito">Plazo cr&eacute;dito ({form.plazoCredito} a&ntilde;os)</Label>
-                  <input
-                    id="plazoCredito"
-                    type="range"
-                    min="10"
-                    max="30"
-                    step="5"
-                    value={form.plazoCredito}
-                    onChange={handleChange}
-                    className="mt-2 w-full accent-primary"
-                  />
+                  <Label htmlFor="plazoCredito">Plazo crédito ({form.plazoCredito} años)</Label>
+                  <input id="plazoCredito" type="range" min="10" max="30" step="5" value={form.plazoCredito} onChange={handleChange} className="mt-2 w-full accent-primary" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="tasaInteres">Tasa inter&eacute;s anual (%)</Label>
+                  <FieldLabel htmlFor="tasaInteres" tip={FIELD_TIPS.tasaInteres}>Tasa interés anual (%)</FieldLabel>
                   <Input id="tasaInteres" type="number" step="0.01" placeholder="4.72" value={form.tasaInteres} onChange={handleChange} required />
                   <p className="text-xs text-muted-foreground">Referencia actual mercado: ~4.72%</p>
                 </div>
               </div>
 
-              {/* Dividendo estimado en tiempo real */}
               {calc.dividendo > 0 && (
                 <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
                   <div className="flex items-center justify-between">
@@ -544,56 +608,37 @@ export default function NuevoAnalisisPage() {
 
               <div className="grid gap-4 md:grid-cols-3">
                 <div className="space-y-2">
-                  <Label htmlFor="gastos">Gastos comunes (CLP/mes)</Label>
-                  <Input id="gastos" type="number" placeholder="80000" value={form.gastos} onChange={handleChange} required />
+                  <FieldLabel htmlFor="gastos" tip={FIELD_TIPS.gastos}>Gastos comunes (CLP/mes)</FieldLabel>
+                  <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : "80000"} value={form.gastos} onChange={handleChange} required />
+                  {suggestions?.gastos && !form.gastos && (
+                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.gastos)} · Basado en {form.comuna}</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="contribuciones">Contribuciones (CLP/trim)</Label>
-                  <Input id="contribuciones" type="number" placeholder="150000" value={form.contribuciones} onChange={handleChange} required />
+                  <FieldLabel htmlFor="contribuciones" tip={FIELD_TIPS.contribuciones}>Contribuciones (CLP/trim)</FieldLabel>
+                  <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : "150000"} value={form.contribuciones} onChange={handleChange} required />
+                  {suggestions?.contribuciones && suggestions.contribuciones > 0 && !form.contribuciones && (
+                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.contribuciones)} · Basado en precio y zona</p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="provisionMantencion">Provisi&oacute;n mantenci&oacute;n (CLP/mes)</Label>
-                  <Input
-                    id="provisionMantencion"
-                    type="number"
-                    placeholder={String(calc.provisionAuto)}
-                    value={form.provisionMantencion}
-                    onChange={handleChange}
-                  />
+                  <FieldLabel htmlFor="provisionMantencion" tip={FIELD_TIPS.provisionMantencion}>Provisión mantención (CLP/mes)</FieldLabel>
+                  <Input id="provisionMantencion" type="number" placeholder={String(calc.provisionAuto)} value={form.provisionMantencion} onChange={handleChange} />
                   <p className="text-xs text-muted-foreground">Auto: {fmt(calc.provisionAuto)} (1% anual)</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* ===== SECCION 4: DESTINO DEL ARRIENDO ===== */}
+          {/* SECCION 4: ARRIENDO */}
           <Card>
-            <CardHeader>
-              <CardTitle>Destino del Arriendo</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Destino del Arriendo</CardTitle></CardHeader>
             <CardContent className="space-y-5">
-              {/* Toggle renta larga / corta */}
               <div className="flex overflow-hidden rounded-lg border border-border">
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "larga" }))}
-                  className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                    form.tipoRenta === "larga"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted/50"
-                  }`}
-                >
+                <button type="button" onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "larga" }))} className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${form.tipoRenta === "larga" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}>
                   Renta Larga
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "corta" }))}
-                  className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${
-                    form.tipoRenta === "corta"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-background text-muted-foreground hover:bg-muted/50"
-                  }`}
-                >
+                <button type="button" onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "corta" }))} className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${form.tipoRenta === "corta" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}>
                   Renta Corta (Airbnb)
                 </button>
               </div>
@@ -602,11 +647,22 @@ export default function NuevoAnalisisPage() {
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="arriendo">Arriendo esperado (CLP/mes)</Label>
-                      <Input id="arriendo" type="number" placeholder="450000" value={form.arriendo} onChange={handleChange} required />
+                      <FieldLabel htmlFor="arriendo" tip={inputCurrency === "UF" ? FIELD_TIPS.arriendoUF : FIELD_TIPS.arriendo}>
+                        Arriendo esperado ({inputCurrency === "UF" ? "UF/mes" : "CLP/mes"})
+                      </FieldLabel>
+                      <Input id="arriendo" type="number" placeholder={
+                        inputCurrency === "UF"
+                          ? suggestions?.arriendo ? (suggestions.arriendo / UF_CLP).toFixed(1) : "12"
+                          : suggestions?.arriendo ? String(suggestions.arriendo) : "450000"
+                      } value={form.arriendo} onChange={handleChange} required />
+                      {suggestions?.arriendo && !form.arriendo && (
+                        <p className="text-xs text-emerald-500">
+                          Sugerido: {inputCurrency === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Basado en {form.comuna} y superficie
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="vacanciaMeses">Vacancia estimada (meses/a&ntilde;o)</Label>
+                      <FieldLabel htmlFor="vacanciaMeses" tip={FIELD_TIPS.vacanciaMeses}>Vacancia estimada (meses/año)</FieldLabel>
                       <Select id="vacanciaMeses" value={form.vacanciaMeses} onChange={handleChange}>
                         <option value="0.5">0.5 meses</option>
                         <option value="1">1 mes</option>
@@ -625,26 +681,17 @@ export default function NuevoAnalisisPage() {
                       <Input id="tarifaNoche" type="number" placeholder="45000" value={form.tarifaNoche} onChange={handleChange} required={form.tipoRenta === "corta"} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="ocupacionPct">Ocupaci&oacute;n estimada ({form.ocupacionPct}%)</Label>
-                      <input
-                        id="ocupacionPct"
-                        type="range"
-                        min="30"
-                        max="90"
-                        step="5"
-                        value={form.ocupacionPct}
-                        onChange={handleChange}
-                        className="mt-2 w-full accent-primary"
-                      />
+                      <Label htmlFor="ocupacionPct">Ocupación estimada ({form.ocupacionPct}%)</Label>
+                      <input id="ocupacionPct" type="range" min="30" max="90" step="5" value={form.ocupacionPct} onChange={handleChange} className="mt-2 w-full accent-primary" />
                     </div>
                   </div>
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="comisionPlataforma">Comisi&oacute;n plataforma (%)</Label>
+                      <Label htmlFor="comisionPlataforma">Comisión plataforma (%)</Label>
                       <Input id="comisionPlataforma" type="number" step="0.1" placeholder="3" value={form.comisionPlataforma} onChange={handleChange} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="costoLimpieza">Costo limpieza por estad&iacute;a (CLP)</Label>
+                      <Label htmlFor="costoLimpieza">Costo limpieza por estadía (CLP)</Label>
                       <Input id="costoLimpieza" type="number" placeholder="25000" value={form.costoLimpieza} onChange={handleChange} />
                     </div>
                   </div>
@@ -653,18 +700,18 @@ export default function NuevoAnalisisPage() {
                       <Label htmlFor="amoblado">Amoblado</Label>
                       <Select id="amoblado" value={form.amoblado} onChange={handleChange}>
                         <option value="no">No</option>
-                        <option value="si">S&iacute;</option>
+                        <option value="si">Sí</option>
                       </Select>
                     </div>
                     {form.amoblado === "si" && (
                       <div className="space-y-2">
-                        <Label htmlFor="costoAmoblado">Inversi&oacute;n amoblado (CLP)</Label>
+                        <Label htmlFor="costoAmoblado">Inversión amoblado (CLP)</Label>
                         <Input id="costoAmoblado" type="number" placeholder="3000000" value={form.costoAmoblado} onChange={handleChange} />
                       </div>
                     )}
                   </div>
                   <div className="space-y-2 md:w-1/2">
-                    <Label htmlFor="serviciosBasicos">Servicios b&aacute;sicos (CLP/mes)</Label>
+                    <Label htmlFor="serviciosBasicos">Servicios básicos (CLP/mes)</Label>
                     <Input id="serviciosBasicos" type="number" placeholder="80000" value={form.serviciosBasicos} onChange={handleChange} />
                     <p className="text-xs text-muted-foreground">Luz, agua, internet, gas</p>
                   </div>
@@ -673,18 +720,9 @@ export default function NuevoAnalisisPage() {
             </CardContent>
           </Card>
 
-          {/* Submit */}
-          <Button
-            className="w-full gap-2"
-            size="lg"
-            type="submit"
-            disabled={loading}
-          >
+          <Button className="w-full gap-2" size="lg" type="submit" disabled={loading}>
             {loading ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generando InvertiScore...
-              </>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generando InvertiScore...</>
             ) : (
               "Generar InvertiScore"
             )}

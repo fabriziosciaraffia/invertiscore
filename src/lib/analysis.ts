@@ -63,6 +63,16 @@ function clamp(val: number, min: number, max: number): number {
 // Ingreso mensual
 // =========================================
 
+function calcPisoAjuste(piso: number): number {
+  // Pisos altos get premium on rent, low floors get discount
+  if (piso >= 10) return 0.04; // +4%
+  if (piso >= 7) return 0.02; // +2%
+  if (piso >= 4) return 0; // neutral
+  if (piso >= 2) return -0.02; // -2%
+  if (piso === 1) return -0.04; // -4% (ground floor)
+  return 0;
+}
+
 function calcIngresoMensual(input: AnalisisInput): number {
   if (input.tipoRenta === "corta") {
     const ingresoBruto = input.tarifaNoche * 30 * (input.ocupacionPct / 100);
@@ -72,7 +82,15 @@ function calcIngresoMensual(input: AnalisisInput): number {
     const limpieza = input.costoLimpieza * estadias;
     return Math.round(ingresoBruto - comision - limpieza);
   }
-  return input.arriendo;
+
+  let arriendo = input.arriendo;
+
+  // Piso adjustment (only if arriendo wasn't already manually adjusted)
+  if (input.piso > 0) {
+    arriendo = Math.round(arriendo * (1 + calcPisoAjuste(input.piso)));
+  }
+
+  return arriendo;
 }
 
 // =========================================
@@ -80,14 +98,31 @@ function calcIngresoMensual(input: AnalisisInput): number {
 // =========================================
 
 function calcMetrics(input: AnalisisInput): AnalysisMetrics {
-  const precioCLP = input.precio * UF_CLP;
+  // Add optional parking price to total
+  let precioTotal = input.precio;
+  if (input.estacionamiento === "opcional" && input.precioEstacionamiento > 0) {
+    precioTotal += input.precioEstacionamiento;
+  }
+
+  const precioCLP = precioTotal * UF_CLP;
   const piePct = input.piePct / 100;
   const pieCLP = precioCLP * piePct;
   const creditoCLP = precioCLP * (1 - piePct);
   const dividendo = calcDividendo(creditoCLP, input.tasaInteres, input.plazoCredito);
-  const precioM2 = input.superficie > 0 ? input.precio / input.superficie : 0;
+  const precioM2 = input.superficie > 0 ? precioTotal / input.superficie : 0;
 
-  const ingresoMensual = calcIngresoMensual(input);
+  let ingresoMensual = calcIngresoMensual(input);
+
+  // Add estacionamiento/bodega income premium for renta larga
+  if (input.tipoRenta === "larga") {
+    const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
+    if (input.estacionamiento === "si") {
+      ingresoMensual += isPremium ? 50000 : 35000;
+    }
+    if (input.bodega) {
+      ingresoMensual += 15000;
+    }
+  }
   const contribucionesMes = Math.round(input.contribuciones / 3);
   const mantencion = input.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
   const vacanciaMensual = input.tipoRenta === "larga"
@@ -398,19 +433,29 @@ function lerp(value: number, inMin: number, inMax: number, outMin: number, outMa
 }
 
 function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
-  // Rentabilidad (30%): continuous interpolation on yield neto
-  let rentabilidad = lerp(metrics.yieldNeto, 1, 6, 20, 100);
-  // Cash-on-cash adjustment
-  if (metrics.cashOnCash > 5) rentabilidad = Math.min(100, rentabilidad + 10);
-  else if (metrics.cashOnCash < 0) rentabilidad = Math.max(0, rentabilidad - 15);
+  // Rentabilidad (30%): based on yield bruto calibrated for Chilean market
+  // >6% = 90-100, 5-6% = 70-89, 4-5% = 45-65, 3-4% = 25-44, <3% = 0-24
+  let rentabilidad: number;
+  const yb = metrics.yieldBruto;
+  if (yb >= 6) rentabilidad = lerp(yb, 6, 8, 90, 100);
+  else if (yb >= 5) rentabilidad = lerp(yb, 5, 6, 70, 89);
+  else if (yb >= 4) rentabilidad = lerp(yb, 4, 5, 45, 65);
+  else if (yb >= 3) rentabilidad = lerp(yb, 3, 4, 25, 44);
+  else rentabilidad = lerp(yb, 0, 3, 0, 24);
+  // Yield neto bonus/penalty
+  if (metrics.yieldNeto >= 4) rentabilidad = Math.min(100, rentabilidad + 5);
+  else if (metrics.yieldNeto < 2) rentabilidad = Math.max(0, rentabilidad - 5);
   rentabilidad = clamp(rentabilidad, 0, 100);
 
-  // Flujo de caja (25%): continuous on flujo mensual
-  // Range calibrated for Chilean market: -200K negative to +200K positive
-  let flujoCaja = lerp(metrics.flujoNetoMensual, -200000, 200000, 5, 95);
-  // Extra penalty for negative flow, bonus for strongly positive
-  if (metrics.flujoNetoMensual < 0) flujoCaja = Math.max(0, flujoCaja - 10);
-  else if (metrics.flujoNetoMensual > 100000) flujoCaja = Math.min(100, flujoCaja + 5);
+  // Flujo de caja (25%): calibrated for Chilean market with 80% financing at ~4.72%
+  // Positive = 80-100, -0 to -200K = 50-79, -200K to -400K = 25-49, -400K to -600K = 10-24, <-600K = 0-9
+  let flujoCaja: number;
+  const flujo = metrics.flujoNetoMensual;
+  if (flujo >= 0) flujoCaja = lerp(flujo, 0, 200000, 80, 100);
+  else if (flujo >= -200000) flujoCaja = lerp(flujo, -200000, 0, 50, 79);
+  else if (flujo >= -400000) flujoCaja = lerp(flujo, -400000, -200000, 25, 49);
+  else if (flujo >= -600000) flujoCaja = lerp(flujo, -600000, -400000, 10, 24);
+  else flujoCaja = lerp(flujo, -1000000, -600000, 0, 9);
   flujoCaja = clamp(flujoCaja, 0, 100);
 
   // Plusvalía (20%): base depends on premium zone
@@ -422,6 +467,9 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   if (input.enConstruccion || input.antiguedad <= 2) plusvalia += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvalia += 5;
   else if (input.antiguedad > 20) plusvalia -= 15;
+  // Piso bonus for plusvalía
+  if (input.piso >= 10) plusvalia += 5;
+  else if (input.piso <= 2 && input.piso > 0) plusvalia -= 3;
   plusvalia = clamp(plusvalia, 0, 100);
 
   // Riesgo (15%): vacancy, age, expense ratio
@@ -518,19 +566,31 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   // Score breakdown by dimension (mirrors calcScoreFromMetrics)
   const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
 
-  let rentabilidadScore = lerp(metrics.yieldNeto, 1, 6, 20, 100);
-  if (metrics.cashOnCash > 5) rentabilidadScore = Math.min(100, rentabilidadScore + 10);
-  else if (metrics.cashOnCash < 0) rentabilidadScore = Math.max(0, rentabilidadScore - 15);
+  const yb = metrics.yieldBruto;
+  let rentabilidadScore: number;
+  if (yb >= 6) rentabilidadScore = lerp(yb, 6, 8, 90, 100);
+  else if (yb >= 5) rentabilidadScore = lerp(yb, 5, 6, 70, 89);
+  else if (yb >= 4) rentabilidadScore = lerp(yb, 4, 5, 45, 65);
+  else if (yb >= 3) rentabilidadScore = lerp(yb, 3, 4, 25, 44);
+  else rentabilidadScore = lerp(yb, 0, 3, 0, 24);
+  if (metrics.yieldNeto >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
+  else if (metrics.yieldNeto < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
 
-  let flujoCajaScore = lerp(metrics.flujoNetoMensual, -200000, 200000, 5, 95);
-  if (metrics.flujoNetoMensual < 0) flujoCajaScore = Math.max(0, flujoCajaScore - 10);
-  else if (metrics.flujoNetoMensual > 100000) flujoCajaScore = Math.min(100, flujoCajaScore + 5);
+  const flujoVal = metrics.flujoNetoMensual;
+  let flujoCajaScore: number;
+  if (flujoVal >= 0) flujoCajaScore = lerp(flujoVal, 0, 200000, 80, 100);
+  else if (flujoVal >= -200000) flujoCajaScore = lerp(flujoVal, -200000, 0, 50, 79);
+  else if (flujoVal >= -400000) flujoCajaScore = lerp(flujoVal, -400000, -200000, 25, 49);
+  else if (flujoVal >= -600000) flujoCajaScore = lerp(flujoVal, -600000, -400000, 10, 24);
+  else flujoCajaScore = lerp(flujoVal, -1000000, -600000, 0, 9);
 
   let plusvaliaScore = isPremium ? 85 : 55;
   plusvaliaScore += isPremium ? lerp(metrics.precioM2, 30, 120, 10, -10) : lerp(metrics.precioM2, 30, 100, 15, -15);
   if (input.enConstruccion || input.antiguedad <= 2) plusvaliaScore += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvaliaScore += 5;
   else if (input.antiguedad > 20) plusvaliaScore -= 15;
+  if (input.piso >= 10) plusvaliaScore += 5;
+  else if (input.piso <= 2 && input.piso > 0) plusvaliaScore -= 3;
 
   let riesgoScore = 60;
   if (input.tipo.toLowerCase().includes("departamento")) riesgoScore += 8;
