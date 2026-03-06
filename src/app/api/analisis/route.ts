@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
-import { runAnalysis } from "@/lib/analysis";
+import { runAnalysis, setUFValue } from "@/lib/analysis";
+import { getUFValue } from "@/lib/uf";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
     }
 
     const body: AnalisisInput = await request.json();
+
+    // Set dynamic UF value before analysis
+    const ufValue = await getUFValue();
+    setUFValue(ufValue);
+
     const result = runAnalysis(body);
 
     const { data, error } = await supabase

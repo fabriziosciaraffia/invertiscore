@@ -14,8 +14,10 @@ import {
   Building2, Sparkles, Target, Shield, MapPin,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import type { MarketDataRow } from "@/lib/market-data";
 
-const UF_CLP = 38800;
+// Module-level UF value, updated from server prop on mount
+let UF_CLP = 38800;
 
 const METRIC_TOOLTIPS: Record<string, string> = {
   "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) × 100. Benchmark Santiago: 3.5-4.5%",
@@ -266,7 +268,7 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
           </span>
         </button>
         {currency === "CLP" && (
-          <span className="text-xs text-muted-foreground">Valores en CLP calculados con UF = $38.800</span>
+          <span className="text-xs text-muted-foreground">Valores en CLP calculados con UF = ${UF_CLP.toLocaleString("es-CL")}</span>
         )}
       </div>
     </div>
@@ -276,6 +278,7 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
 export function PremiumResults({
   results, unlocked = false, inputData, comuna,
   score, freeYieldBruto, freeFlujo, freePrecioM2, resumenEjecutivo,
+  ufValue, zoneData,
 }: {
   results?: FullAnalysisResult | null;
   unlocked?: boolean;
@@ -286,7 +289,11 @@ export function PremiumResults({
   freeFlujo: number;
   freePrecioM2: number;
   resumenEjecutivo: string;
+  ufValue?: number;
+  zoneData?: MarketDataRow[] | null;
 }) {
+  // Update module-level UF value from server
+  if (ufValue) UF_CLP = ufValue;
   const [horizonYears, setHorizonYears] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -782,31 +789,58 @@ export function PremiumResults({
           {/* Comparación zona + Mapa */}
           <SectionCard title="Comparación con Zona" icon={Building2} premium unlocked={unlocked}>
             {(() => {
-              const promedioM2 = m.precioM2 * 1.05;
-              const promedioYield = m.yieldBruto * 0.9;
+              if (!zoneData || zoneData.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    Datos de mercado no disponibles para esta comuna.
+                  </p>
+                );
+              }
+
+              // Average across all tipos for zone comparison
+              const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+              const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+              const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
+
+              // Yield zona estimate: (arriendo avg * 12) / (precioM2 avg * superficie promedio * UF)
+              // Simplified: use avg arriendo and avg precio_m2
+              const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0
+                ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) // back-derive from typical yield
+                : 50;
+              const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
+                ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
+                : m.yieldBruto * 0.9;
+
               const items = [
-                { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? promedioM2 : promedioM2 * UF_CLP },
-                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: promedioYield },
+                { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
+                { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
+                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: Math.round(yieldZona * 10) / 10 },
               ];
               return (
                 <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Basado en {totalPubs} publicaciones activas en {comuna}.
+                  </p>
                   {items.map(({ label, tuyo, zona }) => {
-                    const maxVal = Math.max(tuyo, zona);
-                    const fmtVal = (v: number) => label.includes("Yield") ? v.toFixed(1) : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
+                    const maxVal = Math.max(tuyo, zona) || 1;
+                    const fmtVal = (v: number) =>
+                      label.includes("Yield") ? v.toFixed(1) + "%"
+                      : label.includes("Arriendo") ? fmt(v)
+                      : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
                     return (
                       <div key={label}>
                         <div className="mb-1 text-xs text-muted-foreground">{label}</div>
                         <div className="mb-1 flex items-center gap-3">
                           <span className="w-20 text-xs">Tu propiedad</span>
                           <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${(tuyo / maxVal) * 100}%` }} />
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
                           </div>
                           <span className="w-16 text-right text-xs font-medium">{fmtVal(tuyo)}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="w-20 text-xs">Promedio zona</span>
                           <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${(zona / maxVal) * 100}%` }} />
+                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
                           </div>
                           <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
                         </div>

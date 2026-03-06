@@ -10,7 +10,16 @@ import type {
   FullAnalysisResult,
 } from "./types";
 
-const UF_CLP = 38800;
+// Dynamic UF value — set via setUFValue() before calling runAnalysis()
+let UF_CLP = 38800;
+
+export function setUFValue(value: number) {
+  UF_CLP = value;
+}
+
+export function getUFCLP(): number {
+  return UF_CLP;
+}
 const PLUSVALIA_ANUAL = 0.04;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;

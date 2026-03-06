@@ -15,8 +15,8 @@ import { DeleteButton } from "./delete-button";
 import { ScoreCircle } from "./score-circle";
 import { ShareButton } from "./share-button";
 import { PremiumResults } from "./results-client";
-
-const UF_CLP = 38800;
+import { getUFValue } from "@/lib/uf";
+import { getZoneComparison } from "@/lib/market-data";
 
 function getClasificacionLabel(score: number): { text: string; color: string } {
   if (score >= 80) return { text: "Inversión Excelente", color: "text-green-500" };
@@ -33,7 +33,10 @@ export default async function AnalisisDetallePage({
 }) {
   const supabase = createClient();
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const [{ data: { user } }, ufValue] = await Promise.all([
+    supabase.auth.getUser(),
+    getUFValue(),
+  ]);
 
   const { data } = await supabase
     .from("analisis")
@@ -50,6 +53,8 @@ export default async function AnalisisDetallePage({
   const clasificacion = getClasificacionLabel(analisis.score);
   const unlocked = user?.email === "fabriziosciaraffia@gmail.com";
 
+  const UF_CLP = ufValue;
+
   // Basic metrics for free section (works with or without full results)
   const precioCLP = analisis.precio * UF_CLP;
   const yieldBruto = precioCLP > 0 ? ((analisis.arriendo * 12) / precioCLP * 100) : 0;
@@ -58,6 +63,9 @@ export default async function AnalisisDetallePage({
 
   const resumenEjecutivo = results?.resumenEjecutivo ??
     `Inversión con score ${analisis.score}/100. Yield bruto ${yieldBruto.toFixed(1)}%.`;
+
+  // Fetch zone comparison data
+  const zoneData = await getZoneComparison(analisis.comuna);
 
   const fmt = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 
@@ -119,6 +127,8 @@ export default async function AnalisisDetallePage({
           freeFlujo={flujoEstimado}
           freePrecioM2={results?.metrics?.precioM2 ?? precioM2}
           resumenEjecutivo={resumenEjecutivo}
+          ufValue={ufValue}
+          zoneData={zoneData}
         />
 
         {/* Fallback for old analyses without full results */}

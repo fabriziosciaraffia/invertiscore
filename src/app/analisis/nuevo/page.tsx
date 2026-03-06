@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { Building2, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
-import { COMUNAS, REGIONES, getMarketData } from "@/lib/comunas";
+import { COMUNAS, REGIONES } from "@/lib/comunas";
 
-const UF_CLP = 38800;
+const UF_CLP_FALLBACK = 38800;
 
 const TIPOS_PROPIEDAD = ["Departamento", "Casa", "Oficina", "Local comercial"];
 const ESTADOS_VENTA = [
@@ -43,8 +43,8 @@ const FIELD_TIPS: Record<string, string> = {
   bodega: "Si incluye bodega, suma un pequeño valor al arriendo (~$10.000-$20.000 CLP/mes extra).",
 };
 
-function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasaAnual: number) {
-  const credito = precioUF * (1 - piePct / 100) * UF_CLP;
+function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasaAnual: number, ufClp: number) {
+  const credito = precioUF * (1 - piePct / 100) * ufClp;
   if (credito <= 0) return 0;
   const tasaMensual = tasaAnual / 100 / 12;
   const n = plazoAnos * 12;
@@ -108,6 +108,26 @@ export default function NuevoAnalisisPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
+
+  // Fetch real UF value on mount
+  useEffect(() => {
+    fetch("/api/uf")
+      .then((r) => r.json())
+      .then((d) => { if (d.uf) setUfValue(d.uf); })
+      .catch(() => {});
+  }, []);
+
+  const UF_CLP = ufValue;
+
+  // Market data from API
+  const [marketData, setMarketData] = useState<{
+    arriendo_promedio: number;
+    precio_m2_promedio: number;
+    gastos_comunes_m2: number;
+    numero_publicaciones: number;
+    source: string;
+  } | null>(null);
   // Per-field currency toggles for monetary fields
   const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
     precio: "UF",
@@ -204,30 +224,46 @@ export default function NuevoAnalisisPage() {
     [form.region]
   );
 
-  // Market suggestions
+  // Fetch market data when comuna or dormitorios change
+  useEffect(() => {
+    if (!form.comuna) { setMarketData(null); return; }
+    fetch(`/api/market-data?comuna=${encodeURIComponent(form.comuna)}&dormitorios=${form.dormitorios}`)
+      .then((r) => r.json())
+      .then((d) => setMarketData(d.data))
+      .catch(() => setMarketData(null));
+  }, [form.comuna, form.dormitorios]);
+
+  // Market suggestions computed from API data + surface
   const suggestions = useMemo(() => {
     const supUtil = parseFloat(form.superficieUtil) || 0;
     const precioUF = parseFloat(form.precio) || 0;
     if (!form.comuna || supUtil <= 0) return null;
 
-    const market = getMarketData(form.comuna);
-    const arriendo = Math.round(market.arriendoPorM2 * supUtil);
-    const gastos = Math.round(market.gastosComunesPorM2 * supUtil);
-    const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * (market.contribucionesPctAnual / 100)) : 0;
-    const contribuciones = Math.round(contribAnual / 4);
+    if (marketData) {
+      const arriendo = marketData.arriendo_promedio;
+      const gastos = Math.round(marketData.gastos_comunes_m2 * supUtil);
+      const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * 0.008) : 0;
+      const contribuciones = Math.round(contribAnual / 4);
+      return { arriendo, gastos, contribuciones, source: marketData.source, publicaciones: marketData.numero_publicaciones };
+    }
 
-    return { arriendo, gastos, contribuciones };
-  }, [form.comuna, form.superficieUtil, form.precio]);
+    // Fallback: basic estimate
+    const arriendo = Math.round(6000 * supUtil);
+    const gastos = Math.round(1100 * supUtil);
+    const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * 0.008) : 0;
+    const contribuciones = Math.round(contribAnual / 4);
+    return { arriendo, gastos, contribuciones, source: "estimate" as const, publicaciones: 0 };
+  }, [form.comuna, form.superficieUtil, form.precio, marketData, UF_CLP]);
 
   // Real-time calculations
   // Helper: convert a field value to CLP based on its currency toggle
   const toCLP = useCallback((field: string, value: number) => {
     return fieldCurrency[field] === "UF" ? value * UF_CLP : value;
-  }, [fieldCurrency]);
+  }, [fieldCurrency, UF_CLP]);
 
   const toUF = useCallback((field: string, value: number) => {
     return fieldCurrency[field] === "UF" ? value : value / UF_CLP;
-  }, [fieldCurrency]);
+  }, [fieldCurrency, UF_CLP]);
 
   const calc = useMemo(() => {
     const precioUF = fieldCurrency.precio === "UF"
@@ -244,11 +280,11 @@ export default function NuevoAnalisisPage() {
     const pieUF = precioUF * (piePct / 100);
     const pieCLP = pieUF * UF_CLP;
     const financiamientoPct = 100 - piePct;
-    const dividendo = calcDividendo(precioUF, piePct, plazo, tasa);
+    const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, UF_CLP);
     const provisionAuto = Math.round((precioCLP * 0.01) / 12);
 
     return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto };
-  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio]);
+  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio, UF_CLP]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -361,6 +397,10 @@ export default function NuevoAnalisisPage() {
           <h1 className="text-3xl font-bold">Nuevo Análisis</h1>
           <p className="text-muted-foreground">
             Ingresa los datos de la propiedad para obtener tu InvertiScore
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            UF hoy: ${UF_CLP.toLocaleString("es-CL")} CLP
+            {ufValue !== UF_CLP_FALLBACK && " (actualizado)"}
           </p>
         </div>
 
@@ -645,7 +685,7 @@ export default function NuevoAnalisisPage() {
                   </div>
                   <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : "80000"} value={form.gastos} onChange={handleChange} required />
                   {suggestions?.gastos && !form.gastos && (
-                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.gastos)} · Basado en {form.comuna}</p>
+                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.gastos)} · Según datos de mercado{suggestions.source === "database" ? "" : suggestions.source === "seed" ? " (referencia)" : " (estimación)"}. Puedes modificarlo.</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -655,7 +695,7 @@ export default function NuevoAnalisisPage() {
                   </div>
                   <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : "150000"} value={form.contribuciones} onChange={handleChange} required />
                   {suggestions?.contribuciones && suggestions.contribuciones > 0 && !form.contribuciones && (
-                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.contribuciones)} · Basado en precio y zona</p>
+                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.contribuciones)} · Según datos de mercado. Puedes modificarlo.</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -705,7 +745,7 @@ export default function NuevoAnalisisPage() {
                       } value={form.arriendo} onChange={handleChange} required />
                       {suggestions?.arriendo && !form.arriendo && (
                         <p className="text-xs text-emerald-500">
-                          Sugerido: {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Basado en {form.comuna} y superficie
+                          Sugerido: {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Según datos de mercado{suggestions.publicaciones > 0 ? ` (${suggestions.publicaciones} publicaciones)` : ""}. Puedes modificarlo.
                         </p>
                       )}
                     </div>
