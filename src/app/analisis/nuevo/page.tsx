@@ -76,6 +76,8 @@ export default function NuevoAnalisisPage() {
   const [error, setError] = useState("");
 
   const [form, setForm] = useState({
+    // Nombre
+    nombreAnalisis: "",
     // Propiedad
     comuna: "",
     ciudad: "",
@@ -173,7 +175,7 @@ export default function NuevoAnalisisPage() {
     const antiguedad = form.enConstruccion ? 0 : parseFloat(form.antiguedad) || 0;
     const provisionMantencion = parseFloat(form.provisionMantencion) || calc.provisionAuto;
 
-    const nombre = `${form.tipo} ${form.dormitorios}D${form.banos}B ${form.comuna}`;
+    const nombre = form.nombreAnalisis.trim() || `${form.tipo} ${form.dormitorios}D${form.banos}B ${form.comuna}`;
 
     try {
       const res = await fetch("/api/analisis", {
@@ -270,6 +272,20 @@ export default function NuevoAnalisisPage() {
               {error}
             </div>
           )}
+
+          {/* ===== NOMBRE DEL ANÁLISIS ===== */}
+          <div className="space-y-2">
+            <Label htmlFor="nombreAnalisis">Nombre del an&aacute;lisis (opcional)</Label>
+            <Input
+              id="nombreAnalisis"
+              placeholder="Ej: Depto Providencia 2D1B, Inversi&oacute;n &Ntilde;u&ntilde;oa..."
+              value={form.nombreAnalisis}
+              onChange={handleChange}
+            />
+            <p className="text-xs text-muted-foreground">
+              Si no ingresas un nombre, se generar&aacute; autom&aacute;ticamente
+            </p>
+          </div>
 
           {/* ===== SECCION 1: DATOS DE LA PROPIEDAD ===== */}
           <Card>

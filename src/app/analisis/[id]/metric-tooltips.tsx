@@ -1,0 +1,23 @@
+"use client";
+
+import { InfoTooltip } from "@/components/ui/tooltip";
+
+const tooltips: Record<string, string> = {
+  "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) x 100. Benchmark Santiago: 3.5-4.5%",
+  "Flujo Mensual": "Flujo de caja mensual neto descontando dividendo, gastos comunes, contribuciones, mantención y vacancia.",
+  "UF/m²": "Precio por metro cuadrado en UF. Permite comparar el valor relativo con otras propiedades de la zona.",
+  "InvertiScore": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Ubicación (10%)",
+};
+
+export function MetricTooltips() {
+  return null; // Tooltips are used inline
+}
+
+export function MetricLabel({ label }: { label: string }) {
+  return (
+    <span className="flex items-center gap-1">
+      {label}
+      {tooltips[label] && <InfoTooltip content={tooltips[label]} />}
+    </span>
+  );
+}

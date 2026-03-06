@@ -13,11 +13,12 @@ import {
   BarChart3,
   Sparkles,
 } from "lucide-react";
-import type { Analisis, FullAnalysisResult } from "@/lib/types";
+import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { DeleteButton } from "./delete-button";
 import { ScoreCircle } from "./score-circle";
 import { ShareButton } from "./share-button";
 import { PremiumResults } from "./results-client";
+import { MetricLabel } from "./metric-tooltips";
 
 const UF_CLP = 38800;
 
@@ -117,7 +118,7 @@ export default async function AnalisisDetallePage({
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <DollarSign className="h-4 w-4 text-primary" />
-                Yield Bruto
+                <MetricLabel label="Yield Bruto" />
               </div>
               <div className="mt-1 text-2xl font-bold">
                 {(results?.metrics?.yieldBruto ?? yieldBruto).toFixed(1)}%
@@ -128,7 +129,7 @@ export default async function AnalisisDetallePage({
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <BarChart3 className="h-4 w-4 text-primary" />
-                Flujo Mensual Estimado
+                <MetricLabel label="Flujo Mensual" />
               </div>
               <div className={`mt-1 text-2xl font-bold ${flujoEstimado >= 0 ? "text-emerald-500" : "text-red-500"}`}>
                 {flujoEstimado >= 0 ? "+" : ""}{fmt(flujoEstimado)}
@@ -139,7 +140,7 @@ export default async function AnalisisDetallePage({
             <CardContent className="p-4">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Building2 className="h-4 w-4 text-primary" />
-                Precio UF/m²
+                <MetricLabel label="UF/m²" />
               </div>
               <div className="mt-1 text-2xl font-bold">
                 {(results?.metrics?.precioM2 ?? precioM2).toFixed(1)}
@@ -170,7 +171,7 @@ export default async function AnalisisDetallePage({
         )}
 
         {/* ===== PREMIUM: All detailed sections ===== */}
-        {results && <PremiumResults results={results} unlocked={unlocked} />}
+        {results && <PremiumResults results={results} unlocked={unlocked} inputData={analisis.input_data as AnalisisInput | undefined} comuna={analisis.comuna} />}
 
         {/* Fallback for old analyses without full results */}
         {!results && (
