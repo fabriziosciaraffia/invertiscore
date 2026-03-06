@@ -406,15 +406,21 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   rentabilidad = clamp(rentabilidad, 0, 100);
 
   // Flujo de caja (25%): continuous on flujo mensual
-  let flujoCaja = lerp(metrics.flujoNetoMensual, -100000, 150000, 10, 95);
+  // Range calibrated for Chilean market: -200K negative to +200K positive
+  let flujoCaja = lerp(metrics.flujoNetoMensual, -200000, 200000, 5, 95);
+  // Extra penalty for negative flow, bonus for strongly positive
+  if (metrics.flujoNetoMensual < 0) flujoCaja = Math.max(0, flujoCaja - 10);
+  else if (metrics.flujoNetoMensual > 100000) flujoCaja = Math.min(100, flujoCaja + 5);
   flujoCaja = clamp(flujoCaja, 0, 100);
 
   // Plusvalía (20%): base depends on premium zone
   const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
-  let plusvalia = isPremium ? 80 : 55;
+  let plusvalia = isPremium ? 85 : 55;
   const precioM2 = metrics.precioM2;
-  plusvalia += lerp(precioM2, 30, 100, 15, -15);
-  if (input.antiguedad < 5 || input.enConstruccion) plusvalia += 10;
+  // Premium zones: smaller penalty for high price/m2 (they hold value)
+  plusvalia += isPremium ? lerp(precioM2, 30, 120, 10, -10) : lerp(precioM2, 30, 100, 15, -15);
+  if (input.enConstruccion || input.antiguedad <= 2) plusvalia += 10;
+  else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvalia += 5;
   else if (input.antiguedad > 20) plusvalia -= 15;
   plusvalia = clamp(plusvalia, 0, 100);
 
@@ -463,7 +469,11 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   if (metrics.yieldBruto >= 5) pros.push(`Yield bruto de ${metrics.yieldBruto.toFixed(1)}%, por sobre el promedio`);
   if (metrics.flujoNetoMensual > 0) pros.push(`Flujo de caja mensual positivo: $${Math.round(metrics.flujoNetoMensual).toLocaleString("es-CL")}`);
   if (metrics.cashOnCash > 5) pros.push(`Retorno sobre pie (cash-on-cash) de ${metrics.cashOnCash.toFixed(1)}%`);
-  if (input.antiguedad < 5 || input.enConstruccion) pros.push("Propiedad nueva o en construcción, menores costos de mantención");
+  if (input.enConstruccion || input.antiguedad <= 2) {
+    pros.push("Propiedad nueva, menores costos de mantención");
+  } else if (input.antiguedad >= 3 && input.antiguedad <= 8) {
+    pros.push("Baja antigüedad reduce riesgos de mantención");
+  }
   if (COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c))) pros.push("Ubicación con alta demanda de arriendo");
   if (metrics.precioM2 < 50) pros.push(`Precio por m² (${metrics.precioM2.toFixed(1)} UF) bajo respecto al mercado`);
   if (input.bodega) pros.push("Incluye bodega, valor agregado para arriendo");
@@ -489,6 +499,8 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
 // Main Analysis Function
 // =========================================
 
+export { calcMetrics, calcScoreFromMetrics };
+
 export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const metrics = calcMetrics(input);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
@@ -510,11 +522,14 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   if (metrics.cashOnCash > 5) rentabilidadScore = Math.min(100, rentabilidadScore + 10);
   else if (metrics.cashOnCash < 0) rentabilidadScore = Math.max(0, rentabilidadScore - 15);
 
-  const flujoCajaScore = lerp(metrics.flujoNetoMensual, -100000, 150000, 10, 95);
+  let flujoCajaScore = lerp(metrics.flujoNetoMensual, -200000, 200000, 5, 95);
+  if (metrics.flujoNetoMensual < 0) flujoCajaScore = Math.max(0, flujoCajaScore - 10);
+  else if (metrics.flujoNetoMensual > 100000) flujoCajaScore = Math.min(100, flujoCajaScore + 5);
 
-  let plusvaliaScore = isPremium ? 80 : 55;
-  plusvaliaScore += lerp(metrics.precioM2, 30, 100, 15, -15);
-  if (input.antiguedad < 5 || input.enConstruccion) plusvaliaScore += 10;
+  let plusvaliaScore = isPremium ? 85 : 55;
+  plusvaliaScore += isPremium ? lerp(metrics.precioM2, 30, 120, 10, -10) : lerp(metrics.precioM2, 30, 100, 15, -15);
+  if (input.enConstruccion || input.antiguedad <= 2) plusvaliaScore += 10;
+  else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvaliaScore += 5;
   else if (input.antiguedad > 20) plusvaliaScore -= 15;
 
   let riesgoScore = 60;
@@ -542,7 +557,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const resumen = `Propiedad con yield bruto de ${metrics.yieldBruto.toFixed(1)}% y CAP rate neto de ${metrics.capRate.toFixed(1)}%. ` +
     `El precio por m² es de ${metrics.precioM2.toFixed(1)} UF/m². ` +
     `${metrics.capRate >= 4 ? "La rentabilidad es atractiva, superando el promedio del mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable para el mercado actual." : "La rentabilidad está por debajo del promedio, se recomienda negociar el precio o buscar mejores opciones."} ` +
-    `${input.antiguedad < 5 || input.enConstruccion ? "La baja antigüedad reduce riesgos de mantención." : input.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
+    `${input.enConstruccion || input.antiguedad <= 2 ? "Propiedad nueva, menores riesgos de mantención." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención." : input.antiguedad > 20 ? "La antigüedad elevada puede implicar costos de mantención adicionales." : "La antigüedad es moderada."} ` +
     `Se recomienda verificar gastos comunes históricos y estado de la administración antes de tomar una decisión.`;
 
   return {
