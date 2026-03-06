@@ -209,26 +209,69 @@ function recalcForSensitivity(
   return { score, flujo: flujoNetoMensual, yieldNeto: Math.round(yieldNeto * 100) / 100 };
 }
 
-function PremiumOverlay() {
+function RegisterOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-border/50 bg-card/90 px-6 py-4 shadow-lg">
-        <Lock className="h-6 w-6 text-muted-foreground" />
-        <span className="text-sm font-medium">Disponible en Informe Premium</span>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/90 px-6 py-5 shadow-lg">
+        <Lock className="h-6 w-6 text-primary" />
+        <span className="text-sm font-medium">Reg&iacute;strate gratis para ver esta secci&oacute;n</span>
+        <a href="/register">
+          <Button size="sm" className="gap-2">
+            Reg&iacute;strate gratis
+          </Button>
+        </a>
       </div>
     </div>
   );
 }
 
-function SectionCard({ title, description, icon: Icon, children, premium = false, unlocked = false, muted = false }: {
+function PaywallOverlay({ analysisId, onUnlock }: { analysisId: string; onUnlock: () => void }) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleUnlock() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (res.ok) {
+        onUnlock();
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/90 px-6 py-5 shadow-lg">
+        <Sparkles className="h-6 w-6 text-primary" />
+        <span className="text-sm font-medium">Secci&oacute;n exclusiva del Informe Pro</span>
+        <Button size="sm" className="gap-2" onClick={handleUnlock} disabled={loading}>
+          <Sparkles className="h-4 w-4" />
+          {loading ? "Procesando..." : "Desbloquear — $4.990"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId, onUnlock, muted = false }: {
   title: string;
   description?: string;
   icon: React.ElementType;
   children: React.ReactNode;
-  premium?: boolean;
-  unlocked?: boolean;
+  gate?: "none" | "login" | "premium";
+  accessLevel?: "guest" | "free" | "premium";
+  analysisId?: string;
+  onUnlock?: () => void;
   muted?: boolean;
 }) {
+  const showRegister = gate === "login" && accessLevel === "guest";
+  const showPaywall = gate === "premium" && accessLevel !== "premium";
+  const showGuestPaywall = gate === "premium" && accessLevel === "guest";
   return (
     <div className="relative mb-8">
       <Card className={`border-border/50 ${muted ? "bg-muted/20" : "bg-card/50"}`}>
@@ -241,7 +284,11 @@ function SectionCard({ title, description, icon: Icon, children, premium = false
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
-      {premium && !unlocked && <PremiumOverlay />}
+      {showRegister && <RegisterOverlay />}
+      {showGuestPaywall && <RegisterOverlay />}
+      {showPaywall && !showGuestPaywall && analysisId && onUnlock && (
+        <PaywallOverlay analysisId={analysisId} onUnlock={onUnlock} />
+      )}
     </div>
   );
 }
@@ -276,12 +323,13 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
 }
 
 export function PremiumResults({
-  results, unlocked = false, inputData, comuna,
+  results, accessLevel = "free", analysisId, inputData, comuna,
   score, freeYieldBruto, freeFlujo, freePrecioM2, resumenEjecutivo,
   ufValue, zoneData,
 }: {
   results?: FullAnalysisResult | null;
-  unlocked?: boolean;
+  accessLevel?: "guest" | "free" | "premium";
+  analysisId?: string;
   inputData?: AnalisisInput;
   comuna?: string;
   score: number;
@@ -294,6 +342,11 @@ export function PremiumResults({
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
+  const [currentAccess, setCurrentAccess] = useState(accessLevel);
+
+  const handleUnlock = useCallback(() => {
+    setCurrentAccess("premium");
+  }, []);
   const [horizonYears, setHorizonYears] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -483,15 +536,17 @@ export function PremiumResults({
         </Card>
       </div>
 
-      {/* CTA */}
-      {!unlocked && (
+      {/* CTA for guests */}
+      {currentAccess === "guest" && (
         <Card className="mb-8 border-primary/30 bg-primary/5">
           <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
             <div className="flex-1">
-              <h3 className="text-lg font-semibold">Tu InvertiScore es {score}. ¿Quieres saber por qué?</h3>
-              <p className="text-sm text-muted-foreground">Desbloquea el informe completo con radar de dimensiones, 8 métricas, flujo de caja, proyecciones y análisis detallado.</p>
+              <h3 className="text-lg font-semibold">Tu InvertiScore es {score}. &iquest;Quieres saber por qu&eacute;?</h3>
+              <p className="text-sm text-muted-foreground">Reg&iacute;strate gratis para ver el radar de dimensiones, 8 m&eacute;tricas, an&aacute;lisis de sensibilidad y m&aacute;s.</p>
             </div>
-            <Button size="lg" className="shrink-0 gap-2"><Sparkles className="h-4 w-4" />Desbloquear — $4.990</Button>
+            <a href="/register">
+              <Button size="lg" className="shrink-0 gap-2">Reg&iacute;strate gratis</Button>
+            </a>
           </CardContent>
         </Card>
       )}
@@ -500,7 +555,7 @@ export function PremiumResults({
       {results && m && (
         <>
           {/* Radar Chart */}
-          <SectionCard title="Dimensiones del Score" icon={Target} premium unlocked={unlocked}>
+          <SectionCard title="Dimensiones del Score" icon={Target} gate="login" accessLevel={currentAccess}>
             <div className="mb-3 flex flex-wrap gap-2">
               {radarData.map((d) => (
                 <div key={d.dimension} className="flex items-center gap-1 rounded bg-secondary/30 px-2 py-1 text-xs">
@@ -522,7 +577,7 @@ export function PremiumResults({
           </SectionCard>
 
           {/* Métricas */}
-          <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} premium unlocked={unlocked} muted>
+          <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess} muted>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
@@ -545,7 +600,7 @@ export function PremiumResults({
             </div>
           </SectionCard>
 
-          {/* ===== UNIFIED TIME SECTION: Cascada + Flujo + Patrimonio + Salida ===== */}
+          {/* ===== UNIFIED TIME SECTION: Cascada + Flujo + Patrimonio + Salida (PREMIUM) ===== */}
           <div className="relative mb-8">
             <Card className="border-border/50 bg-primary/[0.03]">
               <CardHeader>
@@ -701,11 +756,14 @@ export function PremiumResults({
                 )}
               </CardContent>
             </Card>
-            {!unlocked && <PremiumOverlay />}
+            {currentAccess === "guest" && <RegisterOverlay />}
+            {currentAccess === "free" && analysisId && (
+              <PaywallOverlay analysisId={analysisId} onUnlock={handleUnlock} />
+            )}
           </div>
 
           {/* Sensibilidad */}
-          <SectionCard title="Análisis de Sensibilidad" description="¿Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos? Ajusta para ver." icon={Shield} premium unlocked={unlocked} muted>
+          <SectionCard title="Análisis de Sensibilidad" description="¿Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos? Ajusta para ver." icon={Shield} gate="login" accessLevel={currentAccess} muted>
             <p className="mb-4 rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
               Estos valores muestran el flujo neto <strong>mensual</strong> estabilizado (sin considerar vacancia inicial ni corretaje del primer arriendo). El score se recalcula con los mismos parámetros ajustados.
             </p>
@@ -787,7 +845,7 @@ export function PremiumResults({
           </SectionCard>
 
           {/* Comparación zona + Mapa */}
-          <SectionCard title="Comparación con Zona" icon={Building2} premium unlocked={unlocked}>
+          <SectionCard title="Comparación con Zona" icon={Building2} gate="login" accessLevel={currentAccess}>
             {(() => {
               if (!zoneData || zoneData.length === 0) {
                 return (
@@ -862,7 +920,7 @@ export function PremiumResults({
           </SectionCard>
 
           {/* Puntos Críticos */}
-          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} premium unlocked={unlocked} muted>
+          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess} muted>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
                 <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
@@ -890,7 +948,7 @@ export function PremiumResults({
           </SectionCard>
 
           {/* Análisis Detallado — prose converted with cText */}
-          <SectionCard title="Análisis Detallado" icon={Brain} premium unlocked={unlocked}>
+          <SectionCard title="Análisis Detallado" icon={Brain} gate="login" accessLevel={currentAccess}>
             <div className="space-y-4">
               <div>
                 <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
@@ -915,16 +973,42 @@ export function PremiumResults({
             </div>
           </SectionCard>
 
-          {!unlocked && (
+          {currentAccess === "guest" && (
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+                <Lock className="h-8 w-8 text-primary" />
+                <h3 className="text-xl font-bold">Reg&iacute;strate para ver el an&aacute;lisis completo</h3>
+                <p className="max-w-md text-sm text-muted-foreground">
+                  Accede gratis al radar de dimensiones, 8 m&eacute;tricas detalladas,
+                  an&aacute;lisis de sensibilidad, comparaci&oacute;n con zona y m&aacute;s.
+                </p>
+                <a href="/register">
+                  <Button size="lg" className="gap-2">Reg&iacute;strate gratis</Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+
+          {currentAccess === "free" && (
             <Card className="border-primary/30 bg-primary/5">
               <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
                 <Sparkles className="h-8 w-8 text-primary" />
-                <h3 className="text-xl font-bold">Desbloquea el informe completo</h3>
+                <h3 className="text-xl font-bold">Desbloquea Flujo, Patrimonio y Salida</h3>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Accede al radar de dimensiones, 8 métricas detalladas, flujo de caja mes a mes,
-                  proyecciones multi-año, escenarios de salida, análisis de sensibilidad y más.
+                  Accede a la cascada de costos, flujo de caja proyectado, patrimonio neto
+                  y escenarios de salida con horizonte ajustable de 1 a 20 a&ntilde;os.
                 </p>
-                <Button size="lg" className="gap-2"><Sparkles className="h-4 w-4" />Desbloquear Informe Completo — $4.990</Button>
+                <Button size="lg" className="gap-2" onClick={() => {
+                  if (analysisId) {
+                    fetch("/api/payment/create", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ analysisId }),
+                    }).then((res) => { if (res.ok) handleUnlock(); });
+                  }
+                }}>
+                  <Sparkles className="h-4 w-4" />Desbloquear Informe Pro &mdash; $4.990
+                </Button>
               </CardContent>
             </Card>
           )}

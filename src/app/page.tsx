@@ -46,6 +46,15 @@ export default function HomePage() {
           </div>
           {/* Desktop nav */}
           <div className="hidden items-center gap-3 sm:flex">
+            <Link href="/pricing">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-[#6b7280] hover:text-[#1a1a1a]"
+              >
+                Planes
+              </Button>
+            </Link>
             <Link href="/login">
               <Button
                 variant="ghost"
@@ -81,6 +90,17 @@ export default function HomePage() {
         {mobileMenuOpen && (
           <div className="border-t border-[#e5e5e5] bg-white px-4 py-4 sm:hidden">
             <div className="flex flex-col gap-3">
+              <Link
+                href="/pricing"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-[#6b7280]"
+                >
+                  Planes
+                </Button>
+              </Link>
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}

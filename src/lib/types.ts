@@ -155,5 +155,6 @@ export interface Analisis {
   resumen: string;
   results?: FullAnalysisResult;
   input_data?: AnalisisInput;
+  is_premium?: boolean;
   created_at: string;
 }

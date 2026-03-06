@@ -51,7 +51,12 @@ export default async function AnalisisDetallePage({
   const analisis = data as Analisis;
   const results: FullAnalysisResult | null = analisis.results || null;
   const clasificacion = getClasificacionLabel(analisis.score);
-  const unlocked = user?.email === "fabriziosciaraffia@gmail.com";
+
+  // Access level: "guest" | "free" | "premium"
+  const isAdmin = user?.email === "fabriziosciaraffia@gmail.com";
+  const isLoggedIn = !!user;
+  const isPremium = isAdmin || !!analisis.is_premium;
+  const accessLevel: "guest" | "free" | "premium" = !isLoggedIn ? "guest" : isPremium ? "premium" : "free";
 
   const UF_CLP = ufValue;
 
@@ -79,6 +84,9 @@ export default async function AnalisisDetallePage({
             <span className="text-xl font-bold">InvertiScore</span>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/pricing">
+              <Button variant="ghost" size="sm">Planes</Button>
+            </Link>
             <ShareButton id={analisis.id} score={analisis.score} nombre={analisis.nombre} />
             <DeleteButton id={analisis.id} />
             <Link href="/dashboard">
@@ -119,7 +127,8 @@ export default async function AnalisisDetallePage({
         {/* ===== Toggle + Free Metrics + CTA + Premium sections ===== */}
         <PremiumResults
           results={results}
-          unlocked={unlocked}
+          accessLevel={accessLevel}
+          analysisId={analisis.id}
           inputData={analisis.input_data as AnalisisInput | undefined}
           comuna={analisis.comuna}
           score={analisis.score}
