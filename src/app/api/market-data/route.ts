@@ -11,10 +11,5 @@ export async function GET(request: Request) {
   }
 
   const data = await getMarketDataForComuna(comuna, dormitorios);
-
-  if (!data) {
-    return NextResponse.json({ data: null });
-  }
-
   return NextResponse.json({ data });
 }

@@ -140,6 +140,7 @@ export async function POST(request: Request) {
     "Providencia", "Las Condes", "Ñuñoa", "Santiago Centro",
     "La Florida", "Macul", "San Miguel", "Estación Central",
     "Independencia", "Vitacura", "Lo Barnechea",
+    "Recoleta", "Quinta Normal", "Pedro Aguirre Cerda", "San Joaquín",
   ];
 
   const results: { comuna: string; tipo: string; count: number }[] = [];
@@ -167,6 +168,7 @@ export async function POST(request: Request) {
           tipo,
           arriendo_promedio: arriendoPromedio,
           precio_m2_promedio: seedMatch?.precio_m2_promedio ?? Math.round(arriendoPromedio / superficiePromedio / 38800 * 12 / 0.045 * 10) / 10,
+          precio_m2_venta_promedio: seedMatch?.precio_m2_venta_promedio ?? seedMatch?.precio_m2_promedio ?? 50,
           gastos_comunes_m2: seedMatch?.gastos_comunes_m2 ?? 1200,
           numero_publicaciones: listings.length,
           fecha_actualizacion: now,

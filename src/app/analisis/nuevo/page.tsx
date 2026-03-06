@@ -13,7 +13,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { Building2, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
+import { Building2, ArrowLeft, Loader2, ChevronDown, Sparkles } from "lucide-react";
 import { COMUNAS, REGIONES } from "@/lib/comunas";
 
 const UF_CLP_FALLBACK = 38800;
@@ -34,7 +34,7 @@ const FIELD_TIPS: Record<string, string> = {
   contribuciones: "Impuesto territorial que se paga al SII cada trimestre. Lo puedes consultar en sii.cl con el rol de la propiedad.",
   arriendo: "Cuánto esperas cobrar de arriendo mensual. Si no sabes, revisa arriendos similares en Portal Inmobiliario para la misma zona.",
   arriendoUF: "Cuánto esperas cobrar de arriendo mensual en UF. Si no sabes, revisa arriendos similares en Portal Inmobiliario.",
-  tasaInteres: "Tasa real anual del crédito hipotecario. La tasa actual de referencia en Chile es ~4.72%. Puedes simularlo en el sitio de tu banco.",
+  tasaInteres: "Tasa real anual del crédito hipotecario. Puedes simularlo en el sitio de tu banco.",
   provisionMantencion: "Reserva mensual para reparaciones y mantención. La regla general es 1% del valor de la propiedad al año, dividido en 12 meses.",
   vacanciaMeses: "Meses al año que estimas que la propiedad estará sin arrendatario. 1 mes/año es el estándar.",
   piso: "El piso puede influir en el arriendo (pisos altos se arriendan más fácil y caro) y en la plusvalía.",
@@ -104,17 +104,37 @@ function CurrencyMiniToggle({ field, value, onChange }: { field: string; value: 
   );
 }
 
+function AISuggestion({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
+      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />
+      <span className="text-xs text-emerald-700 dark:text-emerald-400">
+        {children}
+      </span>
+    </div>
+  );
+}
+
 export default function NuevoAnalisisPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
 
-  // Fetch real UF value on mount
+  // Fetch real UF value + tasa hipotecaria on mount
   useEffect(() => {
     fetch("/api/uf")
       .then((r) => r.json())
       .then((d) => { if (d.uf) setUfValue(d.uf); })
+      .catch(() => {});
+    fetch("/api/config?key=tasa_hipotecaria")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.value) {
+          setTasaRef({ value: d.value, updated_at: d.updated_at });
+          setForm((prev) => ({ ...prev, tasaInteres: d.value }));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -124,10 +144,14 @@ export default function NuevoAnalisisPage() {
   const [marketData, setMarketData] = useState<{
     arriendo_promedio: number;
     precio_m2_promedio: number;
+    precio_m2_venta_promedio: number;
     gastos_comunes_m2: number;
     numero_publicaciones: number;
     source: string;
   } | null>(null);
+
+  // Config: tasa hipotecaria reference
+  const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
   // Per-field currency toggles for monetary fields
   const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
     precio: "UF",
@@ -236,24 +260,44 @@ export default function NuevoAnalisisPage() {
   // Market suggestions computed from API data + surface
   const suggestions = useMemo(() => {
     const supUtil = parseFloat(form.superficieUtil) || 0;
-    const precioUF = parseFloat(form.precio) || 0;
-    if (!form.comuna || supUtil <= 0) return null;
+    if (!form.comuna) return null;
 
-    if (marketData) {
+    // Price suggestion from market data
+    const precioM2Venta = marketData?.precio_m2_venta_promedio ?? 0;
+    const precioSugeridoUF = supUtil > 0 && precioM2Venta > 0 ? Math.round(precioM2Venta * supUtil) : 0;
+
+    // Use entered price for contribuciones, or suggested price
+    const precioUFForCalc = (fieldCurrency.precio === "UF"
+      ? (parseFloat(form.precio) || 0)
+      : (parseFloat(form.precio) || 0) / UF_CLP) || precioSugeridoUF;
+
+    // Contribuciones: avalúo fiscal ~65% of market value, tasa ~1.1% anual
+    const avaluoFiscal = precioUFForCalc * UF_CLP * 0.65;
+    const contribAnual = Math.round(avaluoFiscal * 0.011);
+    const contribuciones = Math.round(contribAnual / 4);
+
+    if (marketData && supUtil > 0) {
       const arriendo = marketData.arriendo_promedio;
       const gastos = Math.round(marketData.gastos_comunes_m2 * supUtil);
-      const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * 0.008) : 0;
-      const contribuciones = Math.round(contribAnual / 4);
-      return { arriendo, gastos, contribuciones, source: marketData.source, publicaciones: marketData.numero_publicaciones };
+      return {
+        arriendo, gastos, contribuciones,
+        precioSugeridoUF, precioM2Venta,
+        source: marketData.source,
+        publicaciones: marketData.numero_publicaciones,
+      };
     }
+
+    if (supUtil <= 0) return null;
 
     // Fallback: basic estimate
     const arriendo = Math.round(6000 * supUtil);
     const gastos = Math.round(1100 * supUtil);
-    const contribAnual = precioUF > 0 ? Math.round(precioUF * UF_CLP * 0.008) : 0;
-    const contribuciones = Math.round(contribAnual / 4);
-    return { arriendo, gastos, contribuciones, source: "estimate" as const, publicaciones: 0 };
-  }, [form.comuna, form.superficieUtil, form.precio, marketData, UF_CLP]);
+    return {
+      arriendo, gastos, contribuciones,
+      precioSugeridoUF: 0, precioM2Venta: 0,
+      source: "estimate" as const, publicaciones: 0,
+    };
+  }, [form.comuna, form.superficieUtil, form.precio, marketData, UF_CLP, fieldCurrency.precio]);
 
   // Real-time calculations
   // Helper: convert a field value to CLP based on its currency toggle
@@ -646,6 +690,14 @@ export default function NuevoAnalisisPage() {
                       {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
                     </p>
                   )}
+                  {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
+                    <AISuggestion>
+                      <span className="font-semibold">Sugerido por IA:</span>{" "}
+                      {fmtUF(suggestions.precioSugeridoUF)} basado en precio promedio {fmtUF(suggestions.precioM2Venta)}/m² en {form.comuna}
+                      {suggestions.publicaciones > 0 && ` (${suggestions.publicaciones} publicaciones)`}.
+                      {" "}Datos de {form.comuna} completa. Puedes modificarlo.
+                    </AISuggestion>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <FieldLabel htmlFor="piePct" tip={FIELD_TIPS.piePct}>Pie ({form.piePct}%)</FieldLabel>
@@ -664,7 +716,10 @@ export default function NuevoAnalisisPage() {
                 <div className="space-y-2">
                   <FieldLabel htmlFor="tasaInteres" tip={FIELD_TIPS.tasaInteres}>Tasa interés anual (%)</FieldLabel>
                   <Input id="tasaInteres" type="number" step="0.01" placeholder="4.72" value={form.tasaInteres} onChange={handleChange} required />
-                  <p className="text-xs text-muted-foreground">Referencia actual mercado: ~4.72%</p>
+                  <p className="text-xs text-muted-foreground">
+                    Referencia actual mercado: ~{tasaRef.value}%
+                    {tasaRef.updated_at && ` (actualizado ${new Date(tasaRef.updated_at).toLocaleDateString("es-CL")})`}
+                  </p>
                 </div>
               </div>
 
@@ -685,7 +740,10 @@ export default function NuevoAnalisisPage() {
                   </div>
                   <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : "80000"} value={form.gastos} onChange={handleChange} required />
                   {suggestions?.gastos && !form.gastos && (
-                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.gastos)} · Según datos de mercado{suggestions.source === "database" ? "" : suggestions.source === "seed" ? " (referencia)" : " (estimación)"}. Puedes modificarlo.</p>
+                    <AISuggestion>
+                      <span className="font-semibold">Sugerido por IA:</span>{" "}
+                      {fmt(suggestions.gastos)}/mes · Datos de {form.comuna} completa. Puedes modificarlo.
+                    </AISuggestion>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -695,7 +753,10 @@ export default function NuevoAnalisisPage() {
                   </div>
                   <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : "150000"} value={form.contribuciones} onChange={handleChange} required />
                   {suggestions?.contribuciones && suggestions.contribuciones > 0 && !form.contribuciones && (
-                    <p className="text-xs text-emerald-500">Sugerido: {fmt(suggestions.contribuciones)} · Según datos de mercado. Puedes modificarlo.</p>
+                    <AISuggestion>
+                      <span className="font-semibold">Sugerido por IA:</span>{" "}
+                      {fmt(suggestions.contribuciones)}/trimestre · Estimado en base a avalúo fiscal (~65% del precio). Verifica en sii.cl con el rol de la propiedad.
+                    </AISuggestion>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -704,7 +765,12 @@ export default function NuevoAnalisisPage() {
                     <CurrencyMiniToggle field="provisionMantencion" value={fieldCurrency.provisionMantencion} onChange={toggleFieldCurrency} />
                   </div>
                   <Input id="provisionMantencion" type="number" placeholder={String(calc.provisionAuto)} value={form.provisionMantencion} onChange={handleChange} />
-                  <p className="text-xs text-muted-foreground">Auto: {fmt(calc.provisionAuto)} (1% anual)</p>
+                  {!form.provisionMantencion && calc.provisionAuto > 0 && (
+                    <AISuggestion>
+                      <span className="font-semibold">Sugerido por IA:</span>{" "}
+                      {fmt(calc.provisionAuto)}/mes · Regla del 1% anual del valor. Puedes modificarlo.
+                    </AISuggestion>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -744,9 +810,12 @@ export default function NuevoAnalisisPage() {
                           : suggestions?.arriendo ? String(suggestions.arriendo) : "450000"
                       } value={form.arriendo} onChange={handleChange} required />
                       {suggestions?.arriendo && !form.arriendo && (
-                        <p className="text-xs text-emerald-500">
-                          Sugerido: {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)} · Según datos de mercado{suggestions.publicaciones > 0 ? ` (${suggestions.publicaciones} publicaciones)` : ""}. Puedes modificarlo.
-                        </p>
+                        <AISuggestion>
+                          <span className="font-semibold">Sugerido por IA:</span>{" "}
+                          {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)}/mes
+                          {suggestions.publicaciones > 0 && <> · {suggestions.publicaciones} publicaciones</>}
+                          {" "}· Datos de {form.comuna} completa. Puedes modificarlo.
+                        </AISuggestion>
                       )}
                     </div>
                     <div className="space-y-2">

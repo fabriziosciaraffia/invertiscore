@@ -5,72 +5,66 @@ export interface MarketDataRow {
   comuna: string;
   tipo: string; // "1D", "2D", "3D"
   arriendo_promedio: number; // CLP/mes
-  precio_m2_promedio: number; // UF/m²
+  precio_m2_promedio: number; // UF/m² (arriendo-derived)
+  precio_m2_venta_promedio: number; // UF/m² (venta)
   gastos_comunes_m2: number; // CLP/m²
   numero_publicaciones: number;
   fecha_actualizacion: string; // ISO date
 }
 
-// Reference data for main comunas in Santiago
-// These are realistic averages based on Portal Inmobiliario market data (2024-2025)
-export const SEED_MARKET_DATA: Omit<MarketDataRow, "id" | "fecha_actualizacion">[] = [
-  // Providencia
-  { comuna: "Providencia", tipo: "1D", arriendo_promedio: 420000, precio_m2_promedio: 72, gastos_comunes_m2: 1400, numero_publicaciones: 320 },
-  { comuna: "Providencia", tipo: "2D", arriendo_promedio: 580000, precio_m2_promedio: 68, gastos_comunes_m2: 1400, numero_publicaciones: 280 },
-  { comuna: "Providencia", tipo: "3D", arriendo_promedio: 850000, precio_m2_promedio: 65, gastos_comunes_m2: 1400, numero_publicaciones: 120 },
+// Helper: derive 1D/3D values from the 2D reference
+function deriveFromRef(ref2D: { precioM2Venta: number; arriendo2D: number; pubs: number; gastos: number }, tipo: "1D" | "3D") {
+  if (tipo === "1D") {
+    return {
+      arriendo: Math.round(ref2D.arriendo2D * 0.72),
+      precioM2Venta: Math.round((ref2D.precioM2Venta * 1.06) * 10) / 10, // 1D slightly more expensive per m²
+      pubs: Math.round(ref2D.pubs * 0.42),
+    };
+  }
+  // 3D
+  return {
+    arriendo: Math.round(ref2D.arriendo2D * 1.45),
+    precioM2Venta: Math.round((ref2D.precioM2Venta * 0.94) * 10) / 10, // 3D slightly cheaper per m²
+    pubs: Math.round(ref2D.pubs * 0.18),
+  };
+}
 
-  // Las Condes
-  { comuna: "Las Condes", tipo: "1D", arriendo_promedio: 450000, precio_m2_promedio: 80, gastos_comunes_m2: 1500, numero_publicaciones: 250 },
-  { comuna: "Las Condes", tipo: "2D", arriendo_promedio: 650000, precio_m2_promedio: 75, gastos_comunes_m2: 1500, numero_publicaciones: 310 },
-  { comuna: "Las Condes", tipo: "3D", arriendo_promedio: 950000, precio_m2_promedio: 72, gastos_comunes_m2: 1500, numero_publicaciones: 180 },
+// Reference data: 2D values as anchors, 1D/3D derived
+// Updated with 2025-2026 realistic averages
+const REF_DATA: Record<string, { precioM2Venta: number; arriendo2D: number; pubs: number; gastos: number }> = {
+  "Providencia":          { precioM2Venta: 68, arriendo2D: 580000, pubs: 720, gastos: 1400 },
+  "Las Condes":           { precioM2Venta: 75, arriendo2D: 650000, pubs: 850, gastos: 1500 },
+  "Ñuñoa":                { precioM2Venta: 58, arriendo2D: 480000, pubs: 540, gastos: 1300 },
+  "Santiago Centro":      { precioM2Venta: 52, arriendo2D: 380000, pubs: 1200, gastos: 1200 },
+  "La Florida":           { precioM2Venta: 42, arriendo2D: 350000, pubs: 380, gastos: 1100 },
+  "Macul":                { precioM2Venta: 45, arriendo2D: 370000, pubs: 180, gastos: 1100 },
+  "San Miguel":           { precioM2Venta: 48, arriendo2D: 400000, pubs: 220, gastos: 1200 },
+  "Estación Central":     { precioM2Venta: 40, arriendo2D: 320000, pubs: 450, gastos: 1100 },
+  "Independencia":        { precioM2Venta: 43, arriendo2D: 340000, pubs: 350, gastos: 1100 },
+  "Vitacura":             { precioM2Venta: 95, arriendo2D: 850000, pubs: 280, gastos: 1600 },
+  "Lo Barnechea":         { precioM2Venta: 85, arriendo2D: 780000, pubs: 150, gastos: 1500 },
+  "Recoleta":             { precioM2Venta: 38, arriendo2D: 300000, pubs: 280, gastos: 1000 },
+  "Quinta Normal":        { precioM2Venta: 36, arriendo2D: 290000, pubs: 150, gastos: 1000 },
+  "Pedro Aguirre Cerda":  { precioM2Venta: 32, arriendo2D: 270000, pubs: 90, gastos: 950 },
+  "San Joaquín":          { precioM2Venta: 38, arriendo2D: 310000, pubs: 120, gastos: 1050 },
+};
 
-  // Ñuñoa
-  { comuna: "Ñuñoa", tipo: "1D", arriendo_promedio: 380000, precio_m2_promedio: 62, gastos_comunes_m2: 1300, numero_publicaciones: 280 },
-  { comuna: "Ñuñoa", tipo: "2D", arriendo_promedio: 520000, precio_m2_promedio: 58, gastos_comunes_m2: 1300, numero_publicaciones: 250 },
-  { comuna: "Ñuñoa", tipo: "3D", arriendo_promedio: 750000, precio_m2_promedio: 55, gastos_comunes_m2: 1300, numero_publicaciones: 100 },
+// Build SEED_MARKET_DATA from reference
+export const SEED_MARKET_DATA: Omit<MarketDataRow, "id" | "fecha_actualizacion">[] = [];
 
-  // Santiago Centro
-  { comuna: "Santiago Centro", tipo: "1D", arriendo_promedio: 350000, precio_m2_promedio: 55, gastos_comunes_m2: 1200, numero_publicaciones: 520 },
-  { comuna: "Santiago Centro", tipo: "2D", arriendo_promedio: 480000, precio_m2_promedio: 52, gastos_comunes_m2: 1200, numero_publicaciones: 380 },
-  { comuna: "Santiago Centro", tipo: "3D", arriendo_promedio: 650000, precio_m2_promedio: 50, gastos_comunes_m2: 1200, numero_publicaciones: 90 },
+for (const [comuna, ref] of Object.entries(REF_DATA)) {
+  const d1 = deriveFromRef(ref, "1D");
+  const d3 = deriveFromRef(ref, "3D");
 
-  // La Florida
-  { comuna: "La Florida", tipo: "1D", arriendo_promedio: 300000, precio_m2_promedio: 48, gastos_comunes_m2: 1100, numero_publicaciones: 180 },
-  { comuna: "La Florida", tipo: "2D", arriendo_promedio: 420000, precio_m2_promedio: 44, gastos_comunes_m2: 1100, numero_publicaciones: 220 },
-  { comuna: "La Florida", tipo: "3D", arriendo_promedio: 580000, precio_m2_promedio: 42, gastos_comunes_m2: 1100, numero_publicaciones: 80 },
+  // Estimate arriendo-derived precio_m2 (UF/m²) from yield assumption (~4.5% gross)
+  // precio_m2_promedio = arriendo * 12 / (yield * UF_CLP) — but for seed we use venta price directly
+  SEED_MARKET_DATA.push(
+    { comuna, tipo: "1D", arriendo_promedio: d1.arriendo, precio_m2_promedio: d1.precioM2Venta, precio_m2_venta_promedio: d1.precioM2Venta, gastos_comunes_m2: ref.gastos, numero_publicaciones: d1.pubs },
+    { comuna, tipo: "2D", arriendo_promedio: ref.arriendo2D, precio_m2_promedio: ref.precioM2Venta, precio_m2_venta_promedio: ref.precioM2Venta, gastos_comunes_m2: ref.gastos, numero_publicaciones: ref.pubs },
+    { comuna, tipo: "3D", arriendo_promedio: d3.arriendo, precio_m2_promedio: d3.precioM2Venta, precio_m2_venta_promedio: d3.precioM2Venta, gastos_comunes_m2: ref.gastos, numero_publicaciones: d3.pubs },
+  );
+}
 
-  // Macul
-  { comuna: "Macul", tipo: "1D", arriendo_promedio: 310000, precio_m2_promedio: 48, gastos_comunes_m2: 1100, numero_publicaciones: 120 },
-  { comuna: "Macul", tipo: "2D", arriendo_promedio: 430000, precio_m2_promedio: 45, gastos_comunes_m2: 1100, numero_publicaciones: 150 },
-  { comuna: "Macul", tipo: "3D", arriendo_promedio: 600000, precio_m2_promedio: 43, gastos_comunes_m2: 1100, numero_publicaciones: 50 },
-
-  // San Miguel
-  { comuna: "San Miguel", tipo: "1D", arriendo_promedio: 330000, precio_m2_promedio: 52, gastos_comunes_m2: 1200, numero_publicaciones: 160 },
-  { comuna: "San Miguel", tipo: "2D", arriendo_promedio: 460000, precio_m2_promedio: 48, gastos_comunes_m2: 1200, numero_publicaciones: 200 },
-  { comuna: "San Miguel", tipo: "3D", arriendo_promedio: 630000, precio_m2_promedio: 46, gastos_comunes_m2: 1200, numero_publicaciones: 60 },
-
-  // Estación Central
-  { comuna: "Estación Central", tipo: "1D", arriendo_promedio: 300000, precio_m2_promedio: 46, gastos_comunes_m2: 1100, numero_publicaciones: 280 },
-  { comuna: "Estación Central", tipo: "2D", arriendo_promedio: 400000, precio_m2_promedio: 43, gastos_comunes_m2: 1100, numero_publicaciones: 200 },
-  { comuna: "Estación Central", tipo: "3D", arriendo_promedio: 550000, precio_m2_promedio: 41, gastos_comunes_m2: 1100, numero_publicaciones: 40 },
-
-  // Independencia
-  { comuna: "Independencia", tipo: "1D", arriendo_promedio: 320000, precio_m2_promedio: 50, gastos_comunes_m2: 1100, numero_publicaciones: 200 },
-  { comuna: "Independencia", tipo: "2D", arriendo_promedio: 430000, precio_m2_promedio: 46, gastos_comunes_m2: 1100, numero_publicaciones: 160 },
-  { comuna: "Independencia", tipo: "3D", arriendo_promedio: 580000, precio_m2_promedio: 44, gastos_comunes_m2: 1100, numero_publicaciones: 35 },
-
-  // Vitacura
-  { comuna: "Vitacura", tipo: "1D", arriendo_promedio: 480000, precio_m2_promedio: 90, gastos_comunes_m2: 1600, numero_publicaciones: 80 },
-  { comuna: "Vitacura", tipo: "2D", arriendo_promedio: 700000, precio_m2_promedio: 85, gastos_comunes_m2: 1600, numero_publicaciones: 120 },
-  { comuna: "Vitacura", tipo: "3D", arriendo_promedio: 1100000, precio_m2_promedio: 80, gastos_comunes_m2: 1600, numero_publicaciones: 90 },
-
-  // Lo Barnechea
-  { comuna: "Lo Barnechea", tipo: "1D", arriendo_promedio: 450000, precio_m2_promedio: 82, gastos_comunes_m2: 1500, numero_publicaciones: 60 },
-  { comuna: "Lo Barnechea", tipo: "2D", arriendo_promedio: 650000, precio_m2_promedio: 78, gastos_comunes_m2: 1500, numero_publicaciones: 100 },
-  { comuna: "Lo Barnechea", tipo: "3D", arriendo_promedio: 1000000, precio_m2_promedio: 74, gastos_comunes_m2: 1500, numero_publicaciones: 70 },
-];
-
-// Dormitorios to tipo mapping
 function dormitoriosToTipo(dormitorios: number): string {
   if (dormitorios <= 1) return "1D";
   if (dormitorios === 2) return "2D";
@@ -80,22 +74,18 @@ function dormitoriosToTipo(dormitorios: number): string {
 export interface MarketSuggestion {
   arriendo_promedio: number;
   precio_m2_promedio: number;
+  precio_m2_venta_promedio: number;
   gastos_comunes_m2: number;
   numero_publicaciones: number;
   source: "database" | "seed";
 }
 
-/**
- * Get market data for a comuna + property type from Supabase,
- * falling back to seed data if not in the database.
- */
 export async function getMarketDataForComuna(
   comuna: string,
   dormitorios: number
 ): Promise<MarketSuggestion | null> {
   const tipo = dormitoriosToTipo(dormitorios);
 
-  // Try Supabase first
   try {
     const supabase = createClient();
     const { data } = await supabase
@@ -111,23 +101,22 @@ export async function getMarketDataForComuna(
       return {
         arriendo_promedio: data.arriendo_promedio,
         precio_m2_promedio: data.precio_m2_promedio,
+        precio_m2_venta_promedio: data.precio_m2_venta_promedio ?? data.precio_m2_promedio,
         gastos_comunes_m2: data.gastos_comunes_m2,
         numero_publicaciones: data.numero_publicaciones,
         source: "database",
       };
     }
   } catch {
-    // Table might not exist yet or query failed — fall through to seed
+    // Table might not exist yet — fall through to seed
   }
 
-  // Fallback to seed data
-  const seed = SEED_MARKET_DATA.find(
-    (d) => d.comuna === comuna && d.tipo === tipo
-  );
+  const seed = SEED_MARKET_DATA.find((d) => d.comuna === comuna && d.tipo === tipo);
   if (seed) {
     return {
       arriendo_promedio: seed.arriendo_promedio,
       precio_m2_promedio: seed.precio_m2_promedio,
+      precio_m2_venta_promedio: seed.precio_m2_venta_promedio,
       gastos_comunes_m2: seed.gastos_comunes_m2,
       numero_publicaciones: seed.numero_publicaciones,
       source: "seed",
@@ -137,12 +126,7 @@ export async function getMarketDataForComuna(
   return null;
 }
 
-/**
- * Get all market data rows for a comuna (all tipos).
- * Used for zone comparison in results page.
- */
 export async function getZoneComparison(comuna: string): Promise<MarketDataRow[] | null> {
-  // Try Supabase first
   try {
     const supabase = createClient();
     const { data } = await supabase
@@ -156,7 +140,6 @@ export async function getZoneComparison(comuna: string): Promise<MarketDataRow[]
     // Fall through to seed
   }
 
-  // Fallback to seed data
   const seedRows = SEED_MARKET_DATA.filter((d) => d.comuna === comuna);
   if (seedRows.length > 0) {
     return seedRows.map((row) => ({
@@ -166,4 +149,37 @@ export async function getZoneComparison(comuna: string): Promise<MarketDataRow[]
   }
 
   return null;
+}
+
+// ========== Config table helpers ==========
+
+export interface AppConfig {
+  key: string;
+  value: string;
+  updated_at: string;
+}
+
+export async function getConfig(key: string): Promise<{ value: string; updated_at: string } | null> {
+  try {
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("config")
+      .select("value, updated_at")
+      .eq("key", key)
+      .single();
+    if (data) return data;
+  } catch {
+    // Table might not exist
+  }
+  return null;
+}
+
+// Hardcoded defaults for config values
+const CONFIG_DEFAULTS: Record<string, string> = {
+  tasa_hipotecaria: "4.72",
+};
+
+export async function getConfigValue(key: string): Promise<string> {
+  const row = await getConfig(key);
+  return row?.value ?? CONFIG_DEFAULTS[key] ?? "";
 }
