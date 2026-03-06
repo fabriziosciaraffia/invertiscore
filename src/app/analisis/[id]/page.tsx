@@ -45,7 +45,7 @@ export default async function AnalisisDetallePage({
     .single();
 
   if (!data) {
-    redirect("/dashboard");
+    redirect(user ? "/dashboard" : "/");
   }
 
   const analisis = data as Analisis;

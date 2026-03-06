@@ -36,7 +36,8 @@ export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Redirect unauthenticated users away from protected routes
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/analisis"))) {
+  // Note: /analisis/[id] is public (for sharing), only /analisis/nuevo requires login
+  if (!user && (pathname.startsWith("/dashboard") || pathname === "/analisis/nuevo")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);

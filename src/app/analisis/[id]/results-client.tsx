@@ -225,11 +225,13 @@ function RegisterOverlay() {
   );
 }
 
-function PaywallOverlay({ analysisId, onUnlock }: { analysisId: string; onUnlock: () => void }) {
+function PaywallOverlay({ analysisId }: { analysisId: string }) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleUnlock() {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/payment/create", {
         method: "POST",
@@ -237,8 +239,13 @@ function PaywallOverlay({ analysisId, onUnlock }: { analysisId: string; onUnlock
         body: JSON.stringify({ analysisId }),
       });
       if (res.ok) {
-        onUnlock();
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Error al procesar el pago");
       }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -253,12 +260,58 @@ function PaywallOverlay({ analysisId, onUnlock }: { analysisId: string; onUnlock
           <Sparkles className="h-4 w-4" />
           {loading ? "Procesando..." : "Desbloquear — $4.990"}
         </Button>
+        {error && <p className="text-xs text-red-500">{error}</p>}
       </div>
     </div>
   );
 }
 
-function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId, onUnlock, muted = false }: {
+function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleUnlock() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const data = await res.json().catch(() => null);
+        setError(data?.error || "Error al procesar el pago");
+      }
+    } catch {
+      setError("Error de conexión. Intenta de nuevo.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="border-primary/30 bg-primary/5">
+      <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+        <Sparkles className="h-8 w-8 text-primary" />
+        <h3 className="text-xl font-bold">Desbloquea Flujo, Patrimonio y Salida</h3>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Accede a la cascada de costos, flujo de caja proyectado, patrimonio neto
+          y escenarios de salida con horizonte ajustable de 1 a 20 a&ntilde;os.
+        </p>
+        <Button size="lg" className="gap-2" onClick={handleUnlock} disabled={loading}>
+          <Sparkles className="h-4 w-4" />
+          {loading ? "Procesando..." : "Desbloquear Informe Pro \u2014 $4.990"}
+        </Button>
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId, muted = false }: {
   title: string;
   description?: string;
   icon: React.ElementType;
@@ -266,12 +319,10 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   gate?: "none" | "login" | "premium";
   accessLevel?: "guest" | "free" | "premium";
   analysisId?: string;
-  onUnlock?: () => void;
   muted?: boolean;
 }) {
-  const showRegister = gate === "login" && accessLevel === "guest";
-  const showPaywall = gate === "premium" && accessLevel !== "premium";
-  const showGuestPaywall = gate === "premium" && accessLevel === "guest";
+  const showRegister = (gate === "login" && accessLevel === "guest") || (gate === "premium" && accessLevel === "guest");
+  const showPaywall = gate === "premium" && accessLevel === "free";
   return (
     <div className="relative mb-8">
       <Card className={`border-border/50 ${muted ? "bg-muted/20" : "bg-card/50"}`}>
@@ -285,10 +336,7 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
         <CardContent>{children}</CardContent>
       </Card>
       {showRegister && <RegisterOverlay />}
-      {showGuestPaywall && <RegisterOverlay />}
-      {showPaywall && !showGuestPaywall && analysisId && onUnlock && (
-        <PaywallOverlay analysisId={analysisId} onUnlock={onUnlock} />
-      )}
+      {showPaywall && analysisId && <PaywallOverlay analysisId={analysisId} />}
     </div>
   );
 }
@@ -342,11 +390,7 @@ export function PremiumResults({
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
-  const [currentAccess, setCurrentAccess] = useState(accessLevel);
-
-  const handleUnlock = useCallback(() => {
-    setCurrentAccess("premium");
-  }, []);
+  const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -758,7 +802,7 @@ export function PremiumResults({
             </Card>
             {currentAccess === "guest" && <RegisterOverlay />}
             {currentAccess === "free" && analysisId && (
-              <PaywallOverlay analysisId={analysisId} onUnlock={handleUnlock} />
+              <PaywallOverlay analysisId={analysisId} />
             )}
           </div>
 
@@ -989,28 +1033,8 @@ export function PremiumResults({
             </Card>
           )}
 
-          {currentAccess === "free" && (
-            <Card className="border-primary/30 bg-primary/5">
-              <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-                <Sparkles className="h-8 w-8 text-primary" />
-                <h3 className="text-xl font-bold">Desbloquea Flujo, Patrimonio y Salida</h3>
-                <p className="max-w-md text-sm text-muted-foreground">
-                  Accede a la cascada de costos, flujo de caja proyectado, patrimonio neto
-                  y escenarios de salida con horizonte ajustable de 1 a 20 a&ntilde;os.
-                </p>
-                <Button size="lg" className="gap-2" onClick={() => {
-                  if (analysisId) {
-                    fetch("/api/payment/create", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ analysisId }),
-                    }).then((res) => { if (res.ok) handleUnlock(); });
-                  }
-                }}>
-                  <Sparkles className="h-4 w-4" />Desbloquear Informe Pro &mdash; $4.990
-                </Button>
-              </CardContent>
-            </Card>
+          {currentAccess === "free" && analysisId && (
+            <BottomPaywallCTA analysisId={analysisId} />
           )}
         </>
       )}
