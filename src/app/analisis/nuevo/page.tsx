@@ -627,45 +627,76 @@ export default function NuevoAnalisisPage() {
                   </label>
                 ))}
               </div>
-              {form.estadoVenta !== "inmediata" && (
-                <div className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="fechaEntregaMes">Mes entrega estimada</Label>
-                      <Select id="fechaEntregaMes" value={form.fechaEntregaMes} onChange={handleChange}>
-                        <option value="">Mes...</option>
-                        {Array.from({ length: 12 }, (_, i) => (
-                          <option key={i + 1} value={String(i + 1).padStart(2, "0")}>
-                            {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fechaEntregaAnio">Año</Label>
-                      <Select id="fechaEntregaAnio" value={form.fechaEntregaAnio} onChange={handleChange}>
-                        <option value="">Año...</option>
-                        {[2025, 2026, 2027, 2028, 2029, 2030].map((y) => (
-                          <option key={y} value={String(y)}>{y}</option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="cuotasPie">Cuotas del pie</Label>
-                      <Input id="cuotasPie" type="number" placeholder="24" value={form.cuotasPie} onChange={handleChange} />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <Label htmlFor="montoCuota">Monto por cuota</Label>
-                        <CurrencyMiniToggle field="montoCuota" value={fieldCurrency.montoCuota} onChange={toggleFieldCurrency} />
+              {form.estadoVenta !== "inmediata" && (() => {
+                const mesEntrega = parseInt(form.fechaEntregaMes) || 0;
+                const anioEntrega = parseInt(form.fechaEntregaAnio) || 0;
+                const now = new Date();
+                const mesesHastaEntrega = mesEntrega && anioEntrega
+                  ? Math.max(1, Math.round(((new Date(anioEntrega, mesEntrega - 1)).getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)))
+                  : 0;
+                const pieCLP = calc.pieCLP;
+                const cuotasAuto = mesesHastaEntrega || 0;
+                const cuotasVal = parseInt(form.cuotasPie) || cuotasAuto;
+                const montoCuotaAuto = cuotasVal > 0 ? Math.round(pieCLP / cuotasVal) : 0;
+                return (
+                  <div className="space-y-4 rounded-lg border border-border/50 bg-muted/30 p-4">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="fechaEntregaMes">Mes entrega estimada</Label>
+                        <Select id="fechaEntregaMes" value={form.fechaEntregaMes} onChange={handleChange}>
+                          <option value="">Mes...</option>
+                          {Array.from({ length: 12 }, (_, i) => (
+                            <option key={i + 1} value={String(i + 1).padStart(2, "0")}>
+                              {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
+                            </option>
+                          ))}
+                        </Select>
                       </div>
-                      <Input id="montoCuota" type="number" placeholder="500000" value={form.montoCuota} onChange={handleChange} />
+                      <div className="space-y-2">
+                        <Label htmlFor="fechaEntregaAnio">Año</Label>
+                        <Select id="fechaEntregaAnio" value={form.fechaEntregaAnio} onChange={handleChange}>
+                          <option value="">Año...</option>
+                          {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
+                            <option key={y} value={String(y)}>{y}</option>
+                          ))}
+                        </Select>
+                      </div>
                     </div>
+                    {mesesHastaEntrega > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Faltan aproximadamente <strong>{mesesHastaEntrega} meses</strong> hasta la entrega.
+                      </p>
+                    )}
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="cuotasPie">Cuotas del pie</Label>
+                        <Input id="cuotasPie" type="number" placeholder={cuotasAuto > 0 ? String(cuotasAuto) : "24"} value={form.cuotasPie} onChange={handleChange} />
+                        {cuotasAuto > 0 && !form.cuotasPie && (
+                          <p className="text-xs text-muted-foreground">Auto: {cuotasAuto} cuotas (= meses hasta entrega)</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center">
+                          <Label htmlFor="montoCuota">Monto por cuota</Label>
+                          <CurrencyMiniToggle field="montoCuota" value={fieldCurrency.montoCuota} onChange={toggleFieldCurrency} />
+                        </div>
+                        <Input id="montoCuota" type="number" placeholder={montoCuotaAuto > 0 ? String(montoCuotaAuto) : "500000"} value={form.montoCuota} onChange={handleChange} />
+                        {montoCuotaAuto > 0 && !form.montoCuota && (
+                          <p className="text-xs text-muted-foreground">Auto: ${montoCuotaAuto.toLocaleString("es-CL")}/mes</p>
+                        )}
+                      </div>
+                    </div>
+                    {cuotasVal > 0 && pieCLP > 0 && (
+                      <div className="rounded-lg bg-primary/5 p-3 text-sm">
+                        Pagarás <strong>{cuotasVal} cuotas</strong> de <strong>${(montoCuotaAuto > 0 && !form.montoCuota ? montoCuotaAuto : Math.round(parseFloat(form.montoCuota) || montoCuotaAuto)).toLocaleString("es-CL")}</strong> hasta la entrega.
+                        {mesesHastaEntrega > 0 && (
+                          <> Durante esos {mesesHastaEntrega} meses no hay dividendo ni arriendo, solo cuota del pie.</>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
 

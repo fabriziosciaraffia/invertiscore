@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building2, Plus, BarChart3 } from "lucide-react";
+import { Building2, Plus, BarChart3, User } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
 import { DashboardDeleteButton } from "./delete-button";
 import type { Analisis } from "@/lib/types";
@@ -40,7 +40,14 @@ export default async function DashboardPage() {
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">InvertiScore</span>
           </Link>
-          <LogoutButton />
+          <div className="flex items-center gap-2">
+            <Link href="/perfil">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <User className="h-4 w-4" /> Mi Perfil
+              </Button>
+            </Link>
+            <LogoutButton />
+          </div>
         </div>
       </nav>
 

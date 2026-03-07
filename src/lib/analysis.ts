@@ -106,6 +106,15 @@ function calcIngresoMensual(input: AnalisisInput): number {
 // Core Metrics
 // =========================================
 
+function calcMesesHastaEntrega(input: AnalisisInput): number {
+  if (input.estadoVenta === "inmediata" || !input.fechaEntrega) return 0;
+  const [anio, mes] = input.fechaEntrega.split("-").map(Number);
+  if (!anio || !mes) return 0;
+  const now = new Date();
+  const entrega = new Date(anio, mes - 1);
+  return Math.max(0, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+}
+
 function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
@@ -154,8 +163,13 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
-  const cashOnCash = pieCLP > 0 ? ((flujoNetoMensual * 12) / pieCLP) * 100 : 0;
-  const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(pieCLP / flujoNetoMensual) : 999;
+
+  // Cash-on-Cash: for verde/blanco, include pie installments as capital invested
+  const mesesPreEntrega = calcMesesHastaEntrega(input);
+  const cuotasPieTotal = mesesPreEntrega > 0 ? (input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega) * (input.montoCuota > 0 ? input.montoCuota : (pieCLP / (input.cuotasPie || mesesPreEntrega))) : 0;
+  const capitalInvertido = pieCLP + cuotasPieTotal;
+  const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
+  const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
   return {
     yieldBruto: Math.round(yieldBruto * 100) / 100,
@@ -183,46 +197,65 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
   const mantencion = input.provisionMantencion || Math.round((metrics.precioCLP * 0.01) / 12);
   const serviciosBasicos = input.tipoRenta === "corta" ? input.serviciosBasicos : 0;
 
-  // Determine months without income (en blanco/verde: until delivery)
-  let mesesSinIngreso = 0;
-  if (input.estadoVenta !== "inmediata" && input.fechaEntrega) {
-    const [anio, mes] = input.fechaEntrega.split("-").map(Number);
-    const now = new Date();
-    const entrega = new Date(anio, mes - 1);
-    mesesSinIngreso = Math.max(0, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
-    mesesSinIngreso = Math.min(mesesSinIngreso, 12);
-  }
+  // Determine months until delivery (en blanco/verde)
+  const mesesPreEntrega = calcMesesHastaEntrega(input);
+  const mesesSinIngreso = Math.min(mesesPreEntrega, 12);
+
+  // Cuota del pie for pre-delivery months
+  const cuotasPie = input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega;
+  const montoCuotaPie = input.montoCuota > 0
+    ? input.montoCuota
+    : (cuotasPie > 0 ? Math.round(metrics.pieCLP / cuotasPie) : 0);
 
   let acumulado = 0;
   const meses: MonthlyCashflow[] = [];
 
   for (let i = 1; i <= 12; i++) {
     let ingreso = metrics.ingresoMensual;
-    let vacanciaGasto = 0;
+    const vacanciaGasto = 0;
     let corretajeGasto = 0;
     let divid = metrics.dividendo;
+    let gastosMes = input.gastos;
+    let contribMes = contribucionesMes;
+    let mantencionMes = mantencion;
+    let servBasicosMes = serviciosBasicos;
 
-    if (input.estadoVenta !== "inmediata") {
-      // En blanco/verde: no income, no dividendo until delivery, only pie installments
+    if (input.estadoVenta !== "inmediata" && mesesSinIngreso > 0) {
+      // En blanco/verde: pre-entrega only has cuota pie
       if (i <= mesesSinIngreso) {
         ingreso = 0;
-        divid = 0; // No mortgage yet, paying pie installments
+        divid = 0;
+        gastosMes = 0;
+        contribMes = 0;
+        mantencionMes = 0;
+        servBasicosMes = 0;
+        // Only expense is cuota del pie
+        const egresoTotal = montoCuotaPie;
+        const flujoNeto = -egresoTotal;
+        acumulado += flujoNeto;
+        meses.push({
+          mes: i, ingreso: 0, dividendo: 0, gastos: montoCuotaPie,
+          contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0,
+          serviciosBasicos: 0, egresoTotal, flujoNeto, acumulado,
+        });
+        continue;
       } else if (i === mesesSinIngreso + 1) {
-        ingreso = 0; // First month after delivery = vacancia
+        // Delivery month: first dividendo, no rent yet (vacancia)
+        ingreso = 0;
       } else if (i === mesesSinIngreso + 2 && input.tipoRenta === "larga") {
+        // Second month after delivery: corretaje
         corretajeGasto = Math.round(input.arriendo * 0.5);
       }
     } else {
       // Entrega inmediata
       if (i === 1) {
         ingreso = 0; // Mes 1: vacancia
-        vacanciaGasto = 0;
       } else if (i === 2 && input.tipoRenta === "larga") {
         corretajeGasto = Math.round(input.arriendo * 0.5);
       }
     }
 
-    const egresoTotal = divid + input.gastos + contribucionesMes + mantencion + vacanciaGasto + corretajeGasto + serviciosBasicos;
+    const egresoTotal = divid + gastosMes + contribMes + mantencionMes + vacanciaGasto + corretajeGasto + servBasicosMes;
     const flujoNeto = ingreso - egresoTotal;
     acumulado += flujoNeto;
 
@@ -230,12 +263,12 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
       mes: i,
       ingreso,
       dividendo: divid,
-      gastos: input.gastos,
-      contribuciones: contribucionesMes,
-      mantencion,
+      gastos: gastosMes,
+      contribuciones: contribMes,
+      mantencion: mantencionMes,
       vacancia: vacanciaGasto,
       corretaje: corretajeGasto,
-      serviciosBasicos,
+      serviciosBasicos: servBasicosMes,
       egresoTotal,
       flujoNeto,
       acumulado,
@@ -256,18 +289,50 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
   const mantencion = input.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
   const serviciosBasicos = input.tipoRenta === "corta" ? input.serviciosBasicos : 0;
 
+  const mesesPreEntrega = calcMesesHastaEntrega(input);
+  const cuotasPie = input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega;
+  const montoCuotaPie = input.montoCuota > 0
+    ? input.montoCuota
+    : (cuotasPie > 0 ? Math.round(metrics.pieCLP / cuotasPie) : 0);
+
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = input.gastos;
+  // Plusvalía starts from purchase date (even during construction)
   let valorPropiedad = precioCLP;
   let flujoAcumulado = 0;
 
   const projections: YearProjection[] = [];
 
   for (let anio = 1; anio <= maxYears; anio++) {
-    const flujoAnual = (arriendoActual - metrics.dividendo - gastosActual - contribucionesMes - mantencion - serviciosBasicos) * 12;
+    const mesInicio = (anio - 1) * 12 + 1;
+    const mesFin = anio * 12;
+
+    let flujoAnual = 0;
+    for (let m = mesInicio; m <= mesFin; m++) {
+      if (m <= mesesPreEntrega) {
+        // Pre-delivery: only cuota pie expense
+        flujoAnual -= montoCuotaPie;
+      } else if (m === mesesPreEntrega + 1) {
+        // Delivery month: dividendo + gastos, no income (vacancia)
+        flujoAnual -= (metrics.dividendo + gastosActual + contribucionesMes + mantencion + serviciosBasicos);
+      } else if (m === mesesPreEntrega + 2 && input.tipoRenta === "larga") {
+        // Corretaje month
+        const corretaje = Math.round(input.arriendo * 0.5);
+        flujoAnual += arriendoActual - metrics.dividendo - gastosActual - contribucionesMes - mantencion - serviciosBasicos - corretaje;
+      } else {
+        // Normal operating month
+        flujoAnual += arriendoActual - metrics.dividendo - gastosActual - contribucionesMes - mantencion - serviciosBasicos;
+      }
+    }
+
     flujoAcumulado += flujoAnual;
+    // Plusvalía always from purchase date
     valorPropiedad *= (1 + PLUSVALIA_ANUAL);
-    const saldo = Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, anio * 12));
+    // Mortgage only counts from delivery
+    const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
+    const saldo = mesesCredito > 0
+      ? Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito))
+      : creditoCLP;
     const patrimonioNeto = valorPropiedad - saldo;
 
     projections.push({
@@ -280,8 +345,11 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
       patrimonioNeto: Math.round(patrimonioNeto),
     });
 
-    arriendoActual *= (1 + ARRIENDO_INFLACION);
-    gastosActual *= (1 + GGCC_INFLACION);
+    // Apply inflation for next year (only for post-delivery periods)
+    if (mesFin > mesesPreEntrega) {
+      arriendoActual *= (1 + ARRIENDO_INFLACION);
+      gastosActual *= (1 + GGCC_INFLACION);
+    }
   }
 
   return projections;
@@ -497,13 +565,21 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   let ubicacion = isPremium ? 92 : 55;
   ubicacion = clamp(ubicacion, 0, 100);
 
-  const score = Math.round(
+  let score = Math.round(
     rentabilidad * 0.30 +
     flujoCaja * 0.25 +
     plusvalia * 0.20 +
     riesgo * 0.15 +
     ubicacion * 0.10
   );
+
+  // Penalize verde/blanco for months without return
+  const mesesEspera = calcMesesHastaEntrega(input);
+  if (mesesEspera > 0) {
+    // -1 point per 6 months of waiting, max -5
+    const penalty = Math.min(5, Math.round(mesesEspera / 6));
+    score -= penalty;
+  }
 
   return clamp(score, 0, 100);
 }
@@ -545,6 +621,12 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
     pros.push("Incluye bodega, lo que permite cobrar más arriendo y hace la propiedad más atractiva para familias.");
   if (input.estacionamiento === "si")
     pros.push("Incluye estacionamiento, un plus que facilita arrendar y permite cobrar un adicional mensual.");
+  if (input.estadoVenta !== "inmediata") {
+    const mesesEspera = calcMesesHastaEntrega(input);
+    if (mesesEspera > 0) {
+      pros.push(`Comprando en ${input.estadoVenta === "blanco" ? "blanco" : "verde"}, acumulas ${mesesEspera} meses de plusvalía (4%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1.04, mesesEspera / 12))} UF.`);
+    }
+  }
   if (pros.length === 0)
     pros.push("Propiedad con características estándar. No tiene ventajas sobresalientes, pero tampoco riesgos mayores.");
   return pros;
@@ -568,6 +650,14 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
     contras.push(`Con ${input.vacanciaMeses} meses de vacancia estimada al año, pierdes ingreso significativo. Considera si la ubicación justifica esa vacancia.`);
   if (metrics.precioM2 > 80)
     contras.push(`El precio por m² (${metrics.precioM2.toFixed(1)} UF) es elevado para la zona. El margen de plusvalía es menor. Compara con propiedades similares antes de decidir.`);
+  if (input.estadoVenta !== "inmediata") {
+    const mesesEspera = calcMesesHastaEntrega(input);
+    if (mesesEspera > 12) {
+      contras.push(`Tendrás ${mesesEspera} meses pagando cuotas del pie sin generar arriendo. Asegúrate de tener liquidez para cubrir esas cuotas.`);
+    } else if (mesesEspera > 0) {
+      contras.push(`Durante ${mesesEspera} meses pagarás cuotas del pie sin recibir arriendo. Factor a considerar en tu flujo personal.`);
+    }
+  }
   if (contras.length === 0)
     contras.push("Sin riesgos mayores identificados. Verifica los gastos comunes reales y el estado del edificio antes de tomar la decisión.");
   return contras;
