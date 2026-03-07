@@ -8,9 +8,28 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "InvertiScore - Análisis de Inversión Inmobiliaria",
+  title: "InvertiScore - Análisis de Inversión Inmobiliaria en Chile",
   description:
-    "Herramienta de análisis de inversión inmobiliaria para Chile, potenciada por inteligencia artificial.",
+    "Analiza cualquier propiedad de inversión en Chile en 30 segundos. Score de 1-100, flujo de caja real, proyecciones y análisis IA. Sin sesgos, sin comisiones.",
+  openGraph: {
+    title: "InvertiScore - Análisis de Inversión Inmobiliaria en Chile",
+    description:
+      "Analiza cualquier propiedad de inversión en Chile en 30 segundos. Score de 1-100, flujo de caja real, proyecciones y análisis IA.",
+    type: "website",
+    url: "https://invertiscore.cl",
+    siteName: "InvertiScore",
+    locale: "es_CL",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "InvertiScore - Análisis de Inversión Inmobiliaria",
+    description:
+      "Score de 1-100, flujo de caja real, proyecciones y análisis IA para cualquier propiedad en Chile.",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -20,8 +21,10 @@ import {
   AlertTriangle,
   X,
   ChevronDown,
+  LayoutDashboard,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 // ============================================================
 // FadeIn — standard slide-up, 30px, 0.6s desktop / 0.4s mobile
@@ -49,6 +52,7 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
         opacity: visible ? 1 : 0,
         transform: visible ? "translateY(0)" : "translateY(30px)",
         transition: `opacity 0.6s ease-out ${delay}ms, transform 0.6s ease-out ${delay}ms`,
+        willChange: "transform, opacity",
       }}
     >
       {children}
@@ -92,6 +96,7 @@ function SlideIn({ children, className = "", delay = 0, direction = "left" }: { 
         opacity: visible ? 1 : 0,
         transform: visible ? "translate(0)" : hiddenTransform,
         transition: `opacity ${duration} ease-out ${delay}ms, transform ${duration} ease-out ${delay}ms`,
+        willChange: "transform, opacity",
       }}
     >
       {children}
@@ -108,7 +113,7 @@ function TabComparacion() {
       <p className="mb-8 text-center text-[#6b7280]">
         El mismo presupuesto, tres resultados muy distintos. El score te dice cuales valen la pena.
       </p>
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
         {[
           {
             score: 45, color: "#f97316", label: "Inversion Debil",
@@ -152,7 +157,7 @@ function TabComparacion() {
         ].map((card) => (
           <div
             key={card.score}
-            className={`h-full rounded-2xl border ${card.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-lg`}
+            className={`h-full min-w-[280px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-lg md:min-w-0 md:shrink`}
             style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
           >
             <div className="flex items-center gap-3">
@@ -412,6 +417,8 @@ export default function HomePage() {
   const [showChevron, setShowChevron] = useState(true);
   const [analysisCount, setAnalysisCount] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
+  const router = useRouter();
 
   const handleScroll = useCallback(() => {
     setScrolled(window.scrollY > window.innerHeight * 0.8);
@@ -424,16 +431,20 @@ export default function HomePage() {
   }, [handleScroll]);
 
   useEffect(() => {
-    const fetchCount = async () => {
+    const supabase = createClient();
+    const fetchData = async () => {
       try {
-        const supabase = createClient();
-        const { count } = await supabase.from("analisis").select("*", { count: "exact", head: true });
+        const [{ data: { user: currentUser } }, { count }] = await Promise.all([
+          supabase.auth.getUser(),
+          supabase.from("analisis").select("*", { count: "exact", head: true }),
+        ]);
+        if (currentUser) setUser(currentUser);
         if (count !== null) setAnalysisCount(count);
       } catch {
         // silently fail
       }
     };
-    fetchCount();
+    fetchData();
   }, []);
 
   const tabs = [
@@ -480,9 +491,28 @@ export default function HomePage() {
             <Link href="/pricing" className="text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]">
               Pricing
             </Link>
-            <Link href="/login" className="text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]">
-              Iniciar Sesion
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className="flex items-center gap-1.5 text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]">
+                  <LayoutDashboard className="h-4 w-4" /> Dashboard
+                </Link>
+                <button
+                  onClick={async () => {
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                    setUser(null);
+                    router.refresh();
+                  }}
+                  className="flex items-center gap-1.5 text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]"
+                >
+                  <LogOut className="h-4 w-4" /> Cerrar Sesion
+                </button>
+              </>
+            ) : (
+              <Link href="/login" className="text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]">
+                Iniciar Sesion
+              </Link>
+            )}
             <Link href="/analisis/nuevo">
               <Button size="sm" className="rounded-xl bg-[#059669] text-white transition-all duration-200 hover:bg-[#047857] hover:shadow-md hover:shadow-[#059669]/20">
                 Analizar gratis
@@ -497,7 +527,27 @@ export default function HomePage() {
           <div className="border-t border-[#e5e7eb] bg-white px-6 py-4 sm:hidden">
             <div className="flex flex-col gap-3">
               <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Pricing</Link>
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Iniciar Sesion</Link>
+              {user ? (
+                <>
+                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="flex items-center gap-1.5 text-sm text-[#6b7280]">
+                    <LayoutDashboard className="h-4 w-4" /> Dashboard
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      const supabase = createClient();
+                      await supabase.auth.signOut();
+                      setUser(null);
+                      setMobileMenuOpen(false);
+                      router.refresh();
+                    }}
+                    className="flex items-center gap-1.5 text-sm text-[#6b7280]"
+                  >
+                    <LogOut className="h-4 w-4" /> Cerrar Sesion
+                  </button>
+                </>
+              ) : (
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Iniciar Sesion</Link>
+              )}
               <Link href="/analisis/nuevo" onClick={() => setMobileMenuOpen(false)}>
                 <Button className="w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]">Analizar gratis</Button>
               </Link>
@@ -510,7 +560,7 @@ export default function HomePage() {
       <section className="relative flex min-h-screen flex-col items-center justify-center px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-[#1a1a1a] md:text-6xl md:leading-[1.1]">
+            <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#1a1a1a] sm:text-4xl md:text-6xl md:leading-[1.1]">
               La mayoria de los departamentos de inversion en Santiago tienen flujo de caja negativo.
             </h1>
           </FadeIn>
@@ -735,8 +785,9 @@ export default function HomePage() {
           </FadeIn>
           {/* Tabs */}
           <FadeIn delay={100}>
-            <div className="mt-10 overflow-x-auto">
-              <div className="flex min-w-max justify-center gap-1 border-b border-[#e5e7eb]">
+            <div className="relative mt-10">
+              <div className="overflow-x-auto scrollbar-hide">
+                <div className="flex min-w-max justify-center gap-1 border-b border-[#e5e7eb]">
                 {tabs.map((tab, i) => (
                   <button
                     key={tab.label}
@@ -750,7 +801,9 @@ export default function HomePage() {
                     {tab.label}
                   </button>
                 ))}
+                </div>
               </div>
+              <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent md:hidden" />
             </div>
           </FadeIn>
           {/* Tab content */}
@@ -843,7 +896,7 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/analisis/nuevo" className="mt-6 block">
+                <Link href="/register" className="mt-6 block">
                   <Button variant="outline" className="w-full rounded-xl border-[#e5e7eb] text-[#1a1a1a] transition-all duration-200 hover:bg-[#fafafa] hover:shadow-sm">
                     Comenzar gratis
                   </Button>
@@ -879,7 +932,7 @@ export default function HomePage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/analisis/nuevo" className="mt-6 block">
+                <Link href={user ? "/analisis/nuevo" : "/register"} className="mt-6 block">
                   <Button className="w-full rounded-xl bg-[#059669] text-white shadow-md shadow-[#059669]/20 transition-all duration-200 hover:bg-[#047857] hover:shadow-lg">
                     Obtener informe
                   </Button>
@@ -939,7 +992,7 @@ export default function HomePage() {
                 </Button>
               </Link>
             </div>
-            {analysisCount !== null && analysisCount > 0 && (
+            {analysisCount !== null && analysisCount >= 50 && (
               <p className="mt-6 text-sm text-white/50">
                 Ya analizaron {analysisCount.toLocaleString("es-CL")} propiedades con InvertiScore
               </p>
