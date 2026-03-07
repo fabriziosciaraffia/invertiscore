@@ -115,12 +115,12 @@ function TabComparacion() {
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
-        El mismo presupuesto, tres resultados muy distintos. El score te dice cuales valen la pena.
+        El mismo presupuesto, tres resultados muy distintos. El score te dice cuáles valen la pena.
       </p>
       <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
         {[
           {
-            score: 45, color: "#f59e0b", label: "Inversion Debil",
+            score: 45, color: "#f59e0b", label: "Inversión Débil",
             title: "Depto 1D1B · Santiago Centro",
             info: "UF 2.100 · 32m2 · $320.000/mes",
             metrics: [
@@ -133,7 +133,7 @@ function TabComparacion() {
             borderColor: "border-[#f59e0b]/40",
           },
           {
-            score: 58, color: "#eab308", label: "Inversion Regular",
+            score: 58, color: "#eab308", label: "Inversión Regular",
             title: "Depto 2D1B · Providencia",
             info: "UF 3.200 · 55m2 · $420.000/mes",
             metrics: [
@@ -141,12 +141,12 @@ function TabComparacion() {
               { l: "Flujo mensual", v: "-$416.000", c: "text-red-500" },
               { l: "Cash-on-Cash", v: "-20%", c: "text-red-500" },
             ],
-            tag: "Flujo negativo pero plusvalia alta compensa a largo plazo",
+            tag: "Flujo negativo pero plusvalía alta compensa a largo plazo",
             tagIcon: "chart",
             borderColor: "border-[#eab308]/40",
           },
           {
-            score: 78, color: "#059669", label: "Inversion Buena",
+            score: 78, color: "#059669", label: "Inversión Buena",
             title: "Depto 2D2B · La Florida",
             info: "UF 2.400 · 50m2 · $380.000/mes",
             metrics: [
@@ -192,7 +192,7 @@ function TabComparacion() {
         ))}
       </div>
       <p className="mt-8 text-center text-sm text-[#6b7280]">
-        Mismo rango de precio. Resultados completamente distintos. ¿Cual elegirias tu?
+        Mismo rango de precio. Resultados completamente distintos. ¿Cuál elegirías tú?
       </p>
     </div>
   );
@@ -202,7 +202,7 @@ function TabFlujoCaja() {
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
-        El flujo de caja te muestra la pelicula completa, mes a mes.
+        El flujo de caja te muestra la película completa, mes a mes.
       </p>
       <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual — 12 meses</div>
@@ -238,7 +238,7 @@ function TabFlujoCaja() {
               </div>
               <div>
                 <p className="text-sm font-medium text-red-700">
-                  Este depto te cuesta $416.788 cada mes de tu bolsillo. Eso son $5 millones al ano.
+                  Este depto te cuesta $416.788 cada mes de tu bolsillo. Eso son $5 millones al año.
                 </p>
                 <p className="mt-1 text-sm text-red-600/70">¿Tu corredor te lo dijo?</p>
               </div>
@@ -259,7 +259,7 @@ function TabPatrimonio() {
       <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
         <div className="grid gap-8 md:grid-cols-[1fr,280px]">
           <div>
-            <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyeccion a 10 anos (millones CLP)</div>
+            <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyección a 10 años (millones CLP)</div>
             <svg viewBox="0 0 400 220" className="w-full" preserveAspectRatio="xMidYMid meet">
               {[0, 1, 2, 3, 4].map((i) => (
                 <line key={i} x1="40" y1={30 + i * 45} x2="390" y2={30 + i * 45} stroke="#f3f4f6" strokeWidth="1" />
@@ -284,7 +284,7 @@ function TabPatrimonio() {
             <div className="mt-3 flex flex-wrap gap-4 text-[10px]">
               <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#059669]" /> Valor propiedad</span>
               <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#3b82f6]" /> Patrimonio neto</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Saldo credito</span>
+              <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Saldo crédito</span>
               <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t border-dashed border-[#9ca3af]" /> Flujo acumulado</span>
             </div>
           </div>
@@ -294,11 +294,11 @@ function TabPatrimonio() {
               <div className="text-sm text-[#059669]">Multiplicador</div>
             </div>
             <div className="rounded-xl bg-[#fafafa] p-4">
-              <p className="text-sm text-[#374151]">Tu pie de <span className="font-semibold">$24.8M</span> se convierte en <span className="font-semibold text-[#059669]">$70.2M</span> en 10 anos</p>
+              <p className="text-sm text-[#374151]">Tu pie de <span className="font-semibold">$24.8M</span> se convierte en <span className="font-semibold text-[#059669]">$70.2M</span> en 10 años</p>
             </div>
             <div className="rounded-xl bg-[#fafafa] p-4">
               <p className="text-sm text-[#374151]">TIR: <span className="font-semibold text-[#059669]">7.8% anual</span></p>
-              <p className="mt-0.5 text-xs text-[#9ca3af]">Mejor que un deposito a plazo</p>
+              <p className="mt-0.5 text-xs text-[#9ca3af]">Mejor que un depósito a plazo</p>
             </div>
           </div>
         </div>
@@ -311,44 +311,44 @@ function TabAnalisisIA() {
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
-        Sin jerga financiera. Sin letra chica. La verdad en espanol.
+        Sin jerga financiera. Sin letra chica. La verdad en español.
       </p>
       <div className="mx-auto max-w-3xl space-y-4">
         <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #059669" }}>
-          <h3 className="mb-4 text-sm font-semibold text-[#059669]">A favor de esta inversion</h3>
+          <h3 className="mb-4 text-sm font-semibold text-[#059669]">A favor de esta inversión</h3>
           <ul className="space-y-3">
             <li className="flex items-start gap-2.5 text-sm text-[#374151]">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
-              Con pocos anos de uso, la mantencion debiera ser baja. Los gastos grandes (ascensores, fachada) aun estan lejos.
+              Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos.
             </li>
             <li className="flex items-start gap-2.5 text-sm text-[#374151]">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
-              Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalia.
+              Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía.
             </li>
           </ul>
         </div>
         <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #ef4444" }}>
-          <h3 className="mb-4 text-sm font-semibold text-red-500">Puntos de atencion</h3>
+          <h3 className="mb-4 text-sm font-semibold text-red-500">Puntos de atención</h3>
           <ul className="space-y-3">
             <li className="flex items-start gap-2.5 text-sm text-[#374151]">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
-              El retorno neto (CAP rate 1.5%) esta bajo el promedio. Podrias negociar el precio de compra o buscar una propiedad mas rentable en la zona.
+              El retorno neto (CAP rate 1.5%) esta bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.
             </li>
             <li className="flex items-start gap-2.5 text-sm text-[#374151]">
               <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
-              Cada mes tendras que poner $416.788 de tu bolsillo para cubrir los costos. Asegurate de tener ese flujo disponible de forma estable.
+              Cada mes tendrás que poner $416.788 de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.
             </li>
           </ul>
         </div>
         <div className="rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-6" style={{ borderLeft: "4px solid #9ca3af" }}>
           <h3 className="mb-3 text-sm font-semibold text-[#6b7280]">Veredicto</h3>
           <p className="text-sm leading-relaxed text-[#374151]">
-            El arriendo genera $420.000 al mes y los costos suman $836.788. Falta cubrir $416.788 de tu bolsillo. La inversion apuesta a la plusvalia futura — negociar el precio mejoraria los numeros significativamente.
+            El arriendo genera $420.000 al mes y los costos suman $836.788. Falta cubrir $416.788 de tu bolsillo. La inversión apuesta a la plusvalía futura — negociar el precio mejoraría los números significativamente.
           </p>
         </div>
       </div>
       <p className="mt-6 text-center text-sm text-[#9ca3af]">
-        Este analisis se genera automaticamente con IA para cada propiedad que evalues.
+        Este análisis se genera automáticamente con IA para cada propiedad que evalúes.
       </p>
     </div>
   );
@@ -358,7 +358,7 @@ function TabSensibilidad() {
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
-        Mira que pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
+        Mira qué pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
       </p>
       <div className="grid gap-6 md:grid-cols-3">
         {[
@@ -406,7 +406,7 @@ function TabSensibilidad() {
         ))}
       </div>
       <p className="mt-8 text-center text-sm text-[#6b7280]">
-        En el peor escenario, tu score baja a 49. En el mejor, sube a 63. Asi tomas decisiones con los ojos abiertos.
+        En el peor escenario, tu score baja a 49. En el mejor, sube a 63. Así tomas decisiones con los ojos abiertos.
       </p>
     </div>
   );
@@ -452,10 +452,10 @@ export default function HomePage() {
   }, []);
 
   const tabs = [
-    { label: "Comparacion", content: <TabComparacion /> },
+    { label: "Comparación", content: <TabComparacion /> },
     { label: "Flujo de caja", content: <TabFlujoCaja /> },
     { label: "Patrimonio", content: <TabPatrimonio /> },
-    { label: "Analisis IA", content: <TabAnalisisIA /> },
+    { label: "Análisis IA", content: <TabAnalisisIA /> },
     { label: "Sensibilidad", content: <TabSensibilidad /> },
   ];
 
@@ -509,12 +509,12 @@ export default function HomePage() {
                   }}
                   className="flex items-center gap-1.5 text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]"
                 >
-                  <LogOut className="h-4 w-4" /> Cerrar Sesion
+                  <LogOut className="h-4 w-4" /> Cerrar Sesión
                 </button>
               </>
             ) : (
               <Link href="/login" className="text-sm text-[#6b7280] transition-colors duration-200 hover:text-[#1a1a1a]">
-                Iniciar Sesion
+                Iniciar Sesión
               </Link>
             )}
             <Link href="/analisis/nuevo">
@@ -546,11 +546,11 @@ export default function HomePage() {
                     }}
                     className="flex items-center gap-1.5 text-sm text-[#6b7280]"
                   >
-                    <LogOut className="h-4 w-4" /> Cerrar Sesion
+                    <LogOut className="h-4 w-4" /> Cerrar Sesión
                   </button>
                 </>
               ) : (
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Iniciar Sesion</Link>
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Iniciar Sesión</Link>
               )}
               <Link href="/analisis/nuevo" onClick={() => setMobileMenuOpen(false)}>
                 <Button className="w-full rounded-xl bg-[#059669] text-white hover:bg-[#047857]">Analizar gratis</Button>
@@ -566,12 +566,12 @@ export default function HomePage() {
           <div className="text-center lg:text-left">
             <FadeIn>
               <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#111827] sm:text-4xl lg:text-[48px] lg:leading-[1.15]">
-                La mayoria de los deptos de inversion en Santiago pierden plata cada mes.
+                La mayoría de los deptos de inversión en Santiago pierden plata cada mes.
               </h1>
             </FadeIn>
             <FadeIn delay={100}>
               <p className="mx-auto mt-8 max-w-xl text-lg text-[#6b7280] lg:mx-0 lg:text-xl">
-                Eso no aparece en la cotizacion. Nosotros te lo mostramos.
+                Eso no aparece en la cotización. Nosotros te lo mostramos.
               </p>
             </FadeIn>
             <FadeIn delay={200}>
@@ -583,10 +583,10 @@ export default function HomePage() {
               <div className="mt-10">
                 <Link href="/analisis/nuevo">
                   <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
-                    Analiza gratis tu proxima inversion <ArrowRight className="h-4 w-4" />
+                    Analiza gratis tu próxima inversión <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-                <p className="mt-4 text-sm text-[#9ca3af]">Sin tarjeta de credito · Tu primer analisis en 30 segundos</p>
+                <p className="mt-4 text-sm text-[#9ca3af]">Sin tarjeta de crédito · Tu primer análisis en 30 segundos</p>
               </div>
             </FadeIn>
           </div>
@@ -603,8 +603,8 @@ export default function HomePage() {
                   </div>
                 </div>
                 <div className="text-center">
-                  <div className="text-base font-semibold text-[#111827]">Inversion Buena</div>
-                  <div className="text-sm text-[#9ca3af]">Depto 2D1B · Nunoa</div>
+                  <div className="text-base font-semibold text-[#111827]">Inversión Buena</div>
+                  <div className="text-sm text-[#9ca3af]">Depto 2D1B · Ñuñoa</div>
                 </div>
                 <div className="w-full space-y-2 border-t border-[#f3f4f6] pt-4">
                   <div className="flex justify-between text-sm">
@@ -662,7 +662,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
-                <p className="mt-5 text-sm italic text-[#059669]">&ldquo;Excelente oportunidad de inversion!&rdquo;</p>
+                <p className="mt-5 text-sm italic text-[#059669]">&ldquo;Excelente oportunidad de inversión!&rdquo;</p>
               </div>
             </SlideIn>
             <SlideIn delay={200} direction="right">
@@ -679,7 +679,7 @@ export default function HomePage() {
                       <span className="text-lg font-bold text-red-500">-$416.788</span>
                     </div>
                   </div>
-                  <p className="text-sm text-[#6b7280]">Pones $5M al ano de tu bolsillo</p>
+                  <p className="text-sm text-[#6b7280]">Pones $5M al año de tu bolsillo</p>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-[#6b7280]">Cash-on-Cash</span>
                     <div className="flex items-center gap-1.5">
@@ -695,10 +695,10 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Plusvalia compensa en 10 anos</span>
+                    <span className="text-[#6b7280]">Plusvalia compensa en 10 años</span>
                     <div className="flex items-center gap-1.5">
                       <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-50"><Check className="h-3 w-3 text-[#059669]" /></span>
-                      <span className="font-semibold text-[#059669]">2.83x tu inversion</span>
+                      <span className="font-semibold text-[#059669]">2.83x tu inversión</span>
                     </div>
                   </div>
                 </div>
@@ -708,7 +708,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-[#1a1a1a]">InvertiScore: 58</div>
-                    <div className="text-xs text-[#6b7280]">Inversion Regular</div>
+                    <div className="text-xs text-[#6b7280]">Inversión Regular</div>
                   </div>
                 </div>
               </div>
@@ -716,11 +716,11 @@ export default function HomePage() {
           </div>
           <FadeIn delay={300}>
             <p className="mt-10 text-center text-base text-[#6b7280]">
-              El mismo departamento. La diferencia es la informacion.
+              El mismo departamento. La diferencia es la información.
             </p>
             <div className="mt-6 text-center">
               <Link href="/analisis/nuevo" className="inline-flex items-center gap-1 font-medium text-[#059669] transition-colors duration-200 hover:text-[#047857] hover:underline">
-                Pruebalo con tu propiedad <ArrowRight className="h-4 w-4" />
+                Pruébalo con tu propiedad <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
           </FadeIn>
@@ -732,7 +732,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <p className="text-base font-semibold text-[#374151]">
-              Banco Central de Chile <span className="mx-3 text-[#9ca3af]">·</span> Servicio de Impuestos Internos <span className="mx-3 text-[#9ca3af]">·</span> Comision para el Mercado Financiero
+              Banco Central de Chile <span className="mx-3 text-[#9ca3af]">·</span> Servicio de Impuestos Internos <span className="mx-3 text-[#9ca3af]">·</span> Comisión para el Mercado Financiero
             </p>
             <p className="mt-3 text-sm text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
           </FadeIn>
@@ -744,14 +744,14 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
-              ¿Por que nadie te muestra estos numeros?
+              ¿Por qué nadie te muestra estos números?
             </h2>
           </FadeIn>
           <div className="mt-10 space-y-4">
             {[
-              { icon: Briefcase, title: "La comision depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comision." },
+              { icon: Briefcase, title: "La comisión depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comisión." },
               { icon: Eye, title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando todos los costos, pierdes $416K cada mes." },
-              { icon: Scale, title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. Tu necesitas tus propios numeros." },
+              { icon: Scale, title: "No hay accountability", desc: "Si la inversión sale mal, el corredor ya cobró. Tú necesitas tus propios números." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
@@ -779,17 +779,17 @@ export default function HomePage() {
               La verdad completa, en 30 segundos
             </h2>
             <p className="mt-4 text-center text-[#6b7280]">
-              Ingresa los datos de cualquier propiedad y obten:
+              Ingresa los datos de cualquier propiedad y obtén:
             </p>
           </FadeIn>
           <div className="mt-14 grid gap-5 sm:grid-cols-2 md:grid-cols-3">
             {[
-              { icon: Award, title: "Score 1-100", desc: "Evaluacion objetiva de la inversion en 5 dimensiones", bg: "bg-[#ecfdf5]", iconColor: "text-[#059669]" },
-              { icon: TrendingDown, title: "Flujo real", desc: "Cuanto vas a poner de tu bolsillo cada mes, sin maquillaje", bg: "bg-red-50", iconColor: "text-red-500" },
-              { icon: LineChart, title: "Proyeccion a 20 anos", desc: "Valor del patrimonio, saldo credito y ganancia neta ano a ano", bg: "bg-blue-50", iconColor: "text-blue-500" },
-              { icon: ArrowRightLeft, title: "Escenario de salida", desc: "Cuanto ganas si vendes en 5, 10 o 15 anos. O si refinancias.", bg: "bg-purple-50", iconColor: "text-purple-500" },
-              { icon: SlidersHorizontal, title: "Sensibilidad", desc: "Que pasa si suben las tasas, baja el arriendo o tienes meses vacios", bg: "bg-amber-50", iconColor: "text-amber-500" },
-              { icon: MapPin, title: "Datos de mercado", desc: "Comparacion con arriendos y precios reales de la zona", bg: "bg-teal-50", iconColor: "text-teal-500" },
+              { icon: Award, title: "Score 1-100", desc: "Evaluación objetiva de la inversión en 5 dimensiones", bg: "bg-[#ecfdf5]", iconColor: "text-[#059669]" },
+              { icon: TrendingDown, title: "Flujo real", desc: "Cuánto vas a poner de tu bolsillo cada mes, sin maquillaje", bg: "bg-red-50", iconColor: "text-red-500" },
+              { icon: LineChart, title: "Proyección a 20 años", desc: "Valor del patrimonio, saldo crédito y ganancia neta año a año", bg: "bg-blue-50", iconColor: "text-blue-500" },
+              { icon: ArrowRightLeft, title: "Escenario de salida", desc: "Cuánto ganas si vendes en 5, 10 o 15 años. O si refinancias.", bg: "bg-purple-50", iconColor: "text-purple-500" },
+              { icon: SlidersHorizontal, title: "Sensibilidad", desc: "Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos", bg: "bg-amber-50", iconColor: "text-amber-500" },
+              { icon: MapPin, title: "Datos de mercado", desc: "Comparación con arriendos y precios reales de la zona", bg: "bg-teal-50", iconColor: "text-teal-500" },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 80}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:border-[#059669] hover:shadow-md">
@@ -814,7 +814,7 @@ export default function HomePage() {
         <div className="relative mx-auto max-w-5xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
-              Mira lo que obtienes con cada analisis
+              Mira lo que obtienes con cada análisis
             </h2>
           </FadeIn>
           {/* Tabs */}
@@ -855,7 +855,7 @@ export default function HomePage() {
             <div className="mt-10 text-center">
               <Link href="/analisis/nuevo">
                 <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
-                  Haz tu primer analisis <ArrowRight className="h-4 w-4" />
+                  Haz tu primer análisis <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
@@ -876,9 +876,9 @@ export default function HomePage() {
             <div className="absolute left-6 top-12 h-[calc(100%-72px)] w-px border-l-2 border-dashed border-[#059669]/30" />
             <div className="space-y-10">
               {[
-                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pegalos desde la publicacion. La IA sugiere arriendo, gastos y contribuciones." },
-                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion con +3.000 publicaciones." },
-                { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
+                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pégalos desde la publicación. La IA sugiere arriendo, gastos y contribuciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación con +3.000 publicaciones." },
+                { n: "3", title: "Decide con información", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>
                   <div className="flex gap-6">
@@ -899,9 +899,9 @@ export default function HomePage() {
             <div className="absolute left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] top-6 border-t-2 border-dashed border-[#059669]/30" />
             <div className="grid grid-cols-3 gap-8">
               {[
-                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pegalos desde la publicacion. La IA sugiere arriendo, gastos y contribuciones." },
-                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion con +3.000 publicaciones." },
-                { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
+                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pégalos desde la publicación. La IA sugiere arriendo, gastos y contribuciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación con +3.000 publicaciones." },
+                { n: "3", title: "Decide con información", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>
                   <div className="flex flex-col items-center text-center">
@@ -926,7 +926,7 @@ export default function HomePage() {
               Gratis. En serio.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-[#6b7280]">
-              Analiza gratis. Si quieres las proyecciones a futuro y el analisis IA completo, desbloquea el Informe Pro por $4.990 en un click.
+              Analiza gratis. Si quieres las proyecciones a futuro y el análisis IA completo, desbloquea el Informe Pro por $4.990 en un click.
             </p>
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-2">
@@ -938,11 +938,11 @@ export default function HomePage() {
                 </div>
                 <ul className="mt-6 space-y-3 text-sm">
                   {[
-                    "Score de inversion 1-100",
-                    "8 metricas de rentabilidad",
-                    "Analisis de sensibilidad",
-                    "Comparacion con la zona",
-                    "Puntos criticos",
+                    "Score de inversión 1-100",
+                    "8 métricas de rentabilidad",
+                    "Análisis de sensibilidad",
+                    "Comparación con la zona",
+                    "Puntos críticos",
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-2.5">
                       <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]">
@@ -971,13 +971,13 @@ export default function HomePage() {
                   <h3 className="text-lg font-semibold text-[#1a1a1a]">Informe Pro</h3>
                   <span className="text-2xl font-bold text-[#1a1a1a]">$4.990</span>
                 </div>
-                <p className="mt-2 text-xs text-[#9ca3af]">Todo lo gratis, mas:</p>
+                <p className="mt-2 text-xs text-[#9ca3af]">Todo lo gratis, más:</p>
                 <ul className="mt-4 space-y-3 text-sm">
                   {[
                     "Cascada de costos detallada",
-                    "Analisis IA personalizado",
-                    "Flujo de caja 1-20 anos",
-                    "Proyeccion de patrimonio",
+                    "Análisis IA personalizado",
+                    "Flujo de caja 1-20 años",
+                    "Proyección de patrimonio",
                     "Escenario de salida y refinanciamiento",
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-2.5">
@@ -1004,17 +1004,17 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h2 className="font-serif text-3xl font-bold text-[#111827] md:text-4xl">
-              Solo datos. Sin conflictos de interes.
+              Solo datos. Sin conflictos de interés.
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-[#6b7280]">
-              InvertiScore no vende propiedades. No cobra comisiones. No trabaja para inmobiliarias. Solo analizamos datos para que tu decidas mejor.
+              InvertiScore no vende propiedades. No cobra comisiones. No trabaja para inmobiliarias. Solo analizamos datos para que tú decidas mejor.
             </p>
           </FadeIn>
           <FadeIn delay={100}>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-6">
               {[
                 { icon: ShieldCheck, text: "Sin comisiones" },
-                { icon: Database, text: "Datos publicos" },
+                { icon: Database, text: "Datos públicos" },
                 { icon: Bot, text: "IA independiente" },
               ].map((item) => (
                 <div key={item.text} className="flex items-center gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-3 transition-all duration-200 hover:shadow-md">
@@ -1039,7 +1039,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h2 className="font-serif text-3xl font-bold text-white md:text-5xl">
-              Antes de firmar, conoce los numeros reales.
+              Antes de firmar, conoce los números reales.
             </h2>
             <div className="mt-10">
               <Link href="/analisis/nuevo">
@@ -1068,7 +1068,7 @@ export default function HomePage() {
             <span className="text-[#333]">·</span>
             <Link href="/dashboard" className="transition-colors duration-200 hover:text-white">Dashboard</Link>
             <span className="text-[#333]">·</span>
-            <Link href="/login" className="transition-colors duration-200 hover:text-white">Iniciar Sesion</Link>
+            <Link href="/login" className="transition-colors duration-200 hover:text-white">Iniciar Sesión</Link>
           </div>
         </div>
         <div className="mx-auto mt-6 max-w-5xl text-center text-xs text-[#444]">
