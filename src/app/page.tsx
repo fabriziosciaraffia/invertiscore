@@ -19,11 +19,12 @@ import {
   Bot,
   AlertTriangle,
   X,
+  ChevronDown,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 // ============================================================
-// Fade-in on scroll — 20px translate, 0.5s
+// FadeIn — standard slide-up, 30px, 0.6s desktop / 0.4s mobile
 // ============================================================
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -34,7 +35,7 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.15 }
+      { threshold: 0.2 }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -43,11 +44,11 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
   return (
     <div
       ref={ref}
-      className={className}
+      className={`transition-gpu ${className}`}
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(20px)",
-        transition: `opacity 0.5s ease-out ${delay}ms, transform 0.5s ease-out ${delay}ms`,
+        transform: visible ? "translateY(0)" : "translateY(30px)",
+        transition: `opacity 0.6s ease-out ${delay}ms, transform 0.6s ease-out ${delay}ms`,
       }}
     >
       {children}
@@ -56,15 +57,106 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 }
 
 // ============================================================
+// SlideIn — horizontal slide for desktop, fallback to slide-up on mobile
+// ============================================================
+function SlideIn({ children, className = "", delay = 0, direction = "left" }: { children: React.ReactNode; className?: string; delay?: number; direction?: "left" | "right" }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768);
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  const hiddenTransform = isMobile
+    ? "translateY(30px)"
+    : direction === "left" ? "translateX(-40px)" : "translateX(40px)";
+  const duration = isMobile ? "0.4s" : "0.6s";
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translate(0)" : hiddenTransform,
+        transition: `opacity ${duration} ease-out ${delay}ms, transform ${duration} ease-out ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================================
+// CountUp — animates a number when it enters viewport
+// ============================================================
+function CountUp({ value, suffix = "" }: { value: string; suffix?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [display, setDisplay] = useState(value);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const numMatch = value.match(/^([-]?)(\d+(?:\.\d+)?)/);
+    if (!numMatch) return;
+
+    const sign = numMatch[1];
+    const target = parseFloat(numMatch[2]);
+    const rest = value.slice(numMatch[0].length);
+    const hasDecimal = numMatch[2].includes(".");
+    const decimalPlaces = hasDecimal ? numMatch[2].split(".")[1].length : 0;
+
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          const duration = 1000;
+          const startTime = performance.now();
+          const animate = (now: number) => {
+            const elapsed = now - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = target * eased;
+            setDisplay(`${sign}${current.toFixed(decimalPlaces)}${rest}${suffix}`);
+            if (progress < 1) requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.2 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [value, suffix]);
+
+  return <span ref={ref}>{display}</span>;
+}
+
+// ============================================================
 // Main Page
 // ============================================================
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [showChevron, setShowChevron] = useState(true);
   const [analysisCount, setAnalysisCount] = useState<number | null>(null);
 
   const handleScroll = useCallback(() => {
-    setScrolled(window.scrollY > 40);
+    setScrolled(window.scrollY > window.innerHeight * 0.8);
+    setShowChevron(window.scrollY < 100);
   }, []);
 
   useEffect(() => {
@@ -88,11 +180,18 @@ export default function HomePage() {
 
   return (
     <div className="bg-white text-[#1a1a1a]">
-      {/* Score glow animation */}
+      {/* Global animations */}
       <style jsx global>{`
         @keyframes scoreGlow {
           0%, 100% { box-shadow: 0 0 20px rgba(5,150,105,0.2), 0 0 40px rgba(5,150,105,0.1); }
           50% { box-shadow: 0 0 30px rgba(5,150,105,0.35), 0 0 60px rgba(5,150,105,0.15); }
+        }
+        @keyframes bounceDown {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(8px); }
+        }
+        @media (max-width: 767px) {
+          .transition-gpu { transition-duration: 0.4s !important; }
         }
       `}</style>
 
@@ -100,8 +199,8 @@ export default function HomePage() {
       <nav
         className={`fixed top-0 z-50 w-full transition-all duration-300 ${
           scrolled
-            ? "border-b border-[#e5e7eb] bg-white/95 backdrop-blur-md"
-            : "bg-white border-b border-transparent"
+            ? "bg-white/95 shadow-sm backdrop-blur-md"
+            : "bg-transparent"
         }`}
       >
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
@@ -140,8 +239,8 @@ export default function HomePage() {
         )}
       </nav>
 
-      {/* ============ S1: HERO ============ */}
-      <section className="px-6 pb-20 pt-32 md:pb-32 md:pt-44" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
+      {/* ============ S1: HERO — 100vh ============ */}
+      <section className="relative flex min-h-screen flex-col items-center justify-center px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h1 className="font-serif text-4xl font-bold leading-tight tracking-tight text-[#1a1a1a] md:text-6xl md:leading-[1.1]">
@@ -187,10 +286,17 @@ export default function HomePage() {
             </div>
           </FadeIn>
         </div>
+        {/* Animated chevron */}
+        <div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 transition-opacity duration-500"
+          style={{ opacity: showChevron ? 0.5 : 0, animation: "bounceDown 2s ease-in-out infinite" }}
+        >
+          <ChevronDown className="h-6 w-6 text-[#9ca3af]" />
+        </div>
       </section>
 
       {/* ============ S2: EJEMPLO REAL ============ */}
-      <section className="bg-white px-6 py-20 md:py-32">
+      <section className="bg-white px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -198,8 +304,8 @@ export default function HomePage() {
             </h2>
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-2">
-            {/* Lo que te dicen */}
-            <FadeIn delay={100}>
+            {/* Lo que te dicen — slides from left */}
+            <SlideIn delay={100} direction="left">
               <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-6 transition-all duration-200 hover:shadow-md">
                 <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Lo que te dicen</div>
                 <h3 className="text-lg font-semibold text-[#1a1a1a]">Depto 2D1B en Providencia</h3>
@@ -222,9 +328,9 @@ export default function HomePage() {
                 </div>
                 <p className="mt-5 text-sm italic text-[#059669]">&ldquo;Excelente oportunidad de inversion!&rdquo;</p>
               </div>
-            </FadeIn>
-            {/* Lo que InvertiScore te muestra */}
-            <FadeIn delay={200}>
+            </SlideIn>
+            {/* Lo que InvertiScore te muestra — slides from right */}
+            <SlideIn delay={200} direction="right">
               <div
                 className="h-full rounded-2xl border-2 border-[#059669] p-6 transition-all duration-200 hover:shadow-lg"
                 style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.15)" }}
@@ -271,7 +377,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </FadeIn>
+            </SlideIn>
           </div>
           <FadeIn delay={300}>
             <p className="mt-10 text-center text-base text-[#6b7280]">
@@ -282,7 +388,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S3: POR QUE PASA ESTO ============ */}
-      <section className="px-6 py-20 md:py-32" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
+      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -295,7 +401,7 @@ export default function HomePage() {
               { title: "Te muestran el yield bruto, no el flujo real", desc: "El yield bruto de 4.1% suena bien. Pero cuando sumas dividendo, gastos comunes, contribuciones y mantencion, la realidad es que pierdes $416.000 cada mes." },
               { title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. No responde por tu resultado. Tu necesitas tus propios numeros para negociar en igualdad de condiciones." },
             ].map((item, i) => (
-              <FadeIn key={item.title} delay={i * 100}>
+              <FadeIn key={item.title} delay={i * 200}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
                   <div className="flex gap-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50">
@@ -314,7 +420,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S4: QUE HACE INVERTISCORE ============ */}
-      <section className="px-6 py-20 md:py-32" style={{ background: "#f0fdf4" }}>
+      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "#f0fdf4" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -348,7 +454,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S5: DEMO DEL PRODUCTO ============ */}
-      <section className="relative px-6 py-20 md:py-32">
+      <section className="relative px-6 py-[60px] md:py-[100px]">
         {/* Subtle grid pattern */}
         <div className="pointer-events-none absolute inset-0" style={{
           backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)",
@@ -379,7 +485,7 @@ export default function HomePage() {
                   <p className="text-sm text-[#9ca3af]">Nunoa, Santiago · 52 m2 · 8 anos</p>
                 </div>
               </div>
-              {/* 8 Metrics */}
+              {/* 8 Metrics with count-up */}
               <div className="grid grid-cols-2 gap-px bg-[#e5e7eb] sm:grid-cols-4">
                 {[
                   { l: "Yield Bruto", v: "5.2%" },
@@ -393,7 +499,9 @@ export default function HomePage() {
                 ].map((m) => (
                   <div key={m.l} className="bg-white p-4 text-center">
                     <div className="text-[10px] text-[#9ca3af]">{m.l}</div>
-                    <div className="mt-0.5 text-lg font-bold text-[#1a1a1a]">{m.v}</div>
+                    <div className="mt-0.5 text-lg font-bold text-[#1a1a1a]">
+                      <CountUp value={m.v} />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -453,7 +561,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S6: COMO FUNCIONA ============ */}
-      <section className="px-6 py-20 md:py-32" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
+      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -469,7 +577,7 @@ export default function HomePage() {
                 { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion usando datos de +3.000 publicaciones en Santiago." },
                 { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga. Sin letra chica." },
               ].map((step, i) => (
-                <FadeIn key={step.n} delay={i * 100}>
+                <FadeIn key={step.n} delay={i * 200}>
                   <div className="flex gap-6">
                     <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#059669] text-xl font-bold text-white shadow-lg shadow-[#059669]/20">
                       {step.n}
@@ -487,7 +595,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S7: GRATIS VS PRO ============ */}
-      <section className="bg-white px-6 py-20 md:py-32">
+      <section className="bg-white px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -570,7 +678,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S8: CONFIANZA ============ */}
-      <section className="bg-[#fafafa] px-6 py-20 md:py-32">
+      <section className="bg-[#fafafa] px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
@@ -605,7 +713,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ S9: CTA FINAL ============ */}
-      <section className="px-6 py-20 md:py-32" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
+      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h2 className="font-serif text-3xl font-bold text-white md:text-5xl">
