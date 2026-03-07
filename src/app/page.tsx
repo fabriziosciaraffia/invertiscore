@@ -23,9 +23,9 @@ import {
   ArrowRightLeft,
   SlidersHorizontal,
   MapPin,
-  Landmark,
   Scale,
-  Building2,
+  Briefcase,
+  Eye,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -161,31 +161,31 @@ function TabComparacion() {
         ].map((card) => (
           <div
             key={card.score}
-            className={`h-full min-w-[280px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-lg md:min-w-0 md:shrink`}
+            className={`h-full min-w-[300px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-7 transition-all duration-200 hover:shadow-lg md:min-w-0 md:shrink`}
             style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
           >
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: card.color }}>
+            <div className="flex items-center gap-4">
+              <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-[2.5px]" style={{ borderColor: card.color }}>
                 <div className="text-center">
-                  <div className="text-lg font-bold" style={{ color: card.color }}>{card.score}</div>
+                  <div className="text-xl font-bold" style={{ color: card.color }}>{card.score}</div>
                   <div className="text-[7px] text-[#9ca3af]">SCORE</div>
                 </div>
               </div>
               <div>
-                <div className="text-xs font-medium" style={{ color: card.color }}>{card.label}</div>
-                <div className="text-sm font-semibold text-[#1a1a1a]">{card.title}</div>
+                <div className="text-[13px] font-medium" style={{ color: card.color }}>{card.label}</div>
+                <div className="text-[15px] font-semibold text-[#111827]">{card.title}</div>
               </div>
             </div>
-            <p className="mt-2 text-xs text-[#9ca3af]">{card.info}</p>
-            <div className="mt-4 space-y-2">
+            <p className="mt-3 text-[13px] text-[#9ca3af]">{card.info}</p>
+            <div className="mt-5 space-y-2.5">
               {card.metrics.map((m) => (
-                <div key={m.l} className="flex items-center justify-between text-sm">
+                <div key={m.l} className="flex items-center justify-between text-[14px]">
                   <span className="text-[#6b7280]">{m.l}</span>
                   <span className={`font-semibold ${m.c}`}>{m.v}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 rounded-lg bg-[#fafafa] p-3 text-xs text-[#6b7280]">
+            <div className="mt-5 rounded-lg bg-[#fafafa] p-3 text-[13px] text-[#6b7280]">
               <span>{card.tagIcon === "warning" ? "\u26A0\uFE0F" : card.tagIcon === "chart" ? "\uD83D\uDCCA" : "\u2705"} {card.tag}</span>
             </div>
           </div>
@@ -562,46 +562,64 @@ export default function HomePage() {
 
       {/* ============ 1. HERO — 100vh ============ */}
       <section className="relative flex min-h-screen flex-col items-center justify-center px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
-        <div className="mx-auto max-w-3xl text-center">
-          <FadeIn>
-            <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#1a1a1a] sm:text-4xl md:text-6xl md:leading-[1.1]">
-              La mayoria de los deptos de inversion en Santiago pierden plata cada mes.
-            </h1>
-          </FadeIn>
-          <FadeIn delay={100}>
-            <p className="mx-auto mt-8 max-w-xl text-lg text-[#6b7280] md:text-xl">
-              Eso no aparece en la cotizacion. Nosotros te lo mostramos.
-            </p>
-          </FadeIn>
-          <FadeIn delay={200}>
-            <p className="mx-auto mt-4 max-w-2xl text-base text-[#9ca3af] md:text-lg">
-              InvertiScore analiza cualquier propiedad en Chile y te dice la verdad en 30 segundos. Sin sesgos, sin comisiones, sin letra chica.
-            </p>
-          </FadeIn>
-          <FadeIn delay={300}>
-            <div className="mt-10">
-              <Link href="/analisis/nuevo">
-                <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
-                  Analiza gratis tu proxima inversion <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <p className="mt-4 text-sm text-[#9ca3af]">Sin tarjeta de credito · Tu primer analisis en 30 segundos</p>
-            </div>
-          </FadeIn>
-          <FadeIn delay={400}>
-            <div className="mx-auto mt-12 inline-flex items-center gap-4 rounded-2xl border border-[#e5e7eb] bg-white px-6 py-4 shadow-xl shadow-black/5">
-              <div
-                className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-[#059669]"
-                style={{ animation: "scoreGlow 3s ease-in-out infinite" }}
-              >
-                <div className="text-center">
-                  <div className="text-xl font-bold text-[#059669]">72</div>
-                  <div className="text-[8px] text-[#9ca3af]">SCORE</div>
-                </div>
+        <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-[3fr,2fr]">
+          <div className="text-center lg:text-left">
+            <FadeIn>
+              <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#111827] sm:text-4xl lg:text-[48px] lg:leading-[1.15]">
+                La mayoria de los deptos de inversion en Santiago pierden plata cada mes.
+              </h1>
+            </FadeIn>
+            <FadeIn delay={100}>
+              <p className="mx-auto mt-8 max-w-xl text-lg text-[#6b7280] lg:mx-0 lg:text-xl">
+                Eso no aparece en la cotizacion. Nosotros te lo mostramos.
+              </p>
+            </FadeIn>
+            <FadeIn delay={200}>
+              <p className="mx-auto mt-4 max-w-2xl text-base text-[#9ca3af] lg:mx-0 lg:text-lg">
+                InvertiScore analiza cualquier propiedad en Chile y te dice la verdad en 30 segundos. Sin sesgos, sin comisiones, sin letra chica.
+              </p>
+            </FadeIn>
+            <FadeIn delay={300}>
+              <div className="mt-10">
+                <Link href="/analisis/nuevo">
+                  <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
+                    Analiza gratis tu proxima inversion <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <p className="mt-4 text-sm text-[#9ca3af]">Sin tarjeta de credito · Tu primer analisis en 30 segundos</p>
               </div>
-              <div className="text-left">
-                <div className="text-sm font-semibold text-[#1a1a1a]">Inversion Buena</div>
-                <div className="text-xs text-[#9ca3af]">Depto 2D1B Nunoa</div>
+            </FadeIn>
+          </div>
+          <FadeIn delay={400}>
+            <div className="flex justify-center lg:justify-end">
+              <div className="inline-flex flex-col items-center gap-5 rounded-2xl border border-[#e5e7eb] bg-white px-8 py-7 shadow-xl shadow-black/5">
+                <div
+                  className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-[3px] border-[#059669]"
+                  style={{ animation: "scoreGlow 3s ease-in-out infinite" }}
+                >
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-[#059669]">72</div>
+                    <div className="text-[9px] text-[#9ca3af]">SCORE</div>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="text-base font-semibold text-[#111827]">Inversion Buena</div>
+                  <div className="text-sm text-[#9ca3af]">Depto 2D1B · Nunoa</div>
+                </div>
+                <div className="w-full space-y-2 border-t border-[#f3f4f6] pt-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6b7280]">Yield bruto</span>
+                    <span className="font-semibold text-[#059669]">5.2%</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6b7280]">Flujo mensual</span>
+                    <span className="font-semibold text-[#059669]">+$32.000</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#6b7280]">Cash-on-Cash</span>
+                    <span className="font-semibold text-[#059669]">2.8%</span>
+                  </div>
+                </div>
               </div>
             </div>
           </FadeIn>
@@ -618,7 +636,7 @@ export default function HomePage() {
       <section className="bg-white px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               Lo que tu corredor te muestra vs lo que no te dice
             </h2>
           </FadeIn>
@@ -710,22 +728,13 @@ export default function HomePage() {
       </section>
 
       {/* ============ SOCIAL PROOF ============ */}
-      <section className="bg-[#fafafa] px-6 py-10">
+      <section className="bg-[#f5f5f5] px-6 py-8">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
-              {[
-                { icon: Landmark, text: "Banco Central de Chile" },
-                { icon: Building2, text: "Servicio de Impuestos Internos" },
-                { icon: Scale, text: "Comision para el Mercado Financiero" },
-              ].map((item) => (
-                <div key={item.text} className="flex items-center gap-2 rounded-full border border-[#e5e7eb] bg-white px-4 py-2">
-                  <item.icon className="h-4 w-4 text-[#9ca3af]" strokeWidth={1.5} />
-                  <span className="text-xs font-medium text-[#6b7280]">{item.text}</span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-4 text-xs text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
+            <p className="text-base font-semibold text-[#374151]">
+              Banco Central de Chile <span className="mx-3 text-[#9ca3af]">·</span> Servicio de Impuestos Internos <span className="mx-3 text-[#9ca3af]">·</span> Comision para el Mercado Financiero
+            </p>
+            <p className="mt-3 text-sm text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
           </FadeIn>
         </div>
       </section>
@@ -734,24 +743,24 @@ export default function HomePage() {
       <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
         <div className="mx-auto max-w-3xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               ¿Por que nadie te muestra estos numeros?
             </h2>
           </FadeIn>
           <div className="mt-10 space-y-4">
             {[
-              { title: "La comision depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comision." },
-              { title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando todos los costos, pierdes $416K cada mes." },
-              { title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. Tu necesitas tus propios numeros." },
+              { icon: Briefcase, title: "La comision depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comision." },
+              { icon: Eye, title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando todos los costos, pierdes $416K cada mes." },
+              { icon: Scale, title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. Tu necesitas tus propios numeros." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
                   <div className="flex gap-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50">
-                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6]">
+                      <item.icon className="h-4 w-4 text-[#374151]" />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-[#1a1a1a]">{item.title}</h3>
+                      <h3 className="text-base font-semibold text-[#111827]">{item.title}</h3>
                       <p className="mt-1 text-sm text-[#6b7280]">{item.desc}</p>
                     </div>
                   </div>
@@ -766,7 +775,7 @@ export default function HomePage() {
       <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "#f0fdf4" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               La verdad completa, en 30 segundos
             </h2>
             <p className="mt-4 text-center text-[#6b7280]">
@@ -804,7 +813,7 @@ export default function HomePage() {
         }} />
         <div className="relative mx-auto max-w-5xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               Mira lo que obtienes con cada analisis
             </h2>
           </FadeIn>
@@ -856,19 +865,20 @@ export default function HomePage() {
 
       {/* ============ 6. COMO FUNCIONA ============ */}
       <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               3 pasos. 30 segundos.
             </h2>
           </FadeIn>
-          <div className="relative mt-14">
-            <div className="absolute left-6 top-6 hidden h-[calc(100%-48px)] w-px border-l-2 border-dashed border-[#059669]/30 md:block" />
+          {/* Mobile: vertical layout with dashed line */}
+          <div className="relative mt-14 md:hidden">
+            <div className="absolute left-6 top-12 h-[calc(100%-72px)] w-px border-l-2 border-dashed border-[#059669]/30" />
             <div className="space-y-10">
               {[
-                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pegalos desde la publicacion. La IA sugiere arriendo, gastos y contribuciones automaticamente." },
-                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion usando datos de +3.000 publicaciones en Santiago." },
-                { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga. Sin letra chica." },
+                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pegalos desde la publicacion. La IA sugiere arriendo, gastos y contribuciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion con +3.000 publicaciones." },
+                { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>
                   <div className="flex gap-6">
@@ -876,9 +886,30 @@ export default function HomePage() {
                       {step.n}
                     </div>
                     <div className="pt-1">
-                      <h3 className="text-lg font-semibold text-[#1a1a1a]">{step.title}</h3>
+                      <h3 className="text-lg font-semibold text-[#111827]">{step.title}</h3>
                       <p className="mt-1 text-[#6b7280]">{step.desc}</p>
                     </div>
+                  </div>
+                </FadeIn>
+              ))}
+            </div>
+          </div>
+          {/* Desktop: horizontal layout with dashed connector */}
+          <div className="relative mt-14 hidden md:block">
+            <div className="absolute left-[calc(16.67%+24px)] right-[calc(16.67%+24px)] top-6 border-t-2 border-dashed border-[#059669]/30" />
+            <div className="grid grid-cols-3 gap-8">
+              {[
+                { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pegalos desde la publicacion. La IA sugiere arriendo, gastos y contribuciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalia, riesgo y ubicacion con +3.000 publicaciones." },
+                { n: "3", title: "Decide con informacion", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
+              ].map((step, i) => (
+                <FadeIn key={step.n} delay={i * 200}>
+                  <div className="flex flex-col items-center text-center">
+                    <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#059669] text-xl font-bold text-white shadow-lg shadow-[#059669]/20">
+                      {step.n}
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold text-[#111827]">{step.title}</h3>
+                    <p className="mt-2 text-[#6b7280]">{step.desc}</p>
                   </div>
                 </FadeIn>
               ))}
@@ -891,7 +922,7 @@ export default function HomePage() {
       <section className="bg-white px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               Gratis. En serio.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-[#6b7280]">
@@ -972,7 +1003,7 @@ export default function HomePage() {
       <section className="bg-[#fafafa] px-6 py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+            <h2 className="font-serif text-3xl font-bold text-[#111827] md:text-4xl">
               Solo datos. Sin conflictos de interes.
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-[#6b7280]">
