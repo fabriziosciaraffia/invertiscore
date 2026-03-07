@@ -560,6 +560,371 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ============ SA: COMPARACION 3 PROPIEDADES ============ */}
+      <section className="bg-white px-6 py-[60px] md:py-[100px]">
+        <div className="mx-auto max-w-5xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+              No todos los departamentos son iguales
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[#6b7280]">
+              El mismo presupuesto, tres resultados muy distintos. El score te dice cuales valen la pena.
+            </p>
+          </FadeIn>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                score: 45, color: "#f97316", label: "Inversion Debil",
+                title: "Depto 1D1B · Santiago Centro",
+                info: "UF 2.100 · 32m2 · $320.000/mes",
+                metrics: [
+                  { l: "Yield bruto", v: "3.2%", c: "text-red-500" },
+                  { l: "Flujo mensual", v: "-$380.000", c: "text-red-500" },
+                  { l: "Cash-on-Cash", v: "-24%", c: "text-red-500" },
+                ],
+                tag: "Oversupply en la zona, flujo muy negativo",
+                tagIcon: "warning",
+                borderColor: "border-orange-300",
+              },
+              {
+                score: 58, color: "#eab308", label: "Inversion Regular",
+                title: "Depto 2D1B · Providencia",
+                info: "UF 3.200 · 55m2 · $420.000/mes",
+                metrics: [
+                  { l: "Yield bruto", v: "4.1%", c: "text-orange-500" },
+                  { l: "Flujo mensual", v: "-$416.000", c: "text-red-500" },
+                  { l: "Cash-on-Cash", v: "-20%", c: "text-red-500" },
+                ],
+                tag: "Flujo negativo pero plusvalia alta compensa a largo plazo",
+                tagIcon: "chart",
+                borderColor: "border-[#e5e7eb]",
+              },
+              {
+                score: 78, color: "#059669", label: "Inversion Buena",
+                title: "Depto 2D2B · La Florida",
+                info: "UF 2.400 · 50m2 · $380.000/mes",
+                metrics: [
+                  { l: "Yield bruto", v: "5.8%", c: "text-[#059669]" },
+                  { l: "Flujo mensual", v: "+$45.000", c: "text-[#059669]" },
+                  { l: "Cash-on-Cash", v: "3.2%", c: "text-[#059669]" },
+                ],
+                tag: "Flujo positivo, buena rentabilidad, zona en crecimiento",
+                tagIcon: "check",
+                borderColor: "border-[#059669]/40",
+              },
+            ].map((card, i) => (
+              <FadeIn key={card.score} delay={i * 150}>
+                <div
+                  className={`h-full rounded-2xl border ${card.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-lg`}
+                  style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
+                >
+                  {/* Score circle */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: card.color }}>
+                      <div className="text-center">
+                        <div className="text-lg font-bold" style={{ color: card.color }}>{card.score}</div>
+                        <div className="text-[7px] text-[#9ca3af]">SCORE</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium" style={{ color: card.color }}>{card.label}</div>
+                      <div className="text-sm font-semibold text-[#1a1a1a]">{card.title}</div>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-xs text-[#9ca3af]">{card.info}</p>
+                  {/* Metrics */}
+                  <div className="mt-4 space-y-2">
+                    {card.metrics.map((m) => (
+                      <div key={m.l} className="flex items-center justify-between text-sm">
+                        <span className="text-[#6b7280]">{m.l}</span>
+                        <span className={`font-semibold ${m.c}`}>{m.v}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Tag */}
+                  <div className="mt-4 rounded-lg bg-[#fafafa] p-3 text-xs text-[#6b7280]">
+                    <span>{card.tagIcon === "warning" ? "\u26A0\uFE0F" : card.tagIcon === "chart" ? "\uD83D\uDCCA" : "\u2705"} {card.tag}</span>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delay={500}>
+            <p className="mt-10 text-center text-base text-[#6b7280]">
+              Mismo rango de precio. Resultados completamente distintos. ¿Cual elegirias tu?
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ SB: PREVIEW FLUJO DE CAJA ============ */}
+      <section className="bg-[#fafafa] px-6 py-[60px] md:py-[100px]">
+        <div className="mx-auto max-w-4xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+              ¿Cuanto te va a costar realmente cada mes?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-center text-[#6b7280]">
+              El flujo de caja te muestra la pelicula completa, mes a mes.
+            </p>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
+              {/* Stacked bar chart — static SVG */}
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual — 12 meses</div>
+              <div className="mt-4">
+                <div className="flex items-end gap-2" style={{ height: 200 }}>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const arriendo = 420;
+                    const dividendo = 559;
+                    const gastos = 125;
+                    const total = dividendo + gastos;
+                    const maxVal = total;
+                    const scale = 180 / maxVal;
+                    return (
+                      <div key={i} className="flex flex-1 flex-col items-center gap-0.5">
+                        <div className="flex w-full flex-col items-stretch gap-px">
+                          <div className="w-full rounded-t-sm bg-[#059669]/80" style={{ height: `${arriendo * scale}px` }} />
+                          <div className="w-full bg-[#ef4444]/70" style={{ height: `${dividendo * scale * 0.6}px` }} />
+                          <div className="w-full rounded-b-sm bg-[#f97316]/60" style={{ height: `${gastos * scale * 0.5}px` }} />
+                        </div>
+                        <span className="text-[9px] text-[#9ca3af]">{i === 0 ? "M1" : i === 5 ? "M6" : i === 11 ? "M12" : ""}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Legend */}
+                <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]/80" /> Arriendo ($420K)</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]/70" /> Dividendo ($559K)</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#f97316]/60" /> Gastos ($125K)</span>
+                </div>
+                {/* Acumulado line */}
+                <div className="mt-6 rounded-xl bg-red-50 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100">
+                      <ArrowRight className="h-3 w-3 rotate-90 text-red-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-red-700">
+                        Este depto te cuesta $416.788 cada mes de tu bolsillo. Eso son $5 millones al ano.
+                      </p>
+                      <p className="mt-1 text-sm text-red-600/70">¿Tu corredor te lo dijo?</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ SC: PREVIEW PROYECCION PATRIMONIO ============ */}
+      <section className="bg-white px-6 py-[60px] md:py-[100px]">
+        <div className="mx-auto max-w-4xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+              Pero a largo plazo, ¿vale la pena?
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-center text-[#6b7280]">
+              Aunque pierdas flujo cada mes, tu patrimonio puede crecer significativamente.
+            </p>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
+              <div className="grid gap-8 md:grid-cols-[1fr,280px]">
+                {/* Chart area — static SVG lines */}
+                <div>
+                  <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyeccion a 10 anos (millones CLP)</div>
+                  <svg viewBox="0 0 400 220" className="w-full" preserveAspectRatio="xMidYMid meet">
+                    {/* Grid lines */}
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <line key={i} x1="40" y1={30 + i * 45} x2="390" y2={30 + i * 45} stroke="#f3f4f6" strokeWidth="1" />
+                    ))}
+                    {/* Y axis labels */}
+                    <text x="35" y="35" textAnchor="end" className="text-[9px]" fill="#9ca3af">$200M</text>
+                    <text x="35" y="80" textAnchor="end" className="text-[9px]" fill="#9ca3af">$150M</text>
+                    <text x="35" y="125" textAnchor="end" className="text-[9px]" fill="#9ca3af">$100M</text>
+                    <text x="35" y="170" textAnchor="end" className="text-[9px]" fill="#9ca3af">$50M</text>
+                    <text x="35" y="215" textAnchor="end" className="text-[9px]" fill="#9ca3af">$0</text>
+                    {/* X axis labels */}
+                    {[0, 2, 4, 6, 8, 10].map((y) => (
+                      <text key={y} x={40 + y * 35} y="210" textAnchor="middle" className="text-[9px]" fill="#9ca3af">A{y}</text>
+                    ))}
+                    {/* Valor propiedad — green, ascending */}
+                    <polyline
+                      fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      points="40,72 75,68 110,63 145,58 180,53 215,48 250,42 285,37 320,32 355,27 390,22"
+                    />
+                    {/* Patrimonio neto — blue, ascending */}
+                    <polyline
+                      fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      points="40,165 75,155 110,145 145,134 180,122 215,110 250,97 285,84 320,70 355,56 390,42"
+                    />
+                    {/* Saldo credito — red, descending */}
+                    <polyline
+                      fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6,3"
+                      points="40,105 75,108 110,111 145,115 180,118 215,122 250,126 285,130 320,134 355,138 390,142"
+                    />
+                    {/* Flujo acumulado — gray dashed, descending */}
+                    <polyline
+                      fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,4"
+                      points="40,195 75,192 110,189 145,186 180,183 215,180 250,178 285,176 320,174 355,172 390,170"
+                    />
+                  </svg>
+                  {/* Legend */}
+                  <div className="mt-3 flex flex-wrap gap-4 text-[10px]">
+                    <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#059669]" /> Valor propiedad</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#3b82f6]" /> Patrimonio neto</span>
+                    <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Saldo credito</span>
+                    <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t border-dashed border-[#9ca3af]" /> Flujo acumulado</span>
+                  </div>
+                </div>
+                {/* Annotations */}
+                <div className="flex flex-col justify-center space-y-5">
+                  <div className="rounded-xl bg-[#ecfdf5] p-4">
+                    <div className="text-2xl font-bold text-[#059669]">2.83x</div>
+                    <div className="text-sm text-[#059669]">Multiplicador</div>
+                  </div>
+                  <div className="rounded-xl bg-[#fafafa] p-4">
+                    <p className="text-sm text-[#374151]">Tu pie de <span className="font-semibold">$24.8M</span> se convierte en <span className="font-semibold text-[#059669]">$70.2M</span> en 10 anos</p>
+                  </div>
+                  <div className="rounded-xl bg-[#fafafa] p-4">
+                    <p className="text-sm text-[#374151]">TIR: <span className="font-semibold text-[#059669]">7.8% anual</span></p>
+                    <p className="mt-0.5 text-xs text-[#9ca3af]">Mejor que un deposito a plazo</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ SD: PREVIEW ANALISIS DETALLADO IA ============ */}
+      <section className="bg-[#fafafa] px-6 py-[60px] md:py-[100px]">
+        <div className="mx-auto max-w-4xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+              Un analisis que entiende cualquier persona
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-center text-[#6b7280]">
+              Sin jerga financiera. Sin letra chica. La verdad en espanol.
+            </p>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="mx-auto mt-12 max-w-3xl space-y-4">
+              {/* A favor */}
+              <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #059669" }}>
+                <h3 className="mb-4 text-sm font-semibold text-[#059669]">A favor de esta inversion</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2.5 text-sm text-[#374151]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
+                    Con pocos anos de uso, la mantencion debiera ser baja. Los gastos grandes (ascensores, fachada) aun estan lejos.
+                  </li>
+                  <li className="flex items-start gap-2.5 text-sm text-[#374151]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
+                    Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalia.
+                  </li>
+                </ul>
+              </div>
+              {/* Puntos de atencion */}
+              <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #ef4444" }}>
+                <h3 className="mb-4 text-sm font-semibold text-red-500">Puntos de atencion</h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-2.5 text-sm text-[#374151]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
+                    El retorno neto (CAP rate 1.5%) esta bajo el promedio. Podrias negociar el precio de compra o buscar una propiedad mas rentable en la zona.
+                  </li>
+                  <li className="flex items-start gap-2.5 text-sm text-[#374151]">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
+                    Cada mes tendras que poner $416.788 de tu bolsillo para cubrir los costos. Asegurate de tener ese flujo disponible de forma estable.
+                  </li>
+                </ul>
+              </div>
+              {/* Veredicto */}
+              <div className="rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-6" style={{ borderLeft: "4px solid #9ca3af" }}>
+                <h3 className="mb-3 text-sm font-semibold text-[#6b7280]">Veredicto</h3>
+                <p className="text-sm leading-relaxed text-[#374151]">
+                  El arriendo genera $420.000 al mes y los costos suman $836.788. Falta cubrir $416.788 de tu bolsillo. La inversion depende 100% de la plusvalia futura — vale la pena negociar el precio o buscar mejores opciones.
+                </p>
+              </div>
+            </div>
+          </FadeIn>
+          <FadeIn delay={300}>
+            <p className="mt-8 text-center text-sm text-[#9ca3af]">
+              Este analisis se genera automaticamente con IA para cada propiedad que evalues.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ SE: PREVIEW SENSIBILIDAD ============ */}
+      <section className="bg-white px-6 py-[60px] md:py-[100px]">
+        <div className="mx-auto max-w-4xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+              ¿Y si las cosas cambian?
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-[#6b7280]">
+              El analisis no es estatico. Mira que pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
+            </p>
+          </FadeIn>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {[
+              {
+                label: "Pesimista", score: 49, color: "#ef4444", borderColor: "border-red-300",
+                scenario: "+1.5% tasa, -15% arriendo, +2 meses vacancia",
+                flujo: "-$621.548/mes", yield: "0.3%",
+                flujoColor: "text-red-500", yieldColor: "text-red-500",
+              },
+              {
+                label: "Base", score: 58, color: "#eab308", borderColor: "border-[#e5e7eb]",
+                scenario: "Valores actuales",
+                flujo: "-$416.788/mes", yield: "1.4%",
+                flujoColor: "text-red-500", yieldColor: "text-orange-500",
+              },
+              {
+                label: "Optimista", score: 63, color: "#059669", borderColor: "border-[#059669]/40",
+                scenario: "-1% tasa, +10% arriendo",
+                flujo: "-$323.645/mes", yield: "1.8%",
+                flujoColor: "text-orange-500", yieldColor: "text-[#059669]",
+              },
+            ].map((s, i) => (
+              <FadeIn key={s.label} delay={i * 150}>
+                <div className={`rounded-2xl border ${s.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-md`}>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: s.color }}>{s.label}</div>
+                  {/* Score circle */}
+                  <div className="my-4 flex justify-center">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full border-2" style={{ borderColor: s.color }}>
+                      <div className="text-center">
+                        <div className="text-xl font-bold" style={{ color: s.color }}>{s.score}</div>
+                        <div className="text-[7px] text-[#9ca3af]">SCORE</div>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mb-4 text-center text-xs text-[#6b7280]">{s.scenario}</p>
+                  <div className="space-y-2 border-t border-[#f3f4f6] pt-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#6b7280]">Flujo</span>
+                      <span className={`font-semibold ${s.flujoColor}`}>{s.flujo}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-[#6b7280]">Yield neto</span>
+                      <span className={`font-semibold ${s.yieldColor}`}>{s.yield}</span>
+                    </div>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+          <FadeIn delay={500}>
+            <p className="mt-10 text-center text-base text-[#6b7280]">
+              En el peor escenario, tu score baja a 49. En el mejor, sube a 63. Asi tomas decisiones con los ojos abiertos.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ============ S6: COMO FUNCIONA ============ */}
       <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
         <div className="mx-auto max-w-3xl">
