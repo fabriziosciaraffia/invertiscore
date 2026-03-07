@@ -79,10 +79,10 @@ export default async function AnalisisDetallePage({
       {/* Navbar */}
       <nav className="border-b border-border/50">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">InvertiScore</span>
-          </div>
+          </Link>
           <div className="flex items-center gap-2">
             <Link href="/pricing">
               <Button variant="ghost" size="sm">Planes</Button>

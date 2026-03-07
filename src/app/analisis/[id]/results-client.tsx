@@ -12,6 +12,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   Lock, DollarSign, BarChart3, Brain, Calendar,
   Building2, Sparkles, Target, Shield, MapPin,
+  ChevronDown, ChevronUp, SlidersHorizontal, RefreshCw, Loader2,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import type { MarketDataRow } from "@/lib/market-data";
@@ -541,7 +542,7 @@ export function PremiumResults({
       {/* Currency Toggle */}
       <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
 
-      {/* 3 Free Metric Boxes */}
+      {/* ===== a) 3 Free Metric Boxes ===== */}
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <Card className="border-border/50 bg-card/50">
           <CardContent className="p-4">
@@ -580,26 +581,11 @@ export function PremiumResults({
         </Card>
       </div>
 
-      {/* CTA for guests */}
-      {currentAccess === "guest" && (
-        <Card className="mb-8 border-primary/30 bg-primary/5">
-          <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold">Tu InvertiScore es {score}. &iquest;Quieres saber por qu&eacute;?</h3>
-              <p className="text-sm text-muted-foreground">Reg&iacute;strate gratis para ver el radar de dimensiones, 8 m&eacute;tricas, an&aacute;lisis de sensibilidad y m&aacute;s.</p>
-            </div>
-            <a href="/register">
-              <Button size="lg" className="shrink-0 gap-2">Reg&iacute;strate gratis</Button>
-            </a>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ===== PREMIUM SECTIONS ===== */}
+      {/* ===== SECTIONS ===== */}
       {results && m && (
         <>
-          {/* Radar Chart */}
-          <SectionCard title="Dimensiones del Score" icon={Target} gate="login" accessLevel={currentAccess}>
+          {/* ===== b) GRATIS SIN REGISTRO: Radar ===== */}
+          <SectionCard title="Dimensiones del Score" icon={Target}>
             <div className="mb-3 flex flex-wrap gap-2">
               {radarData.map((d) => (
                 <div key={d.dimension} className="flex items-center gap-1 rounded bg-secondary/30 px-2 py-1 text-xs">
@@ -620,7 +606,22 @@ export function PremiumResults({
             </div>
           </SectionCard>
 
-          {/* Métricas */}
+          {/* CTA for guests — after radar */}
+          {currentAccess === "guest" && (
+            <Card className="mb-8 border-primary/30 bg-primary/5">
+              <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">Tu InvertiScore es {score}. ¿Quieres saber por qué?</h3>
+                  <p className="text-sm text-muted-foreground">Regístrate gratis para ver 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.</p>
+                </div>
+                <a href="/register">
+                  <Button size="lg" className="shrink-0 gap-2">Regístrate gratis</Button>
+                </a>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ===== c) GRATIS CON REGISTRO: 8 Métricas ===== */}
           <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess} muted>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -628,10 +629,10 @@ export function PremiumResults({
                 { label: "Yield Neto", value: `${m.yieldNeto.toFixed(1)}%` },
                 { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%` },
                 { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
-                { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "—" },
-                { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "—" },
+                { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
+                { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
                 { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
-                { label: currency === "UF" ? "UF/m²" : "CLP/m²", value: currency === "UF" ? `${m.precioM2.toFixed(1)}` : `$${Math.round(m.precioM2 * UF_CLP).toLocaleString("es-CL")}` },
+                { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `${m.precioM2.toFixed(1)}` : `$${Math.round(m.precioM2 * UF_CLP).toLocaleString("es-CL")}` },
               ].map(({ label, value }) => (
                 <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -644,7 +645,234 @@ export function PremiumResults({
             </div>
           </SectionCard>
 
-          {/* ===== UNIFIED TIME SECTION: Cascada + Flujo + Patrimonio + Salida (PREMIUM) ===== */}
+          {/* ===== d) GRATIS CON REGISTRO: Sensibilidad ===== */}
+          <SectionCard title="Análisis de Sensibilidad" description="¿Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos? Ajusta para ver." icon={Shield} gate="login" accessLevel={currentAccess} muted>
+            <p className="mb-4 rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+              Estos valores muestran el flujo neto <strong>mensual</strong> estabilizado (sin considerar vacancia inicial ni corretaje del primer arriendo). El score se recalcula con los mismos parámetros ajustados.
+            </p>
+            <div className="mb-6 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Tasa de interés</span>
+                  <span className={`font-medium ${sensTasa > 0 ? "text-red-400" : sensTasa < 0 ? "text-emerald-400" : ""}`}>
+                    {sensTasa > 0 ? "+" : ""}{sensTasa.toFixed(1)}%
+                  </span>
+                </div>
+                <input type="range" min={-2} max={2} step={0.1} value={sensTasa} onChange={(e) => setSensTasa(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-2%</span><span>Base</span><span>+2%</span></div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Arriendo</span>
+                  <span className={`font-medium ${sensArriendo > 0 ? "text-emerald-400" : sensArriendo < 0 ? "text-red-400" : ""}`}>
+                    {sensArriendo > 0 ? "+" : ""}{sensArriendo}%
+                  </span>
+                </div>
+                <input type="range" min={-20} max={20} step={1} value={sensArriendo} onChange={(e) => setSensArriendo(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-20%</span><span>Base</span><span>+20%</span></div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Vacancia adicional</span>
+                  <span className={`font-medium ${sensVacancia > 0 ? "text-red-400" : ""}`}>
+                    +{sensVacancia} mes{sensVacancia !== 1 ? "es" : ""}
+                  </span>
+                </div>
+                <input type="range" min={0} max={4} step={0.5} value={sensVacancia} onChange={(e) => setSensVacancia(Number(e.target.value))} className="w-full accent-primary" />
+                <div className="flex justify-between text-[10px] text-muted-foreground"><span>0</span><span>2</span><span>4 meses</span></div>
+              </div>
+            </div>
+
+            <div className="mb-6 grid gap-3 sm:grid-cols-3">
+              {[
+                { label: "Score", render: <MiniScoreCircle score={sensResult.score} />, better: sensResult.score > sensBase.score, worse: sensResult.score < sensBase.score },
+                { label: "Flujo Neto /mes", render: <div className={`text-lg font-bold ${sensResult.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(sensResult.flujo)}</div>, better: sensResult.flujo > sensBase.flujo, worse: sensResult.flujo < sensBase.flujo },
+                { label: "Yield Neto", render: <div className="text-lg font-bold">{sensResult.yieldNeto.toFixed(1)}%</div>, better: sensResult.yieldNeto > sensBase.yieldNeto, worse: sensResult.yieldNeto < sensBase.yieldNeto },
+              ].map(({ label, render, better, worse }) => (
+                <div key={label} className={`rounded-lg border p-3 text-center ${better ? "border-emerald-500/30 bg-emerald-500/5" : worse ? "border-red-500/30 bg-red-500/5" : "border-border/50 bg-secondary/30"}`}>
+                  <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+                  {render}
+                </div>
+              ))}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
+                    <th className="pb-2 pr-4">Escenario</th>
+                    <th className="pb-2 pr-4">Score</th>
+                    <th className="pb-2 pr-4">Flujo Neto /mes</th>
+                    <th className="pb-2">Yield Neto</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { label: "Pesimista", desc: "+1.5% tasa, -15% arriendo, +2m vacancia", data: sensPesimista, color: "text-red-400" },
+                    { label: "Base", desc: "Valores actuales", data: sensBase, color: "" },
+                    { label: "Optimista", desc: "-1% tasa, +10% arriendo", data: sensOptimista, color: "text-emerald-400" },
+                  ].map(({ label, desc, data, color }) => (
+                    <tr key={label} className="border-b border-border/30">
+                      <td className="py-2 pr-4">
+                        <div className={`font-medium ${color}`}>{label}</div>
+                        <div className="text-[10px] text-muted-foreground">{desc}</div>
+                      </td>
+                      <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
+                      <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(data.flujo)}</td>
+                      <td className="py-2">{data.yieldNeto.toFixed(1)}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </SectionCard>
+
+          {/* ===== e) GRATIS CON REGISTRO: Puntos Críticos ===== */}
+          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess} muted>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {results.breakEvenTasa === -1
+                    ? "Incluso a tasa 0%, el flujo es negativo. El precio es demasiado alto para este arriendo."
+                    : `Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, tu flujo mensual se vuelve negativo.`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
+                <div className="mt-1 text-2xl font-bold">
+                  {currency === "UF"
+                    ? `${results.valorMaximoCompra.toLocaleString("es-CL")} UF`
+                    : fmtCLP(results.valorMaximoCompra * UF_CLP)}
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Para tener flujo positivo con estos datos, no deberías pagar más de este precio.
+                </p>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* ===== f) GRATIS CON REGISTRO: Comparación zona + Mapa ===== */}
+          <SectionCard title="Comparación con Zona" icon={Building2} gate="login" accessLevel={currentAccess}>
+            {(() => {
+              if (!zoneData || zoneData.length === 0) {
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    Datos de mercado no disponibles para esta comuna.
+                  </p>
+                );
+              }
+
+              const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+              const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+              const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
+
+              const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0
+                ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045)
+                : 50;
+              const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
+                ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
+                : m.yieldBruto * 0.9;
+
+              const items = [
+                { label: currency === "UF" ? "Precio/m\u00B2 (UF)" : "Precio/m\u00B2 (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
+                { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
+                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: Math.round(yieldZona * 10) / 10 },
+              ];
+              return (
+                <div className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Basado en {totalPubs} publicaciones activas en {comuna}.
+                  </p>
+                  {items.map(({ label, tuyo, zona }) => {
+                    const maxVal = Math.max(tuyo, zona) || 1;
+                    const fmtVal = (v: number) =>
+                      label.includes("Yield") ? v.toFixed(1) + "%"
+                      : label.includes("Arriendo") ? fmt(v)
+                      : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
+                    return (
+                      <div key={label}>
+                        <div className="mb-1 text-xs text-muted-foreground">{label}</div>
+                        <div className="mb-1 flex items-center gap-3">
+                          <span className="w-20 text-xs">Tu propiedad</span>
+                          <div className="h-4 flex-1 rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
+                          </div>
+                          <span className="w-16 text-right text-xs font-medium">{fmtVal(tuyo)}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="w-20 text-xs">Promedio zona</span>
+                          <div className="h-4 flex-1 rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
+                          </div>
+                          <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+            <div className="mt-6">
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <MapPin className="h-4 w-4" />
+                <span>Ubicación: {mapQuery}</span>
+              </div>
+              <div className="overflow-hidden rounded-lg border border-border/50">
+                <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* ===== PREMIUM: g) Cascada de Costos Mensual ===== */}
+          <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
+            <div className="h-56">
+              <ResponsiveContainer>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
+                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                    {waterfallData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </SectionCard>
+
+          {/* ===== PREMIUM: h) Análisis Detallado ===== */}
+          <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
+            <div className="space-y-4">
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {results.pros.map((p, i) => (
+                    <li key={i}>• {cText(p)}</li>
+                  ))}
+                </ul>
+              </div>
+              <div>
+                <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
+                <ul className="space-y-1 text-sm text-muted-foreground">
+                  {results.contras.map((c, i) => (
+                    <li key={i}>• {cText(c)}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">{cText(results.resumen)}</p>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* ===== PREMIUM: i) Flujo, Patrimonio y Salida ===== */}
           <div className="relative mb-8">
             <Card className="border-border/50 bg-primary/[0.03]">
               <CardHeader>
@@ -661,29 +889,6 @@ export function PremiumResults({
                 </div>
               </CardHeader>
               <CardContent className="space-y-8">
-                {/* Cascada de Costos */}
-                <div>
-                  <h4 className="mb-1 text-sm font-semibold">Cascada de Costos Mensual</h4>
-                  <p className="mb-3 text-xs text-muted-foreground">Un mes típico estabilizado: así se reparte tu arriendo</p>
-                  <div className="h-56">
-                    <ResponsiveContainer>
-                      <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                        <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
-                        <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                          {waterfallData.map((entry, i) => (
-                            <Cell key={i} fill={entry.fill} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-
-                <hr className="border-border/30" />
-
                 {/* Flujo de Caja */}
                 <div>
                   <h4 className="mb-1 text-sm font-semibold">
@@ -806,228 +1011,17 @@ export function PremiumResults({
             )}
           </div>
 
-          {/* Sensibilidad */}
-          <SectionCard title="Análisis de Sensibilidad" description="¿Qué pasa si suben las tasas, baja el arriendo o tienes meses vacíos? Ajusta para ver." icon={Shield} gate="login" accessLevel={currentAccess} muted>
-            <p className="mb-4 rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
-              Estos valores muestran el flujo neto <strong>mensual</strong> estabilizado (sin considerar vacancia inicial ni corretaje del primer arriendo). El score se recalcula con los mismos parámetros ajustados.
-            </p>
-            <div className="mb-6 space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Tasa de interés</span>
-                  <span className={`font-medium ${sensTasa > 0 ? "text-red-400" : sensTasa < 0 ? "text-emerald-400" : ""}`}>
-                    {sensTasa > 0 ? "+" : ""}{sensTasa.toFixed(1)}%
-                  </span>
-                </div>
-                <input type="range" min={-2} max={2} step={0.1} value={sensTasa} onChange={(e) => setSensTasa(Number(e.target.value))} className="w-full accent-primary" />
-                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-2%</span><span>Base</span><span>+2%</span></div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Arriendo</span>
-                  <span className={`font-medium ${sensArriendo > 0 ? "text-emerald-400" : sensArriendo < 0 ? "text-red-400" : ""}`}>
-                    {sensArriendo > 0 ? "+" : ""}{sensArriendo}%
-                  </span>
-                </div>
-                <input type="range" min={-20} max={20} step={1} value={sensArriendo} onChange={(e) => setSensArriendo(Number(e.target.value))} className="w-full accent-primary" />
-                <div className="flex justify-between text-[10px] text-muted-foreground"><span>-20%</span><span>Base</span><span>+20%</span></div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Vacancia adicional</span>
-                  <span className={`font-medium ${sensVacancia > 0 ? "text-red-400" : ""}`}>
-                    +{sensVacancia} mes{sensVacancia !== 1 ? "es" : ""}
-                  </span>
-                </div>
-                <input type="range" min={0} max={4} step={0.5} value={sensVacancia} onChange={(e) => setSensVacancia(Number(e.target.value))} className="w-full accent-primary" />
-                <div className="flex justify-between text-[10px] text-muted-foreground"><span>0</span><span>2</span><span>4 meses</span></div>
-              </div>
-            </div>
-
-            <div className="mb-6 grid gap-3 sm:grid-cols-3">
-              {[
-                { label: "Score", render: <MiniScoreCircle score={sensResult.score} />, better: sensResult.score > sensBase.score, worse: sensResult.score < sensBase.score },
-                { label: "Flujo Neto /mes", render: <div className={`text-lg font-bold ${sensResult.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(sensResult.flujo)}</div>, better: sensResult.flujo > sensBase.flujo, worse: sensResult.flujo < sensBase.flujo },
-                { label: "Yield Neto", render: <div className="text-lg font-bold">{sensResult.yieldNeto.toFixed(1)}%</div>, better: sensResult.yieldNeto > sensBase.yieldNeto, worse: sensResult.yieldNeto < sensBase.yieldNeto },
-              ].map(({ label, render, better, worse }) => (
-                <div key={label} className={`rounded-lg border p-3 text-center ${better ? "border-emerald-500/30 bg-emerald-500/5" : worse ? "border-red-500/30 bg-red-500/5" : "border-border/50 bg-secondary/30"}`}>
-                  <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-                  {render}
-                </div>
-              ))}
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
-                    <th className="pb-2 pr-4">Escenario</th>
-                    <th className="pb-2 pr-4">Score</th>
-                    <th className="pb-2 pr-4">Flujo Neto /mes</th>
-                    <th className="pb-2">Yield Neto</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[
-                    { label: "Pesimista", desc: "+1.5% tasa, -15% arriendo, +2m vacancia", data: sensPesimista, color: "text-red-400" },
-                    { label: "Base", desc: "Valores actuales", data: sensBase, color: "" },
-                    { label: "Optimista", desc: "-1% tasa, +10% arriendo", data: sensOptimista, color: "text-emerald-400" },
-                  ].map(({ label, desc, data, color }) => (
-                    <tr key={label} className="border-b border-border/30">
-                      <td className="py-2 pr-4">
-                        <div className={`font-medium ${color}`}>{label}</div>
-                        <div className="text-[10px] text-muted-foreground">{desc}</div>
-                      </td>
-                      <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
-                      <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(data.flujo)}</td>
-                      <td className="py-2">{data.yieldNeto.toFixed(1)}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </SectionCard>
-
-          {/* Comparación zona + Mapa */}
-          <SectionCard title="Comparación con Zona" icon={Building2} gate="login" accessLevel={currentAccess}>
-            {(() => {
-              if (!zoneData || zoneData.length === 0) {
-                return (
-                  <p className="text-sm text-muted-foreground">
-                    Datos de mercado no disponibles para esta comuna.
-                  </p>
-                );
-              }
-
-              // Average across all tipos for zone comparison
-              const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
-              const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
-              const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
-
-              // Yield zona estimate: (arriendo avg * 12) / (precioM2 avg * superficie promedio * UF)
-              // Simplified: use avg arriendo and avg precio_m2
-              const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0
-                ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) // back-derive from typical yield
-                : 50;
-              const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
-                ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
-                : m.yieldBruto * 0.9;
-
-              const items = [
-                { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
-                { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
-                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: Math.round(yieldZona * 10) / 10 },
-              ];
-              return (
-                <div className="space-y-4">
-                  <p className="text-xs text-muted-foreground">
-                    Basado en {totalPubs} publicaciones activas en {comuna}.
-                  </p>
-                  {items.map(({ label, tuyo, zona }) => {
-                    const maxVal = Math.max(tuyo, zona) || 1;
-                    const fmtVal = (v: number) =>
-                      label.includes("Yield") ? v.toFixed(1) + "%"
-                      : label.includes("Arriendo") ? fmt(v)
-                      : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
-                    return (
-                      <div key={label}>
-                        <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-                        <div className="mb-1 flex items-center gap-3">
-                          <span className="w-20 text-xs">Tu propiedad</span>
-                          <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
-                          </div>
-                          <span className="w-16 text-right text-xs font-medium">{fmtVal(tuyo)}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="w-20 text-xs">Promedio zona</span>
-                          <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
-                          </div>
-                          <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-            <div className="mt-6">
-              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>Ubicación: {mapQuery}</span>
-              </div>
-              <div className="overflow-hidden rounded-lg border border-border/50">
-                <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Puntos Críticos */}
-          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess} muted>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-                <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
-                <div className="mt-1 text-2xl font-bold">
-                  {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {results.breakEvenTasa === -1
-                    ? "Incluso a tasa 0%, el flujo es negativo. El precio es demasiado alto para este arriendo."
-                    : `Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, tu flujo mensual se vuelve negativo.`}
-                </p>
-              </div>
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-                <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
-                <div className="mt-1 text-2xl font-bold">
-                  {currency === "UF"
-                    ? `${results.valorMaximoCompra.toLocaleString("es-CL")} UF`
-                    : fmtCLP(results.valorMaximoCompra * UF_CLP)}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Para tener flujo positivo con estos datos, no deberías pagar más de este precio.
-                </p>
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* Análisis Detallado — prose converted with cText */}
-          <SectionCard title="Análisis Detallado" icon={Brain} gate="login" accessLevel={currentAccess}>
-            <div className="space-y-4">
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  {results.pros.map((p, i) => (
-                    <li key={i}>• {cText(p)}</li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  {results.contras.map((c, i) => (
-                    <li key={i}>• {cText(c)}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-                <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
-                <p className="text-sm leading-relaxed text-muted-foreground">{cText(results.resumen)}</p>
-              </div>
-            </div>
-          </SectionCard>
-
+          {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
-            <Card className="border-primary/30 bg-primary/5">
+            <Card className="mb-8 border-primary/30 bg-primary/5">
               <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
                 <Lock className="h-8 w-8 text-primary" />
-                <h3 className="text-xl font-bold">Reg&iacute;strate para ver el an&aacute;lisis completo</h3>
+                <h3 className="text-xl font-bold">Regístrate para ver el análisis completo</h3>
                 <p className="max-w-md text-sm text-muted-foreground">
-                  Accede gratis al radar de dimensiones, 8 m&eacute;tricas detalladas,
-                  an&aacute;lisis de sensibilidad, comparaci&oacute;n con zona y m&aacute;s.
+                  Accede gratis a 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.
                 </p>
                 <a href="/register">
-                  <Button size="lg" className="gap-2">Reg&iacute;strate gratis</Button>
+                  <Button size="lg" className="gap-2">Regístrate gratis</Button>
                 </a>
               </CardContent>
             </Card>
@@ -1038,6 +1032,109 @@ export function PremiumResults({
           )}
         </>
       )}
+
+      {/* ===== Recalibración (solo para usuarios logueados con datos) ===== */}
+      {currentAccess !== "guest" && inputData && analysisId && (
+        <RecalibrationPanel inputData={inputData} analysisId={analysisId} />
+      )}
     </>
+  );
+}
+
+function RecalibrationPanel({ inputData, analysisId }: { inputData: AnalisisInput; analysisId: string }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+
+  const [precio, setPrecio] = useState(inputData.precio);
+  const [arriendo, setArriendo] = useState(inputData.arriendo);
+  const [tasaInteres, setTasaInteres] = useState(inputData.tasaInteres);
+  const [piePct, setPiePct] = useState(inputData.piePct);
+  const [gastos, setGastos] = useState(inputData.gastos);
+  const [contribuciones, setContribuciones] = useState(inputData.contribuciones);
+
+  async function handleRecalculate() {
+    setLoading(true);
+    setSuccess(false);
+    try {
+      const updatedInput: AnalisisInput = {
+        ...inputData,
+        precio,
+        arriendo,
+        tasaInteres,
+        piePct,
+        gastos,
+        contribuciones,
+      };
+      const res = await fetch("/api/analisis/recalculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId, inputData: updatedInput }),
+      });
+      if (res.ok) {
+        setSuccess(true);
+        setTimeout(() => window.location.reload(), 500);
+      } else {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || "Error al recalcular");
+      }
+    } catch {
+      alert("Error de conexión");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Card className="mb-8 border-border/50">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-6 py-4 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className="h-5 w-5 text-primary" />
+          <span className="font-semibold">Ajustar parámetros y recalcular</span>
+        </div>
+        {open ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
+      </button>
+      {open && (
+        <CardContent className="border-t pt-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Precio de venta (UF)</label>
+              <input type="number" value={precio} onChange={(e) => setPrecio(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Arriendo (CLP)</label>
+              <input type="number" value={arriendo} onChange={(e) => setArriendo(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Tasa de interés (%)</label>
+              <input type="number" step="0.1" value={tasaInteres} onChange={(e) => setTasaInteres(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Pie (%)</label>
+              <input type="number" value={piePct} onChange={(e) => setPiePct(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Gastos comunes (CLP)</label>
+              <input type="number" value={gastos} onChange={(e) => setGastos(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-muted-foreground">Contribuciones trimestrales (CLP)</label>
+              <input type="number" value={contribuciones} onChange={(e) => setContribuciones(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            </div>
+          </div>
+          <div className="mt-4 flex items-center gap-3">
+            <Button onClick={handleRecalculate} disabled={loading} className="gap-2">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {loading ? "Recalculando..." : "Recalcular"}
+            </Button>
+            {success && <span className="text-sm text-emerald-500">Actualizado correctamente</span>}
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }

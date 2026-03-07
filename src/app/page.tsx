@@ -38,12 +38,12 @@ export default function HomePage() {
       {/* Navbar */}
       <nav className="fixed top-0 z-50 w-full border-b border-[#e5e5e5]/80 bg-white/80 shadow-sm backdrop-blur-md">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-[#059669]" />
             <span className="font-serif text-xl font-bold text-[#1a1a1a]">
               InvertiScore
             </span>
-          </div>
+          </Link>
           {/* Desktop nav */}
           <div className="hidden items-center gap-3 sm:flex">
             <Link href="/pricing">

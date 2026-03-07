@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Building2, Plus, BarChart3 } from "lucide-react";
 import { LogoutButton } from "@/components/logout-button";
+import { DashboardDeleteButton } from "./delete-button";
 import type { Analisis } from "@/lib/types";
 
 export default async function DashboardPage() {
@@ -35,10 +36,10 @@ export default async function DashboardPage() {
       {/* Navbar */}
       <nav className="border-b">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2">
             <Building2 className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold">InvertiScore</span>
-          </div>
+          </Link>
           <LogoutButton />
         </div>
       </nav>
@@ -75,28 +76,29 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {analisis.map((item) => (
-              <Link key={item.id} href={`/analisis/${item.id}`}>
-                <Card className="transition-shadow hover:shadow-md">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {item.nombre}
-                        </CardTitle>
-                        <CardDescription>
-                          {new Date(item.created_at).toLocaleDateString("es-CL")}
-                        </CardDescription>
-                      </div>
+              <Card key={item.id} className="transition-shadow hover:shadow-md">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <Link href={`/analisis/${item.id}`} className="flex-1">
+                      <CardTitle className="text-lg">
+                        {item.nombre}
+                      </CardTitle>
+                      <CardDescription>
+                        {item.comuna} &middot; {new Date(item.created_at).toLocaleDateString("es-CL")}
+                      </CardDescription>
+                    </Link>
+                    <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1">
                         <BarChart3 className="h-4 w-4 text-primary" />
                         <span className="text-sm font-bold text-primary">
                           {item.score}
                         </span>
                       </div>
+                      <DashboardDeleteButton id={item.id} />
                     </div>
-                  </CardHeader>
-                </Card>
-              </Link>
+                  </div>
+                </CardHeader>
+              </Card>
             ))}
           </div>
         )}
