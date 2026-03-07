@@ -161,13 +161,13 @@ function TabComparacion() {
         ].map((card) => (
           <div
             key={card.score}
-            className={`h-full min-w-[300px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-7 transition-all duration-200 hover:shadow-lg md:min-w-0 md:shrink`}
+            className={`h-full min-w-[260px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-4 transition-all duration-200 hover:shadow-lg sm:min-w-[300px] sm:p-7 md:min-w-0 md:shrink`}
             style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full border-[2.5px]" style={{ borderColor: card.color }}>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 sm:h-[52px] sm:w-[52px] sm:border-[2.5px]" style={{ borderColor: card.color }}>
                 <div className="text-center">
-                  <div className="text-xl font-bold" style={{ color: card.color }}>{card.score}</div>
+                  <div className="text-base font-bold sm:text-xl" style={{ color: card.color }}>{card.score}</div>
                   <div className="text-[7px] text-[#9ca3af]">SCORE</div>
                 </div>
               </div>
@@ -460,7 +460,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="bg-white text-[#1a1a1a]">
+    <div className="overflow-x-hidden bg-white text-[#1a1a1a]">
       <style jsx global>{`
         @keyframes scoreGlow {
           0%, 100% { box-shadow: 0 0 20px rgba(5,150,105,0.2), 0 0 40px rgba(5,150,105,0.1); }
@@ -561,11 +561,11 @@ export default function HomePage() {
       </nav>
 
       {/* ============ 1. HERO — 100vh ============ */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
-        <div className="mx-auto grid max-w-5xl items-center gap-12 lg:grid-cols-[3fr,2fr]">
+      <section className="relative flex min-h-[80vh] flex-col items-center justify-center px-5 sm:min-h-screen sm:px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
+        <div className="mx-auto grid max-w-5xl items-center gap-8 lg:gap-12 lg:grid-cols-[3fr,2fr]">
           <div className="text-center lg:text-left">
             <FadeIn>
-              <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#111827] sm:text-4xl lg:text-[48px] lg:leading-[1.15]">
+              <h1 className="font-serif text-[26px] font-bold leading-tight tracking-tight text-[#111827] sm:text-4xl lg:text-[48px] lg:leading-[1.15]">
                 La mayoría de los deptos de inversión en Santiago pierden plata cada mes.
               </h1>
             </FadeIn>
@@ -582,7 +582,7 @@ export default function HomePage() {
             <FadeIn delay={300}>
               <div className="mt-10">
                 <Link href="/analisis/nuevo">
-                  <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
+                  <Button size="lg" className="w-full gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30 sm:w-auto">
                     Analiza gratis tu próxima inversión <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
@@ -592,21 +592,26 @@ export default function HomePage() {
           </div>
           <FadeIn delay={400}>
             <div className="flex justify-center lg:justify-end">
-              <div className="inline-flex flex-col items-center gap-5 rounded-2xl border border-[#e5e7eb] bg-white px-8 py-7 shadow-xl shadow-black/5">
+              <div className="inline-flex flex-row items-center gap-4 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4 shadow-xl shadow-black/5 sm:flex-col sm:gap-5 sm:px-8 sm:py-7">
                 <div
-                  className="flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-[3px] border-[#059669]"
+                  className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full border-[3px] border-[#059669] sm:h-24 sm:w-24"
                   style={{ animation: "scoreGlow 3s ease-in-out infinite" }}
                 >
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-[#059669]">72</div>
-                    <div className="text-[9px] text-[#9ca3af]">SCORE</div>
+                    <div className="text-xl font-bold text-[#059669] sm:text-3xl">72</div>
+                    <div className="text-[7px] text-[#9ca3af] sm:text-[9px]">SCORE</div>
                   </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-base font-semibold text-[#111827]">Inversión Buena</div>
-                  <div className="text-sm text-[#9ca3af]">Depto 2D1B · Ñuñoa</div>
+                <div className="min-w-0 sm:text-center">
+                  <div className="text-sm font-semibold text-[#111827] sm:text-base">Inversión Buena</div>
+                  <div className="text-xs text-[#9ca3af] sm:text-sm">Depto 2D1B · Ñuñoa</div>
+                  <div className="mt-2 flex gap-3 text-xs sm:hidden">
+                    <span className="text-[#059669] font-semibold">5.2%</span>
+                    <span className="text-[#059669] font-semibold">+$32K</span>
+                    <span className="text-[#059669] font-semibold">2.8%</span>
+                  </div>
                 </div>
-                <div className="w-full space-y-2 border-t border-[#f3f4f6] pt-4">
+                <div className="hidden w-full space-y-2 border-t border-[#f3f4f6] pt-4 sm:block">
                   <div className="flex justify-between text-sm">
                     <span className="text-[#6b7280]">Yield bruto</span>
                     <span className="font-semibold text-[#059669]">5.2%</span>
@@ -633,16 +638,16 @@ export default function HomePage() {
       </section>
 
       {/* ============ 2. EJEMPLO REAL ============ */}
-      <section className="bg-white px-6 py-[60px] md:py-[100px]">
+      <section className="bg-white px-5 py-12 sm:px-6 md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               Lo que tu corredor te muestra vs lo que no te dice
             </h2>
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-2">
             <SlideIn delay={100} direction="left">
-              <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-6 transition-all duration-200 hover:shadow-md">
+              <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-4 transition-all duration-200 hover:shadow-md sm:p-6">
                 <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Lo que te dicen</div>
                 <h3 className="text-lg font-semibold text-[#1a1a1a]">Depto 2D1B en Providencia</h3>
                 <div className="mt-4 space-y-3">
@@ -667,7 +672,7 @@ export default function HomePage() {
             </SlideIn>
             <SlideIn delay={200} direction="right">
               <div
-                className="h-full rounded-2xl border-2 border-[#059669] p-6 transition-all duration-200 hover:shadow-lg"
+                className="h-full rounded-2xl border-2 border-[#059669] p-4 transition-all duration-200 hover:shadow-lg sm:p-6"
                 style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.15)" }}
               >
                 <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#059669]">Lo que InvertiScore te muestra</div>
@@ -728,11 +733,11 @@ export default function HomePage() {
       </section>
 
       {/* ============ SOCIAL PROOF ============ */}
-      <section className="bg-[#f5f5f5] px-6 py-8">
+      <section className="bg-[#f5f5f5] px-5 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <p className="text-base font-semibold text-[#374151]">
-              Banco Central de Chile <span className="mx-3 text-[#9ca3af]">·</span> Servicio de Impuestos Internos <span className="mx-3 text-[#9ca3af]">·</span> Comisión para el Mercado Financiero
+            <p className="text-[13px] font-semibold leading-relaxed text-[#374151] sm:text-base">
+              Banco Central de Chile <span className="mx-2 text-[#9ca3af] sm:mx-3">·</span> Servicio de Impuestos Internos <span className="mx-2 text-[#9ca3af] sm:mx-3">·</span> Comisión para el Mercado Financiero
             </p>
             <p className="mt-3 text-sm text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
           </FadeIn>
@@ -740,10 +745,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 3. POR QUE PASA ESTO ============ */}
-      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
+      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
         <div className="mx-auto max-w-3xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               ¿Por qué nadie te muestra estos números?
             </h2>
           </FadeIn>
@@ -754,14 +759,14 @@ export default function HomePage() {
               { icon: Scale, title: "No hay accountability", desc: "Si la inversión sale mal, el corredor ya cobró. Tú necesitas tus propios números." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
-                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
-                  <div className="flex gap-4">
+                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-4 transition-all duration-200 hover:shadow-md sm:p-5" style={{ borderLeft: "4px solid #ef4444" }}>
+                  <div className="flex gap-3 sm:gap-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#f3f4f6]">
                       <item.icon className="h-4 w-4 text-[#374151]" />
                     </div>
                     <div>
-                      <h3 className="text-base font-semibold text-[#111827]">{item.title}</h3>
-                      <p className="mt-1 text-sm text-[#6b7280]">{item.desc}</p>
+                      <h3 className="text-sm font-semibold leading-snug text-[#111827] sm:text-base">{item.title}</h3>
+                      <p className="mt-1 text-[13px] leading-[1.4] text-[#6b7280] sm:text-sm">{item.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -772,17 +777,17 @@ export default function HomePage() {
       </section>
 
       {/* ============ 4. QUE HACE INVERTISCORE ============ */}
-      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "#f0fdf4" }}>
+      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "#f0fdf4" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               La verdad completa, en 30 segundos
             </h2>
             <p className="mt-4 text-center text-[#6b7280]">
               Ingresa los datos de cualquier propiedad y obtén:
             </p>
           </FadeIn>
-          <div className="mt-14 grid gap-5 sm:grid-cols-2 md:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:mt-14 sm:gap-5 md:grid-cols-3">
             {[
               { icon: Award, title: "Score 1-100", desc: "Evaluación objetiva de la inversión en 5 dimensiones", bg: "bg-[#ecfdf5]", iconColor: "text-[#059669]" },
               { icon: TrendingDown, title: "Flujo real", desc: "Cuánto vas a poner de tu bolsillo cada mes, sin maquillaje", bg: "bg-red-50", iconColor: "text-red-500" },
@@ -792,12 +797,12 @@ export default function HomePage() {
               { icon: MapPin, title: "Datos de mercado", desc: "Comparación con arriendos y precios reales de la zona", bg: "bg-teal-50", iconColor: "text-teal-500" },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 80}>
-                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:border-[#059669] hover:shadow-md">
-                  <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${item.bg}`}>
-                    <item.icon className={`h-6 w-6 ${item.iconColor}`} strokeWidth={1.5} />
+                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-3 transition-all duration-200 hover:border-[#059669] hover:shadow-md sm:p-5">
+                  <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full sm:mb-3 sm:h-12 sm:w-12 ${item.bg}`}>
+                    <item.icon className={`h-4 w-4 sm:h-6 sm:w-6 ${item.iconColor}`} strokeWidth={1.5} />
                   </div>
-                  <h3 className="font-semibold text-[#1a1a1a]">{item.title}</h3>
-                  <p className="mt-1 text-sm text-[#6b7280]">{item.desc}</p>
+                  <h3 className="text-[13px] font-semibold text-[#1a1a1a] sm:text-base">{item.title}</h3>
+                  <p className="mt-1 text-[12px] leading-snug text-[#6b7280] sm:text-sm">{item.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -806,14 +811,14 @@ export default function HomePage() {
       </section>
 
       {/* ============ 5. PREVIEW CON TABS ============ */}
-      <section className="relative px-6 py-[60px] md:py-[100px]">
+      <section className="relative px-5 py-12 sm:px-6 md:py-[100px]">
         <div className="pointer-events-none absolute inset-0" style={{
           backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)",
           backgroundSize: "40px 40px",
         }} />
         <div className="relative mx-auto max-w-5xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               Mira lo que obtienes con cada análisis
             </h2>
           </FadeIn>
@@ -826,7 +831,7 @@ export default function HomePage() {
                   <button
                     key={tab.label}
                     onClick={() => setActiveTab(i)}
-                    className={`whitespace-nowrap px-5 py-3 text-sm font-medium transition-all duration-200 ${
+                    className={`whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-all duration-200 sm:px-5 sm:py-3 sm:text-sm ${
                       activeTab === i
                         ? "border-b-2 border-[#059669] text-[#059669]"
                         : "text-[#6b7280] hover:text-[#1a1a1a]"
@@ -854,7 +859,7 @@ export default function HomePage() {
           <FadeIn delay={200}>
             <div className="mt-10 text-center">
               <Link href="/analisis/nuevo">
-                <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
+                <Button size="lg" className="w-full gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30 sm:w-auto">
                   Haz tu primer análisis <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -864,17 +869,17 @@ export default function HomePage() {
       </section>
 
       {/* ============ 6. COMO FUNCIONA ============ */}
-      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
+      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               3 pasos. 30 segundos.
             </h2>
           </FadeIn>
           {/* Mobile: vertical layout with dashed line */}
-          <div className="relative mt-14 md:hidden">
-            <div className="absolute left-6 top-12 h-[calc(100%-72px)] w-px border-l-2 border-dashed border-[#059669]/30" />
-            <div className="space-y-10">
+          <div className="relative mt-10 md:hidden">
+            <div className="absolute left-[16px] top-8 h-[calc(100%-48px)] w-px border-l-2 border-dashed border-[#059669]/30" />
+            <div className="space-y-4">
               {[
                 { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pégalos desde la publicación. La IA sugiere arriendo, gastos y contribuciones." },
                 { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación con +3.000 publicaciones." },
@@ -882,12 +887,12 @@ export default function HomePage() {
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>
                   <div className="flex gap-6">
-                    <div className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#059669] text-xl font-bold text-white shadow-lg shadow-[#059669]/20">
+                    <div className="relative z-10 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#059669] text-base font-bold text-white shadow-lg shadow-[#059669]/20">
                       {step.n}
                     </div>
-                    <div className="pt-1">
-                      <h3 className="text-lg font-semibold text-[#111827]">{step.title}</h3>
-                      <p className="mt-1 text-[#6b7280]">{step.desc}</p>
+                    <div className="pt-0.5">
+                      <h3 className="text-[15px] font-semibold text-[#111827]">{step.title}</h3>
+                      <p className="mt-1 text-[13px] text-[#6b7280]">{step.desc}</p>
                     </div>
                   </div>
                 </FadeIn>
@@ -919,10 +924,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 7. GRATIS VS PRO ============ */}
-      <section className="bg-white px-6 py-[60px] md:py-[100px]">
+      <section className="bg-white px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
-            <h2 className="text-center font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               Gratis. En serio.
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-center text-[#6b7280]">
@@ -931,7 +936,7 @@ export default function HomePage() {
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-2">
             <FadeIn delay={100}>
-              <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-8 transition-all duration-200 hover:shadow-lg">
+              <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:shadow-lg sm:p-8">
                 <div className="flex items-baseline justify-between">
                   <h3 className="text-lg font-semibold text-[#1a1a1a]">Gratis</h3>
                   <span className="text-2xl font-bold text-[#1a1a1a]">$0</span>
@@ -961,7 +966,7 @@ export default function HomePage() {
             </FadeIn>
             <FadeIn delay={200}>
               <div
-                className="relative h-full rounded-2xl border-2 border-[#059669] p-8 transition-all duration-200 hover:shadow-lg"
+                className="relative h-full rounded-2xl border-2 border-[#059669] p-5 transition-all duration-200 hover:shadow-lg sm:p-8"
                 style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.12)" }}
               >
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#059669] px-4 py-1 text-xs font-semibold text-white">
@@ -1000,10 +1005,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 8. CONFIANZA ============ */}
-      <section className="bg-[#fafafa] px-6 py-[60px] md:py-[100px]">
+      <section className="bg-[#fafafa] px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <h2 className="font-serif text-3xl font-bold text-[#111827] md:text-4xl">
+            <h2 className="font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               Solo datos. Sin conflictos de interés.
             </h2>
             <p className="mx-auto mt-6 max-w-xl text-[#6b7280]">
@@ -1017,11 +1022,11 @@ export default function HomePage() {
                 { icon: Database, text: "Datos públicos" },
                 { icon: Bot, text: "IA independiente" },
               ].map((item) => (
-                <div key={item.text} className="flex items-center gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-3 transition-all duration-200 hover:shadow-md">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ecfdf5]">
-                    <item.icon className="h-4 w-4 text-[#059669]" strokeWidth={1.5} />
+                <div key={item.text} className="flex items-center gap-2 rounded-2xl border border-[#e5e7eb] bg-white px-3 py-2.5 transition-all duration-200 hover:shadow-md sm:gap-3 sm:px-5 sm:py-3">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#ecfdf5] sm:h-8 sm:w-8">
+                    <item.icon className="h-3.5 w-3.5 text-[#059669] sm:h-4 sm:w-4" strokeWidth={1.5} />
                   </div>
-                  <span className="text-sm font-medium text-[#374151]">{item.text}</span>
+                  <span className="text-[12px] font-medium text-[#374151] sm:text-sm">{item.text}</span>
                 </div>
               ))}
             </div>
@@ -1035,15 +1040,15 @@ export default function HomePage() {
       </section>
 
       {/* ============ 9. CTA FINAL ============ */}
-      <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
+      <section className="px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <h2 className="font-serif text-3xl font-bold text-white md:text-5xl">
+            <h2 className="font-serif text-[28px] font-bold leading-tight text-white sm:text-3xl md:text-5xl">
               Antes de firmar, conoce los números reales.
             </h2>
             <div className="mt-10">
               <Link href="/analisis/nuevo">
-                <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/30 transition-all duration-200 hover:bg-[#10b981] hover:shadow-xl hover:shadow-[#059669]/40">
+                <Button size="lg" className="w-full gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/30 transition-all duration-200 hover:bg-[#10b981] hover:shadow-xl hover:shadow-[#059669]/40 sm:w-auto">
                   Empieza ahora — es gratis <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
@@ -1058,7 +1063,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ FOOTER ============ */}
-      <footer className="bg-[#111] px-6 py-10">
+      <footer className="bg-[#111] px-5 py-8 sm:px-6 sm:py-10">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <span className="font-serif text-lg font-bold text-white">InvertiScore</span>
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-[#6b7280]">
