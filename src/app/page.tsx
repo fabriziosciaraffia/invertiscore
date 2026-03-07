@@ -1,16 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Building2,
   ArrowRight,
   ShieldAlert,
   EyeOff,
@@ -20,615 +13,742 @@ import {
   BarChart3,
   Check,
   X,
-  TrendingUp,
-  Shield,
-  DollarSign,
-  MapPin,
-  Database,
   Menu,
   X as XIcon,
+  Sparkles,
+  ShieldCheck,
+  Eye,
+  Zap,
 } from "lucide-react";
 
-export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [aiExpanded, setAiExpanded] = useState(false);
+// ============================================================
+// Particle Canvas — lightweight dot-grid mesh for hero / CTA
+// ============================================================
+function ParticleCanvas({ className }: { className?: string }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    // Disable on mobile for performance
+    if (window.innerWidth < 768) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId: number;
+    const dpr = window.devicePixelRatio || 1;
+
+    const resize = () => {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const NUM = 60;
+    const MAX_DIST = 140;
+
+    interface Dot { x: number; y: number; vx: number; vy: number; }
+    const dots: Dot[] = [];
+    for (let i = 0; i < NUM; i++) {
+      dots.push({
+        x: Math.random() * canvas.width / dpr,
+        y: Math.random() * canvas.height / dpr,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+      });
+    }
+
+    const draw = () => {
+      const w = canvas.width / dpr;
+      const h = canvas.height / dpr;
+      ctx.clearRect(0, 0, w, h);
+
+      for (const d of dots) {
+        d.x += d.vx;
+        d.y += d.vy;
+        if (d.x < 0 || d.x > w) d.vx *= -1;
+        if (d.y < 0 || d.y > h) d.vy *= -1;
+      }
+
+      // Lines
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x;
+          const dy = dots[i].y - dots[j].y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < MAX_DIST) {
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.strokeStyle = `rgba(5,150,105,${0.12 * (1 - dist / MAX_DIST)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Dots
+      for (const d of dots) {
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255,255,255,0.35)";
+        ctx.fill();
+      }
+
+      animId = requestAnimationFrame(draw);
+    };
+    draw();
+
+    return () => {
+      cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className={className} />;
+}
+
+// ============================================================
+// Animated Score Circle for hero demo
+// ============================================================
+function AnimatedScore({ target }: { target: number }) {
+  const [value, setValue] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          let current = 0;
+          const step = () => {
+            current += 1;
+            if (current > target) { setValue(target); return; }
+            setValue(current);
+            requestAnimationFrame(step);
+          };
+          step();
+          obs.disconnect();
+        }
+      },
+      { threshold: 0.3 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [target]);
+
+  const color = value >= 80 ? "#059669" : value >= 65 ? "#3b82f6" : value >= 50 ? "#eab308" : value >= 30 ? "#f97316" : "#ef4444";
+  const circumference = 2 * Math.PI * 52;
+  const offset = circumference - (value / 100) * circumference;
 
   return (
-    <div className="snap-container bg-white text-[#1a1a1a]">
-      {/* Navbar */}
-      <nav className="fixed top-0 z-50 w-full border-b border-[#e5e5e5]/80 bg-white/80 shadow-sm backdrop-blur-md">
+    <div ref={ref} className="relative inline-flex h-32 w-32 items-center justify-center">
+      <svg className="absolute inset-0" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="6" />
+        <circle
+          cx="60" cy="60" r="52" fill="none"
+          stroke={color} strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          transform="rotate(-90 60 60)"
+          style={{ transition: "stroke-dashoffset 0.05s" }}
+        />
+      </svg>
+      <div className="text-center">
+        <div className="text-4xl font-bold text-white">{value}</div>
+        <div className="text-[10px] text-white/60">InvertiScore</div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Fade-in on scroll wrapper
+// ============================================================
+function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold: 0.15 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={className}
+      style={{
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0)" : "translateY(24px)",
+        transition: `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ============================================================
+// Main Page
+// ============================================================
+export default function HomePage() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  const handleScroll = useCallback(() => {
+    setScrolled(window.scrollY > 40);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
+
+  return (
+    <div className="bg-white text-[#1a1a1a]">
+      {/* ============ NAVBAR ============ */}
+      <nav
+        className={`fixed top-0 z-50 w-full transition-all duration-300 ${
+          scrolled
+            ? "border-b border-[#e5e5e5]/80 bg-white/95 shadow-sm backdrop-blur-md"
+            : "bg-transparent"
+        }`}
+      >
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-[#059669]" />
-            <span className="font-serif text-xl font-bold text-[#1a1a1a]">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke={scrolled ? "#059669" : "#fff"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            <span className={`font-serif text-xl font-bold transition-colors ${scrolled ? "text-[#1a1a1a]" : "text-white"}`}>
               InvertiScore
             </span>
           </Link>
-          {/* Desktop nav */}
+          {/* Desktop */}
           <div className="hidden items-center gap-3 sm:flex">
             <Link href="/pricing">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#6b7280] hover:text-[#1a1a1a]"
-              >
-                Planes
+              <Button variant="ghost" size="sm" className={`${scrolled ? "text-[#6b7280] hover:text-[#1a1a1a]" : "text-white/70 hover:text-white"}`}>
+                Pricing
               </Button>
             </Link>
             <Link href="/login">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-[#6b7280] hover:text-[#1a1a1a]"
-              >
-                Iniciar Sesi&oacute;n
+              <Button variant="ghost" size="sm" className={`${scrolled ? "text-[#6b7280] hover:text-[#1a1a1a]" : "text-white/70 hover:text-white"}`}>
+                Iniciar Sesión
               </Button>
             </Link>
             <Link href="/register">
-              <Button
-                size="sm"
-                className="rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]"
-              >
+              <Button size="sm" className="rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]">
                 Registrarse
               </Button>
             </Link>
           </div>
           {/* Mobile hamburger */}
-          <button
-            className="p-2 text-[#6b7280] sm:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Menu"
-          >
-            {mobileMenuOpen ? (
-              <XIcon className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+          <button className={`p-2 sm:hidden ${scrolled ? "text-[#6b7280]" : "text-white/80"}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu">
+            {mobileMenuOpen ? <XIcon className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
-        {/* Mobile menu dropdown */}
         {mobileMenuOpen && (
-          <div className="border-t border-[#e5e5e5] bg-white px-4 py-4 sm:hidden">
+          <div className="border-t border-[#e5e5e5]/50 bg-white px-4 py-4 sm:hidden">
             <div className="flex flex-col gap-3">
-              <Link
-                href="/pricing"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-[#6b7280]"
-                >
-                  Planes
-                </Button>
+              <Link href="/pricing" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start text-[#6b7280]">Pricing</Button>
               </Link>
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-[#6b7280]"
-                >
-                  Iniciar Sesi&oacute;n
-                </Button>
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Button variant="ghost" className="w-full justify-start text-[#6b7280]">Iniciar Sesión</Button>
               </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <Button className="w-full rounded-lg bg-[#059669] text-white hover:bg-[#047857]">
-                  Registrarse
-                </Button>
+              <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="w-full rounded-lg bg-[#059669] text-white hover:bg-[#047857]">Registrarse</Button>
               </Link>
             </div>
           </div>
         )}
       </nav>
 
-      {/* Hero */}
-      <section className="snap-section relative bg-gradient-to-b from-white via-white to-[#ECFDF5]/60 pt-16">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(5,150,105,0.06),transparent_60%)]" />
-        <div className="container relative mx-auto px-4 py-12 text-center md:py-16">
-          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-[#059669]/20 bg-[#059669]/5 px-4 py-1.5 text-sm text-[#059669]">
-            <Brain className="h-4 w-4" />
-            An&aacute;lisis potenciado por IA
-          </div>
-          <h1 className="mx-auto max-w-4xl text-balance font-serif text-4xl font-bold tracking-tight text-[#1a1a1a] md:text-6xl lg:text-7xl">
-            No vendemos deptos.
-            <br />
-            <span className="text-[#059669]">
-              Te decimos si deber&iacute;as comprarlos.
-            </span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-lg text-[#6b7280] md:text-xl">
-            InvertiScore analiza propiedades en Chile con inteligencia artificial
-            y te entrega un score objetivo de inversi&oacute;n. Sin sesgos. Sin conflictos
-            de inter&eacute;s. Solo datos.
-          </p>
-          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Link href="/register">
-              <Button
-                size="lg"
-                className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/25 hover:bg-[#047857]"
-              >
-                Analiza gratis tu pr&oacute;xima inversi&oacute;n
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-          <p className="mt-4 text-sm text-[#6b7280]">
-            Sin tarjeta de cr&eacute;dito. Primer an&aacute;lisis gratis.
-          </p>
-        </div>
-      </section>
-
-      {/* El Problema */}
-      <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-white">
-        <div className="container mx-auto px-4 py-12 md:py-16">
-          <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
-              El problema
-            </p>
-            <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
-              Tu corredor no es tu asesor financiero
-            </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-[#6b7280]">
-              Los corredores ganan comisi&oacute;n cuando vendes o compras. Su incentivo
-              es cerrar la operaci&oacute;n, no proteger tu inversi&oacute;n.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                  <ShieldAlert className="h-5 w-5 text-red-500" />
-                </div>
-                <CardTitle className="text-lg text-[#1a1a1a]">
-                  Sesgo de venta
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[#6b7280]">
-                  Un corredor gana su comisi&oacute;n solo si se cierra la venta.
-                  Nunca te va a decir &quot;no compres&quot;, aunque sea la
-                  decisi&oacute;n correcta.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                  <Scale className="h-5 w-5 text-red-500" />
-                </div>
-                <CardTitle className="text-lg text-[#1a1a1a]">
-                  Sin accountability
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[#6b7280]">
-                  Si la inversi&oacute;n sale mal, el corredor ya cobr&oacute; su comisi&oacute;n.
-                  No tiene ninguna responsabilidad sobre el rendimiento de tu
-                  inversi&oacute;n.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border-[#e5e5e5] bg-white shadow-md transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
-                  <EyeOff className="h-5 w-5 text-red-500" />
-                </div>
-                <CardTitle className="text-lg text-[#1a1a1a]">
-                  Asimetr&iacute;a de informaci&oacute;n
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-[#6b7280]">
-                  El corredor conoce el mercado mejor que t&uacute; y usa esa ventaja
-                  para presionarte. T&uacute; necesitas tus propios datos para negociar
-                  en igualdad de condiciones.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* C&oacute;mo Funciona */}
-      <section className="snap-section bg-gradient-to-b from-white to-[#F5F5F4]/50">
-        <div className="container mx-auto px-4 py-12 md:py-16">
-          <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
-              C&oacute;mo funciona
-            </p>
-            <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
-              De datos a decisi&oacute;n en 30 segundos
-            </h2>
-          </div>
-          <div className="mt-10 grid gap-8 md:grid-cols-3">
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
-                <ClipboardPaste className="h-6 w-6" />
+      {/* ============ S1: HERO ============ */}
+      <section className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1a4731] to-[#0f172a]">
+        {/* Animated mesh gradient overlay */}
+        <div className="absolute inset-0 opacity-40" style={{ background: "radial-gradient(ellipse at 30% 20%, rgba(5,150,105,0.4) 0%, transparent 50%), radial-gradient(ellipse at 70% 80%, rgba(5,150,105,0.25) 0%, transparent 50%)" }} />
+        <ParticleCanvas className="absolute inset-0 h-full w-full" />
+        <div className="container relative mx-auto flex min-h-screen flex-col items-center justify-center px-4 pt-16 lg:flex-row lg:gap-16 lg:pt-0">
+          {/* Text */}
+          <div className="flex-1 text-center lg:text-left">
+            <FadeIn>
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-emerald-300 backdrop-blur-sm">
+                <Sparkles className="h-4 w-4" />
+                Análisis potenciado por IA
               </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
-                Paso 1
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
-                Ingresa los datos
-              </h3>
-              <p className="text-sm text-[#6b7280]">
-                Pega el link de la publicaci&oacute;n o ingresa manualmente precio,
-                arriendo, ubicaci&oacute;n y caracter&iacute;sticas.
+            </FadeIn>
+            <FadeIn delay={100}>
+              <h1 className="max-w-2xl text-balance font-serif text-4xl font-bold leading-tight tracking-tight text-white md:text-5xl lg:text-6xl">
+                No vendemos deptos.
+                <br />
+                <span className="text-emerald-400">Te decimos si deberías comprarlos.</span>
+              </h1>
+            </FadeIn>
+            <FadeIn delay={200}>
+              <p className="mx-auto mt-6 max-w-xl text-balance text-lg text-white/60 lg:mx-0">
+                InvertiScore analiza propiedades en Chile con inteligencia artificial. Score de inversión objetivo, sin sesgos, sin conflictos de interés.
               </p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
-                <Brain className="h-6 w-6" />
-              </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
-                Paso 2
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
-                IA analiza todo
-              </h3>
-              <p className="text-sm text-[#6b7280]">
-                Nuestra inteligencia artificial eval&uacute;a rentabilidad, plusval&iacute;a,
-                riesgo y ubicaci&oacute;n contra datos reales del mercado.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#059669]/10 text-[#059669] shadow-sm">
-                <BarChart3 className="h-6 w-6" />
-              </div>
-              <div className="mb-1 text-xs font-bold uppercase tracking-wider text-[#059669]">
-                Paso 3
-              </div>
-              <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">
-                Obt&eacute;n tu InvertiScore
-              </h3>
-              <p className="text-sm text-[#6b7280]">
-                Recibe un score de 1 a 100 con desglose detallado. Toma
-                decisiones de inversi&oacute;n con confianza.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing */}
-      <section className="snap-section bg-gradient-to-b from-[#F5F5F4] to-[#ECFDF5]/30">
-        <div className="container mx-auto px-4 py-12 md:py-16">
-          <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#059669]">
-              Planes
-            </p>
-            <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
-              Elige tu nivel de an&aacute;lisis
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[#6b7280]">
-              Desde un score r&aacute;pido hasta un sistema completo de gesti&oacute;n de
-              portafolio.
-            </p>
-          </div>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {/* Gratis */}
-            <Card className="border-[#e5e5e5] bg-white shadow-md">
-              <CardHeader>
-                <CardTitle className="text-lg text-[#1a1a1a]">Gratis</CardTitle>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-[#1a1a1a]">$0</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">InvertiScore (1-100)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">3 m&eacute;tricas b&aacute;sicas</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">1 an&aacute;lisis por mes</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-[#9ca3af]">
-                    <X className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>Reporte completo con IA</span>
-                  </li>
-                  <li className="flex items-start gap-2 text-[#9ca3af]">
-                    <X className="mt-0.5 h-4 w-4 shrink-0" />
-                    <span>Flujo de caja proyectado</span>
-                  </li>
-                </ul>
-                <Link href="/register" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-lg border-[#d1d5db] text-[#1a1a1a] hover:bg-[#F5F5F4]"
-                  >
-                    Comenzar gratis
+            </FadeIn>
+            <FadeIn delay={300}>
+              <div className="mt-10">
+                <Link href="/register">
+                  <Button size="lg" className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/30 hover:bg-[#047857]">
+                    Analiza gratis tu próxima inversión <ArrowRight className="h-4 w-4" />
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
-
-            {/* Premium */}
-            <Card className="relative border-[#059669]/30 bg-white shadow-lg shadow-[#059669]/10">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#059669] px-3 py-0.5 text-xs font-semibold text-white shadow-md">
-                Popular
+                <p className="mt-3 text-sm text-white/40">Sin tarjeta de crédito. Análisis ilimitados.</p>
               </div>
-              <CardHeader>
-                <CardTitle className="text-lg text-[#1a1a1a]">Premium</CardTitle>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-[#1a1a1a]">$4.990</span>
-                  <span className="text-sm text-[#6b7280]">
-                    {" "}/ reporte
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Todo lo del plan Gratis</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Reporte completo con IA</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Pros y contras detallados</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Flujo de caja proyectado a 10 a&ntilde;os</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Comparaci&oacute;n con mercado local</span>
-                  </li>
-                </ul>
-                <Link href="/register" className="block">
-                  <Button className="w-full rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]">
-                    Obtener reporte
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            {/* Inversionista */}
-            <Card className="border-[#e5e5e5] bg-white shadow-md">
-              <CardHeader>
-                <CardTitle className="text-lg text-[#1a1a1a]">
-                  Plan Inversionista
-                </CardTitle>
-                <div className="mt-2">
-                  <span className="text-3xl font-bold text-[#1a1a1a]">$14.990</span>
-                  <span className="text-sm text-[#6b7280]"> / mes</span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <ul className="space-y-3 text-sm">
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Todo lo del plan Premium</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Reportes ilimitados</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Alertas de oportunidades</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Seguimiento de portafolio</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
-                    <span className="text-[#1a1a1a]">Soporte prioritario</span>
-                  </li>
-                </ul>
-                <Link href="/register" className="block">
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-lg border-[#d1d5db] text-[#1a1a1a] hover:bg-[#F5F5F4]"
-                  >
-                    Suscribirme
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
+            </FadeIn>
           </div>
-        </div>
-      </section>
-
-      {/* Ejemplo de Reporte - Dark contrast section */}
-      <section className="snap-section bg-[#1E293B]">
-        <div className="container mx-auto px-4 py-12 md:py-16">
-          <div className="mx-auto mb-4 text-center">
-            <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-[#34D399]">
-              Ejemplo
-            </p>
-            <h2 className="font-serif text-3xl font-bold text-white md:text-4xl">
-              As&iacute; se ve un InvertiScore
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl text-[#94A3B8]">
-              Reporte real generado para un departamento en &Ntilde;u&ntilde;oa, Santiago.
-            </p>
-          </div>
-          <div className="mx-auto mt-10 max-w-4xl">
-            <Card className="border-[#334155] bg-[#0F172A] shadow-2xl">
-              <CardContent className="p-6 md:p-8">
-                {/* Header */}
-                <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
-                  <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-full border-4 border-[#059669] bg-[#059669]/10">
-                    <div className="text-center">
-                      <div className="text-4xl font-bold text-[#34D399]">72</div>
-                      <div className="text-[10px] text-[#94A3B8]">
-                        InvertiScore
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-white">
-                      Depto 2D1B &Ntilde;u&ntilde;oa
-                    </h3>
-                    <p className="text-sm text-[#94A3B8]">
-                      &Ntilde;u&ntilde;oa, Santiago &middot; Departamento &middot; 52 m&sup2; &middot; 8 a&ntilde;os
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                      <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[#CBD5E1]">
-                        Precio: 3.200 UF
-                      </span>
-                      <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[#CBD5E1]">
-                        Arriendo: $420.000/mes
-                      </span>
-                      <span className="rounded bg-[#059669]/15 px-2 py-0.5 font-medium text-[#34D399]">
-                        Yield: 5.2%
-                      </span>
-                    </div>
-                  </div>
+          {/* Hero Demo Card */}
+          <FadeIn delay={400} className="mt-12 flex-shrink-0 lg:mt-0">
+            <div className="w-[340px] rounded-2xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur-md sm:w-[380px]">
+              <div className="flex items-center gap-4">
+                <AnimatedScore target={72} />
+                <div>
+                  <div className="text-sm font-semibold text-emerald-400">Inversión Buena</div>
+                  <div className="text-xs text-white/50">Depto 2D1B Ñuñoa</div>
+                  <div className="mt-1 text-xs text-white/40">3.200 UF · $420.000/mes</div>
                 </div>
-                {/* Metrics - 2x2 on mobile, 4 cols on desktop */}
-                <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
-                      <DollarSign className="h-3.5 w-3.5 text-[#34D399]" />
-                      Rentabilidad
-                    </div>
-                    <div className="text-xl font-bold text-white">68</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
-                      <div
-                        className="h-full rounded-full bg-[#059669]"
-                        style={{ width: "68%" }}
-                      />
-                    </div>
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                {[
+                  { label: "Yield Bruto", val: "5.2%" },
+                  { label: "Flujo Mensual", val: "-$48K", color: "text-red-400" },
+                  { label: "Precio/m²", val: "61.5 UF" },
+                ].map((m) => (
+                  <div key={m.label} className="rounded-lg border border-white/10 bg-white/5 p-2.5 text-center">
+                    <div className="text-[10px] text-white/40">{m.label}</div>
+                    <div className={`mt-0.5 text-sm font-bold ${m.color || "text-white"}`}>{m.val}</div>
                   </div>
-                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
-                      <TrendingUp className="h-3.5 w-3.5 text-[#34D399]" />
-                      Plusval&iacute;a
-                    </div>
-                    <div className="text-xl font-bold text-white">78</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
-                      <div
-                        className="h-full rounded-full bg-[#059669]"
-                        style={{ width: "78%" }}
-                      />
-                    </div>
+                ))}
+              </div>
+              {/* Mini radar */}
+              <div className="mt-4 flex items-center justify-between rounded-lg border border-white/10 bg-white/5 px-4 py-2.5">
+                {[
+                  { d: "Rent.", v: 68 },
+                  { d: "Flujo", v: 55 },
+                  { d: "Plusv.", v: 78 },
+                  { d: "Riesgo", v: 65 },
+                  { d: "Ubic.", v: 80 },
+                ].map((r) => (
+                  <div key={r.d} className="text-center">
+                    <div className="text-[9px] text-white/40">{r.d}</div>
+                    <div className="mt-0.5 text-xs font-bold text-emerald-400">{r.v}</div>
                   </div>
-                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
-                      <Shield className="h-3.5 w-3.5 text-[#34D399]" />
-                      Bajo Riesgo
-                    </div>
-                    <div className="text-xl font-bold text-white">65</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
-                      <div
-                        className="h-full rounded-full bg-[#059669]"
-                        style={{ width: "65%" }}
-                      />
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
-                    <div className="mb-1 flex items-center gap-2 text-xs text-[#94A3B8]">
-                      <MapPin className="h-3.5 w-3.5 text-[#34D399]" />
-                      Ubicaci&oacute;n
-                    </div>
-                    <div className="text-xl font-bold text-white">80</div>
-                    <div className="mt-1.5 h-1.5 rounded-full bg-[#334155]">
-                      <div
-                        className="h-full rounded-full bg-[#059669]"
-                        style={{ width: "80%" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-                {/* AI Summary with truncation on mobile */}
-                <div className="rounded-lg border border-[#334155] bg-[#1E293B] p-4">
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#34D399]">
-                    An&aacute;lisis IA
-                  </p>
-                  <div className="relative">
-                    <p
-                      className={`text-sm leading-relaxed text-[#94A3B8] ${
-                        !aiExpanded ? "line-clamp-2 sm:line-clamp-none" : ""
-                      }`}
-                    >
-                      Propiedad con yield bruto de 5.2%, por sobre el promedio de
-                      &Ntilde;u&ntilde;oa (4.1%). El CAP rate neto estimado de 3.8% es aceptable
-                      considerando la antig&uuml;edad del edificio. La zona presenta
-                      demanda estable de arriendo por cercan&iacute;a a metro y servicios.
-                      Se recomienda verificar gastos comunes hist&oacute;ricos y estado de
-                      la administraci&oacute;n antes de ofertar.
-                    </p>
-                    {!aiExpanded && (
-                      <button
-                        onClick={() => setAiExpanded(true)}
-                        className="mt-1 text-sm font-medium text-[#34D399] hover:underline sm:hidden"
-                      >
-                        Ver m&aacute;s...
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Social Proof + CTA Final */}
-      <section className="snap-section bg-gradient-to-b from-white to-[#ECFDF5]/40">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="mb-6 flex items-center justify-center gap-2 text-[#6b7280]">
-              <Database className="h-4 w-4" />
-              <p className="text-sm font-medium">
-                Basado en datos p&uacute;blicos y verificables
-              </p>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-sm font-medium text-[#9ca3af]">
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ S2: SOCIAL PROOF ============ */}
+      <section className="border-b border-[#f0f0f0] bg-white py-8">
+        <div className="container mx-auto px-4 text-center">
+          <FadeIn>
+            <p className="mb-4 text-sm text-[#9ca3af]">Basado en +3.000 publicaciones activas en Santiago</p>
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-sm font-medium text-[#c4c4c4]">
               <span>Portal Inmobiliario</span>
-              <span className="text-[#d1d5db]">|</span>
+              <span>·</span>
               <span>TocToc</span>
-              <span className="text-[#d1d5db]">|</span>
+              <span>·</span>
               <span>Banco Central</span>
-              <span className="text-[#d1d5db]">|</span>
+              <span>·</span>
               <span>SII</span>
             </div>
-          </div>
+          </FadeIn>
         </div>
-
-        <div className="container mx-auto px-4 pb-12 pt-6 text-center">
-          <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
-            Obt&eacute;n tu InvertiScore gratis
-          </h2>
-          <p className="mx-auto mt-4 max-w-lg text-[#6b7280]">
-            Deja de confiar en corredores. Empieza a tomar decisiones de
-            inversi&oacute;n basadas en datos.
-          </p>
-          <div className="mt-8">
-            <Link href="/register">
-              <Button
-                size="lg"
-                className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/25 hover:bg-[#047857]"
-              >
-                Analiza gratis tu pr&oacute;xima inversi&oacute;n
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <footer className="border-t border-[#e5e5e5] py-8 text-center text-sm text-[#6b7280]">
-          <p>&copy; 2026 InvertiScore. Todos los derechos reservados.</p>
-        </footer>
       </section>
+
+      {/* ============ S3: EL PROBLEMA ============ */}
+      <section className="bg-[#fafafa] py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                Tu corredor no es tu asesor financiero
+              </h2>
+              <p className="mt-4 text-[#6b7280]">
+                Su incentivo es cerrar la venta, no proteger tu inversión.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="mx-auto mt-14 grid max-w-4xl gap-6 md:grid-cols-3">
+            {[
+              { icon: ShieldAlert, title: "Sesgo de venta", desc: "Nunca te va a decir \"no compres\", aunque sea la decisión correcta." },
+              { icon: Scale, title: "Sin accountability", desc: "Si la inversión sale mal, el corredor ya cobró su comisión." },
+              { icon: EyeOff, title: "Asimetría de información", desc: "Tú necesitas tus propios datos para negociar en igualdad." },
+            ].map((c, i) => (
+              <FadeIn key={c.title} delay={i * 100}>
+                <div className="rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+                  <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg bg-red-50">
+                    <c.icon className="h-5 w-5 text-red-500" />
+                  </div>
+                  <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">{c.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#6b7280]">{c.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ S4: DEMO DEL PRODUCTO ============ */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                Así se ve un InvertiScore
+              </h2>
+              <p className="mt-4 text-[#6b7280]">Análisis real de un departamento en Ñuñoa, Santiago</p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={150}>
+            <div className="mx-auto mt-12 max-w-4xl overflow-hidden rounded-2xl border border-[#e5e5e5] bg-[#fafafa] shadow-lg">
+              {/* Score header */}
+              <div className="flex flex-col items-center gap-6 border-b border-[#e5e5e5] bg-white p-8 md:flex-row md:items-start">
+                <div className="relative flex h-24 w-24 shrink-0 items-center justify-center rounded-full border-[3px] border-[#059669]">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-[#059669]">72</div>
+                    <div className="text-[9px] text-[#9ca3af]">SCORE</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-blue-500">Inversión Buena</div>
+                  <h3 className="text-xl font-bold text-[#1a1a1a]">Depto 2D1B Ñuñoa</h3>
+                  <p className="text-sm text-[#9ca3af]">Ñuñoa, Santiago · 52 m² · 8 años · Departamento</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span className="rounded-md bg-[#f3f4f6] px-2 py-0.5 text-xs text-[#6b7280]">3.200 UF</span>
+                    <span className="rounded-md bg-[#f3f4f6] px-2 py-0.5 text-xs text-[#6b7280]">$420.000/mes</span>
+                    <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-medium text-[#059669]">Yield 5.2%</span>
+                  </div>
+                </div>
+              </div>
+              {/* 8 Metrics */}
+              <div className="grid grid-cols-2 gap-px bg-[#e5e5e5] sm:grid-cols-4">
+                {[
+                  { l: "Yield Bruto", v: "5.2%" },
+                  { l: "Yield Neto", v: "3.1%" },
+                  { l: "CAP Rate", v: "3.8%" },
+                  { l: "Cash-on-Cash", v: "4.2%" },
+                  { l: "ROI Total", v: "2.3x" },
+                  { l: "TIR", v: "12.4%" },
+                  { l: "Payback Pie", v: "186 meses" },
+                  { l: "UF/m²", v: "61.5" },
+                ].map((m) => (
+                  <div key={m.l} className="bg-white p-4 text-center">
+                    <div className="text-[10px] text-[#9ca3af]">{m.l}</div>
+                    <div className="mt-0.5 text-lg font-bold text-[#1a1a1a]">{m.v}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Radar + Cashflow preview */}
+              <div className="grid gap-px bg-[#e5e5e5] md:grid-cols-2">
+                {/* Radar bars */}
+                <div className="bg-white p-6">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Dimensiones del Score</div>
+                  {[
+                    { d: "Rentabilidad", v: 68, w: 30 },
+                    { d: "Flujo de Caja", v: 55, w: 25 },
+                    { d: "Plusvalía", v: 78, w: 20 },
+                    { d: "Bajo Riesgo", v: 65, w: 15 },
+                    { d: "Ubicación", v: 80, w: 10 },
+                  ].map((r) => (
+                    <div key={r.d} className="mb-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[#6b7280]">{r.d} ({r.w}%)</span>
+                        <span className="font-medium text-[#1a1a1a]">{r.v}</span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-[#f3f4f6]">
+                        <div className="h-full rounded-full bg-[#059669]" style={{ width: `${r.v}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Cashflow preview */}
+                <div className="bg-white p-6">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo de caja — 12 meses</div>
+                  <div className="flex items-end gap-1.5" style={{ height: 100 }}>
+                    {[0, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85, 85].map((v, i) => (
+                      <div key={i} className="flex flex-1 flex-col items-center gap-0.5">
+                        <div className="w-full rounded-sm bg-[#059669]/80" style={{ height: `${Math.max(v * 0.7, 2)}px` }} />
+                        <div className="w-full rounded-sm bg-red-400/80" style={{ height: `${Math.max((100 - v) * 0.7, 2)}px` }} />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-[#9ca3af]">
+                    <span>M1</span><span>M6</span><span>M12</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-4 text-[10px]">
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-[#059669]/80" /> Ingreso</span>
+                    <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-red-400/80" /> Egresos</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+          <FadeIn delay={300}>
+            <div className="mt-10 text-center">
+              <Link href="/register">
+                <Button size="lg" className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/25 hover:bg-[#047857]">
+                  Pruébalo gratis con tu próxima inversión <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ S5: CÓMO FUNCIONA ============ */}
+      <section className="bg-[#fafafa] py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                De datos a decisión en 30 segundos
+              </h2>
+            </div>
+          </FadeIn>
+          <div className="mx-auto mt-14 grid max-w-4xl gap-8 md:grid-cols-3">
+            {[
+              { icon: ClipboardPaste, step: "01", title: "Ingresa los datos", desc: "Pega el link o ingresa manualmente. La IA sugiere arriendo, gastos y contribuciones." },
+              { icon: Brain, step: "02", title: "IA analiza todo", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación contra datos reales del mercado." },
+              { icon: BarChart3, step: "03", title: "Obtén tu InvertiScore", desc: "Score de 1-100 con análisis detallado, proyecciones y escenarios de salida." },
+            ].map((s, i) => (
+              <FadeIn key={s.step} delay={i * 120}>
+                <div className="relative text-center">
+                  {i < 2 && (
+                    <div className="absolute right-0 top-8 hidden h-px w-1/3 -translate-x-0 bg-[#e5e5e5] md:block" style={{ right: "-16.5%" }} />
+                  )}
+                  <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#059669]/10">
+                    <s.icon className="h-6 w-6 text-[#059669]" />
+                  </div>
+                  <div className="mb-1 text-xs font-bold text-[#059669]">PASO {s.step}</div>
+                  <h3 className="mb-2 text-lg font-semibold text-[#1a1a1a]">{s.title}</h3>
+                  <p className="text-sm leading-relaxed text-[#6b7280]">{s.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ S6: QUÉ INCLUYE ============ */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                Todo lo que necesitas para decidir
+              </h2>
+            </div>
+          </FadeIn>
+          <div className="mx-auto mt-14 grid max-w-3xl gap-8 md:grid-cols-2">
+            <FadeIn>
+              <div className="rounded-xl border border-[#e5e5e5] bg-white p-6">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#f3f4f6] px-3 py-1 text-xs font-semibold text-[#6b7280]">GRATIS</div>
+                <ul className="space-y-3 text-sm">
+                  {[
+                    "InvertiScore (1-100) + clasificación",
+                    "Radar chart 5 dimensiones",
+                    "3 métricas principales",
+                    "8 métricas de inversión completas",
+                    "Análisis de sensibilidad interactivo",
+                    "Puntos críticos (break-even, precio máximo)",
+                    "Comparación con zona + mapa",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
+                      <span className="text-[#374151]">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FadeIn>
+            <FadeIn delay={100}>
+              <div className="rounded-xl border-2 border-[#059669]/30 bg-emerald-50/30 p-6">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#059669] px-3 py-1 text-xs font-semibold text-white">PRO — $4.990</div>
+                <p className="mb-4 text-xs text-[#6b7280]">Todo lo gratis, más:</p>
+                <ul className="space-y-3 text-sm">
+                  {[
+                    "Cascada de costos mensuales",
+                    "Análisis detallado IA (pros, contras, veredicto)",
+                    "Flujo de caja dinámico (1-20 años)",
+                    "Proyección de patrimonio neto",
+                    "Escenario de salida (venta + refinanciamiento)",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2.5">
+                      <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" />
+                      <span className="text-[#374151]">{f}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ S7: PRICING ============ */}
+      <section className="bg-[#fafafa] py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                Elige tu nivel de análisis
+              </h2>
+              <p className="mt-4 text-[#6b7280]">Desde un score rápido hasta un sistema completo de gestión de portafolio.</p>
+            </div>
+          </FadeIn>
+          <div className="mx-auto mt-14 grid max-w-5xl gap-6 md:grid-cols-3">
+            {/* Gratis */}
+            <FadeIn>
+              <div className="flex h-full flex-col rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-sm">
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a]">Gratis</h3>
+                  <div className="mt-1"><span className="text-3xl font-bold text-[#1a1a1a]">$0</span></div>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm">
+                  {["InvertiScore + radar", "8 métricas de inversión", "Sensibilidad interactiva", "Comparación con zona"].map((f) => (
+                    <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><span className="text-[#374151]">{f}</span></li>
+                  ))}
+                  {["Flujo de caja proyectado", "Análisis detallado IA"].map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-[#c4c4c4]"><X className="mt-0.5 h-4 w-4 shrink-0" /><span>{f}</span></li>
+                  ))}
+                </ul>
+                <Link href="/register" className="block">
+                  <Button variant="outline" className="w-full rounded-lg border-[#d1d5db] text-[#1a1a1a] hover:bg-[#f3f4f6]">Comenzar gratis</Button>
+                </Link>
+              </div>
+            </FadeIn>
+            {/* Pro */}
+            <FadeIn delay={100}>
+              <div className="relative flex h-full flex-col rounded-xl border-2 border-[#059669]/40 bg-white p-6 shadow-lg shadow-[#059669]/5">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#059669] px-3 py-0.5 text-xs font-semibold text-white">Popular</div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a]">Informe Pro</h3>
+                  <div className="mt-1"><span className="text-3xl font-bold text-[#1a1a1a]">$4.990</span><span className="text-sm text-[#6b7280]"> / análisis</span></div>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm">
+                  {["Todo lo del plan gratis", "Cascada de costos", "Análisis detallado IA", "Flujo dinámico 1-20 años", "Proyección de patrimonio", "Escenario de salida"].map((f) => (
+                    <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><span className="text-[#374151]">{f}</span></li>
+                  ))}
+                </ul>
+                <Link href="/register" className="block">
+                  <Button className="w-full rounded-lg bg-[#059669] text-white shadow-md shadow-[#059669]/25 hover:bg-[#047857]">Obtener informe</Button>
+                </Link>
+              </div>
+            </FadeIn>
+            {/* Monitor */}
+            <FadeIn delay={200}>
+              <div className="relative flex h-full flex-col rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-sm">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#6b7280] px-3 py-0.5 text-xs font-semibold text-white">Próximamente</div>
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold text-[#1a1a1a]">Plan Monitor</h3>
+                  <div className="mt-1"><span className="text-3xl font-bold text-[#1a1a1a]">$7.990</span><span className="text-sm text-[#6b7280]"> / mes</span></div>
+                </div>
+                <ul className="mb-6 flex-1 space-y-2.5 text-sm">
+                  {["Todo lo del Informe Pro", "Informes ilimitados", "Monitoreo de portafolio", "Alertas de oportunidades", "Soporte prioritario"].map((f) => (
+                    <li key={f} className="flex items-start gap-2"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#059669]" /><span className="text-[#374151]">{f}</span></li>
+                  ))}
+                </ul>
+                <Button variant="outline" className="w-full rounded-lg border-[#d1d5db] text-[#9ca3af]" disabled>Próximamente</Button>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ S8: POSICIONAMIENTO ============ */}
+      <section className="bg-white py-20 md:py-28">
+        <div className="container mx-auto px-4">
+          <FadeIn>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="font-serif text-3xl font-bold text-[#1a1a1a] md:text-4xl">
+                Solo datos. Sin conflictos de interés.
+              </h2>
+              <p className="mt-4 text-[#6b7280]">
+                InvertiScore no vende propiedades, no cobra comisiones de venta, y no trabaja para ninguna inmobiliaria. Nuestro único incentivo es que tomes la mejor decisión.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="mx-auto mt-14 grid max-w-3xl gap-8 md:grid-cols-3">
+            {[
+              { icon: ShieldCheck, title: "Sin comisiones de venta", desc: "No ganamos un peso si compras o no compras." },
+              { icon: Eye, title: "Datos públicos y verificables", desc: "Usamos fuentes abiertas que tú mismo puedes consultar." },
+              { icon: Zap, title: "IA independiente", desc: "El algoritmo no tiene sesgo hacia ninguna propiedad ni zona." },
+            ].map((p, i) => (
+              <FadeIn key={p.title} delay={i * 100}>
+                <div className="text-center">
+                  <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[#059669]/10">
+                    <p.icon className="h-5 w-5 text-[#059669]" />
+                  </div>
+                  <h3 className="mb-2 font-semibold text-[#1a1a1a]">{p.title}</h3>
+                  <p className="text-sm text-[#6b7280]">{p.desc}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ============ S9: CTA FINAL ============ */}
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1a4731] to-[#0f172a] py-24 md:py-32">
+        <div className="absolute inset-0 opacity-30" style={{ background: "radial-gradient(ellipse at 50% 50%, rgba(5,150,105,0.35) 0%, transparent 60%)" }} />
+        <ParticleCanvas className="absolute inset-0 h-full w-full" />
+        <div className="container relative mx-auto px-4 text-center">
+          <FadeIn>
+            <h2 className="font-serif text-3xl font-bold text-white md:text-5xl">
+              Obtén tu InvertiScore gratis
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-white/60">
+              Deja de confiar en corredores. Empieza a tomar decisiones basadas en datos.
+            </p>
+            <div className="mt-10">
+              <Link href="/register">
+                <Button size="lg" className="gap-2 rounded-lg bg-[#059669] text-base text-white shadow-lg shadow-[#059669]/30 hover:bg-[#047857]">
+                  Analiza gratis tu próxima inversión <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============ FOOTER ============ */}
+      <footer className="bg-[#0f172a] py-12 text-center">
+        <div className="container mx-auto px-4">
+          <div className="mb-6 flex items-center justify-center gap-2">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="#059669" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+            <span className="font-serif text-lg font-bold text-white">InvertiScore</span>
+          </div>
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-6 text-sm">
+            <Link href="/" className="text-white/50 transition-colors hover:text-white">Inicio</Link>
+            <Link href="/pricing" className="text-white/50 transition-colors hover:text-white">Pricing</Link>
+            <Link href="/dashboard" className="text-white/50 transition-colors hover:text-white">Dashboard</Link>
+            <Link href="/login" className="text-white/50 transition-colors hover:text-white">Iniciar Sesión</Link>
+          </div>
+          <p className="mb-2 text-xs text-white/30">&copy; 2026 InvertiScore. Todos los derechos reservados.</p>
+          <p className="text-xs text-white/20">Datos de Portal Inmobiliario, TocToc, Banco Central, SII</p>
+        </div>
+      </footer>
     </div>
   );
 }
