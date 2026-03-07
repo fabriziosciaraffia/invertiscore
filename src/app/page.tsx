@@ -9,12 +9,7 @@ import {
   Check,
   Menu,
   X as XIcon,
-  Target,
-  DollarSign,
-  TrendingUp,
   LogOut,
-  Activity,
-  BarChart3,
   ShieldCheck,
   Database,
   Bot,
@@ -22,6 +17,15 @@ import {
   X,
   ChevronDown,
   LayoutDashboard,
+  Award,
+  TrendingDown,
+  LineChart,
+  ArrowRightLeft,
+  SlidersHorizontal,
+  MapPin,
+  Landmark,
+  Scale,
+  Building2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -116,7 +120,7 @@ function TabComparacion() {
       <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
         {[
           {
-            score: 45, color: "#f97316", label: "Inversion Debil",
+            score: 45, color: "#f59e0b", label: "Inversion Debil",
             title: "Depto 1D1B · Santiago Centro",
             info: "UF 2.100 · 32m2 · $320.000/mes",
             metrics: [
@@ -126,7 +130,7 @@ function TabComparacion() {
             ],
             tag: "Oversupply en la zona, flujo muy negativo",
             tagIcon: "warning",
-            borderColor: "border-orange-300",
+            borderColor: "border-[#f59e0b]/40",
           },
           {
             score: 58, color: "#eab308", label: "Inversion Regular",
@@ -139,7 +143,7 @@ function TabComparacion() {
             ],
             tag: "Flujo negativo pero plusvalia alta compensa a largo plazo",
             tagIcon: "chart",
-            borderColor: "border-[#e5e7eb]",
+            borderColor: "border-[#eab308]/40",
           },
           {
             score: 78, color: "#059669", label: "Inversion Buena",
@@ -561,7 +565,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h1 className="font-serif text-[28px] font-bold leading-tight tracking-tight text-[#1a1a1a] sm:text-4xl md:text-6xl md:leading-[1.1]">
-              La mayoria de los departamentos de inversion en Santiago tienen flujo de caja negativo.
+              La mayoria de los deptos de inversion en Santiago pierden plata cada mes.
             </h1>
           </FadeIn>
           <FadeIn delay={100}>
@@ -705,6 +709,27 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ============ SOCIAL PROOF ============ */}
+      <section className="bg-[#fafafa] px-6 py-10">
+        <div className="mx-auto max-w-3xl text-center">
+          <FadeIn>
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+              {[
+                { icon: Landmark, text: "Banco Central de Chile" },
+                { icon: Building2, text: "Servicio de Impuestos Internos" },
+                { icon: Scale, text: "Comision para el Mercado Financiero" },
+              ].map((item) => (
+                <div key={item.text} className="flex items-center gap-2 rounded-full border border-[#e5e7eb] bg-white px-4 py-2">
+                  <item.icon className="h-4 w-4 text-[#9ca3af]" strokeWidth={1.5} />
+                  <span className="text-xs font-medium text-[#6b7280]">{item.text}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-4 text-xs text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ============ 3. POR QUE PASA ESTO ============ */}
       <section className="px-6 py-[60px] md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
         <div className="mx-auto max-w-3xl">
@@ -713,21 +738,21 @@ export default function HomePage() {
               ¿Por que nadie te muestra estos numeros?
             </h2>
           </FadeIn>
-          <div className="mt-14 space-y-6">
+          <div className="mt-10 space-y-4">
             {[
-              { title: "La comision depende de la venta, no de tu resultado", desc: "Un corredor gana entre $2M y $5M por venta. Si te dice \u201Cno compres\u201D, pierde esa comision." },
-              { title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando dividendo, gastos comunes y contribuciones, pierdes $416K cada mes." },
-              { title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. Tu necesitas tus propios numeros para decidir." },
+              { title: "La comision depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comision." },
+              { title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando todos los costos, pierdes $416K cada mes." },
+              { title: "No hay accountability", desc: "Si la inversion sale mal, el corredor ya cobro. Tu necesitas tus propios numeros." },
             ].map((item, i) => (
-              <FadeIn key={item.title} delay={i * 200}>
-                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
+              <FadeIn key={item.title} delay={i * 150}>
+                <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:shadow-md" style={{ borderLeft: "4px solid #ef4444" }}>
                   <div className="flex gap-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-50">
                       <AlertTriangle className="h-4 w-4 text-red-500" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-[#1a1a1a]">{item.title}</h3>
-                      <p className="mt-2 text-[#6b7280]">{item.desc}</p>
+                      <h3 className="text-base font-semibold text-[#1a1a1a]">{item.title}</h3>
+                      <p className="mt-1 text-sm text-[#6b7280]">{item.desc}</p>
                     </div>
                   </div>
                 </div>
@@ -750,17 +775,17 @@ export default function HomePage() {
           </FadeIn>
           <div className="mt-14 grid gap-5 sm:grid-cols-2 md:grid-cols-3">
             {[
-              { icon: Target, title: "Score 1-100", desc: "Evaluacion objetiva de la inversion en 5 dimensiones" },
-              { icon: DollarSign, title: "Flujo real", desc: "Cuanto vas a poner de tu bolsillo cada mes, sin maquillaje" },
-              { icon: TrendingUp, title: "Proyeccion a 20 anos", desc: "Valor del patrimonio, saldo credito y ganancia neta ano a ano" },
-              { icon: LogOut, title: "Escenario de salida", desc: "Cuanto ganas si vendes en 5, 10 o 15 anos. O si refinancias." },
-              { icon: Activity, title: "Sensibilidad", desc: "Que pasa si suben las tasas, baja el arriendo o tienes meses vacios" },
-              { icon: BarChart3, title: "Datos de mercado", desc: "Comparacion con arriendos y precios reales de la zona" },
+              { icon: Award, title: "Score 1-100", desc: "Evaluacion objetiva de la inversion en 5 dimensiones", bg: "bg-[#ecfdf5]", iconColor: "text-[#059669]" },
+              { icon: TrendingDown, title: "Flujo real", desc: "Cuanto vas a poner de tu bolsillo cada mes, sin maquillaje", bg: "bg-red-50", iconColor: "text-red-500" },
+              { icon: LineChart, title: "Proyeccion a 20 anos", desc: "Valor del patrimonio, saldo credito y ganancia neta ano a ano", bg: "bg-blue-50", iconColor: "text-blue-500" },
+              { icon: ArrowRightLeft, title: "Escenario de salida", desc: "Cuanto ganas si vendes en 5, 10 o 15 anos. O si refinancias.", bg: "bg-purple-50", iconColor: "text-purple-500" },
+              { icon: SlidersHorizontal, title: "Sensibilidad", desc: "Que pasa si suben las tasas, baja el arriendo o tienes meses vacios", bg: "bg-amber-50", iconColor: "text-amber-500" },
+              { icon: MapPin, title: "Datos de mercado", desc: "Comparacion con arriendos y precios reales de la zona", bg: "bg-teal-50", iconColor: "text-teal-500" },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 80}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5 transition-all duration-200 hover:border-[#059669] hover:shadow-md">
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#ecfdf5]">
-                    <item.icon className="h-6 w-6 text-[#059669]" strokeWidth={1.5} />
+                  <div className={`mb-3 flex h-12 w-12 items-center justify-center rounded-full ${item.bg}`}>
+                    <item.icon className={`h-6 w-6 ${item.iconColor}`} strokeWidth={1.5} />
                   </div>
                   <h3 className="font-semibold text-[#1a1a1a]">{item.title}</h3>
                   <p className="mt-1 text-sm text-[#6b7280]">{item.desc}</p>
@@ -933,8 +958,8 @@ export default function HomePage() {
                   ))}
                 </ul>
                 <Link href={user ? "/analisis/nuevo" : "/register"} className="mt-6 block">
-                  <Button className="w-full rounded-xl bg-[#059669] text-white shadow-md shadow-[#059669]/20 transition-all duration-200 hover:bg-[#047857] hover:shadow-lg">
-                    Obtener informe
+                  <Button size="lg" className="w-full rounded-xl bg-[#059669] py-6 text-base font-semibold text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
+                    Obtener informe <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </Link>
               </div>
