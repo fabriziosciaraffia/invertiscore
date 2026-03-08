@@ -40,6 +40,14 @@ const RADAR_TOOLTIPS: Record<string, string> = {
   "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu yield bruto contra el promedio de publicaciones activas en la comuna. Peso: 10%",
 };
 
+function getBarSize(numPuntos: number): number {
+  if (numPuntos <= 12) return 40;
+  if (numPuntos <= 24) return 30;
+  if (numPuntos <= 36) return 20;
+  if (numPuntos <= 60) return 14;
+  return 8;
+}
+
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
@@ -1315,7 +1323,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={cashflowData.length <= 12 ? 40 : cashflowData.length <= 24 ? 30 : cashflowData.length <= 36 ? 20 : cashflowData.length <= 60 ? 14 : 8}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={getBarSize(Math.max(cashflowData.length, projData.length))} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {isMonthlyView ? (
                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={horizonYears <= 1 ? 0 : "preserveStartEnd"} />
@@ -1405,7 +1413,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={projData.length <= 12 ? 40 : projData.length <= 24 ? 30 : projData.length <= 36 ? 20 : projData.length <= 60 ? 14 : 8}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={getBarSize(Math.max(cashflowData.length, projData.length))} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {isMonthlyView ? (
                               <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
