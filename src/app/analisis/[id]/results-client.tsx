@@ -1345,14 +1345,13 @@ export function PremiumResults({
                           }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
-                        {/* Barra positiva: ingreso (stackId separado para que no lo tapen los egresos) */}
-                        <Bar dataKey="Ingreso" stackId="income" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        {/* Barras negativas apiladas: egresos */}
-                        <Bar dataKey="Dividendo" stackId="expense" fill="#ef4444" />
-                        <Bar dataKey="GGCC" stackId="expense" fill="#f97316" />
-                        <Bar dataKey="Contribuciones" stackId="expense" fill="#d97706" />
-                        <Bar dataKey="Mantencion" stackId="expense" fill="#f43f5e" />
-                        <Bar dataKey="Vacancia" stackId="expense" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        {/* Una sola columna apilada: ingreso sube, egresos bajan */}
+                        <Bar dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Dividendo" stackId="stack" fill="#ef4444" />
+                        <Bar dataKey="GGCC" stackId="stack" fill="#f97316" />
+                        <Bar dataKey="Contribuciones" stackId="stack" fill="#d97706" />
+                        <Bar dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
+                        <Bar dataKey="Vacancia" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
                         <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                       </ComposedChart>
