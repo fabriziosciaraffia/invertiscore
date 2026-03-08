@@ -14,7 +14,6 @@ import {
   Database,
   Bot,
   AlertTriangle,
-  X,
   ChevronDown,
   LayoutDashboard,
   Award,
@@ -646,76 +645,81 @@ export default function HomePage() {
             </h2>
           </FadeIn>
           <div className="mt-14 grid gap-6 md:grid-cols-2">
+            {/* Card IZQUIERDA — Lo que tu corredor te dice */}
             <SlideIn delay={100} direction="left">
-              <div className="h-full rounded-2xl border border-[#e5e7eb] bg-white p-4 transition-all duration-200 hover:shadow-md sm:p-6">
-                <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Lo que te dicen</div>
-                <h3 className="text-lg font-semibold text-[#1a1a1a]">Depto 2D1B en Providencia</h3>
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Precio</span>
-                    <span className="font-medium text-[#1a1a1a]">UF 3.200</span>
+              <div className="group h-full rounded-2xl border border-[#e5e7eb] bg-white p-4 transition-all duration-200 hover:shadow-md sm:p-6">
+                <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Lo que tu corredor te dice</div>
+                <h3 className="text-lg font-bold text-[#1a1a1a]">Depto 2D1B en Providencia</h3>
+                <div className="my-4 h-px bg-[#e5e7eb]" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-[#f9fafb] p-3">
+                    <span className="text-xs text-[#6b7280]">Precio</span>
+                    <div className="mt-1 text-sm font-medium text-[#1a1a1a]">UF 3.200</div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Arriendo</span>
-                    <span className="font-medium text-[#1a1a1a]">$420.000/mes</span>
+                  <div className="rounded-lg bg-[#f9fafb] p-3">
+                    <span className="text-xs text-[#6b7280]">Arriendo</span>
+                    <div className="mt-1 text-sm font-medium text-[#1a1a1a]">$420.000/mes</div>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Yield</span>
-                    <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-50"><Check className="h-3 w-3 text-[#059669]" /></span>
-                      <span className="font-semibold text-[#059669]">4.1%</span>
-                    </div>
+                  <div className="relative rounded-lg bg-emerald-50 p-3">
+                    <span className="text-xs text-[#6b7280] cursor-help" title="Rentabilidad bruta anual sin descontar gastos">Yield</span>
+                    <div className="mt-1 text-sm font-semibold text-[#059669]">4.1%</div>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 rounded-lg bg-[#1a1a1a] px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:pointer-events-auto [&:hover]:opacity-100 hidden sm:group-hover:block z-10">Rentabilidad bruta anual sin descontar gastos</div>
+                  </div>
+                  <div className="rounded-lg bg-emerald-50 p-3">
+                    <span className="text-xs text-[#6b7280]">Conclusión</span>
+                    <div className="mt-1 text-sm font-medium italic text-[#059669]">&ldquo;Excelente oportunidad!&rdquo;</div>
                   </div>
                 </div>
-                <p className="mt-5 text-sm italic text-[#059669]">&ldquo;Excelente oportunidad de inversión!&rdquo;</p>
               </div>
             </SlideIn>
+            {/* Card DERECHA — Lo que InvertiScore te muestra */}
             <SlideIn delay={200} direction="right">
               <div
-                className="h-full rounded-2xl border-2 border-[#059669] p-4 transition-all duration-200 hover:shadow-lg sm:p-6"
+                className="group h-full rounded-2xl border-2 border-[#059669] p-4 transition-all duration-200 hover:shadow-lg sm:p-6"
                 style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.15)" }}
               >
                 <div className="mb-5 text-xs font-semibold uppercase tracking-wider text-[#059669]">Lo que InvertiScore te muestra</div>
+                <h3 className="text-lg font-bold text-[#1a1a1a]">Depto 2D1B en Providencia</h3>
+                <div className="my-4 h-px bg-[#d1fae5]" />
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Flujo mensual</span>
+                    <span className="text-[#6b7280] cursor-help" title="Lo que entra (arriendo) menos lo que sale (dividendo + gastos). Negativo = pones de tu bolsillo">Flujo mensual</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-50"><X className="h-3 w-3 text-red-500" /></span>
+                      <span className="text-base">🔴</span>
                       <span className="text-lg font-bold text-red-500">-$416.788</span>
                     </div>
                   </div>
-                  <p className="text-sm text-[#6b7280]">Pones $5M al año de tu bolsillo</p>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Cash-on-Cash</span>
+                    <span className="text-[#6b7280] cursor-help" title="Retorno anual sobre el capital que pusiste (el pie)">Cash-on-Cash</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-50"><X className="h-3 w-3 text-red-500" /></span>
+                      <span className="text-base">🔴</span>
                       <span className="font-semibold text-red-500">-20.1%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Yield neto real</span>
+                    <span className="text-[#6b7280] cursor-help" title="Rentabilidad real después de todos los gastos">Yield neto real</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-orange-50"><AlertTriangle className="h-3 w-3 text-orange-500" /></span>
+                      <span className="text-base">🟡</span>
                       <span className="font-semibold text-orange-500">1.4%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280]">Plusvalia compensa en 10 años</span>
+                    <span className="text-[#6b7280] cursor-help" title="Cuántas veces se multiplica tu inversión inicial en 10 años">Plusvalía 10 años</span>
                     <div className="flex items-center gap-1.5">
-                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-50"><Check className="h-3 w-3 text-[#059669]" /></span>
-                      <span className="font-semibold text-[#059669]">2.83x tu inversión</span>
+                      <span className="text-base">🟢</span>
+                      <span className="font-semibold text-[#059669]">2.83x</span>
                     </div>
                   </div>
                 </div>
                 <div className="mt-5 flex items-center gap-3 rounded-xl bg-white/80 p-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-orange-400">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-orange-400 bg-orange-50">
                     <span className="text-sm font-bold text-orange-500">58</span>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-[#1a1a1a]">InvertiScore: 58</div>
-                    <div className="text-xs text-[#6b7280]">Inversión Regular</div>
+                    <div className="text-sm font-semibold text-[#1a1a1a]">Score: 58 <span className="text-orange-500">&ldquo;Regular&rdquo;</span></div>
                   </div>
                 </div>
+                <p className="mt-3 text-sm font-medium text-red-500">Pones $5M al año de tu bolsillo</p>
               </div>
             </SlideIn>
           </div>
@@ -736,10 +740,37 @@ export default function HomePage() {
       <section className="bg-[#f5f5f5] px-5 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <p className="text-[13px] font-semibold leading-relaxed text-[#374151] sm:text-base">
-              Banco Central de Chile <span className="mx-2 text-[#9ca3af] sm:mx-3">·</span> Servicio de Impuestos Internos <span className="mx-2 text-[#9ca3af] sm:mx-3">·</span> Comisión para el Mercado Financiero
+            <p className="text-base font-bold text-[#111827] sm:text-lg">
+              Análisis respaldado por datos públicos oficiales
             </p>
-            <p className="mt-3 text-sm text-[#9ca3af]">Datos de mercado actualizados diariamente</p>
+            <div className="mt-4 flex items-center justify-center gap-6 sm:gap-10">
+              {/* Banco Central */}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e5e7eb]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/><path d="M9 10h1"/><path d="M14 10h1"/><path d="M9 14h1"/><path d="M14 14h1"/></svg>
+                </div>
+                <span className="text-[11px] font-medium text-[#374151] sm:text-xs">Banco Central</span>
+              </div>
+              {/* SII */}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e5e7eb]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </div>
+                <span className="text-[11px] font-medium text-[#374151] sm:text-xs">SII</span>
+              </div>
+              {/* CMF */}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e5e7eb]">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+                </div>
+                <span className="text-[11px] font-medium text-[#374151] sm:text-xs">CMF</span>
+              </div>
+            </div>
+            <div className="mx-auto mt-4 max-w-lg rounded-lg px-3 py-2.5 sm:px-4 sm:py-3" style={{ background: "#f0fdf4" }}>
+              <p className="text-sm font-medium text-[#166534]">
+                <span className="mr-1">✨</span> Motor de IA que analiza +3.000 publicaciones activas en Santiago en tiempo real
+              </p>
+            </div>
           </FadeIn>
         </div>
       </section>
@@ -749,14 +780,14 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
-              ¿Por qué nadie te muestra estos números?
+              ¿Por qué tu corredor no te muestra estos números?
             </h2>
           </FadeIn>
           <div className="mt-10 space-y-4">
             {[
-              { icon: Briefcase, title: "La comisión depende de la venta, no de tu resultado", desc: "Si te dice \u201Cno compres\u201D, pierde entre $2M y $5M de comisión." },
-              { icon: Eye, title: "Te muestran el yield bruto, no el flujo real", desc: "El 4.1% suena bien. Pero sumando todos los costos, pierdes $416K cada mes." },
-              { icon: Scale, title: "No hay accountability", desc: "Si la inversión sale mal, el corredor ya cobró. Tú necesitas tus propios números." },
+              { icon: Briefcase, title: "Su comisión depende de que compres", desc: "Un corredor gana entre $2M y $5M si cierras la compra. Si te dice \u201Ceste depto es mala inversión\u201D, pierde esa plata. ¿De verdad crees que te va a decir la verdad?" },
+              { icon: Eye, title: "Te muestra solo los números bonitos", desc: "Yield bruto de 4.1% suena increíble. Pero cuando sumas dividendo, gastos comunes, contribuciones y mantención, resulta que pierdes $416.000 al mes. Eso nunca aparece en la cotización del corredor." },
+              { icon: Scale, title: "Si la inversión sale mal, el corredor ya cobró", desc: "Tú asumes todo el riesgo. El corredor cobra su comisión el día de la firma y desaparece. Si en 3 años el depto vale menos, si el arriendo no alcanza, si los gastos suben — ese es tu problema, no el de él." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
                 <div className="rounded-2xl border border-[#e5e7eb] bg-white p-4 transition-all duration-200 hover:shadow-md sm:p-5" style={{ borderLeft: "4px solid #ef4444" }}>
@@ -766,7 +797,7 @@ export default function HomePage() {
                     </div>
                     <div>
                       <h3 className="text-sm font-semibold leading-snug text-[#111827] sm:text-base">{item.title}</h3>
-                      <p className="mt-1 text-[13px] leading-[1.4] text-[#6b7280] sm:text-sm">{item.desc}</p>
+                      <p className="mt-1 text-[13px] leading-[1.5] text-[#6b7280] sm:text-sm">{item.desc}</p>
                     </div>
                   </div>
                 </div>
