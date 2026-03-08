@@ -23,7 +23,7 @@ let UF_CLP = 38800;
 const METRIC_TOOLTIPS: Record<string, string> = {
   "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) × 100. Benchmark Santiago: 3.5-4.5%",
   "Yield Neto": "Retorno anual real descontando todos los gastos operativos (GGCC, contribuciones, mantención, vacancia). Es la métrica más honesta de rentabilidad.",
-  "CAP Rate": "Net Operating Income / Precio. Estándar internacional para comparar inversiones inmobiliarias. No incluye financiamiento.",
+  "CAP Rate": "Retorno neto operativo anual dividido por el precio (NOI/Precio). A diferencia del 'cap rate' que manejan muchos corredores en Chile (que es solo arriendo×12/precio), este descuenta gastos comunes, contribuciones, mantención y vacancia. Es la métrica internacional estándar y refleja la rentabilidad real del activo.",
   "Cash-on-Cash": "Retorno anual sobre TU capital invertido (el pie). Si es negativo, estás poniendo plata de tu bolsillo cada mes.",
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
@@ -628,19 +628,20 @@ export function PremiumResults({
               {[
                 { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
                 { label: "Yield Neto", value: `${m.yieldNeto.toFixed(1)}%` },
-                { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%` },
+                { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%`, subtitle: "CAP rate real (neto de gastos operativos)" },
                 { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
                 { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
                 { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
                 { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
                 { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `UF ${m.precioM2.toFixed(1)}` : fmtCLP(m.precioM2 * UF_CLP) },
-              ].map(({ label, value }) => (
+              ].map(({ label, value, subtitle }) => (
                 <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     {label}
                     {METRIC_TOOLTIPS[label] && <InfoTooltip content={METRIC_TOOLTIPS[label]} />}
                   </div>
                   <div className="text-lg font-bold">{value}</div>
+                  {subtitle && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{subtitle}</div>}
                 </div>
               ))}
             </div>
