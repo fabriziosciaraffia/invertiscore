@@ -1319,7 +1319,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView && horizonYears <= 1 ? 0 : "preserveStartEnd"} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
