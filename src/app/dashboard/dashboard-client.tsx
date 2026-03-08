@@ -113,6 +113,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   };
 
   const handleDelete = async (id: string) => {
+    if (id === "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1") return;
     if (!confirm("¿Estás seguro de eliminar este análisis?")) return;
     setDeletingId(id);
     const supabase = createClient();

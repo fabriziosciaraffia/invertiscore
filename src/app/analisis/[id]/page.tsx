@@ -53,10 +53,12 @@ export default async function AnalisisDetallePage({
   const clasificacion = getClasificacionLabel(analisis.score);
 
   // Access level: "guest" | "free" | "premium"
+  const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
   const isAdmin = user?.email === "fabriziosciaraffia@gmail.com";
   const isLoggedIn = !!user;
-  const isPremium = isAdmin || !!analisis.is_premium;
-  const accessLevel: "guest" | "free" | "premium" = !isLoggedIn ? "guest" : isPremium ? "premium" : "free";
+  const isDemo = analisis.id === DEMO_ANALYSIS_ID;
+  const isPremium = isAdmin || isDemo || !!analisis.is_premium;
+  const accessLevel: "guest" | "free" | "premium" = isDemo ? "premium" : !isLoggedIn ? "guest" : isPremium ? "premium" : "free";
 
   const UF_CLP = ufValue;
 

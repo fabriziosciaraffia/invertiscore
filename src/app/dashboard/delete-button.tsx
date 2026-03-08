@@ -4,9 +4,13 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Trash2 } from "lucide-react";
 
+const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
+
 export function DashboardDeleteButton({ id }: { id: string }) {
   const router = useRouter();
   const supabase = createClient();
+
+  if (id === DEMO_ANALYSIS_ID) return null;
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
