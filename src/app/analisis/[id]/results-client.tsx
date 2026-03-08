@@ -604,6 +604,8 @@ export function PremiumResults({
     const contribucionesMes = Math.round(inputData.contribuciones / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
+    const corretajeMes = Math.round((inputData.arriendo * 0.5) / 12);
+    const recambioMes = Math.round(inputData.arriendo / 12 / 10);
 
     const steps: { name: string; delta: number }[] = [
       { name: "Arriendo", delta: m.ingresoMensual },
@@ -612,26 +614,36 @@ export function PremiumResults({
       { name: "Contribuciones", delta: -contribucionesMes },
       { name: "Mantención", delta: -mantencion },
       { name: "Vacancia", delta: -vacanciaMes },
+      { name: "Corretaje", delta: -corretajeMes },
+      { name: "Recambio", delta: -recambioMes },
     ];
 
     let running = 0;
-    const items: { name: string; base: number; amount: number; fill: string; isResult: boolean; delta: number; running: number }[] = [];
+    const items: { name: string; range: [number, number]; fill: string; isResult: boolean; delta: number; running: number }[] = [];
     for (const s of steps) {
       const newRunning = running + s.delta;
-      if (s.delta >= 0) {
-        items.push({ name: s.name, base: running, amount: s.delta, fill: "#10b981", isResult: false, delta: s.delta, running: newRunning });
-      } else {
-        items.push({ name: s.name, base: newRunning, amount: -s.delta, fill: "#ef4444", isResult: false, delta: s.delta, running: newRunning });
-      }
+      const bottom = Math.min(running, newRunning);
+      const top = Math.max(running, newRunning);
+      items.push({
+        name: s.name,
+        range: [bottom, top],
+        fill: s.delta >= 0 ? "#10b981" : "#ef4444",
+        isResult: false,
+        delta: s.delta,
+        running: newRunning,
+      });
       running = newRunning;
     }
     // FLUJO NETO result bar: from 0 to running
     const flujo = running;
-    if (flujo >= 0) {
-      items.push({ name: "FLUJO NETO", base: 0, amount: flujo, fill: "#047857", isResult: true, delta: flujo, running: flujo });
-    } else {
-      items.push({ name: "FLUJO NETO", base: flujo, amount: -flujo, fill: "#dc2626", isResult: true, delta: flujo, running: flujo });
-    }
+    items.push({
+      name: "FLUJO NETO",
+      range: [Math.min(0, flujo), Math.max(0, flujo)],
+      fill: flujo >= 0 ? "#047857" : "#dc2626",
+      isResult: true,
+      delta: flujo,
+      running: flujo,
+    });
     return items;
   }, [m, inputData]);
 
@@ -673,27 +685,31 @@ export function PremiumResults({
       let gastosActual = inputData.gastos ?? 0;
 
       if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
-        const mesesOperativos = totalMonths - mesesPreEntrega;
-        if (mesesOperativos <= 0) return data;
+        // Mostrar todos los meses, incluyendo pre-entrega con $0
+        for (let mes = 1; mes <= totalMonths; mes++) {
+          if (mes <= mesesPreEntrega) {
+            // Pre-entrega: sin flujo operativo
+            data.push({ name: `M${mes}`, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: acumulado });
+          } else {
+            const mesOp = mes - mesesPreEntrega;
+            if (mesOp > 1 && (mes - 1) % 12 === 0) {
+              arriendoActual *= 1.035;
+              gastosActual *= 1.03;
+            }
+            const esVacancia = mesOp === 1;
+            let ingreso = Math.round(arriendoActual);
+            if (esVacancia) ingreso = 0;
 
-        for (let i = 1; i <= mesesOperativos; i++) {
-          if (i > 1 && (mesesPreEntrega + i - 1) % 12 === 0) {
-            arriendoActual *= 1.035;
-            gastosActual *= 1.03;
+            const div = -m.dividendo;
+            // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
+            const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
+            const contrib = -contribucionesMes;
+            const mant = -mantencion;
+            const vac = -vacanciaMes;
+            const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
+            acumulado += flujoNeto;
+            data.push({ name: `M${mes}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
           }
-          const esVacancia = i === 1;
-          let ingreso = Math.round(arriendoActual);
-          if (esVacancia) ingreso = 0;
-
-          const div = -m.dividendo;
-          // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
-          const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
-          const contrib = -contribucionesMes;
-          const mant = -mantencion;
-          const vac = -vacanciaMes;
-          const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
-          acumulado += flujoNeto;
-          data.push({ name: `M${mesesPreEntrega + i}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
         }
       } else {
         for (let i = 1; i <= totalMonths; i++) {
@@ -1223,10 +1239,7 @@ export function PremiumResults({
                     }}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
-                  {/* Invisible base */}
-                  <Bar dataKey="base" stackId="waterfall" fill="transparent" isAnimationActive={false} />
-                  {/* Visible amount */}
-                  <Bar dataKey="amount" stackId="waterfall" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
@@ -1332,14 +1345,14 @@ export function PremiumResults({
                           }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
-                        {/* Barra positiva: ingreso */}
-                        <Bar dataKey="Ingreso" stackId="flow" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        {/* Barra positiva: ingreso (stackId separado para que no lo tapen los egresos) */}
+                        <Bar dataKey="Ingreso" stackId="income" fill="#10b981" radius={[4, 4, 0, 0]} />
                         {/* Barras negativas apiladas: egresos */}
-                        <Bar dataKey="Dividendo" stackId="flow" fill="#ef4444" />
-                        <Bar dataKey="GGCC" stackId="flow" fill="#f97316" />
-                        <Bar dataKey="Contribuciones" stackId="flow" fill="#d97706" />
-                        <Bar dataKey="Mantencion" stackId="flow" fill="#f43f5e" />
-                        <Bar dataKey="Vacancia" stackId="flow" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        <Bar dataKey="Dividendo" stackId="expense" fill="#ef4444" />
+                        <Bar dataKey="GGCC" stackId="expense" fill="#f97316" />
+                        <Bar dataKey="Contribuciones" stackId="expense" fill="#d97706" />
+                        <Bar dataKey="Mantencion" stackId="expense" fill="#f43f5e" />
+                        <Bar dataKey="Vacancia" stackId="expense" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
                         <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                       </ComposedChart>
