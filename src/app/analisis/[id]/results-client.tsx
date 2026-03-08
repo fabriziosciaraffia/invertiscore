@@ -765,10 +765,10 @@ export function PremiumResults({
     piePagado: number;
     capitalAmortizado: number;
     plusvalia: number;
-    saldoCredito: number;
+    saldoCredito: number | null;
     patrimonioNeto: number;
     valorPropiedad: number;
-    valorPropArea?: number; // computed: 0 pre-entrega (futura), valorPropiedad post-entrega
+    valorPropArea?: number | null; // null pre-entrega (futura), valorPropiedad post-entrega
     isEntrega?: boolean;
     isPreEntrega?: boolean;
   }
@@ -807,24 +807,36 @@ export function PremiumResults({
     const allData: PatrimonioRow[] = [];
 
     if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
+      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, patrimonioNeto: 0, valorPropiedad: 0, isPreEntrega: true });
 
       for (let mo = 1; mo <= totalMonths; mo++) {
         const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
 
-        if (mo <= mesesPreEntrega) {
+        if (mo < mesesPreEntrega) {
+          // Pre-entrega (antes de entrega): sin deuda ni valor propiedad
           const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
           allData.push({
             name: `M${mo}`, _x: mo,
             piePagado: Math.round(piePagado),
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: 0,
+            saldoCredito: null,
             patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
-            valorPropiedad: Math.round(valorProp),
-            isEntrega: mo === mesesPreEntrega,
+            valorPropiedad: 0,
             isPreEntrega: true,
+          });
+        } else if (mo === mesesPreEntrega) {
+          // Mes de entrega: deuda y valor propiedad aparecen
+          allData.push({
+            name: `M${mo}`, _x: mo,
+            piePagado: m.pieCLP,
+            capitalAmortizado: 0,
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: Math.round(creditoCLP),
+            patrimonioNeto: Math.round(valorProp - creditoCLP),
+            valorPropiedad: Math.round(valorProp),
+            isEntrega: true,
           });
         } else {
           const mesesCredito = mo - mesesPreEntrega;
@@ -861,9 +873,9 @@ export function PremiumResults({
       }
     }
 
-    // valorPropArea: 0 pre-entrega, valorPropiedad post-entrega/inmediata
+    // valorPropArea: null pre-entrega (Recharts skips null), valorPropiedad post-entrega/inmediata
     for (const row of allData) {
-      row.valorPropArea = row.isPreEntrega ? 0 : row.valorPropiedad;
+      row.valorPropArea = row.isPreEntrega ? null : row.valorPropiedad;
     }
 
     if (isMonthlyView) return allData;
@@ -1289,7 +1301,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={cashflowData.length <= 12 ? 40 : cashflowData.length <= 24 ? 30 : cashflowData.length <= 36 ? 20 : cashflowData.length <= 60 ? 14 : 8}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {isMonthlyView ? (
                           <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={horizonYears <= 1 ? 0 : "preserveStartEnd"} />
@@ -1379,7 +1391,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={projData.length <= 12 ? 40 : projData.length <= 24 ? 30 : projData.length <= 36 ? 20 : projData.length <= 60 ? 14 : 8}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {isMonthlyView ? (
                               <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
@@ -1405,7 +1417,7 @@ export function PremiumResults({
                                     ) : (
                                       <>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium">{fmt(row.valorPropiedad)}</span></div>
-                                        <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito)}</span></div>
+                                        <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito ?? 0)}</span></div>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#3b82f6", opacity: 0.4 }} />Plusvalía acumulada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
                                       </>
