@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import {
-  BarChart, Bar, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, Cell, ReferenceLine,
 } from "recharts";
@@ -768,11 +768,11 @@ export function PremiumResults({
     piePagado: number;
     capitalAmortizado: number;
     plusvalia: number;
-    saldoCredito: number | null;
-    saldoCreditoFuturo: number | null;
+    saldoCredito: number;
     patrimonioNeto: number;
     valorPropiedad: number;
     isEntrega?: boolean;
+    isPreEntrega?: boolean;
   }
 
   const projData = useMemo((): PatrimonioRow[] => {
@@ -799,33 +799,29 @@ export function PremiumResults({
     const data: PatrimonioRow[] = [];
 
     if (isMonthlyView) {
-      // === VISTA MENSUAL ===
       const totalMonths = horizonYears * 12;
 
       if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-        // T0
-        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
+        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
 
         for (let mo = 1; mo <= totalMonths; mo++) {
           const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
           const plusvaliaAcum = valorProp - precioCLP;
 
           if (mo <= mesesPreEntrega) {
-            // Pre-entrega
             const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
             data.push({
               name: `M${mo}`,
               piePagado: Math.round(piePagado),
               capitalAmortizado: 0,
               plusvalia: Math.round(plusvaliaAcum),
-              saldoCredito: null,
-              saldoCreditoFuturo: creditoCLP,
+              saldoCredito: 0,
               patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
               valorPropiedad: Math.round(valorProp),
               isEntrega: mo === mesesPreEntrega,
+              isPreEntrega: true,
             });
           } else {
-            // Post-entrega
             const mesesCredito = mo - mesesPreEntrega;
             const saldo = calcSaldo(mesesCredito);
             const capitalAmort = creditoCLP - saldo;
@@ -835,15 +831,13 @@ export function PremiumResults({
               capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
               plusvalia: Math.round(plusvaliaAcum),
               saldoCredito: Math.round(saldo),
-              saldoCreditoFuturo: null,
               patrimonioNeto: Math.round(valorProp - saldo),
               valorPropiedad: Math.round(valorProp),
             });
           }
         }
       } else {
-        // Entrega inmediata mensual
-        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
 
         for (let mo = 1; mo <= totalMonths; mo++) {
           const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
@@ -856,18 +850,16 @@ export function PremiumResults({
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
             saldoCredito: Math.round(saldo),
-            saldoCreditoFuturo: null,
             patrimonioNeto: Math.round(valorProp - saldo),
             valorPropiedad: Math.round(valorProp),
           });
         }
       }
     } else {
-      // === VISTA ANUAL ===
       const anosPreEntrega = mesesPreEntrega > 0 ? Math.ceil(mesesPreEntrega / 12) : 0;
 
       if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
+        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
 
         for (let anio = 1; anio <= Math.min(anosPreEntrega, horizonYears); anio++) {
           const mesesAcum = Math.min(anio * 12, mesesPreEntrega);
@@ -879,11 +871,11 @@ export function PremiumResults({
             piePagado: Math.round(piePagado),
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: null,
-            saldoCreditoFuturo: creditoCLP,
+            saldoCredito: 0,
             patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
             valorPropiedad: Math.round(valorProp),
             isEntrega: anio === anosPreEntrega,
+            isPreEntrega: true,
           });
         }
 
@@ -897,13 +889,12 @@ export function PremiumResults({
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
             saldoCredito: p.saldoCredito,
-            saldoCreditoFuturo: null,
             patrimonioNeto: p.patrimonioNeto,
             valorPropiedad: p.valorPropiedad,
           });
         }
       } else {
-        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
 
         dynamicProjections.slice(0, horizonYears).forEach((p) => {
           const plusvaliaAcum = p.valorPropiedad - precioCLP;
@@ -914,7 +905,6 @@ export function PremiumResults({
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
             saldoCredito: p.saldoCredito,
-            saldoCreditoFuturo: null,
             patrimonioNeto: p.patrimonioNeto,
             valorPropiedad: p.valorPropiedad,
           });
@@ -1424,32 +1414,42 @@ export function PremiumResults({
                                 if (!active || !payload || payload.length === 0) return null;
                                 const row = payload[0]?.payload as PatrimonioRow | undefined;
                                 if (!row) return null;
+                                const pre = row.isPreEntrega;
                                 return (
                                   <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                    <div className="mb-1.5 font-semibold">{label}</div>
-                                    <div className="text-muted-foreground">Valor propiedad: <span className="font-medium text-foreground">{fmt(row.valorPropiedad)}</span></div>
-                                    <div className="mt-1 flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
-                                    <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Crédito amortizado: <span className="font-medium">{fmt(row.capitalAmortizado)}</span></div>
-                                    <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
-                                    {(row.saldoCredito != null || row.saldoCreditoFuturo != null) && (
-                                      <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito ?? row.saldoCreditoFuturo ?? 0)}</span></div>
+                                    <div className="mb-1.5 font-semibold">{label}{pre ? " (pre-entrega)" : ""}</div>
+                                    {pre ? (
+                                      <>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía estimada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                        <div className="text-muted-foreground">Deuda: $0 (crédito aún no comienza)</div>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="text-muted-foreground">Valor propiedad: <span className="font-medium text-foreground">{fmt(row.valorPropiedad)}</span></div>
+                                        <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía acumulada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                      </>
                                     )}
                                     <div className="mt-1 border-t border-border/50 pt-1 font-semibold text-primary">Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                                   </div>
                                 );
                               }}
                             />
+                            {/* Área roja semi-transparente: deuda (desde línea deuda hasta $0) */}
+                            <Area type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
+                            {/* Área verde semi-transparente: patrimonio neto (diferencia valor prop - deuda) */}
+                            <Area type="monotone" dataKey="valorPropiedad" fill="#059669" fillOpacity={0.08} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
                             <Bar dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
                             <Bar dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Crédito amortizado" radius={[0, 0, 0, 0]} />
                             {/* Área: plusvalía apilada sobre las barras */}
                             <Bar dataKey="plusvalia" stackId="patrimonio" fill="#10b981" fillOpacity={0.2} stroke="#10b981" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
-                            {/* Línea: deuda pre-entrega (punteada) */}
-                            <Line type="monotone" dataKey="saldoCreditoFuturo" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} connectNulls legendType="none" />
-                            {/* Línea: deuda post-entrega (sólida) */}
-                            <Line type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls name="Deuda restante" />
+                            {/* Línea: deuda (sólida, empieza en $0 pre-entrega, salta al crédito en entrega) */}
+                            <Line type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
                             {/* Línea principal: patrimonio neto */}
-                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#059669" strokeWidth={3} dot={{ r: 3, fill: "#059669" }} connectNulls name="Patrimonio neto" />
+                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#059669" strokeWidth={3} dot={{ r: 3, fill: "#059669" }} name="Patrimonio neto" />
                             {/* Línea vertical de entrega */}
                             {projData.findIndex((d) => d.isEntrega) >= 0 && (
                               <ReferenceLine x={projData.find((d) => d.isEntrega)?.name} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
@@ -1462,7 +1462,7 @@ export function PremiumResults({
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Crédito amortizado</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#ef4444" }} />Deuda restante</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#059669", height: 3 }} />Patrimonio neto</span>
                       </div>
                       {/* Desglose de patrimonio */}
