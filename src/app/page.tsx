@@ -18,6 +18,8 @@ import {
   LayoutDashboard,
   Award,
   TrendingDown,
+  TrendingUp,
+  Minus,
   LineChart,
   ArrowRightLeft,
   SlidersHorizontal,
@@ -197,215 +199,377 @@ function TabComparacion() {
   );
 }
 
-function TabFlujoCaja() {
+function TabFlujoCaja({ animate }: { animate: boolean }) {
+  const months = Array.from({ length: 12 }, (_, i) => {
+    const arriendo = 420;
+    const dividendo = 559;
+    const gastos = 125;
+    const neto = arriendo - dividendo - gastos;
+    const acumulado = (i + 1) * neto;
+    return { mes: i + 1, arriendo, dividendo, gastos, neto, acumulado };
+  });
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+  const maxEgreso = 559 + 125;
+  const barHeight = 220;
+
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
         El flujo de caja te muestra la película completa, mes a mes.
       </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-5 shadow-xl md:p-8">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual — 12 meses</div>
-        <div className="mt-4">
-          <div className="flex items-end gap-2" style={{ height: 200 }}>
-            {Array.from({ length: 12 }, (_, i) => {
-              const arriendo = 420;
-              const dividendo = 559;
-              const gastos = 125;
-              const total = dividendo + gastos;
-              const scale = 180 / total;
+        {/* Y axis labels + bars */}
+        <div className="mt-4 flex">
+          <div className="flex flex-col justify-between pr-2 text-[10px] text-[#9ca3af]" style={{ height: barHeight }}>
+            <span>$400K</span>
+            <span>$200K</span>
+            <span>$0</span>
+            <span>-$400K</span>
+            <span>-$800K</span>
+          </div>
+          <div className="relative flex flex-1 items-end gap-1.5 sm:gap-2" style={{ height: barHeight }}>
+            {/* Zero line */}
+            <div className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-[#d1d5db]" style={{ bottom: `${(maxEgreso / (maxEgreso + 420)) * 100}%` }} />
+            {months.map((m, i) => {
+              const totalRange = 420 + maxEgreso;
+              const greenH = (m.arriendo / totalRange) * barHeight;
+              const redH = ((m.dividendo + m.gastos) / totalRange) * barHeight;
               return (
-                <div key={i} className="flex flex-1 flex-col items-center gap-0.5">
-                  <div className="flex w-full flex-col items-stretch gap-px">
-                    <div className="w-full rounded-t-sm bg-[#059669]/80" style={{ height: `${arriendo * scale}px` }} />
-                    <div className="w-full bg-[#ef4444]/70" style={{ height: `${dividendo * scale * 0.6}px` }} />
-                    <div className="w-full rounded-b-sm bg-[#f97316]/60" style={{ height: `${gastos * scale * 0.5}px` }} />
+                <div
+                  key={i}
+                  className="group relative flex flex-1 flex-col items-center"
+                  onMouseEnter={() => setHoveredMonth(i)}
+                  onMouseLeave={() => setHoveredMonth(null)}
+                >
+                  <div className="flex w-full flex-col items-stretch" style={{ height: barHeight }}>
+                    {/* Green bar (income) grows up from zero line */}
+                    <div className="flex flex-1 flex-col justify-end">
+                      <div
+                        className="w-full rounded-t bg-[#059669]"
+                        style={{
+                          height: animate ? greenH : 0,
+                          transition: `height 0.6s ease-out ${i * 50}ms`,
+                        }}
+                      />
+                    </div>
+                    {/* Red bar (expenses) grows down from zero line */}
+                    <div className="flex flex-col">
+                      <div
+                        className="w-full rounded-b bg-[#ef4444]"
+                        style={{
+                          height: animate ? redH : 0,
+                          transition: `height 0.6s ease-out ${i * 50}ms`,
+                        }}
+                      />
+                    </div>
                   </div>
-                  <span className="text-[9px] text-[#9ca3af]">{i === 0 ? "M1" : i === 5 ? "M6" : i === 11 ? "M12" : ""}</span>
+                  <span className="mt-1 text-[9px] text-[#9ca3af] sm:text-[10px]">M{m.mes}</span>
+                  {/* Tooltip */}
+                  {hoveredMonth === i && (
+                    <div className="absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg">
+                      <div className="font-semibold mb-1">Mes {m.mes}</div>
+                      <div className="space-y-0.5">
+                        <div className="flex justify-between"><span>Arriendo</span><span className="text-[#34d399]">${m.arriendo}K</span></div>
+                        <div className="flex justify-between"><span>Dividendo</span><span className="text-red-400">-${m.dividendo}K</span></div>
+                        <div className="flex justify-between"><span>Gastos</span><span className="text-red-400">-${m.gastos}K</span></div>
+                        <div className="border-t border-white/20 pt-0.5 flex justify-between font-semibold"><span>Neto</span><span className="text-red-400">-${Math.abs(m.neto)}K</span></div>
+                        <div className="flex justify-between"><span>Acumulado</span><span className="text-red-400">-${(Math.abs(m.acumulado) / 1000).toFixed(1)}M</span></div>
+                      </div>
+                      <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1a1a1a]" />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]/80" /> Arriendo ($420K)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]/70" /> Dividendo ($559K)</span>
-            <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#f97316]/60" /> Gastos ($125K)</span>
-          </div>
-          <div className="mt-6 rounded-xl bg-red-50 p-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-100">
-                <ArrowRight className="h-3 w-3 rotate-90 text-red-500" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-red-700">
-                  Este depto te cuesta $416.788 cada mes de tu bolsillo. Eso son $5 millones al año.
-                </p>
-                <p className="mt-1 text-sm text-red-600/70">¿Tu corredor te lo dijo?</p>
-              </div>
-            </div>
-          </div>
+        </div>
+        {/* Legend */}
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[#6b7280]">
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]" /> Arriendo ($420K)</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" /> Dividendo + Gastos ($684K)</span>
+        </div>
+        {/* Summary card */}
+        <div className="mt-6 rounded-xl bg-red-50 p-4">
+          <p className="text-sm font-semibold text-red-700">
+            Resultado año 1: pierdes $5M de tu bolsillo.
+          </p>
+          <p className="mt-1 text-sm text-red-600/80">
+            El arriendo cubre solo el 50% de los costos.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function TabPatrimonio() {
+function TabPatrimonio({ animate }: { animate: boolean }) {
+  const [hoveredYear, setHoveredYear] = useState<number | null>(null);
+  // Data points for 11 years (0-10)
+  const data = [
+    { year: 0, propiedad: 124, patrimonio: 24, deuda: 99 },
+    { year: 1, propiedad: 128, patrimonio: 29, deuda: 97 },
+    { year: 2, propiedad: 133, patrimonio: 35, deuda: 95 },
+    { year: 3, propiedad: 138, patrimonio: 42, deuda: 93 },
+    { year: 4, propiedad: 143, patrimonio: 50, deuda: 90 },
+    { year: 5, propiedad: 150, patrimonio: 63, deuda: 87 },
+    { year: 6, propiedad: 155, patrimonio: 72, deuda: 84 },
+    { year: 7, propiedad: 161, patrimonio: 81, deuda: 80 },
+    { year: 8, propiedad: 168, patrimonio: 91, deuda: 77 },
+    { year: 9, propiedad: 175, patrimonio: 100, deuda: 74 },
+    { year: 10, propiedad: 183, patrimonio: 110, deuda: 72 },
+  ];
+  const maxVal = 200;
+  const chartW = 400;
+  const chartH = 240;
+  const padL = 45;
+  const padT = 15;
+  const padB = 25;
+  const plotH = chartH - padT - padB;
+  const plotW = chartW - padL - 10;
+
+  const toX = (i: number) => padL + (i / 10) * plotW;
+  const toY = (v: number) => padT + plotH - (v / maxVal) * plotH;
+
+  const makeLine = (key: keyof typeof data[0]) =>
+    data.map((d, i) => `${toX(i)},${toY(d[key] as number)}`).join(" ");
+
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
         Aunque pierdas flujo cada mes, tu patrimonio puede crecer significativamente.
       </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-6 shadow-xl md:p-8">
-        <div className="grid gap-8 md:grid-cols-[1fr,280px]">
-          <div>
-            <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyección a 10 años (millones CLP)</div>
-            <svg viewBox="0 0 400 220" className="w-full" preserveAspectRatio="xMidYMid meet">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <line key={i} x1="40" y1={30 + i * 45} x2="390" y2={30 + i * 45} stroke="#f3f4f6" strokeWidth="1" />
-              ))}
-              <text x="35" y="35" textAnchor="end" className="text-[9px]" fill="#9ca3af">$200M</text>
-              <text x="35" y="80" textAnchor="end" className="text-[9px]" fill="#9ca3af">$150M</text>
-              <text x="35" y="125" textAnchor="end" className="text-[9px]" fill="#9ca3af">$100M</text>
-              <text x="35" y="170" textAnchor="end" className="text-[9px]" fill="#9ca3af">$50M</text>
-              <text x="35" y="215" textAnchor="end" className="text-[9px]" fill="#9ca3af">$0</text>
-              {[0, 2, 4, 6, 8, 10].map((y) => (
-                <text key={y} x={40 + y * 35} y="210" textAnchor="middle" className="text-[9px]" fill="#9ca3af">A{y}</text>
-              ))}
-              <polyline fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                points="40,72 75,68 110,63 145,58 180,53 215,48 250,42 285,37 320,32 355,27 390,22" />
-              <polyline fill="none" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                points="40,165 75,155 110,145 145,134 180,122 215,110 250,97 285,84 320,70 355,56 390,42" />
-              <polyline fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6,3"
-                points="40,105 75,108 110,111 145,115 180,118 215,122 250,126 285,130 320,134 355,138 390,142" />
-              <polyline fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="4,4"
-                points="40,195 75,192 110,189 145,186 180,183 215,180 250,178 285,176 320,174 355,172 390,170" />
-            </svg>
-            <div className="mt-3 flex flex-wrap gap-4 text-[10px]">
-              <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#059669]" /> Valor propiedad</span>
-              <span className="flex items-center gap-1"><span className="h-2 w-6 rounded-sm bg-[#3b82f6]" /> Patrimonio neto</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Saldo crédito</span>
-              <span className="flex items-center gap-1"><span className="h-0.5 w-6 border-t border-dashed border-[#9ca3af]" /> Flujo acumulado</span>
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-5 shadow-xl md:p-8">
+        <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyección a 10 años (millones CLP)</div>
+        <div className="relative">
+          <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+            {/* Grid lines */}
+            {[0, 50, 100, 150, 200].map((v) => (
+              <g key={v}>
+                <line x1={padL} y1={toY(v)} x2={chartW - 10} y2={toY(v)} stroke="#f3f4f6" strokeWidth="1" />
+                <text x={padL - 5} y={toY(v) + 3} textAnchor="end" fontSize="9" fill="#9ca3af">${v}M</text>
+              </g>
+            ))}
+            {/* X axis labels */}
+            {[0, 2, 4, 6, 8, 10].map((y) => (
+              <text key={y} x={toX(y)} y={chartH - 2} textAnchor="middle" fontSize="9" fill="#9ca3af">Año {y}</text>
+            ))}
+            {/* Lines with draw animation */}
+            <polyline fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+              points={makeLine("propiedad")}
+              strokeDasharray="1000" strokeDashoffset={animate ? "0" : "1000"}
+              style={{ transition: "stroke-dashoffset 1s ease-out" }} />
+            <polyline fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+              points={makeLine("patrimonio")}
+              strokeDasharray="1000" strokeDashoffset={animate ? "0" : "1000"}
+              style={{ transition: "stroke-dashoffset 1s ease-out 0.2s" }} />
+            <polyline fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6,3"
+              points={makeLine("deuda")} opacity={animate ? 1 : 0}
+              style={{ transition: "opacity 0.5s ease-out 0.5s" }} />
+            {/* Hover areas */}
+            {data.map((d, i) => (
+              <g key={i}>
+                <rect x={toX(i) - plotW / 22} y={padT} width={plotW / 11} height={plotH}
+                  fill="transparent" className="cursor-pointer"
+                  onMouseEnter={() => setHoveredYear(i)}
+                  onMouseLeave={() => setHoveredYear(null)} />
+                {hoveredYear === i && (
+                  <line x1={toX(i)} y1={padT} x2={toX(i)} y2={padT + plotH} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,2" />
+                )}
+                {/* Dots on hover */}
+                {hoveredYear === i && (
+                  <>
+                    <circle cx={toX(i)} cy={toY(d.propiedad)} r="4" fill="#059669" />
+                    <circle cx={toX(i)} cy={toY(d.patrimonio)} r="4" fill="#3b82f6" />
+                    <circle cx={toX(i)} cy={toY(d.deuda)} r="4" fill="#ef4444" />
+                  </>
+                )}
+              </g>
+            ))}
+          </svg>
+          {/* Tooltip overlay */}
+          {hoveredYear !== null && (
+            <div
+              className="pointer-events-none absolute z-20 w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
+              style={{
+                left: `${(toX(hoveredYear) / chartW) * 100}%`,
+                top: `${(toY(data[hoveredYear].propiedad) / chartH) * 100 - 8}%`,
+                transform: "translate(-50%, -100%)",
+              }}
+            >
+              <div className="font-semibold mb-1">Año {data[hoveredYear].year}</div>
+              <div className="space-y-0.5">
+                <div className="flex justify-between"><span className="text-[#34d399]">Propiedad</span><span>${data[hoveredYear].propiedad}M</span></div>
+                <div className="flex justify-between"><span className="text-[#60a5fa]">Patrimonio</span><span>${data[hoveredYear].patrimonio}M</span></div>
+                <div className="flex justify-between"><span className="text-red-400">Deuda</span><span>${data[hoveredYear].deuda}M</span></div>
+              </div>
+              <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1a1a1a]" />
             </div>
-          </div>
-          <div className="flex flex-col justify-center space-y-5">
-            <div className="rounded-xl bg-[#ecfdf5] p-4">
-              <div className="text-2xl font-bold text-[#059669]">2.83x</div>
-              <div className="text-sm text-[#059669]">Multiplicador</div>
-            </div>
-            <div className="rounded-xl bg-[#fafafa] p-4">
-              <p className="text-sm text-[#374151]">Tu pie de <span className="font-semibold">$24.8M</span> se convierte en <span className="font-semibold text-[#059669]">$70.2M</span> en 10 años</p>
-            </div>
-            <div className="rounded-xl bg-[#fafafa] p-4">
-              <p className="text-sm text-[#374151]">TIR: <span className="font-semibold text-[#059669]">7.8% anual</span></p>
-              <p className="mt-0.5 text-xs text-[#9ca3af]">Mejor que un depósito a plazo</p>
-            </div>
-          </div>
+          )}
+        </div>
+        {/* Legend */}
+        <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-[#6b7280]">
+          <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-sm bg-[#059669]" /> Valor propiedad</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-sm bg-[#3b82f6]" /> Tu patrimonio neto</span>
+          <span className="flex items-center gap-1.5"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Lo que debes al banco</span>
+        </div>
+        {/* Summary card */}
+        <div className="mt-6 rounded-xl bg-[#ecfdf5] p-4">
+          <p className="text-sm font-semibold text-[#059669]">
+            En 10 años tu inversión de $24.8M se convierte en $70.2M. Multiplicador: 2.83x.
+          </p>
+          <p className="mt-1 text-sm text-[#059669]/80">
+            Eso es 7.8% anual — mejor que cualquier depósito a plazo.
+          </p>
         </div>
       </div>
     </div>
   );
 }
 
-function TabAnalisisIA() {
+function TabAnalisisIA({ animate }: { animate: boolean }) {
+  const items = [
+    { type: "favor", text: "Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos." },
+    { type: "favor", text: "Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía." },
+    { type: "atencion", text: "El retorno neto (CAP rate 1.5%) está bajo el promedio. Podrías negociar el precio de compra." },
+    { type: "atencion", text: "Cada mes tendrás que poner $416.788 de tu bolsillo para cubrir los costos." },
+    { type: "veredicto", text: "La inversión apuesta a la plusvalía futura. El arriendo cubre solo la mitad de los costos — negociar el precio mejoraría los números." },
+  ];
+
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
         Sin jerga financiera. Sin letra chica. La verdad en español.
       </p>
       <div className="mx-auto max-w-3xl space-y-4">
-        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #059669" }}>
-          <h3 className="mb-4 text-sm font-semibold text-[#059669]">A favor de esta inversión</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-2.5 text-sm text-[#374151]">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
-              Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos.
-            </li>
-            <li className="flex items-start gap-2.5 text-sm text-[#374151]">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
-              Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía.
-            </li>
+        {/* A favor */}
+        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5" style={{ borderLeft: "4px solid #059669" }}>
+          <h3 className="mb-3 text-sm font-semibold text-[#059669]">A favor</h3>
+          <ul className="space-y-2.5">
+            {items.filter(x => x.type === "favor").map((item, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2.5 text-sm text-[#374151]"
+                style={{
+                  opacity: animate ? 1 : 0,
+                  transform: animate ? "translateY(0)" : "translateY(6px)",
+                  transition: `opacity 0.4s ease-out ${i * 300}ms, transform 0.4s ease-out ${i * 300}ms`,
+                }}
+              >
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
+                {item.text}
+              </li>
+            ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-6" style={{ borderLeft: "4px solid #ef4444" }}>
-          <h3 className="mb-4 text-sm font-semibold text-red-500">Puntos de atención</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-2.5 text-sm text-[#374151]">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
-              El retorno neto (CAP rate 1.5%) esta bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.
-            </li>
-            <li className="flex items-start gap-2.5 text-sm text-[#374151]">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
-              Cada mes tendrás que poner $416.788 de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.
-            </li>
+        {/* Atención */}
+        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5" style={{ borderLeft: "4px solid #ef4444" }}>
+          <h3 className="mb-3 text-sm font-semibold text-red-500">Atención</h3>
+          <ul className="space-y-2.5">
+            {items.filter(x => x.type === "atencion").map((item, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-2.5 text-sm text-[#374151]"
+                style={{
+                  opacity: animate ? 1 : 0,
+                  transform: animate ? "translateY(0)" : "translateY(6px)",
+                  transition: `opacity 0.4s ease-out ${(i + 2) * 300}ms, transform 0.4s ease-out ${(i + 2) * 300}ms`,
+                }}
+              >
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
+                {item.text}
+              </li>
+            ))}
           </ul>
         </div>
-        <div className="rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-6" style={{ borderLeft: "4px solid #9ca3af" }}>
-          <h3 className="mb-3 text-sm font-semibold text-[#6b7280]">Veredicto</h3>
+        {/* Veredicto */}
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-5"
+          style={{
+            borderLeft: "4px solid #9ca3af",
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(6px)",
+            transition: "opacity 0.4s ease-out 1200ms, transform 0.4s ease-out 1200ms",
+          }}
+        >
+          <h3 className="mb-2 text-sm font-semibold text-[#6b7280]">Veredicto</h3>
           <p className="text-sm leading-relaxed text-[#374151]">
-            El arriendo genera $420.000 al mes y los costos suman $836.788. Falta cubrir $416.788 de tu bolsillo. La inversión apuesta a la plusvalía futura — negociar el precio mejoraría los números significativamente.
+            {items.find(x => x.type === "veredicto")?.text}
           </p>
         </div>
+        {/* CTA */}
+        <div className="text-center pt-2">
+          <Link href="/register" className="inline-flex items-center gap-1 text-sm font-medium text-[#059669] transition-colors hover:text-[#047857] hover:underline">
+            Ver análisis completo <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
       </div>
-      <p className="mt-6 text-center text-sm text-[#9ca3af]">
-        Este análisis se genera automáticamente con IA para cada propiedad que evalúes.
-      </p>
     </div>
   );
 }
 
-function TabSensibilidad() {
+function TabSensibilidad({ animate }: { animate: boolean }) {
+  const scenarios = [
+    {
+      label: "Pesimista", score: 49, color: "#ef4444",
+      Icon: TrendingDown,
+      bg: "bg-red-50", border: "border-red-300",
+      desc: "Si suben las tasas y baja el arriendo",
+      result: "Pierdes $621K/mes",
+      resultColor: "text-red-600",
+    },
+    {
+      label: "Base", score: 58, color: "#eab308",
+      Icon: Minus,
+      bg: "bg-white", border: "border-[#e5e7eb]",
+      desc: "Escenario actual",
+      result: "Pierdes $416K/mes",
+      resultColor: "text-red-500",
+    },
+    {
+      label: "Optimista", score: 63, color: "#059669",
+      Icon: TrendingUp,
+      bg: "bg-emerald-50", border: "border-[#059669]/40",
+      desc: "Si bajan las tasas y sube el arriendo",
+      result: "Pierdes $323K/mes",
+      resultColor: "text-orange-500",
+    },
+  ];
+
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
         Mira qué pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
       </p>
-      <div className="grid gap-6 md:grid-cols-3">
-        {[
-          {
-            label: "Pesimista", score: 49, color: "#ef4444", borderColor: "border-red-300",
-            scenario: "+1.5% tasa, -15% arriendo, +2 meses vacancia",
-            flujo: "-$621.548/mes", yield: "0.3%",
-            flujoColor: "text-red-500", yieldColor: "text-red-500",
-          },
-          {
-            label: "Base", score: 58, color: "#eab308", borderColor: "border-[#e5e7eb]",
-            scenario: "Valores actuales",
-            flujo: "-$416.788/mes", yield: "1.4%",
-            flujoColor: "text-red-500", yieldColor: "text-orange-500",
-          },
-          {
-            label: "Optimista", score: 63, color: "#059669", borderColor: "border-[#059669]/40",
-            scenario: "-1% tasa, +10% arriendo",
-            flujo: "-$323.645/mes", yield: "1.8%",
-            flujoColor: "text-orange-500", yieldColor: "text-[#059669]",
-          },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-2xl border ${s.borderColor} bg-white p-6 transition-all duration-200 hover:shadow-md`}>
-            <div className="mb-1 text-xs font-semibold uppercase tracking-wider" style={{ color: s.color }}>{s.label}</div>
-            <div className="my-4 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2" style={{ borderColor: s.color }}>
+      <div className="grid gap-5 md:grid-cols-3">
+        {scenarios.map((s, i) => (
+          <div
+            key={s.label}
+            className={`rounded-2xl border ${s.border} ${s.bg} p-6 text-center transition-all duration-200 hover:shadow-md`}
+            style={{
+              opacity: animate ? 1 : 0,
+              transform: animate ? "translateX(0)" : `translateX(${(i - 1) * -20}px)`,
+              transition: `opacity 0.4s ease-out ${i * 200}ms, transform 0.4s ease-out ${i * 200}ms`,
+            }}
+          >
+            <div className="mb-3 flex justify-center">
+              <s.Icon className="h-5 w-5" style={{ color: s.color }} />
+            </div>
+            <div className="mb-3 flex justify-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2" style={{ borderColor: s.color, backgroundColor: `${s.color}10` }}>
                 <div className="text-center">
                   <div className="text-xl font-bold" style={{ color: s.color }}>{s.score}</div>
                   <div className="text-[7px] text-[#9ca3af]">SCORE</div>
                 </div>
               </div>
             </div>
-            <p className="mb-4 text-center text-xs text-[#6b7280]">{s.scenario}</p>
-            <div className="space-y-2 border-t border-[#f3f4f6] pt-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6b7280]">Flujo</span>
-                <span className={`font-semibold ${s.flujoColor}`}>{s.flujo}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-[#6b7280]">Yield neto</span>
-                <span className={`font-semibold ${s.yieldColor}`}>{s.yield}</span>
-              </div>
-            </div>
+            <p className="mb-3 text-sm text-[#6b7280]">{s.desc}</p>
+            <p className={`text-lg font-bold ${s.resultColor}`}>{s.result}</p>
           </div>
         ))}
       </div>
       <p className="mt-8 text-center text-sm text-[#6b7280]">
-        En el peor escenario, tu score baja a 49. En el mejor, sube a 63. Así tomas decisiones con los ojos abiertos.
+        Incluso en el mejor escenario, este depto tiene flujo negativo. El retorno viene por la plusvalía a largo plazo.
       </p>
     </div>
   );
@@ -450,12 +614,19 @@ export default function HomePage() {
     fetchData();
   }, []);
 
+  const [tabAnimated, setTabAnimated] = useState(false);
+  useEffect(() => {
+    setTabAnimated(false);
+    const t = setTimeout(() => setTabAnimated(true), 50);
+    return () => clearTimeout(t);
+  }, [activeTab]);
+
   const tabs = [
     { label: "Comparación", content: <TabComparacion /> },
-    { label: "Flujo de caja", content: <TabFlujoCaja /> },
-    { label: "Patrimonio", content: <TabPatrimonio /> },
-    { label: "Análisis IA", content: <TabAnalisisIA /> },
-    { label: "Sensibilidad", content: <TabSensibilidad /> },
+    { label: "Flujo de caja", content: <TabFlujoCaja animate={tabAnimated} /> },
+    { label: "Patrimonio", content: <TabPatrimonio animate={tabAnimated} /> },
+    { label: "Análisis IA", content: <TabAnalisisIA animate={tabAnimated} /> },
+    { label: "Sensibilidad", content: <TabSensibilidad animate={tabAnimated} /> },
   ];
 
   return (
@@ -842,12 +1013,8 @@ export default function HomePage() {
       </section>
 
       {/* ============ 5. PREVIEW CON TABS ============ */}
-      <section className="relative px-5 py-12 sm:px-6 md:py-[100px]">
-        <div className="pointer-events-none absolute inset-0" style={{
-          backgroundImage: "linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.03) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }} />
-        <div className="relative mx-auto max-w-5xl">
+      <section className="bg-[#fafafa] px-5 py-12 sm:px-6 md:py-[100px]">
+        <div className="mx-auto max-w-5xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
               Mira lo que obtienes con cada análisis
@@ -873,11 +1040,11 @@ export default function HomePage() {
                 ))}
                 </div>
               </div>
-              <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent md:hidden" />
+              <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#fafafa] to-transparent md:hidden" />
             </div>
           </FadeIn>
           {/* Tab content */}
-          <div className="mt-10">
+          <div className="mt-10" style={{ minHeight: 520 }}>
             <div
               key={activeTab}
               style={{
