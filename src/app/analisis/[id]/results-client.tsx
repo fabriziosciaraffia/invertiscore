@@ -661,6 +661,7 @@ export function PremiumResults({
 
   interface CashflowRow {
     name: string;
+    _x: number; // month number (0=T0, 1=M1, 12=Año 1, etc.)
     Ingreso: number;
     Dividendo: number;
     GGCC: number;
@@ -673,98 +674,94 @@ export function PremiumResults({
 
   const isMonthlyView = horizonYears <= 2;
 
+  // Label helper for annual view X axis
+  function annualCashflowLabel(month: number, preEntrega: number): string {
+    if (month === 0) return "T0";
+    if (preEntrega > 0 && month === preEntrega && month % 12 !== 0) return "Entrega";
+    if (month % 12 === 0) return `Año ${month / 12}`;
+    return `M${month}`;
+  }
+
   const cashflowData = useMemo((): CashflowRow[] => {
     if (!m || !results || !inputData) return [];
 
     const contribucionesMes = Math.round((inputData.contribuciones ?? 0) / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
+    const totalMonths = horizonYears * 12;
 
-    if (isMonthlyView) {
-      const totalMonths = horizonYears * 12;
-      const data: CashflowRow[] = [];
+    const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
+      ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
+      : 0;
 
-      const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
-        ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
-        : 0;
+    // Always calculate month by month
+    const allData: CashflowRow[] = [];
+    allData.push({ name: "T0", _x: 0, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: 0 });
 
-      // T0: siempre presente
-      const emptyRow: CashflowRow = { name: "T0", Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: 0 };
-      data.push(emptyRow);
-      let acumulado = 0;
+    let acumulado = 0;
+    let arriendoActual = m.ingresoMensual;
+    let gastosActual = inputData.gastos ?? 0;
 
-      let arriendoActual = m.ingresoMensual;
-      let gastosActual = inputData.gastos ?? 0;
-
-      if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
-        // Mostrar todos los meses, incluyendo pre-entrega con $0
-        for (let mes = 1; mes <= totalMonths; mes++) {
-          if (mes <= mesesPreEntrega) {
-            // Pre-entrega: sin flujo operativo
-            data.push({ name: `M${mes}`, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: acumulado });
-          } else {
-            const mesOp = mes - mesesPreEntrega;
-            if (mesOp > 1 && (mes - 1) % 12 === 0) {
-              arriendoActual *= 1.035;
-              gastosActual *= 1.03;
-            }
-            const esVacancia = mesOp === 1;
-            let ingreso = Math.round(arriendoActual);
-            if (esVacancia) ingreso = 0;
-
-            const div = -m.dividendo;
-            // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
-            const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
-            const contrib = -contribucionesMes;
-            const mant = -mantencion;
-            const vac = -vacanciaMes;
-            const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
-            acumulado += flujoNeto;
-            data.push({ name: `M${mes}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
-          }
-        }
-      } else {
-        for (let i = 1; i <= totalMonths; i++) {
-          if (i > 1 && (i - 1) % 12 === 0) {
+    if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
+      for (let mes = 1; mes <= totalMonths; mes++) {
+        if (mes <= mesesPreEntrega) {
+          allData.push({ name: `M${mes}`, _x: mes, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: acumulado });
+        } else {
+          const mesOp = mes - mesesPreEntrega;
+          if (mesOp > 1 && (mes - 1) % 12 === 0) {
             arriendoActual *= 1.035;
             gastosActual *= 1.03;
           }
-          const esVacancia = i === 1;
+          const esVacancia = mesOp === 1;
           let ingreso = Math.round(arriendoActual);
           if (esVacancia) ingreso = 0;
-
           const div = -m.dividendo;
-          // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
           const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
           const contrib = -contribucionesMes;
           const mant = -mantencion;
           const vac = -vacanciaMes;
           const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
           acumulado += flujoNeto;
-          data.push({ name: `M${i}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
+          allData.push({ name: `M${mes}`, _x: mes, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
         }
       }
-      return data;
     } else {
-      // Annual view: aggregate per year
-      return dynamicProjections.slice(0, horizonYears).map((p) => {
-        const ingresoAnual = p.arriendoMensual * 12;
-        const divAnual = -(m.dividendo * 12);
-        // GGCC: propietario solo paga durante meses de vacancia
-        const ggccAnual = -(inputData.gastos * inputData.vacanciaMeses);
-        const contribAnual = -(contribucionesMes * 12);
-        const mantAnual = -(mantencion * 12);
-        const vacAnual = -(vacanciaMes * 12);
-        const flujoNeto = ingresoAnual + divAnual + ggccAnual + contribAnual + mantAnual + vacAnual;
-        return {
-          name: `Año ${p.anio}`, Ingreso: ingresoAnual, Dividendo: divAnual, GGCC: ggccAnual, Contribuciones: contribAnual, Mantencion: mantAnual, Vacancia: vacAnual, FlujoNeto: flujoNeto, Acumulado: p.flujoAcumulado,
-        };
-      });
+      for (let i = 1; i <= totalMonths; i++) {
+        if (i > 1 && (i - 1) % 12 === 0) {
+          arriendoActual *= 1.035;
+          gastosActual *= 1.03;
+        }
+        const esVacancia = i === 1;
+        let ingreso = Math.round(arriendoActual);
+        if (esVacancia) ingreso = 0;
+        const div = -m.dividendo;
+        const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
+        const contrib = -contribucionesMes;
+        const mant = -mantencion;
+        const vac = -vacanciaMes;
+        const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
+        acumulado += flujoNeto;
+        allData.push({ name: `M${i}`, _x: i, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
+      }
     }
-  }, [horizonYears, isMonthlyView, results, m, inputData, dynamicProjections]);
+
+    if (isMonthlyView) return allData;
+
+    // Annual view: sample at T0 + year boundaries + delivery month
+    const sampleSet = new Set<number>();
+    sampleSet.add(0);
+    for (let y = 1; y <= horizonYears; y++) sampleSet.add(y * 12);
+    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths && mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
+    const sampleArr = Array.from(sampleSet).sort((a, b) => a - b);
+
+    return allData
+      .filter((row) => sampleArr.includes(row._x))
+      .map((row) => ({ ...row, name: annualCashflowLabel(row._x, mesesPreEntrega) }));
+  }, [horizonYears, isMonthlyView, results, m, inputData]);
 
   interface PatrimonioRow {
     name: string;
+    _x: number; // month number (0=T0, 12=Año 1, etc.)
     piePagado: number;
     capitalAmortizado: number;
     plusvalia: number;
@@ -774,6 +771,14 @@ export function PremiumResults({
     valorPropArea?: number; // computed: 0 pre-entrega (futura), valorPropiedad post-entrega
     isEntrega?: boolean;
     isPreEntrega?: boolean;
+  }
+
+  // Label helper for annual patrimonio X axis
+  function annualPatrimonioLabel(month: number, preEntrega: number): string {
+    if (month === 0) return "T0";
+    if (preEntrega > 0 && month === preEntrega && month % 12 !== 0) return "Entrega";
+    if (month % 12 === 0) return `Año ${month / 12}`;
+    return `M${month}`;
   }
 
   const projData = useMemo((): PatrimonioRow[] => {
@@ -797,56 +802,36 @@ export function PremiumResults({
       return Math.max(0, creditoCLP * Math.pow(1 + tasaMensual, mesActual) - div * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual));
     };
 
-    const data: PatrimonioRow[] = [];
+    // Always calculate month by month
+    const totalMonths = horizonYears * 12;
+    const allData: PatrimonioRow[] = [];
 
-    if (isMonthlyView) {
-      const totalMonths = horizonYears * 12;
+    if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
+      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
 
-      if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
+      for (let mo = 1; mo <= totalMonths; mo++) {
+        const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+        const plusvaliaAcum = valorProp - precioCLP;
 
-        for (let mo = 1; mo <= totalMonths; mo++) {
-          const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
-          const plusvaliaAcum = valorProp - precioCLP;
-
-          if (mo <= mesesPreEntrega) {
-            const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
-            data.push({
-              name: `M${mo}`,
-              piePagado: Math.round(piePagado),
-              capitalAmortizado: 0,
-              plusvalia: Math.round(plusvaliaAcum),
-              saldoCredito: 0,
-              patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
-              valorPropiedad: Math.round(valorProp),
-              isEntrega: mo === mesesPreEntrega,
-              isPreEntrega: true,
-            });
-          } else {
-            const mesesCredito = mo - mesesPreEntrega;
-            const saldo = calcSaldo(mesesCredito);
-            const capitalAmort = creditoCLP - saldo;
-            data.push({
-              name: `M${mo}`,
-              piePagado: m.pieCLP,
-              capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-              plusvalia: Math.round(plusvaliaAcum),
-              saldoCredito: Math.round(saldo),
-              patrimonioNeto: Math.round(valorProp - saldo),
-              valorPropiedad: Math.round(valorProp),
-            });
-          }
-        }
-      } else {
-        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
-
-        for (let mo = 1; mo <= totalMonths; mo++) {
-          const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
-          const plusvaliaAcum = valorProp - precioCLP;
-          const saldo = calcSaldo(mo);
+        if (mo <= mesesPreEntrega) {
+          const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
+          allData.push({
+            name: `M${mo}`, _x: mo,
+            piePagado: Math.round(piePagado),
+            capitalAmortizado: 0,
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: 0,
+            patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
+            valorPropiedad: Math.round(valorProp),
+            isEntrega: mo === mesesPreEntrega,
+            isPreEntrega: true,
+          });
+        } else {
+          const mesesCredito = mo - mesesPreEntrega;
+          const saldo = calcSaldo(mesesCredito);
           const capitalAmort = creditoCLP - saldo;
-          data.push({
-            name: `M${mo}`,
+          allData.push({
+            name: `M${mo}`, _x: mo,
             piePagado: m.pieCLP,
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
@@ -857,67 +842,43 @@ export function PremiumResults({
         }
       }
     } else {
-      const anosPreEntrega = mesesPreEntrega > 0 ? Math.ceil(mesesPreEntrega / 12) : 0;
+      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
 
-      if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: 0, patrimonioNeto: 0, valorPropiedad: precioCLP, isPreEntrega: true });
-
-        for (let anio = 1; anio <= Math.min(anosPreEntrega, horizonYears); anio++) {
-          const mesesAcum = Math.min(anio * 12, mesesPreEntrega);
-          const piePagado = Math.min(montoCuotaPie * mesesAcum, m.pieCLP);
-          const valorProp = precioCLP * Math.pow(1 + plusvaliaDec, anio);
-          const plusvaliaAcum = valorProp - precioCLP;
-          data.push({
-            name: `Año ${anio}`,
-            piePagado: Math.round(piePagado),
-            capitalAmortizado: 0,
-            plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: 0,
-            patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
-            valorPropiedad: Math.round(valorProp),
-            isEntrega: anio === anosPreEntrega,
-            isPreEntrega: true,
-          });
-        }
-
-        for (let i = anosPreEntrega; i < Math.min(horizonYears, dynamicProjections.length); i++) {
-          const p = dynamicProjections[i];
-          const plusvaliaAcum = p.valorPropiedad - precioCLP;
-          const capitalAmort = creditoCLP - p.saldoCredito;
-          data.push({
-            name: `Año ${p.anio}`,
-            piePagado: m.pieCLP,
-            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-            plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: p.saldoCredito,
-            patrimonioNeto: p.patrimonioNeto,
-            valorPropiedad: p.valorPropiedad,
-          });
-        }
-      } else {
-        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
-
-        dynamicProjections.slice(0, horizonYears).forEach((p) => {
-          const plusvaliaAcum = p.valorPropiedad - precioCLP;
-          const capitalAmort = creditoCLP - p.saldoCredito;
-          data.push({
-            name: `Año ${p.anio}`,
-            piePagado: m.pieCLP,
-            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-            plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: p.saldoCredito,
-            patrimonioNeto: p.patrimonioNeto,
-            valorPropiedad: p.valorPropiedad,
-          });
+      for (let mo = 1; mo <= totalMonths; mo++) {
+        const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+        const plusvaliaAcum = valorProp - precioCLP;
+        const saldo = calcSaldo(mo);
+        const capitalAmort = creditoCLP - saldo;
+        allData.push({
+          name: `M${mo}`, _x: mo,
+          piePagado: m.pieCLP,
+          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+          plusvalia: Math.round(plusvaliaAcum),
+          saldoCredito: Math.round(saldo),
+          patrimonioNeto: Math.round(valorProp - saldo),
+          valorPropiedad: Math.round(valorProp),
         });
       }
     }
-    // valorPropArea: 0 pre-entrega (futura), valorPropiedad post-entrega/inmediata
-    for (const row of data) {
+
+    // valorPropArea: 0 pre-entrega, valorPropiedad post-entrega/inmediata
+    for (const row of allData) {
       row.valorPropArea = row.isPreEntrega ? 0 : row.valorPropiedad;
     }
-    return data;
-  }, [results, m, inputData, dynamicProjections, horizonYears, plusvaliaRate, isMonthlyView]);
+
+    if (isMonthlyView) return allData;
+
+    // Annual view: sample at T0 + year boundaries + delivery month
+    const sampleSet = new Set<number>();
+    sampleSet.add(0);
+    for (let y = 1; y <= horizonYears; y++) sampleSet.add(y * 12);
+    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths && mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
+    const sampleArr = Array.from(sampleSet).sort((a, b) => a - b);
+
+    return allData
+      .filter((row) => sampleArr.includes(row._x))
+      .map((row) => ({ ...row, name: annualPatrimonioLabel(row._x, mesesPreEntrega) }));
+  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView]);
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -1232,9 +1193,9 @@ export function PremiumResults({
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
-                    content={({ active, payload, label }) => {
+                    content={({ active, payload, label: wfLabel }) => {
                       if (!active || !payload || payload.length === 0) return null;
-                      const item = waterfallData.find((d) => d.name === label);
+                      const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
                       return (
                         <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
@@ -1330,16 +1291,20 @@ export function PremiumResults({
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView && horizonYears <= 1 ? 0 : "preserveStartEnd"} />
+                        {isMonthlyView ? (
+                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={horizonYears <= 1 ? 0 : "preserveStartEnd"} />
+                        ) : (
+                          <XAxis dataKey="_x" type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => annualCashflowLabel(v, mesesPreEntregaTop)} ticks={cashflowData.map((d) => d._x)} domain={[0, horizonYears * 12]} />
+                        )}
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
-                          content={({ active, payload, label }) => {
+                          content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
                               <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                <div className="mb-1.5 font-semibold">{label}</div>
+                                <div className="mb-1.5 font-semibold">{row.name}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
@@ -1363,6 +1328,10 @@ export function PremiumResults({
                         <Bar dataKey="Vacancia" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
                         <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        {/* Línea vertical de entrega */}
+                        {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
+                          <ReferenceLine x={isMonthlyView ? `M${mesesPreEntregaTop}` : mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                        )}
                       </ComposedChart>
                     </ResponsiveContainer>
                     {/* Leyenda manual */}
@@ -1412,17 +1381,21 @@ export function PremiumResults({
                         <ResponsiveContainer>
                           <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
-                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView ? "preserveStartEnd" : 0} />
+                            {isMonthlyView ? (
+                              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
+                            ) : (
+                              <XAxis dataKey="_x" type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => annualPatrimonioLabel(v, mesesPreEntregaTop)} ticks={projData.map((d) => d._x)} domain={[0, horizonYears * 12]} />
+                            )}
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
-                              content={({ active, payload, label }) => {
+                              content={({ active, payload }) => {
                                 if (!active || !payload || payload.length === 0) return null;
                                 const row = payload[0]?.payload as PatrimonioRow | undefined;
                                 if (!row) return null;
                                 const pre = row.isPreEntrega;
                                 return (
                                   <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                    <div className="mb-1.5 font-semibold">{label}{pre ? " (pre-entrega)" : ""}</div>
+                                    <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
@@ -1456,8 +1429,8 @@ export function PremiumResults({
                             {/* Línea principal: patrimonio neto naranja */}
                             <Line type="monotone" dataKey="patrimonioNeto" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3, fill: "#f59e0b" }} name="Patrimonio neto" />
                             {/* Línea vertical de entrega */}
-                            {projData.findIndex((d) => d.isEntrega) >= 0 && (
-                              <ReferenceLine x={projData.find((d) => d.isEntrega)?.name} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                            {mesesPreEntregaTop > 0 && (
+                              <ReferenceLine x={isMonthlyView ? `M${mesesPreEntregaTop}` : mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                             )}
                           </ComposedChart>
                         </ResponsiveContainer>
