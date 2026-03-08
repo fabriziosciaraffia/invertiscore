@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import {
   BarChart, Bar, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid,
+  Tooltip as RechartsTooltip, ResponsiveContainer, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, Cell, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -612,77 +612,100 @@ export function PremiumResults({
     ];
   }, [m, inputData]);
 
-  const cashflowData = useMemo(() => {
-    if (!m || !results || !inputData) return [];
-    if (horizonYears <= 3) {
-      const totalMonths = horizonYears * 12;
-      const data: { name: string; Ingreso: number; Dividendo: number; Gastos: number; Extra: number; Acumulado: number }[] = [];
+  interface CashflowRow {
+    name: string;
+    Ingreso: number;
+    Dividendo: number;
+    GGCC: number;
+    Contribuciones: number;
+    Mantencion: number;
+    Vacancia: number;
+    FlujoNeto: number;
+    Acumulado: number;
+  }
 
-      const contribucionesMes = Math.round((inputData?.contribuciones ?? 0) / 3);
-      const mantencion = inputData?.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
-      const mesesPreEntrega = inputData?.estadoVenta !== "inmediata" && inputData?.fechaEntrega
+  const isMonthlyView = horizonYears <= 2;
+
+  const cashflowData = useMemo((): CashflowRow[] => {
+    if (!m || !results || !inputData) return [];
+
+    const contribucionesMes = Math.round((inputData.contribuciones ?? 0) / 3);
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
+    const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
+
+    if (isMonthlyView) {
+      const totalMonths = horizonYears * 12;
+      const data: CashflowRow[] = [];
+
+      const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
         ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
         : 0;
 
-      // T0: siempre presente, pero sin pie (el pie es inversión de capital, no flujo operativo)
+      // T0: siempre presente
+      const emptyRow: CashflowRow = { name: "T0", Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: 0 };
+      data.push(emptyRow);
       let acumulado = 0;
-      data.push({ name: "T0", Ingreso: 0, Dividendo: 0, Gastos: 0, Extra: 0, Acumulado: 0 });
 
       let arriendoActual = m.ingresoMensual;
-      let gastosActual = inputData?.gastos ?? 0;
+      let gastosActual = inputData.gastos ?? 0;
 
-      if (inputData?.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
-        // Verde/blanco: skip pre-entrega (no mostrar nada operativo)
-        // Saltar directo al mes de entrega
+      if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
         const mesesOperativos = totalMonths - mesesPreEntrega;
-        if (mesesOperativos <= 0) {
-          // Horizonte menor que fecha entrega: no hay meses operativos
-          return data;
-        }
+        if (mesesOperativos <= 0) return data;
+
         for (let i = 1; i <= mesesOperativos; i++) {
-          if (i > 1 && (mesesPreEntrega + i - 1) > 0 && (mesesPreEntrega + i - 1) % 12 === 0) {
+          if (i > 1 && (mesesPreEntrega + i - 1) % 12 === 0) {
             arriendoActual *= 1.035;
             gastosActual *= 1.03;
           }
           let ingreso = Math.round(arriendoActual);
-          let extra = 0;
-          if (i === 1) {
-            ingreso = 0; // Vacancia primer mes
-          } else if (i === 2) {
-            extra = Math.round(m.ingresoMensual * 0.5); // Corretaje
-          }
-          const egreso = m.dividendo + Math.round(gastosActual) + contribucionesMes + mantencion;
-          const flujo = ingreso - egreso - extra;
-          acumulado += flujo;
-          data.push({ name: `M${mesesPreEntrega + i}`, Ingreso: ingreso, Dividendo: m.dividendo, Gastos: Math.round(gastosActual) + contribucionesMes + mantencion, Extra: extra, Acumulado: acumulado });
+          if (i === 1) ingreso = 0; // Vacancia
+
+          const div = -m.dividendo;
+          const ggcc = -Math.round(gastosActual);
+          const contrib = -contribucionesMes;
+          const mant = -mantencion;
+          const vac = -vacanciaMes;
+          const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
+          acumulado += flujoNeto;
+          data.push({ name: `M${mesesPreEntrega + i}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
         }
       } else {
-        // Entrega inmediata: T0 es el inicio, M1 es primer mes operativo
         for (let i = 1; i <= totalMonths; i++) {
           if (i > 1 && (i - 1) % 12 === 0) {
             arriendoActual *= 1.035;
             gastosActual *= 1.03;
           }
           let ingreso = Math.round(arriendoActual);
-          let extra = 0;
-          if (i === 1) {
-            ingreso = 0; // Vacancia
-          } else if (i === 2) {
-            extra = Math.round(m.ingresoMensual * 0.5); // Corretaje
-          }
-          const egreso = m.dividendo + Math.round(gastosActual) + contribucionesMes + mantencion;
-          const flujo = ingreso - egreso - extra;
-          acumulado += flujo;
-          data.push({ name: `M${i}`, Ingreso: ingreso, Dividendo: m.dividendo, Gastos: Math.round(gastosActual) + contribucionesMes + mantencion, Extra: extra, Acumulado: acumulado });
+          if (i === 1) ingreso = 0; // Vacancia
+
+          const div = -m.dividendo;
+          const ggcc = -Math.round(gastosActual);
+          const contrib = -contribucionesMes;
+          const mant = -mantencion;
+          const vac = -vacanciaMes;
+          const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
+          acumulado += flujoNeto;
+          data.push({ name: `M${i}`, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
         }
       }
       return data;
     } else {
-      return dynamicProjections.slice(0, horizonYears).map((p) => ({
-        name: `Año ${p.anio}`, Ingreso: p.arriendoMensual * 12, Dividendo: m.dividendo * 12, Gastos: 0, Extra: 0, Acumulado: p.flujoAcumulado,
-      }));
+      // Annual view: aggregate per year
+      return dynamicProjections.slice(0, horizonYears).map((p) => {
+        const ingresoAnual = p.arriendoMensual * 12;
+        const divAnual = -(m.dividendo * 12);
+        const ggccAnual = -(inputData.gastos * 12);
+        const contribAnual = -(contribucionesMes * 12);
+        const mantAnual = -(mantencion * 12);
+        const vacAnual = -(vacanciaMes * 12);
+        const flujoNeto = ingresoAnual + divAnual + ggccAnual + contribAnual + mantAnual + vacAnual;
+        return {
+          name: `Año ${p.anio}`, Ingreso: ingresoAnual, Dividendo: divAnual, GGCC: ggccAnual, Contribuciones: contribAnual, Mantencion: mantAnual, Vacancia: vacAnual, FlujoNeto: flujoNeto, Acumulado: p.flujoAcumulado,
+        };
+      });
     }
-  }, [horizonYears, results, m, inputData, dynamicProjections]);
+  }, [horizonYears, isMonthlyView, results, m, inputData, dynamicProjections]);
 
   interface PatrimonioRow {
     name: string;
@@ -706,71 +729,144 @@ export function PremiumResults({
     const cuotasPie = inputData.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
     const montoCuotaPie = inputData.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
     const plusvaliaDec = plusvaliaRate / 100;
-    const anosPreEntrega = mesesPreEntrega > 0 ? Math.ceil(mesesPreEntrega / 12) : 0;
+    const plusvaliaMensual = Math.pow(1 + plusvaliaDec, 1 / 12) - 1;
+
+    const calcSaldo = (mesActual: number) => {
+      if (creditoCLP <= 0) return 0;
+      const tasaMensual = inputData.tasaInteres / 100 / 12;
+      const n = inputData.plazoCredito * 12;
+      if (tasaMensual === 0) return creditoCLP * (1 - mesActual / n);
+      const div = (creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n));
+      return Math.max(0, creditoCLP * Math.pow(1 + tasaMensual, mesActual) - div * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual));
+    };
 
     const data: PatrimonioRow[] = [];
 
-    if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-      // T0
-      data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
+    if (isMonthlyView) {
+      // === VISTA MENSUAL ===
+      const totalMonths = horizonYears * 12;
 
-      // Pre-entrega years
-      for (let anio = 1; anio <= Math.min(anosPreEntrega, horizonYears); anio++) {
-        const mesesAcum = Math.min(anio * 12, mesesPreEntrega);
-        const piePagado = Math.min(montoCuotaPie * mesesAcum, m.pieCLP);
-        const valorProp = precioCLP * Math.pow(1 + plusvaliaDec, anio);
-        const plusvaliaAcum = valorProp - precioCLP;
-        const isEntregaYear = anio === anosPreEntrega;
-        data.push({
-          name: `Año ${anio}`,
-          piePagado: Math.round(piePagado),
-          capitalAmortizado: 0,
-          plusvalia: Math.round(plusvaliaAcum),
-          saldoCredito: null,
-          saldoCreditoFuturo: creditoCLP,
-          patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
-          valorPropiedad: Math.round(valorProp),
-          isEntrega: isEntregaYear,
-        });
-      }
+      if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
+        // T0
+        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
 
-      // Post-entrega years
-      for (let i = anosPreEntrega; i < Math.min(horizonYears, dynamicProjections.length); i++) {
-        const p = dynamicProjections[i];
-        const plusvaliaAcum = p.valorPropiedad - precioCLP;
-        const capitalAmort = creditoCLP - p.saldoCredito;
-        data.push({
-          name: `Año ${p.anio}`,
-          piePagado: m.pieCLP,
-          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-          plusvalia: Math.round(plusvaliaAcum),
-          saldoCredito: p.saldoCredito,
-          saldoCreditoFuturo: null,
-          patrimonioNeto: p.patrimonioNeto,
-          valorPropiedad: p.valorPropiedad,
-        });
+        for (let mo = 1; mo <= totalMonths; mo++) {
+          const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+          const plusvaliaAcum = valorProp - precioCLP;
+
+          if (mo <= mesesPreEntrega) {
+            // Pre-entrega
+            const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
+            data.push({
+              name: `M${mo}`,
+              piePagado: Math.round(piePagado),
+              capitalAmortizado: 0,
+              plusvalia: Math.round(plusvaliaAcum),
+              saldoCredito: null,
+              saldoCreditoFuturo: creditoCLP,
+              patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
+              valorPropiedad: Math.round(valorProp),
+              isEntrega: mo === mesesPreEntrega,
+            });
+          } else {
+            // Post-entrega
+            const mesesCredito = mo - mesesPreEntrega;
+            const saldo = calcSaldo(mesesCredito);
+            const capitalAmort = creditoCLP - saldo;
+            data.push({
+              name: `M${mo}`,
+              piePagado: m.pieCLP,
+              capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+              plusvalia: Math.round(plusvaliaAcum),
+              saldoCredito: Math.round(saldo),
+              saldoCreditoFuturo: null,
+              patrimonioNeto: Math.round(valorProp - saldo),
+              valorPropiedad: Math.round(valorProp),
+            });
+          }
+        }
+      } else {
+        // Entrega inmediata mensual
+        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+
+        for (let mo = 1; mo <= totalMonths; mo++) {
+          const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+          const plusvaliaAcum = valorProp - precioCLP;
+          const saldo = calcSaldo(mo);
+          const capitalAmort = creditoCLP - saldo;
+          data.push({
+            name: `M${mo}`,
+            piePagado: m.pieCLP,
+            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: Math.round(saldo),
+            saldoCreditoFuturo: null,
+            patrimonioNeto: Math.round(valorProp - saldo),
+            valorPropiedad: Math.round(valorProp),
+          });
+        }
       }
     } else {
-      // Entrega inmediata
-      data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+      // === VISTA ANUAL ===
+      const anosPreEntrega = mesesPreEntrega > 0 ? Math.ceil(mesesPreEntrega / 12) : 0;
 
-      dynamicProjections.slice(0, horizonYears).forEach((p) => {
-        const plusvaliaAcum = p.valorPropiedad - precioCLP;
-        const capitalAmort = creditoCLP - p.saldoCredito;
-        data.push({
-          name: `Año ${p.anio}`,
-          piePagado: m.pieCLP,
-          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
-          plusvalia: Math.round(plusvaliaAcum),
-          saldoCredito: p.saldoCredito,
-          saldoCreditoFuturo: null,
-          patrimonioNeto: p.patrimonioNeto,
-          valorPropiedad: p.valorPropiedad,
+      if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
+        data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
+
+        for (let anio = 1; anio <= Math.min(anosPreEntrega, horizonYears); anio++) {
+          const mesesAcum = Math.min(anio * 12, mesesPreEntrega);
+          const piePagado = Math.min(montoCuotaPie * mesesAcum, m.pieCLP);
+          const valorProp = precioCLP * Math.pow(1 + plusvaliaDec, anio);
+          const plusvaliaAcum = valorProp - precioCLP;
+          data.push({
+            name: `Año ${anio}`,
+            piePagado: Math.round(piePagado),
+            capitalAmortizado: 0,
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: null,
+            saldoCreditoFuturo: creditoCLP,
+            patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
+            valorPropiedad: Math.round(valorProp),
+            isEntrega: anio === anosPreEntrega,
+          });
+        }
+
+        for (let i = anosPreEntrega; i < Math.min(horizonYears, dynamicProjections.length); i++) {
+          const p = dynamicProjections[i];
+          const plusvaliaAcum = p.valorPropiedad - precioCLP;
+          const capitalAmort = creditoCLP - p.saldoCredito;
+          data.push({
+            name: `Año ${p.anio}`,
+            piePagado: m.pieCLP,
+            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: p.saldoCredito,
+            saldoCreditoFuturo: null,
+            patrimonioNeto: p.patrimonioNeto,
+            valorPropiedad: p.valorPropiedad,
+          });
+        }
+      } else {
+        data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+
+        dynamicProjections.slice(0, horizonYears).forEach((p) => {
+          const plusvaliaAcum = p.valorPropiedad - precioCLP;
+          const capitalAmort = creditoCLP - p.saldoCredito;
+          data.push({
+            name: `Año ${p.anio}`,
+            piePagado: m.pieCLP,
+            capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+            plusvalia: Math.round(plusvaliaAcum),
+            saldoCredito: p.saldoCredito,
+            saldoCreditoFuturo: null,
+            patrimonioNeto: p.patrimonioNeto,
+            valorPropiedad: p.valorPropiedad,
+          });
         });
-      });
+      }
     }
     return data;
-  }, [results, m, inputData, dynamicProjections, horizonYears, plusvaliaRate]);
+  }, [results, m, inputData, dynamicProjections, horizonYears, plusvaliaRate, isMonthlyView]);
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -1151,7 +1247,7 @@ export function PremiumResults({
                     <span className="text-xs text-muted-foreground">Horizonte:</span>
                     <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="w-48 accent-primary" />
                     <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
-                    <span className="text-xs text-muted-foreground">({horizonYears <= 3 ? "vista mensual" : "vista anual"})</span>
+                    <span className="text-xs text-muted-foreground">({isMonthlyView ? "vista mensual" : "vista anual"})</span>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">Plusvalía anual:</span>
@@ -1165,24 +1261,59 @@ export function PremiumResults({
                 {/* Flujo de Caja */}
                 <div>
                   <h4 className="mb-1 text-sm font-semibold">
-                    Flujo de Caja — {horizonYears <= 3 ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
+                    Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
-                  <div className="relative h-56">
+                  <div className="relative h-64">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={horizonYears <= 1 ? 0 : "preserveStartEnd"} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView && horizonYears <= 1 ? 0 : "preserveStartEnd"} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
-                        <RechartsTooltip formatter={((v: number) => fmt(v)) as never} />
-                        <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                        <Bar dataKey="Ingreso" stackId="a" fill="#059669" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="Dividendo" stackId="b" fill="#ef4444" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="Gastos" stackId="b" fill="#f97316" />
-                        <Bar dataKey="Extra" stackId="b" fill="#f59e0b" />
-                        <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={horizonYears <= 3 ? { r: 2 } : false} />
+                        <RechartsTooltip
+                          content={({ active, payload, label }) => {
+                            if (!active || !payload || payload.length === 0) return null;
+                            const row = payload[0]?.payload as CashflowRow | undefined;
+                            if (!row) return null;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                                <div className="mb-1.5 font-semibold">{label}</div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(row.Contribuciones)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención: <span className="font-medium text-red-400">{fmt(row.Mantencion)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(row.Vacancia)}</span></div>
+                                <div className="my-1 border-t border-border/50" />
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className="text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
+                        {/* Barra positiva: ingreso */}
+                        <Bar dataKey="Ingreso" stackId="flow" fill="#059669" radius={[4, 4, 0, 0]} />
+                        {/* Barras negativas apiladas: egresos */}
+                        <Bar dataKey="Dividendo" stackId="flow" fill="#ef4444" />
+                        <Bar dataKey="GGCC" stackId="flow" fill="#f97316" />
+                        <Bar dataKey="Contribuciones" stackId="flow" fill="#d97706" />
+                        <Bar dataKey="Mantencion" stackId="flow" fill="#f43f5e" />
+                        <Bar dataKey="Vacancia" stackId="flow" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        {/* Línea acumulado */}
+                        <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                       </ComposedChart>
                     </ResponsiveContainer>
+                    {/* Leyenda manual */}
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Ingreso</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#3b82f6", height: 2 }} />Acumulado</span>
+                    </div>
                     {horizonBeforeDelivery && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[1px]">
                         <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-6 py-5 text-center shadow-lg">
@@ -1208,7 +1339,7 @@ export function PremiumResults({
                   <>
                     <div>
                       <div className="mb-1 flex items-center gap-2">
-                        <h4 className="text-sm font-semibold">Proyección de Patrimonio — {horizonYears} año{horizonYears > 1 ? "s" : ""}</h4>
+                        <h4 className="text-sm font-semibold">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
                         {horizonBeforeDelivery && (
                           <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                             Período pre-entrega: tu patrimonio crece con los pagos del pie
@@ -1220,7 +1351,7 @@ export function PremiumResults({
                         <ResponsiveContainer>
                           <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
-                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                            <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView ? "preserveStartEnd" : 0} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
                               content={({ active, payload, label }) => {
