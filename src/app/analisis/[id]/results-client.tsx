@@ -771,6 +771,7 @@ export function PremiumResults({
     saldoCredito: number;
     patrimonioNeto: number;
     valorPropiedad: number;
+    valorPropArea?: number; // computed: 0 pre-entrega (futura), valorPropiedad post-entrega
     isEntrega?: boolean;
     isPreEntrega?: boolean;
   }
@@ -910,6 +911,10 @@ export function PremiumResults({
           });
         });
       }
+    }
+    // valorPropArea: 0 pre-entrega (futura), valorPropiedad post-entrega/inmediata
+    for (const row of data) {
+      row.valorPropArea = row.isPreEntrega ? 0 : row.valorPropiedad;
     }
     return data;
   }, [results, m, inputData, dynamicProjections, horizonYears, plusvaliaRate, isMonthlyView]);
@@ -1421,35 +1426,35 @@ export function PremiumResults({
                                     {pre ? (
                                       <>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía estimada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#3b82f6", opacity: 0.4 }} />Plusvalía estimada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
                                         <div className="text-muted-foreground">Deuda: $0 (crédito aún no comienza)</div>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="text-muted-foreground">Valor propiedad: <span className="font-medium text-foreground">{fmt(row.valorPropiedad)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium">{fmt(row.valorPropiedad)}</span></div>
                                         <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito)}</span></div>
                                         <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía acumulada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#3b82f6", opacity: 0.4 }} />Plusvalía acumulada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
                                       </>
                                     )}
-                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold text-primary">Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#f59e0b" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                                   </div>
                                 );
                               }}
                             />
-                            {/* Área roja semi-transparente: deuda (desde línea deuda hasta $0) */}
+                            {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
+                            <Area type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="none" />
+                            {/* Área roja: deuda */}
                             <Area type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
-                            {/* Área verde semi-transparente: patrimonio neto (diferencia valor prop - deuda) */}
-                            <Area type="monotone" dataKey="valorPropiedad" fill="#059669" fillOpacity={0.08} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
                             <Bar dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Crédito amortizado" radius={[0, 0, 0, 0]} />
-                            {/* Área: plusvalía apilada sobre las barras */}
-                            <Bar dataKey="plusvalia" stackId="patrimonio" fill="#10b981" fillOpacity={0.2} stroke="#10b981" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
-                            {/* Línea: deuda (sólida, empieza en $0 pre-entrega, salta al crédito en entrega) */}
+                            <Bar dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                            {/* Plusvalía: azul */}
+                            <Bar dataKey="plusvalia" stackId="patrimonio" fill="#3b82f6" fillOpacity={0.25} stroke="#3b82f6" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                            {/* Línea: deuda roja */}
                             <Line type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
-                            {/* Línea principal: patrimonio neto */}
-                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#059669" strokeWidth={3} dot={{ r: 3, fill: "#059669" }} name="Patrimonio neto" />
+                            {/* Línea principal: patrimonio neto naranja */}
+                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3, fill: "#f59e0b" }} name="Patrimonio neto" />
                             {/* Línea vertical de entrega */}
                             {projData.findIndex((d) => d.isEntrega) >= 0 && (
                               <ReferenceLine x={projData.find((d) => d.isEntrega)?.name} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
@@ -1460,10 +1465,11 @@ export function PremiumResults({
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Crédito amortizado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Capital amortizado</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#3b82f6", opacity: 0.4 }} />Plusvalía</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#059669", height: 3 }} />Patrimonio neto</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#f59e0b", height: 3 }} />Patrimonio neto</span>
                       </div>
                       {/* Desglose de patrimonio */}
                       {(() => {
