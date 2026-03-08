@@ -2,7 +2,7 @@ export interface Desglose {
   rentabilidad: number;
   plusvalia: number;
   riesgo: number;
-  ubicacion: number;
+  eficiencia: number;
   flujoCaja: number;
 }
 

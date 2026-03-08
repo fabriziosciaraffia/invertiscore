@@ -674,7 +674,7 @@ export default function HomePage() {
             <div className="space-y-4">
               {[
                 { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pégalos desde la publicación. La IA sugiere arriendo, gastos y contribuciones." },
-                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación con +3.000 publicaciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y eficiencia de compra con +3.000 publicaciones." },
                 { n: "3", title: "Decide con información", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>
@@ -697,7 +697,7 @@ export default function HomePage() {
             <div className="grid grid-cols-3 gap-8">
               {[
                 { n: "1", title: "Ingresa los datos de la propiedad", desc: "O pégalos desde la publicación. La IA sugiere arriendo, gastos y contribuciones." },
-                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y ubicación con +3.000 publicaciones." },
+                { n: "2", title: "IA analiza contra datos reales", desc: "Evaluamos rentabilidad, flujo, plusvalía, riesgo y eficiencia de compra con +3.000 publicaciones." },
                 { n: "3", title: "Decide con información", desc: "Score de 1-100, proyecciones, escenarios y un veredicto claro. Sin jerga." },
               ].map((step, i) => (
                 <FadeIn key={step.n} delay={i * 200}>

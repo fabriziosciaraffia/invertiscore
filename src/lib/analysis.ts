@@ -506,20 +506,40 @@ const PLUSVALIA_COMUNA: Record<string, number> = {
   "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
 };
 
-// Granular ubicación base scores by comuna
-const UBICACION_COMUNA: Record<string, number> = {
-  "vitacura": 95, "lo barnechea": 95,
-  "las condes": 92, "providencia": 92,
-  "ñuñoa": 85,
-  "la reina": 75, "peñalolén": 75, "penalolen": 75,
-  "santiago centro": 72,
-  "san miguel": 70, "macul": 70,
-  "la florida": 68,
-  "estación central": 60, "estacion central": 60,
-  "independencia": 58, "recoleta": 58,
-  "quinta normal": 50,
-  "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
-};
+// Eficiencia de compra: mide si compras bien respecto al mercado
+import { SEED_MARKET_DATA } from "./market-seed";
+
+function calcEficienciaScore(input: AnalisisInput, metrics: AnalysisMetrics): number {
+  const tipo = input.dormitorios <= 1 ? "1D" : input.dormitorios === 2 ? "2D" : "3D";
+  const seed = SEED_MARKET_DATA.find((d) => d.comuna === input.comuna && d.tipo === tipo);
+  if (!seed) return 50; // Sin datos → neutro
+
+  // a) Precio/m² vs promedio zona (50%)
+  const precioM2Zona = seed.precio_m2_venta_promedio * UF_CLP; // convertir UF/m² a CLP/m²
+  const precioM2Prop = metrics.precioM2 * UF_CLP;
+  const ratioPrecio = precioM2Zona > 0 ? precioM2Prop / precioM2Zona : 1;
+  let scorePrecio: number;
+  if (ratioPrecio < 0.85) scorePrecio = lerp(ratioPrecio, 0.70, 0.85, 100, 90);
+  else if (ratioPrecio < 0.95) scorePrecio = lerp(ratioPrecio, 0.85, 0.95, 89, 70);
+  else if (ratioPrecio < 1.05) scorePrecio = lerp(ratioPrecio, 0.95, 1.05, 69, 50);
+  else if (ratioPrecio < 1.15) scorePrecio = lerp(ratioPrecio, 1.05, 1.15, 49, 30);
+  else scorePrecio = lerp(ratioPrecio, 1.15, 1.40, 29, 10);
+
+  // b) Yield bruto vs promedio zona (50%)
+  const supPromedio = tipo === "1D" ? 35 : tipo === "2D" ? 50 : 70;
+  const yieldZona = (precioM2Zona > 0 && supPromedio > 0)
+    ? (seed.arriendo_promedio * 12) / (precioM2Zona * supPromedio) * 100
+    : 4.0;
+  const ratioYield = yieldZona > 0 ? metrics.yieldBruto / yieldZona : 1;
+  let scoreYield: number;
+  if (ratioYield > 1.20) scoreYield = lerp(ratioYield, 1.20, 1.50, 90, 100);
+  else if (ratioYield > 1.05) scoreYield = lerp(ratioYield, 1.05, 1.20, 70, 89);
+  else if (ratioYield > 0.95) scoreYield = lerp(ratioYield, 0.95, 1.05, 50, 69);
+  else if (ratioYield > 0.80) scoreYield = lerp(ratioYield, 0.80, 0.95, 30, 49);
+  else scoreYield = lerp(ratioYield, 0.50, 0.80, 10, 29);
+
+  return clamp(Math.round(scorePrecio * 0.5 + scoreYield * 0.5), 0, 100);
+}
 
 // Comunas with oversupply risk
 const COMUNAS_OVERSUPPLY = [
@@ -594,16 +614,15 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   if (input.vacanciaMeses > 1) riesgo -= 3;
   riesgo = clamp(riesgo, 10, 95);
 
-  // Ubicación (10%): granular by comuna
-  let ubicacion = lookupComuna(input.comuna, UBICACION_COMUNA, 50);
-  ubicacion = clamp(ubicacion, 0, 100);
+  // Eficiencia de compra (10%): precio y yield vs mercado
+  const eficiencia = calcEficienciaScore(input, metrics);
 
   let score = Math.round(
     rentabilidad * 0.30 +
     flujoCaja * 0.25 +
     plusvalia * 0.20 +
     riesgo * 0.15 +
-    ubicacion * 0.10
+    eficiencia * 0.10
   );
 
   // Penalize verde/blanco for months without return
@@ -756,14 +775,14 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   if (ratioGastosIngresoR > 1) riesgoScore -= 8;
   else if (ratioGastosIngresoR > 0.8) riesgoScore -= 5;
 
-  const ubicacionScore = lookupComuna(input.comuna, UBICACION_COMUNA, 50);
+  const eficienciaScore = calcEficienciaScore(input, metrics);
 
   const desglose: Desglose = {
     rentabilidad: clamp(rentabilidadScore, 0, 100),
     flujoCaja: clamp(flujoCajaScore, 0, 100),
     plusvalia: clamp(plusvaliaScore, 0, 100),
     riesgo: clamp(riesgoScore, 10, 95),
-    ubicacion: clamp(ubicacionScore, 0, 100),
+    eficiencia: clamp(eficienciaScore, 0, 100),
   };
 
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");

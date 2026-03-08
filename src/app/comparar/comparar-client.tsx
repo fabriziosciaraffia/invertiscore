@@ -202,9 +202,9 @@ function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow
         higherIsBetter: true,
       },
       {
-        label: "Ubicación",
-        values: analisis.map((a) => a.desglose?.ubicacion?.toString() ?? "—"),
-        raw: analisis.map((a) => a.desglose?.ubicacion ?? 0),
+        label: "Eficiencia",
+        values: analisis.map((a) => a.desglose?.eficiencia?.toString() ?? "—"),
+        raw: analisis.map((a) => a.desglose?.eficiencia ?? 0),
         higherIsBetter: true,
       },
     ],
@@ -226,8 +226,8 @@ function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): st
 
 // Radar chart - pure SVG
 function RadarChart({ analisis }: { analisis: Analisis[] }) {
-  const dims: (keyof Desglose)[] = ["rentabilidad", "flujoCaja", "plusvalia", "riesgo", "ubicacion"];
-  const labels = ["Rentabilidad", "Flujo Caja", "Plusvalía", "Bajo Riesgo", "Ubicación"];
+  const dims: (keyof Desglose)[] = ["rentabilidad", "flujoCaja", "plusvalia", "riesgo", "eficiencia"];
+  const labels = ["Rentabilidad", "Flujo Caja", "Plusvalía", "Bajo Riesgo", "Eficiencia"];
   const maxScores = [30, 25, 20, 15, 10]; // max per dimension
 
   const cx = 150, cy = 150, R = 110;
@@ -334,7 +334,7 @@ function generateVerdict(analisis: Analisis[]) {
     { key: "flujoCaja", label: "flujo de caja" },
     { key: "plusvalia", label: "plusvalía" },
     { key: "riesgo", label: "bajo riesgo" },
-    { key: "ubicacion", label: "ubicación" },
+    { key: "eficiencia", label: "eficiencia de compra" },
   ];
 
   // Find what each other analysis beats the best at

@@ -15,6 +15,7 @@ import {
   ChevronDown, ChevronUp, SlidersHorizontal, RefreshCw, Loader2, Clock,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import { SEED_MARKET_DATA } from "@/lib/market-seed";
 import type { MarketDataRow } from "@/lib/market-data";
 
 // Module-level UF value, updated from server prop on mount
@@ -28,7 +29,7 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
   "Payback Pie": "Meses que toma recuperar el pie invertido solo con flujo de caja. N/A si el flujo es negativo.",
-  "InvertiScore": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Ubicación (10%)",
+  "InvertiScore": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Eficiencia de compra (10%)",
 };
 
 const RADAR_TOOLTIPS: Record<string, string> = {
@@ -36,7 +37,7 @@ const RADAR_TOOLTIPS: Record<string, string> = {
   "Flujo Caja": "Evalúa el flujo de caja mensual neto. Peso: 25%",
   "Plusvalía": "Potencial de apreciación del valor. Peso: 20%",
   "Bajo Riesgo": "Evalúa antigüedad, tipo, vacancia y gastos. Peso: 15%",
-  "Ubicación": "Calidad de la ubicación y demanda de arriendo. Peso: 10%",
+  "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu yield bruto contra el promedio de publicaciones activas en la comuna. Peso: 10%",
 };
 
 function fmtCLP(n: number): string {
@@ -166,19 +167,6 @@ function recalcForSensitivity(
     "estación central": 55, "estacion central": 55, "independencia": 55, "recoleta": 55,
     "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
   };
-  const UBICACION_COMUNA: Record<string, number> = {
-    "vitacura": 95, "lo barnechea": 95,
-    "las condes": 92, "providencia": 92,
-    "ñuñoa": 85,
-    "la reina": 75, "peñalolén": 75, "penalolen": 75,
-    "santiago centro": 72,
-    "san miguel": 70, "macul": 70,
-    "la florida": 68,
-    "estación central": 60, "estacion central": 60,
-    "independencia": 58, "recoleta": 58,
-    "quinta normal": 50,
-    "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
-  };
   const COMUNAS_OVERSUPPLY = ["santiago centro", "estación central", "estacion central", "independencia"];
   const lookupC = (comuna: string, table: Record<string, number>, def: number) => {
     const c = comuna.toLowerCase().trim();
@@ -228,14 +216,38 @@ function recalcForSensitivity(
   if (modified.vacanciaMeses > 1) riesgoScore -= 3;
   riesgoScore = clamp(riesgoScore, 10, 95);
 
-  const ubicacionScore = clamp(lookupC(modified.comuna, UBICACION_COMUNA, 50), 0, 100);
+  // Eficiencia de compra (10%)
+  const tipoEf = modified.dormitorios <= 1 ? "1D" : modified.dormitorios === 2 ? "2D" : "3D";
+  const seedEf = SEED_MARKET_DATA.find((d) => d.comuna === modified.comuna && d.tipo === tipoEf);
+  let eficienciaScore = 50;
+  if (seedEf) {
+    const pm2Zona = seedEf.precio_m2_venta_promedio * UF_CLP;
+    const pm2Prop = precioM2 * UF_CLP;
+    const rP = pm2Zona > 0 ? pm2Prop / pm2Zona : 1;
+    let sP: number;
+    if (rP < 0.85) sP = lerp(rP, 0.70, 0.85, 100, 90);
+    else if (rP < 0.95) sP = lerp(rP, 0.85, 0.95, 89, 70);
+    else if (rP < 1.05) sP = lerp(rP, 0.95, 1.05, 69, 50);
+    else if (rP < 1.15) sP = lerp(rP, 1.05, 1.15, 49, 30);
+    else sP = lerp(rP, 1.15, 1.40, 29, 10);
+    const supProm = tipoEf === "1D" ? 35 : tipoEf === "2D" ? 50 : 70;
+    const yZona = pm2Zona > 0 && supProm > 0 ? (seedEf.arriendo_promedio * 12) / (pm2Zona * supProm) * 100 : 4.0;
+    const rY = yZona > 0 ? yieldBruto / yZona : 1;
+    let sY: number;
+    if (rY > 1.20) sY = lerp(rY, 1.20, 1.50, 90, 100);
+    else if (rY > 1.05) sY = lerp(rY, 1.05, 1.20, 70, 89);
+    else if (rY > 0.95) sY = lerp(rY, 0.95, 1.05, 50, 69);
+    else if (rY > 0.80) sY = lerp(rY, 0.80, 0.95, 30, 49);
+    else sY = lerp(rY, 0.50, 0.80, 10, 29);
+    eficienciaScore = clamp(Math.round(sP * 0.5 + sY * 0.5), 0, 100);
+  }
 
   const score = clamp(Math.round(
     rentabilidadScore * 0.30 +
     flujoCajaScore * 0.25 +
     plusvaliaScore * 0.20 +
     riesgoScore * 0.15 +
-    ubicacionScore * 0.10
+    eficienciaScore * 0.10
   ), 0, 100);
 
   return { score, flujo: flujoNetoMensual, yieldNeto: Math.round(yieldNeto * 100) / 100 };
@@ -596,7 +608,7 @@ export function PremiumResults({
     { dimension: "Flujo Caja", value: results.desglose.flujoCaja, fullMark: 100 },
     { dimension: "Plusvalía", value: results.desglose.plusvalia, fullMark: 100 },
     { dimension: "Bajo Riesgo", value: results.desglose.riesgo, fullMark: 100 },
-    { dimension: "Ubicación", value: results.desglose.ubicacion, fullMark: 100 },
+    { dimension: "Eficiencia", value: results.desglose.eficiencia, fullMark: 100 },
   ] : [];
 
   const waterfallData = useMemo(() => {
