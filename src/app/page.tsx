@@ -615,67 +615,11 @@ export default function HomePage() {
   }, []);
 
   const [tabAnimated, setTabAnimated] = useState(false);
-  const [isMobileTab, setIsMobileTab] = useState(false);
-  const [scrollProgress, setScrollProgress] = useState(0);
-  const stickyWrapperRef = useRef<HTMLDivElement>(null);
-  const prevTabRef = useRef(activeTab);
-
   useEffect(() => {
-    const check = () => setIsMobileTab(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  // Trigger animation when tab changes
-  useEffect(() => {
-    if (prevTabRef.current !== activeTab) {
-      setTabAnimated(false);
-      const t = setTimeout(() => setTabAnimated(true), 50);
-      prevTabRef.current = activeTab;
-      return () => clearTimeout(t);
-    } else {
-      setTabAnimated(true);
-    }
+    setTabAnimated(false);
+    const t = setTimeout(() => setTabAnimated(true), 50);
+    return () => clearTimeout(t);
   }, [activeTab]);
-
-  // Desktop: scroll-driven tab switching
-  useEffect(() => {
-    if (isMobileTab) return;
-    const wrapper = stickyWrapperRef.current;
-    if (!wrapper) return;
-    const onScroll = () => {
-      const rect = wrapper.getBoundingClientRect();
-      const wrapperH = wrapper.offsetHeight;
-      const viewH = window.innerHeight;
-      // progress: 0 when top of wrapper hits top of viewport, 1 when bottom of wrapper reaches bottom of viewport
-      const scrolled = -rect.top;
-      const maxScroll = wrapperH - viewH;
-      if (maxScroll <= 0) return;
-      const progress = Math.max(0, Math.min(1, scrolled / maxScroll));
-      setScrollProgress(progress);
-      const tabIndex = Math.min(4, Math.floor(progress * 5));
-      setActiveTab(tabIndex);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isMobileTab]);
-
-  // Click on tab → scroll to corresponding position
-  const handleTabClick = useCallback((index: number) => {
-    if (isMobileTab) {
-      setActiveTab(index);
-      return;
-    }
-    const wrapper = stickyWrapperRef.current;
-    if (!wrapper) return;
-    const wrapperTop = wrapper.offsetTop;
-    const wrapperH = wrapper.offsetHeight;
-    const viewH = window.innerHeight;
-    const maxScroll = wrapperH - viewH;
-    const targetScroll = wrapperTop + (index / 5) * maxScroll;
-    window.scrollTo({ top: targetScroll, behavior: "smooth" });
-  }, [isMobileTab]);
 
   const tabs = [
     { label: "Comparación", content: <TabComparacion /> },
@@ -1069,110 +1013,54 @@ export default function HomePage() {
       </section>
 
       {/* ============ 5. PREVIEW CON TABS ============ */}
-      {/* MOBILE: normal clickable tabs */}
-      {isMobileTab && (
-        <section className="bg-[#fafafa] px-5 py-12 sm:px-6">
-          <div className="mx-auto max-w-5xl">
-            <FadeIn>
-              <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl">
-                Mira lo que obtienes con cada análisis
-              </h2>
-            </FadeIn>
-            <FadeIn delay={100}>
-              <div className="relative mt-10">
-                <div className="overflow-x-auto scrollbar-hide">
-                  <div className="flex min-w-max gap-1 border-b border-[#e5e7eb]">
-                    {tabs.map((tab, i) => (
-                      <button
-                        key={tab.label}
-                        onClick={() => handleTabClick(i)}
-                        className={`whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-all duration-200 ${
-                          activeTab === i
-                            ? "border-b-2 border-[#059669] text-[#059669]"
-                            : "text-[#6b7280] hover:text-[#1a1a1a]"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
+      <section className="bg-[#fafafa] px-5 py-12 sm:px-6 md:py-[100px]">
+        <div className="mx-auto max-w-5xl">
+          <FadeIn>
+            <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
+              Mira lo que obtienes con cada análisis
+            </h2>
+          </FadeIn>
+          <FadeIn delay={100}>
+            <div className="relative mt-10">
+              <div className="overflow-x-auto scrollbar-hide">
+                <div className="flex min-w-max justify-center gap-1 border-b border-[#e5e7eb]">
+                  {tabs.map((tab, i) => (
+                    <button
+                      key={tab.label}
+                      onClick={() => setActiveTab(i)}
+                      className={`whitespace-nowrap px-3 py-2.5 text-[13px] font-medium transition-all duration-200 sm:px-5 sm:py-3 sm:text-sm ${
+                        activeTab === i
+                          ? "border-b-2 border-[#059669] text-[#059669]"
+                          : "text-[#6b7280] hover:text-[#1a1a1a]"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
                 </div>
-                <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#fafafa] to-transparent" />
               </div>
-              <p className="mt-2 text-center text-xs text-[#9ca3af]">Desliza para ver más →</p>
-            </FadeIn>
-            <div className="mt-8" style={{ minHeight: 420 }}>
-              <div key={activeTab} style={{ animation: "fadeInTab 0.3s ease-out" }}>
-                {tabs[activeTab].content}
-              </div>
+              <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#fafafa] to-transparent md:hidden" />
             </div>
-            <div className="mt-8 text-center">
+          </FadeIn>
+          <div className="mt-10" style={{ minHeight: 520 }}>
+            <div
+              key={activeTab}
+              style={{ animation: "fadeInTab 0.3s ease-out" }}
+            >
+              {tabs[activeTab].content}
+            </div>
+          </div>
+          <FadeIn delay={200}>
+            <div className="mt-10 text-center">
               <Link href="/analisis/nuevo">
-                <Button size="lg" className="w-full gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
+                <Button size="lg" className="w-full gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30 sm:w-auto">
                   Haz tu primer análisis <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
             </div>
-          </div>
-        </section>
-      )}
-      {/* DESKTOP: scroll-sticky tabs */}
-      {!isMobileTab && (
-        <div ref={stickyWrapperRef} style={{ height: "500vh" }}>
-          <div className="sticky top-0 flex h-screen flex-col bg-[#fafafa]">
-            {/* Header + tabs */}
-            <div className="shrink-0 px-6 pt-16 pb-0">
-              <div className="mx-auto max-w-5xl">
-                <h2 className="text-center font-serif text-2xl font-bold text-[#111827] md:text-4xl">
-                  Mira lo que obtienes con cada análisis
-                </h2>
-                <div className="mt-8">
-                  <div className="flex justify-center gap-1 border-b border-[#e5e7eb]">
-                    {tabs.map((tab, i) => (
-                      <button
-                        key={tab.label}
-                        onClick={() => handleTabClick(i)}
-                        className={`whitespace-nowrap px-5 py-3 text-sm font-medium transition-all duration-200 ${
-                          activeTab === i
-                            ? "border-b-2 border-[#059669] text-[#059669]"
-                            : "text-[#6b7280] hover:text-[#1a1a1a]"
-                        }`}
-                      >
-                        {tab.label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Progress bar */}
-                  <div className="h-[3px] w-full bg-[#e5e7eb]">
-                    <div
-                      className="h-full bg-[#059669] transition-all duration-150 ease-linear"
-                      style={{ width: `${scrollProgress * 100}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Tab content — fills remaining space */}
-            <div className="flex-1 overflow-y-auto px-6 py-8">
-              <div className="mx-auto max-w-5xl">
-                <div
-                  key={activeTab}
-                  style={{ animation: "fadeInTab 0.3s ease-out" }}
-                >
-                  {tabs[activeTab].content}
-                </div>
-                <div className="mt-8 text-center pb-4">
-                  <Link href="/analisis/nuevo">
-                    <Button size="lg" className="gap-2 rounded-xl bg-[#059669] px-8 py-6 text-base text-white shadow-lg shadow-[#059669]/25 transition-all duration-200 hover:bg-[#047857] hover:shadow-xl hover:shadow-[#059669]/30">
-                      Haz tu primer análisis <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
+          </FadeIn>
         </div>
-      )}
+      </section>
 
       {/* ============ 6. COMO FUNCIONA ============ */}
       <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
