@@ -776,6 +776,8 @@ export function PremiumResults({
   // Label helper for annual patrimonio X axis
   function annualPatrimonioLabel(month: number, preEntrega: number): string {
     if (month === 0) return "T0";
+    // Hide the transition point label (month before delivery) to keep axis clean
+    if (preEntrega > 1 && month === preEntrega - 1) return "";
     if (preEntrega > 0 && month === preEntrega && month % 12 !== 0) return "Entrega";
     if (month % 12 === 0) return `Año ${month / 12}`;
     return `M${month}`;
@@ -814,14 +816,16 @@ export function PremiumResults({
         const plusvaliaAcum = valorProp - precioCLP;
 
         if (mo < mesesPreEntrega) {
-          // Pre-entrega (antes de entrega): sin deuda ni valor propiedad
+          // Pre-entrega: sin deuda ni valor propiedad
+          // El mes justo antes de entrega usa 0 (no null) para que la línea suba DESDE cero
           const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
+          const esAntesDentrega = mo === mesesPreEntrega - 1;
           allData.push({
             name: `M${mo}`, _x: mo,
             piePagado: Math.round(piePagado),
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
-            saldoCredito: null,
+            saldoCredito: esAntesDentrega ? 0 : null,
             patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
             valorPropiedad: 0,
             isPreEntrega: true,
@@ -873,18 +877,28 @@ export function PremiumResults({
       }
     }
 
-    // valorPropArea: null pre-entrega (Recharts skips null), valorPropiedad post-entrega/inmediata
+    // valorPropArea: null pre-entrega (Recharts skips null), 0 for month before delivery (transition point), value post-entrega
+    const mesAnteEntrega = mesesPreEntrega > 1 ? mesesPreEntrega - 1 : -1;
     for (const row of allData) {
-      row.valorPropArea = row.isPreEntrega ? null : row.valorPropiedad;
+      if (row.isPreEntrega) {
+        row.valorPropArea = row._x === mesAnteEntrega ? 0 : null;
+      } else {
+        row.valorPropArea = row.valorPropiedad;
+      }
     }
 
     if (isMonthlyView) return allData;
 
-    // Annual view: sample at T0 + year boundaries + delivery month
+    // Annual view: sample at T0 + year boundaries + month before delivery + delivery month
     const sampleSet = new Set<number>();
     sampleSet.add(0);
     for (let y = 1; y <= horizonYears; y++) sampleSet.add(y * 12);
-    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths && mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
+    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths) {
+      if (mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
+      // Add month before delivery as transition point (line rises from 0)
+      const pre = mesesPreEntrega - 1;
+      if (pre > 0 && !sampleSet.has(pre)) sampleSet.add(pre);
+    }
     const sampleArr = Array.from(sampleSet).sort((a, b) => a - b);
 
     return allData
