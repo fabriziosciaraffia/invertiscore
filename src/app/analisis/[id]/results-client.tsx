@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid,
   PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, Cell, ReferenceLine,
 } from "recharts";
@@ -684,61 +684,88 @@ export function PremiumResults({
     }
   }, [horizonYears, results, m, inputData, dynamicProjections]);
 
-  const projData = useMemo(() => {
+  interface PatrimonioRow {
+    name: string;
+    piePagado: number;
+    capitalAmortizado: number;
+    plusvalia: number;
+    saldoCredito: number | null;
+    saldoCreditoFuturo: number | null;
+    patrimonioNeto: number;
+    valorPropiedad: number;
+    isEntrega?: boolean;
+  }
+
+  const projData = useMemo((): PatrimonioRow[] => {
     if (!results || !m || !inputData) return [];
     const precioCLP = inputData.precio * UF_CLP;
+    const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
       : 0;
     const cuotasPie = inputData.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
     const montoCuotaPie = inputData.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
     const plusvaliaDec = plusvaliaRate / 100;
+    const anosPreEntrega = mesesPreEntrega > 0 ? Math.ceil(mesesPreEntrega / 12) : 0;
 
-    const data: { name: string; "Valor Propiedad": number; "Saldo Crédito": number | null; "Patrimonio Neto": number; "Flujo Acumulado": number; "Pie Acumulado": number | null }[] = [];
+    const data: PatrimonioRow[] = [];
 
     if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-      // T0: pie acumulado = 0
-      data.push({ name: "T0", "Valor Propiedad": precioCLP, "Saldo Crédito": null, "Patrimonio Neto": 0, "Flujo Acumulado": 0, "Pie Acumulado": 0 });
+      // T0
+      data.push({ name: "T0", piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, saldoCreditoFuturo: creditoCLP, patrimonioNeto: 0, valorPropiedad: precioCLP });
 
-      // Pre-entrega: show pie accumulation month by month (or year by year)
-      const anosPreEntrega = Math.ceil(mesesPreEntrega / 12);
+      // Pre-entrega years
       for (let anio = 1; anio <= Math.min(anosPreEntrega, horizonYears); anio++) {
         const mesesAcum = Math.min(anio * 12, mesesPreEntrega);
-        const pieAcumulado = Math.min(montoCuotaPie * mesesAcum, m.pieCLP);
+        const piePagado = Math.min(montoCuotaPie * mesesAcum, m.pieCLP);
         const valorProp = precioCLP * Math.pow(1 + plusvaliaDec, anio);
+        const plusvaliaAcum = valorProp - precioCLP;
+        const isEntregaYear = anio === anosPreEntrega;
         data.push({
           name: `Año ${anio}`,
-          "Valor Propiedad": Math.round(valorProp),
-          "Saldo Crédito": null,
-          "Patrimonio Neto": Math.round(pieAcumulado + (valorProp - precioCLP)),
-          "Flujo Acumulado": 0,
-          "Pie Acumulado": Math.round(pieAcumulado),
+          piePagado: Math.round(piePagado),
+          capitalAmortizado: 0,
+          plusvalia: Math.round(plusvaliaAcum),
+          saldoCredito: null,
+          saldoCreditoFuturo: creditoCLP,
+          patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
+          valorPropiedad: Math.round(valorProp),
+          isEntrega: isEntregaYear,
         });
       }
-      // Post-entrega: use dynamicProjections starting from the year after delivery
-      const anioEntrega = anosPreEntrega;
-      for (let i = anioEntrega; i < Math.min(horizonYears, dynamicProjections.length); i++) {
+
+      // Post-entrega years
+      for (let i = anosPreEntrega; i < Math.min(horizonYears, dynamicProjections.length); i++) {
         const p = dynamicProjections[i];
+        const plusvaliaAcum = p.valorPropiedad - precioCLP;
+        const capitalAmort = creditoCLP - p.saldoCredito;
         data.push({
           name: `Año ${p.anio}`,
-          "Valor Propiedad": p.valorPropiedad,
-          "Saldo Crédito": p.saldoCredito,
-          "Patrimonio Neto": p.patrimonioNeto,
-          "Flujo Acumulado": p.flujoAcumulado,
-          "Pie Acumulado": null,
+          piePagado: m.pieCLP,
+          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+          plusvalia: Math.round(plusvaliaAcum),
+          saldoCredito: p.saldoCredito,
+          saldoCreditoFuturo: null,
+          patrimonioNeto: p.patrimonioNeto,
+          valorPropiedad: p.valorPropiedad,
         });
       }
     } else {
-      // Entrega inmediata: T0 con pie como patrimonio inicial
-      data.push({ name: "T0", "Valor Propiedad": precioCLP, "Saldo Crédito": precioCLP - m.pieCLP, "Patrimonio Neto": m.pieCLP, "Flujo Acumulado": -m.pieCLP, "Pie Acumulado": null });
+      // Entrega inmediata
+      data.push({ name: "T0", piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, saldoCreditoFuturo: null, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+
       dynamicProjections.slice(0, horizonYears).forEach((p) => {
+        const plusvaliaAcum = p.valorPropiedad - precioCLP;
+        const capitalAmort = creditoCLP - p.saldoCredito;
         data.push({
           name: `Año ${p.anio}`,
-          "Valor Propiedad": p.valorPropiedad,
-          "Saldo Crédito": p.saldoCredito,
-          "Patrimonio Neto": p.patrimonioNeto,
-          "Flujo Acumulado": p.flujoAcumulado,
-          "Pie Acumulado": null,
+          piePagado: m.pieCLP,
+          capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
+          plusvalia: Math.round(plusvaliaAcum),
+          saldoCredito: p.saldoCredito,
+          saldoCreditoFuturo: null,
+          patrimonioNeto: p.patrimonioNeto,
+          valorPropiedad: p.valorPropiedad,
         });
       });
     }
@@ -1188,22 +1215,58 @@ export function PremiumResults({
                           </span>
                         )}
                       </div>
-                      <p className="mb-3 text-xs text-muted-foreground">Cómo crece tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
-                      <div className="h-64">
+                      <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
+                      <div className="h-72">
                         <ResponsiveContainer>
-                          <LineChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
-                            <RechartsTooltip formatter={((v: number | null) => v != null ? fmt(v) : "—") as never} />
-                            <Legend iconSize={10} wrapperStyle={{ fontSize: 11 }} />
-                            <Line type="monotone" dataKey="Valor Propiedad" stroke="#059669" strokeWidth={2} dot={false} connectNulls />
-                            <Line type="monotone" dataKey="Saldo Crédito" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls />
-                            <Line type="monotone" dataKey="Patrimonio Neto" stroke="#3b82f6" strokeWidth={2} dot={false} connectNulls />
-                            <Line type="monotone" dataKey="Flujo Acumulado" stroke="#8b5cf6" strokeWidth={2} dot={false} strokeDasharray="5 5" connectNulls />
-                            <Line type="monotone" dataKey="Pie Acumulado" stroke="#f59e0b" strokeWidth={2} dot={false} connectNulls strokeDasharray="4 4" />
-                          </LineChart>
+                            <RechartsTooltip
+                              content={({ active, payload, label }) => {
+                                if (!active || !payload || payload.length === 0) return null;
+                                const row = payload[0]?.payload as PatrimonioRow | undefined;
+                                if (!row) return null;
+                                return (
+                                  <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                                    <div className="mb-1.5 font-semibold">{label}</div>
+                                    <div className="text-muted-foreground">Valor propiedad: <span className="font-medium text-foreground">{fmt(row.valorPropiedad)}</span></div>
+                                    <div className="mt-1 flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Crédito amortizado: <span className="font-medium">{fmt(row.capitalAmortizado)}</span></div>
+                                    <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                    {(row.saldoCredito != null || row.saldoCreditoFuturo != null) && (
+                                      <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito ?? row.saldoCreditoFuturo ?? 0)}</span></div>
+                                    )}
+                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold text-primary">Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                  </div>
+                                );
+                              }}
+                            />
+                            {/* Barras apiladas: pie + amortización */}
+                            <Bar dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Crédito amortizado" radius={[0, 0, 0, 0]} />
+                            {/* Área: plusvalía apilada sobre las barras */}
+                            <Bar dataKey="plusvalia" stackId="patrimonio" fill="#10b981" fillOpacity={0.2} stroke="#10b981" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                            {/* Línea: deuda pre-entrega (punteada) */}
+                            <Line type="monotone" dataKey="saldoCreditoFuturo" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} connectNulls legendType="none" />
+                            {/* Línea: deuda post-entrega (sólida) */}
+                            <Line type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} connectNulls name="Deuda restante" />
+                            {/* Línea principal: patrimonio neto */}
+                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#059669" strokeWidth={3} dot={{ r: 3, fill: "#059669" }} connectNulls name="Patrimonio neto" />
+                            {/* Línea vertical de entrega */}
+                            {projData.findIndex((d) => d.isEntrega) >= 0 && (
+                              <ReferenceLine x={projData.find((d) => d.isEntrega)?.name} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                            )}
+                          </ComposedChart>
                         </ResponsiveContainer>
+                      </div>
+                      {/* Leyenda manual */}
+                      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Crédito amortizado</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981", opacity: 0.3 }} />Plusvalía</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#ef4444" }} />Deuda restante</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#059669", height: 3 }} />Patrimonio neto</span>
                       </div>
                       {/* Desglose de patrimonio */}
                       {(() => {
