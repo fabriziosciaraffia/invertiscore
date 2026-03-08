@@ -77,11 +77,12 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
 // Convert CLP amounts embedded in text to the selected currency
 function convertTextCurrency(text: string, currency: "CLP" | "UF"): string {
   if (currency === "CLP") return text;
-  return text.replace(/\$[\d.]+/g, (match) => {
-    const numStr = match.replace("$", "").replace(/\./g, "");
+  return text.replace(/-?\$[\d.]+/g, (match) => {
+    const isNeg = match.startsWith("-");
+    const numStr = match.replace("-", "").replace("$", "").replace(/\./g, "");
     const num = parseInt(numStr, 10);
     if (isNaN(num) || num === 0) return match;
-    return fmtUF(num / UF_CLP);
+    return (isNeg ? "-" : "") + fmtUF(num / UF_CLP);
   });
 }
 
@@ -575,7 +576,7 @@ export function PremiumResults({
               <InfoTooltip content="Precio por metro cuadrado. Permite comparar con otras propiedades de la zona." />
             </div>
             <div className="mt-1 text-2xl font-bold">
-              {currency === "UF" ? freePrecioM2.toFixed(1) : `$${Math.round(freePrecioM2 * UF_CLP).toLocaleString("es-CL")}`}
+              {currency === "UF" ? `UF ${freePrecioM2.toFixed(1)}` : fmtCLP(freePrecioM2 * UF_CLP)}
             </div>
           </CardContent>
         </Card>
@@ -632,7 +633,7 @@ export function PremiumResults({
                 { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
                 { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
                 { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
-                { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `${m.precioM2.toFixed(1)}` : `$${Math.round(m.precioM2 * UF_CLP).toLocaleString("es-CL")}` },
+                { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `UF ${m.precioM2.toFixed(1)}` : fmtCLP(m.precioM2 * UF_CLP) },
               ].map(({ label, value }) => (
                 <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -745,7 +746,7 @@ export function PremiumResults({
                 <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
                 <div className="mt-1 text-2xl font-bold">
                   {currency === "UF"
-                    ? `${results.valorMaximoCompra.toLocaleString("es-CL")} UF`
+                    ? fmtUF(results.valorMaximoCompra)
                     : fmtCLP(results.valorMaximoCompra * UF_CLP)}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -792,7 +793,7 @@ export function PremiumResults({
                     const fmtVal = (v: number) =>
                       label.includes("Yield") ? v.toFixed(1) + "%"
                       : label.includes("Arriendo") ? fmt(v)
-                      : currency === "UF" ? v.toFixed(1) : Math.round(v).toLocaleString("es-CL");
+                      : currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v);
                     return (
                       <div key={label}>
                         <div className="mb-1 text-xs text-muted-foreground">{label}</div>
