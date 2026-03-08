@@ -639,7 +639,7 @@ export function PremiumResults({
     items.push({
       name: "FLUJO NETO",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
-      fill: flujo >= 0 ? "#047857" : "#dc2626",
+      fill: "#1e40af",
       isResult: true,
       delta: flujo,
       running: flujo,
