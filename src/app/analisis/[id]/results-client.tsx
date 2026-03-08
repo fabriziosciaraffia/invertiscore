@@ -1136,8 +1136,10 @@ export function PremiumResults({
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
                   {results.breakEvenTasa === -1
-                    ? "Incluso a tasa 0%, el flujo es negativo. El precio es demasiado alto para este arriendo."
-                    : `Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, tu flujo mensual se vuelve negativo.`}
+                    ? "Incluso con tasa 0%, el flujo sería negativo. Los gastos operativos superan el arriendo."
+                    : inputData && results.breakEvenTasa < inputData.tasaInteres
+                      ? `Para tener flujo positivo necesitarías una tasa de ${results.breakEvenTasa.toFixed(2)}%, muy por debajo de la actual (${inputData.tasaInteres.toFixed(2)}%). El retorno viene por la plusvalía, no por el flujo mensual.`
+                      : `Tu flujo es positivo. Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, pasarías a flujo negativo. Margen de ${inputData ? (results.breakEvenTasa - inputData.tasaInteres).toFixed(2) : "—"} puntos porcentuales.`}
                 </p>
               </div>
               <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
