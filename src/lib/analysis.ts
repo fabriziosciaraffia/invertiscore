@@ -184,87 +184,80 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
 
   // Determine months until delivery (en blanco/verde)
   const mesesPreEntrega = calcMesesHastaEntrega(input);
-  const mesesSinIngreso = Math.min(mesesPreEntrega, 12);
-
-  // Cuota del pie for pre-delivery months
-  const cuotasPie = input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega;
-  const montoCuotaPie = input.montoCuota > 0
-    ? input.montoCuota
-    : (cuotasPie > 0 ? Math.round(metrics.pieCLP / cuotasPie) : 0);
 
   const meses: MonthlyCashflow[] = [];
 
-  // T0: inversión inicial (pie) — solo para entrega inmediata
-  // En verde/blanco, T0 es la primera cuota del pie (incluida en el loop)
-  if (input.estadoVenta === "inmediata") {
-    meses.push({
-      mes: 0, ingreso: 0, dividendo: 0, gastos: 0,
-      contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0,
-      egresoTotal: metrics.pieCLP, flujoNeto: -metrics.pieCLP, acumulado: -metrics.pieCLP,
-    });
-  }
+  // T0: siempre presente, sin pie (el pie es inversión de capital, no flujo operativo)
+  meses.push({
+    mes: 0, ingreso: 0, dividendo: 0, gastos: 0,
+    contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0,
+    egresoTotal: 0, flujoNeto: 0, acumulado: 0,
+  });
 
-  let acumulado = input.estadoVenta === "inmediata" ? -metrics.pieCLP : 0;
+  let acumulado = 0;
 
-  for (let i = 1; i <= 12; i++) {
-    let ingreso = metrics.ingresoMensual;
-    const vacanciaGasto = 0;
-    let corretajeGasto = 0;
-    let divid = metrics.dividendo;
-    let gastosMes = input.gastos;
-    let contribMes = contribucionesMes;
-    let mantencionMes = mantencion;
+  if (input.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
+    // Verde/blanco: flujo operativo empieza en mes de entrega
+    // Pre-entrega no muestra nada (cuotas del pie van en patrimonio)
+    const mesesOperativos = Math.max(0, 12 - mesesPreEntrega);
+    for (let i = 1; i <= mesesOperativos; i++) {
+      let ingreso = metrics.ingresoMensual;
+      let corretajeGasto = 0;
 
-    if (input.estadoVenta !== "inmediata" && mesesSinIngreso > 0) {
-      // En blanco/verde: pre-entrega only has cuota pie
-      if (i <= mesesSinIngreso) {
-        ingreso = 0;
-        divid = 0;
-        gastosMes = 0;
-        contribMes = 0;
-        mantencionMes = 0;
-        const egresoTotal = montoCuotaPie;
-        const flujoNeto = -egresoTotal;
-        acumulado += flujoNeto;
-        meses.push({
-          mes: i, ingreso: 0, dividendo: 0, gastos: montoCuotaPie,
-          contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0,
-          egresoTotal, flujoNeto, acumulado,
-        });
-        continue;
-      } else if (i === mesesSinIngreso + 1) {
-        // Delivery month: first dividendo, no rent yet (vacancia)
-        ingreso = 0;
-      } else if (i === mesesSinIngreso + 2) {
-        // Second month after delivery: corretaje
-        corretajeGasto = Math.round(input.arriendo * 0.5);
-      }
-    } else {
-      // Entrega inmediata
       if (i === 1) {
-        ingreso = 0; // Mes 1: vacancia
+        ingreso = 0; // Vacancia primer mes post-entrega
       } else if (i === 2) {
         corretajeGasto = Math.round(input.arriendo * 0.5);
       }
+
+      const egresoTotal = metrics.dividendo + input.gastos + contribucionesMes + mantencion + corretajeGasto;
+      const flujoNeto = ingreso - egresoTotal;
+      acumulado += flujoNeto;
+
+      meses.push({
+        mes: mesesPreEntrega + i,
+        ingreso,
+        dividendo: metrics.dividendo,
+        gastos: input.gastos,
+        contribuciones: contribucionesMes,
+        mantencion: mantencion,
+        vacancia: 0,
+        corretaje: corretajeGasto,
+        egresoTotal,
+        flujoNeto,
+        acumulado,
+      });
     }
+  } else {
+    // Entrega inmediata: T0 es el inicio, mes 1+ es operativo
+    for (let i = 1; i <= 12; i++) {
+      let ingreso = metrics.ingresoMensual;
+      let corretajeGasto = 0;
 
-    const egresoTotal = divid + gastosMes + contribMes + mantencionMes + vacanciaGasto + corretajeGasto;
-    const flujoNeto = ingreso - egresoTotal;
-    acumulado += flujoNeto;
+      if (i === 1) {
+        ingreso = 0; // Vacancia
+      } else if (i === 2) {
+        corretajeGasto = Math.round(input.arriendo * 0.5);
+      }
 
-    meses.push({
-      mes: i,
-      ingreso,
-      dividendo: divid,
-      gastos: gastosMes,
-      contribuciones: contribMes,
-      mantencion: mantencionMes,
-      vacancia: vacanciaGasto,
-      corretaje: corretajeGasto,
-      egresoTotal,
-      flujoNeto,
-      acumulado,
-    });
+      const egresoTotal = metrics.dividendo + input.gastos + contribucionesMes + mantencion + corretajeGasto;
+      const flujoNeto = ingreso - egresoTotal;
+      acumulado += flujoNeto;
+
+      meses.push({
+        mes: i,
+        ingreso,
+        dividendo: metrics.dividendo,
+        gastos: input.gastos,
+        contribuciones: contribucionesMes,
+        mantencion: mantencion,
+        vacancia: 0,
+        corretaje: corretajeGasto,
+        egresoTotal,
+        flujoNeto,
+        acumulado,
+      });
+    }
   }
 
   return meses;
@@ -281,17 +274,13 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
   const mantencion = input.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
 
   const mesesPreEntrega = calcMesesHastaEntrega(input);
-  const cuotasPie = input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega;
-  const montoCuotaPie = input.montoCuota > 0
-    ? input.montoCuota
-    : (cuotasPie > 0 ? Math.round(metrics.pieCLP / cuotasPie) : 0);
 
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = input.gastos;
   // Plusvalía starts from purchase date (even during construction)
   let valorPropiedad = precioCLP;
-  // For entrega inmediata, acumulado starts at -pie (T0 investment)
-  let flujoAcumulado = input.estadoVenta === "inmediata" ? -metrics.pieCLP : 0;
+  // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
+  let flujoAcumulado = 0;
 
   const projections: YearProjection[] = [];
 
@@ -302,8 +291,8 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     let flujoAnual = 0;
     for (let m = mesInicio; m <= mesFin; m++) {
       if (m <= mesesPreEntrega) {
-        // Pre-delivery: only cuota pie expense
-        flujoAnual -= montoCuotaPie;
+        // Pre-delivery: sin flujo operativo (cuotas pie van en patrimonio, no en flujo de caja)
+        // No se resta nada
       } else if (m === mesesPreEntrega + 1) {
         // Delivery month: dividendo + gastos, no income (vacancia)
         flujoAnual -= (metrics.dividendo + gastosActual + contribucionesMes + mantencion);
