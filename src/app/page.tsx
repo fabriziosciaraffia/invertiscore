@@ -118,7 +118,7 @@ function TabComparacion() {
       <p className="mb-8 text-center text-[#6b7280]">
         El mismo presupuesto, tres resultados muy distintos. El score te dice cuáles valen la pena.
       </p>
-      <div className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
+      <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory sm:gap-6 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
         {[
           {
             score: 45, color: "#f59e0b", label: "Inversión Débil",
@@ -162,7 +162,7 @@ function TabComparacion() {
         ].map((card) => (
           <div
             key={card.score}
-            className={`h-full min-w-[260px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-4 transition-all duration-200 hover:shadow-lg sm:min-w-[300px] sm:p-7 md:min-w-0 md:shrink`}
+            className={`h-full min-w-[240px] shrink-0 snap-center rounded-2xl border ${card.borderColor} bg-white p-4 transition-all duration-200 hover:shadow-lg sm:min-w-[280px] sm:p-7 md:min-w-0 md:shrink`}
             style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
           >
             <div className="flex items-center gap-4">
@@ -217,7 +217,7 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
       <p className="mb-8 text-center text-[#6b7280]">
         El flujo de caja te muestra la película completa, mes a mes.
       </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-5 shadow-xl md:p-8">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
         <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual — 12 meses</div>
         {/* Y axis labels + bars */}
         <div className="mt-4 flex">
@@ -267,7 +267,8 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
                   <span className="mt-1 text-[9px] text-[#9ca3af] sm:text-[10px]">M{m.mes}</span>
                   {/* Tooltip */}
                   {hoveredMonth === i && (
-                    <div className="absolute bottom-full left-1/2 z-20 mb-2 w-52 -translate-x-1/2 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg">
+                    <div className="absolute bottom-full z-20 mb-2 w-44 sm:w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
+                      style={i <= 1 ? { left: 0 } : i >= 10 ? { right: 0 } : { left: '50%', transform: 'translateX(-50%)' }}>
                       <div className="font-semibold mb-1">Mes {m.mes}</div>
                       <div className="space-y-0.5">
                         <div className="flex justify-between"><span>Arriendo</span><span className="text-[#34d399]">${m.arriendo}K</span></div>
@@ -276,7 +277,6 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
                         <div className="border-t border-white/20 pt-0.5 flex justify-between font-semibold"><span>Neto</span><span className="text-red-400">-${Math.abs(m.neto)}K</span></div>
                         <div className="flex justify-between"><span>Acumulado</span><span className="text-red-400">-${(Math.abs(m.acumulado) / 1000).toFixed(1)}M</span></div>
                       </div>
-                      <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1a1a1a]" />
                     </div>
                   )}
                 </div>
@@ -285,7 +285,7 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
           </div>
         </div>
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-xs text-[#6b7280]">
+        <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] sm:gap-4 sm:text-xs text-[#6b7280]">
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]" /> Arriendo ($420K)</span>
           <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" /> Dividendo + Gastos ($684K)</span>
         </div>
@@ -339,7 +339,7 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
       <p className="mb-8 text-center text-[#6b7280]">
         Aunque pierdas flujo cada mes, tu patrimonio puede crecer significativamente.
       </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-5 shadow-xl md:p-8">
+      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
         <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyección a 10 años (millones CLP)</div>
         <div className="relative">
           <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="xMidYMid meet">
@@ -390,11 +390,11 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
           {/* Tooltip overlay */}
           {hoveredYear !== null && (
             <div
-              className="pointer-events-none absolute z-20 w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
+              className="pointer-events-none absolute z-20 w-44 sm:w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
               style={{
-                left: `${(toX(hoveredYear) / chartW) * 100}%`,
+                left: `clamp(0px, ${(toX(hoveredYear) / chartW) * 100}% - 5.5rem, calc(100% - 11rem))`,
                 top: `${(toY(data[hoveredYear].propiedad) / chartH) * 100 - 8}%`,
-                transform: "translate(-50%, -100%)",
+                transform: "translateY(-100%)",
               }}
             >
               <div className="font-semibold mb-1">Año {data[hoveredYear].year}</div>
@@ -541,11 +541,11 @@ function TabSensibilidad({ animate }: { animate: boolean }) {
       <p className="mb-8 text-center text-[#6b7280]">
         Mira qué pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
       </p>
-      <div className="grid gap-5 md:grid-cols-3">
+      <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
         {scenarios.map((s, i) => (
           <div
             key={s.label}
-            className={`rounded-2xl border ${s.border} ${s.bg} p-6 text-center transition-all duration-200 hover:shadow-md`}
+            className={`rounded-2xl border ${s.border} ${s.bg} p-4 sm:p-6 text-center transition-all duration-200 hover:shadow-md`}
             style={{
               opacity: animate ? 1 : 0,
               transform: animate ? "translateX(0)" : `translateX(${(i - 1) * -20}px)`,
@@ -657,7 +657,7 @@ export default function HomePage() {
             : "bg-transparent"
         }`}
       >
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4 sm:px-6">
           <Link href="/" className="font-serif text-xl font-bold text-[#1a1a1a]">
             InvertiScore
           </Link>
@@ -698,7 +698,7 @@ export default function HomePage() {
           </button>
         </div>
         {mobileMenuOpen && (
-          <div className="border-t border-[#e5e7eb] bg-white px-6 py-4 sm:hidden">
+          <div className="border-t border-[#e5e7eb] bg-white px-4 py-4 sm:hidden">
             <div className="flex flex-col gap-3">
               <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-sm text-[#6b7280]">Pricing</Link>
               {user ? (
@@ -731,7 +731,7 @@ export default function HomePage() {
       </nav>
 
       {/* ============ 1. HERO — 100vh ============ */}
-      <section className="relative flex min-h-[80vh] flex-col items-center justify-center px-5 sm:min-h-screen sm:px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
+      <section className="relative flex min-h-[80vh] flex-col items-center justify-center px-4 sm:min-h-screen sm:px-6" style={{ background: "linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)" }}>
         <div className="mx-auto grid max-w-5xl items-center gap-8 lg:gap-12 lg:grid-cols-[3fr,2fr]">
           <div className="text-center lg:text-left">
             <FadeIn>
@@ -808,7 +808,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 2. EJEMPLO REAL ============ */}
-      <section className="bg-white px-5 py-12 sm:px-6 md:py-[100px]">
+      <section className="bg-white px-4 py-12 sm:px-6 md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -908,7 +908,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ SOCIAL PROOF ============ */}
-      <section className="bg-[#f5f5f5] px-5 py-8 sm:px-6">
+      <section className="bg-[#f5f5f5] px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <p className="text-base font-bold text-[#111827] sm:text-lg">
@@ -947,7 +947,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 3. POR QUE PASA ESTO ============ */}
-      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
+      <section className="px-4 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #fafafa 0%, #ffffff 100%)" }}>
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -979,7 +979,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 4. QUE HACE INVERTISCORE ============ */}
-      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "#f0fdf4" }}>
+      <section className="px-4 py-12 sm:px-6 md:py-[100px]" style={{ background: "#f0fdf4" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -989,7 +989,7 @@ export default function HomePage() {
               Ingresa los datos de cualquier propiedad y obtén:
             </p>
           </FadeIn>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:mt-14 sm:gap-5 md:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-3 sm:mt-14 sm:grid-cols-2 sm:gap-5 md:grid-cols-3">
             {[
               { icon: Award, title: "Score 1-100", desc: "Evaluación objetiva de la inversión en 5 dimensiones", bg: "bg-[#ecfdf5]", iconColor: "text-[#059669]" },
               { icon: TrendingDown, title: "Flujo real", desc: "Cuánto vas a poner de tu bolsillo cada mes, sin maquillaje", bg: "bg-red-50", iconColor: "text-red-500" },
@@ -1013,7 +1013,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 5. PREVIEW CON TABS ============ */}
-      <section className="bg-[#fafafa] px-5 py-12 sm:px-6 md:py-[100px]">
+      <section className="bg-[#fafafa] px-4 py-12 sm:px-6 md:py-[100px]">
         <div className="mx-auto max-w-5xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -1042,7 +1042,7 @@ export default function HomePage() {
               <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-[#fafafa] to-transparent md:hidden" />
             </div>
           </FadeIn>
-          <div className="mt-10" style={{ minHeight: 520 }}>
+          <div className="mt-8 sm:mt-10">
             <div
               key={activeTab}
               style={{ animation: "fadeInTab 0.3s ease-out" }}
@@ -1063,7 +1063,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 6. COMO FUNCIONA ============ */}
-      <section className="px-5 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
+      <section className="px-4 py-12 sm:px-6 md:py-[100px]" style={{ background: "linear-gradient(180deg, #ffffff 0%, #fafafa 100%)" }}>
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -1118,7 +1118,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 7. GRATIS VS PRO ============ */}
-      <section className="bg-white px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
+      <section className="bg-white px-4 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <h2 className="text-center font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -1199,7 +1199,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 8. CONFIANZA ============ */}
-      <section className="bg-[#fafafa] px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
+      <section className="bg-[#fafafa] px-4 py-12 sm:px-6 sm:py-[60px] md:py-[100px]">
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
             <h2 className="font-serif text-2xl font-bold text-[#111827] sm:text-3xl md:text-4xl">
@@ -1234,10 +1234,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 9. CTA FINAL ============ */}
-      <section className="px-5 py-12 sm:px-6 sm:py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
+      <section className="px-4 py-12 sm:px-6 sm:py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
           <FadeIn>
-            <h2 className="font-serif text-[28px] font-bold leading-tight text-white sm:text-3xl md:text-5xl">
+            <h2 className="font-serif text-2xl font-bold leading-tight text-white sm:text-3xl md:text-5xl">
               Antes de firmar, conoce los números reales.
             </h2>
             <div className="mt-10">
@@ -1257,7 +1257,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ FOOTER ============ */}
-      <footer className="bg-[#111] px-5 py-8 sm:px-6 sm:py-10">
+      <footer className="bg-[#111] px-4 py-8 sm:px-6 sm:py-10">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-4 text-center md:flex-row md:justify-between md:text-left">
           <span className="font-serif text-lg font-bold text-white">InvertiScore</span>
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-[#6b7280]">
