@@ -504,9 +504,50 @@ const COMUNAS_PREMIUM = [
   "la reina", "santiago centro", "viña del mar", "con con",
 ];
 
+// Granular plusvalía base scores by comuna
+const PLUSVALIA_COMUNA: Record<string, number> = {
+  "vitacura": 95, "lo barnechea": 95,
+  "las condes": 90, "providencia": 90,
+  "ñuñoa": 82, "la reina": 82,
+  "san miguel": 70, "macul": 70, "la florida": 70,
+  "santiago centro": 60,
+  "estación central": 55, "estacion central": 55, "independencia": 55, "recoleta": 55,
+  "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
+};
+
+// Granular ubicación base scores by comuna
+const UBICACION_COMUNA: Record<string, number> = {
+  "vitacura": 95, "lo barnechea": 95,
+  "las condes": 92, "providencia": 92,
+  "ñuñoa": 85,
+  "la reina": 75, "peñalolén": 75, "penalolen": 75,
+  "santiago centro": 72,
+  "san miguel": 70, "macul": 70,
+  "la florida": 68,
+  "estación central": 60, "estacion central": 60,
+  "independencia": 58, "recoleta": 58,
+  "quinta normal": 50,
+  "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
+};
+
+// Comunas with oversupply risk
+const COMUNAS_OVERSUPPLY = [
+  "santiago centro", "estación central", "estacion central", "independencia",
+];
+
 function lerp(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
   const t = (value - inMin) / (inMax - inMin);
   return outMin + clamp(t, 0, 1) * (outMax - outMin);
+}
+
+function lookupComuna(comuna: string, table: Record<string, number>, defaultVal: number): number {
+  const c = comuna.toLowerCase().trim();
+  if (table[c] !== undefined) return table[c];
+  // Partial match for compound names
+  for (const key of Object.keys(table)) {
+    if (c.includes(key) || key.includes(c)) return table[key];
+  }
+  return defaultVal;
 }
 
 function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
@@ -535,34 +576,35 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   else flujoCaja = lerp(flujo, -1000000, -600000, 0, 9);
   flujoCaja = clamp(flujoCaja, 0, 100);
 
-  // Plusvalía (20%): base depends on premium zone
-  const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
-  let plusvalia = isPremium ? 85 : 55;
+  // Plusvalía (20%): granular by comuna
+  let plusvalia = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
   const precioM2 = metrics.precioM2;
-  // Premium zones: smaller penalty for high price/m2 (they hold value)
-  plusvalia += isPremium ? lerp(precioM2, 30, 120, 10, -10) : lerp(precioM2, 30, 100, 15, -15);
+  // High price/m² reduces upside; premium zones have smaller penalty (hold value better)
+  const plusvaliaBase = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
+  plusvalia += plusvaliaBase >= 80 ? lerp(precioM2, 30, 120, 8, -8) : lerp(precioM2, 30, 100, 12, -12);
   if (input.enConstruccion || input.antiguedad <= 2) plusvalia += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvalia += 5;
   else if (input.antiguedad > 20) plusvalia -= 15;
-  // Piso bonus for plusvalía
   if (input.piso >= 10) plusvalia += 5;
   else if (input.piso <= 2 && input.piso > 0) plusvalia -= 3;
   plusvalia = clamp(plusvalia, 0, 100);
 
-  // Riesgo (15%): vacancy, age, expense ratio
-  let riesgo = 60;
-  if (input.tipo.toLowerCase().includes("departamento")) riesgo += 8;
-  if (input.antiguedad < 10 || input.enConstruccion) riesgo += 8;
+  // Riesgo (15%): granular with more factors
+  const isOversupply = COMUNAS_OVERSUPPLY.some((c) => input.comuna.toLowerCase().includes(c));
+  let riesgo = 50;
+  if (input.tipo.toLowerCase().includes("departamento")) riesgo += 10;
+  if (input.antiguedad < 10 || input.enConstruccion) riesgo += 10;
   else if (input.antiguedad > 25) riesgo -= 15;
   if (metrics.capRate > 3) riesgo += 8;
-  const ratioGastos = metrics.ingresoMensual > 0 ? input.gastos / metrics.ingresoMensual : 1;
-  if (ratioGastos < 0.2) riesgo += 5;
-  else if (ratioGastos > 0.35) riesgo -= 10;
-  if (input.vacanciaMeses > 2) riesgo -= 10;
-  riesgo = clamp(riesgo, 0, 100);
+  if (isOversupply) riesgo -= 5;
+  const ratioGastosIngreso = metrics.ingresoMensual > 0 ? metrics.egresosMensuales / metrics.ingresoMensual : 2;
+  if (ratioGastosIngreso > 1) riesgo -= 8;
+  else if (ratioGastosIngreso > 0.8) riesgo -= 5;
+  if (input.vacanciaMeses > 1) riesgo -= 3;
+  riesgo = clamp(riesgo, 10, 95);
 
-  // Ubicación (10%): premium zones get 90+
-  let ubicacion = isPremium ? 92 : 55;
+  // Ubicación (10%): granular by comuna
+  let ubicacion = lookupComuna(input.comuna, UBICACION_COMUNA, 50);
   ubicacion = clamp(ubicacion, 0, 100);
 
   let score = Math.round(
@@ -684,7 +726,6 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const contras = generateContras(input, metrics);
 
   // Score breakdown by dimension (mirrors calcScoreFromMetrics)
-  const isPremium = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
 
   const yb = metrics.yieldBruto;
   let rentabilidadScore: number;
@@ -704,30 +745,33 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   else if (flujoVal >= -600000) flujoCajaScore = lerp(flujoVal, -600000, -400000, 10, 24);
   else flujoCajaScore = lerp(flujoVal, -1000000, -600000, 0, 9);
 
-  let plusvaliaScore = isPremium ? 85 : 55;
-  plusvaliaScore += isPremium ? lerp(metrics.precioM2, 30, 120, 10, -10) : lerp(metrics.precioM2, 30, 100, 15, -15);
+  let plusvaliaScore = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
+  const plusvaliaBaseR = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
+  plusvaliaScore += plusvaliaBaseR >= 80 ? lerp(metrics.precioM2, 30, 120, 8, -8) : lerp(metrics.precioM2, 30, 100, 12, -12);
   if (input.enConstruccion || input.antiguedad <= 2) plusvaliaScore += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvaliaScore += 5;
   else if (input.antiguedad > 20) plusvaliaScore -= 15;
   if (input.piso >= 10) plusvaliaScore += 5;
   else if (input.piso <= 2 && input.piso > 0) plusvaliaScore -= 3;
 
-  let riesgoScore = 60;
-  if (input.tipo.toLowerCase().includes("departamento")) riesgoScore += 8;
-  if (input.antiguedad < 10 || input.enConstruccion) riesgoScore += 8;
+  const isOversupplyR = COMUNAS_OVERSUPPLY.some((c) => input.comuna.toLowerCase().includes(c));
+  let riesgoScore = 50;
+  if (input.tipo.toLowerCase().includes("departamento")) riesgoScore += 10;
+  if (input.antiguedad < 10 || input.enConstruccion) riesgoScore += 10;
   else if (input.antiguedad > 25) riesgoScore -= 15;
   if (metrics.capRate > 3) riesgoScore += 8;
-  const ratioGastos = metrics.ingresoMensual > 0 ? input.gastos / metrics.ingresoMensual : 1;
-  if (ratioGastos < 0.2) riesgoScore += 5;
-  else if (ratioGastos > 0.35) riesgoScore -= 10;
+  if (isOversupplyR) riesgoScore -= 5;
+  const ratioGastosIngresoR = metrics.ingresoMensual > 0 ? metrics.egresosMensuales / metrics.ingresoMensual : 2;
+  if (ratioGastosIngresoR > 1) riesgoScore -= 8;
+  else if (ratioGastosIngresoR > 0.8) riesgoScore -= 5;
 
-  const ubicacionScore = isPremium ? 92 : 55;
+  const ubicacionScore = lookupComuna(input.comuna, UBICACION_COMUNA, 50);
 
   const desglose: Desglose = {
     rentabilidad: clamp(rentabilidadScore, 0, 100),
     flujoCaja: clamp(flujoCajaScore, 0, 100),
     plusvalia: clamp(plusvaliaScore, 0, 100),
-    riesgo: clamp(riesgoScore, 0, 100),
+    riesgo: clamp(riesgoScore, 10, 95),
     ubicacion: clamp(ubicacionScore, 0, 100),
   };
 
