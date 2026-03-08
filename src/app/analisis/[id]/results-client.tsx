@@ -601,15 +601,35 @@ export function PremiumResults({
     const contribucionesMes = Math.round(inputData.contribuciones / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
-    return [
-      { name: "Arriendo", value: m.ingresoMensual, fill: "#059669", isResult: false },
-      { name: "Dividendo", value: -m.dividendo, fill: "#ef4444", isResult: false },
-      { name: "GGCC", value: -inputData.gastos, fill: "#ef4444", isResult: false },
-      { name: "Contribuciones", value: -contribucionesMes, fill: "#ef4444", isResult: false },
-      { name: "Mantención", value: -mantencion, fill: "#ef4444", isResult: false },
-      { name: "Vacancia", value: -vacanciaMes, fill: "#ef4444", isResult: false },
-      { name: "FLUJO NETO", value: m.flujoNetoMensual, fill: m.flujoNetoMensual >= 0 ? "#047857" : "#dc2626", isResult: true },
+
+    const steps: { name: string; delta: number }[] = [
+      { name: "Arriendo", delta: m.ingresoMensual },
+      { name: "Dividendo", delta: -m.dividendo },
+      { name: "GGCC", delta: -inputData.gastos },
+      { name: "Contribuciones", delta: -contribucionesMes },
+      { name: "Mantención", delta: -mantencion },
+      { name: "Vacancia", delta: -vacanciaMes },
     ];
+
+    let running = 0;
+    const items: { name: string; base: number; amount: number; fill: string; isResult: boolean; delta: number; running: number }[] = [];
+    for (const s of steps) {
+      const newRunning = running + s.delta;
+      if (s.delta >= 0) {
+        items.push({ name: s.name, base: running, amount: s.delta, fill: "#10b981", isResult: false, delta: s.delta, running: newRunning });
+      } else {
+        items.push({ name: s.name, base: newRunning, amount: -s.delta, fill: "#ef4444", isResult: false, delta: s.delta, running: newRunning });
+      }
+      running = newRunning;
+    }
+    // FLUJO NETO result bar: from 0 to running
+    const flujo = running;
+    if (flujo >= 0) {
+      items.push({ name: "FLUJO NETO", base: 0, amount: flujo, fill: "#047857", isResult: true, delta: flujo, running: flujo });
+    } else {
+      items.push({ name: "FLUJO NETO", base: flujo, amount: -flujo, fill: "#dc2626", isResult: true, delta: flujo, running: flujo });
+    }
+    return items;
   }, [m, inputData]);
 
   interface CashflowRow {
@@ -1179,19 +1199,31 @@ export function PremiumResults({
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
-                    formatter={((v: number) => fmt(v)) as never}
-                    labelFormatter={((label: string) => {
+                    content={({ active, payload, label }) => {
+                      if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === label);
-                      return item?.isResult ? `→ ${label}` : label;
-                    }) as never}
+                      if (!item) return null;
+                      return (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${item.name}` : item.name}</div>
+                          <div className={item.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
+                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
+                          </div>
+                          <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
+                        </div>
+                      );
+                    }}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {/* Invisible base */}
+                  <Bar dataKey="base" stackId="waterfall" fill="transparent" isAnimationActive={false} />
+                  {/* Visible amount */}
+                  <Bar dataKey="amount" stackId="waterfall" radius={[4, 4, 0, 0]}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
                         fill={entry.fill}
-                        stroke={entry.isResult ? (entry.value >= 0 ? "#047857" : "#dc2626") : "none"}
+                        stroke={entry.isResult ? entry.fill : "none"}
                         strokeWidth={entry.isResult ? 3 : 0}
                         fillOpacity={entry.isResult ? 1 : 0.85}
                       />
@@ -1278,7 +1310,7 @@ export function PremiumResults({
                             return (
                               <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                 <div className="mb-1.5 font-semibold">{label}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(row.Contribuciones)}</span></div>
@@ -1293,7 +1325,7 @@ export function PremiumResults({
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Barra positiva: ingreso */}
-                        <Bar dataKey="Ingreso" stackId="flow" fill="#059669" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Ingreso" stackId="flow" fill="#10b981" radius={[4, 4, 0, 0]} />
                         {/* Barras negativas apiladas: egresos */}
                         <Bar dataKey="Dividendo" stackId="flow" fill="#ef4444" />
                         <Bar dataKey="GGCC" stackId="flow" fill="#f97316" />
@@ -1306,7 +1338,7 @@ export function PremiumResults({
                     </ResponsiveContainer>
                     {/* Leyenda manual */}
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Ingreso</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones</span>
