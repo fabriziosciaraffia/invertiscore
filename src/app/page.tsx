@@ -18,8 +18,6 @@ import {
   LayoutDashboard,
   Award,
   TrendingDown,
-  TrendingUp,
-  Minus,
   LineChart,
   ArrowRightLeft,
   SlidersHorizontal,
@@ -121,9 +119,9 @@ function TabComparacion() {
       <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory sm:gap-6 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
         {[
           {
-            score: 45, color: "#f59e0b", label: "Inversión Débil",
+            score: 45, color: "#ef4444", label: "Inversión Débil",
             title: "Depto 1D1B · Santiago Centro",
-            info: "UF 2.100 · 32m2 · $320.000/mes",
+            info: "UF 2.100 · 32m² · $320.000/mes",
             metrics: [
               { l: "Yield bruto", v: "3.2%", c: "text-red-500" },
               { l: "Flujo mensual", v: "-$380.000", c: "text-red-500" },
@@ -131,12 +129,13 @@ function TabComparacion() {
             ],
             tag: "Oversupply en la zona, flujo muy negativo",
             tagIcon: "warning",
-            borderColor: "border-[#f59e0b]/40",
+            borderColor: "border-red-300",
+            bgScore: "bg-red-50",
           },
           {
-            score: 58, color: "#eab308", label: "Inversión Regular",
+            score: 58, color: "#f59e0b", label: "Inversión Regular",
             title: "Depto 2D1B · Providencia",
-            info: "UF 3.200 · 55m2 · $420.000/mes",
+            info: "UF 3.200 · 55m² · $420.000/mes",
             metrics: [
               { l: "Yield bruto", v: "4.1%", c: "text-orange-500" },
               { l: "Flujo mensual", v: "-$416.000", c: "text-red-500" },
@@ -144,12 +143,13 @@ function TabComparacion() {
             ],
             tag: "Flujo negativo pero plusvalía alta compensa a largo plazo",
             tagIcon: "chart",
-            borderColor: "border-[#eab308]/40",
+            borderColor: "border-amber-300",
+            bgScore: "bg-amber-50",
           },
           {
             score: 78, color: "#059669", label: "Inversión Buena",
             title: "Depto 2D2B · La Florida",
-            info: "UF 2.400 · 50m2 · $380.000/mes",
+            info: "UF 2.400 · 50m² · $380.000/mes",
             metrics: [
               { l: "Yield bruto", v: "5.8%", c: "text-[#059669]" },
               { l: "Flujo mensual", v: "+$45.000", c: "text-[#059669]" },
@@ -158,6 +158,7 @@ function TabComparacion() {
             tag: "Flujo positivo, buena rentabilidad, zona en crecimiento",
             tagIcon: "check",
             borderColor: "border-[#059669]/40",
+            bgScore: "bg-emerald-50",
           },
         ].map((card) => (
           <div
@@ -166,7 +167,7 @@ function TabComparacion() {
             style={card.score === 78 ? { boxShadow: "0 4px 20px rgba(5,150,105,0.1)" } : {}}
           >
             <div className="flex items-center gap-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 sm:h-[52px] sm:w-[52px] sm:border-[2.5px]" style={{ borderColor: card.color }}>
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 ${card.bgScore} sm:h-[52px] sm:w-[52px] sm:border-[2.5px]`} style={{ borderColor: card.color }}>
                 <div className="text-center">
                   <div className="text-base font-bold sm:text-xl" style={{ color: card.color }}>{card.score}</div>
                   <div className="text-[7px] text-[#9ca3af]">SCORE</div>
@@ -200,17 +201,12 @@ function TabComparacion() {
 }
 
 function TabFlujoCaja({ animate }: { animate: boolean }) {
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const arriendo = 420;
-    const dividendo = 559;
-    const gastos = 125;
-    const neto = arriendo - dividendo - gastos;
-    const acumulado = (i + 1) * neto;
-    return { mes: i + 1, arriendo, dividendo, gastos, neto, acumulado };
-  });
+  // Varying data: 8 negative months, then 4 improving toward positive
+  const netValues = [-420, -390, -410, -380, -400, -370, -350, -380, -280, -180, -80, 50];
+  const maxAbs = 450;
+  const barHeight = 200;
+  const zeroPos = 0.12; // 12% from top = where $0 line sits (positive area small)
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
-  const maxEgreso = 559 + 125;
-  const barHeight = 220;
 
   return (
     <div>
@@ -218,64 +214,73 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
         El flujo de caja te muestra la película completa, mes a mes.
       </p>
       <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual — 12 meses</div>
-        {/* Y axis labels + bars */}
+        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo neto mensual — 12 meses</div>
         <div className="mt-4 flex">
+          {/* Y axis */}
           <div className="flex flex-col justify-between pr-2 text-[10px] text-[#9ca3af]" style={{ height: barHeight }}>
-            <span>$400K</span>
-            <span>$200K</span>
+            <span>+$100K</span>
             <span>$0</span>
-            <span>-$400K</span>
-            <span>-$800K</span>
+            <span>-$200K</span>
+            <span>-$450K</span>
           </div>
-          <div className="relative flex flex-1 items-end gap-1.5 sm:gap-2" style={{ height: barHeight }}>
-            {/* Zero line */}
-            <div className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-[#d1d5db]" style={{ bottom: `${(maxEgreso / (maxEgreso + 420)) * 100}%` }} />
-            {months.map((m, i) => {
-              const totalRange = 420 + maxEgreso;
-              const greenH = (m.arriendo / totalRange) * barHeight;
-              const redH = ((m.dividendo + m.gastos) / totalRange) * barHeight;
+          <div className="relative flex flex-1 gap-1 sm:gap-1.5" style={{ height: barHeight }}>
+            {/* Zero reference line */}
+            <div className="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-dashed border-[#6b7280]" style={{ top: `${zeroPos * 100}%` }}>
+              <span className="absolute -top-3 right-0 text-[9px] font-semibold text-[#6b7280]">$0</span>
+            </div>
+            {netValues.map((val, i) => {
+              const isPositive = val >= 0;
+              const barPct = (Math.abs(val) / maxAbs) * (1 - zeroPos);
               return (
                 <div
                   key={i}
-                  className="group relative flex flex-1 flex-col items-center"
+                  className="relative flex flex-1 flex-col cursor-pointer"
                   onMouseEnter={() => setHoveredMonth(i)}
                   onMouseLeave={() => setHoveredMonth(null)}
                 >
-                  <div className="flex w-full flex-col items-stretch" style={{ height: barHeight }}>
-                    {/* Green bar (income) grows up from zero line */}
-                    <div className="flex flex-1 flex-col justify-end">
+                  {/* Positive bar (grows up from zero line) */}
+                  {isPositive && (
+                    <div className="flex flex-col justify-end" style={{ height: `${zeroPos * 100}%` }}>
                       <div
                         className="w-full rounded-t bg-[#059669]"
                         style={{
-                          height: animate ? greenH : 0,
-                          transition: `height 0.6s ease-out ${i * 50}ms`,
+                          height: animate ? `${(val / 100) * zeroPos * 100}%` : 0,
+                          transition: `height 0.5s ease-out ${i * 60}ms`,
                         }}
                       />
                     </div>
-                    {/* Red bar (expenses) grows down from zero line */}
-                    <div className="flex flex-col">
+                  )}
+                  {/* Negative bar (grows down from zero line) */}
+                  {!isPositive && (
+                    <>
+                      <div style={{ height: `${zeroPos * 100}%` }} />
                       <div
                         className="w-full rounded-b bg-[#ef4444]"
                         style={{
-                          height: animate ? redH : 0,
-                          transition: `height 0.6s ease-out ${i * 50}ms`,
+                          height: animate ? `${barPct * 100}%` : 0,
+                          transition: `height 0.5s ease-out ${i * 60}ms`,
                         }}
                       />
-                    </div>
-                  </div>
-                  <span className="mt-1 text-[9px] text-[#9ca3af] sm:text-[10px]">M{m.mes}</span>
+                    </>
+                  )}
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] text-[#9ca3af] sm:text-[10px]">
+                    {i + 1}
+                  </span>
                   {/* Tooltip */}
                   {hoveredMonth === i && (
-                    <div className="absolute bottom-full z-20 mb-2 w-44 sm:w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
-                      style={i <= 1 ? { left: 0 } : i >= 10 ? { right: 0 } : { left: '50%', transform: 'translateX(-50%)' }}>
-                      <div className="font-semibold mb-1">Mes {m.mes}</div>
-                      <div className="space-y-0.5">
-                        <div className="flex justify-between"><span>Arriendo</span><span className="text-[#34d399]">${m.arriendo}K</span></div>
-                        <div className="flex justify-between"><span>Dividendo</span><span className="text-red-400">-${m.dividendo}K</span></div>
-                        <div className="flex justify-between"><span>Gastos</span><span className="text-red-400">-${m.gastos}K</span></div>
-                        <div className="border-t border-white/20 pt-0.5 flex justify-between font-semibold"><span>Neto</span><span className="text-red-400">-${Math.abs(m.neto)}K</span></div>
-                        <div className="flex justify-between"><span>Acumulado</span><span className="text-red-400">-${(Math.abs(m.acumulado) / 1000).toFixed(1)}M</span></div>
+                    <div className="absolute z-20 w-36 sm:w-44 rounded-lg bg-[#1a1a1a] px-3 py-2 text-[11px] text-white shadow-lg"
+                      style={{
+                        bottom: isPositive ? undefined : "auto",
+                        top: isPositive ? undefined : `${zeroPos * 100 + 4}%`,
+                        ...(i <= 1 ? { left: 0 } : i >= 10 ? { right: 0 } : { left: "50%", transform: "translateX(-50%)" }),
+                        ...(isPositive ? { bottom: `${(1 - zeroPos) * 100 + 4}%` } : {}),
+                      }}>
+                      <div className="font-semibold mb-1">Mes {i + 1}</div>
+                      <div className="flex justify-between">
+                        <span>Flujo neto</span>
+                        <span className={val >= 0 ? "text-[#34d399]" : "text-red-400"}>
+                          {val >= 0 ? "+" : ""}{val > -1000 && val < 1000 ? `$${val}K` : `$${val}K`}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -286,16 +291,16 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
         </div>
         {/* Legend */}
         <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] sm:gap-4 sm:text-xs text-[#6b7280]">
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]" /> Arriendo ($420K)</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" /> Dividendo + Gastos ($684K)</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" /> Flujo negativo</span>
+          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]" /> Flujo positivo</span>
         </div>
-        {/* Summary card */}
-        <div className="mt-6 rounded-xl bg-red-50 p-4">
-          <p className="text-sm font-semibold text-red-700">
-            Resultado año 1: pierdes $5M de tu bolsillo.
+        {/* Summary */}
+        <div className="mt-6 rounded-xl bg-[#fef9ee] p-4">
+          <p className="text-sm font-semibold text-amber-700">
+            Los primeros meses duelen, pero la tendencia mejora.
           </p>
-          <p className="mt-1 text-sm text-red-600/80">
-            El arriendo cubre solo el 50% de los costos.
+          <p className="mt-1 text-sm text-amber-600/80">
+            InvertiScore te muestra si vale la pena aguantar el flujo negativo.
           </p>
         </div>
       </div>
@@ -305,34 +310,40 @@ function TabFlujoCaja({ animate }: { animate: boolean }) {
 
 function TabPatrimonio({ animate }: { animate: boolean }) {
   const [hoveredYear, setHoveredYear] = useState<number | null>(null);
-  // Data points for 11 years (0-10)
+  // Patrimonio neto in UF: starts -200, crosses 0 at year 5, reaches +800 at year 10
   const data = [
-    { year: 0, propiedad: 124, patrimonio: 24, deuda: 99 },
-    { year: 1, propiedad: 128, patrimonio: 29, deuda: 97 },
-    { year: 2, propiedad: 133, patrimonio: 35, deuda: 95 },
-    { year: 3, propiedad: 138, patrimonio: 42, deuda: 93 },
-    { year: 4, propiedad: 143, patrimonio: 50, deuda: 90 },
-    { year: 5, propiedad: 150, patrimonio: 63, deuda: 87 },
-    { year: 6, propiedad: 155, patrimonio: 72, deuda: 84 },
-    { year: 7, propiedad: 161, patrimonio: 81, deuda: 80 },
-    { year: 8, propiedad: 168, patrimonio: 91, deuda: 77 },
-    { year: 9, propiedad: 175, patrimonio: 100, deuda: 74 },
-    { year: 10, propiedad: 183, patrimonio: 110, deuda: 72 },
+    { year: 0, uf: -200 },
+    { year: 1, uf: -150 },
+    { year: 2, uf: -90 },
+    { year: 3, uf: -50 },
+    { year: 4, uf: -15 },
+    { year: 5, uf: 0 },
+    { year: 6, uf: 80 },
+    { year: 7, uf: 200 },
+    { year: 8, uf: 380 },
+    { year: 9, uf: 560 },
+    { year: 10, uf: 800 },
   ];
-  const maxVal = 200;
-  const chartW = 400;
-  const chartH = 240;
-  const padL = 45;
-  const padT = 15;
-  const padB = 25;
+  const minUF = -300;
+  const maxUF = 900;
+  const range = maxUF - minUF;
+  const chartW = 420;
+  const chartH = 250;
+  const padL = 52;
+  const padR = 10;
+  const padT = 20;
+  const padB = 30;
+  const plotW = chartW - padL - padR;
   const plotH = chartH - padT - padB;
-  const plotW = chartW - padL - 10;
 
   const toX = (i: number) => padL + (i / 10) * plotW;
-  const toY = (v: number) => padT + plotH - (v / maxVal) * plotH;
+  const toY = (v: number) => padT + plotH - ((v - minUF) / range) * plotH;
+  const zeroY = toY(0);
 
-  const makeLine = (key: keyof typeof data[0]) =>
-    data.map((d, i) => `${toX(i)},${toY(d[key] as number)}`).join(" ");
+  // Line path
+  const linePath = data.map((d, i) => `${i === 0 ? "M" : "L"}${toX(i)},${toY(d.uf)}`).join(" ");
+  // Area path (line + close to zero)
+  const areaPath = linePath + ` L${toX(10)},${zeroY} L${toX(0)},${zeroY} Z`;
 
   return (
     <div>
@@ -340,32 +351,68 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
         Aunque pierdas flujo cada mes, tu patrimonio puede crecer significativamente.
       </p>
       <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
-        <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Proyección a 10 años (millones CLP)</div>
+        <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Patrimonio neto proyectado — 10 años (UF)</div>
         <div className="relative">
           <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#059669" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
+              </linearGradient>
+              <clipPath id="areaClip">
+                <rect x={padL} y={padT} width={plotW} height={plotH}
+                  style={{
+                    transform: animate ? "scaleX(1)" : "scaleX(0)",
+                    transformOrigin: `${padL}px center`,
+                    transition: "transform 1.2s ease-out",
+                  }}
+                />
+              </clipPath>
+            </defs>
             {/* Grid lines */}
-            {[0, 50, 100, 150, 200].map((v) => (
+            {[-200, 0, 200, 400, 600, 800].map((v) => (
               <g key={v}>
-                <line x1={padL} y1={toY(v)} x2={chartW - 10} y2={toY(v)} stroke="#f3f4f6" strokeWidth="1" />
-                <text x={padL - 5} y={toY(v) + 3} textAnchor="end" fontSize="9" fill="#9ca3af">${v}M</text>
+                <line x1={padL} y1={toY(v)} x2={chartW - padR} y2={toY(v)}
+                  stroke={v === 0 ? "#6b7280" : "#f3f4f6"} strokeWidth={v === 0 ? 1.5 : 1}
+                  strokeDasharray={v === 0 ? "none" : "none"} />
+                <text x={padL - 6} y={toY(v) + 3} textAnchor="end" fontSize="9" fill="#9ca3af">
+                  {v === 0 ? "UF 0" : `UF ${v > 0 ? "+" : ""}${v}`}
+                </text>
               </g>
             ))}
             {/* X axis labels */}
-            {[0, 2, 4, 6, 8, 10].map((y) => (
-              <text key={y} x={toX(y)} y={chartH - 2} textAnchor="middle" fontSize="9" fill="#9ca3af">Año {y}</text>
+            {[0, 2, 4, 5, 6, 8, 10].map((y) => (
+              <text key={y} x={toX(y)} y={chartH - 4} textAnchor="middle" fontSize="9" fill="#9ca3af">
+                {y === 0 ? "Hoy" : `Año ${y}`}
+              </text>
             ))}
-            {/* Lines with draw animation */}
-            <polyline fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-              points={makeLine("propiedad")}
-              strokeDasharray="1000" strokeDashoffset={animate ? "0" : "1000"}
-              style={{ transition: "stroke-dashoffset 1s ease-out" }} />
-            <polyline fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-              points={makeLine("patrimonio")}
-              strokeDasharray="1000" strokeDashoffset={animate ? "0" : "1000"}
-              style={{ transition: "stroke-dashoffset 1s ease-out 0.2s" }} />
-            <polyline fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="6,3"
-              points={makeLine("deuda")} opacity={animate ? 1 : 0}
-              style={{ transition: "opacity 0.5s ease-out 0.5s" }} />
+            {/* Area fill */}
+            <path d={areaPath} fill="url(#areaGrad)" clipPath="url(#areaClip)" />
+            {/* Line */}
+            <path d={linePath} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+              strokeDasharray="600" strokeDashoffset={animate ? "0" : "600"}
+              style={{ transition: "stroke-dashoffset 1.2s ease-out" }} />
+            {/* Break-even marker at year 5 */}
+            {animate && (
+              <g>
+                <circle cx={toX(5)} cy={zeroY} r="5" fill="#059669" stroke="white" strokeWidth="2" />
+                <text x={toX(5)} y={zeroY - 12} textAnchor="middle" fontSize="10" fill="#059669" fontWeight="600">Break-even</text>
+              </g>
+            )}
+            {/* End point marker */}
+            {animate && (
+              <g>
+                <circle cx={toX(10)} cy={toY(800)} r="5" fill="#059669" stroke="white" strokeWidth="2" />
+                <text x={toX(10) - 4} y={toY(800) - 12} textAnchor="end" fontSize="10" fill="#059669" fontWeight="600">UF +800</text>
+              </g>
+            )}
+            {/* Start point marker */}
+            {animate && (
+              <g>
+                <circle cx={toX(0)} cy={toY(-200)} r="4" fill="#ef4444" stroke="white" strokeWidth="2" />
+                <text x={toX(0) + 8} y={toY(-200) + 4} textAnchor="start" fontSize="9" fill="#ef4444" fontWeight="600">UF -200</text>
+              </g>
+            )}
             {/* Hover areas */}
             {data.map((d, i) => (
               <g key={i}>
@@ -374,14 +421,9 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
                   onMouseEnter={() => setHoveredYear(i)}
                   onMouseLeave={() => setHoveredYear(null)} />
                 {hoveredYear === i && (
-                  <line x1={toX(i)} y1={padT} x2={toX(i)} y2={padT + plotH} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,2" />
-                )}
-                {/* Dots on hover */}
-                {hoveredYear === i && (
                   <>
-                    <circle cx={toX(i)} cy={toY(d.propiedad)} r="4" fill="#059669" />
-                    <circle cx={toX(i)} cy={toY(d.patrimonio)} r="4" fill="#3b82f6" />
-                    <circle cx={toX(i)} cy={toY(d.deuda)} r="4" fill="#ef4444" />
+                    <line x1={toX(i)} y1={padT} x2={toX(i)} y2={padT + plotH} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,2" />
+                    <circle cx={toX(i)} cy={toY(d.uf)} r="5" fill="#059669" stroke="white" strokeWidth="2" />
                   </>
                 )}
               </g>
@@ -390,36 +432,30 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
           {/* Tooltip overlay */}
           {hoveredYear !== null && (
             <div
-              className="pointer-events-none absolute z-20 w-44 sm:w-52 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
+              className="pointer-events-none absolute z-20 w-40 sm:w-48 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
               style={{
-                left: `clamp(0px, ${(toX(hoveredYear) / chartW) * 100}% - 5.5rem, calc(100% - 11rem))`,
-                top: `${(toY(data[hoveredYear].propiedad) / chartH) * 100 - 8}%`,
+                left: `clamp(0px, ${(toX(hoveredYear) / chartW) * 100}% - 5rem, calc(100% - 10rem))`,
+                top: `${(toY(data[hoveredYear].uf) / chartH) * 100 - 6}%`,
                 transform: "translateY(-100%)",
               }}
             >
-              <div className="font-semibold mb-1">Año {data[hoveredYear].year}</div>
-              <div className="space-y-0.5">
-                <div className="flex justify-between"><span className="text-[#34d399]">Propiedad</span><span>${data[hoveredYear].propiedad}M</span></div>
-                <div className="flex justify-between"><span className="text-[#60a5fa]">Patrimonio</span><span>${data[hoveredYear].patrimonio}M</span></div>
-                <div className="flex justify-between"><span className="text-red-400">Deuda</span><span>${data[hoveredYear].deuda}M</span></div>
+              <div className="font-semibold mb-1">{hoveredYear === 0 ? "Hoy" : `Año ${data[hoveredYear].year}`}</div>
+              <div className="flex justify-between">
+                <span>Patrimonio neto</span>
+                <span className={data[hoveredYear].uf >= 0 ? "text-[#34d399]" : "text-red-400"}>
+                  UF {data[hoveredYear].uf >= 0 ? "+" : ""}{data[hoveredYear].uf}
+                </span>
               </div>
-              <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-[#1a1a1a]" />
             </div>
           )}
-        </div>
-        {/* Legend */}
-        <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-[#6b7280]">
-          <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-sm bg-[#059669]" /> Valor propiedad</span>
-          <span className="flex items-center gap-1.5"><span className="h-2 w-6 rounded-sm bg-[#3b82f6]" /> Tu patrimonio neto</span>
-          <span className="flex items-center gap-1.5"><span className="h-0.5 w-6 border-t-2 border-dashed border-[#ef4444]" /> Lo que debes al banco</span>
         </div>
         {/* Summary card */}
         <div className="mt-6 rounded-xl bg-[#ecfdf5] p-4">
           <p className="text-sm font-semibold text-[#059669]">
-            En 10 años tu inversión de $24.8M se convierte en $70.2M. Multiplicador: 2.83x.
+            Empiezas con UF -200, pero en 5 años ya recuperaste tu inversión. En 10 años, generas UF +800 de patrimonio.
           </p>
           <p className="mt-1 text-sm text-[#059669]/80">
-            Eso es 7.8% anual — mejor que cualquier depósito a plazo.
+            InvertiScore te proyecta exactamente cuándo llegas al break-even.
           </p>
         </div>
       </div>
@@ -428,13 +464,16 @@ function TabPatrimonio({ animate }: { animate: boolean }) {
 }
 
 function TabAnalisisIA({ animate }: { animate: boolean }) {
-  const items = [
-    { type: "favor", text: "Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos." },
-    { type: "favor", text: "Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía." },
-    { type: "atencion", text: "El retorno neto (CAP rate 1.5%) está bajo el promedio. Podrías negociar el precio de compra." },
-    { type: "atencion", text: "Cada mes tendrás que poner $416.788 de tu bolsillo para cubrir los costos." },
-    { type: "veredicto", text: "La inversión apuesta a la plusvalía futura. El arriendo cubre solo la mitad de los costos — negociar el precio mejoraría los números." },
+  const favorItems = [
+    "Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos.",
+    "Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía.",
+    "El precio por m² está un 8% bajo el promedio de la zona, lo que da margen de negociación.",
   ];
+  const atencionItems = [
+    "El retorno neto (CAP rate 1.5%) está bajo el promedio. Podrías negociar el precio de compra.",
+    "Cada mes tendrás que poner $416.788 de tu bolsillo para cubrir los costos.",
+  ];
+  const veredicto = "La inversión apuesta a la plusvalía futura. El arriendo cubre solo la mitad de los costos — negociar el precio mejoraría los números.";
 
   return (
     <div>
@@ -443,58 +482,78 @@ function TabAnalisisIA({ animate }: { animate: boolean }) {
       </p>
       <div className="mx-auto max-w-3xl space-y-4">
         {/* A favor */}
-        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5" style={{ borderLeft: "4px solid #059669" }}>
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-5"
+          style={{
+            borderLeft: "4px solid #059669",
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+          }}
+        >
           <h3 className="mb-3 text-sm font-semibold text-[#059669]">A favor</h3>
           <ul className="space-y-2.5">
-            {items.filter(x => x.type === "favor").map((item, i) => (
+            {favorItems.map((text, i) => (
               <li
                 key={i}
                 className="flex items-start gap-2.5 text-sm text-[#374151]"
                 style={{
                   opacity: animate ? 1 : 0,
-                  transform: animate ? "translateY(0)" : "translateY(6px)",
-                  transition: `opacity 0.4s ease-out ${i * 300}ms, transform 0.4s ease-out ${i * 300}ms`,
+                  transform: animate ? "translateY(0)" : "translateY(10px)",
+                  transition: `opacity 0.4s ease-out ${(i + 1) * 200}ms, transform 0.4s ease-out ${(i + 1) * 200}ms`,
                 }}
               >
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#ecfdf5]"><Check className="h-3 w-3 text-[#059669]" /></span>
-                {item.text}
+                {text}
               </li>
             ))}
           </ul>
         </div>
         {/* Atención */}
-        <div className="rounded-2xl border border-[#e5e7eb] bg-white p-5" style={{ borderLeft: "4px solid #ef4444" }}>
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-5"
+          style={{
+            borderLeft: "4px solid #ef4444",
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out 600ms, transform 0.4s ease-out 600ms",
+          }}
+        >
           <h3 className="mb-3 text-sm font-semibold text-red-500">Atención</h3>
           <ul className="space-y-2.5">
-            {items.filter(x => x.type === "atencion").map((item, i) => (
+            {atencionItems.map((text, i) => (
               <li
                 key={i}
                 className="flex items-start gap-2.5 text-sm text-[#374151]"
                 style={{
                   opacity: animate ? 1 : 0,
-                  transform: animate ? "translateY(0)" : "translateY(6px)",
-                  transition: `opacity 0.4s ease-out ${(i + 2) * 300}ms, transform 0.4s ease-out ${(i + 2) * 300}ms`,
+                  transform: animate ? "translateY(0)" : "translateY(10px)",
+                  transition: `opacity 0.4s ease-out ${800 + i * 200}ms, transform 0.4s ease-out ${800 + i * 200}ms`,
                 }}
               >
                 <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-50"><AlertTriangle className="h-3 w-3 text-red-500" /></span>
-                {item.text}
+                {text}
               </li>
             ))}
           </ul>
         </div>
         {/* Veredicto */}
         <div
-          className="rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-5"
+          className="rounded-2xl border border-[#e5e7eb] bg-[#f0f7ff] p-5"
           style={{
-            borderLeft: "4px solid #9ca3af",
+            borderLeft: "4px solid #3b82f6",
             opacity: animate ? 1 : 0,
-            transform: animate ? "translateY(0)" : "translateY(6px)",
+            transform: animate ? "translateY(0)" : "translateY(10px)",
             transition: "opacity 0.4s ease-out 1200ms, transform 0.4s ease-out 1200ms",
           }}
         >
-          <h3 className="mb-2 text-sm font-semibold text-[#6b7280]">Veredicto</h3>
+          <h3 className="mb-2 text-sm font-semibold text-[#3b82f6]">Veredicto</h3>
           <p className="text-sm leading-relaxed text-[#374151]">
-            {items.find(x => x.type === "veredicto")?.text}
+            {veredicto}
+            <span
+              className="ml-0.5 inline-block h-4 w-0.5 bg-[#3b82f6] align-middle"
+              style={{ animation: "blink 1s step-end infinite" }}
+            />
           </p>
         </div>
         {/* CTA */}
@@ -509,67 +568,116 @@ function TabAnalisisIA({ animate }: { animate: boolean }) {
 }
 
 function TabSensibilidad({ animate }: { animate: boolean }) {
-  const scenarios = [
-    {
-      label: "Pesimista", score: 49, color: "#ef4444",
-      Icon: TrendingDown,
-      bg: "bg-red-50", border: "border-red-300",
-      desc: "Si suben las tasas y baja el arriendo",
-      result: "Pierdes $621K/mes",
-      resultColor: "text-red-600",
-    },
-    {
-      label: "Base", score: 58, color: "#eab308",
-      Icon: Minus,
-      bg: "bg-white", border: "border-[#e5e7eb]",
-      desc: "Escenario actual",
-      result: "Pierdes $416K/mes",
-      resultColor: "text-red-500",
-    },
-    {
-      label: "Optimista", score: 63, color: "#059669",
-      Icon: TrendingUp,
-      bg: "bg-emerald-50", border: "border-[#059669]/40",
-      desc: "Si bajan las tasas y sube el arriendo",
-      result: "Pierdes $323K/mes",
-      resultColor: "text-orange-500",
-    },
+  const sliders = [
+    { label: "Tasa de interés", low: "3.5%", mid: "4.5%", high: "5.5%", pos: 50 },
+    { label: "Vacancia", low: "0 meses", mid: "1 mes", high: "2 meses", pos: 33 },
+    { label: "Plusvalía anual", low: "2%", mid: "4%", high: "6%", pos: 50 },
   ];
+
+  // 3x3 scenario table: rows = tasa, cols = vacancia, values = monthly flow
+  const table = {
+    headers: ["0 meses vac.", "1 mes vac.", "2 meses vac."],
+    rows: [
+      { label: "Tasa 3.5%", values: ["-$180K", "-$215K", "-$250K"], colors: ["text-orange-500", "text-red-500", "text-red-600"] },
+      { label: "Tasa 4.5%", values: ["-$320K", "-$380K", "-$416K"], colors: ["text-red-500", "text-red-600", "text-red-700"] },
+      { label: "Tasa 5.5%", values: ["-$480K", "-$540K", "-$621K"], colors: ["text-red-600", "text-red-700", "text-red-800"] },
+    ],
+    bgColors: [
+      ["bg-orange-50", "bg-red-50", "bg-red-100"],
+      ["bg-red-50", "bg-red-100", "bg-red-100"],
+      ["bg-red-100", "bg-red-100", "bg-red-200/60"],
+    ],
+  };
 
   return (
     <div>
       <p className="mb-8 text-center text-[#6b7280]">
         Mira qué pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
       </p>
-      <div className="grid gap-4 sm:gap-5 md:grid-cols-3">
-        {scenarios.map((s, i) => (
-          <div
-            key={s.label}
-            className={`rounded-2xl border ${s.border} ${s.bg} p-4 sm:p-6 text-center transition-all duration-200 hover:shadow-md`}
-            style={{
-              opacity: animate ? 1 : 0,
-              transform: animate ? "translateX(0)" : `translateX(${(i - 1) * -20}px)`,
-              transition: `opacity 0.4s ease-out ${i * 200}ms, transform 0.4s ease-out ${i * 200}ms`,
-            }}
-          >
-            <div className="mb-3 flex justify-center">
-              <s.Icon className="h-5 w-5" style={{ color: s.color }} />
-            </div>
-            <div className="mb-3 flex justify-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full border-2" style={{ borderColor: s.color, backgroundColor: `${s.color}10` }}>
-                <div className="text-center">
-                  <div className="text-xl font-bold" style={{ color: s.color }}>{s.score}</div>
-                  <div className="text-[7px] text-[#9ca3af]">SCORE</div>
+      <div className="mx-auto max-w-3xl space-y-6">
+        {/* Visual sliders */}
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-6"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+          }}
+        >
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Variables del análisis</div>
+          <div className="space-y-5">
+            {sliders.map((s, i) => (
+              <div
+                key={s.label}
+                style={{
+                  opacity: animate ? 1 : 0,
+                  transform: animate ? "translateY(0)" : "translateY(10px)",
+                  transition: `opacity 0.4s ease-out ${(i + 1) * 150}ms, transform 0.4s ease-out ${(i + 1) * 150}ms`,
+                }}
+              >
+                <div className="mb-1.5 flex items-center justify-between text-sm">
+                  <span className="font-medium text-[#374151]">{s.label}</span>
+                  <span className="text-xs text-[#059669] font-semibold">{s.mid}</span>
+                </div>
+                <div className="relative h-2 rounded-full bg-gradient-to-r from-[#059669]/20 via-[#f59e0b]/20 to-[#ef4444]/20">
+                  <div
+                    className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white bg-[#059669] shadow-md"
+                    style={{ left: `${s.pos}%`, transform: "translate(-50%, -50%)" }}
+                  />
+                </div>
+                <div className="mt-1 flex justify-between text-[10px] text-[#9ca3af]">
+                  <span>{s.low}</span>
+                  <span>{s.high}</span>
                 </div>
               </div>
-            </div>
-            <p className="mb-3 text-sm text-[#6b7280]">{s.desc}</p>
-            <p className={`text-lg font-bold ${s.resultColor}`}>{s.result}</p>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* 3x3 Scenario table */}
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-6"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out 500ms, transform 0.4s ease-out 500ms",
+          }}
+        >
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual por escenario</div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th className="pb-2 pr-3 text-left text-xs font-medium text-[#9ca3af]"></th>
+                  {table.headers.map((h) => (
+                    <th key={h} className="pb-2 px-2 text-center text-xs font-medium text-[#9ca3af]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {table.rows.map((row, ri) => (
+                  <tr key={row.label}>
+                    <td className="py-1.5 pr-3 text-xs font-medium text-[#6b7280] whitespace-nowrap">{row.label}</td>
+                    {row.values.map((val, ci) => (
+                      <td key={ci} className={`py-1.5 px-2 text-center rounded ${table.bgColors[ri][ci]}`}>
+                        <span className={`text-xs font-semibold ${row.colors[ci]}`}>{val}</span>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex items-center gap-2 text-[10px] text-[#9ca3af]">
+            <span className="h-2.5 w-2.5 rounded-sm bg-orange-50 border border-orange-200" />
+            <span>Menor pérdida</span>
+            <span className="h-2.5 w-2.5 rounded-sm bg-red-200/60 border border-red-300 ml-2" />
+            <span>Mayor pérdida</span>
+          </div>
+        </div>
       </div>
       <p className="mt-8 text-center text-sm text-[#6b7280]">
-        Incluso en el mejor escenario, este depto tiene flujo negativo. El retorno viene por la plusvalía a largo plazo.
+        InvertiScore calcula automáticamente estos escenarios para cada propiedad que analices.
       </p>
     </div>
   );
@@ -641,8 +749,12 @@ export default function HomePage() {
           50% { transform: translateY(8px); }
         }
         @keyframes fadeInTab {
-          from { opacity: 0; transform: translateY(8px); }
+          from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0; }
         }
         @media (max-width: 767px) {
           .transition-gpu { transition-duration: 0.4s !important; }
