@@ -12,7 +12,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   Lock, DollarSign, BarChart3, Brain, Calendar,
   Building2, Sparkles, Target, Shield, MapPin,
-  ChevronDown, ChevronUp, SlidersHorizontal, RefreshCw, Loader2,
+  ChevronDown, ChevronUp, SlidersHorizontal, RefreshCw, Loader2, Clock,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import type { MarketDataRow } from "@/lib/market-data";
@@ -434,6 +434,27 @@ export function PremiumResults({
   const [sensVacancia, setSensVacancia] = useState(0);
 
   const m = results?.metrics ?? null;
+
+  // Top-level pre-delivery months calculation
+  const mesesPreEntregaTop = useMemo(() => {
+    if (!inputData || inputData.estadoVenta === "inmediata" || !inputData.fechaEntrega) return 0;
+    const [a, me] = inputData.fechaEntrega.split("-").map(Number);
+    if (!a || !me) return 0;
+    const now = new Date();
+    const ent = new Date(a, me - 1);
+    return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  }, [inputData]);
+
+  const fechaEntregaLabel = useMemo(() => {
+    if (!inputData?.fechaEntrega) return "";
+    const [a, me] = inputData.fechaEntrega.split("-").map(Number);
+    const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+    return `${meses[(me || 1) - 1]} ${a}`;
+  }, [inputData]);
+
+  const horizonBeforeDelivery = mesesPreEntregaTop > 0 && horizonYears * 12 <= mesesPreEntregaTop;
+  const mesesParaVerFlujo = mesesPreEntregaTop + 12;
+  const anosParaVerFlujo = Math.ceil(mesesParaVerFlujo / 12);
 
   const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
   const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
@@ -1120,7 +1141,7 @@ export function PremiumResults({
                     Flujo de Caja — {horizonYears <= 3 ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
-                  <div className="h-56">
+                  <div className="relative h-56">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -1135,6 +1156,21 @@ export function PremiumResults({
                         <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={horizonYears <= 3 ? { r: 2 } : false} />
                       </ComposedChart>
                     </ResponsiveContainer>
+                    {horizonBeforeDelivery && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[1px]">
+                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-6 py-5 text-center shadow-lg">
+                          <Clock className="h-7 w-7 text-primary" />
+                          <span className="text-sm font-semibold">Tu inversión aún no genera flujo</span>
+                          <p className="text-xs text-muted-foreground">
+                            La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
+                            Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
+                          </p>
+                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-primary hover:underline">
+                            Ver desde la entrega →
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1144,7 +1180,14 @@ export function PremiumResults({
                 {projData.length > 0 && (
                   <>
                     <div>
-                      <h4 className="mb-1 text-sm font-semibold">Proyección de Patrimonio — {horizonYears} año{horizonYears > 1 ? "s" : ""}</h4>
+                      <div className="mb-1 flex items-center gap-2">
+                        <h4 className="text-sm font-semibold">Proyección de Patrimonio — {horizonYears} año{horizonYears > 1 ? "s" : ""}</h4>
+                        {horizonBeforeDelivery && (
+                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                            Período pre-entrega: tu patrimonio crece con los pagos del pie
+                          </span>
+                        )}
+                      </div>
                       <p className="mb-3 text-xs text-muted-foreground">Cómo crece tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-64">
                         <ResponsiveContainer>
@@ -1204,7 +1247,23 @@ export function PremiumResults({
                 )}
 
                 {/* Escenario de Salida */}
-                {exit && refi && (
+                {horizonBeforeDelivery ? (
+                  <div>
+                    <h4 className="mb-1 text-sm font-semibold">Escenario de Salida</h4>
+                    <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+                      <Clock className="h-5 w-5 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-sm font-medium">No puedes vender ni refinanciar antes de la entrega</p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
+                        </p>
+                        <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-primary hover:underline">
+                          Ver desde la entrega →
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : exit && refi ? (
                   <div>
                     <h4 className="mb-1 text-sm font-semibold">Escenario de Salida {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`}</h4>
                     <p className="mb-3 text-xs text-muted-foreground">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
@@ -1275,7 +1334,7 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
-                )}
+                ) : null}
               </CardContent>
             </Card>
             {currentAccess === "guest" && <RegisterOverlay />}
