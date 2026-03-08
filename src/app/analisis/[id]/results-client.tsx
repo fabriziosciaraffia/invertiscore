@@ -22,8 +22,8 @@ let UF_CLP = 38800;
 
 const METRIC_TOOLTIPS: Record<string, string> = {
   "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) × 100. Benchmark Santiago: 3.5-4.5%",
-  "Yield Neto": "Retorno anual real descontando todos los gastos operativos (GGCC, contribuciones, mantención, vacancia). Es la métrica más honesta de rentabilidad.",
-  "CAP Rate": "Retorno neto operativo anual dividido por el precio (NOI/Precio). A diferencia del 'cap rate' que manejan muchos corredores en Chile (que es solo arriendo×12/precio), este descuenta gastos comunes, contribuciones, mantención y vacancia. Es la métrica internacional estándar y refleja la rentabilidad real del activo.",
+  "Yield Neto": "Retorno anual real descontando gastos del propietario (contribuciones, mantención, GGCC en vacancia). En renta larga, el arrendatario paga GGCC.",
+  "CAP Rate": "Retorno neto operativo anual dividido por el precio (NOI/Precio). A diferencia del 'cap rate' que manejan muchos corredores en Chile (que es solo arriendo×12/precio), este descuenta contribuciones, mantención, vacancia y GGCC solo durante meses sin arrendatario. Es la métrica internacional estándar.",
   "Cash-on-Cash": "Retorno anual sobre TU capital invertido (el pie). Si es negativo, estás poniendo plata de tu bolsillo cada mes.",
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
@@ -506,12 +506,15 @@ export function PremiumResults({
         if (mo <= mesesPreEntrega) {
           flujoAnual -= montoCuotaPie;
         } else if (mo === mesesPreEntrega + 1) {
+          // Vacancia: propietario paga GGCC
           flujoAnual -= (m.dividendo + gastosActual + contribucionesMes + mantencion);
         } else if (mo === mesesPreEntrega + 2) {
+          // Corretaje month — arrendatario paga GGCC
           const corretaje = Math.round(inputData.arriendo * 0.5);
-          flujoAnual += arriendoActual - m.dividendo - gastosActual - contribucionesMes - mantencion - corretaje;
+          flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion - corretaje;
         } else {
-          flujoAnual += arriendoActual - m.dividendo - gastosActual - contribucionesMes - mantencion;
+          // Normal — arrendatario paga GGCC
+          flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion;
         }
       }
       flujoAcumulado += flujoAnual;
@@ -605,7 +608,7 @@ export function PremiumResults({
     const steps: { name: string; delta: number }[] = [
       { name: "Arriendo", delta: m.ingresoMensual },
       { name: "Dividendo", delta: -m.dividendo },
-      { name: "GGCC", delta: -inputData.gastos },
+      { name: "GGCC vacancia", delta: -Math.round((inputData.gastos * inputData.vacanciaMeses) / 12) },
       { name: "Contribuciones", delta: -contribucionesMes },
       { name: "Mantención", delta: -mantencion },
       { name: "Vacancia", delta: -vacanciaMes },
@@ -678,11 +681,13 @@ export function PremiumResults({
             arriendoActual *= 1.035;
             gastosActual *= 1.03;
           }
+          const esVacancia = i === 1;
           let ingreso = Math.round(arriendoActual);
-          if (i === 1) ingreso = 0; // Vacancia
+          if (esVacancia) ingreso = 0;
 
           const div = -m.dividendo;
-          const ggcc = -Math.round(gastosActual);
+          // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
+          const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
           const contrib = -contribucionesMes;
           const mant = -mantencion;
           const vac = -vacanciaMes;
@@ -696,11 +701,13 @@ export function PremiumResults({
             arriendoActual *= 1.035;
             gastosActual *= 1.03;
           }
+          const esVacancia = i === 1;
           let ingreso = Math.round(arriendoActual);
-          if (i === 1) ingreso = 0; // Vacancia
+          if (esVacancia) ingreso = 0;
 
           const div = -m.dividendo;
-          const ggcc = -Math.round(gastosActual);
+          // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
+          const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
           const contrib = -contribucionesMes;
           const mant = -mantencion;
           const vac = -vacanciaMes;
@@ -715,7 +722,8 @@ export function PremiumResults({
       return dynamicProjections.slice(0, horizonYears).map((p) => {
         const ingresoAnual = p.arriendoMensual * 12;
         const divAnual = -(m.dividendo * 12);
-        const ggccAnual = -(inputData.gastos * 12);
+        // GGCC: propietario solo paga durante meses de vacancia
+        const ggccAnual = -(inputData.gastos * inputData.vacanciaMeses);
         const contribAnual = -(contribucionesMes * 12);
         const mantAnual = -(mantencion * 12);
         const vacAnual = -(vacanciaMes * 12);
@@ -1312,7 +1320,7 @@ export function PremiumResults({
                                 <div className="mb-1.5 font-semibold">{label}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(row.Contribuciones)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención: <span className="font-medium text-red-400">{fmt(row.Mantencion)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(row.Vacancia)}</span></div>
@@ -1340,7 +1348,7 @@ export function PremiumResults({
                     <div className="mt-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención</span>
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia</span>

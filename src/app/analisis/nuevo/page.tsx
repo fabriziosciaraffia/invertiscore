@@ -30,7 +30,7 @@ const FIELD_TIPS: Record<string, string> = {
   precio: "Precio de venta de la propiedad en UF. Lo encuentras en la publicación o cotización.",
   precioCLP: "Precio de venta en pesos chilenos. Lo encuentras en la publicación o cotización.",
   piePct: "Porcentaje del precio que pagas de tu bolsillo. En Chile, los bancos financian hasta 80%, así que el pie mínimo es 20%.",
-  gastos: "Monto mensual que cobra la administración del edificio. Pregunta al corredor o revisa la publicación.",
+  gastos: "Monto mensual de gastos comunes del edificio. En renta larga lo paga el arrendatario. Tú solo lo pagas durante los meses de vacancia.",
   contribuciones: "Impuesto territorial que se paga al SII cada trimestre. Lo puedes consultar en sii.cl con el rol de la propiedad.",
   arriendo: "Cuánto esperas cobrar de arriendo mensual. Si no sabes, revisa arriendos similares en Portal Inmobiliario para la misma zona.",
   arriendoUF: "Cuánto esperas cobrar de arriendo mensual en UF. Si no sabes, revisa arriendos similares en Portal Inmobiliario.",

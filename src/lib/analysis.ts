@@ -134,17 +134,19 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const contribucionesMes = Math.round(input.contribuciones / 3);
   const mantencion = input.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
   const vacanciaMensual = Math.round((input.arriendo * input.vacanciaMeses) / 12);
+  // GGCC: en renta larga los paga el arrendatario. El propietario solo paga durante vacancia.
+  const ggccPropietario = Math.round((input.gastos * input.vacanciaMeses) / 12);
   // Corretaje: 50% del primer mes, gasto puntual anual prorrateado en 12 meses
   const corretajeMensual = Math.round((input.arriendo * 0.5) / 12);
 
-  const egresosMensuales = dividendo + input.gastos + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
+  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
   const flujoNetoMensual = ingresoMensual - egresosMensuales;
 
   // NOI = renta - gastos operacionales (sin dividendo)
-  const noi = (ingresoMensual - input.gastos - contribucionesMes - mantencion - vacanciaMensual) * 12;
+  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual) * 12;
 
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (input.gastos + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
+  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
 
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
@@ -203,14 +205,17 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
     for (let i = 1; i <= mesesOperativos; i++) {
       let ingreso = metrics.ingresoMensual;
       let corretajeGasto = 0;
+      const esVacancia = i === 1;
+      // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
+      const ggccMes = esVacancia ? input.gastos : 0;
 
-      if (i === 1) {
+      if (esVacancia) {
         ingreso = 0; // Vacancia primer mes post-entrega
       } else if (i === 2) {
         corretajeGasto = Math.round(input.arriendo * 0.5);
       }
 
-      const egresoTotal = metrics.dividendo + input.gastos + contribucionesMes + mantencion + corretajeGasto;
+      const egresoTotal = metrics.dividendo + ggccMes + contribucionesMes + mantencion + corretajeGasto;
       const flujoNeto = ingreso - egresoTotal;
       acumulado += flujoNeto;
 
@@ -218,7 +223,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
         mes: mesesPreEntrega + i,
         ingreso,
         dividendo: metrics.dividendo,
-        gastos: input.gastos,
+        gastos: ggccMes,
         contribuciones: contribucionesMes,
         mantencion: mantencion,
         vacancia: 0,
@@ -233,14 +238,17 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
     for (let i = 1; i <= 12; i++) {
       let ingreso = metrics.ingresoMensual;
       let corretajeGasto = 0;
+      const esVacancia = i === 1;
+      // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
+      const ggccMes = esVacancia ? input.gastos : 0;
 
-      if (i === 1) {
+      if (esVacancia) {
         ingreso = 0; // Vacancia
       } else if (i === 2) {
         corretajeGasto = Math.round(input.arriendo * 0.5);
       }
 
-      const egresoTotal = metrics.dividendo + input.gastos + contribucionesMes + mantencion + corretajeGasto;
+      const egresoTotal = metrics.dividendo + ggccMes + contribucionesMes + mantencion + corretajeGasto;
       const flujoNeto = ingreso - egresoTotal;
       acumulado += flujoNeto;
 
@@ -248,7 +256,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
         mes: i,
         ingreso,
         dividendo: metrics.dividendo,
-        gastos: input.gastos,
+        gastos: ggccMes,
         contribuciones: contribucionesMes,
         mantencion: mantencion,
         vacancia: 0,
@@ -294,15 +302,15 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
         // Pre-delivery: sin flujo operativo (cuotas pie van en patrimonio, no en flujo de caja)
         // No se resta nada
       } else if (m === mesesPreEntrega + 1) {
-        // Delivery month: dividendo + gastos, no income (vacancia)
+        // Delivery month: dividendo + GGCC (vacancia, propietario paga), no income
         flujoAnual -= (metrics.dividendo + gastosActual + contribucionesMes + mantencion);
       } else if (m === mesesPreEntrega + 2) {
-        // Corretaje month
+        // Corretaje month — arrendatario paga GGCC
         const corretaje = Math.round(input.arriendo * 0.5);
-        flujoAnual += arriendoActual - metrics.dividendo - gastosActual - contribucionesMes - mantencion - corretaje;
+        flujoAnual += arriendoActual - metrics.dividendo - contribucionesMes - mantencion - corretaje;
       } else {
-        // Normal operating month
-        flujoAnual += arriendoActual - metrics.dividendo - gastosActual - contribucionesMes - mantencion;
+        // Normal operating month — arrendatario paga GGCC
+        flujoAnual += arriendoActual - metrics.dividendo - contribucionesMes - mantencion;
       }
     }
 
@@ -388,7 +396,9 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
   const nuevoDividendo = calcDividendo(nuevoCredito, input.tasaInteres, input.plazoCredito);
   const contribucionesMes = Math.round(input.contribuciones / 3);
   const mantencion = input.provisionMantencion || Math.round((metrics.precioCLP * 0.01) / 12);
-  const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - input.gastos - contribucionesMes - mantencion;
+  // GGCC: arrendatario paga, propietario solo en vacancia (prorrateado)
+  const ggccVacancia = Math.round((input.gastos * input.vacanciaMeses) / 12);
+  const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion;
 
   return {
     nuevoAvaluo: Math.round(nuevoAvaluo),
@@ -666,7 +676,7 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
   if (input.antiguedad > 15)
     contras.push(`Con ${input.antiguedad} años de antigüedad, es probable que pronto aparezcan gastos de mantención mayores (fachada, ascensores, impermeabilización). Pregunta por el fondo de reserva del edificio.`);
   if (input.gastos > metrics.ingresoMensual * 0.25)
-    contras.push("Los gastos comunes representan más del 25% del arriendo, lo que reduce mucho la rentabilidad. Verifica si hay cuotas extraordinarias pendientes.");
+    contras.push("Los gastos comunes son altos (>25% del arriendo). Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.");
   if (metrics.cashOnCash < 0)
     contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
   if (input.vacanciaMeses >= 2)
