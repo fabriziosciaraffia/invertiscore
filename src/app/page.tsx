@@ -108,6 +108,46 @@ function SlideIn({ children, className = "", delay = 0, direction = "left" }: { 
 }
 
 // ============================================================
+// Tooltip icon (?) for fields with extra info
+// ============================================================
+function TooltipIcon({ text }: { text: string }) {
+  const [show, setShow] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  const [pos, setPos] = useState<"above" | "below">("above");
+
+  useEffect(() => {
+    if (show && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      setPos(rect.top < 120 ? "below" : "above");
+    }
+  }, [show]);
+
+  return (
+    <span ref={ref} className="relative ml-1 inline-flex">
+      <span
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-gray-300 text-[10px] font-medium leading-none text-gray-400 transition-colors hover:border-gray-600 hover:text-gray-600"
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+      >
+        ?
+      </span>
+      {show && (
+        <span
+          className={`absolute z-50 w-[220px] sm:w-[250px] rounded-lg bg-gray-900 px-3 py-2 text-xs leading-relaxed text-white shadow-lg ${
+            pos === "above" ? "bottom-full mb-2" : "top-full mt-2"
+          } left-1/2 -translate-x-1/2`}
+        >
+          {text}
+          <span className={`absolute left-1/2 -translate-x-1/2 border-4 border-transparent ${
+            pos === "above" ? "top-full border-t-gray-900" : "bottom-full border-b-gray-900"
+          }`} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+// ============================================================
 // Tab content components for preview section
 // ============================================================
 function TabComparacion() {
@@ -201,261 +241,206 @@ function TabComparacion() {
 }
 
 function TabFlujoCaja({ animate }: { animate: boolean }) {
-  // Varying data: 8 negative months, then 4 improving toward positive
-  const netValues = [-420, -390, -410, -380, -400, -370, -350, -380, -280, -180, -80, 50];
-  const maxAbs = 450;
-  const barHeight = 200;
-  const zeroPos = 0.12; // 12% from top = where $0 line sits (positive area small)
-  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+  const items = [
+    { label: "Arriendo mensual", value: 420000, type: "income" as const },
+    { label: "Dividendo hipotecario", value: -580000, type: "expense" as const },
+    { label: "Gastos comunes", value: -65000, type: "expense" as const },
+    { label: "Contribuciones (mens.)", value: -15000, type: "expense" as const },
+    { label: "Seguro desgravamen", value: -12000, type: "expense" as const },
+    { label: "Mantención estimada", value: -18000, type: "expense" as const },
+    { label: "Vacancia (1 mes/año)", value: -35000, type: "expense" as const },
+  ];
+  const neto = items.reduce((sum, i) => sum + i.value, 0);
+  const maxVal = 580000;
+  const fmt = (v: number) => {
+    const sign = v >= 0 ? "+" : "-";
+    return `${sign}$${Math.abs(v).toLocaleString("es-CL")}`;
+  };
 
   return (
     <div>
-      <p className="mb-8 text-center text-[#6b7280]">
-        El flujo de caja te muestra la película completa, mes a mes.
-      </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
-        <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo neto mensual — 12 meses</div>
-        <div className="mt-4 flex">
-          {/* Y axis */}
-          <div className="flex flex-col justify-between pr-2 text-[10px] text-[#9ca3af]" style={{ height: barHeight }}>
-            <span>+$100K</span>
-            <span>$0</span>
-            <span>-$200K</span>
-            <span>-$450K</span>
-          </div>
-          <div className="relative flex flex-1 gap-1 sm:gap-1.5" style={{ height: barHeight }}>
-            {/* Zero reference line */}
-            <div className="pointer-events-none absolute left-0 right-0 z-10 border-t-2 border-dashed border-[#6b7280]" style={{ top: `${zeroPos * 100}%` }}>
-              <span className="absolute -top-3 right-0 text-[9px] font-semibold text-[#6b7280]">$0</span>
-            </div>
-            {netValues.map((val, i) => {
-              const isPositive = val >= 0;
-              const barPct = (Math.abs(val) / maxAbs) * (1 - zeroPos);
+      <div className="grid gap-4 md:grid-cols-[1fr,280px] lg:grid-cols-[1fr,300px]">
+        {/* Left — Waterfall */}
+        <div
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-5"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+          }}
+        >
+          <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Desglose mensual</div>
+          <div className="space-y-1.5">
+            {items.map((item, i) => {
+              const barW = (Math.abs(item.value) / maxVal) * 100;
+              const isIncome = item.type === "income";
               return (
-                <div
-                  key={i}
-                  className="relative flex flex-1 flex-col cursor-pointer"
-                  onMouseEnter={() => setHoveredMonth(i)}
-                  onMouseLeave={() => setHoveredMonth(null)}
-                >
-                  {/* Positive bar (grows up from zero line) */}
-                  {isPositive && (
-                    <div className="flex flex-col justify-end" style={{ height: `${zeroPos * 100}%` }}>
+                <div key={i}>
+                  {i === 1 && <div className="my-1.5 border-t border-dashed border-[#e5e7eb]" />}
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="w-[140px] sm:w-[170px] shrink-0 text-[13px] text-[#6b7280] truncate">{item.label}</span>
+                    <div className="flex-1 h-5 rounded bg-[#f9fafb] overflow-hidden">
                       <div
-                        className="w-full rounded-t bg-[#059669]"
+                        className={`h-full rounded ${isIncome ? "bg-[#059669]" : "bg-[#ef4444]"}`}
                         style={{
-                          height: animate ? `${(val / 100) * zeroPos * 100}%` : 0,
-                          transition: `height 0.5s ease-out ${i * 60}ms`,
+                          width: animate ? `${barW}%` : "0%",
+                          transition: `width 0.5s ease-out ${i * 80}ms`,
                         }}
                       />
                     </div>
-                  )}
-                  {/* Negative bar (grows down from zero line) */}
-                  {!isPositive && (
-                    <>
-                      <div style={{ height: `${zeroPos * 100}%` }} />
-                      <div
-                        className="w-full rounded-b bg-[#ef4444]"
-                        style={{
-                          height: animate ? `${barPct * 100}%` : 0,
-                          transition: `height 0.5s ease-out ${i * 60}ms`,
-                        }}
-                      />
-                    </>
-                  )}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-[8px] text-[#9ca3af] sm:text-[10px]">
-                    {i + 1}
-                  </span>
-                  {/* Tooltip */}
-                  {hoveredMonth === i && (
-                    <div className="absolute z-20 w-36 sm:w-44 rounded-lg bg-[#1a1a1a] px-3 py-2 text-[11px] text-white shadow-lg"
-                      style={{
-                        bottom: isPositive ? undefined : "auto",
-                        top: isPositive ? undefined : `${zeroPos * 100 + 4}%`,
-                        ...(i <= 1 ? { left: 0 } : i >= 10 ? { right: 0 } : { left: "50%", transform: "translateX(-50%)" }),
-                        ...(isPositive ? { bottom: `${(1 - zeroPos) * 100 + 4}%` } : {}),
-                      }}>
-                      <div className="font-semibold mb-1">Mes {i + 1}</div>
-                      <div className="flex justify-between">
-                        <span>Flujo neto</span>
-                        <span className={val >= 0 ? "text-[#34d399]" : "text-red-400"}>
-                          {val >= 0 ? "+" : ""}{val > -1000 && val < 1000 ? `$${val}K` : `$${val}K`}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                    <span className={`w-[100px] sm:w-[110px] shrink-0 text-right font-mono text-[13px] font-medium ${isIncome ? "text-[#059669]" : "text-red-500"}`}>
+                      {fmt(item.value)}
+                    </span>
+                  </div>
                 </div>
               );
             })}
+            {/* Neto */}
+            <div className="mt-1.5 border-t border-dashed border-[#e5e7eb] pt-2">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-[140px] sm:w-[170px] shrink-0 text-[13px] font-semibold text-[#1a1a1a]">FLUJO NETO MENSUAL</span>
+                <div className="flex-1 h-6 rounded bg-red-50 overflow-hidden">
+                  <div
+                    className="h-full rounded bg-[#ef4444]"
+                    style={{
+                      width: animate ? `${(Math.abs(neto) / maxVal) * 100}%` : "0%",
+                      transition: "width 0.5s ease-out 600ms",
+                    }}
+                  />
+                </div>
+                <span className="w-[100px] sm:w-[110px] shrink-0 text-right font-mono text-[13px] font-bold text-red-600">
+                  {fmt(neto)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-        {/* Legend */}
-        <div className="mt-4 flex flex-wrap items-center gap-3 text-[11px] sm:gap-4 sm:text-xs text-[#6b7280]">
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#ef4444]" /> Flujo negativo</span>
-          <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-[#059669]" /> Flujo positivo</span>
-        </div>
-        {/* Summary */}
-        <div className="mt-6 rounded-xl bg-[#fef9ee] p-4">
-          <p className="text-sm font-semibold text-amber-700">
-            Los primeros meses duelen, pero la tendencia mejora.
-          </p>
-          <p className="mt-1 text-sm text-amber-600/80">
-            InvertiScore te muestra si vale la pena aguantar el flujo negativo.
-          </p>
+
+        {/* Right — Summary */}
+        <div
+          className="flex flex-col justify-between rounded-2xl border border-[#e5e7eb] bg-[#f9fafb] p-4 sm:p-5"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out 300ms, transform 0.4s ease-out 300ms",
+          }}
+        >
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Resultado</div>
+            <div className="mt-3">
+              <div className="text-xs text-[#6b7280]">Mensual</div>
+              <div className="text-2xl font-bold text-red-600">{fmt(neto)}</div>
+            </div>
+            <div className="mt-2">
+              <div className="text-xs text-[#6b7280]">Anual</div>
+              <div className="text-lg font-bold text-red-600">{fmt(neto * 12)}</div>
+            </div>
+            <p className="mt-3 text-[13px] leading-relaxed text-[#6b7280]">
+              Cada mes pones ${Math.abs(neto).toLocaleString("es-CL")} de tu bolsillo. En un año son ${Math.abs(neto * 12).toLocaleString("es-CL")}.
+            </p>
+          </div>
+          <div className="mt-4 rounded-xl bg-[#ecfdf5] p-3">
+            <p className="text-[13px] font-medium text-[#059669]">
+              ¿Vale la pena? InvertiScore calcula si la plusvalía compensa este flujo negativo.
+            </p>
+          </div>
         </div>
       </div>
+      <p className="mt-4 text-center text-sm text-[#9ca3af]">
+        Ejemplo: Depto 2D1B en Providencia — UF 3.200, arriendo $420.000/mes
+      </p>
     </div>
   );
 }
 
 function TabPatrimonio({ animate }: { animate: boolean }) {
-  const [hoveredYear, setHoveredYear] = useState<number | null>(null);
-  // Patrimonio neto in UF: starts -200, crosses 0 at year 5, reaches +800 at year 10
-  const data = [
-    { year: 0, uf: -200 },
-    { year: 1, uf: -150 },
-    { year: 2, uf: -90 },
-    { year: 3, uf: -50 },
-    { year: 4, uf: -15 },
-    { year: 5, uf: 0 },
-    { year: 6, uf: 80 },
-    { year: 7, uf: 200 },
-    { year: 8, uf: 380 },
-    { year: 9, uf: 560 },
-    { year: 10, uf: 800 },
+  const milestones = [
+    { label: "Hoy", value: "UF -200", color: "text-red-500", bg: "bg-white" },
+    { label: "Año 5", value: "UF 0", sub: "Break-even", color: "text-amber-500", bg: "bg-white" },
+    { label: "Año 10", value: "UF +800", sub: "~$31M CLP", color: "text-[#059669]", bg: "bg-white" },
   ];
-  const minUF = -300;
-  const maxUF = 900;
-  const range = maxUF - minUF;
-  const chartW = 420;
-  const chartH = 250;
-  const padL = 52;
-  const padR = 10;
-  const padT = 20;
-  const padB = 30;
-  const plotW = chartW - padL - padR;
-  const plotH = chartH - padT - padB;
-
-  const toX = (i: number) => padL + (i / 10) * plotW;
-  const toY = (v: number) => padT + plotH - ((v - minUF) / range) * plotH;
-  const zeroY = toY(0);
-
-  // Line path
-  const linePath = data.map((d, i) => `${i === 0 ? "M" : "L"}${toX(i)},${toY(d.uf)}`).join(" ");
-  // Area path (line + close to zero)
-  const areaPath = linePath + ` L${toX(10)},${zeroY} L${toX(0)},${zeroY} Z`;
 
   return (
     <div>
-      <p className="mb-8 text-center text-[#6b7280]">
+      <p className="mb-6 text-center text-[#6b7280]">
         Aunque pierdas flujo cada mes, tu patrimonio puede crecer significativamente.
       </p>
-      <div className="mx-auto max-w-3xl rounded-2xl border border-[#e5e7eb] bg-white p-3 shadow-xl sm:p-5 md:p-8">
-        <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Patrimonio neto proyectado — 10 años (UF)</div>
-        <div className="relative">
-          <svg viewBox={`0 0 ${chartW} ${chartH}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#059669" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#059669" stopOpacity="0.02" />
-              </linearGradient>
-              <clipPath id="areaClip">
-                <rect x={padL} y={padT} width={plotW} height={plotH}
-                  style={{
-                    transform: animate ? "scaleX(1)" : "scaleX(0)",
-                    transformOrigin: `${padL}px center`,
-                    transition: "transform 1.2s ease-out",
-                  }}
-                />
-              </clipPath>
-            </defs>
-            {/* Grid lines */}
-            {[-200, 0, 200, 400, 600, 800].map((v) => (
-              <g key={v}>
-                <line x1={padL} y1={toY(v)} x2={chartW - padR} y2={toY(v)}
-                  stroke={v === 0 ? "#6b7280" : "#f3f4f6"} strokeWidth={v === 0 ? 1.5 : 1}
-                  strokeDasharray={v === 0 ? "none" : "none"} />
-                <text x={padL - 6} y={toY(v) + 3} textAnchor="end" fontSize="9" fill="#9ca3af">
-                  {v === 0 ? "UF 0" : `UF ${v > 0 ? "+" : ""}${v}`}
-                </text>
-              </g>
-            ))}
-            {/* X axis labels */}
-            {[0, 2, 4, 5, 6, 8, 10].map((y) => (
-              <text key={y} x={toX(y)} y={chartH - 4} textAnchor="middle" fontSize="9" fill="#9ca3af">
-                {y === 0 ? "Hoy" : `Año ${y}`}
-              </text>
-            ))}
-            {/* Area fill */}
-            <path d={areaPath} fill="url(#areaGrad)" clipPath="url(#areaClip)" />
-            {/* Line */}
-            <path d={linePath} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-              strokeDasharray="600" strokeDashoffset={animate ? "0" : "600"}
-              style={{ transition: "stroke-dashoffset 1.2s ease-out" }} />
-            {/* Break-even marker at year 5 */}
-            {animate && (
-              <g>
-                <circle cx={toX(5)} cy={zeroY} r="5" fill="#059669" stroke="white" strokeWidth="2" />
-                <text x={toX(5)} y={zeroY - 12} textAnchor="middle" fontSize="10" fill="#059669" fontWeight="600">Break-even</text>
-              </g>
-            )}
-            {/* End point marker */}
-            {animate && (
-              <g>
-                <circle cx={toX(10)} cy={toY(800)} r="5" fill="#059669" stroke="white" strokeWidth="2" />
-                <text x={toX(10) - 4} y={toY(800) - 12} textAnchor="end" fontSize="10" fill="#059669" fontWeight="600">UF +800</text>
-              </g>
-            )}
-            {/* Start point marker */}
-            {animate && (
-              <g>
-                <circle cx={toX(0)} cy={toY(-200)} r="4" fill="#ef4444" stroke="white" strokeWidth="2" />
-                <text x={toX(0) + 8} y={toY(-200) + 4} textAnchor="start" fontSize="9" fill="#ef4444" fontWeight="600">UF -200</text>
-              </g>
-            )}
-            {/* Hover areas */}
-            {data.map((d, i) => (
-              <g key={i}>
-                <rect x={toX(i) - plotW / 22} y={padT} width={plotW / 11} height={plotH}
-                  fill="transparent" className="cursor-pointer"
-                  onMouseEnter={() => setHoveredYear(i)}
-                  onMouseLeave={() => setHoveredYear(null)} />
-                {hoveredYear === i && (
-                  <>
-                    <line x1={toX(i)} y1={padT} x2={toX(i)} y2={padT + plotH} stroke="#d1d5db" strokeWidth="1" strokeDasharray="4,2" />
-                    <circle cx={toX(i)} cy={toY(d.uf)} r="5" fill="#059669" stroke="white" strokeWidth="2" />
-                  </>
-                )}
-              </g>
-            ))}
-          </svg>
-          {/* Tooltip overlay */}
-          {hoveredYear !== null && (
-            <div
-              className="pointer-events-none absolute z-20 w-40 sm:w-48 rounded-lg bg-[#1a1a1a] px-3 py-2.5 text-[11px] text-white shadow-lg"
-              style={{
-                left: `clamp(0px, ${(toX(hoveredYear) / chartW) * 100}% - 5rem, calc(100% - 10rem))`,
-                top: `${(toY(data[hoveredYear].uf) / chartH) * 100 - 6}%`,
-                transform: "translateY(-100%)",
-              }}
-            >
-              <div className="font-semibold mb-1">{hoveredYear === 0 ? "Hoy" : `Año ${data[hoveredYear].year}`}</div>
-              <div className="flex justify-between">
-                <span>Patrimonio neto</span>
-                <span className={data[hoveredYear].uf >= 0 ? "text-[#34d399]" : "text-red-400"}>
-                  UF {data[hoveredYear].uf >= 0 ? "+" : ""}{data[hoveredYear].uf}
-                </span>
-              </div>
+      <div className="mx-auto max-w-2xl rounded-2xl border border-[#e5e7eb] bg-white p-4 shadow-xl sm:p-6">
+        <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Patrimonio neto proyectado</div>
+
+        {/* Mini-cards */}
+        <div
+          className="grid grid-cols-3 gap-2 sm:gap-3"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
+          }}
+        >
+          {milestones.map((m) => (
+            <div key={m.label} className={`rounded-xl border border-[#e5e7eb] ${m.bg} p-3 text-center`}>
+              <div className="text-[11px] text-[#9ca3af] sm:text-xs">{m.label}</div>
+              <div className={`mt-1 text-lg font-bold sm:text-xl ${m.color}`}>{m.value}</div>
+              {m.sub && <div className="text-[11px] text-[#9ca3af]">{m.sub}</div>}
             </div>
-          )}
+          ))}
         </div>
-        {/* Summary card */}
-        <div className="mt-6 rounded-xl bg-[#ecfdf5] p-4">
-          <p className="text-sm font-semibold text-[#059669]">
-            Empiezas con UF -200, pero en 5 años ya recuperaste tu inversión. En 10 años, generas UF +800 de patrimonio.
-          </p>
-          <p className="mt-1 text-sm text-[#059669]/80">
-            InvertiScore te proyecta exactamente cuándo llegas al break-even.
+
+        {/* Progress bar */}
+        <div
+          className="mt-5"
+          style={{
+            opacity: animate ? 1 : 0,
+            transform: animate ? "translateY(0)" : "translateY(10px)",
+            transition: "opacity 0.4s ease-out 200ms, transform 0.4s ease-out 200ms",
+          }}
+        >
+          <div className="relative">
+            <div className="flex h-3 overflow-hidden rounded-full bg-[#f3f4f6]">
+              {/* Red segment: 0-5 years */}
+              <div
+                className="bg-gradient-to-r from-red-400 to-red-300 transition-all duration-700 ease-out"
+                style={{ width: animate ? "50%" : "0%" }}
+              />
+              {/* Green segment: 5-10 years */}
+              <div
+                className="bg-gradient-to-r from-[#059669] to-emerald-400 transition-all duration-700 ease-out delay-300"
+                style={{ width: animate ? "50%" : "0%" }}
+              />
+            </div>
+            {/* Break-even dot */}
+            <div
+              className="absolute top-1/2 -translate-y-1/2 h-5 w-5 rounded-full border-[3px] border-white bg-amber-400 shadow-md transition-all duration-500"
+              style={{
+                left: animate ? "50%" : "0%",
+                transform: `translate(-50%, -50%)`,
+                transitionDelay: "400ms",
+              }}
+            />
+          </div>
+          {/* Labels */}
+          <div className="mt-2 flex justify-between text-[11px] text-[#9ca3af] sm:text-xs">
+            <span>Hoy</span>
+            <span className="font-medium text-amber-500">Año 5 (Break-even)</span>
+            <span>Año 10</span>
+          </div>
+          {/* Segment labels */}
+          <div className="mt-1 flex text-[10px] sm:text-[11px]">
+            <span className="w-1/2 text-center text-red-400">Recuperando inversión</span>
+            <span className="w-1/2 text-center text-[#059669]">Generando ganancia</span>
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div
+          className="mt-4 rounded-xl bg-[#ecfdf5] p-3"
+          style={{
+            opacity: animate ? 1 : 0,
+            transition: "opacity 0.4s ease-out 500ms",
+          }}
+        >
+          <p className="text-sm text-[#059669]">
+            En 5 años recuperas lo invertido. En 10 años, tu patrimonio neto crece UF +800 (~$31M CLP).
           </p>
         </div>
       </div>
@@ -569,98 +554,82 @@ function TabAnalisisIA({ animate }: { animate: boolean }) {
 
 function TabSensibilidad({ animate }: { animate: boolean }) {
   const sliders = [
-    { label: "Tasa de interés", low: "3.5%", mid: "4.5%", high: "5.5%", pos: 50 },
-    { label: "Vacancia", low: "0 meses", mid: "1 mes", high: "2 meses", pos: 33 },
-    { label: "Plusvalía anual", low: "2%", mid: "4%", high: "6%", pos: 50 },
+    { label: "Tasa", low: "3.5%", mid: "4.5%", high: "5.5%", pos: 50 },
+    { label: "Vacancia", low: "0 mes", mid: "1 mes", high: "2 mes", pos: 33 },
+    { label: "Plusvalía", low: "2%", mid: "4%", high: "6%", pos: 50 },
   ];
 
-  // 3x3 scenario table: rows = tasa, cols = vacancia, values = monthly flow
   const table = {
-    headers: ["0 meses vac.", "1 mes vac.", "2 meses vac."],
+    headers: ["0 vac.", "1 mes", "2 mes"],
     rows: [
-      { label: "Tasa 3.5%", values: ["-$180K", "-$215K", "-$250K"], colors: ["text-orange-500", "text-red-500", "text-red-600"] },
-      { label: "Tasa 4.5%", values: ["-$320K", "-$380K", "-$416K"], colors: ["text-red-500", "text-red-600", "text-red-700"] },
-      { label: "Tasa 5.5%", values: ["-$480K", "-$540K", "-$621K"], colors: ["text-red-600", "text-red-700", "text-red-800"] },
-    ],
-    bgColors: [
-      ["bg-orange-50", "bg-red-50", "bg-red-100"],
-      ["bg-red-50", "bg-red-100", "bg-red-100"],
-      ["bg-red-100", "bg-red-100", "bg-red-200/60"],
+      { label: "3.5%", values: ["-$180K", "-$215K", "-$250K"], bgs: ["bg-green-50", "bg-yellow-50", "bg-yellow-50"], colors: ["text-green-700", "text-yellow-700", "text-yellow-700"] },
+      { label: "4.5%", values: ["-$320K", "-$380K", "-$416K"], bgs: ["bg-yellow-50", "bg-red-50", "bg-red-50"], colors: ["text-yellow-700", "text-red-700", "text-red-700"] },
+      { label: "5.5%", values: ["-$480K", "-$540K", "-$621K"], bgs: ["bg-red-50", "bg-red-50", "bg-red-100"], colors: ["text-red-700", "text-red-700", "text-red-800"] },
     ],
   };
 
   return (
     <div>
-      <p className="mb-8 text-center text-[#6b7280]">
+      <p className="mb-5 text-center text-[#6b7280]">
         Mira qué pasa si suben las tasas, baja el arriendo, o tienes meses sin arrendatario.
       </p>
-      <div className="mx-auto max-w-3xl space-y-6">
-        {/* Visual sliders */}
+      <div className="mx-auto max-w-2xl space-y-4">
+        {/* Sliders — horizontal row on desktop */}
         <div
-          className="rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-6"
+          className="grid grid-cols-1 gap-3 rounded-2xl border border-[#e5e7eb] bg-white p-3 sm:grid-cols-3 sm:p-4"
           style={{
             opacity: animate ? 1 : 0,
             transform: animate ? "translateY(0)" : "translateY(10px)",
             transition: "opacity 0.4s ease-out, transform 0.4s ease-out",
           }}
         >
-          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Variables del análisis</div>
-          <div className="space-y-5">
-            {sliders.map((s, i) => (
-              <div
-                key={s.label}
-                style={{
-                  opacity: animate ? 1 : 0,
-                  transform: animate ? "translateY(0)" : "translateY(10px)",
-                  transition: `opacity 0.4s ease-out ${(i + 1) * 150}ms, transform 0.4s ease-out ${(i + 1) * 150}ms`,
-                }}
-              >
-                <div className="mb-1.5 flex items-center justify-between text-sm">
-                  <span className="font-medium text-[#374151]">{s.label}</span>
-                  <span className="text-xs text-[#059669] font-semibold">{s.mid}</span>
-                </div>
-                <div className="relative h-2 rounded-full bg-gradient-to-r from-[#059669]/20 via-[#f59e0b]/20 to-[#ef4444]/20">
-                  <div
-                    className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border-2 border-white bg-[#059669] shadow-md"
-                    style={{ left: `${s.pos}%`, transform: "translate(-50%, -50%)" }}
-                  />
-                </div>
-                <div className="mt-1 flex justify-between text-[10px] text-[#9ca3af]">
-                  <span>{s.low}</span>
-                  <span>{s.high}</span>
-                </div>
+          {sliders.map((s) => (
+            <div key={s.label}>
+              <div className="mb-1 flex items-center justify-between">
+                <span className="text-sm font-medium text-[#374151]">{s.label}</span>
+                <span className="text-sm font-bold text-[#059669]">{s.mid}</span>
               </div>
-            ))}
-          </div>
+              <div className="relative h-1.5 rounded-full bg-gradient-to-r from-[#059669]/20 via-[#f59e0b]/20 to-[#ef4444]/20">
+                <div
+                  className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border-2 border-white bg-[#059669] shadow"
+                  style={{ left: `${s.pos}%`, transform: "translate(-50%, -50%)" }}
+                />
+              </div>
+              <div className="mt-0.5 flex justify-between text-[10px] text-[#9ca3af]">
+                <span>{s.low}</span>
+                <span>{s.high}</span>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* 3x3 Scenario table */}
+        {/* 3x3 Scenario table — compact */}
         <div
-          className="rounded-2xl border border-[#e5e7eb] bg-white p-4 sm:p-6"
+          className="rounded-2xl border border-[#e5e7eb] bg-white p-3 sm:p-4"
           style={{
             opacity: animate ? 1 : 0,
             transform: animate ? "translateY(0)" : "translateY(10px)",
-            transition: "opacity 0.4s ease-out 500ms, transform 0.4s ease-out 500ms",
+            transition: "opacity 0.4s ease-out 250ms, transform 0.4s ease-out 250ms",
           }}
         >
-          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual por escenario</div>
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[#9ca3af]">Flujo mensual por escenario</div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full">
               <thead>
                 <tr>
-                  <th className="pb-2 pr-3 text-left text-xs font-medium text-[#9ca3af]"></th>
+                  <th className="pb-1.5 pr-2 text-left text-[11px] font-medium uppercase tracking-wider text-[#9ca3af]">Tasa</th>
                   {table.headers.map((h) => (
-                    <th key={h} className="pb-2 px-2 text-center text-xs font-medium text-[#9ca3af]">{h}</th>
+                    <th key={h} className="pb-1.5 px-2 text-center text-[11px] font-medium uppercase tracking-wider text-[#9ca3af]">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {table.rows.map((row, ri) => (
+                {table.rows.map((row) => (
                   <tr key={row.label}>
-                    <td className="py-1.5 pr-3 text-xs font-medium text-[#6b7280] whitespace-nowrap">{row.label}</td>
+                    <td className="py-1 pr-2 text-xs font-medium text-[#6b7280]">{row.label}</td>
                     {row.values.map((val, ci) => (
-                      <td key={ci} className={`py-1.5 px-2 text-center rounded ${table.bgColors[ri][ci]}`}>
-                        <span className={`text-xs font-semibold ${row.colors[ci]}`}>{val}</span>
+                      <td key={ci} className={`py-1 px-2 text-center rounded ${row.bgs[ci]}`}>
+                        <span className={`text-sm font-semibold ${row.colors[ci]}`}>{val}</span>
                       </td>
                     ))}
                   </tr>
@@ -668,16 +637,16 @@ function TabSensibilidad({ animate }: { animate: boolean }) {
               </tbody>
             </table>
           </div>
-          <div className="mt-3 flex items-center gap-2 text-[10px] text-[#9ca3af]">
-            <span className="h-2.5 w-2.5 rounded-sm bg-orange-50 border border-orange-200" />
+          <div className="mt-2 flex items-center gap-2 text-[10px] text-[#9ca3af]">
+            <span className="h-2 w-2 rounded-sm bg-green-50 border border-green-200" />
             <span>Menor pérdida</span>
-            <span className="h-2.5 w-2.5 rounded-sm bg-red-200/60 border border-red-300 ml-2" />
+            <span className="h-2 w-2 rounded-sm bg-red-100 border border-red-300 ml-1" />
             <span>Mayor pérdida</span>
           </div>
         </div>
       </div>
-      <p className="mt-8 text-center text-sm text-[#6b7280]">
-        InvertiScore calcula automáticamente estos escenarios para cada propiedad que analices.
+      <p className="mt-4 text-center text-sm text-[#6b7280]">
+        Pequeños cambios en la tasa o vacancia impactan fuerte en tu flujo. InvertiScore te muestra exactamente cuánto.
       </p>
     </div>
   );
@@ -943,10 +912,9 @@ export default function HomePage() {
                     <span className="text-xs text-[#6b7280]">Arriendo</span>
                     <div className="mt-1 text-sm font-medium text-[#1a1a1a]">$420.000/mes</div>
                   </div>
-                  <div className="relative rounded-lg bg-emerald-50 p-3">
-                    <span className="text-xs text-[#6b7280] cursor-help" title="Rentabilidad bruta anual sin descontar gastos">Yield</span>
+                  <div className="rounded-lg bg-emerald-50 p-3">
+                    <span className="flex items-center text-xs text-[#6b7280]">Yield<TooltipIcon text="Rentabilidad bruta anual sin descontar gastos" /></span>
                     <div className="mt-1 text-sm font-semibold text-[#059669]">4.1%</div>
-                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-48 rounded-lg bg-[#1a1a1a] px-3 py-2 text-xs text-white opacity-0 transition-opacity group-hover:pointer-events-auto [&:hover]:opacity-100 hidden sm:group-hover:block z-10">Rentabilidad bruta anual sin descontar gastos</div>
                   </div>
                   <div className="rounded-lg bg-emerald-50 p-3">
                     <span className="text-xs text-[#6b7280]">Conclusión</span>
@@ -966,28 +934,28 @@ export default function HomePage() {
                 <div className="my-4 h-px bg-[#d1fae5]" />
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280] cursor-help" title="Lo que entra (arriendo) menos lo que sale (dividendo + gastos). Negativo = pones de tu bolsillo">Flujo mensual</span>
+                    <span className="flex items-center text-[#6b7280]">Flujo mensual<TooltipIcon text="Ingreso por arriendo menos todos los gastos: dividendo, GGCC, contribuciones, seguro, mantención y vacancia" /></span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">🔴</span>
                       <span className="text-lg font-bold text-red-500">-$416.788</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280] cursor-help" title="Retorno anual sobre el capital que pusiste (el pie)">Cash-on-Cash</span>
+                    <span className="flex items-center text-[#6b7280]">Cash-on-Cash<TooltipIcon text="Retorno anual sobre el capital que pusiste de tu bolsillo (pie + gastos)" /></span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">🔴</span>
                       <span className="font-semibold text-red-500">-20.1%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280] cursor-help" title="Rentabilidad real después de todos los gastos">Yield neto real</span>
+                    <span className="flex items-center text-[#6b7280]">Yield neto real<TooltipIcon text="Rentabilidad anual descontando TODOS los gastos operativos" /></span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">🟡</span>
                       <span className="font-semibold text-orange-500">1.4%</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-[#6b7280] cursor-help" title="Cuántas veces se multiplica tu inversión inicial en 10 años">Plusvalía 10 años</span>
+                    <span className="flex items-center text-[#6b7280]">Plusvalía 10 años<TooltipIcon text="Cuántas veces se multiplica tu inversión inicial en 10 años considerando plusvalía del sector" /></span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">🟢</span>
                       <span className="font-semibold text-[#059669]">2.83x</span>
