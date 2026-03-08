@@ -160,10 +160,6 @@ export default function NuevoAnalisisPage() {
     contribuciones: "CLP",
     provisionMantencion: "CLP",
     precioEstacionamiento: "UF",
-    tarifaNoche: "CLP",
-    costoLimpieza: "CLP",
-    costoAmoblado: "CLP",
-    serviciosBasicos: "CLP",
     montoCuota: "CLP",
   });
 
@@ -206,13 +202,6 @@ export default function NuevoAnalisisPage() {
     tipoRenta: "larga",
     arriendo: "",
     vacanciaMeses: "1",
-    tarifaNoche: "",
-    ocupacionPct: "65",
-    comisionPlataforma: "3",
-    costoLimpieza: "",
-    amoblado: "no",
-    costoAmoblado: "",
-    serviciosBasicos: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -342,12 +331,7 @@ export default function NuevoAnalisisPage() {
     const precioUF = toUF("precio", parseFloat(form.precio) || 0);
 
     // Arriendo is always stored as CLP
-    let arriendo: number;
-    if (form.tipoRenta === "larga") {
-      arriendo = Math.round(toCLP("arriendo", parseFloat(form.arriendo) || 0));
-    } else {
-      arriendo = Math.round(toCLP("tarifaNoche", parseFloat(form.arriendo) || 0));
-    }
+    const arriendo = Math.round(toCLP("arriendo", parseFloat(form.arriendo) || 0));
 
     const gastos = Math.round(toCLP("gastos", parseFloat(form.gastos) || 0));
     const contribuciones = Math.round(toCLP("contribuciones", parseFloat(form.contribuciones) || 0));
@@ -391,16 +375,9 @@ export default function NuevoAnalisisPage() {
           gastos,
           contribuciones,
           provisionMantencion,
-          tipoRenta: form.tipoRenta,
+          tipoRenta: "larga",
           arriendo,
           vacanciaMeses: parseFloat(form.vacanciaMeses),
-          tarifaNoche: Math.round(toCLP("tarifaNoche", parseFloat(form.tarifaNoche) || 0)),
-          ocupacionPct: parseFloat(form.ocupacionPct) || 65,
-          comisionPlataforma: parseFloat(form.comisionPlataforma) || 3,
-          costoLimpieza: Math.round(toCLP("costoLimpieza", parseFloat(form.costoLimpieza) || 0)),
-          amoblado: form.amoblado === "si",
-          costoAmoblado: Math.round(toCLP("costoAmoblado", parseFloat(form.costoAmoblado) || 0)),
-          serviciosBasicos: Math.round(toCLP("serviciosBasicos", parseFloat(form.serviciosBasicos) || 0)),
         }),
       });
 
@@ -809,114 +786,41 @@ export default function NuevoAnalisisPage() {
 
           {/* SECCION 4: ARRIENDO */}
           <Card>
-            <CardHeader><CardTitle>Destino del Arriendo</CardTitle></CardHeader>
-            <CardContent className="space-y-5">
-              <div className="flex overflow-hidden rounded-lg border border-border">
-                <button type="button" onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "larga" }))} className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${form.tipoRenta === "larga" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}>
-                  Renta Larga
-                </button>
-                <button type="button" onClick={() => setForm((prev) => ({ ...prev, tipoRenta: "corta" }))} className={`flex-1 px-4 py-2.5 text-sm font-medium transition-colors ${form.tipoRenta === "corta" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground hover:bg-muted/50"}`}>
-                  Renta Corta (Airbnb)
-                </button>
+            <CardHeader><CardTitle>Arriendo</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <div className="flex items-center">
+                    <FieldLabel htmlFor="arriendo" tip={fieldCurrency.arriendo === "UF" ? FIELD_TIPS.arriendoUF : FIELD_TIPS.arriendo}>
+                      Arriendo esperado /mes
+                    </FieldLabel>
+                    <CurrencyMiniToggle field="arriendo" value={fieldCurrency.arriendo} onChange={toggleFieldCurrency} />
+                  </div>
+                  <Input id="arriendo" type="number" placeholder={
+                    fieldCurrency.arriendo === "UF"
+                      ? suggestions?.arriendo ? (suggestions.arriendo / UF_CLP).toFixed(1) : "12"
+                      : suggestions?.arriendo ? String(suggestions.arriendo) : "450000"
+                  } value={form.arriendo} onChange={handleChange} required />
+                  {suggestions?.arriendo && !form.arriendo && (
+                    <AISuggestion>
+                      <span className="font-semibold">Sugerido por IA:</span>{" "}
+                      {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)}/mes
+                      {suggestions.publicaciones > 0 && <> · {suggestions.publicaciones} publicaciones</>}
+                      {" "}· Datos de {form.comuna} completa. Puedes modificarlo.
+                    </AISuggestion>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <FieldLabel htmlFor="vacanciaMeses" tip={FIELD_TIPS.vacanciaMeses}>Vacancia estimada (meses/año)</FieldLabel>
+                  <Select id="vacanciaMeses" value={form.vacanciaMeses} onChange={handleChange}>
+                    <option value="0.5">0.5 meses</option>
+                    <option value="1">1 mes</option>
+                    <option value="1.5">1.5 meses</option>
+                    <option value="2">2 meses</option>
+                    <option value="3">3 meses</option>
+                  </Select>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {form.tipoRenta === "larga"
-                  ? "Arriendo tradicional con contrato de 12+ meses. Ingreso estable y predecible, menor gestión operativa. Ideal para inversión pasiva."
-                  : "Arriendo por noches a través de plataformas como Airbnb o Booking. Mayor ingreso potencial, pero requiere gestión activa (limpieza, check-in, comunicación) y tiene mayor vacancia estacional."}
-              </p>
-
-              {form.tipoRenta === "larga" ? (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <FieldLabel htmlFor="arriendo" tip={fieldCurrency.arriendo === "UF" ? FIELD_TIPS.arriendoUF : FIELD_TIPS.arriendo}>
-                          Arriendo esperado /mes
-                        </FieldLabel>
-                        <CurrencyMiniToggle field="arriendo" value={fieldCurrency.arriendo} onChange={toggleFieldCurrency} />
-                      </div>
-                      <Input id="arriendo" type="number" placeholder={
-                        fieldCurrency.arriendo === "UF"
-                          ? suggestions?.arriendo ? (suggestions.arriendo / UF_CLP).toFixed(1) : "12"
-                          : suggestions?.arriendo ? String(suggestions.arriendo) : "450000"
-                      } value={form.arriendo} onChange={handleChange} required />
-                      {suggestions?.arriendo && !form.arriendo && (
-                        <AISuggestion>
-                          <span className="font-semibold">Sugerido por IA:</span>{" "}
-                          {fieldCurrency.arriendo === "UF" ? fmtUF(suggestions.arriendo / UF_CLP) : fmt(suggestions.arriendo)}/mes
-                          {suggestions.publicaciones > 0 && <> · {suggestions.publicaciones} publicaciones</>}
-                          {" "}· Datos de {form.comuna} completa. Puedes modificarlo.
-                        </AISuggestion>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <FieldLabel htmlFor="vacanciaMeses" tip={FIELD_TIPS.vacanciaMeses}>Vacancia estimada (meses/año)</FieldLabel>
-                      <Select id="vacanciaMeses" value={form.vacanciaMeses} onChange={handleChange}>
-                        <option value="0.5">0.5 meses</option>
-                        <option value="1">1 mes</option>
-                        <option value="1.5">1.5 meses</option>
-                        <option value="2">2 meses</option>
-                        <option value="3">3 meses</option>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <Label htmlFor="tarifaNoche">Tarifa por noche</Label>
-                        <CurrencyMiniToggle field="tarifaNoche" value={fieldCurrency.tarifaNoche} onChange={toggleFieldCurrency} />
-                      </div>
-                      <Input id="tarifaNoche" type="number" placeholder="45000" value={form.tarifaNoche} onChange={handleChange} required={form.tipoRenta === "corta"} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ocupacionPct">Ocupación estimada ({form.ocupacionPct}%)</Label>
-                      <input id="ocupacionPct" type="range" min="30" max="90" step="5" value={form.ocupacionPct} onChange={handleChange} className="mt-2 w-full accent-primary" />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="comisionPlataforma">Comisión plataforma (%)</Label>
-                      <Input id="comisionPlataforma" type="number" step="0.1" placeholder="3" value={form.comisionPlataforma} onChange={handleChange} />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <Label htmlFor="costoLimpieza">Costo limpieza por estadía</Label>
-                        <CurrencyMiniToggle field="costoLimpieza" value={fieldCurrency.costoLimpieza} onChange={toggleFieldCurrency} />
-                      </div>
-                      <Input id="costoLimpieza" type="number" placeholder="25000" value={form.costoLimpieza} onChange={handleChange} />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="amoblado">Amoblado</Label>
-                      <Select id="amoblado" value={form.amoblado} onChange={handleChange}>
-                        <option value="no">No</option>
-                        <option value="si">Sí</option>
-                      </Select>
-                    </div>
-                    {form.amoblado === "si" && (
-                      <div className="space-y-2">
-                        <div className="flex items-center">
-                          <Label htmlFor="costoAmoblado">Inversión amoblado</Label>
-                          <CurrencyMiniToggle field="costoAmoblado" value={fieldCurrency.costoAmoblado} onChange={toggleFieldCurrency} />
-                        </div>
-                        <Input id="costoAmoblado" type="number" placeholder="3000000" value={form.costoAmoblado} onChange={handleChange} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="space-y-2 md:w-1/2">
-                    <div className="flex items-center">
-                      <Label htmlFor="serviciosBasicos">Servicios básicos /mes</Label>
-                      <CurrencyMiniToggle field="serviciosBasicos" value={fieldCurrency.serviciosBasicos} onChange={toggleFieldCurrency} />
-                    </div>
-                    <Input id="serviciosBasicos" type="number" placeholder="80000" value={form.serviciosBasicos} onChange={handleChange} />
-                    <p className="text-xs text-muted-foreground">Luz, agua, internet, gas</p>
-                  </div>
-                </div>
-              )}
             </CardContent>
           </Card>
 

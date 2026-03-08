@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         superficie: body.superficie,
         antiguedad: body.antiguedad,
         precio: body.precio,
-        arriendo: body.tipoRenta === "larga" ? body.arriendo : Math.round(body.tarifaNoche * 30 * (body.ocupacionPct / 100)),
+        arriendo: body.arriendo,
         gastos: body.gastos,
         contribuciones: body.contribuciones,
         score: result.score,

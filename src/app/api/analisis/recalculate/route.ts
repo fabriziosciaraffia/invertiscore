@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       .from("analisis")
       .update({
         precio: inputData.precio,
-        arriendo: inputData.tipoRenta === "larga" ? inputData.arriendo : Math.round(inputData.tarifaNoche * 30 * (inputData.ocupacionPct / 100)),
+        arriendo: inputData.arriendo,
         gastos: inputData.gastos,
         contribuciones: inputData.contribuciones,
         score: result.score,

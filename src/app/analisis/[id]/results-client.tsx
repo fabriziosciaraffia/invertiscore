@@ -138,7 +138,7 @@ function recalcForSensitivity(
   const contribucionesMes = Math.round(modified.contribuciones / 3);
   const mantencion = modified.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
   const vacanciaMensual = Math.round((modified.arriendo * modified.vacanciaMeses) / 12);
-  const corretajeMensual = Math.round((modified.arriendo * 0.5) / 24);
+  const corretajeMensual = Math.round((modified.arriendo * 0.5) / 12);
 
   const egresosMensuales = dividendo + modified.gastos + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
   const flujoNetoMensual = ingresoMensual - egresosMensuales;
@@ -157,8 +157,35 @@ function recalcForSensitivity(
     return outMin + clamp(t, 0, 1) * (outMax - outMin);
   };
 
-  const COMUNAS_PREMIUM = ["providencia", "las condes", "vitacura", "lo barnechea", "ñuñoa", "la reina", "santiago centro", "viña del mar", "con con"];
-  const isPremium = COMUNAS_PREMIUM.some((c) => modified.comuna.toLowerCase().includes(c));
+  const PLUSVALIA_COMUNA: Record<string, number> = {
+    "vitacura": 95, "lo barnechea": 95,
+    "las condes": 90, "providencia": 90,
+    "ñuñoa": 82, "la reina": 82,
+    "san miguel": 70, "macul": 70, "la florida": 70,
+    "santiago centro": 60,
+    "estación central": 55, "estacion central": 55, "independencia": 55, "recoleta": 55,
+    "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
+  };
+  const UBICACION_COMUNA: Record<string, number> = {
+    "vitacura": 95, "lo barnechea": 95,
+    "las condes": 92, "providencia": 92,
+    "ñuñoa": 85,
+    "la reina": 75, "peñalolén": 75, "penalolen": 75,
+    "santiago centro": 72,
+    "san miguel": 70, "macul": 70,
+    "la florida": 68,
+    "estación central": 60, "estacion central": 60,
+    "independencia": 58, "recoleta": 58,
+    "quinta normal": 50,
+    "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
+  };
+  const COMUNAS_OVERSUPPLY = ["santiago centro", "estación central", "estacion central", "independencia"];
+  const lookupC = (comuna: string, table: Record<string, number>, def: number) => {
+    const c = comuna.toLowerCase().trim();
+    if (table[c] !== undefined) return table[c];
+    for (const key of Object.keys(table)) { if (c.includes(key) || key.includes(c)) return table[key]; }
+    return def;
+  };
 
   let rentabilidadScore: number;
   if (yieldBruto >= 6) rentabilidadScore = lerp(yieldBruto, 6, 8, 90, 100);
@@ -178,8 +205,9 @@ function recalcForSensitivity(
   else flujoCajaScore = lerp(flujoNetoMensual, -1000000, -600000, 0, 9);
   flujoCajaScore = clamp(flujoCajaScore, 0, 100);
 
-  let plusvaliaScore = isPremium ? 85 : 55;
-  plusvaliaScore += isPremium ? lerp(precioM2, 30, 120, 10, -10) : lerp(precioM2, 30, 100, 15, -15);
+  let plusvaliaScore = lookupC(modified.comuna, PLUSVALIA_COMUNA, 50);
+  const plusvaliaBase = lookupC(modified.comuna, PLUSVALIA_COMUNA, 50);
+  plusvaliaScore += plusvaliaBase >= 80 ? lerp(precioM2, 30, 120, 8, -8) : lerp(precioM2, 30, 100, 12, -12);
   if (modified.enConstruccion || modified.antiguedad <= 2) plusvaliaScore += 10;
   else if (modified.antiguedad >= 3 && modified.antiguedad <= 8) plusvaliaScore += 5;
   else if (modified.antiguedad > 20) plusvaliaScore -= 15;
@@ -187,18 +215,20 @@ function recalcForSensitivity(
   else if (modified.piso <= 2 && modified.piso > 0) plusvaliaScore -= 3;
   plusvaliaScore = clamp(plusvaliaScore, 0, 100);
 
-  let riesgoScore = 60;
-  if (modified.tipo.toLowerCase().includes("departamento")) riesgoScore += 8;
-  if (modified.antiguedad < 10 || modified.enConstruccion) riesgoScore += 8;
+  const isOversupply = COMUNAS_OVERSUPPLY.some((c) => modified.comuna.toLowerCase().includes(c));
+  let riesgoScore = 50;
+  if (modified.tipo.toLowerCase().includes("departamento")) riesgoScore += 10;
+  if (modified.antiguedad < 10 || modified.enConstruccion) riesgoScore += 10;
   else if (modified.antiguedad > 25) riesgoScore -= 15;
   if (capRate > 3) riesgoScore += 8;
-  const ratioGastos = ingresoMensual > 0 ? modified.gastos / ingresoMensual : 1;
-  if (ratioGastos < 0.2) riesgoScore += 5;
-  else if (ratioGastos > 0.35) riesgoScore -= 10;
-  if (modified.vacanciaMeses > 2) riesgoScore -= 10;
-  riesgoScore = clamp(riesgoScore, 0, 100);
+  if (isOversupply) riesgoScore -= 5;
+  const ratioGastos = ingresoMensual > 0 ? egresosMensuales / ingresoMensual : 2;
+  if (ratioGastos > 1) riesgoScore -= 8;
+  else if (ratioGastos > 0.8) riesgoScore -= 5;
+  if (modified.vacanciaMeses > 1) riesgoScore -= 3;
+  riesgoScore = clamp(riesgoScore, 10, 95);
 
-  const ubicacionScore = clamp(isPremium ? 92 : 55, 0, 100);
+  const ubicacionScore = clamp(lookupC(modified.comuna, UBICACION_COMUNA, 50), 0, 100);
 
   const score = clamp(Math.round(
     rentabilidadScore * 0.30 +
@@ -491,25 +521,54 @@ export function PremiumResults({
     if (horizonYears <= 3) {
       const totalMonths = horizonYears * 12;
       const data: { name: string; Ingreso: number; Dividendo: number; Gastos: number; Extra: number; Acumulado: number }[] = [];
-      let acumulado = 0;
+
       const contribucionesMes = Math.round((inputData?.contribuciones ?? 0) / 3);
       const mantencion = inputData?.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
-      const serviciosBasicos = inputData?.tipoRenta === "corta" ? (inputData?.serviciosBasicos ?? 0) : 0;
+      const mesesPreEntrega = inputData?.estadoVenta !== "inmediata" && inputData?.fechaEntrega
+        ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
+        : 0;
+      const cuotasPie = inputData?.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
+      const montoCuotaPie = inputData?.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
+
+      // T0: inversión inicial para entrega inmediata
+      let acumulado = 0;
+      if (inputData?.estadoVenta === "inmediata") {
+        acumulado = -m.pieCLP;
+        data.push({ name: "T0", Ingreso: 0, Dividendo: 0, Gastos: m.pieCLP, Extra: 0, Acumulado: acumulado });
+      }
+
       let arriendoActual = m.ingresoMensual;
       let gastosActual = inputData?.gastos ?? 0;
+      const mesesSinIngreso = Math.min(mesesPreEntrega, totalMonths);
+
       for (let i = 1; i <= totalMonths; i++) {
         if (i > 1 && (i - 1) % 12 === 0) {
           arriendoActual *= 1.035;
           gastosActual *= 1.03;
         }
+
+        if (inputData?.estadoVenta !== "inmediata" && mesesPreEntrega > 0 && i <= mesesSinIngreso) {
+          // Pre-entrega: solo cuota del pie
+          const flujo = -montoCuotaPie;
+          acumulado += flujo;
+          data.push({ name: `M${i}`, Ingreso: 0, Dividendo: 0, Gastos: montoCuotaPie, Extra: 0, Acumulado: acumulado });
+          continue;
+        }
+
+        const mesDesdeEntrega = inputData?.estadoVenta !== "inmediata" ? i - mesesSinIngreso : i;
         let ingreso = Math.round(arriendoActual);
         let extra = 0;
-        if (i === 1) ingreso = 0;
-        if (i === 2 && inputData?.tipoRenta === "larga") extra = Math.round(m.ingresoMensual * 0.5);
-        const egreso = m.dividendo + Math.round(gastosActual) + contribucionesMes + mantencion + serviciosBasicos;
+
+        if (mesDesdeEntrega === 1) {
+          ingreso = 0; // Vacancia
+        } else if (mesDesdeEntrega === 2) {
+          extra = Math.round(m.ingresoMensual * 0.5); // Corretaje
+        }
+
+        const egreso = m.dividendo + Math.round(gastosActual) + contribucionesMes + mantencion;
         const flujo = ingreso - egreso - extra;
         acumulado += flujo;
-        data.push({ name: `M${i}`, Ingreso: ingreso, Dividendo: m.dividendo, Gastos: Math.round(gastosActual) + contribucionesMes + mantencion, Extra: extra + serviciosBasicos, Acumulado: acumulado });
+        data.push({ name: `M${i}`, Ingreso: ingreso, Dividendo: m.dividendo, Gastos: Math.round(gastosActual) + contribucionesMes + mantencion, Extra: extra, Acumulado: acumulado });
       }
       return data;
     } else {
@@ -918,10 +977,10 @@ export function PremiumResults({
                 <hr className="border-border/30" />
 
                 {/* Proyección de Patrimonio */}
-                {horizonYears >= 3 && (
+                {projData.length > 0 && (
                   <>
                     <div>
-                      <h4 className="mb-1 text-sm font-semibold">Proyección de Patrimonio — {horizonYears} años</h4>
+                      <h4 className="mb-1 text-sm font-semibold">Proyección de Patrimonio — {horizonYears} año{horizonYears > 1 ? "s" : ""}</h4>
                       <p className="mb-3 text-xs text-muted-foreground">Cómo crece tu patrimonio. Asume plusvalía 4%/año y arriendos +3.5%/año.</p>
                       <div className="h-64">
                         <ResponsiveContainer>
@@ -938,6 +997,42 @@ export function PremiumResults({
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
+                      {/* Desglose de patrimonio */}
+                      {(() => {
+                        const lastProj = results?.projections[horizonYears - 1];
+                        if (!lastProj || !m || !inputData) return null;
+                        const precioOriginal = inputData.precio * UF_CLP;
+                        const creditoOriginal = precioOriginal * (1 - inputData.piePct / 100);
+                        const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
+                        const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
+                        const flujoAcum = lastProj.flujoAcumulado;
+                        const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado + flujoAcum;
+                        return (
+                          <div className="mt-4 space-y-2 rounded-lg border border-border/50 bg-secondary/30 p-4 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Tu inversión inicial (pie)</span>
+                              <span className="font-medium">{fmt(m.pieCLP)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</span>
+                              <span className="font-medium text-emerald-400">{fmt(plusvaliaGanancia)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Capital amortizado (pagado del crédito)</span>
+                              <span className="font-medium text-emerald-400">{fmt(capitalAmortizado)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Flujo acumulado (ganancia/aporte de bolsillo)</span>
+                              <span className={`font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-border/50 pt-2">
+                              <span className="font-semibold">Patrimonio neto total</span>
+                              <span className="font-bold text-primary">{fmt(patrimonioTotal)}</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">= pie + plusvalía + amortización + flujo</p>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <hr className="border-border/30" />
                   </>

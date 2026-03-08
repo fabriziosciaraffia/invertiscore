@@ -33,17 +33,9 @@ export interface AnalisisInput {
   gastos: number;
   contribuciones: number;
   provisionMantencion: number;
-  tipoRenta: "larga" | "corta";
+  tipoRenta: "larga";
   arriendo: number;
   vacanciaMeses: number;
-  // Airbnb
-  tarifaNoche: number;
-  ocupacionPct: number;
-  comisionPlataforma: number;
-  costoLimpieza: number;
-  amoblado: boolean;
-  costoAmoblado: number;
-  serviciosBasicos: number;
 }
 
 export interface MonthlyCashflow {
@@ -55,7 +47,6 @@ export interface MonthlyCashflow {
   mantencion: number;
   vacancia: number;
   corretaje: number;
-  serviciosBasicos: number;
   egresoTotal: number;
   flujoNeto: number;
   acumulado: number;
