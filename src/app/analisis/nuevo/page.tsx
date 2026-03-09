@@ -59,11 +59,16 @@ const TIPS: Record<string, string> = {
 // ─── Reusable components ─────────────────────────────
 
 function SectionCard({
-  title, defaultOpen = true, summary, children,
+  title, defaultOpen = true, forceOpen, summary, children,
 }: {
-  title: string; defaultOpen?: boolean; summary?: string; children: React.ReactNode;
+  title: string; defaultOpen?: boolean; forceOpen?: boolean; summary?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
+  const prevForce = useRef(forceOpen);
+  useEffect(() => {
+    if (forceOpen && !prevForce.current) setOpen(true);
+    prevForce.current = forceOpen;
+  }, [forceOpen]);
   return (
     <div className="rounded-xl border border-border bg-card">
       <button
@@ -231,6 +236,7 @@ export default function NuevoAnalisisPage() {
   const [quotationLoading, setQuotationLoading] = useState(false);
   const [extractMsg, setExtractMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [extractMissing, setExtractMissing] = useState<string[]>([]);
+  const [sectionsForceOpen, setSectionsForceOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formInitialized = useRef(false);
 
@@ -419,6 +425,9 @@ export default function NuevoAnalisisPage() {
 
       return { ...prev, ...updates };
     });
+
+    // Open all sections so user sees extracted data
+    setSectionsForceOpen(true);
 
     return missing;
   }, []);
@@ -909,7 +918,7 @@ export default function NuevoAnalisisPage() {
           </div>
 
           {/* ══════ SECCIÓN 1: ¿Dónde está? ══════ */}
-          <SectionCard title="¿Dónde está?" defaultOpen={false} summary={form.comuna ? `${form.comuna}${form.direccion ? ` · ${form.direccion}` : ""}` : "Sin completar"}>
+          <SectionCard title="¿Dónde está?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.comuna ? `${form.comuna}${form.direccion ? ` · ${form.direccion}` : ""}` : "Sin completar"}>
             <div ref={comunaRef} className="relative">
               <FieldLabel htmlFor="comunaSearch">Comuna</FieldLabel>
               <input
@@ -971,7 +980,7 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ SECCIÓN 2: ¿Cómo es? (colapsada) ══════ */}
-          <SectionCard title="¿Cómo es?" defaultOpen={false} summary={seccion2Summary}>
+          <SectionCard title="¿Cómo es?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion2Summary}>
             <div>
               <FieldLabel>Superficie total (m²)</FieldLabel>
               <input
@@ -1088,7 +1097,7 @@ export default function NuevoAnalisisPage() {
           )}
 
           {/* ══════ SECCIÓN 3: ¿Cuánto cuesta? ══════ */}
-          <SectionCard title="¿Cuánto cuesta?" defaultOpen={false} summary={form.precio ? `${fieldCurrency.precio === "UF" ? fmtUF(parseNum(form.precio)) : fmtCLP(parseNum(form.precio))}, pie ${form.piePct}%` : "Sin completar"}>
+          <SectionCard title="¿Cuánto cuesta?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.precio ? `${fieldCurrency.precio === "UF" ? fmtUF(parseNum(form.precio)) : fmtCLP(parseNum(form.precio))}, pie ${form.piePct}%` : "Sin completar"}>
             <div>
               <FieldLabel htmlFor="precio" tip={TIPS.precio}>Precio de venta</FieldLabel>
               <MoneyInput
@@ -1198,7 +1207,7 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ SECCIÓN 4: ¿Cómo lo financias? (colapsada) ══════ */}
-          <SectionCard title="¿Cómo lo financias?" defaultOpen={false} summary={seccion4Summary}>
+          <SectionCard title="¿Cómo lo financias?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion4Summary}>
             <div>
               <FieldLabel htmlFor="plazoCredito">Plazo crédito: {form.plazoCredito} años</FieldLabel>
               <input
@@ -1242,7 +1251,7 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ SECCIÓN 5: ¿Cuánto genera? ══════ */}
-          <SectionCard title="¿Cuánto genera?" defaultOpen={false} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
+          <SectionCard title="¿Cuánto genera?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
             <div>
               <FieldLabel htmlFor="arriendo" tip={TIPS.arriendo}>Arriendo esperado /mes</FieldLabel>
               <MoneyInput

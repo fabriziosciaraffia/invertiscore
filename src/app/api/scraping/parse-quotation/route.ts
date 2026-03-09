@@ -28,7 +28,9 @@ function buildUserPrompt(ufValue: number): string {
   "fecha_entrega": "YYYY-MM" o null,
   "inmobiliaria": "nombre" o null,
   "proyecto": "nombre del proyecto" o null
-}`;
+}
+
+IMPORTANTE: Si la cotización es de una inmobiliaria o un proyecto nuevo (detectas palabras como "proyecto", "inmobiliaria", "entrega", "etapa", "piloto", "preventa", "en blanco", "en verde"), entonces la antigüedad SIEMPRE es 0 y el estado_venta es "futura". Busca la fecha de entrega estimada en la cotización.`;
 }
 
 const ALLOWED_TYPES = [
