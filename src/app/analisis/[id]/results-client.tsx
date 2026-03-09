@@ -80,16 +80,22 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
 // Strip leading bullet characters from AI text (•, *, -, ⚠, ·)
 // Handles "* • text", "- text", "• text", "* · text" etc.
 function stripBullet(text: string): string {
-  return text.replace(/^[\s•*⚠·\-]+/g, "").trim();
+  return text.replace(/^[\s•*⚠·\-]+/g, "").replace(/price score/gi, "Eficiencia de compra").trim();
+}
+
+// Clean an array of bullet strings
+function cleanBullets(items: string[]): string[] {
+  return items.map(item => item.replace(/^[*•\-\s·]+/g, "").replace(/price score/gi, "Eficiencia de compra").trim());
 }
 
 // Get the right AI text field based on currency toggle, with legacy fallback
 function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string {
   const key = field + (currency === "UF" ? "_uf" : "_clp");
-  if (typeof obj[key] === "string" && obj[key]) return obj[key] as string;
+  let text = "";
+  if (typeof obj[key] === "string" && obj[key]) text = obj[key] as string;
   // Legacy fallback: old analyses without _clp/_uf suffixes
-  if (typeof obj[field] === "string") return obj[field] as string;
-  return "";
+  else if (typeof obj[field] === "string") text = obj[field] as string;
+  return text.replace(/price score/gi, "Eficiencia de compra");
 }
 
 // Get the right AI items array based on currency toggle, with legacy fallback
@@ -1492,7 +1498,7 @@ export function PremiumResults({
                       <CheckCircle2 className="h-4 w-4" /> A favor
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {stripBullet(p)}</li>)}
+                      {cleanBullets(aiAnalysis.aFavor).map((p, i) => <li key={i}>• {p}</li>)}
                     </ul>
                   </div>
                   <div>
@@ -1500,7 +1506,7 @@ export function PremiumResults({
                       <AlertTriangle className="h-4 w-4" /> Atención
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {stripBullet(c)}</li>)}
+                      {cleanBullets(aiAnalysis.puntosAtencion).map((c, i) => <li key={i}>• {c}</li>)}
                     </ul>
                   </div>
                 </div>

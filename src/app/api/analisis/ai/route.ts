@@ -109,6 +109,13 @@ export async function POST(request: Request) {
     const inversionTotal = m.pieCLP + Math.round(m.precioCLP * 0.03); // pie + ~3% costos entrada
 
     const precioConDescuento10 = Math.round(input.precio * 0.9);
+    const flujoNegAcum10 = m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
+    const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
+    const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
+    const valorProp5 = Math.round(m.precioCLP * Math.pow(1.04, 5));
+    const valorProp10 = Math.round(m.precioCLP * Math.pow(1.04, 10));
+    const dividendoSiTasaSube1 = creditoCLP > 0 ? Math.round((creditoCLP * ((input.tasaInteres + 1) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 1) / 100 / 12, -(input.plazoCredito * 12)))) : 0;
+    const dividendoSiTasaSube2 = creditoCLP > 0 ? Math.round((creditoCLP * ((input.tasaInteres + 2) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 2) / 100 / 12, -(input.plazoCredito * 12)))) : 0;
 
     const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con esta estructura exacta.
 
@@ -147,7 +154,7 @@ MÉTRICAS CALCULADAS:
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 - Precio con 10% descuento: ${fmtUF(precioConDescuento10)}
 
-DIMENSIONES DEL SCORE:
+DIMENSIONES DEL SCORE (nombres EXACTOS, NO uses otros nombres como "Price score" o "Location score"):
 - Rentabilidad: ${Math.round(d.rentabilidad)}/100
 - Flujo de Caja: ${Math.round(d.flujoCaja)}/100
 - Plusvalía: ${Math.round(d.plusvalia)}/100
@@ -174,7 +181,7 @@ Responde SOLO con un JSON válido con esta estructura:
 
   "vsAlternativas": {
     "titulo": "¿Conviene más que otras inversiones?",
-    "contenido_clp": "Compara poner el pie (${fmtCLP(inversionTotal)}) en: 1) Depósito a plazo al 5% anual. 2) Fondo mutuo conservador al 7% anual. 3) Este departamento con TIR de ${exit.tir.toFixed(1)}%. Indica cuál gana. Montos en CLP.",
+    "contenido_clp": "Compara el resultado a 10 AÑOS de invertir ${fmtCLP(inversionTotal)} en: 1) Depósito a plazo al 5% anual: ${fmtCLP(inversionTotal)} × (1.05)^10 = ${fmtCLP(datoDP)}. 2) Fondo mutuo al 7% anual: ${fmtCLP(inversionTotal)} × (1.07)^10 = ${fmtCLP(datoFM)}. 3) Este departamento: ganancia neta ${fmtCLP(exit.gananciaNeta)} (ROI ${exit.multiplicadorCapital.toFixed(2)}x), PERO resta el flujo negativo acumulado de ${fmtCLP(flujoNegAcum10)} en 10 años. Ganancia real del depto = ${fmtCLP(exit.gananciaNeta - flujoNegAcum10)}. Indica cuál gana y por cuánto. Considera el apalancamiento: compraste con ${input.piePct}% pero ganas sobre el 100% del valor. Montos en CLP.",
     "contenido_uf": "Lo mismo pero con montos en UF."
   },
 
@@ -187,14 +194,19 @@ Responde SOLO con un JSON válido con esta estructura:
 
   "proyeccion": {
     "titulo": "¿Cuándo recuperas la inversión?",
-    "contenido_clp": "Explica: 1) En 5 años. 2) En 10 años. 3) Punto de equilibrio. ROI ${exit.multiplicadorCapital.toFixed(2)}x, ganancia neta ${fmtCLP(exit.gananciaNeta)}. Montos en CLP.",
+    "contenido_clp": "Da cifras CONCRETAS con plusvalía 4% anual. En 5 años: propiedad valdría ${fmtCLP(valorProp5)}, flujo negativo acumulado ${fmtCLP(Math.round(Math.abs(m.flujoNetoMensual) * 60))}. En 10 años: propiedad valdría ${fmtCLP(valorProp10)}, flujo negativo acumulado ${fmtCLP(flujoNegAcum10)}, ganancia neta si vende ${fmtCLP(exit.gananciaNeta)} (ROI ${exit.multiplicadorCapital.toFixed(2)}x). Punto de equilibrio: calcula en qué año la plusvalía acumulada supera el flujo negativo acumulado. Montos en CLP.",
     "contenido_uf": "Lo mismo pero con montos en UF."
   },
 
   "riesgos": {
     "titulo": "¿Qué puede salir mal?",
-    "items_clp": ["Riesgo 1 en CLP.", "Riesgo 2 en CLP.", "Riesgo 3 en CLP."],
-    "items_uf": ["Riesgo 1 en UF.", "Riesgo 2 en UF.", "Riesgo 3 en UF."]
+    "items_clp": [
+      "Vacancia prolongada: cada mes sin arriendo pierdes ${fmtCLP(input.arriendo + input.gastos)} (arriendo + GGCC). Mitigación concreta con monto.",
+      "Subida de tasas: si la tasa sube 1% el dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}. Si sube 2%, a ${fmtCLP(dividendoSiTasaSube2)}. Mitigación concreta.",
+      "Baja de arriendos: si el arriendo baja 15%, tu flujo negativo empeora en ${fmtCLP(Math.round(input.arriendo * 0.15))} mensuales. Mitigación concreta.",
+      "Gastos imprevistos: reparaciones mayores (calefón, pintura, piso) pueden costar $500K-$2M. Mitigación concreta con monto de reserva."
+    ],
+    "items_uf": ["Mismo riesgo 1 en UF.", "Mismo riesgo 2 en UF.", "Mismo riesgo 3 en UF.", "Mismo riesgo 4 en UF."]
   },
 
   "veredicto": {
