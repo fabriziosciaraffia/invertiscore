@@ -128,7 +128,7 @@ DATOS DE LA PROPIEDAD:
 - Tipo: ${input.tipo}
 - Ubicación: ${input.comuna}, ${input.ciudad}
 - Superficie: ${input.superficie} m²
-- Antigüedad: ${input.antiguedad} años
+- Antigüedad: ${input.estadoVenta !== "inmediata" && input.fechaEntrega ? "En construcción (entrega " + input.fechaEntrega + ")" : input.antiguedad + " años"}
 - Precio: ${fmtUF(input.precio)} (${fmtCLP(m.precioCLP)})
 - Pie: ${input.piePct}% = ${fmtCLP(m.pieCLP)} (${fmtUF(m.pieCLP / UF_CLP)})
 - Crédito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
@@ -154,12 +154,16 @@ MÉTRICAS CALCULADAS:
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 - Precio con 10% descuento: ${fmtUF(precioConDescuento10)}
 
-DIMENSIONES DEL SCORE (nombres EXACTOS, NO uses otros nombres como "Price score" o "Location score"):
+IMPORTANTE SOBRE EL SCORE:
+El InvertiScore TOTAL es ${results.score}/100. Este es EL ÚNICO score que debes mencionar como "score" o "InvertiScore".
+Las siguientes son DIMENSIONES (sub-scores), NO el score total. Si mencionas alguna, di "sub-score de X: Y/100":
 - Rentabilidad: ${Math.round(d.rentabilidad)}/100
 - Flujo de Caja: ${Math.round(d.flujoCaja)}/100
 - Plusvalía: ${Math.round(d.plusvalia)}/100
 - Riesgo: ${Math.round(d.riesgo)}/100
 - Eficiencia de compra: ${Math.round(d.eficiencia)}/100
+NUNCA escribas dos scores diferentes. El score es UNO SOLO: ${results.score}/100.
+Nombres EXACTOS de dimensiones. NO uses "Price score", "Location score", etc.
 
 DATOS DE MERCADO DE LA ZONA:
 - Precio/m² promedio zona: ${fmtUF(precioM2Zona)}
@@ -237,7 +241,8 @@ REGLAS GENERALES:
 - Adapta el tono: si el score es >70 sé positivo, si es 50-70 sé cauteloso, si es <50 sé directo sobre los problemas
 - El veredicto debe ser UNA de las tres opciones: COMPRAR, NEGOCIAR, o BUSCAR OTRA
 - Los campos "alerta_clp" y "alerta_uf" en tuBolsillo deben ser string vacío "" si no aplica
-- Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.`;
+- Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.
+- Si el estado es "En blanco" o "En verde" con fecha de entrega futura, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",

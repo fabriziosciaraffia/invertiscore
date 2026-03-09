@@ -83,10 +83,6 @@ function stripBullet(text: string): string {
   return text.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").replace(/price score/gi, "Eficiencia de compra").trim();
 }
 
-// Clean an array of bullet strings
-function cleanBullets(items: string[]): string[] {
-  return items.map(item => item.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").replace(/price score/gi, "Eficiencia de compra").trim());
-}
 
 // Get the right AI text field based on currency toggle, with legacy fallback
 function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string {
@@ -1498,7 +1494,7 @@ export function PremiumResults({
                       <CheckCircle2 className="h-4 w-4" /> A favor
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {cleanBullets(aiAnalysis.aFavor).map((p, i) => <li key={i}>• {p}</li>)}
+                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
                     </ul>
                   </div>
                   <div>
@@ -1506,7 +1502,7 @@ export function PremiumResults({
                       <AlertTriangle className="h-4 w-4" /> Atención
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {cleanBullets(aiAnalysis.puntosAtencion).map((c, i) => <li key={i}>• {c}</li>)}
+                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
                     </ul>
                   </div>
                 </div>
