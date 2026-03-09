@@ -1338,17 +1338,17 @@ export function PremiumResults({
                 {/* Fallback: análisis determinístico */}
                 <div>
                   <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
+                  <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
                     {results.pros.map((p, i) => (
-                      <li key={i}>• {stripBullet(p)}</li>
+                      <li key={i}>{stripBullet(p)}</li>
                     ))}
                   </ul>
                 </div>
                 <div>
                   <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                  <ul className="space-y-1 text-sm text-muted-foreground">
+                  <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
                     {results.contras.map((c, i) => (
-                      <li key={i}>• {stripBullet(c)}</li>
+                      <li key={i}>{stripBullet(c)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1386,14 +1386,14 @@ export function PremiumResults({
                 <div className="mt-4 space-y-4 border-t border-border/30 pt-4">
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                      {results.pros.map((p, i) => <li key={i}>• {stripBullet(p)}</li>)}
+                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+                      {results.pros.map((p, i) => <li key={i}>{stripBullet(p)}</li>)}
                     </ul>
                   </div>
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                      {results.contras.map((c, i) => <li key={i}>• {stripBullet(c)}</li>)}
+                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+                      {results.contras.map((c, i) => <li key={i}>{stripBullet(c)}</li>)}
                     </ul>
                   </div>
                 </div>
@@ -1493,16 +1493,16 @@ export function PremiumResults({
                     <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
                       <CheckCircle2 className="h-4 w-4" /> A favor
                     </h4>
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
+                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>{p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
                     </ul>
                   </div>
                   <div>
                     <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-red-400">
                       <AlertTriangle className="h-4 w-4" /> Atención
                     </h4>
-                    <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
+                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>{c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
                     </ul>
                   </div>
                 </div>
