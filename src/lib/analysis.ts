@@ -126,26 +126,19 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const dividendo = calcDividendo(creditoCLP, input.tasaInteres, input.plazoCredito);
   const precioM2 = input.superficie > 0 ? precioTotal / input.superficie : 0;
 
-  let ingresoMensual = calcIngresoMensual(input);
-
-  // Add estacionamiento/bodega income premium
-  const isPremiumComuna = COMUNAS_PREMIUM.some((c) => input.comuna.toLowerCase().includes(c));
-  if (input.estacionamiento === "si") {
-    ingresoMensual += isPremiumComuna ? 50000 : 35000;
-  }
-  if (input.bodega) {
-    ingresoMensual += 15000;
-  }
+  const ingresoMensual = calcIngresoMensual(input);
 
   const contribucionesMes = Math.round(input.contribuciones / 3);
   const mantencion = input.provisionMantencion;
-  const vacanciaMensual = Math.round((input.arriendo * input.vacanciaMeses) / 12);
+  const vacanciaMensual = Math.round((ingresoMensual * input.vacanciaMeses) / 12);
   // GGCC: en renta larga los paga el arrendatario. El propietario solo paga durante vacancia.
   const ggccPropietario = Math.round((input.gastos * input.vacanciaMeses) / 12);
   // Corretaje: 50% del primer mes, cambio arrendatario cada 2 años → prorrateado en 24 meses
-  const corretajeMensual = Math.round((input.arriendo * 0.5) / 24);
+  const corretajeMensual = Math.round((ingresoMensual * 0.5) / 24);
+  // Recambio arrendatario: gastos de cambio (~1 mes arriendo) cada ~10 años → prorrateado
+  const recambioMensual = Math.round(ingresoMensual / 12 / 10);
 
-  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
+  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual + recambioMensual;
   const flujoNetoMensual = ingresoMensual - egresosMensuales;
 
   // LOG TEMPORAL: desglose completo del flujo mensual
@@ -155,17 +148,18 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   console.log("GGCC vacancia prorrateado:", -ggccPropietario, `(${input.gastos} × ${input.vacanciaMeses} / 12)`);
   console.log("Contribuciones mensualizadas:", -contribucionesMes, `(${input.contribuciones} / 3)`);
   console.log("Mantención:", -mantencion);
-  console.log("Vacancia arriendo prorrateada:", -vacanciaMensual, `(${input.arriendo} × ${input.vacanciaMeses} / 12)`);
-  console.log("Corretaje prorrateado:", -corretajeMensual, `(${input.arriendo} × 0.5 / 24)`);
+  console.log("Vacancia arriendo prorrateada:", -vacanciaMensual, `(ingreso × ${input.vacanciaMeses} / 12)`);
+  console.log("Corretaje prorrateado:", -corretajeMensual, `(ingreso × 0.5 / 24)`);
+  console.log("Recambio arrendatario:", -recambioMensual, "(ingreso / 120)");
   console.log("TOTAL EGRESOS:", egresosMensuales);
   console.log("FLUJO NETO:", flujoNetoMensual);
   console.log("==============================");
 
   // NOI = renta - gastos operacionales (sin dividendo)
-  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual) * 12;
+  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual - corretajeMensual - recambioMensual) * 12;
 
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
+  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual + recambioMensual) * 12;
 
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
@@ -319,6 +313,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     const vacanciaMensual = Math.round((arriendoActual * input.vacanciaMeses) / 12);
     const ggccVacanciaMensual = Math.round((gastosActual * input.vacanciaMeses) / 12);
     const corretajeMensual = Math.round((arriendoActual * 0.5) / 24);
+    const recambioMensual = Math.round(arriendoActual / 12 / 10);
 
     let flujoAnual = 0;
     for (let m = mesInicio; m <= mesFin; m++) {
@@ -328,7 +323,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
       } else {
         // Mes operativo: ingreso - todos los costos recurrentes
         flujoAnual += arriendoActual - metrics.dividendo - contribucionesMes - mantencion
-          - vacanciaMensual - ggccVacanciaMensual - corretajeMensual;
+          - vacanciaMensual - ggccVacanciaMensual - corretajeMensual - recambioMensual;
       }
     }
 
@@ -418,7 +413,8 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
   const ggccVacancia = Math.round((input.gastos * input.vacanciaMeses) / 12);
   const vacanciaMes = Math.round((proy.arriendoMensual * input.vacanciaMeses) / 12);
   const corretajeMes = Math.round((proy.arriendoMensual * 0.5) / 24);
-  const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion - vacanciaMes - corretajeMes;
+  const recambioMes = Math.round(proy.arriendoMensual / 12 / 10);
+  const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion - vacanciaMes - corretajeMes - recambioMes;
 
   return {
     nuevoAvaluo: Math.round(nuevoAvaluo),

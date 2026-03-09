@@ -139,16 +139,17 @@ function recalcForSensitivity(
   const ingresoMensual = modified.arriendo;
   const contribucionesMes = Math.round(modified.contribuciones / 3);
   const mantencion = modified.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
-  const vacanciaMensual = Math.round((modified.arriendo * modified.vacanciaMeses) / 12);
-  const corretajeMensual = Math.round((modified.arriendo * 0.5) / 24);
+  const vacanciaMensual = Math.round((ingresoMensual * modified.vacanciaMeses) / 12);
+  const corretajeMensual = Math.round((ingresoMensual * 0.5) / 24);
   const ggccPropietario = Math.round((modified.gastos * modified.vacanciaMeses) / 12);
+  const recambioMensual = Math.round(ingresoMensual / 12 / 10);
 
-  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
+  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual + recambioMensual;
   const flujoNetoMensual = ingresoMensual - egresosMensuales;
 
-  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual) * 12;
+  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual - corretajeMensual - recambioMensual) * 12;
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
+  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual + recambioMensual) * 12;
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
@@ -548,6 +549,7 @@ export function PremiumResults({
       const vacanciaMensual = Math.round((arriendoActual * (inputData.vacanciaMeses ?? 1)) / 12);
       const ggccVacanciaMensual = Math.round((gastosActual * (inputData.vacanciaMeses ?? 1)) / 12);
       const corretajeMensual = Math.round((arriendoActual * 0.5) / 24);
+      const recambioMensual = Math.round(arriendoActual / 12 / 10);
 
       let flujoAnual = 0;
       for (let mo = mesInicio; mo <= mesFin; mo++) {
@@ -556,7 +558,7 @@ export function PremiumResults({
         } else {
           // Mes operativo: ingreso - todos los costos recurrentes
           flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion
-            - vacanciaMensual - ggccVacanciaMensual - corretajeMensual;
+            - vacanciaMensual - ggccVacanciaMensual - corretajeMensual - recambioMensual;
         }
       }
       flujoAcumulado += flujoAnual;
@@ -615,7 +617,8 @@ export function PremiumResults({
     const ggccVacancia = Math.round((inputData.gastos * (inputData.vacanciaMeses ?? 1)) / 12);
     const vacanciaMes = Math.round((proy.arriendoMensual * (inputData.vacanciaMeses ?? 1)) / 12);
     const corretajeMes = Math.round((proy.arriendoMensual * 0.5) / 24);
-    const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion - vacanciaMes - corretajeMes;
+    const recambioMes = Math.round(proy.arriendoMensual / 12 / 10);
+    const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion - vacanciaMes - corretajeMes - recambioMes;
     return { nuevoAvaluo: Math.round(nuevoAvaluo), nuevoCredito, capitalLiberado: Math.round(capitalLiberado), nuevoDividendo, nuevoFlujoNeto: Math.round(nuevoFlujoNeto) };
   }, [results, m, inputData, dynamicProjections, horizonYears, refiPct]);
 
@@ -720,7 +723,9 @@ export function PremiumResults({
 
     const contribucionesMes = Math.round((inputData.contribuciones ?? 0) / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
-    const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
+    const vacanciaMes = Math.round((m.ingresoMensual * (inputData.vacanciaMeses ?? 1)) / 12);
+    const corretajeMes = Math.round((m.ingresoMensual * 0.5) / 24);
+    const recambioMes = Math.round(m.ingresoMensual / 12 / 10);
     const totalMonths = horizonYears * 12;
 
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
@@ -752,7 +757,7 @@ export function PremiumResults({
           const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
           const contrib = -contribucionesMes;
           const mant = -mantencion;
-          const vac = -vacanciaMes;
+          const vac = -(vacanciaMes + corretajeMes + recambioMes);
           const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
           acumulado += flujoNeto;
           allData.push({ name: `M${mes}`, _x: mes, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
@@ -771,7 +776,7 @@ export function PremiumResults({
         const ggcc = esVacancia ? -Math.round(gastosActual) : 0;
         const contrib = -contribucionesMes;
         const mant = -mantencion;
-        const vac = -vacanciaMes;
+        const vac = -(vacanciaMes + corretajeMes + recambioMes);
         const flujoNeto = ingreso + div + ggcc + contrib + mant + vac;
         acumulado += flujoNeto;
         allData.push({ name: `M${i}`, _x: i, Ingreso: ingreso, Dividendo: div, GGCC: ggcc, Contribuciones: contrib, Mantencion: mant, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado });
@@ -1538,7 +1543,7 @@ export function PremiumResults({
                         <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
                         <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
                         <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
-                        <Bar xAxisId="cat" dataKey="Vacancia" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
                         <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
