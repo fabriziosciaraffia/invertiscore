@@ -876,16 +876,38 @@ export function PremiumResults({
 
     if (isMonthlyView) return allData;
 
-    // Annual view: sample at T0 + year boundaries + delivery month
-    const sampleSet = new Set<number>();
-    sampleSet.add(0);
-    for (let y = 1; y <= horizonYears; y++) sampleSet.add(y * 12);
-    if (mesesPreEntrega > 0 && mesesPreEntrega <= totalMonths && mesesPreEntrega % 12 !== 0) sampleSet.add(mesesPreEntrega);
-    const sampleArr = Array.from(sampleSet).sort((a, b) => a - b);
-
-    return allData
-      .filter((row) => sampleArr.includes(row._x))
-      .map((row) => ({ ...row, name: annualCashflowLabel(row._x, mesesPreEntrega) }));
+    // Annual view: aggregate 12 months per year
+    const annualData: CashflowRow[] = [allData[0]]; // T0
+    for (let y = 1; y <= horizonYears; y++) {
+      const start = (y - 1) * 12 + 1; // month index in allData (T0 is index 0, M1 is index 1)
+      const end = y * 12;
+      let sumIngreso = 0, sumDividendo = 0, sumGGCC = 0, sumContribuciones = 0;
+      let sumMantencion = 0, sumVacancia = 0, sumFlujoNeto = 0;
+      for (let mi = start; mi <= end && mi < allData.length; mi++) {
+        const row = allData[mi];
+        sumIngreso += row.Ingreso;
+        sumDividendo += row.Dividendo;
+        sumGGCC += row.GGCC;
+        sumContribuciones += row.Contribuciones;
+        sumMantencion += row.Mantencion;
+        sumVacancia += row.Vacancia;
+        sumFlujoNeto += row.FlujoNeto;
+      }
+      const lastMonth = Math.min(end, allData.length - 1);
+      annualData.push({
+        name: annualCashflowLabel(end, mesesPreEntrega),
+        _x: end,
+        Ingreso: Math.round(sumIngreso),
+        Dividendo: Math.round(sumDividendo),
+        GGCC: Math.round(sumGGCC),
+        Contribuciones: Math.round(sumContribuciones),
+        Mantencion: Math.round(sumMantencion),
+        Vacancia: Math.round(sumVacancia),
+        FlujoNeto: Math.round(sumFlujoNeto),
+        Acumulado: allData[lastMonth]?.Acumulado ?? 0,
+      });
+    }
+    return annualData;
   }, [horizonYears, isMonthlyView, results, m, inputData]);
 
   interface PatrimonioRow {
