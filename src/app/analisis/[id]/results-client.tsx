@@ -2088,23 +2088,26 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className={panelContent ? "lg:mr-[300px]" : ""}>
-      {mainContent}
+    <div className={`${panelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
+      {/* Main content */}
+      <div className={panelContent ? "min-w-0 lg:flex-1" : ""}>
+        {mainContent}
+      </div>
 
-      {/* Desktop: fixed sidebar */}
+      {/* Desktop: sticky sidebar */}
       {panelContent && (
-        <div
-          className="scrollbar-hide fixed top-[80px] right-[20px] z-30 hidden w-[280px] overflow-y-auto lg:block"
-          style={{ maxHeight: "calc(100vh - 100px)" }}
-        >
-          <div className="rounded-xl border-l-2 border-border bg-white p-5 pb-8 shadow-sm">
+        <aside className="hidden w-[280px] shrink-0 lg:block">
+          <div
+            className="scrollbar-hide sticky top-[80px] overflow-y-auto rounded-xl border border-[#e5e7eb] bg-white p-4"
+            style={{ maxHeight: "calc(100vh - 100px)" }}
+          >
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Ajusta los números</h3>
             </div>
             {panelContent}
           </div>
-        </div>
+        </aside>
       )}
 
       {/* Mobile: floating button + drawer */}
