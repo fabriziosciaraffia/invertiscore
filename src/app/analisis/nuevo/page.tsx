@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { Building2, ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Link2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Building2, ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import { COMUNAS } from "@/lib/comunas";
 
 const UF_CLP_FALLBACK = 38800;
