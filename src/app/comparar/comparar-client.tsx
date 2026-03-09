@@ -161,7 +161,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         label: "Multiplicador capital",
         values: analisis.map((a) => {
           const exit = a.results?.exitScenario;
-          return exit ? `${exit.multiplicadorCapital.toFixed(2)}x` : "—";
+          return exit ? `${exit.multiplicadorCapital.toFixed(1)}x` : "—";
         }),
         raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,
@@ -181,31 +181,31 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
       },
       {
         label: "Rentabilidad",
-        values: analisis.map((a) => a.desglose?.rentabilidad?.toString() ?? "—"),
+        values: analisis.map((a) => a.desglose?.rentabilidad != null ? String(Math.round(a.desglose.rentabilidad)) : "—"),
         raw: analisis.map((a) => a.desglose?.rentabilidad ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Flujo Caja",
-        values: analisis.map((a) => a.desglose?.flujoCaja?.toString() ?? "—"),
+        values: analisis.map((a) => a.desglose?.flujoCaja != null ? String(Math.round(a.desglose.flujoCaja)) : "—"),
         raw: analisis.map((a) => a.desglose?.flujoCaja ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Plusvalía",
-        values: analisis.map((a) => a.desglose?.plusvalia?.toString() ?? "—"),
+        values: analisis.map((a) => a.desglose?.plusvalia != null ? String(Math.round(a.desglose.plusvalia)) : "—"),
         raw: analisis.map((a) => a.desglose?.plusvalia ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Bajo Riesgo",
-        values: analisis.map((a) => a.desglose?.riesgo?.toString() ?? "—"),
+        values: analisis.map((a) => a.desglose?.riesgo != null ? String(Math.round(a.desglose.riesgo)) : "—"),
         raw: analisis.map((a) => a.desglose?.riesgo ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Eficiencia",
-        values: analisis.map((a) => a.desglose?.eficiencia?.toString() ?? "—"),
+        values: analisis.map((a) => a.desglose?.eficiencia != null ? String(Math.round(a.desglose.eficiencia)) : "—"),
         raw: analisis.map((a) => a.desglose?.eficiencia ?? 0),
         higherIsBetter: true,
       },

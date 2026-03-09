@@ -100,22 +100,22 @@ export default async function AnalisisDetallePage({
         </div>
       </nav>
 
-      <div className="container mx-auto max-w-4xl px-4 py-8">
+      <div className="container mx-auto max-w-6xl px-4 py-8">
         {/* ===== FREE: Section 1 - Score + Classification ===== */}
-        <div className="mb-8 flex flex-col items-center gap-6 md:flex-row md:items-start">
+        <div className="mb-8 flex flex-col items-center gap-4 px-1 sm:gap-6 md:flex-row md:items-start">
           <ScoreCircle score={analisis.score} />
-          <div>
+          <div className="text-center md:text-left">
             <div className={`mb-1 text-sm font-semibold ${clasificacion.color}`}>
               {clasificacion.text}
             </div>
-            <h1 className="text-3xl font-bold">{analisis.nombre}</h1>
+            <h1 className="text-xl font-bold sm:text-3xl">{analisis.nombre}</h1>
             <p className="text-muted-foreground">
               {analisis.comuna}, {analisis.ciudad} · {new Date(analisis.created_at).toLocaleDateString("es-CL")}
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
               {resumenEjecutivo}
             </p>
-            <div className="mt-3 flex flex-wrap gap-3 text-sm">
+            <div className="mt-3 flex flex-wrap gap-2 text-xs sm:gap-3 sm:text-sm">
               <span className="rounded bg-secondary px-2.5 py-1">{analisis.tipo}</span>
               <span className="rounded bg-secondary px-2.5 py-1">
                 {analisis.dormitorios}D{analisis.banos}B · {analisis.superficie} m²

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, RadarChart, PolarGrid,
@@ -477,6 +477,12 @@ export function PremiumResults({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
+  const [fabShown, setFabShown] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setFabShown(true), 3000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleRecalculate = useCallback(async () => {
     if (!analysisId || !inputData) return;
@@ -1394,7 +1400,7 @@ export function PremiumResults({
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={0} height={60} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
                     content={({ active, payload, label: wfLabel }) => {
@@ -1652,7 +1658,7 @@ export function PremiumResults({
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1742,7 +1748,7 @@ export function PremiumResults({
                           <ComposedChart data={projData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
-                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={isMonthlyView ? "preserveStartEnd" : 0} height={60} />
+                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                             {/* Eje numérico oculto: posiciona la línea de entrega */}
                             <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1815,8 +1821,24 @@ export function PremiumResults({
                         const flujoAcum = lastProj.flujoAcumulado;
                         const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado + flujoAcum;
                         return (
-                          <div className="mt-4 overflow-x-auto rounded-lg border border-border/50 bg-secondary/30">
-                            <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: 320 }}>
+                          <div className="mt-4 rounded-lg border border-border/50 bg-secondary/30">
+                            {/* Mobile: stacked list */}
+                            <div className="space-y-0 divide-y divide-border/30 sm:hidden">
+                              {[
+                                { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
+                                { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-emerald-400" },
+                                { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-emerald-400" },
+                                { label: "Flujo acumulado", value: fmt(flujoAcum), color: flujoAcum >= 0 ? "text-emerald-400" : "text-red-400" },
+                                { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-primary", bold: true },
+                              ].map(({ label, value, color, bold }) => (
+                                <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
+                                  <div className="text-[11px] text-muted-foreground">{label}</div>
+                                  <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
+                                </div>
+                              ))}
+                            </div>
+                            {/* Desktop: table */}
+                            <table className="hidden w-full text-sm sm:table">
                               <tbody>
                                 <tr className="border-b border-border/30">
                                   <td className="py-2 px-4 text-muted-foreground">Tu inversión inicial (pie)</td>
@@ -1840,7 +1862,7 @@ export function PremiumResults({
                                 </tr>
                               </tbody>
                             </table>
-                            <p className="px-4 pb-2 text-[10px] text-muted-foreground">= pie + plusvalía + amortización + flujo</p>
+                            <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= pie + plusvalía + amortización + flujo</p>
                           </div>
                         );
                       })()}
@@ -1978,11 +2000,17 @@ export function PremiumResults({
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Precio (UF)</label>
-            <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Precio (UF)</label>
+              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            </div>
+            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Pie: {adjPiePct}%</label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Pie</label>
+              <span className="text-xs font-medium">{adjPiePct}%</span>
+            </div>
             <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-primary" />
           </div>
         </div>
@@ -1991,12 +2019,18 @@ export function PremiumResults({
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Plazo: {adjPlazo} años</label>
-            <input type="range" min={10} max={30} step={5} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Plazo</label>
+              <span className="text-xs font-medium">{adjPlazo} años</span>
+            </div>
+            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Tasa (%)</label>
-            <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Tasa (%)</label>
+              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            </div>
+            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-primary" />
           </div>
         </div>
       </div>
@@ -2004,25 +2038,35 @@ export function PremiumResults({
         <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Arriendo (CLP)</label>
-            <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Arriendo</label>
+              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            </div>
+            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Gastos comunes (CLP)</label>
-            <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">GGCC</label>
+              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            </div>
+            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Contribuciones /trim (CLP)</label>
-            <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+            <div className="mb-1 flex items-center justify-between">
+              <label className="text-xs text-muted-foreground">Contrib. /trim</label>
+              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            </div>
+            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
             <label className="mb-1 block text-xs text-muted-foreground">Vacancia (meses/año)</label>
-            <select value={adjVacancia} onChange={(e) => setAdjVacancia(Number(e.target.value))} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              <option value={0}>0 meses</option>
-              <option value={1}>1 mes</option>
-              <option value={2}>2 meses</option>
-              <option value={3}>3 meses</option>
-            </select>
+            <div className="flex gap-1">
+              {[0, 1, 2, 3].map((v) => (
+                <button key={v} type="button" onClick={() => setAdjVacancia(v)}
+                  className={`flex-1 rounded py-1 text-xs font-medium transition-colors ${adjVacancia === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                >{v}</button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2035,7 +2079,7 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className="flex gap-6">
+    <div className="flex gap-6 overflow-visible">
       {/* Main content */}
       <div className={`min-w-0 ${panelContent ? "lg:flex-1" : "w-full"}`}>
         {mainContent}
@@ -2043,7 +2087,7 @@ export function PremiumResults({
 
       {/* Desktop: sticky sidebar */}
       {panelContent && (
-        <aside className="hidden lg:block lg:w-[280px] lg:shrink-0">
+        <aside className="hidden lg:block lg:w-[260px] lg:shrink-0">
           <div className="sticky top-20">
             <div className="rounded-xl border-l-2 border-border bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
@@ -2059,13 +2103,20 @@ export function PremiumResults({
       {/* Mobile: floating button + drawer */}
       {panelContent && (
         <>
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="fixed bottom-20 right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-white shadow-lg transition-transform hover:scale-105 lg:hidden"
-          >
-            <SlidersHorizontal className="h-5 w-5" />
-          </button>
+          <div className="fixed bottom-20 right-4 z-40 lg:hidden">
+            <button
+              type="button"
+              onClick={() => { setDrawerOpen(true); setFabShown(true); }}
+              className={`flex items-center justify-center rounded-full bg-primary text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-12 w-12" : "h-16 w-16"}`}
+            >
+              <SlidersHorizontal className={`transition-all duration-500 ${fabShown ? "h-5 w-5" : "h-6 w-6"}`} />
+            </button>
+            {!fabShown && (
+              <div className="absolute -left-28 top-1/2 -translate-y-1/2 animate-pulse rounded-lg bg-foreground/90 px-2.5 py-1 text-xs font-medium text-background shadow-lg">
+                Ajusta el análisis
+              </div>
+            )}
+          </div>
 
           {drawerOpen && (
             <div className="fixed inset-0 z-50 lg:hidden">
