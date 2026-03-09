@@ -239,8 +239,6 @@ export default function NuevoAnalisisPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
-  const [showNombre, setShowNombre] = useState(false);
-  const [showLinkInput, setShowLinkInput] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [showDraftBanner, setShowDraftBanner] = useState(false);
   const formInitialized = useRef(false);
@@ -481,9 +479,9 @@ export default function NuevoAnalisisPage() {
   }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio, UF_CLP]);
 
   // ─── Collapsible section summaries ─────────────────
-  const seccion2Summary = `${form.dormitorios}D${form.banos}B, ${
-    form.antiguedad === "0-2" ? "0-2 años" : form.antiguedad === "3-5" ? "3-5 años" : form.antiguedad === "6-10" ? "6-10 años" : form.antiguedad === "11-20" ? "11-20 años" : "20+ años"
-  }, ${form.estacionamiento ? "con" : "sin"} estac.`;
+  const seccion2Summary = form.superficieUtil
+    ? `${form.superficieUtil} m², ${form.dormitorios}D${form.banos}B, ${form.estacionamiento ? "con" : "sin"} estac.`
+    : "Sin completar";
   const seccion4Summary = `${form.plazoCredito} años, tasa ${form.tasaInteres}%`;
 
   // ─── Antigüedad mapping ────────────────────────────
@@ -594,7 +592,7 @@ export default function NuevoAnalisisPage() {
         </div>
       </nav>
 
-      <div className="container mx-auto max-w-2xl px-4 pb-28 pt-6 sm:pb-12">
+      <div className="container mx-auto max-w-2xl px-4 pb-28 pt-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold">Nuevo Análisis</h1>
           <p className="text-sm text-muted-foreground">
@@ -620,90 +618,88 @@ export default function NuevoAnalisisPage() {
           </div>
         )}
 
-        {/* Progress bar */}
-        <div className="mb-4">
+        {/* Progress bar — sticky */}
+        <div className="sticky top-0 z-50 -mx-4 mb-4 border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {progress.pct === 100 ? "Listo para analizar" : `Faltan: ${progress.missing.join(", ")}`}
-            </span>
+            {progress.pct === 100 ? (
+              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Todo listo para analizar
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground">
+                Faltan: {progress.missing.join(", ")}
+              </span>
+            )}
             <span className="text-xs font-medium text-muted-foreground">{progress.done}/{progress.total}</span>
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
             <div
-              className="h-full rounded-full bg-primary transition-all duration-500"
+              className={`h-full rounded-full transition-all duration-500 ${progress.pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
               style={{ width: `${progress.pct}%` }}
             />
           </div>
         </div>
 
-        {/* Link paste / file upload stubs */}
-        <div className="mb-4 flex gap-2">
-          <button
-            type="button"
-            onClick={() => setShowLinkInput(!showLinkInput)}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
-          >
-            <Link2 className="h-4 w-4" /> Pegar link publicación
-          </button>
-          <button
-            type="button"
-            onClick={() => alert("Próximamente: sube una cotización en PDF y la extraemos automáticamente.")}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
-          >
-            <Upload className="h-4 w-4" /> Subir cotización
-          </button>
-        </div>
-
-        {showLinkInput && (
-          <div className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3">
-            <p className="text-sm font-medium">Analiza una publicación</p>
-            <p className="text-xs text-muted-foreground">Pega el link y extraemos los datos automáticamente (próximamente)</p>
-            <div className="flex gap-2">
-              <input
-                type="url"
-                placeholder="https://..."
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                disabled
-                className="shrink-0"
-              >
-                Extraer
-              </Button>
-            </div>
+        {/* Link paste / file upload section */}
+        <div className="mb-4 rounded-xl border border-emerald-200 bg-[#f0fdf4] p-5 space-y-4">
+          <div className="text-center">
+            <p className="text-base font-semibold">¿Tienes el link de la publicación? 🔗</p>
+            <p className="mt-1 text-sm text-muted-foreground">Pégalo y nosotros extraemos los datos automáticamente. Sin escribir nada.</p>
           </div>
-        )}
+          <div className="flex gap-2">
+            <input
+              type="url"
+              placeholder="Pega aquí el link de Portal Inmobiliario, TocToc o Yapo"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-emerald-300 bg-white px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400"
+            />
+            <Button
+              type="button"
+              disabled
+              className="shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+            >
+              Extraer datos <Sparkles className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="h-px flex-1 bg-emerald-200" />
+            <span>o sube una cotización</span>
+            <div className="h-px flex-1 bg-emerald-200" />
+          </div>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => alert("Próximamente: sube una cotización en PDF y la extraemos automáticamente.")}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50"
+            >
+              <Upload className="h-4 w-4" /> Subir cotización (PDF o imagen)
+            </button>
+          </div>
+          <p className="text-center text-xs text-muted-foreground">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
           )}
 
-          {/* Nombre colapsable */}
-          {!showNombre ? (
-            <button type="button" onClick={() => setShowNombre(true)} className="text-xs text-primary hover:underline">
-              + Agregar nombre personalizado
-            </button>
-          ) : (
-            <div>
-              <FieldLabel htmlFor="nombreAnalisis">Nombre (opcional)</FieldLabel>
-              <input
-                id="nombreAnalisis"
-                type="text"
-                placeholder={`Depto ${form.dormitorios}D${form.banos}B ${form.comuna || "..."}`}
-                value={form.nombreAnalisis}
-                onChange={(e) => setField("nombreAnalisis", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              />
-            </div>
-          )}
+          {/* Nombre del análisis — siempre visible */}
+          <div>
+            <FieldLabel htmlFor="nombreAnalisis">Nombre del análisis (opcional)</FieldLabel>
+            <input
+              id="nombreAnalisis"
+              type="text"
+              placeholder="Se generará automáticamente si lo dejas vacío"
+              value={form.nombreAnalisis}
+              onChange={(e) => setField("nombreAnalisis", e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Ej: Depto Providencia 2D1B, Inversión Ñuñoa</p>
+          </div>
 
           {/* ══════ SECCIÓN 1: ¿Dónde está? ══════ */}
-          <SectionCard title="¿Dónde está?">
+          <SectionCard title="¿Dónde está?" defaultOpen={false} summary={form.comuna ? `${form.comuna}${form.direccion ? ` · ${form.direccion}` : ""}` : "Sin completar"}>
             <div ref={comunaRef} className="relative">
               <FieldLabel htmlFor="comunaSearch">Comuna</FieldLabel>
               <input
@@ -756,7 +752,7 @@ export default function NuevoAnalisisPage() {
               <input
                 id="direccion"
                 type="text"
-                placeholder="Opcional — para ubicar en el mapa"
+                placeholder="Ej: Av Providencia 1234, Providencia"
                 value={form.direccion}
                 onChange={(e) => setField("direccion", e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -767,7 +763,7 @@ export default function NuevoAnalisisPage() {
           {/* ══════ SECCIÓN 2: ¿Cómo es? (colapsada) ══════ */}
           <SectionCard title="¿Cómo es?" defaultOpen={false} summary={seccion2Summary}>
             <div>
-              <FieldLabel>Superficie útil m²</FieldLabel>
+              <FieldLabel>Superficie total (m²)</FieldLabel>
               <input
                 id="superficieUtil"
                 type="number"
@@ -779,6 +775,7 @@ export default function NuevoAnalisisPage() {
                 required
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
+              <p className="mt-1 text-xs text-muted-foreground">Superficie total según escritura o ficha. Incluye terrazas y logias si están en la escritura.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -869,7 +866,7 @@ export default function NuevoAnalisisPage() {
           )}
 
           {/* ══════ SECCIÓN 3: ¿Cuánto cuesta? ══════ */}
-          <SectionCard title="¿Cuánto cuesta?">
+          <SectionCard title="¿Cuánto cuesta?" defaultOpen={false} summary={form.precio ? `${fieldCurrency.precio === "UF" ? fmtUF(parseNum(form.precio)) : fmtCLP(parseNum(form.precio))}, pie ${form.piePct}%` : "Sin completar"}>
             <div>
               <FieldLabel htmlFor="precio" tip={TIPS.precio}>Precio de venta</FieldLabel>
               <MoneyInput
@@ -914,15 +911,31 @@ export default function NuevoAnalisisPage() {
 
             <div>
               <FieldLabel>Estado de venta</FieldLabel>
-              <ButtonGroup
-                options={[
-                  { value: "inmediata", label: "Entrega inmediata" },
-                  { value: "verde", label: "En verde" },
-                  { value: "blanco", label: "En blanco" },
-                ]}
-                value={form.estadoVenta}
-                onChange={(v) => setField("estadoVenta", v)}
-              />
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setField("estadoVenta", "inmediata")}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                    form.estadoVenta === "inmediata"
+                      ? "border-primary bg-primary/10 font-medium text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  Entrega inmediata
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setField("estadoVenta", "futura")}
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                    form.estadoVenta !== "inmediata"
+                      ? "border-primary bg-primary/10 font-medium text-primary"
+                      : "border-border text-muted-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <span>Entrega futura</span>
+                  <span className="block text-[11px] font-normal opacity-70">Venta en blanco o en verde</span>
+                </button>
+              </div>
             </div>
 
             {form.estadoVenta !== "inmediata" && (
@@ -1007,7 +1020,7 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ SECCIÓN 5: ¿Cuánto genera? ══════ */}
-          <SectionCard title="¿Cuánto genera?">
+          <SectionCard title="¿Cuánto genera?" defaultOpen={false} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
             <div>
               <FieldLabel htmlFor="arriendo" tip={TIPS.arriendo}>Arriendo esperado /mes</FieldLabel>
               <MoneyInput
@@ -1114,43 +1127,33 @@ export default function NuevoAnalisisPage() {
             </div>
           )}
 
-          {/* Desktop submit */}
-          <div className="hidden sm:block">
-            <Button
-              className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse" : ""}`}
-              size="lg"
-              type="submit"
-              disabled={loading || !canSubmit}
-            >
-              {loading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Generando InvertiScore...</>
-              ) : canSubmit ? (
-                <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
-              ) : (
-                `Completa: ${progress.missing.join(", ")}`
-              )}
-            </Button>
-          </div>
         </form>
       </div>
 
-      {/* Mobile sticky submit */}
-      <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background p-4 sm:hidden">
-        <Button
-          className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse" : ""}`}
-          size="lg"
-          type="submit"
-          disabled={loading || !canSubmit}
-          onClick={handleSubmit}
-        >
-          {loading ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Generando...</>
-          ) : canSubmit ? (
-            <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
-          ) : (
-            `Faltan: ${progress.missing.join(", ")}`
+      {/* Sticky submit footer — PC & mobile */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
+        <div className="mx-auto max-w-2xl px-4 py-3">
+          <Button
+            className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse bg-emerald-600 hover:bg-emerald-700" : ""}`}
+            size="lg"
+            type="submit"
+            disabled={loading || !canSubmit}
+            onClick={handleSubmit}
+          >
+            {loading ? (
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generando InvertiScore...</>
+            ) : canSubmit ? (
+              <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
+            ) : (
+              <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
+            )}
+          </Button>
+          {!canSubmit && !loading && (
+            <p className="mt-1.5 text-center text-xs text-muted-foreground">
+              Falta: {progress.missing.join(", ")}
+            </p>
           )}
-        </Button>
+        </div>
       </div>
     </div>
   );
