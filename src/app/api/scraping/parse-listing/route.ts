@@ -177,6 +177,26 @@ export async function POST(req: NextRequest) {
       }
 
       markdown = result.markdown;
+
+      // Detect blocked/login pages
+      if (markdown.length < 1500 && (
+        markdown.includes("ingresa a") || markdown.includes("login") ||
+        markdown.includes("Soy nuevo") || markdown.includes("Ya tengo cuenta") ||
+        markdown.includes("captcha") || markdown.includes("verificar")
+      )) {
+        return NextResponse.json(
+          { error: "El portal bloqueó el acceso automático. Intenta subir una captura de pantalla o cotización en PDF." },
+          { status: 422 }
+        );
+      }
+
+      // Too little content to extract anything useful
+      if (markdown.length < 200) {
+        return NextResponse.json(
+          { error: "No pudimos extraer contenido de esta publicación. Intenta con otra URL o completa manualmente." },
+          { status: 500 }
+        );
+      }
     } catch (err) {
       console.error("Firecrawl error:", err);
       return NextResponse.json(
