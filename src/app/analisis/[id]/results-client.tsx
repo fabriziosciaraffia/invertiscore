@@ -478,10 +478,19 @@ export function PremiumResults({
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabShown, setFabShown] = useState(false);
+  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
     return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: none)");
+    setIsTouchDevice(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsTouchDevice(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
   }, []);
 
   const handleRecalculate = useCallback(async () => {
@@ -1417,7 +1426,7 @@ export function PremiumResults({
                         </div>
                       );
                     }}
-                    trigger="click"
+                    {...(isTouchDevice ? { trigger: "click" as const } : {})}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
                   <Bar dataKey="range" radius={[4, 4, 0, 0]}>
@@ -1682,7 +1691,7 @@ export function PremiumResults({
                               </div>
                             );
                           }}
-                          trigger="click"
+                          {...(isTouchDevice ? { trigger: "click" as const } : {})}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
@@ -1779,7 +1788,7 @@ export function PremiumResults({
                                   </div>
                                 );
                               }}
-                              trigger="click"
+                              {...(isTouchDevice ? { trigger: "click" as const } : {})}
                             />
                             {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
                             <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="#1e40af" strokeWidth={2} />
@@ -2079,7 +2088,7 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className="flex gap-6 overflow-visible">
+    <div className="flex items-start gap-6">
       {/* Main content */}
       <div className={`min-w-0 ${panelContent ? "lg:flex-1" : "w-full"}`}>
         {mainContent}
@@ -2087,15 +2096,13 @@ export function PremiumResults({
 
       {/* Desktop: sticky sidebar */}
       {panelContent && (
-        <aside className="hidden lg:block lg:w-[260px] lg:shrink-0">
-          <div className="sticky top-20">
-            <div className="rounded-xl border-l-2 border-border bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Ajusta los números</h3>
-              </div>
-              {panelContent}
+        <aside className="hidden lg:block lg:w-[260px] lg:shrink-0 self-start sticky top-20" style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
+          <div className="rounded-xl border-l-2 border-border bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <SlidersHorizontal className="h-4 w-4 text-primary" />
+              <h3 className="text-sm font-semibold">Ajusta los números</h3>
             </div>
+            {panelContent}
           </div>
         </aside>
       )}
@@ -2103,19 +2110,19 @@ export function PremiumResults({
       {/* Mobile: floating button + drawer */}
       {panelContent && (
         <>
-          <div className="fixed bottom-20 right-4 z-40 lg:hidden">
-            <button
-              type="button"
-              onClick={() => { setDrawerOpen(true); setFabShown(true); }}
-              className={`flex items-center justify-center rounded-full bg-primary text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-12 w-12" : "h-16 w-16"}`}
-            >
-              <SlidersHorizontal className={`transition-all duration-500 ${fabShown ? "h-5 w-5" : "h-6 w-6"}`} />
-            </button>
+          <div className="fixed bottom-20 right-4 z-40 flex items-center gap-3 lg:hidden">
             {!fabShown && (
-              <div className="absolute -left-28 top-1/2 -translate-y-1/2 animate-pulse rounded-lg bg-foreground/90 px-2.5 py-1 text-xs font-medium text-background shadow-lg">
+              <div className="animate-pulse rounded-lg bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white shadow-lg">
                 Ajusta el análisis
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => { setDrawerOpen(true); setFabShown(true); }}
+              className={`flex items-center justify-center rounded-full bg-[#059669] text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-[52px] w-[52px]" : "h-[72px] w-[72px]"}`}
+            >
+              <SlidersHorizontal className={`transition-all duration-500 ${fabShown ? "h-5 w-5" : "h-7 w-7"}`} />
+            </button>
           </div>
 
           {drawerOpen && (
