@@ -2006,20 +2006,27 @@ export function PremiumResults({
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth < 1024) return;
     const panel = document.getElementById("param-panel");
-    const wrapper = document.getElementById("param-panel-wrapper");
-    if (!panel || !wrapper) return;
+    const flexContainer = document.getElementById("results-flex-container");
+    if (!panel || !flexContainer) return;
     const TOP_OFFSET = 80;
+    const BOTTOM_MARGIN = 20;
     const handleScroll = () => {
-      const wrapperRect = wrapper.getBoundingClientRect();
-      const wrapperTop = window.scrollY + wrapperRect.top;
-      const scrollY = window.scrollY;
-      const maxTranslate = wrapper.offsetHeight - panel.offsetHeight;
-      const translate = Math.max(0, Math.min(scrollY - wrapperTop + TOP_OFFSET, maxTranslate));
+      const containerRect = flexContainer.getBoundingClientRect();
+      // How far the top of the flex container is from the top of the document
+      const containerTop = window.scrollY + containerRect.top;
+      // Max translateY: container height minus panel height minus some margin
+      const maxTranslate = Math.max(0, flexContainer.offsetHeight - panel.offsetHeight - BOTTOM_MARGIN);
+      // Desired translate: scroll past the container top, offset by TOP_OFFSET
+      const translate = Math.max(0, Math.min(window.scrollY - containerTop + TOP_OFFSET, maxTranslate));
       panel.style.transform = `translateY(${translate}px)`;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleScroll);
+    };
   }, [currentAccess, inputData]);
 
   // Panel content shared between desktop sidebar and mobile drawer
@@ -2108,7 +2115,7 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className={`${panelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
+    <div id="results-flex-container" className={`${panelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
       {/* Main content */}
       <div className={panelContent ? "min-w-0 lg:flex-1" : ""}>
         {mainContent}
