@@ -479,7 +479,12 @@ export function PremiumResults({
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabShown, setFabShown] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-  const [tooltipChart, setTooltipChart] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedWaterfall, setSelectedWaterfall] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedCashflow, setSelectedCashflow] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [selectedPatrimonio, setSelectedPatrimonio] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
@@ -1406,18 +1411,14 @@ export function PremiumResults({
 
           {/* ===== PREMIUM: g) Cascada de Costos Mensual ===== */}
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-            <div className="relative h-72" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("waterfall"); }}>
-              {isTouchDevice && tooltipChart === "waterfall" && (
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
-              )}
+            <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: unknown }[]; activeLabel?: string }; if (isTouchDevice && d?.activePayload) { const item = waterfallData.find((w) => w.name === d.activeLabel); setSelectedWaterfall(item || null); } }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
-                    content={({ active, payload, label: wfLabel }) => {
-                      if (isTouchDevice && tooltipChart !== "waterfall") return null;
+                    content={isTouchDevice ? () => null : ({ active, payload, label: wfLabel }) => {
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
@@ -1431,7 +1432,6 @@ export function PremiumResults({
                         </div>
                       );
                     }}
-                    {...(isTouchDevice ? { trigger: "click" as const } : {})}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
                   <Bar dataKey="range" radius={[4, 4, 0, 0]}>
@@ -1448,6 +1448,18 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
+            {isTouchDevice && selectedWaterfall && (
+              <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="font-semibold">{selectedWaterfall.isResult ? `→ ${selectedWaterfall.name}` : selectedWaterfall.name}</span>
+                  <button type="button" onClick={() => setSelectedWaterfall(null)} className="text-muted-foreground text-lg leading-none">✕</button>
+                </div>
+                <div className={selectedWaterfall.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
+                  {selectedWaterfall.delta >= 0 ? "+" : ""}{fmt(selectedWaterfall.delta)}
+                </div>
+                <div className="text-muted-foreground">Acumulado: {fmt(selectedWaterfall.running)}</div>
+              </div>
+            )}
             {m && (
               <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
@@ -1667,12 +1679,9 @@ export function PremiumResults({
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
-                  <div className="relative h-64" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("cashflow"); }}>
-                    {isTouchDevice && tooltipChart === "cashflow" && (
-                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
-                    )}
+                  <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: CashflowRow }[] }; if (isTouchDevice && d?.activePayload) { setSelectedCashflow(d.activePayload[0]?.payload || null); } }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1680,8 +1689,7 @@ export function PremiumResults({
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (isTouchDevice && tooltipChart !== "cashflow") return null;
+                          content={isTouchDevice ? () => null : ({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
@@ -1700,7 +1708,6 @@ export function PremiumResults({
                               </div>
                             );
                           }}
-                          {...(isTouchDevice ? { trigger: "click" as const } : {})}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
@@ -1744,6 +1751,23 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
+                  {isTouchDevice && selectedCashflow && (
+                    <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <span className="font-semibold">{selectedCashflow.name}</span>
+                        <button type="button" onClick={() => setSelectedCashflow(null)} className="text-muted-foreground text-lg leading-none">✕</button>
+                      </div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(selectedCashflow.Ingreso)}</span></div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(selectedCashflow.Dividendo)}</span></div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia: <span className="font-medium text-red-400">{fmt(selectedCashflow.GGCC)}</span></div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(selectedCashflow.Contribuciones)}</span></div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención: <span className="font-medium text-red-400">{fmt(selectedCashflow.Mantencion)}</span></div>
+                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(selectedCashflow.Vacancia)}</span></div>
+                      <div className="my-1 border-t border-border/50" />
+                      <div className={`font-bold ${selectedCashflow.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(selectedCashflow.FlujoNeto)}</div>
+                      <div className="text-blue-400">Acumulado: {fmt(selectedCashflow.Acumulado)}</div>
+                    </div>
+                  )}
                 </div>
 
                 <hr className="border-border/30" />
@@ -1761,12 +1785,9 @@ export function PremiumResults({
                         )}
                       </div>
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
-                      <div className="relative h-72" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("patrimonio"); }}>
-                        {isTouchDevice && tooltipChart === "patrimonio" && (
-                          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
-                        )}
+                      <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: PatrimonioRow }[] }; if (isTouchDevice && d?.activePayload) { setSelectedPatrimonio(d.activePayload[0]?.payload || null); } }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1774,8 +1795,7 @@ export function PremiumResults({
                             <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (isTouchDevice && tooltipChart !== "patrimonio") return null;
+                              content={isTouchDevice ? () => null : ({ active, payload }) => {
                                 if (!active || !payload || payload.length === 0) return null;
                                 const row = payload[0]?.payload as PatrimonioRow | undefined;
                                 if (!row) return null;
@@ -1801,7 +1821,6 @@ export function PremiumResults({
                                   </div>
                                 );
                               }}
-                              {...(isTouchDevice ? { trigger: "click" as const } : {})}
                             />
                             {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
                             <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="#1e40af" strokeWidth={2} />
@@ -1823,6 +1842,32 @@ export function PremiumResults({
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
+                      {isTouchDevice && selectedPatrimonio && (() => {
+                        const pre = selectedPatrimonio.isPreEntrega;
+                        return (
+                          <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
+                            <div className="mb-1.5 flex items-center justify-between">
+                              <span className="font-semibold">{selectedPatrimonio.name}{pre ? " (pre-entrega)" : ""}</span>
+                              <button type="button" onClick={() => setSelectedPatrimonio(null)} className="text-muted-foreground text-lg leading-none">✕</button>
+                            </div>
+                            {pre ? (
+                              <>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(selectedPatrimonio.piePagado)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium">{fmt(selectedPatrimonio.plusvalia)}</span></div>
+                                <div className="text-muted-foreground">Deuda: $0 (crédito aún no comienza)</div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium">{fmt(selectedPatrimonio.valorPropiedad)}</span></div>
+                                <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(selectedPatrimonio.saldoCredito ?? 0)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(selectedPatrimonio.piePagado + selectedPatrimonio.capitalAmortizado)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium">{fmt(selectedPatrimonio.plusvalia)}</span></div>
+                              </>
+                            )}
+                            <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#f59e0b" }}>Patrimonio neto: {fmt(selectedPatrimonio.patrimonioNeto)}</div>
+                          </div>
+                        );
+                      })()}
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
