@@ -479,8 +479,6 @@ export function PremiumResults({
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabShown, setFabShown] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedWaterfall, setSelectedWaterfall] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
@@ -1414,7 +1412,7 @@ export function PremiumResults({
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
-                    content={isTouchDevice ? () => null : ({ active, payload, label: wfLabel }) => {
+                    content={({ active, payload, label: wfLabel }) => {
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
@@ -1430,7 +1428,7 @@ export function PremiumResults({
                     }}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { setSelectedWaterfall(waterfallData[index] || null); }}>
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
@@ -1444,18 +1442,7 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {isTouchDevice && selectedWaterfall && (
-              <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
-                <div className="mb-1.5 flex items-center justify-between">
-                  <span className="font-semibold">{selectedWaterfall.isResult ? `→ ${selectedWaterfall.name}` : selectedWaterfall.name}</span>
-                  <button type="button" onClick={() => setSelectedWaterfall(null)} className="text-muted-foreground text-lg leading-none">✕</button>
-                </div>
-                <div className={selectedWaterfall.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
-                  {selectedWaterfall.delta >= 0 ? "+" : ""}{fmt(selectedWaterfall.delta)}
-                </div>
-                <div className="text-muted-foreground">Acumulado: {fmt(selectedWaterfall.running)}</div>
-              </div>
-            )}
+            {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
             {m && (
               <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
