@@ -107,7 +107,7 @@ DATOS DE LA PROPIEDAD:
 - Arriendo esperado: ${fmtCLP(input.arriendo)}/mes
 - Gastos comunes: ${fmtCLP(input.gastos)}/mes (solo vacancia, lo paga arrendatario)
 - Contribuciones: ${fmtCLP(input.contribuciones)}/trimestre
-- Provisión mantención: ${fmtCLP(input.provisionMantencion || Math.round(m.precioCLP * 0.01 / 12))}/mes
+- Provisión mantención: ${fmtCLP(input.provisionMantencion)}/mes
 - Estacionamiento: ${input.estacionamiento === "si" ? "Sí" : "No"}
 - Bodega: ${input.bodega ? "Sí" : "No"}
 - Estado: ${input.estadoVenta}${input.fechaEntrega ? " (entrega " + input.fechaEntrega + ")" : ""}

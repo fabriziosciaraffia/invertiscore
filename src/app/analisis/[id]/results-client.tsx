@@ -140,14 +140,15 @@ function recalcForSensitivity(
   const contribucionesMes = Math.round(modified.contribuciones / 3);
   const mantencion = modified.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
   const vacanciaMensual = Math.round((modified.arriendo * modified.vacanciaMeses) / 12);
-  const corretajeMensual = Math.round((modified.arriendo * 0.5) / 12);
+  const corretajeMensual = Math.round((modified.arriendo * 0.5) / 24);
+  const ggccPropietario = Math.round((modified.gastos * modified.vacanciaMeses) / 12);
 
-  const egresosMensuales = dividendo + modified.gastos + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
+  const egresosMensuales = dividendo + ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual;
   const flujoNetoMensual = ingresoMensual - egresosMensuales;
 
-  const noi = (ingresoMensual - modified.gastos - contribucionesMes - mantencion - vacanciaMensual) * 12;
+  const noi = (ingresoMensual - ggccPropietario - contribucionesMes - mantencion - vacanciaMensual) * 12;
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (modified.gastos + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
+  const gastosAnuales = (ggccPropietario + contribucionesMes + mantencion + vacanciaMensual + corretajeMensual) * 12;
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
@@ -542,20 +543,20 @@ export function PremiumResults({
     for (let anio = 1; anio <= 20; anio++) {
       const mesInicio = (anio - 1) * 12 + 1;
       const mesFin = anio * 12;
+
+      // Recurring costs prorrateados por mes
+      const vacanciaMensual = Math.round((arriendoActual * (inputData.vacanciaMeses ?? 1)) / 12);
+      const ggccVacanciaMensual = Math.round((gastosActual * (inputData.vacanciaMeses ?? 1)) / 12);
+      const corretajeMensual = Math.round((arriendoActual * 0.5) / 24);
+
       let flujoAnual = 0;
       for (let mo = mesInicio; mo <= mesFin; mo++) {
         if (mo <= mesesPreEntrega) {
           flujoAnual -= montoCuotaPie;
-        } else if (mo === mesesPreEntrega + 1) {
-          // Vacancia: propietario paga GGCC
-          flujoAnual -= (m.dividendo + gastosActual + contribucionesMes + mantencion);
-        } else if (mo === mesesPreEntrega + 2) {
-          // Corretaje month — arrendatario paga GGCC
-          const corretaje = Math.round(inputData.arriendo * 0.5);
-          flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion - corretaje;
         } else {
-          // Normal — arrendatario paga GGCC
-          flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion;
+          // Mes operativo: ingreso - todos los costos recurrentes
+          flujoAnual += arriendoActual - m.dividendo - contribucionesMes - mantencion
+            - vacanciaMensual - ggccVacanciaMensual - corretajeMensual;
         }
       }
       flujoAcumulado += flujoAnual;
@@ -611,7 +612,10 @@ export function PremiumResults({
     const nuevoDividendo = tasaMensual === 0 ? Math.round(nuevoCredito / n) : Math.round((nuevoCredito * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
     const contribucionesMes = Math.round(inputData.contribuciones / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
-    const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - inputData.gastos - contribucionesMes - mantencion;
+    const ggccVacancia = Math.round((inputData.gastos * (inputData.vacanciaMeses ?? 1)) / 12);
+    const vacanciaMes = Math.round((proy.arriendoMensual * (inputData.vacanciaMeses ?? 1)) / 12);
+    const corretajeMes = Math.round((proy.arriendoMensual * 0.5) / 24);
+    const nuevoFlujoNeto = proy.arriendoMensual - nuevoDividendo - ggccVacancia - contribucionesMes - mantencion - vacanciaMes - corretajeMes;
     return { nuevoAvaluo: Math.round(nuevoAvaluo), nuevoCredito, capitalLiberado: Math.round(capitalLiberado), nuevoDividendo, nuevoFlujoNeto: Math.round(nuevoFlujoNeto) };
   }, [results, m, inputData, dynamicProjections, horizonYears, refiPct]);
 
@@ -645,7 +649,7 @@ export function PremiumResults({
     const contribucionesMes = Math.round(inputData.contribuciones / 3);
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const vacanciaMes = Math.round((inputData.arriendo * inputData.vacanciaMeses) / 12);
-    const corretajeMes = Math.round((inputData.arriendo * 0.5) / 12);
+    const corretajeMes = Math.round((inputData.arriendo * 0.5) / 24);
     const recambioMes = Math.round(inputData.arriendo / 12 / 10);
 
     const steps: { name: string; delta: number }[] = [

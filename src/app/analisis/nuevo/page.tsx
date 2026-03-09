@@ -315,8 +315,10 @@ export default function NuevoAnalisisPage() {
     const financiamientoPct = 100 - piePct;
     const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, UF_CLP);
     const provisionAuto = Math.round((precioCLP * 0.01) / 12);
+    const contribucionesAuto = Math.round(precioCLP * 0.65 * 0.011 / 4);
+    const gastosAuto = Math.round(supUtil * 1200);
 
-    return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto };
+    return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto, contribucionesAuto, gastosAuto };
   }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio, UF_CLP]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -746,11 +748,14 @@ export default function NuevoAnalisisPage() {
                     <FieldLabel htmlFor="gastos" tip={FIELD_TIPS.gastos}>Gastos comunes /mes</FieldLabel>
                     <CurrencyMiniToggle field="gastos" value={fieldCurrency.gastos} onChange={toggleFieldCurrency} />
                   </div>
-                  <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : "80000"} value={form.gastos} onChange={handleChange} required />
-                  {suggestions?.gastos && !form.gastos && (
+                  <Input id="gastos" type="number" placeholder={suggestions?.gastos ? String(suggestions.gastos) : calc.gastosAuto > 0 ? String(calc.gastosAuto) : "80000"} value={form.gastos} onChange={handleChange} required />
+                  {!form.gastos && (
                     <AISuggestion>
-                      <span className="font-semibold">Sugerido por IA:</span>{" "}
-                      {fmt(suggestions.gastos)}/mes · Datos de {form.comuna} completa. Puedes modificarlo.
+                      {suggestions?.gastos ? (
+                        <><span className="font-semibold">Sugerido por IA:</span> {fmt(suggestions.gastos)}/mes · Datos de {form.comuna} completa. Puedes modificarlo.</>
+                      ) : calc.gastosAuto > 0 ? (
+                        <>Auto: {fmt(calc.gastosAuto)}/mes basado en superficie. Si lo dejas vacío se usa este valor.</>
+                      ) : null}
                     </AISuggestion>
                   )}
                 </div>
@@ -759,11 +764,14 @@ export default function NuevoAnalisisPage() {
                     <FieldLabel htmlFor="contribuciones" tip={FIELD_TIPS.contribuciones}>Contribuciones /trim</FieldLabel>
                     <CurrencyMiniToggle field="contribuciones" value={fieldCurrency.contribuciones} onChange={toggleFieldCurrency} />
                   </div>
-                  <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : "150000"} value={form.contribuciones} onChange={handleChange} required />
-                  {suggestions?.contribuciones && suggestions.contribuciones > 0 && !form.contribuciones && (
+                  <Input id="contribuciones" type="number" placeholder={suggestions?.contribuciones ? String(suggestions.contribuciones) : calc.contribucionesAuto > 0 ? String(calc.contribucionesAuto) : "150000"} value={form.contribuciones} onChange={handleChange} required />
+                  {!form.contribuciones && (
                     <AISuggestion>
-                      <span className="font-semibold">Sugerido por IA:</span>{" "}
-                      {fmt(suggestions.contribuciones)}/trimestre · Estimado en base a avalúo fiscal (~65% del precio). Verifica en sii.cl con el rol de la propiedad.
+                      {suggestions?.contribuciones && suggestions.contribuciones > 0 ? (
+                        <><span className="font-semibold">Sugerido por IA:</span> {fmt(suggestions.contribuciones)}/trimestre · Estimado en base a avalúo fiscal (~65% del precio). Verifica en sii.cl con el rol de la propiedad.</>
+                      ) : calc.contribucionesAuto > 0 ? (
+                        <>Estimado: {fmt(calc.contribucionesAuto)}/trim. Verifica en sii.cl con el rol de la propiedad.</>
+                      ) : null}
                     </AISuggestion>
                   )}
                 </div>
@@ -775,8 +783,7 @@ export default function NuevoAnalisisPage() {
                   <Input id="provisionMantencion" type="number" placeholder={String(calc.provisionAuto)} value={form.provisionMantencion} onChange={handleChange} />
                   {!form.provisionMantencion && calc.provisionAuto > 0 && (
                     <AISuggestion>
-                      <span className="font-semibold">Sugerido por IA:</span>{" "}
-                      {fmt(calc.provisionAuto)}/mes · Regla del 1% anual del valor. Puedes modificarlo.
+                      Auto: {fmt(calc.provisionAuto)}/mes (1% anual del valor). Si lo dejas vacío se usa este valor.
                     </AISuggestion>
                   )}
                 </div>
