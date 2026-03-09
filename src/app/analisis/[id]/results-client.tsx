@@ -1682,7 +1682,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(e: unknown) => { const ev = e as { activePayload?: { payload: CashflowRow }[] } | null; console.log("FLUJO CHART CLICK", ev); if (ev?.activePayload?.[0]?.payload) { setSelectedCashflow(ev.activePayload[0].payload); } }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1712,12 +1712,12 @@ export function PremiumResults({
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
-                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
-                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
-                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
-                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
-                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" />
+                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
+                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
+                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
+                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
                         <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
@@ -1789,7 +1789,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(e: unknown) => { const ev = e as { activePayload?: { payload: PatrimonioRow }[] } | null; console.log("PATRIMONIO CHART CLICK", ev); if (ev?.activePayload?.[0]?.payload) { setSelectedPatrimonio(ev.activePayload[0].payload); } }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1829,10 +1829,10 @@ export function PremiumResults({
                             {/* Área roja: deuda */}
                             <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
-                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
-                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
+                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
                             {/* Plusvalía: azul */}
-                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
+                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} />
                             {/* Línea: deuda roja */}
                             <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
                             {/* Línea principal: patrimonio neto naranja */}
