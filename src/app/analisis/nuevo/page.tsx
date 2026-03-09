@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { Building2, ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles } from "lucide-react";
+import { Building2, ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Link2, Upload, CheckCircle2, AlertCircle } from "lucide-react";
 import { COMUNAS } from "@/lib/comunas";
 
 const UF_CLP_FALLBACK = 38800;
@@ -209,14 +209,28 @@ function MoneyInput({
   );
 }
 
-function AISuggestion({ children }: { children: React.ReactNode }) {
+function AISuggestion({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="mt-1.5 flex w-full items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left transition-colors hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60"
+      >
+        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />
+        <span className="text-xs text-emerald-700 dark:text-emerald-400">{children} <span className="font-medium underline">Usar</span></span>
+      </button>
+    );
+  }
   return (
-    <div className="flex items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
+    <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
       <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />
       <span className="text-xs text-emerald-700 dark:text-emerald-400">{children}</span>
     </div>
   );
 }
+
+const LS_KEY = "invertiscore_form_draft";
 
 // ─── Main Form ───────────────────────────────────────
 
@@ -226,6 +240,10 @@ export default function NuevoAnalisisPage() {
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
   const [showNombre, setShowNombre] = useState(false);
+  const [showLinkInput, setShowLinkInput] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
+  const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const formInitialized = useRef(false);
 
   // Fetch real UF value + tasa hipotecaria on mount
   const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
@@ -293,6 +311,67 @@ export default function NuevoAnalisisPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }, []);
 
+  // ─── localStorage persistence ──────────────────────
+  // Restore draft on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft && typeof draft === "object" && draft.comuna) {
+          setShowDraftBanner(true);
+          // Don't auto-restore — wait for user click
+        }
+      }
+    } catch { /* ignore */ }
+    formInitialized.current = true;
+  }, []);
+
+  // Save draft on every change (debounced)
+  useEffect(() => {
+    if (!formInitialized.current) return;
+    // Only save if there's meaningful data
+    if (!form.comuna && !form.precio && !form.arriendo) return;
+    const timeout = setTimeout(() => {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(form));
+      } catch { /* ignore */ }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [form]);
+
+  const restoreDraft = useCallback(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) {
+        const draft = JSON.parse(saved);
+        setForm((prev) => ({ ...prev, ...draft }));
+        if (draft.comuna) setComunaSearch("");
+      }
+    } catch { /* ignore */ }
+    setShowDraftBanner(false);
+  }, []);
+
+  const discardDraft = useCallback(() => {
+    localStorage.removeItem(LS_KEY);
+    setShowDraftBanner(false);
+  }, []);
+
+  // ─── Progress bar ─────────────────────────────────
+  const progress = useMemo(() => {
+    const checks = [
+      { label: "Comuna", done: !!form.comuna },
+      { label: "Superficie", done: !!form.superficieUtil && parseNum(form.superficieUtil) > 0 },
+      { label: "Precio", done: !!form.precio && parseNum(form.precio) > 0 },
+      { label: "Arriendo", done: !!form.arriendo && parseNum(form.arriendo) > 0 },
+    ];
+    const done = checks.filter((c) => c.done).length;
+    const missing = checks.filter((c) => !c.done).map((c) => c.label);
+    return { checks, done, total: checks.length, pct: Math.round((done / checks.length) * 100), missing };
+  }, [form.comuna, form.superficieUtil, form.precio, form.arriendo]);
+
+  const canSubmit = progress.done === progress.total;
+
   // ─── Comuna search ─────────────────────────────────
   const [comunaSearch, setComunaSearch] = useState("");
   const [comunaOpen, setComunaOpen] = useState(false);
@@ -355,6 +434,19 @@ export default function NuevoAnalisisPage() {
       source: "estimate" as const, publicaciones: 0,
     };
   }, [form.comuna, form.superficieUtil, form.precio, marketData, UF_CLP, fieldCurrency.precio]);
+
+  // ─── Auto-fill all from suggestions ────────────────
+  const autoFillAll = useCallback(() => {
+    if (!suggestions) return;
+    setForm((prev) => {
+      const updates: Record<string, string | boolean> = {};
+      if (!prev.arriendo && suggestions.arriendo) updates.arriendo = String(suggestions.arriendo);
+      if (!prev.gastos && suggestions.gastos) updates.gastos = String(suggestions.gastos);
+      if (!prev.contribuciones && suggestions.contribuciones) updates.contribuciones = String(suggestions.contribuciones);
+      if (!prev.precio && suggestions.precioSugeridoUF > 0) updates.precio = String(suggestions.precioSugeridoUF);
+      return { ...prev, ...updates };
+    });
+  }, [suggestions]);
 
   // ─── Real-time calculations ────────────────────────
   const toCLP = useCallback((field: string, value: number) => {
@@ -477,6 +569,7 @@ export default function NuevoAnalisisPage() {
       }
 
       const data = await res.json();
+      localStorage.removeItem(LS_KEY);
       router.push(`/analisis/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado");
@@ -508,6 +601,82 @@ export default function NuevoAnalisisPage() {
             Ingresa los datos de la propiedad · UF hoy: {fmtCLP(UF_CLP)}
           </p>
         </div>
+
+        {/* Draft banner */}
+        {showDraftBanner && (
+          <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <span className="text-sm text-amber-800">Tienes un análisis sin terminar</span>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={restoreDraft} className="rounded-md bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700">
+                Recuperar
+              </button>
+              <button type="button" onClick={discardDraft} className="rounded-md border border-amber-300 px-3 py-1 text-xs text-amber-700 hover:bg-amber-100">
+                Descartar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Progress bar */}
+        <div className="mb-4">
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">
+              {progress.pct === 100 ? "Listo para analizar" : `Faltan: ${progress.missing.join(", ")}`}
+            </span>
+            <span className="text-xs font-medium text-muted-foreground">{progress.done}/{progress.total}</span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-500"
+              style={{ width: `${progress.pct}%` }}
+            />
+          </div>
+        </div>
+
+        {/* Link paste / file upload stubs */}
+        <div className="mb-4 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowLinkInput(!showLinkInput)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+          >
+            <Link2 className="h-4 w-4" /> Pegar link publicación
+          </button>
+          <button
+            type="button"
+            onClick={() => alert("Próximamente: sube una cotización en PDF y la extraemos automáticamente.")}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/50"
+          >
+            <Upload className="h-4 w-4" /> Subir cotización
+          </button>
+        </div>
+
+        {showLinkInput && (
+          <div className="mb-4 rounded-xl border border-border bg-card p-4 space-y-3">
+            <p className="text-sm font-medium">Analiza una publicación</p>
+            <p className="text-xs text-muted-foreground">Pega el link y extraemos los datos automáticamente (próximamente)</p>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://..."
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                disabled
+                className="shrink-0"
+              >
+                Extraer
+              </Button>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -687,6 +856,18 @@ export default function NuevoAnalisisPage() {
             </div>
           </SectionCard>
 
+          {/* Auto-fill button */}
+          {suggestions && form.comuna && form.superficieUtil && (!form.precio || !form.arriendo || !form.gastos || !form.contribuciones) && (
+            <button
+              type="button"
+              onClick={autoFillAll}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+            >
+              <Sparkles className="h-4 w-4" />
+              Auto-rellenar con datos de {form.comuna}
+            </button>
+          )}
+
           {/* ══════ SECCIÓN 3: ¿Cuánto cuesta? ══════ */}
           <SectionCard title="¿Cuánto cuesta?">
             <div>
@@ -707,7 +888,10 @@ export default function NuevoAnalisisPage() {
                 </p>
               )}
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
-                <AISuggestion>
+                <AISuggestion onClick={() => {
+                  setFieldCurrency((prev) => ({ ...prev, precio: "UF" }));
+                  setField("precio", String(suggestions.precioSugeridoUF));
+                }}>
                   Ref. zona: {fmtUF(suggestions.precioM2Venta)}/m² → {fmtUF(suggestions.precioSugeridoUF)} para {form.superficieUtil} m²
                 </AISuggestion>
               )}
@@ -840,7 +1024,10 @@ export default function NuevoAnalisisPage() {
                 required
               />
               {suggestions?.arriendo && !form.arriendo && (
-                <AISuggestion>
+                <AISuggestion onClick={() => {
+                  setFieldCurrency((prev) => ({ ...prev, arriendo: "CLP" }));
+                  setField("arriendo", String(suggestions.arriendo));
+                }}>
                   Ref. zona: {fmtCLP(suggestions.arriendo)}/mes
                   {suggestions.publicaciones > 0 && <> · {suggestions.publicaciones} publicaciones</>}
                 </AISuggestion>
@@ -859,7 +1046,10 @@ export default function NuevoAnalisisPage() {
                   onCurrencyToggle={() => toggleFieldCurrency("gastos")}
                 />
                 {!form.gastos && suggestions?.gastos && (
-                  <AISuggestion>Ref: {fmtCLP(suggestions.gastos)}/mes</AISuggestion>
+                  <AISuggestion onClick={() => {
+                    setFieldCurrency((prev) => ({ ...prev, gastos: "CLP" }));
+                    setField("gastos", String(suggestions.gastos));
+                  }}>Ref: {fmtCLP(suggestions.gastos)}/mes</AISuggestion>
                 )}
               </div>
               <div>
@@ -873,7 +1063,10 @@ export default function NuevoAnalisisPage() {
                   onCurrencyToggle={() => toggleFieldCurrency("contribuciones")}
                 />
                 {!form.contribuciones && suggestions?.contribuciones && (
-                  <AISuggestion>Est: {fmtCLP(suggestions.contribuciones)}/trim</AISuggestion>
+                  <AISuggestion onClick={() => {
+                    setFieldCurrency((prev) => ({ ...prev, contribuciones: "CLP" }));
+                    setField("contribuciones", String(suggestions.contribuciones));
+                  }}>Est: {fmtCLP(suggestions.contribuciones)}/trim</AISuggestion>
                 )}
               </div>
             </div>
@@ -923,11 +1116,18 @@ export default function NuevoAnalisisPage() {
 
           {/* Desktop submit */}
           <div className="hidden sm:block">
-            <Button className="w-full gap-2" size="lg" type="submit" disabled={loading}>
+            <Button
+              className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse" : ""}`}
+              size="lg"
+              type="submit"
+              disabled={loading || !canSubmit}
+            >
               {loading ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Generando InvertiScore...</>
+              ) : canSubmit ? (
+                <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
               ) : (
-                "Generar InvertiScore"
+                `Completa: ${progress.missing.join(", ")}`
               )}
             </Button>
           </div>
@@ -936,11 +1136,19 @@ export default function NuevoAnalisisPage() {
 
       {/* Mobile sticky submit */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-border bg-background p-4 sm:hidden">
-        <Button className="w-full gap-2" size="lg" type="submit" disabled={loading} onClick={handleSubmit}>
+        <Button
+          className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse" : ""}`}
+          size="lg"
+          type="submit"
+          disabled={loading || !canSubmit}
+          onClick={handleSubmit}
+        >
           {loading ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Generando...</>
+          ) : canSubmit ? (
+            <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
           ) : (
-            "Generar InvertiScore"
+            `Faltan: ${progress.missing.join(", ")}`
           )}
         </Button>
       </div>
