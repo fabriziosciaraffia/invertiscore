@@ -77,15 +77,42 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
   return fmtM(n);
 }
 
-// Convert CLP amounts embedded in text to the selected currency
+// Convert CLP amounts embedded in AI text to UF when toggle is active
+// Handles: $377.936, $4.5 millones, $1.5M, $350K, -$219.000
+// Does NOT touch values already in UF (e.g. "UF 3.200")
 function convertTextCurrency(text: string, currency: "CLP" | "UF"): string {
   if (currency === "CLP") return text;
-  return text.replace(/-?\$[\d.]+/g, (match) => {
+  return text.replace(/-?\$[\d.,]+\s*(?:millones|M|K)?/g, (match) => {
     const isNeg = match.startsWith("-");
-    const numStr = match.replace("-", "").replace("$", "").replace(/\./g, "");
-    const num = parseInt(numStr, 10);
-    if (isNaN(num) || num === 0) return match;
-    return (isNeg ? "-" : "") + fmtUF(num / UF_CLP);
+    const clean = match.replace(/^-/, "").replace("$", "").trim();
+
+    let valueCLP = 0;
+
+    if (/millones$/i.test(clean)) {
+      // "$4.5 millones" or "$29.3 millones"
+      const numPart = clean.replace(/\s*millones$/i, "").replace(/\./g, "").replace(",", ".");
+      valueCLP = parseFloat(numPart) * 1_000_000;
+    } else if (/M$/i.test(clean)) {
+      // "$1.5M"
+      const numPart = clean.replace(/M$/i, "").replace(/\./g, "").replace(",", ".");
+      valueCLP = parseFloat(numPart) * 1_000_000;
+    } else if (/K$/i.test(clean)) {
+      // "$350K"
+      const numPart = clean.replace(/K$/i, "").replace(/\./g, "").replace(",", ".");
+      valueCLP = parseFloat(numPart) * 1_000;
+    } else {
+      // "$377.936" — Chilean format uses dots as thousands separator
+      const numStr = clean.replace(/\./g, "").replace(",", ".");
+      valueCLP = parseFloat(numStr);
+    }
+
+    if (isNaN(valueCLP) || valueCLP === 0) return match;
+
+    const uf = Math.round((valueCLP / UF_CLP) * 10) / 10;
+    const prefix = isNeg ? "-" : "";
+    if (uf >= 1000) return prefix + "UF " + Math.round(uf).toLocaleString("es-CL");
+    if (uf >= 10) return prefix + "UF " + Math.round(uf).toLocaleString("es-CL");
+    return prefix + "UF " + uf.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   });
 }
 
@@ -1450,7 +1477,7 @@ export function PremiumResults({
                   <ul className="space-y-2">
                     {aiAnalysis.riesgos.items.map((r, i) => (
                       <li key={i} className="text-sm leading-relaxed text-muted-foreground">
-                        <span className="mr-1 font-medium text-red-400">⚠</span> {cText(r)}
+                        <span className="mr-1 font-medium text-red-400">⚠</span> {cText(r.replace(/^[\s]*[•*⚠\-]\s*/, ""))}
                       </li>
                     ))}
                   </ul>
@@ -1478,7 +1505,7 @@ export function PremiumResults({
                       <CheckCircle2 className="h-4 w-4" /> A favor
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {cText(p)}</li>)}
+                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {cText(p.replace(/^[\s]*[•*\-]\s*/,  ""))}</li>)}
                     </ul>
                   </div>
                   <div>
@@ -1486,7 +1513,7 @@ export function PremiumResults({
                       <AlertTriangle className="h-4 w-4" /> Atención
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {cText(c)}</li>)}
+                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {cText(c.replace(/^[\s]*[•*\-]\s*/,  ""))}</li>)}
                     </ul>
                   </div>
                 </div>

@@ -182,6 +182,21 @@ Responde SOLO con un JSON válido con esta estructura:
   "puntosAtencion": ["Punto negativo 1", "Punto negativo 2", "Punto negativo 3 si hay"]
 }
 
+REGLA ABSOLUTA DE NEGOCIACIÓN: NUNCA sugieras un precio con más de 12% de descuento sobre el precio publicado. En el mercado chileno, descuentos mayores son irreales y el usuario pierde credibilidad.
+
+Si el precio para flujo neutro requiere más de 15% de descuento:
+- NO sugieras ese precio como objetivo de compra
+- Sé honesto: "A este precio, no existe un descuento razonable que genere flujo positivo. Esta inversión depende 100% de la plusvalía futura."
+- Si aún así crees que vale la pena por plusvalía, sugiere negociar máximo 8-10% de descuento y explica que el flujo negativo se mantiene pero es manejable
+- Precio sugerido = precio actual × 0.90 (10% descuento) como MÁXIMO
+
+Si el precio para flujo neutro requiere menos de 15% de descuento:
+- Sugiere un precio con 8-10% de descuento como punto de partida
+- Explica cuánto mejora el flujo con ese descuento
+
+Ejemplo correcto para un depto de UF 3.200 donde flujo neutro es UF 1.215:
+"El precio para flujo neutro (UF 1.215) está muy lejos del precio actual. No es realista pedir ese descuento. Esta inversión funciona solo por plusvalía. Si decides comprar, ofrece UF 2.880 (10% menos) como punto de partida. Con ese precio tu flujo negativo bajaría de $378K a $340K mensuales aproximadamente."
+
 REGLAS:
 - Todos los montos en CLP a menos que se indique UF
 - No uses jerga sin explicar entre paréntesis
