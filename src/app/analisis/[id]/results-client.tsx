@@ -481,10 +481,6 @@ export function PremiumResults({
   const [isTouchDevice, setIsTouchDevice] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedWaterfall, setSelectedWaterfall] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedCashflow, setSelectedCashflow] = useState<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selectedPatrimonio, setSelectedPatrimonio] = useState<any>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
@@ -1434,7 +1430,7 @@ export function PremiumResults({
                     }}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("WATERFALL BAR CLICK", index, waterfallData[index]); setSelectedWaterfall(waterfallData[index] || null); }}>
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { setSelectedWaterfall(waterfallData[index] || null); }}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
@@ -1448,8 +1444,7 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedWaterfall={String(!!selectedWaterfall)}</p>
-            {/* TODO: restore isTouchDevice guard */ selectedWaterfall && (
+            {isTouchDevice && selectedWaterfall && (
               <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="font-semibold">{selectedWaterfall.isResult ? `→ ${selectedWaterfall.name}` : selectedWaterfall.name}</span>
@@ -1682,7 +1677,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(e: unknown) => { const ev = e as { activePayload?: { payload: CashflowRow }[] } | null; console.log("FLUJO CHART CLICK", ev); if (ev?.activePayload?.[0]?.payload) { setSelectedCashflow(ev.activePayload[0].payload); } }}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1690,7 +1685,7 @@ export function PremiumResults({
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
-                          content={isTouchDevice ? () => null : ({ active, payload }) => {
+                          content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
@@ -1752,24 +1747,7 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
-                  <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedCashflow={String(!!selectedCashflow)}</p>
-                  {/* TODO: restore isTouchDevice guard */ selectedCashflow && (
-                    <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
-                      <div className="mb-1.5 flex items-center justify-between">
-                        <span className="font-semibold">{selectedCashflow.name}</span>
-                        <button type="button" onClick={() => setSelectedCashflow(null)} className="text-muted-foreground text-lg leading-none">✕</button>
-                      </div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(selectedCashflow.Ingreso)}</span></div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(selectedCashflow.Dividendo)}</span></div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia: <span className="font-medium text-red-400">{fmt(selectedCashflow.GGCC)}</span></div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(selectedCashflow.Contribuciones)}</span></div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención: <span className="font-medium text-red-400">{fmt(selectedCashflow.Mantencion)}</span></div>
-                      <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(selectedCashflow.Vacancia)}</span></div>
-                      <div className="my-1 border-t border-border/50" />
-                      <div className={`font-bold ${selectedCashflow.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(selectedCashflow.FlujoNeto)}</div>
-                      <div className="text-blue-400">Acumulado: {fmt(selectedCashflow.Acumulado)}</div>
-                    </div>
-                  )}
+                  {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                 </div>
 
                 <hr className="border-border/30" />
@@ -1789,7 +1767,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(e: unknown) => { const ev = e as { activePayload?: { payload: PatrimonioRow }[] } | null; console.log("PATRIMONIO CHART CLICK", ev); if (ev?.activePayload?.[0]?.payload) { setSelectedPatrimonio(ev.activePayload[0].payload); } }}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1797,7 +1775,7 @@ export function PremiumResults({
                             <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
-                              content={isTouchDevice ? () => null : ({ active, payload }) => {
+                              content={({ active, payload }) => {
                                 if (!active || !payload || payload.length === 0) return null;
                                 const row = payload[0]?.payload as PatrimonioRow | undefined;
                                 if (!row) return null;
@@ -1844,33 +1822,7 @@ export function PremiumResults({
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
-                      <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedPatrimonio={String(!!selectedPatrimonio)}</p>
-                      {/* TODO: restore isTouchDevice guard */ selectedPatrimonio && (() => {
-                        const pre = selectedPatrimonio.isPreEntrega;
-                        return (
-                          <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
-                            <div className="mb-1.5 flex items-center justify-between">
-                              <span className="font-semibold">{selectedPatrimonio.name}{pre ? " (pre-entrega)" : ""}</span>
-                              <button type="button" onClick={() => setSelectedPatrimonio(null)} className="text-muted-foreground text-lg leading-none">✕</button>
-                            </div>
-                            {pre ? (
-                              <>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(selectedPatrimonio.piePagado)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium">{fmt(selectedPatrimonio.plusvalia)}</span></div>
-                                <div className="text-muted-foreground">Deuda: $0 (crédito aún no comienza)</div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium">{fmt(selectedPatrimonio.valorPropiedad)}</span></div>
-                                <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(selectedPatrimonio.saldoCredito ?? 0)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(selectedPatrimonio.piePagado + selectedPatrimonio.capitalAmortizado)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium">{fmt(selectedPatrimonio.plusvalia)}</span></div>
-                              </>
-                            )}
-                            <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#f59e0b" }}>Patrimonio neto: {fmt(selectedPatrimonio.patrimonioNeto)}</div>
-                          </div>
-                        );
-                      })()}
+                      {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
