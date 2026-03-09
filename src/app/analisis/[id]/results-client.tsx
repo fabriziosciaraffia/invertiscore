@@ -623,7 +623,7 @@ export function PremiumResults({
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let valorPropiedad = precioCLP;
-    let flujoAcumulado = inputData.estadoVenta === "inmediata" ? -m.pieCLP : 0;
+    let flujoAcumulado = 0;
     const plusvaliaDec = plusvaliaRate / 100;
 
     const calcSaldo = (mesActual: number) => {
@@ -652,7 +652,7 @@ export function PremiumResults({
       let flujoAnual = 0;
       for (let mo = mesInicio; mo <= mesFin; mo++) {
         if (mo <= mesesPreEntrega) {
-          flujoAnual -= montoCuotaPie;
+          // Pre-entrega: sin flujo operativo (cuotas pie son inversión de capital, no flujo)
         } else {
           flujoAnual += flujoMes.flujoNeto;
         }
@@ -1837,8 +1837,10 @@ export function PremiumResults({
                         const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
                         const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
                         const flujoAcum = lastProj.flujoAcumulado;
-                        const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado + flujoAcum;
+                        const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
+                        const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
                         return (
+                          <>
                           <div className="mt-4 rounded-lg border border-border/50 bg-secondary/30">
                             {/* Mobile: stacked list */}
                             <div className="space-y-0 divide-y divide-border/30 sm:hidden">
@@ -1846,7 +1848,6 @@ export function PremiumResults({
                                 { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
                                 { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-emerald-400" },
                                 { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-emerald-400" },
-                                { label: "Flujo acumulado", value: fmt(flujoAcum), color: flujoAcum >= 0 ? "text-emerald-400" : "text-red-400" },
                                 { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-primary", bold: true },
                               ].map(({ label, value, color, bold }) => (
                                 <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
@@ -1870,18 +1871,31 @@ export function PremiumResults({
                                   <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
                                   <td className="py-2 px-4 text-right font-medium text-emerald-400">{fmt(capitalAmortizado)}</td>
                                 </tr>
-                                <tr className="border-b border-border/30">
-                                  <td className="py-2 px-4 text-muted-foreground">Flujo acumulado (ganancia/aporte de bolsillo)</td>
-                                  <td className={`py-2 px-4 text-right font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</td>
-                                </tr>
                                 <tr className="border-t border-border/50">
                                   <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
                                   <td className="py-2 px-4 text-right font-bold text-primary">{fmt(patrimonioTotal)}</td>
                                 </tr>
                               </tbody>
                             </table>
-                            <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= pie + plusvalía + amortización + flujo</p>
+                            <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= valor propiedad − deuda restante</p>
                           </div>
+                          {/* Lo que pusiste de tu bolsillo */}
+                          <div className="mt-3 rounded-lg border border-border/50 bg-secondary/20">
+                            <div className="px-3 py-2 sm:px-4">
+                              <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                                <span className={`font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
+                              </div>
+                              <div className="mt-1.5 border-t border-border/30 pt-1.5">
+                                <p className="text-[11px] text-muted-foreground">
+                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(gananciaReal)}</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          </>
+
                         );
                       })()}
                     </div>
