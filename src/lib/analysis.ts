@@ -715,10 +715,19 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
     pros.push("Zona con alta demanda de arriendo. Menos riesgo de vacancia y mejor potencial de plusvalía.");
   if (metrics.precioM2 < 50)
     pros.push(`A ${metrics.precioM2.toFixed(1)} UF/m², el precio por metro cuadrado está bajo el promedio. Hay margen para que suba de valor.`);
-  if (input.bodega)
+  const inputAny = input as unknown as Record<string, unknown>;
+  const nBodegas = inputAny.cantidadBodegas as number | undefined;
+  const nEstacs = inputAny.cantidadEstacionamientos as number | undefined;
+  if (nBodegas && nBodegas > 0) {
+    pros.push(`Incluye ${nBodegas} bodega${nBodegas > 1 ? "s" : ""}, lo que permite cobrar más arriendo y hace la propiedad más atractiva para familias.`);
+  } else if (input.bodega) {
     pros.push("Incluye bodega, lo que permite cobrar más arriendo y hace la propiedad más atractiva para familias.");
-  if (input.estacionamiento === "si")
+  }
+  if (nEstacs && nEstacs > 0) {
+    pros.push(`Incluye ${nEstacs} estacionamiento${nEstacs > 1 ? "s" : ""}, un plus que facilita arrendar y permite cobrar un adicional mensual.`);
+  } else if (input.estacionamiento === "si") {
     pros.push("Incluye estacionamiento, un plus que facilita arrendar y permite cobrar un adicional mensual.");
+  }
   if (input.estadoVenta !== "inmediata") {
     const mesesEspera = calcMesesHastaEntrega(input);
     if (mesesEspera > 0) {

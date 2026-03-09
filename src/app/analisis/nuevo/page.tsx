@@ -115,21 +115,6 @@ function ButtonGroup({
   );
 }
 
-function ToggleSwitch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className="flex items-center gap-2"
-    >
-      <div className={`relative h-5 w-9 rounded-full transition-colors ${checked ? "bg-primary" : "bg-border"}`}>
-        <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-4" : "translate-x-0.5"}`} />
-      </div>
-      <span className="text-sm">{label}</span>
-    </button>
-  );
-}
-
 /** Formatted numeric input — shows thousands separator, stores raw number */
 function MoneyInput({
   id, value, onChange, placeholder, currency, onCurrencyToggle, required, min,
@@ -288,8 +273,8 @@ export default function NuevoAnalisisPage() {
     superficieUtil: "",
     antiguedad: "3-5",
     piso: "4-8",
-    estacionamiento: true,
-    bodega: false,
+    estacionamiento: "0",
+    bodega: "0",
     estadoVenta: "inmediata",
     fechaEntregaMes: "",
     fechaEntregaAnio: "",
@@ -406,6 +391,10 @@ export default function NuevoAnalisisPage() {
     const supUtil = parseNum(form.superficieUtil) || 0;
     if (!form.comuna) return null;
 
+    const nEstac = Number(form.estacionamiento) || 0;
+    const nBodega = Number(form.bodega) || 0;
+    const extraArriendo = nEstac * 40000 + nBodega * 15000;
+
     const precioM2Venta = marketData?.precio_m2_venta_promedio ?? 0;
     const precioSugeridoUF = supUtil > 0 && precioM2Venta > 0 ? Math.round(precioM2Venta * supUtil) : 0;
 
@@ -417,21 +406,32 @@ export default function NuevoAnalisisPage() {
     const contribAnual = Math.round(avaluoFiscal * 0.011);
     const contribuciones = Math.round(contribAnual / 4);
 
+    const extraLabel = [
+      nEstac > 0 ? `${nEstac} estac.` : "",
+      nBodega > 0 ? `${nBodega} bod.` : "",
+    ].filter(Boolean).join(" + ");
+
     if (marketData && supUtil > 0) {
       return {
-        arriendo: marketData.arriendo_promedio,
+        arriendoBase: marketData.arriendo_promedio,
+        arriendo: marketData.arriendo_promedio + extraArriendo,
+        extraArriendo, extraLabel,
         gastos: Math.round(marketData.gastos_comunes_m2 * supUtil),
         contribuciones, precioSugeridoUF, precioM2Venta,
         source: marketData.source, publicaciones: marketData.numero_publicaciones,
       };
     }
     if (supUtil <= 0) return null;
+    const arriendoBase = Math.round(6000 * supUtil);
     return {
-      arriendo: Math.round(6000 * supUtil), gastos: Math.round(1100 * supUtil),
+      arriendoBase,
+      arriendo: arriendoBase + extraArriendo,
+      extraArriendo, extraLabel,
+      gastos: Math.round(1100 * supUtil),
       contribuciones, precioSugeridoUF: 0, precioM2Venta: 0,
       source: "estimate" as const, publicaciones: 0,
     };
-  }, [form.comuna, form.superficieUtil, form.precio, marketData, UF_CLP, fieldCurrency.precio]);
+  }, [form.comuna, form.superficieUtil, form.precio, form.estacionamiento, form.bodega, marketData, UF_CLP, fieldCurrency.precio]);
 
   // ─── Auto-fill all from suggestions ────────────────
   const autoFillAll = useCallback(() => {
@@ -480,7 +480,7 @@ export default function NuevoAnalisisPage() {
 
   // ─── Collapsible section summaries ─────────────────
   const seccion2Summary = form.superficieUtil
-    ? `${form.superficieUtil} m², ${form.dormitorios}D${form.banos}B, ${form.estacionamiento ? "con" : "sin"} estac.`
+    ? `${form.superficieUtil} m², ${form.dormitorios}D${form.banos}B, ${Number(form.estacionamiento)} estac., ${Number(form.bodega)} bod.`
     : "Sin completar";
   const seccion4Summary = `${form.plazoCredito} años, tasa ${form.tasaInteres}%`;
 
@@ -539,9 +539,11 @@ export default function NuevoAnalisisPage() {
           antiguedad,
           enConstruccion: form.estadoVenta !== "inmediata",
           piso: pisoToNumber(form.piso),
-          estacionamiento: form.estacionamiento ? "si" : "no",
+          estacionamiento: Number(form.estacionamiento) > 0 ? "si" : "no",
+          cantidadEstacionamientos: Number(form.estacionamiento),
           precioEstacionamiento: 0,
-          bodega: form.bodega,
+          bodega: Number(form.bodega) > 0,
+          cantidadBodegas: Number(form.bodega),
           estadoVenta: form.estadoVenta,
           fechaEntrega: form.estadoVenta !== "inmediata"
             ? `${form.fechaEntregaAnio}-${form.fechaEntregaMes}`
@@ -839,17 +841,29 @@ export default function NuevoAnalisisPage() {
               </div>
             </div>
 
-            <div className="flex gap-6">
-              <ToggleSwitch
-                checked={form.estacionamiento}
-                onChange={(v) => setField("estacionamiento", v)}
-                label="Estacionamiento"
-              />
-              <ToggleSwitch
-                checked={form.bodega}
-                onChange={(v) => setField("bodega", v)}
-                label="Bodega"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <FieldLabel tip={TIPS.estacionamiento}>Estacionamientos</FieldLabel>
+                <ButtonGroup
+                  options={[
+                    { value: "0", label: "0" }, { value: "1", label: "1" },
+                    { value: "2", label: "2" }, { value: "3", label: "3" },
+                  ]}
+                  value={form.estacionamiento}
+                  onChange={(v) => setField("estacionamiento", v)}
+                />
+              </div>
+              <div>
+                <FieldLabel tip={TIPS.bodega}>Bodegas</FieldLabel>
+                <ButtonGroup
+                  options={[
+                    { value: "0", label: "0" }, { value: "1", label: "1" },
+                    { value: "2", label: "2" },
+                  ]}
+                  value={form.bodega}
+                  onChange={(v) => setField("bodega", v)}
+                />
+              </div>
             </div>
           </SectionCard>
 
@@ -1041,7 +1055,8 @@ export default function NuevoAnalisisPage() {
                   setFieldCurrency((prev) => ({ ...prev, arriendo: "CLP" }));
                   setField("arriendo", String(suggestions.arriendo));
                 }}>
-                  Ref. zona: {fmtCLP(suggestions.arriendo)}/mes
+                  {fmtCLP(suggestions.arriendo)} sugerido/mes
+                  {suggestions.extraLabel && <> · incluye {suggestions.extraLabel}</>}
                   {suggestions.publicaciones > 0 && <> · {suggestions.publicaciones} publicaciones</>}
                 </AISuggestion>
               )}

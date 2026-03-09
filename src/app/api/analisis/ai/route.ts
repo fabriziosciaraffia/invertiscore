@@ -140,8 +140,8 @@ DATOS DE LA PROPIEDAD:
 - Gastos comunes: ${fmtCLP(input.gastos)}/mes (solo vacancia, lo paga arrendatario)
 - Contribuciones: ${fmtCLP(input.contribuciones)}/trimestre
 - Provisión mantención: ${fmtCLP(input.provisionMantencion)}/mes
-- Estacionamiento: ${input.estacionamiento === "si" ? "Sí" : "No"}
-- Bodega: ${input.bodega ? "Sí" : "No"}
+- Estacionamientos: ${(input as unknown as Record<string, unknown>).cantidadEstacionamientos ?? (input.estacionamiento === "si" ? 1 : 0)}
+- Bodegas: ${(input as unknown as Record<string, unknown>).cantidadBodegas ?? (input.bodega ? 1 : 0)}
 - Estado: ${input.estadoVenta}${fechaEntregaFmt ? " (entrega " + fechaEntregaFmt + ")" : ""}
 
 MÉTRICAS CALCULADAS:
