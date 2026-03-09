@@ -479,7 +479,7 @@ export function PremiumResults({
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabShown, setFabShown] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-  const [tooltipBlocked, setTooltipBlocked] = useState(false);
+  const [tooltipChart, setTooltipChart] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
@@ -1406,7 +1406,10 @@ export function PremiumResults({
 
           {/* ===== PREMIUM: g) Cascada de Costos Mensual ===== */}
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-            <div className="h-72">
+            <div className="relative h-72" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("waterfall"); }}>
+              {isTouchDevice && tooltipChart === "waterfall" && (
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
+              )}
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -1414,15 +1417,12 @@ export function PremiumResults({
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
                     content={({ active, payload, label: wfLabel }) => {
-                      if (tooltipBlocked) return null;
+                      if (isTouchDevice && tooltipChart !== "waterfall") return null;
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
                       return (
-                        <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
-                          {isTouchDevice && (
-                            <button type="button" onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setTooltipBlocked(true); setTimeout(() => setTooltipBlocked(false), 400); }} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
-                          )}
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                           <div className="mb-1 font-semibold">{item.isResult ? `→ ${item.name}` : item.name}</div>
                           <div className={item.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
@@ -1667,7 +1667,10 @@ export function PremiumResults({
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
-                  <div className="relative h-64">
+                  <div className="relative h-64" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("cashflow"); }}>
+                    {isTouchDevice && tooltipChart === "cashflow" && (
+                      <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
+                    )}
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
@@ -1678,15 +1681,12 @@ export function PremiumResults({
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
-                            if (tooltipBlocked) return null;
+                            if (isTouchDevice && tooltipChart !== "cashflow") return null;
                             if (!active || !payload || payload.length === 0) return null;
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
-                              <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
-                                {isTouchDevice && (
-                                  <button type="button" onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setTooltipBlocked(true); setTimeout(() => setTooltipBlocked(false), 400); }} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
-                                )}
+                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                 <div className="mb-1.5 font-semibold">{row.name}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
@@ -1761,7 +1761,10 @@ export function PremiumResults({
                         )}
                       </div>
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
-                      <div className="h-72">
+                      <div className="relative h-72" onTouchStart={() => { if (isTouchDevice && !tooltipChart) setTooltipChart("patrimonio"); }}>
+                        {isTouchDevice && tooltipChart === "patrimonio" && (
+                          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, zIndex: 100 }} onTouchStart={(e) => { e.stopPropagation(); setTooltipChart(null); }} />
+                        )}
                         <ResponsiveContainer>
                           <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
@@ -1772,16 +1775,13 @@ export function PremiumResults({
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
                               content={({ active, payload }) => {
-                                if (tooltipBlocked) return null;
+                                if (isTouchDevice && tooltipChart !== "patrimonio") return null;
                                 if (!active || !payload || payload.length === 0) return null;
                                 const row = payload[0]?.payload as PatrimonioRow | undefined;
                                 if (!row) return null;
                                 const pre = row.isPreEntrega;
                                 return (
-                                  <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
-                                    {isTouchDevice && (
-                                      <button type="button" onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); setTooltipBlocked(true); setTimeout(() => setTooltipBlocked(false), 400); }} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
-                                    )}
+                                  <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                     <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
