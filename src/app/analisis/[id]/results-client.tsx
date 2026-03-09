@@ -1416,9 +1416,11 @@ export function PremiumResults({
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
+                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Neto": "Flujo Neto" };
+                      const displayName = fullNames[item.name] || item.name;
                       return (
                         <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${item.name}` : item.name}</div>
+                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
                           <div className={item.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
                           </div>
@@ -1442,7 +1444,12 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Egreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af" }} />Resultado</span>
+            </div>
+            {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
             {m && (
               <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
@@ -1734,7 +1741,7 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
-                  {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+                  {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                 </div>
 
                 <hr className="border-border/30" />
@@ -1809,7 +1816,6 @@ export function PremiumResults({
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
-                      {isTouchDevice && <p className="mt-1 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
@@ -1819,6 +1825,7 @@ export function PremiumResults({
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#f59e0b", height: 3 }} />Patrimonio neto</span>
                       </div>
+                      {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                       {/* Desglose de patrimonio */}
                       {(() => {
                         const lastProj = dynamicProjections[horizonYears - 1];
