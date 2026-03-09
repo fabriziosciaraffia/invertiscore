@@ -108,7 +108,7 @@ export default async function AnalisisDetallePage({
             <div className={`mb-1 text-sm font-semibold ${clasificacion.color}`}>
               {clasificacion.text}
             </div>
-            <h1 className="text-xl font-bold sm:text-3xl">{analisis.nombre}</h1>
+            <h1 className="text-xl font-bold break-words sm:text-3xl">{analisis.nombre}</h1>
             <p className="text-muted-foreground">
               {analisis.comuna}, {analisis.ciudad} · {new Date(analisis.created_at).toLocaleDateString("es-CL")}
             </p>

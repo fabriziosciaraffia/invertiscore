@@ -143,9 +143,9 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         label: "ROI Total",
         values: analisis.map((a) => {
           const exit = a.results?.exitScenario;
-          return exit ? formatPct(exit.retornoTotal) : "—";
+          return exit ? `${exit.multiplicadorCapital.toFixed(2)}x` : "—";
         }),
-        raw: analisis.map((a) => a.results?.exitScenario?.retornoTotal ?? 0),
+        raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,
       },
       {
