@@ -77,15 +77,15 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
   return fmtM(n);
 }
 
-// Strip leading bullet characters from AI text (•, *, -, ⚠, ·)
-// Handles "* • text", "- text", "• text", "* · text" etc.
+// Strip leading bullet/symbol characters from AI text
+// Strips everything before the first letter/number
 function stripBullet(text: string): string {
-  return text.replace(/^[\s•*⚠·\-]+/g, "").replace(/price score/gi, "Eficiencia de compra").trim();
+  return text.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").replace(/price score/gi, "Eficiencia de compra").trim();
 }
 
 // Clean an array of bullet strings
 function cleanBullets(items: string[]): string[] {
-  return items.map(item => item.replace(/^[*•\-\s·]+/g, "").replace(/price score/gi, "Eficiencia de compra").trim());
+  return items.map(item => item.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").replace(/price score/gi, "Eficiencia de compra").trim());
 }
 
 // Get the right AI text field based on currency toggle, with legacy fallback
