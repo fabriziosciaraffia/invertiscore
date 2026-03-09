@@ -462,6 +462,7 @@ export function PremiumResults({
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
+  const [arriendoGrowth, setArriendoGrowth] = useState(3.5);
   const [refiPct, setRefiPct] = useState(80);
 
 
@@ -620,9 +621,8 @@ export function PremiumResults({
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let valorPropiedad = precioCLP;
-    let flujoAcumulado = 0; // v2: pie NO es flujo operativo
+    let flujoAcumulado = 0;
     const plusvaliaDec = plusvaliaRate / 100;
-    console.log("[InvertiScore v2] dynamicProjections: flujoAcumulado starts at 0, pie excluded");
 
     const calcSaldo = (mesActual: number) => {
       const tasaMensual = inputData.tasaInteres / 100 / 12;
@@ -669,12 +669,12 @@ export function PremiumResults({
         patrimonioNeto: Math.round(valorPropiedad - saldo),
       });
       if (mesFin > mesesPreEntrega) {
-        arriendoActual *= 1.035;
+        arriendoActual *= (1 + arriendoGrowth / 100);
         gastosActual *= 1.03;
       }
     }
     return projs;
-  }, [results, m, inputData, plusvaliaRate]);
+  }, [results, m, inputData, plusvaliaRate, arriendoGrowth]);
 
   // Dynamic exit scenario based on horizon
   const dynamicExit = useMemo(() => {
@@ -858,7 +858,7 @@ export function PremiumResults({
         } else {
           const mesOp = mes - mesesPreEntrega;
           if (mesOp > 1 && (mes - 1) % 12 === 0) {
-            arriendoActual *= 1.035;
+            arriendoActual *= (1 + arriendoGrowth / 100);
             gastosActual *= 1.03;
           }
           allData.push(buildRow(mes, arriendoActual, gastosActual, mesOp === 1));
@@ -867,7 +867,7 @@ export function PremiumResults({
     } else {
       for (let i = 1; i <= totalMonths; i++) {
         if (i > 1 && (i - 1) % 12 === 0) {
-          arriendoActual *= 1.035;
+          arriendoActual *= (1 + arriendoGrowth / 100);
           gastosActual *= 1.03;
         }
         allData.push(buildRow(i, arriendoActual, gastosActual, i === 1));
@@ -908,7 +908,7 @@ export function PremiumResults({
       });
     }
     return annualData;
-  }, [horizonYears, isMonthlyView, results, m, inputData]);
+  }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth]);
 
   interface PatrimonioRow {
     name: string;
@@ -1667,19 +1667,31 @@ export function PremiumResults({
                   <CardTitle>Flujo, Patrimonio y Salida</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">Ajusta el horizonte para ver cómo evoluciona tu inversión en el tiempo.</p>
-                <div className="mt-3 space-y-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">Horizonte:</span>
-                    <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="w-48 accent-primary" />
-                    <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
-                    <span className="text-xs text-muted-foreground">({isMonthlyView ? "vista mensual" : "vista anual"})</span>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Horizonte:</span>
+                      <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
+                    </div>
+                    <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground">Plusvalía anual:</span>
-                    <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="w-48 accent-primary" />
-                    <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Plusvalía anual:</span>
+                      <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
+                    </div>
+                    <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico: 3-5% anual</p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground">Promedio histórico Santiago: 3-5% anual. Comunas premium pueden superar 6%.</p>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Crecimiento arriendo:</span>
+                      <span className="text-sm font-medium">{arriendoGrowth.toFixed(1)}%/año</span>
+                    </div>
+                    <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-8">
@@ -1780,7 +1792,7 @@ export function PremiumResults({
                           </span>
                         )}
                       </div>
-                      <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
+                      <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +{arriendoGrowth.toFixed(1)}%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
                           <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
