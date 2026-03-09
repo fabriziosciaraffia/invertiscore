@@ -1712,12 +1712,12 @@ export function PremiumResults({
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("CASHFLOW BAR CLICK", index, cashflowData[index]); setSelectedCashflow(cashflowData[index] || null); }} />
-                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" />
-                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
-                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
-                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
-                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
+                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} onClick={(_d: unknown, i: number) => setSelectedCashflow(cashflowData[i] || null)} />
                         {/* Línea acumulado */}
                         <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
@@ -1829,10 +1829,10 @@ export function PremiumResults({
                             {/* Área roja: deuda */}
                             <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
-                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("PATRIMONIO BAR CLICK", index, projData[index]); setSelectedPatrimonio(projData[index] || null); }} />
-                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
+                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
                             {/* Plusvalía: azul */}
-                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} onClick={(_d: unknown, i: number) => setSelectedPatrimonio(projData[i] || null)} />
                             {/* Línea: deuda roja */}
                             <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
                             {/* Línea principal: patrimonio neto naranja */}
