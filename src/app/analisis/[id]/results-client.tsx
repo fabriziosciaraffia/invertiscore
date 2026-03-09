@@ -2088,24 +2088,23 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className={panelContent ? "lg:mr-[280px]" : ""}>
+    <div className={panelContent ? "lg:mr-[300px]" : ""}>
       {mainContent}
 
       {/* Desktop: fixed sidebar */}
       {panelContent && (
-        <aside
-          className="fixed top-20 right-5 z-30 hidden w-[260px] lg:block"
-          style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}
+        <div
+          className="scrollbar-hide fixed top-[80px] right-[20px] z-30 hidden w-[280px] overflow-y-auto lg:block"
+          style={{ maxHeight: "calc(100vh - 100px)" }}
         >
-          <style>{`aside::-webkit-scrollbar { display: none; }`}</style>
-          <div className="rounded-xl border-l-2 border-border bg-white p-5 shadow-sm">
+          <div className="rounded-xl border-l-2 border-border bg-white p-5 pb-8 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Ajusta los números</h3>
             </div>
             {panelContent}
           </div>
-        </aside>
+        </div>
       )}
 
       {/* Mobile: floating button + drawer */}
