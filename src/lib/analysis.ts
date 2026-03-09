@@ -185,20 +185,6 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const egresosMensuales = flujo.totalEgresos;
   const flujoNetoMensual = flujo.flujoNeto;
 
-  // LOG TEMPORAL: desglose completo del flujo mensual
-  console.log("=== DESGLOSE FLUJO MENSUAL ===");
-  console.log("Arriendo (ingreso):", flujo.arriendo);
-  console.log("Dividendo:", -flujo.dividendo);
-  console.log("GGCC vacancia:", -flujo.ggccVacancia);
-  console.log("Contribuciones/mes:", -flujo.contribucionesMes);
-  console.log("Mantención:", -flujo.mantencion);
-  console.log("Vacancia prorrata:", -flujo.vacanciaProrrata);
-  console.log("Corretaje prorrata:", -flujo.corretajeProrrata);
-  console.log("Recambio:", -flujo.recambio);
-  console.log("TOTAL EGRESOS:", flujo.totalEgresos);
-  console.log("FLUJO NETO:", flujo.flujoNeto);
-  console.log("==============================");
-
   // NOI = renta - gastos operacionales (sin dividendo)
   const noi = (flujo.arriendo - (flujo.totalEgresos - flujo.dividendo)) * 12;
 

@@ -514,7 +514,7 @@ export function PremiumResults({
     if (!m || !inputData) return freeFlujo;
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     return calcFlujoDesglose({
-      arriendo: m.ingresoMensual,
+      arriendo: inputData.arriendo,
       dividendo: m.dividendo,
       ggcc: inputData.gastos,
       contribuciones: inputData.contribuciones,
@@ -544,7 +544,7 @@ export function PremiumResults({
     const cuotasPie = inputData.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
     const montoCuotaPie = inputData.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
 
-    let arriendoActual = m.ingresoMensual;
+    let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let valorPropiedad = precioCLP;
     let flujoAcumulado = inputData.estadoVenta === "inmediata" ? -m.pieCLP : 0;
@@ -674,7 +674,7 @@ export function PremiumResults({
     if (!m || !inputData) return [];
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const wf = calcFlujoDesglose({
-      arriendo: m.ingresoMensual,
+      arriendo: inputData.arriendo,
       dividendo: m.dividendo,
       ggcc: inputData.gastos,
       contribuciones: inputData.contribuciones,
@@ -760,7 +760,7 @@ export function PremiumResults({
     allData.push({ name: "T0", _x: 0, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: 0 });
 
     let acumulado = 0;
-    let arriendoActual = m.ingresoMensual;
+    let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos ?? 0;
 
     function buildRow(mes: number, arriendoAct: number, gastosAct: number, esVacancia: boolean): CashflowRow {
