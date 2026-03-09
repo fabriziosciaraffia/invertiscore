@@ -48,13 +48,23 @@ const TIPS: Record<string, string> = {
   contribuciones: "Impuesto territorial trimestral. Consúltalo en sii.cl con el rol de la propiedad.",
   arriendo: "Cuánto esperas cobrar de arriendo mensual. Revisa arriendos similares en la zona.",
   tasaInteres: "Tasa real anual del crédito hipotecario. Simúlala en el sitio de tu banco.",
-  provisionMantencion: "Reserva mensual para reparaciones. Regla general: 1% del valor al año ÷ 12.",
+  provisionMantencion: "Reserva mensual para reparaciones. Varía según antigüedad: 0.3% (nuevo) a 1.5% (20+ años) del valor al año.",
   vacanciaMeses: "Meses al año sin arrendatario. 1 mes/año es el estándar.",
   antiguedad: "Años del inmueble. Más antiguo = más mantención, menos plusvalía.",
   estacionamiento: "Suma valor al arriendo (~$30.000-$50.000/mes extra) y a la plusvalía.",
   bodega: "Suma un pequeño valor al arriendo (~$10.000-$20.000/mes extra).",
   piso: "Pisos altos se arriendan más fácil y caro, y tienen mejor plusvalía.",
 };
+
+// ─── Tasa de mantención por antigüedad ──────────────
+function getMantencionRate(antiguedad: number): number {
+  if (antiguedad <= 2) return 0.003;
+  if (antiguedad <= 5) return 0.005;
+  if (antiguedad <= 10) return 0.008;
+  if (antiguedad <= 15) return 0.01;
+  if (antiguedad <= 20) return 0.013;
+  return 0.015;
+}
 
 // ─── Reusable components ─────────────────────────────
 
@@ -649,12 +659,14 @@ export default function NuevoAnalisisPage() {
     const pieCLP = pieUF * UF_CLP;
     const financiamientoPct = 100 - piePct;
     const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, UF_CLP);
-    const provisionAuto = Math.round((precioCLP * 0.01) / 12);
+    const antigNum = form.estadoVenta !== "inmediata" ? 0 : antiguedadToNumber(form.antiguedad);
+    const mantencionRate = getMantencionRate(antigNum);
+    const provisionAuto = Math.round((precioCLP * mantencionRate) / 12);
     const contribucionesAuto = Math.round(precioCLP * 0.65 * 0.011 / 4);
     const gastosAuto = Math.round(supUtil * 1200);
 
     return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto, contribucionesAuto, gastosAuto };
-  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, fieldCurrency.precio, UF_CLP]);
+  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, form.antiguedad, form.estadoVenta, fieldCurrency.precio, UF_CLP]);
 
   // ─── Collapsible section summaries ─────────────────
   const seccion2Summary = form.superficieUtil

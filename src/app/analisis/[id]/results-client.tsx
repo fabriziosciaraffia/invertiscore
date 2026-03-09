@@ -16,7 +16,7 @@ import {
   Wallet, Scale, Handshake, TrendingUp, AlertTriangle, CheckCircle2, X,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
-import { calcFlujoDesglose } from "@/lib/analysis";
+import { calcFlujoDesglose, getMantencionRate } from "@/lib/analysis";
 import { SEED_MARKET_DATA } from "@/lib/market-seed";
 import type { MarketDataRow } from "@/lib/market-data";
 
@@ -152,7 +152,7 @@ function recalcForSensitivity(
   const dividendo = creditoCLP <= 0 ? 0 : tasaMensual === 0 ? Math.round(creditoCLP / n) : Math.round((creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
 
   const ingresoMensual = modified.arriendo;
-  const mantencion = modified.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
+  const mantencion = modified.provisionMantencion || Math.round((precioCLP * getMantencionRate(modified.antiguedad)) / 12);
 
   const flujo = calcFlujoDesglose({
     arriendo: ingresoMensual,
@@ -589,7 +589,7 @@ export function PremiumResults({
   // Flujo unificado: SIEMPRE recalculado con calcFlujoDesglose (ignora valor guardado en DB)
   const flujoUnificado = useMemo(() => {
     if (!m || !inputData) return freeFlujo;
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
     return calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
@@ -614,7 +614,6 @@ export function PremiumResults({
     if (!results || !m || !inputData) return results?.projections ?? [];
     const precioCLP = inputData.precio * UF_CLP;
     const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
-    const mantencion = inputData.provisionMantencion || Math.round((precioCLP * 0.01) / 12);
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
       : 0;
@@ -636,6 +635,10 @@ export function PremiumResults({
     for (let anio = 1; anio <= 20; anio++) {
       const mesInicio = (anio - 1) * 12 + 1;
       const mesFin = anio * 12;
+
+      // Mantención crece con la antigüedad del depto
+      const antiguedadActual = inputData.antiguedad + anio;
+      const mantencion = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
 
       // Usar función centralizada
       const flujoMes = calcFlujoDesglose({
@@ -686,7 +689,7 @@ export function PremiumResults({
     const tasaMensual = inputData.tasaInteres / 100 / 12;
     const n = inputData.plazoCredito * 12;
     const nuevoDividendo = tasaMensual === 0 ? Math.round(nuevoCredito / n) : Math.round((nuevoCredito * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
     const refiF = calcFlujoDesglose({
       arriendo: proy.arriendoMensual,
       dividendo: nuevoDividendo,
@@ -722,7 +725,7 @@ export function PremiumResults({
 
   const waterfallData = useMemo(() => {
     if (!m || !inputData) return [];
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
     const wf = calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
@@ -798,8 +801,8 @@ export function PremiumResults({
   const cashflowData = useMemo((): CashflowRow[] => {
     if (!m || !results || !inputData) return [];
 
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
     const totalMonths = horizonYears * 12;
+    const precioCLPBase = inputData.provisionMantencion ? 0 : m.precioCLP;
 
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
@@ -813,13 +816,21 @@ export function PremiumResults({
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos ?? 0;
 
+    function getMantencionForMonth(mes: number): number {
+      if (inputData!.provisionMantencion) return inputData!.provisionMantencion;
+      const anioProyeccion = Math.ceil(mes / 12);
+      const antiguedadActual = inputData!.antiguedad + anioProyeccion;
+      return Math.round((precioCLPBase * getMantencionRate(antiguedadActual)) / 12);
+    }
+
     function buildRow(mes: number, arriendoAct: number, gastosAct: number, esVacancia: boolean): CashflowRow {
+      const mantencionMes = getMantencionForMonth(mes);
       const fd = calcFlujoDesglose({
         arriendo: arriendoAct,
         dividendo: m!.dividendo,
         ggcc: gastosAct,
         contribuciones: inputData!.contribuciones,
-        mantencion,
+        mantencion: mantencionMes,
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
       });
       const ingreso = esVacancia ? 0 : Math.round(arriendoAct);
@@ -1096,7 +1107,7 @@ export function PremiumResults({
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <BarChart3 className="h-4 w-4 text-primary" />
               <span>Flujo Mensual</span>
-              <InfoTooltip content="Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención." />
+              <InfoTooltip content={`Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención. Provisión mantención: ${inputData ? (getMantencionRate(inputData.antiguedad) * 100).toFixed(1) : "1.0"}% anual basado en antigüedad${inputData ? ` de ${inputData.antiguedad} años` : ""}. Aumenta con el tiempo.`} />
             </div>
             <div className={`mt-1 text-2xl font-bold ${flujoUnificado >= 0 ? "text-emerald-500" : "text-red-500"}`}>
               {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}

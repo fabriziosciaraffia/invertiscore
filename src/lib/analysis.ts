@@ -20,6 +20,15 @@ export function setUFValue(value: number) {
 export function getUFCLP(): number {
   return UF_CLP;
 }
+export function getMantencionRate(antiguedad: number): number {
+  if (antiguedad <= 2) return 0.003;
+  if (antiguedad <= 5) return 0.005;
+  if (antiguedad <= 10) return 0.008;
+  if (antiguedad <= 15) return 0.01;
+  if (antiguedad <= 20) return 0.013;
+  return 0.015;
+}
+
 const PLUSVALIA_ANUAL = 0.04;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
@@ -160,7 +169,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const precioCLP = precioTotal * UF_CLP;
 
   // Auto-calculate defaults for fields left at 0
-  if (!input.provisionMantencion) input.provisionMantencion = Math.round((precioCLP * 0.01) / 12);
+  if (!input.provisionMantencion) input.provisionMantencion = Math.round((precioCLP * getMantencionRate(input.antiguedad)) / 12);
   if (!input.contribuciones) input.contribuciones = Math.round((precioCLP * 0.0065 * 0.011) / 4 * 100) > 0 ? Math.round(precioCLP * 0.65 * 0.011 / 4) : 0;
   if (!input.gastos) input.gastos = Math.round(input.superficie * 1200);
 
@@ -337,13 +346,17 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     const mesInicio = (anio - 1) * 12 + 1;
     const mesFin = anio * 12;
 
+    // Mantención crece escalonadamente con la antigüedad del depto
+    const antiguedadActual = input.antiguedad + anio;
+    const mantencionAnual = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+
     // Usar función centralizada para costos recurrentes del mes
     const flujoMes = calcFlujoDesglose({
       arriendo: arriendoActual,
       dividendo: metrics.dividendo,
       ggcc: gastosActual,
       contribuciones: input.contribuciones,
-      mantencion: input.provisionMantencion,
+      mantencion: mantencionAnual,
       vacanciaMeses: input.vacanciaMeses,
     });
 
