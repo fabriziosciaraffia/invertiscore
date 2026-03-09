@@ -1449,7 +1449,7 @@ export function PremiumResults({
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Egreso</span>
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af" }} />Resultado</span>
             </div>
-            {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
             {m && (
               <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
@@ -1741,7 +1741,7 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
-                  {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                 </div>
 
                 <hr className="border-border/30" />
@@ -1825,7 +1825,7 @@ export function PremiumResults({
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#f59e0b", height: 3 }} />Patrimonio neto</span>
                       </div>
-                      {isTouchDevice && <p className="mt-2 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+                      {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                       {/* Desglose de patrimonio */}
                       {(() => {
                         const lastProj = dynamicProjections[horizonYears - 1];
