@@ -509,14 +509,28 @@ export function PremiumResults({
   const toggleCurrency = useCallback(() => setCurrency((c) => c === "CLP" ? "UF" : "CLP"), []);
   const cText = useCallback((t: string) => convertTextCurrency(t, currency), [currency]);
 
+  // Flujo unificado: SIEMPRE recalculado con calcFlujoDesglose (ignora valor guardado en DB)
+  const flujoUnificado = useMemo(() => {
+    if (!m || !inputData) return freeFlujo;
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * 0.01) / 12);
+    return calcFlujoDesglose({
+      arriendo: m.ingresoMensual,
+      dividendo: m.dividendo,
+      ggcc: inputData.gastos,
+      contribuciones: inputData.contribuciones,
+      mantencion,
+      vacanciaMeses: inputData.vacanciaMeses,
+    }).flujoNeto;
+  }, [m, inputData, freeFlujo]);
+
   const flujoText = useMemo(() => {
-    const f = freeFlujo;
+    const f = flujoUnificado;
     const abs = Math.abs(f);
     if (f >= 0) return "La propiedad se paga sola y genera ganancia";
     if (abs <= 100000) return "Aporte mensual moderado para el mercado";
     if (abs <= 300000) return "Aporte mensual significativo de tu bolsillo";
     return "Aporte mensual elevado — evalúa bien";
-  }, [freeFlujo]);
+  }, [flujoUnificado]);
 
   // Recalculate projections when plusvaliaRate changes
   const dynamicProjections = useMemo(() => {
@@ -986,8 +1000,8 @@ export function PremiumResults({
               <span>Flujo Mensual</span>
               <InfoTooltip content="Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención." />
             </div>
-            <div className={`mt-1 text-2xl font-bold ${freeFlujo >= 0 ? "text-emerald-500" : "text-red-500"}`}>
-              {freeFlujo >= 0 ? "+" : ""}{fmt(freeFlujo)}
+            <div className={`mt-1 text-2xl font-bold ${flujoUnificado >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+              {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{flujoText}</p>
           </CardContent>
@@ -1295,8 +1309,8 @@ export function PremiumResults({
               </ResponsiveContainer>
             </div>
             {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${m.flujoNetoMensual >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
-                Flujo neto mensual: {m.flujoNetoMensual >= 0 ? "+" : ""}{fmt(m.flujoNetoMensual)}
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
               </div>
             )}
           </SectionCard>
