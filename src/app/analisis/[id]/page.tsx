@@ -140,6 +140,7 @@ export default async function AnalisisDetallePage({
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufValue}
           zoneData={zoneData}
+          aiAnalysisInitial={(data as Record<string, unknown>).ai_analysis as Record<string, unknown> | undefined ?? undefined}
         />
 
         {/* Fallback for old analyses without full results */}

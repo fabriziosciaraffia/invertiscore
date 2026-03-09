@@ -125,6 +125,39 @@ export interface FullAnalysisResult {
   contras: string[];
 }
 
+export interface AIAnalysis {
+  resumenEjecutivo: string;
+  tuBolsillo: {
+    titulo: string;
+    contenido: string;
+    alerta: string;
+  };
+  vsAlternativas: {
+    titulo: string;
+    contenido: string;
+  };
+  negociacion: {
+    titulo: string;
+    contenido: string;
+    precioSugerido: string;
+  };
+  proyeccion: {
+    titulo: string;
+    contenido: string;
+  };
+  riesgos: {
+    titulo: string;
+    items: string[];
+  };
+  veredicto: {
+    titulo: string;
+    decision: "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA";
+    explicacion: string;
+  };
+  aFavor: string[];
+  puntosAtencion: string[];
+}
+
 export interface Analisis {
   id: string;
   user_id: string;

@@ -13,8 +13,9 @@ import {
   Lock, DollarSign, BarChart3, Brain, Calendar,
   Building2, Sparkles, Target, Shield, MapPin,
   ChevronDown, ChevronUp, SlidersHorizontal, RefreshCw, Loader2, Clock,
+  Wallet, Scale, Handshake, TrendingUp, AlertTriangle, CheckCircle2,
 } from "lucide-react";
-import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
+import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
 import { SEED_MARKET_DATA } from "@/lib/market-seed";
 import type { MarketDataRow } from "@/lib/market-data";
 
@@ -417,7 +418,7 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
 export function PremiumResults({
   results, accessLevel = "free", analysisId, inputData, comuna,
   score, freeYieldBruto, freeFlujo, freePrecioM2, resumenEjecutivo,
-  ufValue, zoneData,
+  ufValue, zoneData, aiAnalysisInitial,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium";
@@ -431,6 +432,7 @@ export function PremiumResults({
   resumenEjecutivo: string;
   ufValue?: number;
   zoneData?: MarketDataRow[] | null;
+  aiAnalysisInitial?: AIAnalysis | unknown;
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
@@ -444,6 +446,33 @@ export function PremiumResults({
   const [sensTasa, setSensTasa] = useState(0);
   const [sensArriendo, setSensArriendo] = useState(0);
   const [sensVacancia, setSensVacancia] = useState(0);
+
+  // AI Analysis state
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(
+    aiAnalysisInitial && typeof aiAnalysisInitial === "object" && "veredicto" in aiAnalysisInitial ? aiAnalysisInitial as AIAnalysis : null
+  );
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  const loadAiAnalysis = useCallback(async () => {
+    if (!analysisId || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/analisis/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (!res.ok) throw new Error("Error al generar análisis");
+      const data = await res.json();
+      setAiAnalysis(data);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [analysisId, aiLoading]);
 
   const m = results?.metrics ?? null;
 
@@ -1256,30 +1285,185 @@ export function PremiumResults({
             )}
           </SectionCard>
 
-          {/* ===== PREMIUM: h) Análisis Detallado ===== */}
+          {/* ===== PREMIUM: h) Análisis Detallado (IA) ===== */}
           <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-            <div className="space-y-4">
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  {results.pros.map((p, i) => (
-                    <li key={i}>• {cText(p)}</li>
-                  ))}
-                </ul>
+            {!aiAnalysis && !aiLoading && !aiError && (
+              <div className="space-y-4">
+                {/* Fallback: análisis determinístico */}
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {results.pros.map((p, i) => (
+                      <li key={i}>• {cText(p)}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
+                  <ul className="space-y-1 text-sm text-muted-foreground">
+                    {results.contras.map((c, i) => (
+                      <li key={i}>• {cText(c)}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+                  <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(results.resumen)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadAiAnalysis}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Generar análisis profundo con IA
+                </button>
               </div>
-              <div>
-                <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  {results.contras.map((c, i) => (
-                    <li key={i}>• {cText(c)}</li>
-                  ))}
-                </ul>
+            )}
+
+            {aiLoading && (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Analizando tu inversión con IA... (15-30 segundos)</p>
               </div>
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-                <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
-                <p className="text-sm leading-relaxed text-muted-foreground">{cText(results.resumen)}</p>
+            )}
+
+            {aiError && (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+                  Error: {aiError}
+                </div>
+                <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-primary hover:underline">
+                  Reintentar
+                </button>
+                {/* Fallback */}
+                <div className="mt-4 space-y-4 border-t border-border/30 pt-4">
+                  <div>
+                    <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {results.pros.map((p, i) => <li key={i}>• {cText(p)}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {results.contras.map((c, i) => <li key={i}>• {cText(c)}</li>)}
+                    </ul>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+
+            {aiAnalysis && (
+              <div className="space-y-5">
+                {/* 1. Resumen Ejecutivo */}
+                <div className={`rounded-lg border p-4 ${score >= 60 ? "border-emerald-500/30 bg-emerald-500/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+                  <p className="text-sm font-medium leading-relaxed">{cText(aiAnalysis.resumenEjecutivo)}</p>
+                </div>
+
+                {/* 2. Tu Bolsillo */}
+                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Wallet className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.tuBolsillo.contenido)}</p>
+                  {aiAnalysis.tuBolsillo.alerta && (
+                    <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
+                      <p className="flex items-start gap-2 text-xs text-red-400">
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        {cText(aiAnalysis.tuBolsillo.alerta)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Vs Alternativas */}
+                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Scale className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.vsAlternativas.contenido)}</p>
+                </div>
+
+                {/* 4. Negociación */}
+                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Handshake className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.negociacion.contenido)}</p>
+                  {aiAnalysis.negociacion.precioSugerido && (
+                    <div className="mt-3 flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Precio sugerido:</span>
+                      <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-sm font-bold text-emerald-500">{aiAnalysis.negociacion.precioSugerido}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Proyección */}
+                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.proyeccion.contenido)}</p>
+                </div>
+
+                {/* 6. Riesgos */}
+                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
+                  </div>
+                  <ul className="space-y-2">
+                    {aiAnalysis.riesgos.items.map((r, i) => (
+                      <li key={i} className="text-sm leading-relaxed text-muted-foreground">
+                        <span className="mr-1 font-medium text-red-400">⚠</span> {cText(r)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* 7. Veredicto */}
+                <div className="rounded-lg border-2 border-border/50 bg-card/50 p-5">
+                  <div className="mb-3 flex items-center gap-3">
+                    <h4 className="text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+                      aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-emerald-500/15 text-emerald-500" :
+                      aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-amber-500/15 text-amber-500" :
+                      "bg-red-500/15 text-red-500"
+                    }`}>
+                      {aiAnalysis.veredicto.decision}
+                    </span>
+                  </div>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.veredicto.explicacion)}</p>
+                </div>
+
+                {/* 8. A Favor / Puntos de Atención */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
+                      <CheckCircle2 className="h-4 w-4" /> A favor
+                    </h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {cText(p)}</li>)}
+                    </ul>
+                  </div>
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-red-400">
+                      <AlertTriangle className="h-4 w-4" /> Atención
+                    </h4>
+                    <ul className="space-y-1 text-sm text-muted-foreground">
+                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {cText(c)}</li>)}
+                    </ul>
+                  </div>
+                </div>
+
+                <p className="text-center text-[10px] text-muted-foreground/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+              </div>
+            )}
           </SectionCard>
 
           {/* ===== PREMIUM: i) Flujo, Patrimonio y Salida ===== */}
