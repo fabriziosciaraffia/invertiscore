@@ -479,6 +479,7 @@ export function PremiumResults({
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabShown, setFabShown] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [tooltipDismiss, setTooltipDismiss] = useState(0);
 
   useEffect(() => {
     const timer = setTimeout(() => setFabShown(true), 3000);
@@ -1407,7 +1408,7 @@ export function PremiumResults({
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
             <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+                <BarChart key={tooltipDismiss} data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1417,7 +1418,10 @@ export function PremiumResults({
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
                       return (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                        <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
+                          {isTouchDevice && (
+                            <button type="button" onClick={() => setTooltipDismiss((n) => n + 1)} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
+                          )}
                           <div className="mb-1 font-semibold">{item.isResult ? `→ ${item.name}` : item.name}</div>
                           <div className={item.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
@@ -1664,7 +1668,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                      <ComposedChart key={tooltipDismiss} data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1677,7 +1681,10 @@ export function PremiumResults({
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
-                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                              <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
+                                {isTouchDevice && (
+                                  <button type="button" onClick={() => setTooltipDismiss((n) => n + 1)} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
+                                )}
                                 <div className="mb-1.5 font-semibold">{row.name}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
@@ -1754,7 +1761,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                          <ComposedChart key={tooltipDismiss} data={projData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1768,7 +1775,10 @@ export function PremiumResults({
                                 if (!row) return null;
                                 const pre = row.isPreEntrega;
                                 return (
-                                  <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                                  <div className="relative rounded-lg border border-border bg-card px-3 py-2 pr-8 text-xs shadow-lg">
+                                    {isTouchDevice && (
+                                      <button type="button" onClick={() => setTooltipDismiss((n) => n + 1)} className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-[#6b7280] text-white text-base leading-none">✕</button>
+                                    )}
                                     <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
