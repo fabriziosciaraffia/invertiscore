@@ -2088,15 +2088,16 @@ export function PremiumResults({
   ) : null;
 
   return (
-    <div className="flex items-start gap-6">
-      {/* Main content */}
-      <div className={`min-w-0 ${panelContent ? "lg:flex-1" : "w-full"}`}>
-        {mainContent}
-      </div>
+    <div className={panelContent ? "lg:mr-[280px]" : ""}>
+      {mainContent}
 
-      {/* Desktop: sticky sidebar */}
+      {/* Desktop: fixed sidebar */}
       {panelContent && (
-        <aside className="hidden lg:block lg:w-[260px] lg:shrink-0 self-start sticky top-20" style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
+        <aside
+          className="fixed top-20 right-5 z-30 hidden w-[260px] lg:block"
+          style={{ maxHeight: "calc(100vh - 100px)", overflowY: "auto", scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          <style>{`aside::-webkit-scrollbar { display: none; }`}</style>
           <div className="rounded-xl border-l-2 border-border bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
@@ -2112,7 +2113,7 @@ export function PremiumResults({
         <>
           <div className="fixed bottom-20 right-4 z-40 flex items-center gap-3 lg:hidden">
             {!fabShown && (
-              <div className="animate-pulse rounded-lg bg-[#1a1a1a] px-4 py-2 text-sm font-medium text-white shadow-lg">
+              <div className="animate-pulse rounded-full bg-[#059669] px-4 py-2 text-sm font-medium text-white shadow-lg">
                 Ajusta el análisis
               </div>
             )}
