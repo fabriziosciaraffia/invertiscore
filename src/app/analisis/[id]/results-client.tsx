@@ -823,7 +823,7 @@ export function PremiumResults({
       return Math.round((precioCLPBase * getMantencionRate(antiguedadActual)) / 12);
     }
 
-    function buildRow(mes: number, arriendoAct: number, gastosAct: number, esVacancia: boolean): CashflowRow {
+    function buildRow(mes: number, arriendoAct: number, gastosAct: number): CashflowRow {
       const mantencionMes = getMantencionForMonth(mes);
       const fd = calcFlujoDesglose({
         arriendo: arriendoAct,
@@ -833,13 +833,12 @@ export function PremiumResults({
         mantencion: mantencionMes,
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
       });
-      const ingreso = esVacancia ? 0 : Math.round(arriendoAct);
+      const ingreso = Math.round(arriendoAct);
       const ggcc = -fd.ggccVacancia;
-      // "Vacancia y otros" = vacancia + corretaje + recambio prorrateados
       const vac = -(fd.vacanciaProrrata + fd.corretajeProrrata + fd.recambio);
-      const flujoNeto = ingreso + (-fd.dividendo) + ggcc + (-fd.contribucionesMes) + (-fd.mantencion) + vac;
+      const flujoNeto = fd.flujoNeto;
       acumulado += flujoNeto;
-      return { name: `M${mes}`, _x: mes, Ingreso: ingreso, Dividendo: -fd.dividendo, GGCC: ggcc, Contribuciones: -fd.contribucionesMes, Mantencion: -fd.mantencion, Vacancia: vac, FlujoNeto: flujoNeto, Acumulado: acumulado };
+      return { name: `M${mes}`, _x: mes, Ingreso: ingreso, Dividendo: -fd.dividendo, GGCC: ggcc, Contribuciones: -fd.contribucionesMes, Mantencion: -fd.mantencion, Vacancia: vac, FlujoNeto: Math.round(flujoNeto), Acumulado: acumulado };
     }
 
     if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
@@ -847,12 +846,11 @@ export function PremiumResults({
         if (mes <= mesesPreEntrega) {
           allData.push({ name: `M${mes}`, _x: mes, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: acumulado });
         } else {
-          const mesOp = mes - mesesPreEntrega;
-          if (mesOp > 1 && (mes - 1) % 12 === 0) {
+          if (mes > mesesPreEntrega + 1 && (mes - 1) % 12 === 0) {
             arriendoActual *= (1 + arriendoGrowth / 100);
             gastosActual *= 1.03;
           }
-          allData.push(buildRow(mes, arriendoActual, gastosActual, mesOp === 1));
+          allData.push(buildRow(mes, arriendoActual, gastosActual));
         }
       }
     } else {
@@ -861,7 +859,7 @@ export function PremiumResults({
           arriendoActual *= (1 + arriendoGrowth / 100);
           gastosActual *= 1.03;
         }
-        allData.push(buildRow(i, arriendoActual, gastosActual, i === 1));
+        allData.push(buildRow(i, arriendoActual, gastosActual));
       }
     }
 

@@ -233,7 +233,6 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
 // =========================================
 
 function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): MonthlyCashflow[] {
-  const contribucionesMes = Math.round(input.contribuciones / 3);
   const mantencion = input.provisionMantencion;
 
   // Determine months until delivery (en blanco/verde)
@@ -250,71 +249,48 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
 
   let acumulado = 0;
 
+  // Usar calcFlujoDesglose para todos los meses — vacancia, GGCC, corretaje y recambio prorrateados
+  const flujo = calcFlujoDesglose({
+    arriendo: metrics.ingresoMensual,
+    dividendo: metrics.dividendo,
+    ggcc: input.gastos,
+    contribuciones: input.contribuciones,
+    mantencion,
+    vacanciaMeses: input.vacanciaMeses,
+  });
+
   if (input.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
-    // Verde/blanco: flujo operativo empieza en mes de entrega
-    // Pre-entrega no muestra nada (cuotas del pie van en patrimonio)
     const mesesOperativos = Math.max(0, 12 - mesesPreEntrega);
     for (let i = 1; i <= mesesOperativos; i++) {
-      let ingreso = metrics.ingresoMensual;
-      let corretajeGasto = 0;
-      const esVacancia = i === 1;
-      // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
-      const ggccMes = esVacancia ? input.gastos : 0;
-
-      if (esVacancia) {
-        ingreso = 0; // Vacancia primer mes post-entrega
-      } else if (i === 2) {
-        corretajeGasto = Math.round(input.arriendo * 0.5);
-      }
-
-      const egresoTotal = metrics.dividendo + ggccMes + contribucionesMes + mantencion + corretajeGasto;
-      const flujoNeto = ingreso - egresoTotal;
-      acumulado += flujoNeto;
-
+      acumulado += flujo.flujoNeto;
       meses.push({
         mes: mesesPreEntrega + i,
-        ingreso,
-        dividendo: metrics.dividendo,
-        gastos: ggccMes,
-        contribuciones: contribucionesMes,
-        mantencion: mantencion,
-        vacancia: 0,
-        corretaje: corretajeGasto,
-        egresoTotal,
-        flujoNeto,
+        ingreso: flujo.arriendo,
+        dividendo: flujo.dividendo,
+        gastos: flujo.ggccVacancia,
+        contribuciones: flujo.contribucionesMes,
+        mantencion: flujo.mantencion,
+        vacancia: flujo.vacanciaProrrata,
+        corretaje: flujo.corretajeProrrata + flujo.recambio,
+        egresoTotal: flujo.totalEgresos,
+        flujoNeto: flujo.flujoNeto,
         acumulado,
       });
     }
   } else {
-    // Entrega inmediata: T0 es el inicio, mes 1+ es operativo
     for (let i = 1; i <= 12; i++) {
-      let ingreso = metrics.ingresoMensual;
-      let corretajeGasto = 0;
-      const esVacancia = i === 1;
-      // GGCC: arrendatario paga en meses ocupados, propietario solo en vacancia
-      const ggccMes = esVacancia ? input.gastos : 0;
-
-      if (esVacancia) {
-        ingreso = 0; // Vacancia
-      } else if (i === 2) {
-        corretajeGasto = Math.round(input.arriendo * 0.5);
-      }
-
-      const egresoTotal = metrics.dividendo + ggccMes + contribucionesMes + mantencion + corretajeGasto;
-      const flujoNeto = ingreso - egresoTotal;
-      acumulado += flujoNeto;
-
+      acumulado += flujo.flujoNeto;
       meses.push({
         mes: i,
-        ingreso,
-        dividendo: metrics.dividendo,
-        gastos: ggccMes,
-        contribuciones: contribucionesMes,
-        mantencion: mantencion,
-        vacancia: 0,
-        corretaje: corretajeGasto,
-        egresoTotal,
-        flujoNeto,
+        ingreso: flujo.arriendo,
+        dividendo: flujo.dividendo,
+        gastos: flujo.ggccVacancia,
+        contribuciones: flujo.contribucionesMes,
+        mantencion: flujo.mantencion,
+        vacancia: flujo.vacanciaProrrata,
+        corretaje: flujo.corretajeProrrata + flujo.recambio,
+        egresoTotal: flujo.totalEgresos,
+        flujoNeto: flujo.flujoNeto,
         acumulado,
       });
     }
