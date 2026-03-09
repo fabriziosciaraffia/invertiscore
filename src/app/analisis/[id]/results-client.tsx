@@ -40,14 +40,6 @@ const RADAR_TOOLTIPS: Record<string, string> = {
   "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu yield bruto contra el promedio de publicaciones activas en la comuna. Peso: 10%",
 };
 
-function getBarSize(numPuntos: number): number {
-  if (numPuntos <= 12) return 40;
-  if (numPuntos <= 24) return 30;
-  if (numPuntos <= 36) return 20;
-  if (numPuntos <= 60) return 14;
-  return 8;
-}
-
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
@@ -1323,13 +1315,12 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={getBarSize(Math.max(cashflowData.length, projData.length))} barCategoryGap="15%" barGap={2}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
-                        {isMonthlyView ? (
-                          <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={horizonYears <= 1 ? 0 : "preserveStartEnd"} />
-                        ) : (
-                          <XAxis dataKey="_x" type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => annualCashflowLabel(v, mesesPreEntregaTop)} ticks={cashflowData.map((d) => d._x)} domain={[0, horizonYears * 12]} />
-                        )}
+                        {/* Eje categórico visible: barras uniformes */}
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} />
+                        {/* Eje numérico oculto: posiciona la línea de entrega */}
+                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
@@ -1354,17 +1345,17 @@ export function PremiumResults({
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
-                        <Bar dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="Dividendo" stackId="stack" fill="#ef4444" />
-                        <Bar dataKey="GGCC" stackId="stack" fill="#f97316" />
-                        <Bar dataKey="Contribuciones" stackId="stack" fill="#d97706" />
-                        <Bar dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
-                        <Bar dataKey="Vacancia" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" />
+                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
+                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
+                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
+                        <Bar xAxisId="cat" dataKey="Vacancia" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
                         {/* Línea acumulado */}
-                        <Line type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
                         {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine x={isMonthlyView ? `M${mesesPreEntregaTop}` : mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -1413,13 +1404,12 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barSize={getBarSize(Math.max(cashflowData.length, projData.length))} barCategoryGap="15%" barGap={2}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
-                            {isMonthlyView ? (
-                              <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval="preserveStartEnd" />
-                            ) : (
-                              <XAxis dataKey="_x" type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v: number) => annualPatrimonioLabel(v, mesesPreEntregaTop)} ticks={projData.map((d) => d._x)} domain={[0, horizonYears * 12]} />
-                            )}
+                            {/* Eje categórico visible: barras uniformes */}
+                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView ? "preserveStartEnd" : 0} />
+                            {/* Eje numérico oculto: posiciona la línea de entrega */}
+                            <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
                               content={({ active, payload }) => {
@@ -1450,21 +1440,21 @@ export function PremiumResults({
                               }}
                             />
                             {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
-                            <Area type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="none" />
+                            <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="none" />
                             {/* Área roja: deuda */}
-                            <Area type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
+                            <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
-                            <Bar dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
-                            <Bar dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
                             {/* Plusvalía: azul */}
-                            <Bar dataKey="plusvalia" stackId="patrimonio" fill="#3b82f6" fillOpacity={0.25} stroke="#3b82f6" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#3b82f6" fillOpacity={0.25} stroke="#3b82f6" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
                             {/* Línea: deuda roja */}
-                            <Line type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
+                            <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
                             {/* Línea principal: patrimonio neto naranja */}
-                            <Line type="monotone" dataKey="patrimonioNeto" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3, fill: "#f59e0b" }} name="Patrimonio neto" />
+                            <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3, fill: "#f59e0b" }} name="Patrimonio neto" />
                             {/* Línea vertical de entrega */}
                             {mesesPreEntregaTop > 0 && (
-                              <ReferenceLine x={isMonthlyView ? `M${mesesPreEntregaTop}` : mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                              <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
                             )}
                           </ComposedChart>
                         </ResponsiveContainer>
