@@ -77,43 +77,27 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
   return fmtM(n);
 }
 
-// Convert CLP amounts embedded in AI text to UF when toggle is active
-// Handles: $377.936, $4.5 millones, $1.5M, $350K, -$219.000
-// Does NOT touch values already in UF (e.g. "UF 3.200")
-function convertTextCurrency(text: string, currency: "CLP" | "UF"): string {
-  if (currency === "CLP") return text;
-  return text.replace(/-?\$[\d.,]+\s*(?:millones|M|K)?/g, (match) => {
-    const isNeg = match.startsWith("-");
-    const clean = match.replace(/^-/, "").replace("$", "").trim();
+// Strip leading bullet characters from AI text (•, *, -, ⚠)
+function stripBullet(text: string): string {
+  return text.replace(/^[\s]*[•*⚠\-]+[\s]*/, "");
+}
 
-    let valueCLP = 0;
+// Get the right AI text field based on currency toggle, with legacy fallback
+function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string {
+  const key = field + (currency === "UF" ? "_uf" : "_clp");
+  if (typeof obj[key] === "string" && obj[key]) return obj[key] as string;
+  // Legacy fallback: old analyses without _clp/_uf suffixes
+  if (typeof obj[field] === "string") return obj[field] as string;
+  return "";
+}
 
-    if (/millones$/i.test(clean)) {
-      // "$4.5 millones" or "$29.3 millones"
-      const numPart = clean.replace(/\s*millones$/i, "").replace(/\./g, "").replace(",", ".");
-      valueCLP = parseFloat(numPart) * 1_000_000;
-    } else if (/M$/i.test(clean)) {
-      // "$1.5M"
-      const numPart = clean.replace(/M$/i, "").replace(/\./g, "").replace(",", ".");
-      valueCLP = parseFloat(numPart) * 1_000_000;
-    } else if (/K$/i.test(clean)) {
-      // "$350K"
-      const numPart = clean.replace(/K$/i, "").replace(/\./g, "").replace(",", ".");
-      valueCLP = parseFloat(numPart) * 1_000;
-    } else {
-      // "$377.936" — Chilean format uses dots as thousands separator
-      const numStr = clean.replace(/\./g, "").replace(",", ".");
-      valueCLP = parseFloat(numStr);
-    }
-
-    if (isNaN(valueCLP) || valueCLP === 0) return match;
-
-    const uf = Math.round((valueCLP / UF_CLP) * 10) / 10;
-    const prefix = isNeg ? "-" : "";
-    if (uf >= 1000) return prefix + "UF " + Math.round(uf).toLocaleString("es-CL");
-    if (uf >= 10) return prefix + "UF " + Math.round(uf).toLocaleString("es-CL");
-    return prefix + "UF " + uf.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  });
+// Get the right AI items array based on currency toggle, with legacy fallback
+function aiItems(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string[] {
+  const key = field + (currency === "UF" ? "_uf" : "_clp");
+  if (Array.isArray(obj[key]) && obj[key].length > 0) return obj[key] as string[];
+  // Legacy fallback
+  if (Array.isArray(obj[field])) return obj[field] as string[];
+  return [];
 }
 
 function calcTIR(flujos: number[]): number {
@@ -534,7 +518,9 @@ export function PremiumResults({
   const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
   const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
   const toggleCurrency = useCallback(() => setCurrency((c) => c === "CLP" ? "UF" : "CLP"), []);
-  const cText = useCallback((t: string) => convertTextCurrency(t, currency), [currency]);
+  // Helper to get AI text for current currency
+  const ct = useCallback((obj: Record<string, unknown>, field: string) => aiText(obj, field, currency), [currency]);
+  const ci = useCallback((obj: Record<string, unknown>, field: string) => aiItems(obj, field, currency), [currency]);
 
   // Flujo unificado: SIEMPRE recalculado con calcFlujoDesglose (ignora valor guardado en DB)
   const flujoUnificado = useMemo(() => {
@@ -1003,7 +989,7 @@ export function PremiumResults({
   return (
     <>
       {/* Resumen ejecutivo with currency conversion */}
-      <p className="mb-4 text-sm text-muted-foreground">{cText(resumenEjecutivo)}</p>
+      <p className="mb-4 text-sm text-muted-foreground">{resumenEjecutivo}</p>
 
       {/* Currency Toggle */}
       <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
@@ -1351,7 +1337,7 @@ export function PremiumResults({
                   <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
                   <ul className="space-y-1 text-sm text-muted-foreground">
                     {results.pros.map((p, i) => (
-                      <li key={i}>• {cText(p)}</li>
+                      <li key={i}>• {stripBullet(p)}</li>
                     ))}
                   </ul>
                 </div>
@@ -1359,13 +1345,13 @@ export function PremiumResults({
                   <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
                   <ul className="space-y-1 text-sm text-muted-foreground">
                     {results.contras.map((c, i) => (
-                      <li key={i}>• {cText(c)}</li>
+                      <li key={i}>• {stripBullet(c)}</li>
                     ))}
                   </ul>
                 </div>
                 <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
                   <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(results.resumen)}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{results.resumen}</p>
                 </div>
                 <button
                   type="button"
@@ -1398,13 +1384,13 @@ export function PremiumResults({
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {results.pros.map((p, i) => <li key={i}>• {cText(p)}</li>)}
+                      {results.pros.map((p, i) => <li key={i}>• {stripBullet(p)}</li>)}
                     </ul>
                   </div>
                   <div>
                     <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {results.contras.map((c, i) => <li key={i}>• {cText(c)}</li>)}
+                      {results.contras.map((c, i) => <li key={i}>• {stripBullet(c)}</li>)}
                     </ul>
                   </div>
                 </div>
@@ -1415,7 +1401,7 @@ export function PremiumResults({
               <div className="space-y-5">
                 {/* 1. Resumen Ejecutivo */}
                 <div className={`rounded-lg border p-4 ${score >= 60 ? "border-emerald-500/30 bg-emerald-500/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
-                  <p className="text-sm font-medium leading-relaxed">{cText(aiAnalysis.resumenEjecutivo)}</p>
+                  <p className="text-sm font-medium leading-relaxed">{ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}</p>
                 </div>
 
                 {/* 2. Tu Bolsillo */}
@@ -1424,12 +1410,12 @@ export function PremiumResults({
                     <Wallet className="h-4 w-4 text-primary" />
                     <h4 className="text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.tuBolsillo.contenido)}</p>
-                  {aiAnalysis.tuBolsillo.alerta && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}</p>
+                  {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
                     <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
                       <p className="flex items-start gap-2 text-xs text-red-400">
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        {cText(aiAnalysis.tuBolsillo.alerta)}
+                        {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta")}
                       </p>
                     </div>
                   )}
@@ -1441,7 +1427,7 @@ export function PremiumResults({
                     <Scale className="h-4 w-4 text-primary" />
                     <h4 className="text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.vsAlternativas.contenido)}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}</p>
                 </div>
 
                 {/* 4. Negociación */}
@@ -1450,7 +1436,7 @@ export function PremiumResults({
                     <Handshake className="h-4 w-4 text-primary" />
                     <h4 className="text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.negociacion.contenido)}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}</p>
                   {aiAnalysis.negociacion.precioSugerido && (
                     <div className="mt-3 flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Precio sugerido:</span>
@@ -1465,7 +1451,7 @@ export function PremiumResults({
                     <TrendingUp className="h-4 w-4 text-primary" />
                     <h4 className="text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.proyeccion.contenido)}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}</p>
                 </div>
 
                 {/* 6. Riesgos */}
@@ -1475,9 +1461,9 @@ export function PremiumResults({
                     <h4 className="text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
                   </div>
                   <ul className="space-y-2">
-                    {aiAnalysis.riesgos.items.map((r, i) => (
+                    {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
                       <li key={i} className="text-sm leading-relaxed text-muted-foreground">
-                        <span className="mr-1 font-medium text-red-400">⚠</span> {cText(r.replace(/^[\s]*[•*⚠\-]\s*/, ""))}
+                        <span className="mr-1 font-medium text-red-400">⚠</span> {stripBullet(r)}
                       </li>
                     ))}
                   </ul>
@@ -1495,7 +1481,7 @@ export function PremiumResults({
                       {aiAnalysis.veredicto.decision}
                     </span>
                   </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{cText(aiAnalysis.veredicto.explicacion)}</p>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}</p>
                 </div>
 
                 {/* 8. A Favor / Puntos de Atención */}
@@ -1505,7 +1491,7 @@ export function PremiumResults({
                       <CheckCircle2 className="h-4 w-4" /> A favor
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {cText(p.replace(/^[\s]*[•*\-]\s*/,  ""))}</li>)}
+                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>• {stripBullet(p)}</li>)}
                     </ul>
                   </div>
                   <div>
@@ -1513,7 +1499,7 @@ export function PremiumResults({
                       <AlertTriangle className="h-4 w-4" /> Atención
                     </h4>
                     <ul className="space-y-1 text-sm text-muted-foreground">
-                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {cText(c.replace(/^[\s]*[•*\-]\s*/,  ""))}</li>)}
+                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>• {stripBullet(c)}</li>)}
                     </ul>
                   </div>
                 </div>

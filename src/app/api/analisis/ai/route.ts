@@ -93,7 +93,14 @@ export async function POST(request: Request) {
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
     const inversionTotal = m.pieCLP + Math.round(m.precioCLP * 0.03); // pie + ~3% costos entrada
 
-    const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con esta estructura exacta:
+    const precioConDescuento10 = Math.round(input.precio * 0.9);
+
+    const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con esta estructura exacta.
+
+IMPORTANTE: Para cada campo de texto, genera DOS versiones: una con valores en CLP (sufijo _clp) y otra con valores en UF (sufijo _uf).
+- Versión CLP: usa pesos chilenos con formato $XXX.XXX (separador de miles con punto)
+- Versión UF: usa UF con el valor 1 UF = ${fmtCLP(UF_CLP)}. Formato: "UF X,X" para valores menores a 100 UF, "UF X.XXX" para valores mayores. NUNCA escribas "UF 0".
+- Los campos "titulo", "decision", "precioSugerido", "aFavor" y "puntosAtencion" NO llevan sufijo (son iguales en ambas monedas).
 
 DATOS DE LA PROPIEDAD:
 - Tipo: ${input.tipo}
@@ -101,10 +108,10 @@ DATOS DE LA PROPIEDAD:
 - Superficie: ${input.superficie} m²
 - Antigüedad: ${input.antiguedad} años
 - Precio: ${fmtUF(input.precio)} (${fmtCLP(m.precioCLP)})
-- Pie: ${input.piePct}% = ${fmtCLP(m.pieCLP)}
+- Pie: ${input.piePct}% = ${fmtCLP(m.pieCLP)} (${fmtUF(m.pieCLP / UF_CLP)})
 - Crédito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
-- Dividendo mensual: ${fmtCLP(m.dividendo)}
-- Arriendo esperado: ${fmtCLP(input.arriendo)}/mes
+- Dividendo mensual: ${fmtCLP(m.dividendo)} (${fmtUF(m.dividendo / UF_CLP)})
+- Arriendo esperado: ${fmtCLP(input.arriendo)}/mes (${fmtUF(input.arriendo / UF_CLP)}/mes)
 - Gastos comunes: ${fmtCLP(input.gastos)}/mes (solo vacancia, lo paga arrendatario)
 - Contribuciones: ${fmtCLP(input.contribuciones)}/trimestre
 - Provisión mantención: ${fmtCLP(input.provisionMantencion)}/mes
@@ -118,11 +125,12 @@ MÉTRICAS CALCULADAS:
 - Yield neto: ${m.yieldNeto.toFixed(1)}%
 - CAP rate: ${m.capRate.toFixed(1)}%
 - Cash-on-Cash: ${m.cashOnCash.toFixed(1)}%
-- Flujo mensual neto: ${fmtCLP(m.flujoNetoMensual)}${m.flujoNetoMensual < 0 ? " (negativo)" : ""}
-- Inversión inicial total (pie + costos entrada): ${fmtCLP(inversionTotal)}
+- Flujo mensual neto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " (negativo)" : ""}
+- Inversión inicial total (pie + costos entrada): ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})
 - ROI 10 años: ${exit.multiplicadorCapital.toFixed(2)}x
 - TIR: ${exit.tir.toFixed(1)}%
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
+- Precio con 10% descuento: ${fmtUF(precioConDescuento10)}
 
 DIMENSIONES DEL SCORE:
 - Rentabilidad: ${Math.round(d.rentabilidad)}/100
@@ -138,78 +146,75 @@ DATOS DE MERCADO DE LA ZONA:
 
 Responde SOLO con un JSON válido con esta estructura:
 {
-  "resumenEjecutivo": "2-3 oraciones. Lo más importante que debe saber. Si es buena inversión o no, por qué, y la acción recomendada. Directo al grano.",
+  "resumenEjecutivo_clp": "2-3 oraciones con montos en CLP.",
+  "resumenEjecutivo_uf": "Lo mismo pero con montos en UF.",
 
   "tuBolsillo": {
     "titulo": "Lo que sale de tu bolsillo",
-    "contenido": "Explica en lenguaje simple: cuánto pone de su bolsillo cada mes (${fmtCLP(m.flujoNetoMensual)}), cuánto es eso al año, y qué ingreso mensual mínimo debería tener para que ese gasto no supere el 20-25% de su sueldo. Ejemplo: 'Vas a poner $364.590 de tu bolsillo cada mes. Eso son $4.4M al año. Para que esto sea cómodo, deberías ganar al menos $1.8M líquidos mensuales.' Si el flujo es positivo, felicitar y explicar cuánto gana.",
-    "alerta": "Solo si el flujo es muy negativo (>$400K/mes): 'Ojo: este monto es alto. Asegúrate de tener un colchón de al menos 6 meses ($X) por si pierdes el arriendo o te quedas sin trabajo.' Si no aplica, dejar como string vacío."
+    "contenido_clp": "Explica en lenguaje simple: cuánto pone de su bolsillo cada mes (${fmtCLP(m.flujoNetoMensual)}), cuánto es eso al año, y qué ingreso mensual mínimo debería tener para que ese gasto no supere el 20-25% de su sueldo. Si el flujo es positivo, felicitar y explicar cuánto gana. Montos en CLP.",
+    "contenido_uf": "Lo mismo pero con montos en UF.",
+    "alerta_clp": "Solo si el flujo es muy negativo (>$400K/mes): alerta con colchón de 6 meses. Si no aplica, string vacío.",
+    "alerta_uf": "Lo mismo en UF. Si no aplica, string vacío."
   },
 
   "vsAlternativas": {
     "titulo": "¿Conviene más que otras inversiones?",
-    "contenido": "Compara poner el pie (${fmtCLP(inversionTotal)}) en: 1) Depósito a plazo al 5% anual = cuánto gana en 10 años. 2) Fondo mutuo conservador al 7% anual = cuánto gana en 10 años. 3) Este departamento con TIR de ${exit.tir.toFixed(1)}% = cuánto gana en 10 años. Indica cuál gana y por cuánto. Sé honesto: si el depósito a plazo gana más, dilo. Considera que el depto tiene apalancamiento (compraste con ${input.piePct}% pero ganas sobre el 100% del valor)."
+    "contenido_clp": "Compara poner el pie (${fmtCLP(inversionTotal)}) en: 1) Depósito a plazo al 5% anual. 2) Fondo mutuo conservador al 7% anual. 3) Este departamento con TIR de ${exit.tir.toFixed(1)}%. Indica cuál gana. Montos en CLP.",
+    "contenido_uf": "Lo mismo pero con montos en UF."
   },
 
   "negociacion": {
-    "titulo": "¿A cuánto deberías comprar?",
-    "contenido": "El precio actual es ${fmtUF(input.precio)}. El precio máximo para flujo positivo es ${fmtUF(results.valorMaximoCompra)}. El precio/m² de la zona es ${fmtUF(precioM2Zona)} y el de esta propiedad es ${fmtUF(m.precioM2)}. Basándote en esto, sugiere: 1) El precio ideal para negociar (donde el flujo sea cercano a $0). 2) El descuento en UF y porcentaje respecto al precio publicado. 3) Un argumento que pueda usar para negociar. Si el precio ya está bajo el promedio de la zona, decirlo también.",
-    "precioSugerido": "UF X.XXX"
+    "titulo": "¿Vale la pena negociar?",
+    "contenido_clp": "Análisis de negociación con montos en CLP. Ver REGLAS DE NEGOCIACIÓN abajo.",
+    "contenido_uf": "Lo mismo pero con montos en UF.",
+    "precioSugerido": "${fmtUF(precioConDescuento10)}"
   },
 
   "proyeccion": {
     "titulo": "¿Cuándo recuperas la inversión?",
-    "contenido": "Explica en simple: 1) En 5 años: cuánto vale la propiedad, cuánto debes, cuánto ganaste si vendes. 2) En 10 años: lo mismo. 3) El punto de equilibrio: en cuántos años lo que ganaste por plusvalía supera lo que perdiste por flujo negativo. Usa los datos del ROI (${exit.multiplicadorCapital.toFixed(2)}x) y la ganancia neta (${fmtCLP(exit.gananciaNeta)})."
+    "contenido_clp": "Explica: 1) En 5 años. 2) En 10 años. 3) Punto de equilibrio. ROI ${exit.multiplicadorCapital.toFixed(2)}x, ganancia neta ${fmtCLP(exit.gananciaNeta)}. Montos en CLP.",
+    "contenido_uf": "Lo mismo pero con montos en UF."
   },
 
   "riesgos": {
     "titulo": "¿Qué puede salir mal?",
-    "items": [
-      "Riesgo 1 con mitigación concreta.",
-      "Riesgo 2 con mitigación.",
-      "Riesgo 3 con mitigación.",
-      "Máximo 4 riesgos, los más relevantes para ESTA propiedad específica."
-    ]
+    "items_clp": ["Riesgo 1 en CLP.", "Riesgo 2 en CLP.", "Riesgo 3 en CLP."],
+    "items_uf": ["Riesgo 1 en UF.", "Riesgo 2 en UF.", "Riesgo 3 en UF."]
   },
 
   "veredicto": {
     "titulo": "Veredicto",
     "decision": "COMPRAR | NEGOCIAR | BUSCAR OTRA",
-    "explicacion": "2-3 oraciones explicando la decisión. Terminar con una frase de acción concreta."
+    "explicacion_clp": "2-3 oraciones con montos en CLP.",
+    "explicacion_uf": "Lo mismo pero con montos en UF."
   },
 
   "aFavor": ["Punto positivo 1", "Punto positivo 2", "Punto positivo 3 si hay"],
   "puntosAtencion": ["Punto negativo 1", "Punto negativo 2", "Punto negativo 3 si hay"]
 }
 
-REGLA ABSOLUTA DE NEGOCIACIÓN: NUNCA sugieras un precio con más de 12% de descuento sobre el precio publicado. En el mercado chileno, descuentos mayores son irreales y el usuario pierde credibilidad.
+REGLAS DE NEGOCIACIÓN (OBLIGATORIAS):
+- El descuento MÁXIMO realista en Chile es 10%. NUNCA sugieras más de 10% de descuento.
+- Precio sugerido siempre = precio actual × 0.90 (${fmtUF(precioConDescuento10)}) como MÁXIMO. NUNCA menos.
+- PROHIBIDO sugerir precios con más de 10% de descuento.
+- PROHIBIDO mencionar el precio de flujo neutro como objetivo de compra si requiere más de 10% de descuento.
+- Si el flujo con 10% de descuento sigue siendo muy negativo (más de -$200K/mes): di honestamente que esta inversión no funciona por flujo, funciona solo por plusvalía. Incluso con 10% de descuento, seguiría poniendo dinero de su bolsillo cada mes. Compra solo si confía en la plusvalía y tiene ingresos para sostener el flujo negativo.
+- Si el flujo con 10% de descuento se acerca a $0: sugiere ese precio y explica cuánto mejora el flujo.
 
-Si el precio para flujo neutro requiere más de 15% de descuento:
-- NO sugieras ese precio como objetivo de compra
-- Sé honesto: "A este precio, no existe un descuento razonable que genere flujo positivo. Esta inversión depende 100% de la plusvalía futura."
-- Si aún así crees que vale la pena por plusvalía, sugiere negociar máximo 8-10% de descuento y explica que el flujo negativo se mantiene pero es manejable
-- Precio sugerido = precio actual × 0.90 (10% descuento) como MÁXIMO
-
-Si el precio para flujo neutro requiere menos de 15% de descuento:
-- Sugiere un precio con 8-10% de descuento como punto de partida
-- Explica cuánto mejora el flujo con ese descuento
-
-Ejemplo correcto para un depto de UF 3.200 donde flujo neutro es UF 1.215:
-"El precio para flujo neutro (UF 1.215) está muy lejos del precio actual. No es realista pedir ese descuento. Esta inversión funciona solo por plusvalía. Si decides comprar, ofrece UF 2.880 (10% menos) como punto de partida. Con ese precio tu flujo negativo bajaría de $378K a $340K mensuales aproximadamente."
-
-REGLAS:
-- Todos los montos en CLP a menos que se indique UF
+REGLAS GENERALES:
+- En la versión _clp, todos los montos en CLP ($XXX.XXX). En la versión _uf, todos los montos en UF.
 - No uses jerga sin explicar entre paréntesis
 - Sé directo y honesto, no diplomático
 - Si es mala inversión, dilo claramente
 - Los cálculos de comparación con alternativas deben ser correctos matemáticamente
 - Adapta el tono: si el score es >70 sé positivo, si es 50-70 sé cauteloso, si es <50 sé directo sobre los problemas
 - El veredicto debe ser UNA de las tres opciones: COMPRAR, NEGOCIAR, o BUSCAR OTRA
-- El campo "alerta" en tuBolsillo debe ser string vacío "" si no aplica`;
+- Los campos "alerta_clp" y "alerta_uf" en tuBolsillo deben ser string vacío "" si no aplica
+- Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
+      max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT,
     });

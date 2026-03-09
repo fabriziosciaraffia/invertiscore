@@ -126,36 +126,46 @@ export interface FullAnalysisResult {
 }
 
 export interface AIAnalysis {
-  resumenEjecutivo: string;
+  resumenEjecutivo_clp: string;
+  resumenEjecutivo_uf: string;
   tuBolsillo: {
     titulo: string;
-    contenido: string;
-    alerta: string;
+    contenido_clp: string;
+    contenido_uf: string;
+    alerta_clp: string;
+    alerta_uf: string;
   };
   vsAlternativas: {
     titulo: string;
-    contenido: string;
+    contenido_clp: string;
+    contenido_uf: string;
   };
   negociacion: {
     titulo: string;
-    contenido: string;
+    contenido_clp: string;
+    contenido_uf: string;
     precioSugerido: string;
   };
   proyeccion: {
     titulo: string;
-    contenido: string;
+    contenido_clp: string;
+    contenido_uf: string;
   };
   riesgos: {
     titulo: string;
-    items: string[];
+    items_clp: string[];
+    items_uf: string[];
   };
   veredicto: {
     titulo: string;
     decision: "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA";
-    explicacion: string;
+    explicacion_clp: string;
+    explicacion_uf: string;
   };
   aFavor: string[];
   puntosAtencion: string[];
+  // Legacy fields for backward compatibility with old saved analyses
+  resumenEjecutivo?: string;
 }
 
 export interface Analisis {
