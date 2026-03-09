@@ -623,8 +623,9 @@ export function PremiumResults({
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let valorPropiedad = precioCLP;
-    let flujoAcumulado = 0;
+    let flujoAcumulado = 0; // v2: pie NO es flujo operativo
     const plusvaliaDec = plusvaliaRate / 100;
+    console.log("[InvertiScore v2] dynamicProjections: flujoAcumulado starts at 0, pie excluded");
 
     const calcSaldo = (mesActual: number) => {
       const tasaMensual = inputData.tasaInteres / 100 / 12;
