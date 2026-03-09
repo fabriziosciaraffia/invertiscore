@@ -617,9 +617,6 @@ export function PremiumResults({
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
       : 0;
-    const cuotasPie = inputData.cuotasPie > 0 ? inputData.cuotasPie : mesesPreEntrega;
-    const montoCuotaPie = inputData.montoCuota > 0 ? inputData.montoCuota : (cuotasPie > 0 ? Math.round(m.pieCLP / cuotasPie) : 0);
-
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let valorPropiedad = precioCLP;
