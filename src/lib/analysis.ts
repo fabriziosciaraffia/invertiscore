@@ -311,6 +311,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
 
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = input.gastos;
+  let contribucionesActual = input.contribuciones;
   // Plusvalía starts from purchase date (even during construction)
   let valorPropiedad = precioCLP;
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
@@ -322,16 +323,17 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     const mesInicio = (anio - 1) * 12 + 1;
     const mesFin = anio * 12;
 
-    // Mantención crece escalonadamente con la antigüedad del depto
+    // Mantención crece por antigüedad + inflación de costos
     const antiguedadActual = input.antiguedad + anio;
-    const mantencionAnual = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+    const mantencionBase = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+    const mantencionAnual = Math.round(mantencionBase * Math.pow(1 + GGCC_INFLACION, anio - 1));
 
     // Usar función centralizada para costos recurrentes del mes
     const flujoMes = calcFlujoDesglose({
       arriendo: arriendoActual,
       dividendo: metrics.dividendo,
       ggcc: gastosActual,
-      contribuciones: input.contribuciones,
+      contribuciones: contribucionesActual,
       mantencion: mantencionAnual,
       vacanciaMeses: input.vacanciaMeses,
     });
@@ -369,6 +371,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     if (mesFin > mesesPreEntrega) {
       arriendoActual *= (1 + ARRIENDO_INFLACION);
       gastosActual *= (1 + GGCC_INFLACION);
+      contribucionesActual *= (1 + GGCC_INFLACION);
     }
   }
 

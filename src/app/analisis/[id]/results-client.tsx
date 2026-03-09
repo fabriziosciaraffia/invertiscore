@@ -463,6 +463,7 @@ export function PremiumResults({
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
   const [arriendoGrowth, setArriendoGrowth] = useState(3.5);
+  const [costGrowth, setCostGrowth] = useState(3.0);
   const [refiPct, setRefiPct] = useState(80);
 
 
@@ -619,9 +620,11 @@ export function PremiumResults({
       : 0;
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
+    let contribucionesActual = inputData.contribuciones;
     let valorPropiedad = precioCLP;
     let flujoAcumulado = 0;
     const plusvaliaDec = plusvaliaRate / 100;
+    const costGrowthDec = costGrowth / 100;
 
     const calcSaldo = (mesActual: number) => {
       const tasaMensual = inputData.tasaInteres / 100 / 12;
@@ -636,16 +639,17 @@ export function PremiumResults({
       const mesInicio = (anio - 1) * 12 + 1;
       const mesFin = anio * 12;
 
-      // Mantención crece con la antigüedad del depto
+      // Mantención crece por antigüedad + inflación de costos
       const antiguedadActual = inputData.antiguedad + anio;
-      const mantencion = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+      const mantencionBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+      const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anio - 1));
 
       // Usar función centralizada
       const flujoMes = calcFlujoDesglose({
         arriendo: arriendoActual,
         dividendo: m.dividendo,
         ggcc: gastosActual,
-        contribuciones: inputData.contribuciones,
+        contribuciones: contribucionesActual,
         mantencion,
         vacanciaMeses: inputData.vacanciaMeses ?? 1,
       });
@@ -673,11 +677,12 @@ export function PremiumResults({
       });
       if (mesFin > mesesPreEntrega) {
         arriendoActual *= (1 + arriendoGrowth / 100);
-        gastosActual *= 1.03;
+        gastosActual *= (1 + costGrowthDec);
+        contribucionesActual *= (1 + costGrowthDec);
       }
     }
     return projs;
-  }, [results, m, inputData, plusvaliaRate, arriendoGrowth]);
+  }, [results, m, inputData, plusvaliaRate, arriendoGrowth, costGrowth]);
 
   // Dynamic refinance scenario based on horizon + refiPct
   const dynamicRefi = useMemo(() => {
@@ -815,21 +820,23 @@ export function PremiumResults({
     let acumulado = 0;
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos ?? 0;
+    let contribucionesActual = inputData.contribuciones;
+    const costGrowthDec = costGrowth / 100;
 
     function getMantencionForMonth(mes: number): number {
-      if (inputData!.provisionMantencion) return inputData!.provisionMantencion;
       const anioProyeccion = Math.ceil(mes / 12);
       const antiguedadActual = inputData!.antiguedad + anioProyeccion;
-      return Math.round((precioCLPBase * getMantencionRate(antiguedadActual)) / 12);
+      const mantencionBase = inputData!.provisionMantencion || Math.round((precioCLPBase * getMantencionRate(antiguedadActual)) / 12);
+      return Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
     }
 
-    function buildRow(mes: number, arriendoAct: number, gastosAct: number): CashflowRow {
+    function buildRow(mes: number, arriendoAct: number, gastosAct: number, contribAct: number): CashflowRow {
       const mantencionMes = getMantencionForMonth(mes);
       const fd = calcFlujoDesglose({
         arriendo: arriendoAct,
         dividendo: m!.dividendo,
         ggcc: gastosAct,
-        contribuciones: inputData!.contribuciones,
+        contribuciones: contribAct,
         mantencion: mantencionMes,
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
       });
@@ -848,18 +855,20 @@ export function PremiumResults({
         } else {
           if (mes > mesesPreEntrega + 1 && (mes - 1) % 12 === 0) {
             arriendoActual *= (1 + arriendoGrowth / 100);
-            gastosActual *= 1.03;
+            gastosActual *= (1 + costGrowthDec);
+            contribucionesActual *= (1 + costGrowthDec);
           }
-          allData.push(buildRow(mes, arriendoActual, gastosActual));
+          allData.push(buildRow(mes, arriendoActual, gastosActual, contribucionesActual));
         }
       }
     } else {
       for (let i = 1; i <= totalMonths; i++) {
         if (i > 1 && (i - 1) % 12 === 0) {
           arriendoActual *= (1 + arriendoGrowth / 100);
-          gastosActual *= 1.03;
+          gastosActual *= (1 + costGrowthDec);
+          contribucionesActual *= (1 + costGrowthDec);
         }
-        allData.push(buildRow(i, arriendoActual, gastosActual));
+        allData.push(buildRow(i, arriendoActual, gastosActual, contribucionesActual));
       }
     }
 
@@ -897,7 +906,7 @@ export function PremiumResults({
       });
     }
     return annualData;
-  }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth]);
+  }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth, costGrowth]);
 
   // Single source of truth for flujo acumulado: last value from cashflowData (month-by-month)
   const flujoAcumuladoReal = useMemo(() => {
@@ -1682,7 +1691,7 @@ export function PremiumResults({
                   <CardTitle>Flujo, Patrimonio y Salida</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">Ajusta el horizonte para ver cómo evoluciona tu inversión en el tiempo.</p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Horizonte:</span>
@@ -1706,6 +1715,14 @@ export function PremiumResults({
                     </div>
                     <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-primary" />
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">Crecimiento gastos:</span>
+                      <span className="text-sm font-medium">{costGrowth.toFixed(1)}%/año</span>
+                    </div>
+                    <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">Aplica a GGCC, contribuciones y mantención</p>
                   </div>
                 </div>
               </CardHeader>
