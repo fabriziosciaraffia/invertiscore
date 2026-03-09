@@ -1694,7 +1694,7 @@ export function PremiumResults({
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(row.Vacancia)}</span></div>
                                 <div className="my-1 border-t border-border/50" />
                                 <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
+                                <div className="font-bold text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
                               </div>
                             );
                           }}
@@ -1781,19 +1781,19 @@ export function PremiumResults({
                                     <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium">{fmt(row.piePagado)}</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
-                                        <div className="text-muted-foreground">Deuda: $0 (crédito aún no comienza)</div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.piePagado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.plusvalia)}</span></div>
+                                        <div style={{ color: "#6b7280" }}>Deuda: <span style={{ color: "#6b7280" }}>$0 (crédito aún no comienza)</span></div>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium">{fmt(row.valorPropiedad)}</span></div>
-                                        <div className="flex items-center gap-1.5 text-red-400"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium">-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium">{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                        <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium">{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.valorPropiedad)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium" style={{ color: "#ef4444" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.plusvalia)}</span></div>
                                       </>
                                     )}
-                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#f59e0b" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#059669" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                                   </div>
                                 );
                               }}
