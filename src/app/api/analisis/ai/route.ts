@@ -108,6 +108,9 @@ export async function POST(request: Request) {
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
     const inversionTotal = m.pieCLP + Math.round(m.precioCLP * 0.03); // pie + ~3% costos entrada
 
+    const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+    const fechaEntregaFmt = input.fechaEntrega ? (() => { const [a, me] = input.fechaEntrega.split("-").map(Number); return `${mesesEs[(me || 1) - 1]} ${a}`; })() : "";
+
     const precioConDescuento10 = Math.round(input.precio * 0.9);
     const flujoNegAcum10 = m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
     const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
@@ -128,7 +131,7 @@ DATOS DE LA PROPIEDAD:
 - Tipo: ${input.tipo}
 - Ubicación: ${input.comuna}, ${input.ciudad}
 - Superficie: ${input.superficie} m²
-- Antigüedad: ${input.estadoVenta !== "inmediata" && input.fechaEntrega ? "En construcción (entrega " + input.fechaEntrega + ")" : input.antiguedad + " años"}
+- Antigüedad: ${input.estadoVenta !== "inmediata" && fechaEntregaFmt ? "En construcción (entrega " + fechaEntregaFmt + ")" : input.antiguedad + " años"}
 - Precio: ${fmtUF(input.precio)} (${fmtCLP(m.precioCLP)})
 - Pie: ${input.piePct}% = ${fmtCLP(m.pieCLP)} (${fmtUF(m.pieCLP / UF_CLP)})
 - Crédito: ${fmtCLP(creditoCLP)} a ${input.tasaInteres}% en ${input.plazoCredito} años
@@ -139,7 +142,7 @@ DATOS DE LA PROPIEDAD:
 - Provisión mantención: ${fmtCLP(input.provisionMantencion)}/mes
 - Estacionamiento: ${input.estacionamiento === "si" ? "Sí" : "No"}
 - Bodega: ${input.bodega ? "Sí" : "No"}
-- Estado: ${input.estadoVenta}${input.fechaEntrega ? " (entrega " + input.fechaEntrega + ")" : ""}
+- Estado: ${input.estadoVenta}${fechaEntregaFmt ? " (entrega " + fechaEntregaFmt + ")" : ""}
 
 MÉTRICAS CALCULADAS:
 - InvertiScore: ${results.score}/100 (${results.clasificacion})
