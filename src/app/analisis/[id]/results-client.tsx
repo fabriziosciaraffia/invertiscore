@@ -1413,7 +1413,7 @@ export function PremiumResults({
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
             <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: unknown }[]; activeLabel?: string }; if (isTouchDevice && d?.activePayload) { const item = waterfallData.find((w) => w.name === d.activeLabel); setSelectedWaterfall(item || null); } }}>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} onClick={(data: unknown) => { console.log("WATERFALL CLICKED", data); const d = data as { activePayload?: { payload: unknown }[]; activeLabel?: string }; if (d?.activePayload) { console.log("WATERFALL PAYLOAD", d.activePayload, "activeLabel:", d.activeLabel); const item = waterfallData.find((w) => w.name === d.activeLabel); console.log("WATERFALL ITEM FOUND", item); setSelectedWaterfall(item || null); } }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1448,7 +1448,8 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            {isTouchDevice && selectedWaterfall && (
+            <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedWaterfall={String(!!selectedWaterfall)}</p>
+            {/* TODO: restore isTouchDevice guard */ selectedWaterfall && (
               <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="font-semibold">{selectedWaterfall.isResult ? `→ ${selectedWaterfall.name}` : selectedWaterfall.name}</span>
@@ -1681,7 +1682,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: CashflowRow }[] }; if (isTouchDevice && d?.activePayload) { setSelectedCashflow(d.activePayload[0]?.payload || null); } }}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { console.log("CASHFLOW CLICKED", data); const d = data as { activePayload?: { payload: CashflowRow }[] }; if (d?.activePayload) { console.log("CASHFLOW PAYLOAD", d.activePayload[0]?.payload); setSelectedCashflow(d.activePayload[0]?.payload || null); } }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1751,7 +1752,8 @@ export function PremiumResults({
                       </div>
                     )}
                   </div>
-                  {isTouchDevice && selectedCashflow && (
+                  <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedCashflow={String(!!selectedCashflow)}</p>
+                  {/* TODO: restore isTouchDevice guard */ selectedCashflow && (
                     <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
                       <div className="mb-1.5 flex items-center justify-between">
                         <span className="font-semibold">{selectedCashflow.name}</span>
@@ -1787,7 +1789,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { const d = data as { activePayload?: { payload: PatrimonioRow }[] }; if (isTouchDevice && d?.activePayload) { setSelectedPatrimonio(d.activePayload[0]?.payload || null); } }}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { console.log("PATRIMONIO CLICKED", data); const d = data as { activePayload?: { payload: PatrimonioRow }[] }; if (d?.activePayload) { console.log("PATRIMONIO PAYLOAD", d.activePayload[0]?.payload); setSelectedPatrimonio(d.activePayload[0]?.payload || null); } }}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1842,7 +1844,7 @@ export function PremiumResults({
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
-                      {isTouchDevice && selectedPatrimonio && (() => {
+                      {/* TODO: restore isTouchDevice guard */ selectedPatrimonio && (() => {
                         const pre = selectedPatrimonio.isPreEntrega;
                         return (
                           <div className="mt-2 rounded-lg border border-border bg-secondary/30 p-3 text-xs">
