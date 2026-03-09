@@ -834,7 +834,7 @@ export function PremiumResults({
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
       });
       const ingreso = esVacancia ? 0 : Math.round(arriendoAct);
-      const ggcc = esVacancia ? -Math.round(gastosAct) : 0;
+      const ggcc = -fd.ggccVacancia;
       // "Vacancia y otros" = vacancia + corretaje + recambio prorrateados
       const vac = -(fd.vacanciaProrrata + fd.corretajeProrrata + fd.recambio);
       const flujoNeto = ingreso + (-fd.dividendo) + ggcc + (-fd.contribucionesMes) + (-fd.mantencion) + vac;
