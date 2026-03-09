@@ -2002,88 +2002,108 @@ export function PremiumResults({
     </>
   );
 
+  // JS-based scroll follow for desktop panel (works regardless of ancestor overflow)
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth < 1024) return;
+    const panel = document.getElementById("param-panel");
+    const wrapper = document.getElementById("param-panel-wrapper");
+    if (!panel || !wrapper) return;
+    const TOP_OFFSET = 80;
+    const handleScroll = () => {
+      const wrapperRect = wrapper.getBoundingClientRect();
+      const wrapperTop = window.scrollY + wrapperRect.top;
+      const scrollY = window.scrollY;
+      const maxTranslate = wrapper.offsetHeight - panel.offsetHeight;
+      const translate = Math.max(0, Math.min(scrollY - wrapperTop + TOP_OFFSET, maxTranslate));
+      panel.style.transform = `translateY(${translate}px)`;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [currentAccess, inputData]);
+
   // Panel content shared between desktop sidebar and mobile drawer
   const panelContent = currentAccess !== "guest" && inputData ? (
-    <div className="space-y-5">
+    <div className="space-y-3">
       <div>
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
-        <div className="space-y-3">
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
+        <div className="space-y-2">
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Precio (UF)</label>
-              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Precio (UF)</label>
+              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
             <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Pie</label>
-              <span className="text-xs font-medium">{adjPiePct}%</span>
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Pie</label>
+              <span className="text-[11px] font-medium">{adjPiePct}%</span>
             </div>
             <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-primary" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
-        <div className="space-y-3">
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
+        <div className="space-y-2">
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Plazo</label>
-              <span className="text-xs font-medium">{adjPlazo} años</span>
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Plazo</label>
+              <span className="text-[11px] font-medium">{adjPlazo} años</span>
             </div>
             <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Tasa (%)</label>
-              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Tasa (%)</label>
+              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
             <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-primary" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
-        <div className="space-y-3">
+        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
+        <div className="space-y-2">
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Arriendo</label>
-              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Arriendo</label>
+              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
             <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">GGCC</label>
-              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">GGCC</label>
+              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
             <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <div className="mb-1 flex items-center justify-between">
-              <label className="text-xs text-muted-foreground">Contrib. /trim</label>
-              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-xs" />
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Contrib. /trim</label>
+              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
             <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-1 block text-xs text-muted-foreground">Vacancia (meses/año)</label>
+            <label className="mb-0.5 block text-[11px] text-muted-foreground">Vacancia (meses/año)</label>
             <div className="flex gap-1">
               {[0, 1, 2, 3].map((v) => (
                 <button key={v} type="button" onClick={() => setAdjVacancia(v)}
-                  className={`flex-1 rounded py-1 text-xs font-medium transition-colors ${adjVacancia === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                  className={`flex-1 rounded py-0.5 text-[11px] font-medium transition-colors ${adjVacancia === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
                 >{v}</button>
               ))}
             </div>
           </div>
         </div>
       </div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} className="w-full gap-2">
-        {recalcLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2">
+        {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
-      {recalcSuccess && <p className="text-center text-sm text-emerald-500">Actualizado</p>}
+      {recalcSuccess && <p className="text-center text-xs text-emerald-500">Actualizado</p>}
     </div>
   ) : null;
 
@@ -2094,16 +2114,17 @@ export function PremiumResults({
         {mainContent}
       </div>
 
-      {/* Desktop: sticky sidebar */}
+      {/* Desktop: sidebar with JS-based scroll follow */}
       {panelContent && (
-        <aside className="hidden w-[280px] shrink-0 lg:block">
+        <aside id="param-panel-wrapper" className="hidden w-[260px] shrink-0 lg:block">
           <div
-            className="scrollbar-hide sticky top-[80px] overflow-y-auto rounded-xl border border-[#e5e7eb] bg-white p-4"
+            id="param-panel"
+            className="scrollbar-hide overflow-y-auto rounded-xl border border-[#e5e7eb] bg-white p-4"
             style={{ maxHeight: "calc(100vh - 100px)" }}
           >
-            <div className="mb-4 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Ajusta los números</h3>
+              <h3 className="text-xs font-semibold">Ajusta los números</h3>
             </div>
             {panelContent}
           </div>
