@@ -77,9 +77,10 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
   return fmtM(n);
 }
 
-// Strip leading bullet characters from AI text (•, *, -, ⚠)
+// Strip leading bullet characters from AI text (•, *, -, ⚠, ·)
+// Handles "* • text", "- text", "• text", "* · text" etc.
 function stripBullet(text: string): string {
-  return text.replace(/^[\s]*[•*⚠\-]+[\s]*/, "");
+  return text.replace(/^[\s•*⚠·\-]+/g, "").trim();
 }
 
 // Get the right AI text field based on currency toggle, with legacy fallback
