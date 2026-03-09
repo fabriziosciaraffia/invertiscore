@@ -1413,7 +1413,7 @@ export function PremiumResults({
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
             <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} onClick={(data: unknown) => { console.log("WATERFALL CLICKED", data); const d = data as { activePayload?: { payload: unknown }[]; activeLabel?: string }; if (d?.activePayload) { console.log("WATERFALL PAYLOAD", d.activePayload, "activeLabel:", d.activeLabel); const item = waterfallData.find((w) => w.name === d.activeLabel); console.log("WATERFALL ITEM FOUND", item); setSelectedWaterfall(item || null); } }}>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1434,7 +1434,7 @@ export function PremiumResults({
                     }}
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("WATERFALL BAR CLICK", index, waterfallData[index]); setSelectedWaterfall(waterfallData[index] || null); }}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
@@ -1682,7 +1682,7 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { console.log("CASHFLOW CLICKED", data); const d = data as { activePayload?: { payload: CashflowRow }[] }; if (d?.activePayload) { console.log("CASHFLOW PAYLOAD", d.activePayload[0]?.payload); setSelectedCashflow(d.activePayload[0]?.payload || null); } }}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
@@ -1712,7 +1712,7 @@ export function PremiumResults({
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("CASHFLOW BAR CLICK", index, cashflowData[index]); setSelectedCashflow(cashflowData[index] || null); }} />
                         <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" />
                         <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
                         <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
@@ -1789,7 +1789,7 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2} onClick={(data: unknown) => { console.log("PATRIMONIO CLICKED", data); const d = data as { activePayload?: { payload: PatrimonioRow }[] }; if (d?.activePayload) { console.log("PATRIMONIO PAYLOAD", d.activePayload[0]?.payload); setSelectedPatrimonio(d.activePayload[0]?.payload || null); } }}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
                             <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
@@ -1829,7 +1829,7 @@ export function PremiumResults({
                             {/* Área roja: deuda */}
                             <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
-                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} onClick={(_data: unknown, index: number) => { console.log("PATRIMONIO BAR CLICK", index, projData[index]); setSelectedPatrimonio(projData[index] || null); }} />
                             <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
                             {/* Plusvalía: azul */}
                             <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} />
@@ -1844,6 +1844,7 @@ export function PremiumResults({
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
+                      <p className="text-red-500 text-xs">DEBUG: isTouchDevice={String(isTouchDevice)}, selectedPatrimonio={String(!!selectedPatrimonio)}</p>
                       {/* TODO: restore isTouchDevice guard */ selectedPatrimonio && (() => {
                         const pre = selectedPatrimonio.isPreEntrega;
                         return (
