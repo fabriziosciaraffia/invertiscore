@@ -740,14 +740,14 @@ export function PremiumResults({
     });
 
     const steps: { name: string; delta: number }[] = [
-      { name: "Arriendo", delta: wf.arriendo },
-      { name: "Dividendo", delta: -wf.dividendo },
-      { name: "GGCC vacancia", delta: -wf.ggccVacancia },
-      { name: "Contribuciones", delta: -wf.contribucionesMes },
-      { name: "Mantención", delta: -wf.mantencion },
-      { name: "Vacancia", delta: -wf.vacanciaProrrata },
-      { name: "Corretaje", delta: -wf.corretajeProrrata },
-      { name: "Recambio", delta: -wf.recambio },
+      { name: "Arr.", delta: wf.arriendo },
+      { name: "Div.", delta: -wf.dividendo },
+      { name: "GGCC", delta: -wf.ggccVacancia },
+      { name: "Cont.", delta: -wf.contribucionesMes },
+      { name: "Mant.", delta: -wf.mantencion },
+      { name: "Vac.", delta: -wf.vacanciaProrrata },
+      { name: "Corr.", delta: -wf.corretajeProrrata },
+      { name: "Rec.", delta: -wf.recambio },
     ];
 
     let running = 0;
@@ -769,7 +769,7 @@ export function PremiumResults({
     // FLUJO NETO result bar: from 0 to running
     const flujo = running;
     items.push({
-      name: "FLUJO NETO",
+      name: "Neto",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
       fill: "#1e40af",
       isResult: true,
@@ -1392,9 +1392,9 @@ export function PremiumResults({
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
             <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
                     content={({ active, payload, label: wfLabel }) => {
@@ -1411,6 +1411,7 @@ export function PremiumResults({
                         </div>
                       );
                     }}
+                    trigger="click"
                   />
                   <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
                   <Bar dataKey="range" radius={[4, 4, 0, 0]}>
@@ -1648,10 +1649,10 @@ export function PremiumResults({
                   <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barCategoryGap="15%" barGap={2}>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1675,6 +1676,7 @@ export function PremiumResults({
                               </div>
                             );
                           }}
+                          trigger="click"
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Una sola columna apilada: ingreso sube, egresos bajan */}
@@ -1737,10 +1739,10 @@ export function PremiumResults({
                       <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +3.5%/año.</p>
                       <div className="h-72">
                         <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }} barCategoryGap="15%" barGap={2}>
+                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
-                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} interval={isMonthlyView ? "preserveStartEnd" : 0} />
+                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" interval={isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                             {/* Eje numérico oculto: posiciona la línea de entrega */}
                             <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                             <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
@@ -1771,6 +1773,7 @@ export function PremiumResults({
                                   </div>
                                 );
                               }}
+                              trigger="click"
                             />
                             {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
                             <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="#1e40af" strokeWidth={2} />
@@ -1812,28 +1815,32 @@ export function PremiumResults({
                         const flujoAcum = lastProj.flujoAcumulado;
                         const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado + flujoAcum;
                         return (
-                          <div className="mt-4 space-y-2 rounded-lg border border-border/50 bg-secondary/30 p-4 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Tu inversión inicial (pie)</span>
-                              <span className="font-medium">{fmt(m.pieCLP)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</span>
-                              <span className="font-medium text-emerald-400">{fmt(plusvaliaGanancia)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Capital amortizado (pagado del crédito)</span>
-                              <span className="font-medium text-emerald-400">{fmt(capitalAmortizado)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Flujo acumulado (ganancia/aporte de bolsillo)</span>
-                              <span className={`font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
-                            </div>
-                            <div className="flex justify-between border-t border-border/50 pt-2">
-                              <span className="font-semibold">Patrimonio neto total</span>
-                              <span className="font-bold text-primary">{fmt(patrimonioTotal)}</span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">= pie + plusvalía + amortización + flujo</p>
+                          <div className="mt-4 overflow-x-auto rounded-lg border border-border/50 bg-secondary/30">
+                            <table className="w-full text-sm" style={{ tableLayout: "fixed", minWidth: 320 }}>
+                              <tbody>
+                                <tr className="border-b border-border/30">
+                                  <td className="py-2 px-4 text-muted-foreground">Tu inversión inicial (pie)</td>
+                                  <td className="py-2 px-4 text-right font-medium">{fmt(m.pieCLP)}</td>
+                                </tr>
+                                <tr className="border-b border-border/30">
+                                  <td className="py-2 px-4 text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
+                                  <td className="py-2 px-4 text-right font-medium text-emerald-400">{fmt(plusvaliaGanancia)}</td>
+                                </tr>
+                                <tr className="border-b border-border/30">
+                                  <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
+                                  <td className="py-2 px-4 text-right font-medium text-emerald-400">{fmt(capitalAmortizado)}</td>
+                                </tr>
+                                <tr className="border-b border-border/30">
+                                  <td className="py-2 px-4 text-muted-foreground">Flujo acumulado (ganancia/aporte de bolsillo)</td>
+                                  <td className={`py-2 px-4 text-right font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</td>
+                                </tr>
+                                <tr className="border-t border-border/50">
+                                  <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
+                                  <td className="py-2 px-4 text-right font-bold text-primary">{fmt(patrimonioTotal)}</td>
+                                </tr>
+                              </tbody>
+                            </table>
+                            <p className="px-4 pb-2 text-[10px] text-muted-foreground">= pie + plusvalía + amortización + flujo</p>
                           </div>
                         );
                       })()}
@@ -1901,10 +1908,10 @@ export function PremiumResults({
                         </p>
                         <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/20 p-3">
                           <span className="text-xs text-muted-foreground">% refinanciamiento:</span>
-                          <div className="flex gap-1">
+                          <div className="flex flex-wrap gap-1">
                             {[60, 70, 80, 90].map((pct) => (
                               <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${refiPct === pct ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                                className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
                               >{pct}%</button>
                             ))}
                           </div>

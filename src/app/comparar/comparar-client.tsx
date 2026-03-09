@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, DollarSign } from "lucide-react";
 import type { Analisis, Desglose } from "@/lib/types";
 
 const CHART_COLORS = ["#059669", "#3b82f6", "#f59e0b"];
+const UF_CLP = 38800;
 
 function getScoreColor(score: number) {
   if (score >= 65) return "#059669";
@@ -43,7 +45,7 @@ interface MetricRow {
   higherIsBetter: boolean;
 }
 
-function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow[] }[] {
+function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section: string; rows: MetricRow[] }[] {
   const sections: { section: string; rows: MetricRow[] }[] = [];
 
   // Datos básicos
@@ -51,8 +53,8 @@ function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow
     section: "Datos básicos",
     rows: [
       {
-        label: "Precio (UF)",
-        values: analisis.map((a) => formatUF(a.precio)),
+        label: currency === "UF" ? "Precio (UF)" : "Precio (CLP)",
+        values: analisis.map((a) => currency === "UF" ? formatUF(a.precio) : formatCLP(a.precio * UF_CLP)),
         raw: analisis.map((a) => a.precio),
         higherIsBetter: false,
       },
@@ -70,13 +72,13 @@ function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow
       },
       {
         label: "Arriendo mensual",
-        values: analisis.map((a) => formatCLP(a.arriendo)),
+        values: analisis.map((a) => currency === "UF" ? formatUF(a.arriendo / UF_CLP) : formatCLP(a.arriendo)),
         raw: analisis.map((a) => a.arriendo),
         higherIsBetter: true,
       },
       {
-        label: "Precio/m² (UF)",
-        values: analisis.map((a) => a.superficie > 0 ? (a.precio / a.superficie).toFixed(1) : "—"),
+        label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)",
+        values: analisis.map((a) => a.superficie > 0 ? (currency === "UF" ? formatUF(a.precio / a.superficie) : formatCLP(a.precio / a.superficie * UF_CLP)) : "—"),
         raw: analisis.map((a) => a.superficie > 0 ? a.precio / a.superficie : 0),
         higherIsBetter: false,
       },
@@ -120,13 +122,13 @@ function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow
     rows: [
       {
         label: "Flujo mensual",
-        values: analisis.map((a) => a.results?.metrics ? formatCLP(a.results.metrics.flujoNetoMensual) : "—"),
+        values: analisis.map((a) => a.results?.metrics ? (currency === "UF" ? formatUF(a.results.metrics.flujoNetoMensual / UF_CLP) : formatCLP(a.results.metrics.flujoNetoMensual)) : "—"),
         raw: analisis.map((a) => a.results?.metrics?.flujoNetoMensual ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Flujo anual",
-        values: analisis.map((a) => a.results?.metrics ? formatCLP(a.results.metrics.flujoNetoMensual * 12) : "—"),
+        values: analisis.map((a) => a.results?.metrics ? (currency === "UF" ? formatUF(a.results.metrics.flujoNetoMensual * 12 / UF_CLP) : formatCLP(a.results.metrics.flujoNetoMensual * 12)) : "—"),
         raw: analisis.map((a) => (a.results?.metrics?.flujoNetoMensual ?? 0) * 12),
         higherIsBetter: true,
       },
@@ -173,7 +175,7 @@ function getMetricRows(analisis: Analisis[]): { section: string; rows: MetricRow
     rows: [
       {
         label: "InvertiScore total",
-        values: analisis.map((a) => a.score.toString()),
+        values: analisis.map((a) => a.score.toString() + "/100"),
         raw: analisis.map((a) => a.score),
         higherIsBetter: true,
       },
@@ -228,8 +230,6 @@ function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): st
 function RadarChart({ analisis }: { analisis: Analisis[] }) {
   const dims: (keyof Desglose)[] = ["rentabilidad", "flujoCaja", "plusvalia", "riesgo", "eficiencia"];
   const labels = ["Rentabilidad", "Flujo Caja", "Plusvalía", "Bajo Riesgo", "Eficiencia"];
-  const maxScores = [30, 25, 20, 15, 10]; // max per dimension
-
   const cx = 150, cy = 150, R = 110;
   const angleStep = (2 * Math.PI) / 5;
   const startAngle = -Math.PI / 2;
@@ -270,7 +270,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
           {analisis.map((a, ai) => {
             const points = dims.map((dim, di) => {
               const val = a.desglose?.[dim] ?? 0;
-              const pct = maxScores[di] > 0 ? Math.min(val / maxScores[di], 1) : 0;
+              const pct = Math.min(val / 100, 1);
               return getPoint(di, pct);
             });
             return (
@@ -288,7 +288,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
           {analisis.map((a, ai) =>
             dims.map((dim, di) => {
               const val = a.desglose?.[dim] ?? 0;
-              const pct = maxScores[di] > 0 ? Math.min(val / maxScores[di], 1) : 0;
+              const pct = Math.min(val / 100, 1);
               const p = getPoint(di, pct);
               return <circle key={`${a.id}-${di}`} cx={p.x} cy={p.y} r="3" fill={CHART_COLORS[ai]} />;
             })
@@ -372,7 +372,8 @@ function generateVerdict(analisis: Analisis[]) {
 }
 
 export function CompararClient({ analisis }: { analisis: Analisis[] }) {
-  const sections = getMetricRows(analisis);
+  const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
+  const sections = getMetricRows(analisis, currency);
   const verdict = generateVerdict(analisis);
   const colCount = analisis.length;
 
@@ -398,6 +399,18 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
               Comparación de {analisis.length} propiedades
             </h1>
           </div>
+        </div>
+
+        {/* Currency toggle */}
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setCurrency(currency === "CLP" ? "UF" : "CLP")}
+            className="flex items-center gap-1.5 rounded-lg border border-[#e5e7eb] bg-white px-3 py-1.5 text-sm font-medium text-[#6b7280] transition-colors hover:bg-[#f9fafb] hover:text-[#111827]"
+          >
+            <DollarSign className="h-3.5 w-3.5" />
+            {currency === "CLP" ? "Ver en UF" : "Ver en CLP"}
+          </button>
         </div>
 
         {/* Desktop table */}

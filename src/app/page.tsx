@@ -314,7 +314,7 @@ export default function HomePage() {
           </div>
           <FadeIn delay={400}>
             <div className="flex justify-center lg:justify-end">
-              <div className="inline-flex flex-row items-center gap-4 rounded-2xl border border-[#e5e7eb] bg-white px-5 py-4 shadow-xl shadow-black/5 sm:flex-col sm:gap-5 sm:px-8 sm:py-7">
+              <div className="inline-flex max-w-[280px] flex-row items-center gap-3 rounded-2xl border border-[#e5e7eb] bg-white px-4 py-3 shadow-xl shadow-black/5 sm:max-w-none sm:flex-col sm:gap-5 sm:px-8 sm:py-7">
                 <div
                   className="flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full border-[3px] border-[#059669] sm:h-24 sm:w-24"
                   style={{ animation: "scoreGlow 3s ease-in-out infinite" }}
