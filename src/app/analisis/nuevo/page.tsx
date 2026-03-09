@@ -226,6 +226,11 @@ export default function NuevoAnalisisPage() {
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
   const [linkUrl, setLinkUrl] = useState("");
   const [showDraftBanner, setShowDraftBanner] = useState(false);
+  const [quotationFile, setQuotationFile] = useState<File | null>(null);
+  const [quotationLoading, setQuotationLoading] = useState(false);
+  const [quotationMsg, setQuotationMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [quotationMissing, setQuotationMissing] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const formInitialized = useRef(false);
 
   // Fetch real UF value + tasa hipotecaria on mount
@@ -338,6 +343,121 @@ export default function NuevoAnalisisPage() {
   const discardDraft = useCallback(() => {
     localStorage.removeItem(LS_KEY);
     setShowDraftBanner(false);
+  }, []);
+
+  // ─── Quotation parsing ────────────────────────────
+  const handleQuotationUpload = useCallback(async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      setQuotationMsg({ type: "error", text: "El archivo es demasiado grande. Máximo 10MB." });
+      return;
+    }
+    setQuotationLoading(true);
+    setQuotationMsg(null);
+    setQuotationMissing([]);
+
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/scraping/parse-quotation", { method: "POST", body: fd });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setQuotationMsg({ type: "error", text: json.error || "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
+        setQuotationLoading(false);
+        return;
+      }
+
+      const d = json.data;
+      const missing: string[] = [];
+
+      setForm((prev) => {
+        const updates: Record<string, string> = {};
+
+        if (d.comuna) {
+          const match = COMUNAS.find((c) => c.comuna.toLowerCase() === d.comuna.toLowerCase());
+          if (match) updates.comuna = match.comuna;
+          else missing.push("comuna");
+        } else missing.push("comuna");
+
+        if (d.direccion) updates.direccion = d.direccion;
+        if (d.dormitorios) updates.dormitorios = String(d.dormitorios);
+        if (d.banos) updates.banos = String(d.banos);
+        if (d.superficie) updates.superficieUtil = String(d.superficie);
+        else missing.push("superficie");
+
+        if (d.precio_uf) {
+          updates.precio = String(d.precio_uf);
+          setFieldCurrency((fc) => ({ ...fc, precio: "UF" }));
+        } else if (d.precio_clp) {
+          updates.precio = String(d.precio_clp);
+          setFieldCurrency((fc) => ({ ...fc, precio: "CLP" }));
+        } else missing.push("precio");
+
+        if (d.estacionamientos != null) updates.estacionamiento = String(d.estacionamientos);
+        if (d.bodegas != null) updates.bodega = String(d.bodegas);
+
+        if (d.gastos_comunes) {
+          updates.gastos = String(d.gastos_comunes);
+          setFieldCurrency((fc) => ({ ...fc, gastos: "CLP" }));
+        }
+
+        if (d.piso != null) {
+          const p = d.piso;
+          if (p <= 3) updates.piso = "1-3";
+          else if (p <= 8) updates.piso = "4-8";
+          else if (p <= 15) updates.piso = "9-15";
+          else updates.piso = "16+";
+        }
+
+        if (d.antiguedad != null) {
+          const a = d.antiguedad;
+          if (a <= 2) updates.antiguedad = "0-2";
+          else if (a <= 5) updates.antiguedad = "3-5";
+          else if (a <= 10) updates.antiguedad = "6-10";
+          else if (a <= 20) updates.antiguedad = "11-20";
+          else updates.antiguedad = "20+";
+        }
+
+        if (d.estado_venta === "futura") {
+          updates.estadoVenta = "futura";
+          if (d.fecha_entrega) {
+            const [y, m] = d.fecha_entrega.split("-");
+            if (y) updates.fechaEntregaAnio = y;
+            if (m) updates.fechaEntregaMes = m;
+          }
+        } else {
+          updates.estadoVenta = "inmediata";
+        }
+
+        if (!updates.precio) missing.push("precio");
+
+        return { ...prev, ...updates };
+      });
+
+      // Check arriendo missing
+      if (!d.arriendo) missing.push("arriendo");
+
+      setQuotationMissing(missing);
+      setQuotationMsg({ type: "success", text: "Datos extraídos. Revisa y ajusta si es necesario." });
+
+      // Scroll to first empty required field
+      setTimeout(() => {
+        const fieldMap: Record<string, string> = {
+          comuna: "comunaSearch", superficie: "superficieUtil", precio: "precio", arriendo: "arriendo",
+        };
+        for (const m of missing) {
+          const elId = fieldMap[m];
+          if (elId) {
+            document.getElementById(elId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+            break;
+          }
+        }
+      }, 300);
+    } catch {
+      setQuotationMsg({ type: "error", text: "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
+    } finally {
+      setQuotationLoading(false);
+    }
   }, []);
 
   // ─── Progress bar ─────────────────────────────────
@@ -669,15 +789,49 @@ export default function NuevoAnalisisPage() {
             <span>o sube una cotización</span>
             <div className="h-px flex-1 bg-emerald-200" />
           </div>
-          <div className="text-center">
+          <div className="text-center space-y-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) { setQuotationFile(f); handleQuotationUpload(f); }
+                e.target.value = "";
+              }}
+            />
             <button
               type="button"
-              onClick={() => alert("Próximamente: sube una cotización en PDF y la extraemos automáticamente.")}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={quotationLoading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
             >
-              <Upload className="h-4 w-4" /> Subir cotización (PDF o imagen)
+              {quotationLoading ? (
+                <><Loader2 className="h-4 w-4 animate-spin" /> Analizando cotización con IA...</>
+              ) : (
+                <><Upload className="h-4 w-4" /> Subir cotización (PDF o imagen)</>
+              )}
             </button>
+            {quotationFile && !quotationLoading && (
+              <p className="text-xs text-muted-foreground">{quotationFile.name}</p>
+            )}
           </div>
+          {quotationMsg && (
+            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+              quotationMsg.type === "success"
+                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border border-red-200 bg-red-50 text-red-700"
+            }`}>
+              {quotationMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+              {quotationMsg.text}
+            </div>
+          )}
+          {quotationMissing.length > 0 && quotationMsg?.type === "success" && (
+            <p className="text-center text-xs text-amber-600">
+              No se encontró en la cotización: {quotationMissing.join(", ")}
+            </p>
+          )}
           <p className="text-center text-xs text-muted-foreground">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
         </div>
 
