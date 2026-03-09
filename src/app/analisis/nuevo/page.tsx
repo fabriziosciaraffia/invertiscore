@@ -225,11 +225,12 @@ export default function NuevoAnalisisPage() {
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
   const [linkUrl, setLinkUrl] = useState("");
+  const [linkLoading, setLinkLoading] = useState(false);
   const [showDraftBanner, setShowDraftBanner] = useState(false);
   const [quotationFile, setQuotationFile] = useState<File | null>(null);
   const [quotationLoading, setQuotationLoading] = useState(false);
-  const [quotationMsg, setQuotationMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const [quotationMissing, setQuotationMissing] = useState<string[]>([]);
+  const [extractMsg, setExtractMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [extractMissing, setExtractMissing] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formInitialized = useRef(false);
 
@@ -345,15 +346,107 @@ export default function NuevoAnalisisPage() {
     setShowDraftBanner(false);
   }, []);
 
-  // ─── Quotation parsing ────────────────────────────
+  // ─── Shared: fill form from extracted data ─────────
+  const fillFormFromExtraction = useCallback((d: Record<string, unknown>): string[] => {
+    const missing: string[] = [];
+
+    setForm((prev) => {
+      const updates: Record<string, string> = {};
+
+      if (d.comuna) {
+        const match = COMUNAS.find((c) => c.comuna.toLowerCase() === String(d.comuna).toLowerCase());
+        if (match) updates.comuna = match.comuna;
+        else missing.push("comuna");
+      } else missing.push("comuna");
+
+      if (d.direccion) updates.direccion = String(d.direccion);
+      if (d.dormitorios) updates.dormitorios = String(d.dormitorios);
+      if (d.banos) updates.banos = String(d.banos);
+      if (d.superficie) updates.superficieUtil = String(d.superficie);
+      else missing.push("superficie");
+
+      if (d.precio_uf) {
+        updates.precio = String(d.precio_uf);
+        setFieldCurrency((fc) => ({ ...fc, precio: "UF" }));
+      } else if (d.precio_clp) {
+        updates.precio = String(d.precio_clp);
+        setFieldCurrency((fc) => ({ ...fc, precio: "CLP" }));
+      } else missing.push("precio");
+
+      if (d.estacionamientos != null) updates.estacionamiento = String(d.estacionamientos);
+      if (d.bodegas != null) updates.bodega = String(d.bodegas);
+
+      if (d.gastos_comunes) {
+        updates.gastos = String(d.gastos_comunes);
+        setFieldCurrency((fc) => ({ ...fc, gastos: "CLP" }));
+      }
+
+      if (d.arriendo_estimado) {
+        updates.arriendo = String(d.arriendo_estimado);
+        setFieldCurrency((fc) => ({ ...fc, arriendo: "CLP" }));
+      }
+
+      if (d.piso != null) {
+        const p = Number(d.piso);
+        if (p <= 3) updates.piso = "1-3";
+        else if (p <= 8) updates.piso = "4-8";
+        else if (p <= 15) updates.piso = "9-15";
+        else updates.piso = "16+";
+      }
+
+      if (d.antiguedad != null) {
+        const a = Number(d.antiguedad);
+        if (a <= 2) updates.antiguedad = "0-2";
+        else if (a <= 5) updates.antiguedad = "3-5";
+        else if (a <= 10) updates.antiguedad = "6-10";
+        else if (a <= 20) updates.antiguedad = "11-20";
+        else updates.antiguedad = "20+";
+      }
+
+      if (d.estado_venta === "futura") {
+        updates.estadoVenta = "futura";
+        if (d.fecha_entrega) {
+          const [y, m] = String(d.fecha_entrega).split("-");
+          if (y) updates.fechaEntregaAnio = y;
+          if (m) updates.fechaEntregaMes = m;
+        }
+      } else {
+        updates.estadoVenta = "inmediata";
+      }
+
+      if (!updates.precio) missing.push("precio");
+      if (!d.arriendo_estimado) missing.push("arriendo");
+
+      return { ...prev, ...updates };
+    });
+
+    return missing;
+  }, []);
+
+  const scrollToFirstMissing = useCallback((missing: string[]) => {
+    setTimeout(() => {
+      const fieldMap: Record<string, string> = {
+        comuna: "comunaSearch", superficie: "superficieUtil", precio: "precio", arriendo: "arriendo",
+      };
+      for (const m of missing) {
+        const elId = fieldMap[m];
+        if (elId) {
+          document.getElementById(elId)?.scrollIntoView({ behavior: "smooth", block: "center" });
+          break;
+        }
+      }
+    }, 300);
+  }, []);
+
+  // ─── Quotation (PDF/image) upload ─────────────────
   const handleQuotationUpload = useCallback(async (file: File) => {
     if (file.size > 10 * 1024 * 1024) {
-      setQuotationMsg({ type: "error", text: "El archivo es demasiado grande. Máximo 10MB." });
+      setExtractMsg({ type: "error", text: "El archivo es demasiado grande. Máximo 10MB." });
       return;
     }
     setQuotationLoading(true);
-    setQuotationMsg(null);
-    setQuotationMissing([]);
+    setExtractMsg(null);
+    setExtractMissing([]);
 
     try {
       const fd = new FormData();
@@ -362,103 +455,59 @@ export default function NuevoAnalisisPage() {
       const json = await res.json();
 
       if (!res.ok) {
-        setQuotationMsg({ type: "error", text: json.error || "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
-        setQuotationLoading(false);
+        setExtractMsg({ type: "error", text: json.error || "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
         return;
       }
 
-      const d = json.data;
-      const missing: string[] = [];
-
-      setForm((prev) => {
-        const updates: Record<string, string> = {};
-
-        if (d.comuna) {
-          const match = COMUNAS.find((c) => c.comuna.toLowerCase() === d.comuna.toLowerCase());
-          if (match) updates.comuna = match.comuna;
-          else missing.push("comuna");
-        } else missing.push("comuna");
-
-        if (d.direccion) updates.direccion = d.direccion;
-        if (d.dormitorios) updates.dormitorios = String(d.dormitorios);
-        if (d.banos) updates.banos = String(d.banos);
-        if (d.superficie) updates.superficieUtil = String(d.superficie);
-        else missing.push("superficie");
-
-        if (d.precio_uf) {
-          updates.precio = String(d.precio_uf);
-          setFieldCurrency((fc) => ({ ...fc, precio: "UF" }));
-        } else if (d.precio_clp) {
-          updates.precio = String(d.precio_clp);
-          setFieldCurrency((fc) => ({ ...fc, precio: "CLP" }));
-        } else missing.push("precio");
-
-        if (d.estacionamientos != null) updates.estacionamiento = String(d.estacionamientos);
-        if (d.bodegas != null) updates.bodega = String(d.bodegas);
-
-        if (d.gastos_comunes) {
-          updates.gastos = String(d.gastos_comunes);
-          setFieldCurrency((fc) => ({ ...fc, gastos: "CLP" }));
-        }
-
-        if (d.piso != null) {
-          const p = d.piso;
-          if (p <= 3) updates.piso = "1-3";
-          else if (p <= 8) updates.piso = "4-8";
-          else if (p <= 15) updates.piso = "9-15";
-          else updates.piso = "16+";
-        }
-
-        if (d.antiguedad != null) {
-          const a = d.antiguedad;
-          if (a <= 2) updates.antiguedad = "0-2";
-          else if (a <= 5) updates.antiguedad = "3-5";
-          else if (a <= 10) updates.antiguedad = "6-10";
-          else if (a <= 20) updates.antiguedad = "11-20";
-          else updates.antiguedad = "20+";
-        }
-
-        if (d.estado_venta === "futura") {
-          updates.estadoVenta = "futura";
-          if (d.fecha_entrega) {
-            const [y, m] = d.fecha_entrega.split("-");
-            if (y) updates.fechaEntregaAnio = y;
-            if (m) updates.fechaEntregaMes = m;
-          }
-        } else {
-          updates.estadoVenta = "inmediata";
-        }
-
-        if (!updates.precio) missing.push("precio");
-
-        return { ...prev, ...updates };
-      });
-
-      // Check arriendo missing
-      if (!d.arriendo) missing.push("arriendo");
-
-      setQuotationMissing(missing);
-      setQuotationMsg({ type: "success", text: "Datos extraídos. Revisa y ajusta si es necesario." });
-
-      // Scroll to first empty required field
-      setTimeout(() => {
-        const fieldMap: Record<string, string> = {
-          comuna: "comunaSearch", superficie: "superficieUtil", precio: "precio", arriendo: "arriendo",
-        };
-        for (const m of missing) {
-          const elId = fieldMap[m];
-          if (elId) {
-            document.getElementById(elId)?.scrollIntoView({ behavior: "smooth", block: "center" });
-            break;
-          }
-        }
-      }, 300);
+      const missing = fillFormFromExtraction(json.data);
+      setExtractMissing(missing);
+      setExtractMsg({ type: "success", text: "Datos extraídos de la cotización. Revisa y ajusta si es necesario." });
+      scrollToFirstMissing(missing);
     } catch {
-      setQuotationMsg({ type: "error", text: "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
+      setExtractMsg({ type: "error", text: "No pudimos leer la cotización. Intenta con otra imagen o completa manualmente." });
     } finally {
       setQuotationLoading(false);
     }
-  }, []);
+  }, [fillFormFromExtraction, scrollToFirstMissing]);
+
+  // ─── Link extraction (Firecrawl) ──────────────────
+  const handleLinkExtract = useCallback(async () => {
+    if (!linkUrl.trim()) return;
+    setLinkLoading(true);
+    setExtractMsg(null);
+    setExtractMissing([]);
+
+    try {
+      const res = await fetch("/api/scraping/parse-listing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkUrl.trim() }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const json = await res.json();
+
+      if (!res.ok) {
+        setExtractMsg({ type: "error", text: json.error || "No pudimos leer esta publicación. Intenta con otra o completa manualmente." });
+        return;
+      }
+
+      const missing = fillFormFromExtraction(json.data);
+      setExtractMissing(missing);
+      const portal = json.portal || "portal";
+      setExtractMsg({ type: "success", text: `Datos extraídos de ${portal}. Revisa y ajusta si es necesario.` });
+      scrollToFirstMissing(missing);
+    } catch (err) {
+      const isTimeout = err instanceof DOMException && err.name === "TimeoutError";
+      setExtractMsg({
+        type: "error",
+        text: isTimeout
+          ? "La publicación tardó demasiado en cargar. Intenta de nuevo o completa manualmente."
+          : "No pudimos leer esta publicación. Intenta con otra o completa manualmente.",
+      });
+    } finally {
+      setLinkLoading(false);
+    }
+  }, [linkUrl, fillFormFromExtraction, scrollToFirstMissing]);
 
   // ─── Progress bar ─────────────────────────────────
   const progress = useMemo(() => {
@@ -778,10 +827,15 @@ export default function NuevoAnalisisPage() {
             />
             <Button
               type="button"
-              disabled
-              className="shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={linkLoading || !linkUrl.trim()}
+              onClick={handleLinkExtract}
+              className="shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              Extraer datos <Sparkles className="h-3.5 w-3.5" />
+              {linkLoading ? (
+                <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Leyendo...</>
+              ) : (
+                <>Extraer datos <Sparkles className="h-3.5 w-3.5" /></>
+              )}
             </Button>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -804,7 +858,7 @@ export default function NuevoAnalisisPage() {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={quotationLoading}
+              disabled={quotationLoading || linkLoading}
               className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
             >
               {quotationLoading ? (
@@ -817,19 +871,19 @@ export default function NuevoAnalisisPage() {
               <p className="text-xs text-muted-foreground">{quotationFile.name}</p>
             )}
           </div>
-          {quotationMsg && (
+          {extractMsg && (
             <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
-              quotationMsg.type === "success"
+              extractMsg.type === "success"
                 ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
                 : "border border-red-200 bg-red-50 text-red-700"
             }`}>
-              {quotationMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
-              {quotationMsg.text}
+              {extractMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
+              {extractMsg.text}
             </div>
           )}
-          {quotationMissing.length > 0 && quotationMsg?.type === "success" && (
+          {extractMissing.length > 0 && extractMsg?.type === "success" && (
             <p className="text-center text-xs text-amber-600">
-              No se encontró en la cotización: {quotationMissing.join(", ")}
+              No se encontró: {extractMissing.join(", ")}
             </p>
           )}
           <p className="text-center text-xs text-muted-foreground">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
