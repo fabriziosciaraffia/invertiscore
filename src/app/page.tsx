@@ -831,6 +831,20 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ============ ¿Y si uso ChatGPT? ============ */}
+      <section className="bg-white px-4 py-10">
+        <div className="mx-auto max-w-[700px] text-center">
+          <FadeIn>
+            <h2 className="text-[20px] font-medium text-[#9ca3af]">
+              ¿Y si uso ChatGPT para analizar mi inversión?
+            </h2>
+            <p className="mt-4 text-[16px] leading-relaxed text-[#374151]">
+              Puedes. Pero ChatGPT inventa datos de arriendo, te da un resultado distinto cada vez, y no guarda nada. InvertiScore usa IA con datos reales de Chile, una metodología consistente, y gráficos que te muestran todo en 30 segundos.
+            </p>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* ============ 10. CTA FINAL ============ */}
       <section className="px-4 py-12 sm:px-6 sm:py-[60px] md:py-[100px]" style={{ background: "linear-gradient(135deg, #0f172a 0%, #064e3b 100%)" }}>
         <div className="mx-auto max-w-3xl text-center">
