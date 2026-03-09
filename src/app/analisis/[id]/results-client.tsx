@@ -676,26 +676,6 @@ export function PremiumResults({
     return projs;
   }, [results, m, inputData, plusvaliaRate, arriendoGrowth]);
 
-  // Dynamic exit scenario based on horizon
-  const dynamicExit = useMemo(() => {
-    if (!results || !m || dynamicProjections.length === 0) return null;
-    const proy = dynamicProjections[horizonYears - 1];
-    if (!proy) return null;
-    const valorVenta = proy.valorPropiedad;
-    const comisionVenta = Math.round(valorVenta * 0.02);
-    const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
-    const retornoTotal = proy.flujoAcumulado + gananciaNeta;
-    const multiplicadorCapital = m.pieCLP > 0 ? Math.round((retornoTotal / m.pieCLP) * 100) / 100 : 0;
-    const flujos = [-m.pieCLP];
-    for (let i = 0; i < horizonYears; i++) {
-      let flujo = dynamicProjections[i].flujoAnual;
-      if (i === horizonYears - 1) flujo += valorVenta - proy.saldoCredito - comisionVenta;
-      flujos.push(flujo);
-    }
-    const tir = calcTIR(flujos);
-    return { anios: horizonYears, valorVenta: Math.round(valorVenta), saldoCredito: Math.round(proy.saldoCredito), comisionVenta, gananciaNeta: Math.round(gananciaNeta), flujoAcumulado: proy.flujoAcumulado, retornoTotal: Math.round(retornoTotal), multiplicadorCapital, tir };
-  }, [results, m, dynamicProjections, horizonYears]);
-
   // Dynamic refinance scenario based on horizon + refiPct
   const dynamicRefi = useMemo(() => {
     if (!results || !m || !inputData || dynamicProjections.length === 0) return null;
@@ -909,6 +889,32 @@ export function PremiumResults({
     }
     return annualData;
   }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth]);
+
+  // Single source of truth for flujo acumulado: last value from cashflowData (month-by-month)
+  const flujoAcumuladoReal = useMemo(() => {
+    if (cashflowData.length === 0) return 0;
+    return cashflowData[cashflowData.length - 1].Acumulado;
+  }, [cashflowData]);
+
+  // Dynamic exit scenario based on horizon (must be after flujoAcumuladoReal)
+  const dynamicExit = useMemo(() => {
+    if (!results || !m || dynamicProjections.length === 0) return null;
+    const proy = dynamicProjections[horizonYears - 1];
+    if (!proy) return null;
+    const valorVenta = proy.valorPropiedad;
+    const comisionVenta = Math.round(valorVenta * 0.02);
+    const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
+    const retornoTotal = flujoAcumuladoReal + gananciaNeta;
+    const multiplicadorCapital = m.pieCLP > 0 ? Math.round((retornoTotal / m.pieCLP) * 100) / 100 : 0;
+    const flujos = [-m.pieCLP];
+    for (let i = 0; i < horizonYears; i++) {
+      let flujo = dynamicProjections[i].flujoAnual;
+      if (i === horizonYears - 1) flujo += valorVenta - proy.saldoCredito - comisionVenta;
+      flujos.push(flujo);
+    }
+    const tir = calcTIR(flujos);
+    return { anios: horizonYears, valorVenta: Math.round(valorVenta), saldoCredito: Math.round(proy.saldoCredito), comisionVenta, gananciaNeta: Math.round(gananciaNeta), flujoAcumulado: flujoAcumuladoReal, retornoTotal: Math.round(retornoTotal), multiplicadorCapital, tir };
+  }, [results, m, dynamicProjections, horizonYears, flujoAcumuladoReal]);
 
   interface PatrimonioRow {
     name: string;
@@ -1868,7 +1874,7 @@ export function PremiumResults({
                         const creditoOriginal = precioOriginal * (1 - inputData.piePct / 100);
                         const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
                         const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
-                        const flujoAcum = lastProj.flujoAcumulado;
+                        const flujoAcum = flujoAcumuladoReal;
                         const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
                         const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
                         return (
