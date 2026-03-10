@@ -449,7 +449,9 @@ function recalcForSensitivity(
   inputData: AnalisisInput | undefined,
   tasaDelta: number,
   arriendoPct: number,
-  vacanciaDelta: number
+  vacanciaDelta: number,
+  precioPct?: number,
+  gastosPct?: number,
 ) {
   if (!inputData) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -461,6 +463,8 @@ function recalcForSensitivity(
   modified.tasaInteres = inputData.tasaInteres + tasaDelta;
   modified.arriendo = Math.round(inputData.arriendo * (1 + arriendoPct / 100));
   modified.vacanciaMeses = inputData.vacanciaMeses + vacanciaDelta;
+  if (precioPct) modified.precio = Math.round(inputData.precio * (1 + precioPct / 100) * 10) / 10;
+  if (gastosPct) modified.gastos = Math.round(inputData.gastos * (1 + gastosPct / 100));
 
   const precioCLP = modified.precio * UF_CLP;
   const piePct = modified.piePct / 100;
@@ -781,6 +785,7 @@ export function PremiumResults({
   if (ufValue) UF_CLP = ufValue;
   const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
+  const [sensHorizon, setSensHorizon] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
@@ -1043,13 +1048,100 @@ export function PremiumResults({
     [results, inputData]
   );
   const sensPesimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 2) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
+    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 1, 0, 20) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
     [results, inputData]
   );
   const sensOptimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, 0) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
+    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, -Math.min(0.5, inputData.vacanciaMeses), 0, -10) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
     [results, inputData]
   );
+
+  // ─── Sensitivity scenarios with projections ───
+  const sensScenarios = useMemo(() => {
+    if (!results || !m || !inputData) return null;
+
+    const precioCLP = inputData.precio * UF_CLP;
+    const pieCLP = precioCLP * (inputData.piePct / 100);
+    const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
+    const tasaMes = inputData.tasaInteres / 100 / 12;
+    const nMeses = inputData.plazoCredito * 12;
+
+    const calcSaldo = (mPagados: number) => {
+      if (mPagados >= nMeses) return 0;
+      if (tasaMes === 0) return creditoCLP * (1 - mPagados / nMeses);
+      const cuota = (creditoCLP * tasaMes) / (1 - Math.pow(1 + tasaMes, -nMeses));
+      return creditoCLP * Math.pow(1 + tasaMes, mPagados) - cuota * ((Math.pow(1 + tasaMes, mPagados) - 1) / tasaMes);
+    };
+
+    const configs = [
+      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#ef4444", borderClass: "border-red-300/60", bgClass: "", labelClass: "text-red-500" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#059669", borderClass: "border-emerald-400/60 ring-1 ring-emerald-400/20", bgClass: "bg-emerald-50/30", labelClass: "" },
+      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#3b82f6", borderClass: "border-blue-300/60", bgClass: "", labelClass: "text-blue-500" },
+    ];
+
+    return configs.map(cfg => {
+      const h = Math.min(sensHorizon, 20);
+
+      // Scenario-adjusted inputs
+      const scenTasa = inputData.tasaInteres + cfg.tasaDelta;
+      const scenArriendo = Math.round(inputData.arriendo * (1 + cfg.arriendoPct / 100));
+      const scenVacancia = inputData.vacanciaMeses + cfg.vacanciaDelta;
+
+      // Recalculate dividendo with scenario tasa
+      const scenTasaMes = scenTasa / 100 / 12;
+      const scenDividendo = creditoCLP <= 0 ? 0 : scenTasaMes === 0 ? Math.round(creditoCLP / nMeses) : Math.round((creditoCLP * scenTasaMes) / (1 - Math.pow(1 + scenTasaMes, -nMeses)));
+
+      // Saldo crédito with scenario tasa
+      const calcSaldoScen = (mPagados: number) => {
+        if (mPagados >= nMeses) return 0;
+        if (scenTasaMes === 0) return creditoCLP * (1 - mPagados / nMeses);
+        const cuota = (creditoCLP * scenTasaMes) / (1 - Math.pow(1 + scenTasaMes, -nMeses));
+        return creditoCLP * Math.pow(1 + scenTasaMes, mPagados) - cuota * ((Math.pow(1 + scenTasaMes, mPagados) - 1) / scenTasaMes);
+      };
+
+      let arriendoAct = scenArriendo;
+      let gastosAct = inputData.gastos;
+      let contribAct = inputData.contribuciones;
+      let flujoAcumH = 0;
+      let flujoMes1 = 0;
+
+      for (let anio = 1; anio <= h; anio++) {
+        const mantBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(inputData.antiguedad + anio)) / 12);
+        const mant = Math.round(mantBase * Math.pow(1 + cfg.gastosGr / 100, anio - 1));
+        const fl = calcFlujoDesglose({
+          arriendo: arriendoAct,
+          dividendo: scenDividendo,
+          ggcc: gastosAct,
+          contribuciones: contribAct,
+          mantencion: mant,
+          vacanciaMeses: scenVacancia,
+          usaAdministrador: inputData.usaAdministrador,
+          comisionAdministrador: inputData.comisionAdministrador,
+        });
+        if (anio === 1) flujoMes1 = fl.flujoNeto;
+        flujoAcumH += fl.flujoNeto * 12;
+        arriendoAct *= (1 + cfg.arriendoGr / 100);
+        gastosAct *= (1 + cfg.gastosGr / 100);
+        contribAct *= (1 + cfg.gastosGr / 100);
+      }
+
+      const valorVenta = precioCLP * Math.pow(1 + cfg.plusvalia / 100, h);
+      const saldoH = Math.max(0, calcSaldoScen(Math.min(h * 12, nMeses)));
+      const comision = valorVenta * 0.02;
+      const ganancia = valorVenta - saldoH - comision;
+      const utilidadNeta = ganancia + flujoAcumH - pieCLP;
+      const retorno = pieCLP > 0 ? (pieCLP + utilidadNeta) / pieCLP : 0;
+
+      return {
+        ...cfg, flujoMensual: flujoMes1, bolsilloTotal: Math.round(flujoAcumH),
+        valorVenta: Math.round(valorVenta), saldoCredito: Math.round(saldoH),
+        comisionVenta: Math.round(comision), gananciaBruta: Math.round(ganancia),
+        pieCLP: Math.round(pieCLP), utilidadNeta: Math.round(utilidadNeta),
+        retorno: Math.round(retorno * 10) / 10,
+        scenTasa, scenArriendo, scenVacancia: Math.round(scenVacancia * 100 / 12),
+      };
+    });
+  }, [results, m, inputData, sensHorizon, plusvaliaRate, arriendoGrowth, costGrowth]);
 
   const radarData = results ? [
     { dimension: "Rentabilidad", value: results.desglose.rentabilidad, fullMark: 100 },
@@ -1571,149 +1663,82 @@ export function PremiumResults({
           </SectionCard>
 
           {/* ===== d) GRATIS CON REGISTRO: Sensibilidad ===== */}
-          <SectionCard title="Análisis de Sensibilidad" description="¿Cómo cambian tus resultados si varían las condiciones?" icon={Shield} gate="login" accessLevel={currentAccess} muted>
-            {results && inputData && (() => {
-              const baseTasa = inputData.tasaInteres;
-              const baseArriendo = inputData.arriendo;
-              const baseVacancia = inputData.vacanciaMeses;
+          <SectionCard title="Análisis de Sensibilidad" description="¿Cómo cambia tu inversión según el escenario de mercado?" icon={Shield} gate="login" accessLevel={currentAccess} muted>
+            {sensScenarios && inputData && (
+              <>
+                {/* Horizonte slider */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-sm font-semibold">Horizonte de venta</h4>
+                    <span className="text-sm font-bold text-primary">{sensHorizon} años</span>
+                  </div>
+                  <input
+                    type="range" min={3} max={20} step={1} value={sensHorizon}
+                    onChange={(e) => setSensHorizon(Number(e.target.value))}
+                    className="w-full accent-primary h-2"
+                  />
+                  <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
+                    <span>3 años</span><span>20 años</span>
+                  </div>
+                </div>
 
-              // Table 1: Tasa vs Arriendo → Flujo neto mensual
-              const tasaDeltas = [-1, 0, 1, 2];
-              const arriendoPcts = [-15, 0, 15];
-              const table1 = tasaDeltas.map((td) =>
-                arriendoPcts.map((ap) => recalcForSensitivity(results, inputData, td, ap, 0))
-              );
+                {/* 3 scenario cards */}
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {sensScenarios.map((s) => (
+                    <div key={s.key} className={`rounded-xl border ${s.borderClass} ${s.bgClass} p-4`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-base">{s.icon}</span>
+                        <div className={`text-sm font-semibold ${s.labelClass}`}>{s.sub}</div>
+                      </div>
 
-              // Table 2: Vacancia vs Plusvalía → Score
-              const vacanciaVals = [0, 1, 2, 3];
-              const plusvaliaVals = [2, 4, 6];
-              const table2 = vacanciaVals.map((vac) =>
-                plusvaliaVals.map((pv) => {
-                  const r = recalcForSensitivity(results, inputData, 0, 0, vac - baseVacancia);
-                  // Adjust score slightly for plusvalía context (higher plusvalía = better score)
-                  const pvBonus = pv === 2 ? -5 : pv === 6 ? 5 : 0;
-                  return { ...r, score: Math.min(100, Math.max(0, r.score + pvBonus)) };
-                })
-              );
+                      {/* Flujo mensual año 1 */}
+                      <div className="mb-2">
+                        <div className="text-[10px] text-muted-foreground">Flujo mensual (año 1)</div>
+                        <div className={`text-lg font-bold ${s.flujoMensual >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          {fmt(s.flujoMensual)}<span className="text-xs font-normal text-muted-foreground">/mes</span>
+                        </div>
+                      </div>
 
-              const scoreColor = (s: number) => s >= 60 ? "text-emerald-500" : s >= 40 ? "text-amber-500" : "text-red-500";
-              const flujoColor = (f: number) => f >= 0 ? "text-emerald-500" : "text-red-500";
+                      {/* Bolsillo acumulado */}
+                      <div className="mb-3">
+                        <div className="text-[10px] text-muted-foreground">Bolsillo acumulado ({sensHorizon} años)</div>
+                        <div className={`text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                          {fmt(s.bolsilloTotal)}
+                        </div>
+                      </div>
 
-              return (
-                <>
-                  {/* Table 1 */}
-                  <div className="mb-6">
-                    <h4 className="mb-3 text-sm font-semibold">Sensibilidad por tasa de interés y arriendo</h4>
-                    <div className="overflow-x-auto -mx-2 px-2">
-                      <table className="w-full text-[11px] sm:text-sm">
-                        <thead>
-                          <tr className="border-b border-border/50 text-[10px] sm:text-xs text-muted-foreground">
-                            <th className="pb-2 pr-2 text-left whitespace-nowrap">Tasa</th>
-                            {arriendoPcts.map((ap) => (
-                              <th key={ap} className="pb-2 px-1 sm:px-2 text-center whitespace-nowrap">
-                                {ap === 0 ? <span className="hidden sm:inline">{fmtCLP(baseArriendo)}</span> : null}
-                                {ap === 0 ? <span className="sm:hidden">Actual</span> : null}
-                                {ap !== 0 ? `${ap > 0 ? "+" : ""}${ap}%` : null}
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {tasaDeltas.map((td, i) => (
-                            <tr key={td} className="border-b border-border/30">
-                              <td className="py-1.5 sm:py-2 pr-2 text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                                {td === 0 ? `${baseTasa.toFixed(1)}%` : <><span className="sm:hidden">{(baseTasa + td).toFixed(1)}%</span><span className="hidden sm:inline">{(baseTasa + td).toFixed(1)}% ({td > 0 ? "+" : ""}{td}%)</span></>}
-                              </td>
-                              {arriendoPcts.map((ap, j) => {
-                                const cell = table1[i][j];
-                                const isCurrent = td === 0 && ap === 0;
-                                return (
-                                  <td key={ap} className={`py-1.5 sm:py-2 px-1 sm:px-2 text-center font-medium ${flujoColor(cell.flujo)} ${isCurrent ? "rounded-md ring-2 ring-emerald-500/40 bg-emerald-500/5" : ""}`}>
-                                    {fmtCLP(cell.flujo)}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                      <hr className="border-border/30 mb-3" />
+
+                      {/* Resultado venta */}
+                      <div className="space-y-1.5 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Ganancia venta</span>
+                          <span className={`font-medium ${s.gananciaBruta >= 0 ? "" : "text-red-500"}`}>{fmt(s.gananciaBruta)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Pie invertido</span>
+                          <span className="font-medium">{fmt(s.pieCLP)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Utilidad neta</span>
+                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(s.utilidadNeta)}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-0.5">
+                          <span className="text-muted-foreground">Retorno</span>
+                          <span className={`text-base font-bold ${s.retorno >= 1 ? "text-emerald-600" : "text-red-500"}`}>{s.retorno}x</span>
+                        </div>
+                      </div>
+
+                      {/* Supuestos */}
+                      <div className="mt-3 border-t border-dashed border-border/40 pt-2 text-[11px] leading-relaxed text-gray-400">
+                        <div>Tasa {s.scenTasa.toFixed(2)}% · Arr. {fmtM(s.scenArriendo)}</div>
+                        <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
+                      </div>
                     </div>
-                    <p className="mt-1 text-[10px] text-muted-foreground">Flujo neto mensual. El escenario actual está resaltado.</p>
-                  </div>
-
-                  {/* Table 2 */}
-                  <div className="mb-6">
-                    <h4 className="mb-3 text-sm font-semibold">Sensibilidad por vacancia y plusvalía</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border/50 text-xs text-muted-foreground">
-                            <th className="pb-2 pr-3 text-left">Vacancia</th>
-                            {plusvaliaVals.map((pv) => (
-                              <th key={pv} className="pb-2 px-2 text-center">Plusvalía {pv}%</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {vacanciaVals.map((vac, i) => (
-                            <tr key={vac} className="border-b border-border/30">
-                              <td className="py-2 pr-3 text-xs text-muted-foreground">
-                                {vac} mes{vac !== 1 ? "es" : ""}/año
-                              </td>
-                              {plusvaliaVals.map((pv, j) => {
-                                const cell = table2[i][j];
-                                const isCurrent = vac === Math.round(baseVacancia) && pv === 4;
-                                return (
-                                  <td key={pv} className={`py-2 px-2 text-center font-medium ${scoreColor(cell.score)} ${isCurrent ? "rounded-md ring-2 ring-emerald-500/40 bg-emerald-500/5" : ""}`}>
-                                    {cell.score}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="mt-1 text-[10px] text-muted-foreground">Score InvertiScore. El escenario actual está resaltado.</p>
-                  </div>
-
-                  <p className="mb-4 rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
-                    Cada celda muestra cómo cambian tus resultados si varían las condiciones. El escenario actual está resaltado.
-                  </p>
-
-                  {/* Keep Pessimist/Base/Optimist scenarios */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border/50 text-left text-xs text-muted-foreground">
-                          <th className="pb-2 pr-4">Escenario</th>
-                          <th className="pb-2 pr-4">Score</th>
-                          <th className="pb-2 pr-4">Flujo Neto /mes</th>
-                          <th className="pb-2">Rent. Neta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[
-                          { label: "Pesimista", desc: "+1.5% tasa, -15% arriendo, +2m vacancia", data: sensPesimista, color: "text-red-400" },
-                          { label: "Base", desc: "Valores actuales", data: sensBase, color: "" },
-                          { label: "Optimista", desc: "-1% tasa, +10% arriendo", data: sensOptimista, color: "text-emerald-400" },
-                        ].map(({ label, desc, data, color }) => (
-                          <tr key={label} className="border-b border-border/30">
-                            <td className="py-2 pr-4">
-                              <div className={`font-medium ${color}`}>{label}</div>
-                              <div className="text-[10px] text-muted-foreground">{desc}</div>
-                            </td>
-                            <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
-                            <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(data.flujo)}</td>
-                            <td className="py-2">{data.rentabilidadNeta.toFixed(1)}%</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              );
-            })()}
+                  ))}
+                </div>
+              </>
+            )}
           </SectionCard>
 
           {/* ===== e) GRATIS CON REGISTRO: Puntos Críticos ===== */}
@@ -2321,84 +2346,84 @@ export function PremiumResults({
   const hasPanelContent = currentAccess !== "guest" && !!inputData;
 
   const panelFields = hasPanelContent ? (
-    <div className="space-y-2.5">
+    <div className="space-y-2">
       <div>
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
-        <div className="space-y-1.5">
+        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
+        <div className="space-y-1">
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Precio (UF)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Precio (UF)</label>
               <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
-            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Pie</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Pie</label>
               <span className="text-[11px] font-medium">{adjPiePct}%</span>
             </div>
-            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
-        <div className="space-y-1.5">
+        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
+        <div className="space-y-1">
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Plazo</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Plazo</label>
               <span className="text-[11px] font-medium">{adjPlazo} años</span>
             </div>
-            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Tasa (%)</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Tasa (%)</label>
               <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
-            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
-        <div className="space-y-1.5">
+        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
+        <div className="space-y-1">
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Arriendo</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Arriendo</label>
               <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
-            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">GGCC</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">GGCC</label>
               <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
-            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Contrib. /trim</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Contrib. /trim</label>
               <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
             </div>
-            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary" />
+            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary h-1.5" />
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Vacancia</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Vacancia</label>
               <span className="text-[11px] font-medium">{adjVacanciaPct}%</span>
             </div>
-            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-primary" />
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <p className="text-[10px] text-gray-400 leading-tight">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
           </div>
           <div>
-            <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Administración</label>
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-semibold text-foreground">Administración</label>
               <span className="text-[11px] font-medium">{adjAdminPct}%</span>
             </div>
-            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-primary" />
-            <p className="mt-0.5 text-[10px] text-muted-foreground">{adjAdminPct > 0 ? `= ${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
+            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <p className="text-[10px] text-gray-400 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
       </div>

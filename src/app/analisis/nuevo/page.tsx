@@ -1364,8 +1364,10 @@ export default function NuevoAnalisisPage() {
                 className="w-full accent-primary"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                {parseFloat(form.adminPct) > 0 && parseNum(form.arriendo) > 0
-                  ? `= $${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
+                {parseFloat(form.adminPct) > 0
+                  ? parseNum(form.arriendo) > 0
+                    ? `${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
+                    : "Ingresa el arriendo para calcular"
                   : "Sin administrador"}
               </p>
             </div>
