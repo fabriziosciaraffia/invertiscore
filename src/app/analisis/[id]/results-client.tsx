@@ -42,6 +42,18 @@ const RADAR_TOOLTIPS: Record<string, string> = {
   "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu rentabilidad bruta contra el promedio de publicaciones activas en la comuna. Peso: 10%",
 };
 
+// Compatibilidad con análisis guardados con nombres viejos (yieldBruto, yieldNeto)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeMetrics(metrics: any): import("@/lib/types").AnalysisMetrics | null {
+  if (!metrics) return null;
+  return {
+    ...metrics,
+    rentabilidadBruta: metrics.rentabilidadBruta ?? metrics.yieldBruto ?? 0,
+    rentabilidadNeta: metrics.rentabilidadNeta ?? metrics.yieldNeto ?? 0,
+    capRate: metrics.capRate ?? 0,
+  };
+}
+
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
@@ -439,7 +451,11 @@ function recalcForSensitivity(
   arriendoPct: number,
   vacanciaDelta: number
 ) {
-  if (!inputData) return { score: results.score, flujo: results.metrics.flujoNetoMensual, rentabilidadNeta: results.metrics.rentabilidadNeta };
+  if (!inputData) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = results.metrics as any;
+    return { score: results.score, flujo: results.metrics.flujoNetoMensual, rentabilidadNeta: raw.rentabilidadNeta ?? raw.yieldNeto ?? 0 };
+  }
 
   const modified = { ...inputData };
   modified.tasaInteres = inputData.tasaInteres + tasaDelta;
@@ -861,7 +877,7 @@ export function PremiumResults({
     }
   }, [analysisId, aiLoading]);
 
-  const m = results?.metrics ?? null;
+  const m = normalizeMetrics(results?.metrics);
 
   // Top-level pre-delivery months calculation
   const mesesPreEntregaTop = useMemo(() => {
@@ -1484,10 +1500,10 @@ export function PremiumResults({
           <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess} muted>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { label: "Rentabilidad Bruta", value: `${m.rentabilidadBruta.toFixed(1)}%` },
-                { label: "Rentabilidad Neta", value: `${m.rentabilidadNeta.toFixed(1)}%` },
-                { label: "Rent. Operativa (CAP Rate)", value: `${m.capRate.toFixed(1)}%`, subtitle: "NOI / Precio — solo gastos operativos directos" },
-                { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
+                { label: "Rentabilidad Bruta", value: `${(m.rentabilidadBruta ?? 0).toFixed(1)}%` },
+                { label: "Rentabilidad Neta", value: `${(m.rentabilidadNeta ?? 0).toFixed(1)}%` },
+                { label: "Rent. Operativa (CAP Rate)", value: `${(m.capRate ?? 0).toFixed(1)}%`, subtitle: "NOI / Precio — solo gastos operativos directos" },
+                { label: "Cash-on-Cash", value: `${(m.cashOnCash ?? 0).toFixed(1)}%` },
                 { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
                 { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
                 { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
@@ -1701,7 +1717,7 @@ export function PremiumResults({
                 : 50;
               const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
                 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
-                : m.rentabilidadBruta * 0.9;
+                : (m.rentabilidadBruta ?? 0) * 0.9;
 
               const items = [
                 { label: currency === "UF" ? "Precio/m\u00B2 (UF)" : "Precio/m\u00B2 (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },

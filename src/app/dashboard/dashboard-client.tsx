@@ -40,11 +40,13 @@ function getScoreLabel(score: number) {
 function getMetrics(item: Analisis) {
   const r = item.results;
   if (r?.metrics) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = r.metrics as any;
     return {
-      rentabilidadBruta: r.metrics.rentabilidadBruta,
-      flujoMensual: r.metrics.flujoNetoMensual,
-      capRate: r.metrics.capRate,
-      precioM2: r.metrics.precioM2,
+      rentabilidadBruta: raw.rentabilidadBruta ?? raw.yieldBruto ?? 0,
+      flujoMensual: r.metrics.flujoNetoMensual ?? 0,
+      capRate: raw.capRate ?? 0,
+      precioM2: r.metrics.precioM2 ?? 0,
     };
   }
   // Fallback: calculate basic metrics from raw data

@@ -84,7 +84,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos insuficientes" }, { status: 400 });
     }
 
-    const m = results.metrics;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mRaw = results.metrics as any;
+    // Compatibilidad con análisis guardados con nombres viejos
+    const m = {
+      ...mRaw,
+      rentabilidadBruta: mRaw.rentabilidadBruta ?? mRaw.yieldBruto ?? 0,
+      rentabilidadNeta: mRaw.rentabilidadNeta ?? mRaw.yieldNeto ?? 0,
+      capRate: mRaw.capRate ?? 0,
+    };
     const d = results.desglose;
     const exit = results.exitScenario;
     const UF_CLP = m.precioCLP / input.precio;

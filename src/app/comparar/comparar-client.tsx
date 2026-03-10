@@ -91,19 +91,29 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     rows: [
       {
         label: "Rentabilidad Bruta",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.rentabilidadBruta) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.rentabilidadBruta ?? 0),
+        values: analisis.map((a) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = a.results?.metrics as any;
+          return raw ? formatPct(raw.rentabilidadBruta ?? raw.yieldBruto ?? 0) : "—";
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        raw: analisis.map((a) => { const raw = a.results?.metrics as any; return raw?.rentabilidadBruta ?? raw?.yieldBruto ?? 0; }),
         higherIsBetter: true,
       },
       {
         label: "Rentabilidad Neta",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.rentabilidadNeta) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.rentabilidadNeta ?? 0),
+        values: analisis.map((a) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const raw = a.results?.metrics as any;
+          return raw ? formatPct(raw.rentabilidadNeta ?? raw.yieldNeto ?? 0) : "—";
+        }),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        raw: analisis.map((a) => { const raw = a.results?.metrics as any; return raw?.rentabilidadNeta ?? raw?.yieldNeto ?? 0; }),
         higherIsBetter: true,
       },
       {
         label: "Rent. Operativa (CAP Rate)",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.capRate) : "—"),
+        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.capRate ?? 0) : "—"),
         raw: analisis.map((a) => a.results?.metrics?.capRate ?? 0),
         higherIsBetter: true,
       },
