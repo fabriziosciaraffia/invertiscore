@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, RadarChart, PolarGrid,
@@ -83,6 +83,309 @@ function stripBullet(text: string): string {
   return text.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").replace(/price score/gi, "Eficiencia de compra").trim();
 }
 
+
+// ─── Typewriter + FadeIn animation components ──────
+function TypewriterText({ text, speed = 25, onComplete }: { text: string; speed?: number; onComplete?: () => void }) {
+  const [index, setIndex] = useState(0);
+  const completed = useRef(false);
+  useEffect(() => {
+    if (index >= text.length) {
+      if (!completed.current) { completed.current = true; onComplete?.(); }
+      return;
+    }
+    const t = setTimeout(() => setIndex((i) => i + 1), speed);
+    return () => clearTimeout(t);
+  }, [index, text, speed, onComplete]);
+  return <>{text.slice(0, index)}{index < text.length && <span className="inline-block w-0.5 h-4 bg-primary animate-pulse align-text-bottom" />}</>;
+}
+
+function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!show) return;
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [show, delay]);
+  if (!visible) return null;
+  return <div className="animate-fadeIn">{children}</div>;
+}
+
+// ─── AI Analysis Section with typewriter ────────────
+function AIAnalysisSection({
+  aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
+}: {
+  aiAnalysis: AIAnalysis | null;
+  aiLoading: boolean;
+  aiError: string | null;
+  loadAiAnalysis: () => void;
+  score: number;
+  ct: (obj: Record<string, unknown>, field: string) => string;
+  ci: (obj: Record<string, unknown>, field: string) => string[];
+  currentAccess: "guest" | "free" | "premium";
+  analysisId?: string;
+}) {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+  const [phaseIndex, setPhaseIndex] = useState(-1); // -1=idle, 0=loading, 1=resumen, 2=bolsillo, 3=alternativas, 4=negociacion, 5=proyeccion, 6=riesgos, 7=veredicto, 8=listas, 9=done
+
+  // Intersection observer: trigger animation once when visible
+  useEffect(() => {
+    if (!aiAnalysis || hasAnimated.current) return;
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !hasAnimated.current) {
+        hasAnimated.current = true;
+        setPhaseIndex(0); // loading
+        setTimeout(() => setPhaseIndex(1), 1500); // resumen
+      }
+    }, { threshold: 0.2 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [aiAnalysis]);
+
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+  const charSpeed = isMobile ? 15 : 25;
+
+  const showAll = phaseIndex >= 9;
+  const next = (to: number) => () => setTimeout(() => setPhaseIndex(to), 300);
+
+  // If already animated, show everything
+  const content = aiAnalysis ? (
+    <div className="space-y-5">
+      {/* Loading phase */}
+      {phaseIndex === 0 && (
+        <div className="flex flex-col items-center gap-3 py-8">
+          <Sparkles className="h-8 w-8 animate-pulse text-primary" />
+          <p className="text-sm text-muted-foreground">Analizando tu inversión con IA...</p>
+          <div className="flex gap-1">
+            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
+          </div>
+        </div>
+      )}
+
+      {/* 1. Resumen Ejecutivo */}
+      {phaseIndex >= 1 && (
+        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-emerald-500/30 bg-emerald-500/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+          <p className="text-sm font-medium leading-relaxed">
+            {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
+              <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} speed={charSpeed} onComplete={next(2)} />
+            ) : ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}
+          </p>
+        </div>
+      )}
+
+      {/* 2. Tu Bolsillo */}
+      <FadeIn show={phaseIndex >= 2}>
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
+              <TypewriterText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(3)} />
+            ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
+          </p>
+          {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
+            <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
+              <p className="flex items-start gap-2 text-xs text-red-400">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta")}
+              </p>
+            </div>
+          )}
+        </div>
+      </FadeIn>
+
+      {/* 3. Vs Alternativas */}
+      <FadeIn show={phaseIndex >= 3}>
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Scale className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
+              <TypewriterText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(4)} />
+            ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
+          </p>
+        </div>
+      </FadeIn>
+
+      {/* 4. Negociación */}
+      <FadeIn show={phaseIndex >= 4}>
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Handshake className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
+              <TypewriterText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(5)} />
+            ) : ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}
+          </p>
+          {aiAnalysis.negociacion.precioSugerido && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Precio sugerido:</span>
+              <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-sm font-bold text-emerald-500">{aiAnalysis.negociacion.precioSugerido}</span>
+            </div>
+          )}
+        </div>
+      </FadeIn>
+
+      {/* 5. Proyección */}
+      <FadeIn show={phaseIndex >= 5}>
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
+              <TypewriterText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(6)} />
+            ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
+          </p>
+        </div>
+      </FadeIn>
+
+      {/* 6. Riesgos */}
+      <FadeIn show={phaseIndex >= 6}>
+        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Shield className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
+          </div>
+          <ul className="space-y-2">
+            {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
+              <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 300}>
+                <li className="text-sm leading-relaxed text-muted-foreground">
+                  <span className="mr-1 font-medium text-red-400">⚠</span> {stripBullet(r)}
+                </li>
+              </FadeIn>
+            ))}
+          </ul>
+          {phaseIndex === 6 && <DelayedCallback delay={ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").length * 300 + 400} onComplete={() => setPhaseIndex(7)} />}
+        </div>
+      </FadeIn>
+
+      {/* 7. Veredicto */}
+      <FadeIn show={phaseIndex >= 7}>
+        <div className="rounded-lg border-2 border-border/50 bg-card/50 p-5">
+          <div className="mb-3 flex items-center gap-3">
+            <h4 className="text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
+            <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
+              aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-emerald-500/15 text-emerald-500" :
+              aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-amber-500/15 text-amber-500" :
+              "bg-red-500/15 text-red-500"
+            }`}>
+              {aiAnalysis.veredicto.decision}
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
+              <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} speed={charSpeed} onComplete={next(8)} />
+            ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
+          </p>
+        </div>
+      </FadeIn>
+
+      {/* 8. A Favor / Puntos de Atención */}
+      <FadeIn show={phaseIndex >= 8}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
+              <CheckCircle2 className="h-4 w-4" /> A favor
+            </h4>
+            <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+              {aiAnalysis.aFavor.map((p, i) => (
+                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : i * 200}>
+                  <li>{p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
+                </FadeIn>
+              ))}
+            </ul>
+          </div>
+          <div>
+            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-red-400">
+              <AlertTriangle className="h-4 w-4" /> Atención
+            </h4>
+            <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+              {aiAnalysis.puntosAtencion.map((c, i) => (
+                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : (aiAnalysis.aFavor.length + i) * 200}>
+                  <li>{c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
+                </FadeIn>
+              ))}
+            </ul>
+          </div>
+        </div>
+        {phaseIndex === 8 && <DelayedCallback delay={(aiAnalysis.aFavor.length + aiAnalysis.puntosAtencion.length) * 200 + 500} onComplete={() => setPhaseIndex(9)} />}
+      </FadeIn>
+
+      {showAll && (
+        <p className="text-center text-[10px] text-muted-foreground/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+      )}
+    </div>
+  ) : null;
+
+  return (
+    <div ref={sectionRef}>
+      <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
+        {/* No AI yet: show generate button */}
+        {!aiAnalysis && !aiLoading && !aiError && (
+          <div className="flex flex-col items-center gap-4 py-8">
+            <Sparkles className="h-10 w-10 text-primary/60" />
+            <div className="text-center">
+              <h4 className="mb-1 text-sm font-semibold">Genera el análisis completo con IA</h4>
+              <p className="text-xs text-muted-foreground">Claude analiza tu inversión y genera recomendaciones personalizadas</p>
+            </div>
+            <button
+              type="button"
+              onClick={loadAiAnalysis}
+              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
+            >
+              <Brain className="h-4 w-4" />
+              Analizar con IA
+            </button>
+          </div>
+        )}
+
+        {/* Real loading */}
+        {aiLoading && (
+          <div className="flex flex-col items-center gap-3 py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Analizando tu inversión con IA... (15-30 segundos)</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {aiError && (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
+              Error: {aiError}
+            </div>
+            <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-primary hover:underline">
+              Reintentar
+            </button>
+          </div>
+        )}
+
+        {/* AI content with typewriter */}
+        {content}
+      </SectionCard>
+    </div>
+  );
+}
+
+// Helper: triggers a callback after a delay (no visual output)
+function DelayedCallback({ delay, onComplete }: { delay: number; onComplete: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onComplete, delay);
+    return () => clearTimeout(t);
+  }, [delay, onComplete]);
+  return null;
+}
 
 // Get the right AI text field based on currency toggle, with legacy fallback
 function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string {
@@ -1501,188 +1804,7 @@ export function PremiumResults({
             )}
           </SectionCard>
 
-          {/* ===== PREMIUM: h) Análisis Detallado (IA) ===== */}
-          <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-            {!aiAnalysis && !aiLoading && !aiError && (
-              <div className="space-y-4">
-                {/* Fallback: análisis determinístico */}
-                <div>
-                  <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                  <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                    {results.pros.map((p, i) => (
-                      <li key={i}>{stripBullet(p)}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                  <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                    {results.contras.map((c, i) => (
-                      <li key={i}>{stripBullet(c)}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
-                  <h4 className="mb-2 text-sm font-semibold">Veredicto</h4>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{results.resumen}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={loadAiAnalysis}
-                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Generar análisis profundo con IA
-                </button>
-              </div>
-            )}
-
-            {aiLoading && (
-              <div className="flex flex-col items-center gap-3 py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Analizando tu inversión con IA... (15-30 segundos)</p>
-              </div>
-            )}
-
-            {aiError && (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
-                  Error: {aiError}
-                </div>
-                <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-primary hover:underline">
-                  Reintentar
-                </button>
-                {/* Fallback */}
-                <div className="mt-4 space-y-4 border-t border-border/30 pt-4">
-                  <div>
-                    <h4 className="mb-2 text-sm font-semibold text-emerald-400">A favor de esta inversión</h4>
-                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                      {results.pros.map((p, i) => <li key={i}>{stripBullet(p)}</li>)}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="mb-2 text-sm font-semibold text-red-400">Puntos de atención</h4>
-                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                      {results.contras.map((c, i) => <li key={i}>{stripBullet(c)}</li>)}
-                    </ul>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis && (
-              <div className="space-y-5">
-                {/* 1. Resumen Ejecutivo */}
-                <div className={`rounded-lg border p-4 ${score >= 60 ? "border-emerald-500/30 bg-emerald-500/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
-                  <p className="text-sm font-medium leading-relaxed">{ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}</p>
-                </div>
-
-                {/* 2. Tu Bolsillo */}
-                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Wallet className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}</p>
-                  {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
-                    <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
-                      <p className="flex items-start gap-2 text-xs text-red-400">
-                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                        {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta")}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Vs Alternativas */}
-                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Scale className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}</p>
-                </div>
-
-                {/* 4. Negociación */}
-                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Handshake className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}</p>
-                  {aiAnalysis.negociacion.precioSugerido && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Precio sugerido:</span>
-                      <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-sm font-bold text-emerald-500">{aiAnalysis.negociacion.precioSugerido}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* 5. Proyección */}
-                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}</p>
-                </div>
-
-                {/* 6. Riesgos */}
-                <div className="rounded-lg border border-border/50 bg-card/50 p-4">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" />
-                    <h4 className="text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
-                  </div>
-                  <ul className="space-y-2">
-                    {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
-                      <li key={i} className="text-sm leading-relaxed text-muted-foreground">
-                        <span className="mr-1 font-medium text-red-400">⚠</span> {stripBullet(r)}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* 7. Veredicto */}
-                <div className="rounded-lg border-2 border-border/50 bg-card/50 p-5">
-                  <div className="mb-3 flex items-center gap-3">
-                    <h4 className="text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-                      aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-emerald-500/15 text-emerald-500" :
-                      aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-amber-500/15 text-amber-500" :
-                      "bg-red-500/15 text-red-500"
-                    }`}>
-                      {aiAnalysis.veredicto.decision}
-                    </span>
-                  </div>
-                  <p className="text-sm leading-relaxed text-muted-foreground">{ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}</p>
-                </div>
-
-                {/* 8. A Favor / Puntos de Atención */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4" /> A favor
-                    </h4>
-                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                      {aiAnalysis.aFavor.map((p, i) => <li key={i}>{p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
-                    </ul>
-                  </div>
-                  <div>
-                    <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-red-400">
-                      <AlertTriangle className="h-4 w-4" /> Atención
-                    </h4>
-                    <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
-                      {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>{c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>)}
-                    </ul>
-                  </div>
-                </div>
-
-                <p className="text-center text-[10px] text-muted-foreground/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
-              </div>
-            )}
-          </SectionCard>
-
-          {/* ===== PREMIUM: i) Flujo, Patrimonio y Salida ===== */}
+          {/* ===== PREMIUM: h) Flujo, Patrimonio y Salida ===== */}
           <div className="relative mb-8">
             <Card className="border-border/50 bg-primary/[0.03]">
               <CardHeader>
@@ -2063,6 +2185,19 @@ export function PremiumResults({
               <PaywallOverlay analysisId={analysisId} />
             )}
           </div>
+
+          {/* ===== PREMIUM: i) Análisis Detallado (IA) — ÚLTIMO ===== */}
+          <AIAnalysisSection
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+            aiError={aiError}
+            loadAiAnalysis={loadAiAnalysis}
+            score={score}
+            ct={ct}
+            ci={ci}
+            currentAccess={currentAccess}
+            analysisId={analysisId}
+          />
 
           {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
