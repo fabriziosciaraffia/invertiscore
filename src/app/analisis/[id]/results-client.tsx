@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate } from "@/lib/analysis";
-import { SEED_MARKET_DATA } from "@/lib/market-seed";
 import type { MarketDataRow } from "@/lib/market-data";
 
 // Module-level UF value, updated from server prop on mount
@@ -435,171 +434,6 @@ function calcTIR(flujos: number[]): number {
   return Math.round(rate * 10000) / 100;
 }
 
-function MiniScoreCircle({ score }: { score: number }) {
-  const color = score >= 80 ? "#059669" : score >= 65 ? "#3b82f6" : score >= 50 ? "#eab308" : score >= 30 ? "#f97316" : "#ef4444";
-  return (
-    <div className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold" style={{ borderColor: color, color }}>
-      {score}
-    </div>
-  );
-}
-
-function recalcForSensitivity(
-  results: FullAnalysisResult,
-  inputData: AnalisisInput | undefined,
-  tasaDelta: number,
-  arriendoPct: number,
-  vacanciaDelta: number,
-  precioPct?: number,
-  gastosPct?: number,
-) {
-  if (!inputData) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const raw = results.metrics as any;
-    return { score: results.score, flujo: results.metrics.flujoNetoMensual, rentabilidadNeta: raw.rentabilidadNeta ?? raw.yieldNeto ?? 0 };
-  }
-
-  const modified = { ...inputData };
-  modified.tasaInteres = inputData.tasaInteres + tasaDelta;
-  modified.arriendo = Math.round(inputData.arriendo * (1 + arriendoPct / 100));
-  modified.vacanciaMeses = inputData.vacanciaMeses + vacanciaDelta;
-  if (precioPct) modified.precio = Math.round(inputData.precio * (1 + precioPct / 100) * 10) / 10;
-  if (gastosPct) modified.gastos = Math.round(inputData.gastos * (1 + gastosPct / 100));
-
-  const precioCLP = modified.precio * UF_CLP;
-  const piePct = modified.piePct / 100;
-
-  const creditoCLP = precioCLP * (1 - piePct);
-  const tasaMensual = modified.tasaInteres / 100 / 12;
-  const n = modified.plazoCredito * 12;
-  const dividendo = creditoCLP <= 0 ? 0 : tasaMensual === 0 ? Math.round(creditoCLP / n) : Math.round((creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
-
-  const ingresoMensual = modified.arriendo;
-  const mantencion = modified.provisionMantencion || Math.round((precioCLP * getMantencionRate(modified.antiguedad)) / 12);
-
-  const flujo = calcFlujoDesglose({
-    arriendo: ingresoMensual,
-    dividendo,
-    ggcc: modified.gastos,
-    contribuciones: modified.contribuciones,
-    mantencion,
-    vacanciaMeses: modified.vacanciaMeses,
-    usaAdministrador: modified.usaAdministrador,
-    comisionAdministrador: modified.comisionAdministrador,
-  });
-
-  const egresosMensuales = flujo.totalEgresos;
-  const flujoNetoMensual = flujo.flujoNeto;
-
-  const rentaAnual = ingresoMensual * 12;
-  const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
-  const noi = rentaAnual - gastosOperativosAnuales;
-  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
-  const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
-  const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
-  const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
-  const precioM2 = modified.superficie > 0 ? modified.precio / modified.superficie : 0;
-
-  const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
-  const lerp = (value: number, inMin: number, inMax: number, outMin: number, outMax: number) => {
-    const t = (value - inMin) / (inMax - inMin);
-    return outMin + clamp(t, 0, 1) * (outMax - outMin);
-  };
-
-  const PLUSVALIA_COMUNA: Record<string, number> = {
-    "vitacura": 95, "lo barnechea": 95,
-    "las condes": 90, "providencia": 90,
-    "ñuñoa": 82, "la reina": 82,
-    "san miguel": 70, "macul": 70, "la florida": 70,
-    "santiago centro": 60,
-    "estación central": 55, "estacion central": 55, "independencia": 55, "recoleta": 55,
-    "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
-  };
-  const COMUNAS_OVERSUPPLY = ["santiago centro", "estación central", "estacion central", "independencia"];
-  const lookupC = (comuna: string, table: Record<string, number>, def: number) => {
-    const c = comuna.toLowerCase().trim();
-    if (table[c] !== undefined) return table[c];
-    for (const key of Object.keys(table)) { if (c.includes(key) || key.includes(c)) return table[key]; }
-    return def;
-  };
-
-  let rentabilidadScore: number;
-  if (yieldBruto >= 6) rentabilidadScore = lerp(yieldBruto, 6, 8, 90, 100);
-  else if (yieldBruto >= 5) rentabilidadScore = lerp(yieldBruto, 5, 6, 70, 89);
-  else if (yieldBruto >= 4) rentabilidadScore = lerp(yieldBruto, 4, 5, 45, 65);
-  else if (yieldBruto >= 3) rentabilidadScore = lerp(yieldBruto, 3, 4, 25, 44);
-  else rentabilidadScore = lerp(yieldBruto, 0, 3, 0, 24);
-  if (rentabilidadNeta >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
-  else if (rentabilidadNeta < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
-  rentabilidadScore = clamp(rentabilidadScore, 0, 100);
-
-  let flujoCajaScore: number;
-  if (flujoNetoMensual >= 0) flujoCajaScore = lerp(flujoNetoMensual, 0, 200000, 80, 100);
-  else if (flujoNetoMensual >= -200000) flujoCajaScore = lerp(flujoNetoMensual, -200000, 0, 50, 79);
-  else if (flujoNetoMensual >= -400000) flujoCajaScore = lerp(flujoNetoMensual, -400000, -200000, 25, 49);
-  else if (flujoNetoMensual >= -600000) flujoCajaScore = lerp(flujoNetoMensual, -600000, -400000, 10, 24);
-  else flujoCajaScore = lerp(flujoNetoMensual, -1000000, -600000, 0, 9);
-  flujoCajaScore = clamp(flujoCajaScore, 0, 100);
-
-  let plusvaliaScore = lookupC(modified.comuna, PLUSVALIA_COMUNA, 50);
-  const plusvaliaBase = lookupC(modified.comuna, PLUSVALIA_COMUNA, 50);
-  plusvaliaScore += plusvaliaBase >= 80 ? lerp(precioM2, 30, 120, 8, -8) : lerp(precioM2, 30, 100, 12, -12);
-  if (modified.enConstruccion || modified.antiguedad <= 2) plusvaliaScore += 10;
-  else if (modified.antiguedad >= 3 && modified.antiguedad <= 8) plusvaliaScore += 5;
-  else if (modified.antiguedad > 20) plusvaliaScore -= 15;
-  if (modified.piso >= 10) plusvaliaScore += 5;
-  else if (modified.piso <= 2 && modified.piso > 0) plusvaliaScore -= 3;
-  plusvaliaScore = clamp(plusvaliaScore, 0, 100);
-
-  const isOversupply = COMUNAS_OVERSUPPLY.some((c) => modified.comuna.toLowerCase().includes(c));
-  let riesgoScore = 50;
-  if (modified.tipo.toLowerCase().includes("departamento")) riesgoScore += 10;
-  if (modified.antiguedad < 10 || modified.enConstruccion) riesgoScore += 10;
-  else if (modified.antiguedad > 25) riesgoScore -= 15;
-  if (capRate > 3) riesgoScore += 8;
-  if (isOversupply) riesgoScore -= 5;
-  const ratioGastos = ingresoMensual > 0 ? egresosMensuales / ingresoMensual : 2;
-  if (ratioGastos > 1) riesgoScore -= 8;
-  else if (ratioGastos > 0.8) riesgoScore -= 5;
-  if (modified.vacanciaMeses > 1) riesgoScore -= 3;
-  riesgoScore = clamp(riesgoScore, 10, 95);
-
-  // Eficiencia de compra (10%)
-  const tipoEf = modified.dormitorios <= 1 ? "1D" : modified.dormitorios === 2 ? "2D" : "3D";
-  const seedEf = SEED_MARKET_DATA.find((d) => d.comuna === modified.comuna && d.tipo === tipoEf);
-  let eficienciaScore = 50;
-  if (seedEf) {
-    const pm2Zona = seedEf.precio_m2_venta_promedio * UF_CLP;
-    const pm2Prop = precioM2 * UF_CLP;
-    const rP = pm2Zona > 0 ? pm2Prop / pm2Zona : 1;
-    let sP: number;
-    if (rP < 0.85) sP = lerp(rP, 0.70, 0.85, 100, 90);
-    else if (rP < 0.95) sP = lerp(rP, 0.85, 0.95, 89, 70);
-    else if (rP < 1.05) sP = lerp(rP, 0.95, 1.05, 69, 50);
-    else if (rP < 1.15) sP = lerp(rP, 1.05, 1.15, 49, 30);
-    else sP = lerp(rP, 1.15, 1.40, 29, 10);
-    const supProm = tipoEf === "1D" ? 35 : tipoEf === "2D" ? 50 : 70;
-    const yZona = pm2Zona > 0 && supProm > 0 ? (seedEf.arriendo_promedio * 12) / (pm2Zona * supProm) * 100 : 4.0;
-    const rY = yZona > 0 ? yieldBruto / yZona : 1;
-    let sY: number;
-    if (rY > 1.20) sY = lerp(rY, 1.20, 1.50, 90, 100);
-    else if (rY > 1.05) sY = lerp(rY, 1.05, 1.20, 70, 89);
-    else if (rY > 0.95) sY = lerp(rY, 0.95, 1.05, 50, 69);
-    else if (rY > 0.80) sY = lerp(rY, 0.80, 0.95, 30, 49);
-    else sY = lerp(rY, 0.50, 0.80, 10, 29);
-    eficienciaScore = clamp(Math.round(sP * 0.5 + sY * 0.5), 0, 100);
-  }
-
-  const score = clamp(Math.round(
-    rentabilidadScore * 0.30 +
-    flujoCajaScore * 0.25 +
-    plusvaliaScore * 0.20 +
-    riesgoScore * 0.15 +
-    eficienciaScore * 0.10
-  ), 0, 100);
-
-  return { score, flujo: flujoNetoMensual, rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100 };
-}
 
 function RegisterOverlay() {
   return (
@@ -1043,18 +877,6 @@ export function PremiumResults({
     return { nuevoAvaluo: Math.round(nuevoAvaluo), nuevoCredito, capitalLiberado: Math.round(capitalLiberado), nuevoDividendo, nuevoFlujoNeto: Math.round(nuevoFlujoNeto) };
   }, [results, m, inputData, dynamicProjections, horizonYears, refiPct]);
 
-  const sensBase = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, 0, 0, 0) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
-    [results, inputData]
-  );
-  const sensPesimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 1, 0, 20) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
-    [results, inputData]
-  );
-  const sensOptimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, -Math.min(0.5, inputData.vacanciaMeses), 0, -10) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
-    [results, inputData]
-  );
 
   // ─── Sensitivity scenarios with projections ───
   const sensScenarios = useMemo(() => {
@@ -1063,15 +885,7 @@ export function PremiumResults({
     const precioCLP = inputData.precio * UF_CLP;
     const pieCLP = precioCLP * (inputData.piePct / 100);
     const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
-    const tasaMes = inputData.tasaInteres / 100 / 12;
     const nMeses = inputData.plazoCredito * 12;
-
-    const calcSaldo = (mPagados: number) => {
-      if (mPagados >= nMeses) return 0;
-      if (tasaMes === 0) return creditoCLP * (1 - mPagados / nMeses);
-      const cuota = (creditoCLP * tasaMes) / (1 - Math.pow(1 + tasaMes, -nMeses));
-      return creditoCLP * Math.pow(1 + tasaMes, mPagados) - cuota * ((Math.pow(1 + tasaMes, mPagados) - 1) / tasaMes);
-    };
 
     const configs = [
       { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#ef4444", borderClass: "border-red-300/60", bgClass: "", labelClass: "text-red-500" },
