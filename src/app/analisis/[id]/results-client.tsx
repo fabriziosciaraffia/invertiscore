@@ -1452,11 +1452,11 @@ export function PremiumResults({
                 </div>
               ))}
             </div>
-            <div className="mx-auto h-72 w-full max-w-md">
+            <div className="mx-auto h-52 w-full max-w-xs overflow-hidden sm:h-72 sm:max-w-md">
               <ResponsiveContainer>
-                <RadarChart data={radarData}>
+                <RadarChart data={radarData.map(d => ({ ...d, label: { "Rentabilidad": "Rent.", "Flujo Caja": "Flujo", "Plusvalía": "Plusv.", "Bajo Riesgo": "Riesgo", "Eficiencia": "Efic." }[d.dimension] || d.dimension }))}>
                   <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="dimension" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} className="text-[11px] sm:text-xs" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
                   <Radar name="Score" dataKey="value" stroke="#059669" fill="#059669" fillOpacity={0.2} strokeWidth={2} />
                 </RadarChart>
@@ -1538,14 +1538,16 @@ export function PremiumResults({
                   {/* Table 1 */}
                   <div className="mb-6">
                     <h4 className="mb-3 text-sm font-semibold">Sensibilidad por tasa de interés y arriendo</h4>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
+                    <div className="overflow-x-auto -mx-2 px-2">
+                      <table className="w-full text-[11px] sm:text-sm">
                         <thead>
-                          <tr className="border-b border-border/50 text-xs text-muted-foreground">
-                            <th className="pb-2 pr-3 text-left">Tasa</th>
+                          <tr className="border-b border-border/50 text-[10px] sm:text-xs text-muted-foreground">
+                            <th className="pb-2 pr-2 text-left whitespace-nowrap">Tasa</th>
                             {arriendoPcts.map((ap) => (
-                              <th key={ap} className="pb-2 px-2 text-center">
-                                {ap === 0 ? `${fmtCLP(baseArriendo)}` : `${ap > 0 ? "+" : ""}${ap}%`}
+                              <th key={ap} className="pb-2 px-1 sm:px-2 text-center whitespace-nowrap">
+                                {ap === 0 ? <span className="hidden sm:inline">{fmtCLP(baseArriendo)}</span> : null}
+                                {ap === 0 ? <span className="sm:hidden">Actual</span> : null}
+                                {ap !== 0 ? `${ap > 0 ? "+" : ""}${ap}%` : null}
                               </th>
                             ))}
                           </tr>
@@ -1553,14 +1555,14 @@ export function PremiumResults({
                         <tbody>
                           {tasaDeltas.map((td, i) => (
                             <tr key={td} className="border-b border-border/30">
-                              <td className="py-2 pr-3 text-xs text-muted-foreground">
-                                {td === 0 ? `${baseTasa.toFixed(1)}%` : `${(baseTasa + td).toFixed(1)}% (${td > 0 ? "+" : ""}${td}%)`}
+                              <td className="py-1.5 sm:py-2 pr-2 text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                                {td === 0 ? `${baseTasa.toFixed(1)}%` : <><span className="sm:hidden">{(baseTasa + td).toFixed(1)}%</span><span className="hidden sm:inline">{(baseTasa + td).toFixed(1)}% ({td > 0 ? "+" : ""}{td}%)</span></>}
                               </td>
                               {arriendoPcts.map((ap, j) => {
                                 const cell = table1[i][j];
                                 const isCurrent = td === 0 && ap === 0;
                                 return (
-                                  <td key={ap} className={`py-2 px-2 text-center font-medium ${flujoColor(cell.flujo)} ${isCurrent ? "rounded-md ring-2 ring-emerald-500/40 bg-emerald-500/5" : ""}`}>
+                                  <td key={ap} className={`py-1.5 sm:py-2 px-1 sm:px-2 text-center font-medium ${flujoColor(cell.flujo)} ${isCurrent ? "rounded-md ring-2 ring-emerald-500/40 bg-emerald-500/5" : ""}`}>
                                     {fmtCLP(cell.flujo)}
                                   </td>
                                 );

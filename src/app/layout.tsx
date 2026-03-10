@@ -41,6 +41,11 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${inter.variable} font-sans antialiased`}>
         {children}
+        <div className="border-t border-border/30 px-4 pb-6 pt-4 text-center">
+          <p className="mx-auto max-w-xl text-[11px] leading-relaxed text-[#9ca3af]">
+            InvertiScore es una herramienta informativa. Los resultados son estimaciones basadas en los datos ingresados y no constituyen asesoría financiera, tributaria ni legal. Consulta con un profesional antes de tomar decisiones de inversión.
+          </p>
+        </div>
       </body>
     </html>
   );
