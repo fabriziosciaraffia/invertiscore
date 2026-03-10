@@ -1,19 +1,12 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
 } from "@/components/ui/card";
-import {
-  Building2,
-  ArrowLeft,
-} from "lucide-react";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { DeleteButton } from "./delete-button";
 import { ScoreCircle } from "./score-circle";
-import { ShareButton } from "./share-button";
+import { AnalysisNav } from "./analysis-nav";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
@@ -79,26 +72,12 @@ export default async function AnalisisDetallePage({
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
-      <nav className="border-b border-border/50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">InvertiScore</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Link href="/pricing">
-              <Button variant="ghost" size="sm">Planes</Button>
-            </Link>
-            <ShareButton id={analisis.id} score={analisis.score} nombre={analisis.nombre} />
-            <DeleteButton id={analisis.id} />
-            <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <ArrowLeft className="h-4 w-4" /> Dashboard
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </nav>
+      <AnalysisNav
+        userId={user?.id ?? null}
+        analysisId={analisis.id}
+        score={analisis.score}
+        nombre={analisis.nombre}
+      />
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
         {/* ===== FREE: Section 1 - Score + Classification ===== */}
