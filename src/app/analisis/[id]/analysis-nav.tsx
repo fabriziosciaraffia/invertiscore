@@ -22,15 +22,14 @@ export function AnalysisNav({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!menuOpen) return;
     function handleClickOutside(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false);
       }
     }
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuOpen]);
 
   return (
@@ -43,9 +42,6 @@ export function AnalysisNav({
 
         {/* Desktop */}
         <div className="hidden items-center gap-2 md:flex">
-          <Link href="/pricing">
-            <Button variant="ghost" size="sm">Planes</Button>
-          </Link>
           <ShareButton id={analysisId} score={score} nombre={nombre} />
           <DeleteButton id={analysisId} />
           <Link href="/dashboard">
@@ -68,9 +64,6 @@ export function AnalysisNav({
           {menuOpen && (
             <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl border border-border bg-white p-3 shadow-lg dark:bg-card">
               <div className="flex flex-col gap-1">
-                <Link href="/pricing" onClick={() => setMenuOpen(false)}>
-                  <Button variant="ghost" size="sm" className="w-full justify-start">Planes</Button>
-                </Link>
                 <div onClick={() => setMenuOpen(false)}>
                   <ShareButton id={analysisId} score={score} nombre={nombre} />
                 </div>
