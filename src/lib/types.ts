@@ -91,8 +91,8 @@ export interface SensitivityRow {
 }
 
 export interface AnalysisMetrics {
-  yieldBruto: number;
-  yieldNeto: number;
+  rentabilidadBruta: number;
+  rentabilidadNeta: number;
   capRate: number;
   cashOnCash: number;
   precioM2: number;

@@ -90,19 +90,19 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     section: "Rentabilidad",
     rows: [
       {
-        label: "Yield bruto",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.yieldBruto) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.yieldBruto ?? 0),
+        label: "Rentabilidad Bruta",
+        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.rentabilidadBruta) : "—"),
+        raw: analisis.map((a) => a.results?.metrics?.rentabilidadBruta ?? 0),
         higherIsBetter: true,
       },
       {
-        label: "Yield neto",
-        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.yieldNeto) : "—"),
-        raw: analisis.map((a) => a.results?.metrics?.yieldNeto ?? 0),
+        label: "Rentabilidad Neta",
+        values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.rentabilidadNeta) : "—"),
+        raw: analisis.map((a) => a.results?.metrics?.rentabilidadNeta ?? 0),
         higherIsBetter: true,
       },
       {
-        label: "CAP rate",
+        label: "Rent. Operativa (CAP Rate)",
         values: analisis.map((a) => a.results?.metrics ? formatPct(a.results.metrics.capRate) : "—"),
         raw: analisis.map((a) => a.results?.metrics?.capRate ?? 0),
         higherIsBetter: true,

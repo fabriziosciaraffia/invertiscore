@@ -3,7 +3,7 @@
 import { InfoTooltip } from "@/components/ui/tooltip";
 
 const tooltips: Record<string, string> = {
-  "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) x 100. Benchmark Santiago: 3.5-4.5%",
+  "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor.",
   "Flujo Mensual": "Flujo de caja mensual neto descontando dividendo, gastos comunes, contribuciones, mantención y vacancia.",
   "UF/m²": "Precio por metro cuadrado en UF. Permite comparar el valor relativo con otras propiedades de la zona.",
   "InvertiScore": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Ubicación (10%)",

@@ -62,7 +62,7 @@ export default async function AnalisisDetallePage({
   const flujoEstimado = results?.metrics?.flujoNetoMensual ?? (analisis.arriendo - Math.round((analisis.precio * 0.8 * UF_CLP * 0.0472 / 12) / (1 - Math.pow(1 + 0.0472 / 12, -300))) - analisis.gastos - Math.round(analisis.contribuciones / 3));
 
   const resumenEjecutivo = results?.resumenEjecutivo ??
-    `Inversión con score ${analisis.score}/100. Yield bruto ${yieldBruto.toFixed(1)}%.`;
+    `Inversión con score ${analisis.score}/100. Rentabilidad bruta ${yieldBruto.toFixed(1)}%.`;
 
   // Fetch zone comparison data
   const zoneData = await getZoneComparison(analisis.comuna);
@@ -113,7 +113,7 @@ export default async function AnalisisDetallePage({
           inputData={analisis.input_data as AnalisisInput | undefined}
           comuna={analisis.comuna}
           score={analisis.score}
-          freeYieldBruto={results?.metrics?.yieldBruto ?? yieldBruto}
+          freeYieldBruto={results?.metrics?.rentabilidadBruta ?? yieldBruto}
           freeFlujo={flujoEstimado}
           freePrecioM2={results?.metrics?.precioM2 ?? precioM2}
           resumenEjecutivo={resumenEjecutivo}

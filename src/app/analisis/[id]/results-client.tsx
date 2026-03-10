@@ -24,9 +24,9 @@ import type { MarketDataRow } from "@/lib/market-data";
 let UF_CLP = 38800;
 
 const METRIC_TOOLTIPS: Record<string, string> = {
-  "Yield Bruto": "Retorno anual bruto sin descontar gastos. Se calcula como (arriendo anual / precio) × 100. Benchmark Santiago: 3.5-4.5%",
-  "Yield Neto": "Retorno anual real descontando gastos del propietario (contribuciones, mantención, GGCC en vacancia). En renta larga, el arrendatario paga GGCC.",
-  "CAP Rate": "Retorno neto operativo anual dividido por el precio (NOI/Precio). A diferencia del 'cap rate' que manejan muchos corredores en Chile (que es solo arriendo×12/precio), este descuenta contribuciones, mantención, vacancia y GGCC solo durante meses sin arrendatario. Es la métrica internacional estándar.",
+  "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor.",
+  "Rentabilidad Neta": "Rentabilidad después de TODOS los gastos: operativos, vacancia, corretaje y recambio de arrendatario. Es el número más honesto de rentabilidad.",
+  "Rent. Operativa (CAP Rate)": "Retorno neto operativo anual (NOI/Precio). Descuenta gastos comunes, contribuciones y mantención. Estándar internacional para comparar propiedades.",
   "Cash-on-Cash": "Retorno anual sobre TU capital invertido (el pie). Si es negativo, estás poniendo plata de tu bolsillo cada mes.",
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
@@ -35,11 +35,11 @@ const METRIC_TOOLTIPS: Record<string, string> = {
 };
 
 const RADAR_TOOLTIPS: Record<string, string> = {
-  "Rentabilidad": "Evalúa yield bruto y neto. Peso: 30%",
+  "Rentabilidad": "Evalúa rentabilidad bruta y neta. Peso: 30%",
   "Flujo Caja": "Evalúa el flujo de caja mensual neto. Peso: 25%",
   "Plusvalía": "Potencial de apreciación del valor. Peso: 20%",
   "Bajo Riesgo": "Evalúa antigüedad, tipo, vacancia y gastos. Peso: 15%",
-  "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu yield bruto contra el promedio de publicaciones activas en la comuna. Peso: 10%",
+  "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu rentabilidad bruta contra el promedio de publicaciones activas en la comuna. Peso: 10%",
 };
 
 function fmtCLP(n: number): string {
@@ -439,7 +439,7 @@ function recalcForSensitivity(
   arriendoPct: number,
   vacanciaDelta: number
 ) {
-  if (!inputData) return { score: results.score, flujo: results.metrics.flujoNetoMensual, yieldNeto: results.metrics.yieldNeto };
+  if (!inputData) return { score: results.score, flujo: results.metrics.flujoNetoMensual, rentabilidadNeta: results.metrics.rentabilidadNeta };
 
   const modified = { ...inputData };
   modified.tasaInteres = inputData.tasaInteres + tasaDelta;
@@ -469,11 +469,12 @@ function recalcForSensitivity(
   const egresosMensuales = flujo.totalEgresos;
   const flujoNetoMensual = flujo.flujoNeto;
 
-  const noi = (flujo.arriendo - (flujo.totalEgresos - flujo.dividendo)) * 12;
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (flujo.totalEgresos - flujo.dividendo) * 12;
+  const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
+  const noi = rentaAnual - gastosOperativosAnuales;
+  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio) * 12;
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
-  const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
+  const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
   const precioM2 = modified.superficie > 0 ? modified.precio / modified.superficie : 0;
 
@@ -506,8 +507,8 @@ function recalcForSensitivity(
   else if (yieldBruto >= 4) rentabilidadScore = lerp(yieldBruto, 4, 5, 45, 65);
   else if (yieldBruto >= 3) rentabilidadScore = lerp(yieldBruto, 3, 4, 25, 44);
   else rentabilidadScore = lerp(yieldBruto, 0, 3, 0, 24);
-  if (yieldNeto >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
-  else if (yieldNeto < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
+  if (rentabilidadNeta >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
+  else if (rentabilidadNeta < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
   rentabilidadScore = clamp(rentabilidadScore, 0, 100);
 
   let flujoCajaScore: number;
@@ -575,7 +576,7 @@ function recalcForSensitivity(
     eficienciaScore * 0.10
   ), 0, 100);
 
-  return { score, flujo: flujoNetoMensual, yieldNeto: Math.round(yieldNeto * 100) / 100 };
+  return { score, flujo: flujoNetoMensual, rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100 };
 }
 
 function RegisterOverlay() {
@@ -1011,15 +1012,15 @@ export function PremiumResults({
   }, [results, m, inputData, dynamicProjections, horizonYears, refiPct]);
 
   const sensBase = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, 0, 0, 0) : { score: 0, flujo: 0, yieldNeto: 0 },
+    () => results && inputData ? recalcForSensitivity(results, inputData, 0, 0, 0) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
     [results, inputData]
   );
   const sensPesimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 2) : { score: 0, flujo: 0, yieldNeto: 0 },
+    () => results && inputData ? recalcForSensitivity(results, inputData, 1.5, -15, 2) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
     [results, inputData]
   );
   const sensOptimista = useMemo(
-    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, 0) : { score: 0, flujo: 0, yieldNeto: 0 },
+    () => results && inputData ? recalcForSensitivity(results, inputData, -1, 10, 0) : { score: 0, flujo: 0, rentabilidadNeta: 0 },
     [results, inputData]
   );
 
@@ -1406,8 +1407,8 @@ export function PremiumResults({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <DollarSign className="h-4 w-4 text-primary" />
-              <span>Yield Bruto</span>
-              <InfoTooltip content="Retorno anual bruto: (arriendo anual / precio) × 100. Promedio Santiago: 3.5-4.5%" />
+              <span>Rentabilidad Bruta</span>
+              <InfoTooltip content="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor." />
             </div>
             <div className="mt-1 text-2xl font-bold">{freeYieldBruto.toFixed(1)}%</div>
           </CardContent>
@@ -1483,9 +1484,9 @@ export function PremiumResults({
           <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess} muted>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
-                { label: "Yield Bruto", value: `${m.yieldBruto.toFixed(1)}%` },
-                { label: "Yield Neto", value: `${m.yieldNeto.toFixed(1)}%` },
-                { label: "CAP Rate", value: `${m.capRate.toFixed(1)}%`, subtitle: "CAP rate real (neto de gastos operativos)" },
+                { label: "Rentabilidad Bruta", value: `${m.rentabilidadBruta.toFixed(1)}%` },
+                { label: "Rentabilidad Neta", value: `${m.rentabilidadNeta.toFixed(1)}%` },
+                { label: "Rent. Operativa (CAP Rate)", value: `${m.capRate.toFixed(1)}%`, subtitle: "NOI / Precio — solo gastos operativos directos" },
                 { label: "Cash-on-Cash", value: `${m.cashOnCash.toFixed(1)}%` },
                 { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
                 { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
@@ -1623,7 +1624,7 @@ export function PremiumResults({
                           <th className="pb-2 pr-4">Escenario</th>
                           <th className="pb-2 pr-4">Score</th>
                           <th className="pb-2 pr-4">Flujo Neto /mes</th>
-                          <th className="pb-2">Yield Neto</th>
+                          <th className="pb-2">Rent. Neta</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1639,7 +1640,7 @@ export function PremiumResults({
                             </td>
                             <td className="py-2 pr-4"><MiniScoreCircle score={data.score} /></td>
                             <td className={`py-2 pr-4 font-medium ${data.flujo >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(data.flujo)}</td>
-                            <td className="py-2">{data.yieldNeto.toFixed(1)}%</td>
+                            <td className="py-2">{data.rentabilidadNeta.toFixed(1)}%</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1700,12 +1701,12 @@ export function PremiumResults({
                 : 50;
               const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
                 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
-                : m.yieldBruto * 0.9;
+                : m.rentabilidadBruta * 0.9;
 
               const items = [
                 { label: currency === "UF" ? "Precio/m\u00B2 (UF)" : "Precio/m\u00B2 (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
                 { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
-                { label: "Yield Bruto (%)", tuyo: m.yieldBruto, zona: Math.round(yieldZona * 10) / 10 },
+                { label: "Rent. Bruta (%)", tuyo: m.rentabilidadBruta, zona: Math.round(yieldZona * 10) / 10 },
               ];
               return (
                 <div className="space-y-4">
@@ -1715,7 +1716,7 @@ export function PremiumResults({
                   {items.map(({ label, tuyo, zona }) => {
                     const maxVal = Math.max(tuyo, zona) || 1;
                     const fmtVal = (v: number) =>
-                      label.includes("Yield") ? v.toFixed(1) + "%"
+                      label.includes("Rent.") ? v.toFixed(1) + "%"
                       : label.includes("Arriendo") ? fmt(v)
                       : currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v);
                     return (

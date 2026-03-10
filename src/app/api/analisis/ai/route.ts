@@ -92,7 +92,7 @@ export async function POST(request: Request) {
     // Zone market data
     let precioM2Zona = m.precioM2;
     let arriendoZona = input.arriendo;
-    let yieldZona = m.yieldBruto;
+    let yieldZona = m.rentabilidadBruta;
     try {
       const { getMarketDataForComuna } = await import("@/lib/market-data");
       const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
@@ -146,9 +146,9 @@ DATOS DE LA PROPIEDAD:
 
 MÉTRICAS CALCULADAS:
 - InvertiScore: ${results.score}/100 (${results.clasificacion})
-- Yield bruto: ${m.yieldBruto.toFixed(1)}%
-- Yield neto: ${m.yieldNeto.toFixed(1)}%
-- CAP rate: ${m.capRate.toFixed(1)}%
+- Rentabilidad Bruta: ${m.rentabilidadBruta.toFixed(1)}%
+- Rentabilidad Operativa (CAP Rate): ${m.capRate.toFixed(1)}%
+- Rentabilidad Neta: ${m.rentabilidadNeta.toFixed(1)}%
 - Cash-on-Cash: ${m.cashOnCash.toFixed(1)}%
 - Flujo mensual neto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " (negativo)" : ""}
 - Inversión inicial total (pie + costos entrada): ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})

@@ -194,15 +194,18 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const egresosMensuales = flujo.totalEgresos;
   const flujoNetoMensual = flujo.flujoNeto;
 
-  // NOI = renta - gastos operacionales (sin dividendo)
-  const noi = (flujo.arriendo - (flujo.totalEgresos - flujo.dividendo)) * 12;
-
+  // Rentabilidad Bruta: arriendo anual / precio (sin descontar nada)
   const rentaAnual = ingresoMensual * 12;
-  const gastosAnuales = (flujo.totalEgresos - flujo.dividendo) * 12;
+  const rentabilidadBruta = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
 
-  const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
-  const yieldNeto = precioCLP > 0 ? ((rentaAnual - gastosAnuales) / precioCLP) * 100 : 0;
+  // Rentabilidad Operativa (CAP Rate): solo gastos operativos directos
+  const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
+  const noi = rentaAnual - gastosOperativosAnuales;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
+
+  // Rentabilidad Neta: TODOS los gastos (operativos + vacancia + corretaje + recambio)
+  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio) * 12;
+  const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
 
   // Cash-on-Cash: for verde/blanco, include pie installments as capital invested
   const mesesPreEntrega = calcMesesHastaEntrega(input);
@@ -212,8 +215,8 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
   return {
-    yieldBruto: Math.round(yieldBruto * 100) / 100,
-    yieldNeto: Math.round(yieldNeto * 100) / 100,
+    rentabilidadBruta: Math.round(rentabilidadBruta * 100) / 100,
+    rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100,
     capRate: Math.round(capRate * 100) / 100,
     cashOnCash: Math.round(cashOnCash * 100) / 100,
     precioM2: Math.round(precioM2 * 10) / 10,
@@ -563,12 +566,12 @@ function calcEficienciaScore(input: AnalisisInput, metrics: AnalysisMetrics): nu
   else if (ratioPrecio < 1.15) scorePrecio = lerp(ratioPrecio, 1.05, 1.15, 49, 30);
   else scorePrecio = lerp(ratioPrecio, 1.15, 1.40, 29, 10);
 
-  // b) Yield bruto vs promedio zona (50%)
+  // b) Rentabilidad bruta vs promedio zona (50%)
   const supPromedio = tipo === "1D" ? 35 : tipo === "2D" ? 50 : 70;
   const yieldZona = (precioM2Zona > 0 && supPromedio > 0)
     ? (seed.arriendo_promedio * 12) / (precioM2Zona * supPromedio) * 100
     : 4.0;
-  const ratioYield = yieldZona > 0 ? metrics.yieldBruto / yieldZona : 1;
+  const ratioYield = yieldZona > 0 ? metrics.rentabilidadBruta / yieldZona : 1;
   let scoreYield: number;
   if (ratioYield > 1.20) scoreYield = lerp(ratioYield, 1.20, 1.50, 90, 100);
   else if (ratioYield > 1.05) scoreYield = lerp(ratioYield, 1.05, 1.20, 70, 89);
@@ -600,18 +603,18 @@ function lookupComuna(comuna: string, table: Record<string, number>, defaultVal:
 }
 
 function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
-  // Rentabilidad (30%): based on yield bruto calibrated for Chilean market
+  // Rentabilidad (30%): based on rentabilidad bruta calibrated for Chilean market
   // >6% = 90-100, 5-6% = 70-89, 4-5% = 45-65, 3-4% = 25-44, <3% = 0-24
   let rentabilidad: number;
-  const yb = metrics.yieldBruto;
+  const yb = metrics.rentabilidadBruta;
   if (yb >= 6) rentabilidad = lerp(yb, 6, 8, 90, 100);
   else if (yb >= 5) rentabilidad = lerp(yb, 5, 6, 70, 89);
   else if (yb >= 4) rentabilidad = lerp(yb, 4, 5, 45, 65);
   else if (yb >= 3) rentabilidad = lerp(yb, 3, 4, 25, 44);
   else rentabilidad = lerp(yb, 0, 3, 0, 24);
-  // Yield neto bonus/penalty
-  if (metrics.yieldNeto >= 4) rentabilidad = Math.min(100, rentabilidad + 5);
-  else if (metrics.yieldNeto < 2) rentabilidad = Math.max(0, rentabilidad - 5);
+  // Rentabilidad neta bonus/penalty
+  if (metrics.rentabilidadNeta >= 4) rentabilidad = Math.min(100, rentabilidad + 5);
+  else if (metrics.rentabilidadNeta < 2) rentabilidad = Math.max(0, rentabilidad - 5);
   rentabilidad = clamp(rentabilidad, 0, 100);
 
   // Flujo de caja (25%): calibrated for Chilean market with 80% financing at ~4.72%
@@ -691,9 +694,9 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 
   if (metrics.capRate >= 4)
-    pros.push(`El retorno neto (CAP rate ${metrics.capRate.toFixed(1)}%) supera el promedio del mercado. Buena relación entre lo que produce y lo que cuesta.`);
-  if (metrics.yieldBruto >= 5)
-    pros.push(`El arriendo representa un ${metrics.yieldBruto.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
+    pros.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) supera el promedio del mercado. Buena relación entre lo que produce y lo que cuesta.`);
+  if (metrics.rentabilidadBruta >= 5)
+    pros.push(`El arriendo representa un ${metrics.rentabilidadBruta.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
   if (metrics.flujoNetoMensual > 0)
     pros.push(`Después de pagar dividendo, gastos y todos los costos, te sobran ${fmtP(metrics.flujoNetoMensual)} al mes. La propiedad se paga sola.`);
   if (metrics.cashOnCash > 5)
@@ -736,7 +739,7 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
   const fmtP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
   if (metrics.capRate < 3.5)
-    contras.push(`El retorno neto (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.`);
+    contras.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.`);
   if (metrics.flujoNetoMensual < 0)
     contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
   if (input.antiguedad > 15)
@@ -784,15 +787,15 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
 
   // Score breakdown by dimension (mirrors calcScoreFromMetrics)
 
-  const yb = metrics.yieldBruto;
+  const yb = metrics.rentabilidadBruta;
   let rentabilidadScore: number;
   if (yb >= 6) rentabilidadScore = lerp(yb, 6, 8, 90, 100);
   else if (yb >= 5) rentabilidadScore = lerp(yb, 5, 6, 70, 89);
   else if (yb >= 4) rentabilidadScore = lerp(yb, 4, 5, 45, 65);
   else if (yb >= 3) rentabilidadScore = lerp(yb, 3, 4, 25, 44);
   else rentabilidadScore = lerp(yb, 0, 3, 0, 24);
-  if (metrics.yieldNeto >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
-  else if (metrics.yieldNeto < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
+  if (metrics.rentabilidadNeta >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
+  else if (metrics.rentabilidadNeta < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
 
   const flujoVal = metrics.flujoNetoMensual;
   let flujoCajaScore: number;
@@ -838,7 +841,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   let resumenEjecutivo: string;
   if (metrics.flujoNetoMensual >= 0) {
     resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia. ` +
-      `Renta un ${metrics.yieldBruto.toFixed(1)}% bruto anual. ` +
+      `Renta un ${metrics.rentabilidadBruta.toFixed(1)}% bruto anual. ` +
       `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
   } else {
     resumenEjecutivo = `Necesitas poner ${fmtR(metrics.flujoNetoMensual)} de tu bolsillo cada mes. ` +
@@ -848,7 +851,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
 
   const resumen = `El arriendo genera ${fmtR(metrics.ingresoMensual)} al mes y los costos totales (dividendo + gastos + mantención) suman ${fmtR(metrics.egresosMensuales)}. ` +
     `${metrics.flujoNetoMensual >= 0 ? `Te quedan ${fmtR(metrics.flujoNetoMensual)} de ganancia mensual.` : `Falta cubrir ${fmtR(metrics.flujoNetoMensual)} al mes de tu bolsillo.`} ` +
-    `El yield bruto es de ${metrics.yieldBruto.toFixed(1)}% y el retorno neto (CAP rate) es ${metrics.capRate.toFixed(1)}%. ` +
+    `La rentabilidad bruta es de ${metrics.rentabilidadBruta.toFixed(1)}% y la rentabilidad operativa (CAP rate) es ${metrics.capRate.toFixed(1)}%. ` +
     `${metrics.capRate >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena negociar el precio o buscar otras opciones."} ` +
     `${input.enConstruccion || input.antiguedad <= 2 ? "Al ser nueva, los costos de mantención serán bajos por años." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención inesperada." : input.antiguedad > 20 ? "Ojo: la antigüedad puede traer gastos de mantención importantes pronto." : "La antigüedad es moderada."} ` +
     `Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.`;

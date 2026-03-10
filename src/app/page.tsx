@@ -335,7 +335,7 @@ export default function HomePage() {
                 </div>
                 <div className="hidden w-full space-y-2 border-t border-[#f3f4f6] pt-4 sm:block">
                   <div className="flex justify-between text-sm">
-                    <span className="text-[#6b7280]">Yield bruto</span>
+                    <span className="text-[#6b7280]">Rent. Bruta</span>
                     <span className="font-semibold text-[#059669]">5.2%</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -384,7 +384,7 @@ export default function HomePage() {
                     <div className="mt-1 text-sm font-medium text-[#1a1a1a]">$420.000/mes</div>
                   </div>
                   <div className="rounded-lg bg-emerald-50 p-3">
-                    <span className="flex items-center text-xs text-[#6b7280]">Yield<TooltipIcon text="Rentabilidad bruta anual sin descontar gastos" /></span>
+                    <span className="flex items-center text-xs text-[#6b7280]">Rent. Bruta<TooltipIcon text="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto." /></span>
                     <div className="mt-1 text-sm font-semibold text-[#059669]">4.1%</div>
                   </div>
                   <div className="rounded-lg bg-emerald-50 p-3">
@@ -419,7 +419,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="flex items-center text-[#6b7280]">Yield neto real<TooltipIcon text="Rentabilidad anual descontando TODOS los gastos operativos" /></span>
+                    <span className="flex items-center text-[#6b7280]">Rent. Neta<TooltipIcon text="Rentabilidad después de TODOS los gastos: operativos, vacancia, corretaje y recambio de arrendatario." /></span>
                     <div className="flex items-center gap-1.5">
                       <span className="text-base">🟡</span>
                       <span className="font-semibold text-orange-500">1.4%</span>
@@ -508,7 +508,7 @@ export default function HomePage() {
           <div className="mt-10 space-y-4">
             {[
               { icon: Briefcase, title: "Su comisión depende de que compres", desc: "Un corredor gana entre $2M y $5M si cierras la compra. Si te dice \u201Ceste depto es mala inversión\u201D, pierde esa plata. ¿De verdad crees que te va a decir la verdad?" },
-              { icon: Eye, title: "Te muestra solo los números bonitos", desc: "Yield bruto de 4.1% suena increíble. Pero cuando sumas dividendo, gastos comunes, contribuciones y mantención, resulta que pierdes $416.000 al mes. Eso nunca aparece en la cotización del corredor." },
+              { icon: Eye, title: "Te muestra solo los números bonitos", desc: "Rentabilidad bruta de 4.1% suena increíble. Pero cuando sumas dividendo, gastos comunes, contribuciones y mantención, resulta que pierdes $416.000 al mes. Eso nunca aparece en la cotización del corredor." },
               { icon: Scale, title: "Si la inversión sale mal, el corredor ya cobró", desc: "Tú asumes todo el riesgo. El corredor cobra su comisión el día de la firma y desaparece. Si en 3 años el depto vale menos, si el arriendo no alcanza, si los gastos suben — ese es tu problema, no el de él." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
@@ -619,7 +619,7 @@ export default function HomePage() {
                   </div>
                   <div className="mt-4 space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-[#6b7280]">Yield bruto</span>
+                      <span className="text-[#6b7280]">Rent. Bruta</span>
                       <span className={`font-semibold ${card.yieldColor}`}>{card.yield}</span>
                     </div>
                     <div className="flex items-center justify-between text-sm">

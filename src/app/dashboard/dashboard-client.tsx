@@ -41,7 +41,7 @@ function getMetrics(item: Analisis) {
   const r = item.results;
   if (r?.metrics) {
     return {
-      yieldBruto: r.metrics.yieldBruto,
+      rentabilidadBruta: r.metrics.rentabilidadBruta,
       flujoMensual: r.metrics.flujoNetoMensual,
       capRate: r.metrics.capRate,
       precioM2: r.metrics.precioM2,
@@ -49,10 +49,10 @@ function getMetrics(item: Analisis) {
   }
   // Fallback: calculate basic metrics from raw data
   const precioCLP = item.precio * 38800;
-  const yieldBruto = precioCLP > 0 ? ((item.arriendo * 12) / precioCLP) * 100 : 0;
+  const rentabilidadBruta = precioCLP > 0 ? ((item.arriendo * 12) / precioCLP) * 100 : 0;
   const flujoMensual = item.arriendo - item.gastos - item.contribuciones;
   return {
-    yieldBruto,
+    rentabilidadBruta,
     flujoMensual,
     capRate: 0,
     precioM2: item.superficie > 0 ? item.precio / item.superficie : 0,
@@ -317,8 +317,8 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                         {/* Metrics mini-grid */}
                         <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4 sm:gap-x-6">
                           <div>
-                            <span className="text-[11px] text-[#9ca3af]">Yield bruto</span>
-                            <div className="text-xs font-semibold text-[#111827]">{m.yieldBruto.toFixed(1)}%</div>
+                            <span className="text-[11px] text-[#9ca3af]">Rent. Bruta</span>
+                            <div className="text-xs font-semibold text-[#111827]">{m.rentabilidadBruta.toFixed(1)}%</div>
                           </div>
                           <div>
                             <span className="text-[11px] text-[#9ca3af]">Flujo mensual</span>
@@ -327,7 +327,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                             </div>
                           </div>
                           <div>
-                            <span className="text-[11px] text-[#9ca3af]">CAP rate</span>
+                            <span className="text-[11px] text-[#9ca3af]">Rent. Operativa</span>
                             <div className="text-xs font-semibold text-[#111827]">{m.capRate.toFixed(1)}%</div>
                           </div>
                           <div>
