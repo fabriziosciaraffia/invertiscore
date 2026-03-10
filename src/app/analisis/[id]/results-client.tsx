@@ -480,6 +480,8 @@ function recalcForSensitivity(
     contribuciones: modified.contribuciones,
     mantencion,
     vacanciaMeses: modified.vacanciaMeses,
+    usaAdministrador: modified.usaAdministrador,
+    comisionAdministrador: modified.comisionAdministrador,
   });
 
   const egresosMensuales = flujo.totalEgresos;
@@ -488,7 +490,7 @@ function recalcForSensitivity(
   const rentaAnual = ingresoMensual * 12;
   const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
   const noi = rentaAnual - gastosOperativosAnuales;
-  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio) * 12;
+  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
   const yieldBruto = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
   const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
@@ -796,6 +798,8 @@ export function PremiumResults({
   const [adjGastos, setAdjGastos] = useState(inputData?.gastos ?? 0);
   const [adjContribuciones, setAdjContribuciones] = useState(inputData?.contribuciones ?? 0);
   const [adjVacancia, setAdjVacancia] = useState(inputData?.vacanciaMeses ?? 1);
+  const [adjUsaAdmin, setAdjUsaAdmin] = useState(inputData?.usaAdministrador ?? false);
+  const [adjComisionAdmin, setAdjComisionAdmin] = useState(inputData?.comisionAdministrador ?? 7);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
@@ -830,6 +834,8 @@ export function PremiumResults({
         gastos: adjGastos,
         contribuciones: adjContribuciones,
         vacanciaMeses: adjVacancia,
+        usaAdministrador: adjUsaAdmin,
+        comisionAdministrador: adjUsaAdmin ? adjComisionAdmin : undefined,
       };
       const res = await fetch("/api/analisis/recalculate", {
         method: "POST",
@@ -848,7 +854,7 @@ export function PremiumResults({
     } finally {
       setRecalcLoading(false);
     }
-  }, [analysisId, inputData, adjPrecio, adjPiePct, adjPlazo, adjTasa, adjArriendo, adjGastos, adjContribuciones, adjVacancia]);
+  }, [analysisId, inputData, adjPrecio, adjPiePct, adjPlazo, adjTasa, adjArriendo, adjGastos, adjContribuciones, adjVacancia, adjUsaAdmin, adjComisionAdmin]);
 
   // AI Analysis state
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(
@@ -1058,6 +1064,8 @@ export function PremiumResults({
       contribuciones: inputData.contribuciones,
       mantencion,
       vacanciaMeses: inputData.vacanciaMeses,
+      usaAdministrador: inputData.usaAdministrador,
+      comisionAdministrador: inputData.comisionAdministrador,
     });
 
     const steps: { name: string; delta: number }[] = [
@@ -1069,6 +1077,7 @@ export function PremiumResults({
       { name: "Vac.", delta: -wf.vacanciaProrrata },
       { name: "Corr.", delta: -wf.corretajeProrrata },
       { name: "Rec.", delta: -wf.recambio },
+      ...(wf.administracion > 0 ? [{ name: "Admin.", delta: -wf.administracion }] : []),
     ];
 
     let running = 0;
@@ -1782,7 +1791,7 @@ export function PremiumResults({
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
                       if (!item) return null;
-                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Neto": "Flujo Neto" };
+                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
                       const displayName = fullNames[item.name] || item.name;
                       return (
                         <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
@@ -2344,6 +2353,27 @@ export function PremiumResults({
                 >{v}</button>
               ))}
             </div>
+          </div>
+          <div>
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Administración arriendo</label>
+              <button
+                type="button"
+                onClick={() => setAdjUsaAdmin(!adjUsaAdmin)}
+                className={`relative h-4 w-8 rounded-full transition-colors ${adjUsaAdmin ? "bg-primary" : "bg-muted"}`}
+              >
+                <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${adjUsaAdmin ? "left-[18px]" : "left-0.5"}`} />
+              </button>
+            </div>
+            {adjUsaAdmin && (
+              <div className="mt-1">
+                <div className="mb-0.5 flex items-center justify-between">
+                  <label className="text-[11px] text-muted-foreground">Comisión</label>
+                  <span className="text-[11px] font-medium">{adjComisionAdmin}%</span>
+                </div>
+                <input type="range" min={1} max={15} step={1} value={adjComisionAdmin} onChange={(e) => setAdjComisionAdmin(Number(e.target.value))} className="w-full accent-primary" />
+              </div>
+            )}
           </div>
         </div>
       </div>

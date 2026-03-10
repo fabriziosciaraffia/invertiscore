@@ -115,6 +115,7 @@ export interface FlujoDesglose {
   vacanciaProrrata: number;
   corretajeProrrata: number;
   recambio: number;
+  administracion: number;
   totalEgresos: number;
   flujoNeto: number;
 }
@@ -130,6 +131,8 @@ export function calcFlujoDesglose(datos: {
   contribuciones: number;
   mantencion: number;
   vacanciaMeses: number;
+  usaAdministrador?: boolean;
+  comisionAdministrador?: number;
 }): FlujoDesglose {
   const arriendo = datos.arriendo;
   const dividendo = datos.dividendo;
@@ -139,11 +142,15 @@ export function calcFlujoDesglose(datos: {
   const vacanciaProrrata = Math.round((datos.arriendo * datos.vacanciaMeses) / 12);
   const corretajeProrrata = Math.round((datos.arriendo * 0.5) / 24);
   const recambio = Math.round(250000 / 24);
+  // Administración: % del arriendo, prorrateado por meses con arrendatario
+  const administracion = datos.usaAdministrador
+    ? Math.round((datos.arriendo * (datos.comisionAdministrador ?? 7) / 100) * (12 - datos.vacanciaMeses) / 12)
+    : 0;
 
-  const totalEgresos = dividendo + ggccVacancia + contribucionesMes + mantencion + vacanciaProrrata + corretajeProrrata + recambio;
+  const totalEgresos = dividendo + ggccVacancia + contribucionesMes + mantencion + vacanciaProrrata + corretajeProrrata + recambio + administracion;
   const flujoNeto = arriendo - totalEgresos;
 
-  return { arriendo, dividendo, ggccVacancia, contribucionesMes, mantencion, vacanciaProrrata, corretajeProrrata, recambio, totalEgresos, flujoNeto };
+  return { arriendo, dividendo, ggccVacancia, contribucionesMes, mantencion, vacanciaProrrata, corretajeProrrata, recambio, administracion, totalEgresos, flujoNeto };
 }
 
 // =========================================
@@ -189,6 +196,8 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     contribuciones: input.contribuciones,
     mantencion: input.provisionMantencion,
     vacanciaMeses: input.vacanciaMeses,
+    usaAdministrador: input.usaAdministrador,
+    comisionAdministrador: input.comisionAdministrador,
   });
 
   const egresosMensuales = flujo.totalEgresos;
@@ -198,13 +207,13 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const rentaAnual = ingresoMensual * 12;
   const rentabilidadBruta = precioCLP > 0 ? (rentaAnual / precioCLP) * 100 : 0;
 
-  // Rentabilidad Operativa (CAP Rate): solo gastos operativos directos
+  // Rentabilidad Operativa (CAP Rate): solo gastos operativos directos (NO incluye administración)
   const gastosOperativosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion) * 12;
   const noi = rentaAnual - gastosOperativosAnuales;
   const capRate = precioCLP > 0 ? (noi / precioCLP) * 100 : 0;
 
-  // Rentabilidad Neta: TODOS los gastos (operativos + vacancia + corretaje + recambio)
-  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio) * 12;
+  // Rentabilidad Neta: TODOS los gastos (operativos + vacancia + corretaje + recambio + administración)
+  const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
   const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
 
   // Cash-on-Cash: for verde/blanco, include pie installments as capital invested
@@ -246,7 +255,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
   // T0: siempre presente, sin pie (el pie es inversión de capital, no flujo operativo)
   meses.push({
     mes: 0, ingreso: 0, dividendo: 0, gastos: 0,
-    contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0,
+    contribuciones: 0, mantencion: 0, vacancia: 0, corretaje: 0, administracion: 0,
     egresoTotal: 0, flujoNeto: 0, acumulado: 0,
   });
 
@@ -260,6 +269,8 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
     contribuciones: input.contribuciones,
     mantencion,
     vacanciaMeses: input.vacanciaMeses,
+    usaAdministrador: input.usaAdministrador,
+    comisionAdministrador: input.comisionAdministrador,
   });
 
   if (input.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
@@ -275,6 +286,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
         mantencion: flujo.mantencion,
         vacancia: flujo.vacanciaProrrata,
         corretaje: flujo.corretajeProrrata + flujo.recambio,
+        administracion: flujo.administracion,
         egresoTotal: flujo.totalEgresos,
         flujoNeto: flujo.flujoNeto,
         acumulado,
@@ -292,6 +304,7 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
         mantencion: flujo.mantencion,
         vacancia: flujo.vacanciaProrrata,
         corretaje: flujo.corretajeProrrata + flujo.recambio,
+        administracion: flujo.administracion,
         egresoTotal: flujo.totalEgresos,
         flujoNeto: flujo.flujoNeto,
         acumulado,
@@ -339,6 +352,8 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
       contribuciones: contribucionesActual,
       mantencion: mantencionAnual,
       vacanciaMeses: input.vacanciaMeses,
+      usaAdministrador: input.usaAdministrador,
+      comisionAdministrador: input.comisionAdministrador,
     });
 
     let flujoAnual = 0;
@@ -438,6 +453,8 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
     contribuciones: input.contribuciones,
     mantencion: input.provisionMantencion,
     vacanciaMeses: input.vacanciaMeses,
+    usaAdministrador: input.usaAdministrador,
+    comisionAdministrador: input.comisionAdministrador,
   });
   const nuevoFlujoNeto = refi.flujoNeto;
 

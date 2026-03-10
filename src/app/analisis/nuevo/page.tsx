@@ -310,6 +310,8 @@ export default function NuevoAnalisisPage() {
     gastos: "",
     contribuciones: "",
     vacanciaMeses: "1",
+    usaAdministrador: false,
+    comisionAdministrador: "7",
   });
 
   const setField = useCallback((field: string, value: string | boolean) => {
@@ -750,6 +752,8 @@ export default function NuevoAnalisisPage() {
           tipoRenta: "larga",
           arriendo,
           vacanciaMeses: parseFloat(form.vacanciaMeses),
+          usaAdministrador: !!form.usaAdministrador,
+          comisionAdministrador: form.usaAdministrador ? parseFloat(form.comisionAdministrador || "7") : undefined,
         }),
       });
 
@@ -1338,6 +1342,41 @@ export default function NuevoAnalisisPage() {
                 value={form.vacanciaMeses}
                 onChange={(v) => setField("vacanciaMeses", v)}
               />
+            </div>
+
+            {/* Administración de arriendo */}
+            <div>
+              <div className="flex items-center justify-between">
+                <FieldLabel tip="Si contratas un corredor o empresa para gestionar el arriendo (cobrar, buscar arrendatarios, coordinar reparaciones). Típicamente cobran entre 5% y 10% del arriendo mensual.">Administración de arriendo</FieldLabel>
+                <button
+                  type="button"
+                  onClick={() => setField("usaAdministrador", !form.usaAdministrador)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.usaAdministrador ? "bg-primary" : "bg-muted"}`}
+                >
+                  <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${form.usaAdministrador ? "translate-x-5" : "translate-x-0"}`} />
+                </button>
+              </div>
+              {form.usaAdministrador && (
+                <div className="mt-3 space-y-2 rounded-lg border border-border/50 bg-secondary/30 p-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-muted-foreground">Comisión administrador (%)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={15}
+                      value={form.comisionAdministrador}
+                      onChange={(e) => setField("comisionAdministrador", e.target.value)}
+                      className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
+                      placeholder="7"
+                    />
+                  </div>
+                  {parseNum(form.arriendo) > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      = ${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.comisionAdministrador || "7") / 100))}/mes
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </SectionCard>
 

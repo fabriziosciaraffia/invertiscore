@@ -36,6 +36,9 @@ export interface AnalisisInput {
   tipoRenta: "larga";
   arriendo: number;
   vacanciaMeses: number;
+  // Administración de arriendo (property management)
+  usaAdministrador?: boolean;
+  comisionAdministrador?: number;
 }
 
 export interface MonthlyCashflow {
@@ -47,6 +50,7 @@ export interface MonthlyCashflow {
   mantencion: number;
   vacancia: number;
   corretaje: number;
+  administracion: number;
   egresoTotal: number;
   flujoNeto: number;
   acumulado: number;

@@ -148,6 +148,7 @@ DATOS DE LA PROPIEDAD:
 - Gastos comunes: ${fmtCLP(input.gastos)}/mes (solo vacancia, lo paga arrendatario)
 - Contribuciones: ${fmtCLP(input.contribuciones)}/trimestre
 - Provisión mantención: ${fmtCLP(input.provisionMantencion)}/mes
+- Administración de arriendo: ${input.usaAdministrador ? `Sí, comisión ${input.comisionAdministrador ?? 7}% sobre arriendo = ${fmtCLP(Math.round(input.arriendo * (input.comisionAdministrador ?? 7) / 100))}/mes` : "No usa administrador (gestiona solo)"}
 - Estacionamientos: ${(input as unknown as Record<string, unknown>).cantidadEstacionamientos ?? (input.estacionamiento === "si" ? 1 : 0)}
 - Bodegas: ${(input as unknown as Record<string, unknown>).cantidadBodegas ?? (input.bodega ? 1 : 0)}
 - Estado: ${input.estadoVenta}${fechaEntregaFmt ? " (entrega " + fechaEntregaFmt + ")" : ""}
