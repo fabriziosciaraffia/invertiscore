@@ -797,9 +797,8 @@ export function PremiumResults({
   const [adjArriendo, setAdjArriendo] = useState(inputData?.arriendo ?? 0);
   const [adjGastos, setAdjGastos] = useState(inputData?.gastos ?? 0);
   const [adjContribuciones, setAdjContribuciones] = useState(inputData?.contribuciones ?? 0);
-  const [adjVacancia, setAdjVacancia] = useState(inputData?.vacanciaMeses ?? 1);
-  const [adjUsaAdmin, setAdjUsaAdmin] = useState(inputData?.usaAdministrador ?? false);
-  const [adjComisionAdmin, setAdjComisionAdmin] = useState(inputData?.comisionAdministrador ?? 7);
+  const [adjVacanciaPct, setAdjVacanciaPct] = useState(() => Math.round((inputData?.vacanciaMeses ?? 1) * 100 / 12));
+  const [adjAdminPct, setAdjAdminPct] = useState(() => inputData?.usaAdministrador ? (inputData?.comisionAdministrador ?? 7) : 0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
@@ -833,28 +832,28 @@ export function PremiumResults({
         arriendo: adjArriendo,
         gastos: adjGastos,
         contribuciones: adjContribuciones,
-        vacanciaMeses: adjVacancia,
-        usaAdministrador: adjUsaAdmin,
-        comisionAdministrador: adjUsaAdmin ? adjComisionAdmin : undefined,
+        vacanciaMeses: adjVacanciaPct * 12 / 100,
+        usaAdministrador: adjAdminPct > 0,
+        comisionAdministrador: adjAdminPct > 0 ? adjAdminPct : undefined,
       };
       const res = await fetch("/api/analisis/recalculate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ analysisId, inputData: updatedInput }),
       });
+      const resData = await res.json().catch(() => null);
       if (res.ok) {
         setRecalcSuccess(true);
         setTimeout(() => window.location.reload(), 500);
       } else {
-        const data = await res.json().catch(() => null);
-        alert(data?.error || "Error al recalcular");
+        alert(resData?.error || "Error al recalcular");
       }
     } catch {
       alert("Error de conexión");
     } finally {
       setRecalcLoading(false);
     }
-  }, [analysisId, inputData, adjPrecio, adjPiePct, adjPlazo, adjTasa, adjArriendo, adjGastos, adjContribuciones, adjVacancia, adjUsaAdmin, adjComisionAdmin]);
+  }, [analysisId, inputData, adjPrecio, adjPiePct, adjPlazo, adjTasa, adjArriendo, adjGastos, adjContribuciones, adjVacanciaPct, adjAdminPct]);
 
   // AI Analysis state
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysis | null>(
@@ -924,6 +923,8 @@ export function PremiumResults({
       contribuciones: inputData.contribuciones,
       mantencion,
       vacanciaMeses: inputData.vacanciaMeses,
+      usaAdministrador: inputData.usaAdministrador,
+      comisionAdministrador: inputData.comisionAdministrador,
     }).flujoNeto;
   }, [m, inputData, freeFlujo]);
 
@@ -978,6 +979,8 @@ export function PremiumResults({
         contribuciones: contribucionesActual,
         mantencion,
         vacanciaMeses: inputData.vacanciaMeses ?? 1,
+        usaAdministrador: inputData.usaAdministrador,
+        comisionAdministrador: inputData.comisionAdministrador,
       });
 
       let flujoAnual = 0;
@@ -1028,6 +1031,8 @@ export function PremiumResults({
       contribuciones: inputData.contribuciones,
       mantencion,
       vacanciaMeses: inputData.vacanciaMeses ?? 1,
+      usaAdministrador: inputData.usaAdministrador,
+      comisionAdministrador: inputData.comisionAdministrador,
     });
     const nuevoFlujoNeto = refiF.flujoNeto;
     return { nuevoAvaluo: Math.round(nuevoAvaluo), nuevoCredito, capitalLiberado: Math.round(capitalLiberado), nuevoDividendo, nuevoFlujoNeto: Math.round(nuevoFlujoNeto) };
@@ -1068,16 +1073,20 @@ export function PremiumResults({
       comisionAdministrador: inputData.comisionAdministrador,
     });
 
+    const egresos = [
+      { name: "Div.", value: wf.dividendo },
+      { name: "GGCC", value: wf.ggccVacancia },
+      { name: "Cont.", value: wf.contribucionesMes },
+      { name: "Mant.", value: wf.mantencion },
+      { name: "Vac.", value: wf.vacanciaProrrata },
+      { name: "Corr.", value: wf.corretajeProrrata },
+      { name: "Rec.", value: wf.recambio },
+      { name: "Admin.", value: wf.administracion },
+    ].filter(e => e.value > 0).sort((a, b) => b.value - a.value);
+
     const steps: { name: string; delta: number }[] = [
       { name: "Arr.", delta: wf.arriendo },
-      { name: "Div.", delta: -wf.dividendo },
-      { name: "GGCC", delta: -wf.ggccVacancia },
-      { name: "Cont.", delta: -wf.contribucionesMes },
-      { name: "Mant.", delta: -wf.mantencion },
-      { name: "Vac.", delta: -wf.vacanciaProrrata },
-      { name: "Corr.", delta: -wf.corretajeProrrata },
-      { name: "Rec.", delta: -wf.recambio },
-      ...(wf.administracion > 0 ? [{ name: "Admin.", delta: -wf.administracion }] : []),
+      ...egresos.map(e => ({ name: e.name, delta: -e.value })),
     ];
 
     let running = 0;
@@ -1118,6 +1127,9 @@ export function PremiumResults({
     Contribuciones: number;
     Mantencion: number;
     Vacancia: number;
+    Corretaje: number;
+    Recambio: number;
+    Administracion: number;
     FlujoNeto: number;
     Acumulado: number;
   }
@@ -1144,7 +1156,7 @@ export function PremiumResults({
 
     // Always calculate month by month
     const allData: CashflowRow[] = [];
-    allData.push({ name: "T0", _x: 0, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: 0 });
+    allData.push({ name: "T0", _x: 0, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, Corretaje: 0, Recambio: 0, Administracion: 0, FlujoNeto: 0, Acumulado: 0 });
 
     let acumulado = 0;
     let arriendoActual = inputData.arriendo;
@@ -1168,19 +1180,18 @@ export function PremiumResults({
         contribuciones: contribAct,
         mantencion: mantencionMes,
         vacanciaMeses: inputData!.vacanciaMeses ?? 1,
+        usaAdministrador: inputData!.usaAdministrador,
+        comisionAdministrador: inputData!.comisionAdministrador,
       });
-      const ingreso = Math.round(arriendoAct);
-      const ggcc = -fd.ggccVacancia;
-      const vac = -(fd.vacanciaProrrata + fd.corretajeProrrata + fd.recambio);
       const flujoNeto = fd.flujoNeto;
       acumulado += flujoNeto;
-      return { name: `M${mes}`, _x: mes, Ingreso: ingreso, Dividendo: -fd.dividendo, GGCC: ggcc, Contribuciones: -fd.contribucionesMes, Mantencion: -fd.mantencion, Vacancia: vac, FlujoNeto: Math.round(flujoNeto), Acumulado: acumulado };
+      return { name: `M${mes}`, _x: mes, Ingreso: Math.round(arriendoAct), Dividendo: -fd.dividendo, GGCC: -fd.ggccVacancia, Contribuciones: -fd.contribucionesMes, Mantencion: -fd.mantencion, Vacancia: -fd.vacanciaProrrata, Corretaje: -fd.corretajeProrrata, Recambio: -fd.recambio, Administracion: -fd.administracion, FlujoNeto: Math.round(flujoNeto), Acumulado: acumulado };
     }
 
     if (inputData.estadoVenta !== "inmediata" && mesesPreEntrega > 0) {
       for (let mes = 1; mes <= totalMonths; mes++) {
         if (mes <= mesesPreEntrega) {
-          allData.push({ name: `M${mes}`, _x: mes, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, FlujoNeto: 0, Acumulado: acumulado });
+          allData.push({ name: `M${mes}`, _x: mes, Ingreso: 0, Dividendo: 0, GGCC: 0, Contribuciones: 0, Mantencion: 0, Vacancia: 0, Corretaje: 0, Recambio: 0, Administracion: 0, FlujoNeto: 0, Acumulado: acumulado });
         } else {
           if (mes > mesesPreEntrega + 1 && (mes - 1) % 12 === 0) {
             arriendoActual *= (1 + arriendoGrowth / 100);
@@ -1209,7 +1220,7 @@ export function PremiumResults({
       const start = (y - 1) * 12 + 1; // month index in allData (T0 is index 0, M1 is index 1)
       const end = y * 12;
       let sumIngreso = 0, sumDividendo = 0, sumGGCC = 0, sumContribuciones = 0;
-      let sumMantencion = 0, sumVacancia = 0, sumFlujoNeto = 0;
+      let sumMantencion = 0, sumVacancia = 0, sumCorretaje = 0, sumRecambio = 0, sumAdministracion = 0, sumFlujoNeto = 0;
       for (let mi = start; mi <= end && mi < allData.length; mi++) {
         const row = allData[mi];
         sumIngreso += row.Ingreso;
@@ -1218,6 +1229,9 @@ export function PremiumResults({
         sumContribuciones += row.Contribuciones;
         sumMantencion += row.Mantencion;
         sumVacancia += row.Vacancia;
+        sumCorretaje += row.Corretaje;
+        sumRecambio += row.Recambio;
+        sumAdministracion += row.Administracion;
         sumFlujoNeto += row.FlujoNeto;
       }
       const lastMonth = Math.min(end, allData.length - 1);
@@ -1230,6 +1244,9 @@ export function PremiumResults({
         Contribuciones: Math.round(sumContribuciones),
         Mantencion: Math.round(sumMantencion),
         Vacancia: Math.round(sumVacancia),
+        Corretaje: Math.round(sumCorretaje),
+        Recambio: Math.round(sumRecambio),
+        Administracion: Math.round(sumAdministracion),
         FlujoNeto: Math.round(sumFlujoNeto),
         Acumulado: allData[lastMonth]?.Acumulado ?? 0,
       });
@@ -1241,6 +1258,29 @@ export function PremiumResults({
   const flujoAcumuladoReal = useMemo(() => {
     if (cashflowData.length === 0) return 0;
     return cashflowData[cashflowData.length - 1].Acumulado;
+  }, [cashflowData]);
+
+  // Egreso bar series ordered by average absolute impact (descending), filtered to non-zero
+  const egresoBarSeries = useMemo(() => {
+    const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
+      { key: "Dividendo", label: "Dividendo", color: "#ef4444" },
+      { key: "GGCC", label: "GGCC", color: "#f97316" },
+      { key: "Contribuciones", label: "Contribuciones", color: "#d97706" },
+      { key: "Mantencion", label: "Mantención", color: "#f43f5e" },
+      { key: "Vacancia", label: "Vacancia", color: "#6b7280" },
+      { key: "Corretaje", label: "Corretaje", color: "#8b5cf6" },
+      { key: "Recambio", label: "Recambio", color: "#64748b" },
+      { key: "Administracion", label: "Administración", color: "#a855f7" },
+    ];
+    const dataRows = cashflowData.filter(r => r._x > 0);
+    if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
+    return allSeries
+      .map(s => {
+        const avg = dataRows.reduce((sum, r) => sum + Math.abs(r[s.key] as number), 0) / dataRows.length;
+        return { ...s, avg };
+      })
+      .filter(s => s.avg > 0)
+      .sort((a, b) => b.avg - a.avg);
   }, [cashflowData]);
 
   // Dynamic exit scenario based on horizon (must be after flujoAcumuladoReal)
@@ -1901,11 +1941,9 @@ export function PremiumResults({
                               <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                 <div className="mb-1.5 font-semibold">{row.name}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo: <span className="font-medium text-red-400">{fmt(row.Dividendo)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia: <span className="font-medium text-red-400">{fmt(row.GGCC)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones: <span className="font-medium text-red-400">{fmt(row.Contribuciones)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención: <span className="font-medium text-red-400">{fmt(row.Mantencion)}</span></div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia: <span className="font-medium text-red-400">{fmt(row.Vacancia)}</span></div>
+                                {egresoBarSeries.map(s => (
+                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-red-400">{fmt(row[s.key] as number)}</span></div>
+                                ))}
                                 <div className="my-1 border-t border-border/50" />
                                 <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
                                 <div className="font-bold text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
@@ -1914,13 +1952,12 @@ export function PremiumResults({
                           }}
                         />
                         <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
-                        {/* Una sola columna apilada: ingreso sube, egresos bajan */}
+                        {/* Ingreso siempre primero */}
                         <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="Dividendo" stackId="stack" fill="#ef4444" />
-                        <Bar xAxisId="cat" dataKey="GGCC" stackId="stack" fill="#f97316" />
-                        <Bar xAxisId="cat" dataKey="Contribuciones" stackId="stack" fill="#d97706" />
-                        <Bar xAxisId="cat" dataKey="Mantencion" stackId="stack" fill="#f43f5e" />
-                        <Bar xAxisId="cat" dataKey="Vacancia" name="Vacancia y otros" stackId="stack" fill="#6b7280" radius={[0, 0, 4, 4]} />
+                        {/* Egresos ordenados por impacto promedio descendente */}
+                        {egresoBarSeries.map((s, i) => (
+                          <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
+                        ))}
                         {/* Línea acumulado */}
                         <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
@@ -1949,11 +1986,9 @@ export function PremiumResults({
                   <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
                       <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Dividendo</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f97316" }} />GGCC vacancia</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#d97706" }} />Contribuciones</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#f43f5e" }} />Mantención</span>
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#6b7280" }} />Vacancia</span>
+                      {egresoBarSeries.map(s => (
+                        <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
+                      ))}
                       <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#3b82f6", height: 2 }} />Acumulado</span>
                     </div>
                   </div>
@@ -2262,12 +2297,15 @@ export function PremiumResults({
     const BOTTOM_MARGIN = 20;
     const handleScroll = () => {
       const containerRect = flexContainer.getBoundingClientRect();
-      // How far the top of the flex container is from the top of the document
       const containerTop = window.scrollY + containerRect.top;
-      // Max translateY: container height minus panel height minus some margin
-      const maxTranslate = Math.max(0, flexContainer.offsetHeight - panel.offsetHeight - BOTTOM_MARGIN);
-      // Desired translate: scroll past the container top, offset by TOP_OFFSET
-      const translate = Math.max(0, Math.min(window.scrollY - containerTop + TOP_OFFSET, maxTranslate));
+      // Use the visible panel height (capped by maxHeight CSS), not scrollHeight
+      const panelHeight = panel.offsetHeight;
+      // Ensure panel + translate never exceeds container bottom
+      const maxTranslate = Math.max(0, flexContainer.offsetHeight - panelHeight - BOTTOM_MARGIN);
+      // Ensure panel + translate never pushes panel below viewport
+      const maxViewportTranslate = Math.max(0, window.scrollY + window.innerHeight - containerTop - panelHeight - BOTTOM_MARGIN);
+      const desired = window.scrollY - containerTop + TOP_OFFSET;
+      const translate = Math.max(0, Math.min(desired, maxTranslate, maxViewportTranslate));
       panel.style.transform = `translateY(${translate}px)`;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -2279,12 +2317,14 @@ export function PremiumResults({
     };
   }, [currentAccess, inputData]);
 
-  // Panel content shared between desktop sidebar and mobile drawer
-  const panelContent = currentAccess !== "guest" && inputData ? (
-    <div className="space-y-3">
+  // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
+  const hasPanelContent = currentAccess !== "guest" && !!inputData;
+
+  const panelFields = hasPanelContent ? (
+    <div className="space-y-2.5">
       <div>
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
-        <div className="space-y-2">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
+        <div className="space-y-1.5">
           <div>
             <div className="mb-0.5 flex items-center justify-between">
               <label className="text-[11px] text-muted-foreground">Precio (UF)</label>
@@ -2302,8 +2342,8 @@ export function PremiumResults({
         </div>
       </div>
       <div>
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
-        <div className="space-y-2">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
+        <div className="space-y-1.5">
           <div>
             <div className="mb-0.5 flex items-center justify-between">
               <label className="text-[11px] text-muted-foreground">Plazo</label>
@@ -2321,8 +2361,8 @@ export function PremiumResults({
         </div>
       </div>
       <div>
-        <h4 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
-        <div className="space-y-2">
+        <h4 className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
+        <div className="space-y-1.5">
           <div>
             <div className="mb-0.5 flex items-center justify-between">
               <label className="text-[11px] text-muted-foreground">Arriendo</label>
@@ -2345,72 +2385,69 @@ export function PremiumResults({
             <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary" />
           </div>
           <div>
-            <label className="mb-0.5 block text-[11px] text-muted-foreground">Vacancia (meses/año)</label>
-            <div className="flex gap-1">
-              {[0, 1, 2, 3].map((v) => (
-                <button key={v} type="button" onClick={() => setAdjVacancia(v)}
-                  className={`flex-1 rounded py-0.5 text-[11px] font-medium transition-colors ${adjVacancia === v ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                >{v}</button>
-              ))}
+            <div className="mb-0.5 flex items-center justify-between">
+              <label className="text-[11px] text-muted-foreground">Vacancia</label>
+              <span className="text-[11px] font-medium">{adjVacanciaPct}%</span>
             </div>
+            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-primary" />
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
           </div>
           <div>
             <div className="mb-0.5 flex items-center justify-between">
-              <label className="text-[11px] text-muted-foreground">Administración arriendo</label>
-              <button
-                type="button"
-                onClick={() => setAdjUsaAdmin(!adjUsaAdmin)}
-                className={`relative h-4 w-8 rounded-full transition-colors ${adjUsaAdmin ? "bg-primary" : "bg-muted"}`}
-              >
-                <span className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-transform ${adjUsaAdmin ? "left-[18px]" : "left-0.5"}`} />
-              </button>
+              <label className="text-[11px] text-muted-foreground">Administración</label>
+              <span className="text-[11px] font-medium">{adjAdminPct}%</span>
             </div>
-            {adjUsaAdmin && (
-              <div className="mt-1">
-                <div className="mb-0.5 flex items-center justify-between">
-                  <label className="text-[11px] text-muted-foreground">Comisión</label>
-                  <span className="text-[11px] font-medium">{adjComisionAdmin}%</span>
-                </div>
-                <input type="range" min={1} max={15} step={1} value={adjComisionAdmin} onChange={(e) => setAdjComisionAdmin(Number(e.target.value))} className="w-full accent-primary" />
-              </div>
-            )}
+            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-primary" />
+            <p className="mt-0.5 text-[10px] text-muted-foreground">{adjAdminPct > 0 ? `= ${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
       </div>
+    </div>
+  ) : null;
+
+  const panelButton = hasPanelContent ? (
+    <div>
       <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2">
         {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
-      {recalcSuccess && <p className="text-center text-xs text-emerald-500">Actualizado</p>}
+      {recalcSuccess && <p className="mt-1 text-center text-xs text-emerald-500">Actualizado</p>}
     </div>
   ) : null;
 
   return (
-    <div id="results-flex-container" className={`${panelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
+    <div id="results-flex-container" className={`${hasPanelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
       {/* Main content */}
-      <div className={panelContent ? "min-w-0 lg:flex-1" : ""}>
+      <div className={hasPanelContent ? "min-w-0 lg:flex-1" : ""}>
         {mainContent}
       </div>
 
       {/* Desktop: sidebar with JS-based scroll follow */}
-      {panelContent && (
+      {hasPanelContent && (
         <aside id="param-panel-wrapper" className="hidden w-[260px] shrink-0 lg:block">
           <div
             id="param-panel"
-            className="scrollbar-hide overflow-y-auto rounded-xl border border-[#e5e7eb] bg-white p-4"
+            className="flex flex-col rounded-xl border border-[#e5e7eb] bg-white"
             style={{ maxHeight: "calc(100vh - 100px)" }}
           >
-            <div className="mb-3 flex items-center gap-2">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-              <h3 className="text-xs font-semibold">Ajusta los números</h3>
+            <div className="shrink-0 px-3 pt-3 pb-1">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-primary" />
+                <h3 className="text-xs font-semibold">Ajusta los números</h3>
+              </div>
             </div>
-            {panelContent}
+            <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
+              {panelFields}
+            </div>
+            <div className="shrink-0 border-t border-gray-100 px-3 py-2">
+              {panelButton}
+            </div>
           </div>
         </aside>
       )}
 
       {/* Mobile: floating button + drawer */}
-      {panelContent && (
+      {hasPanelContent && (
         <>
           <div className="fixed bottom-20 right-4 z-40 flex items-center gap-3 lg:hidden">
             {!fabShown && (
@@ -2430,17 +2467,24 @@ export function PremiumResults({
           {drawerOpen && (
             <div className="fixed inset-0 z-50 lg:hidden">
               <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-              <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    <h3 className="text-sm font-semibold">Ajusta los números</h3>
+              <div className="absolute bottom-0 left-0 right-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
+                <div className="shrink-0 px-5 pt-5 pb-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="h-4 w-4 text-primary" />
+                      <h3 className="text-sm font-semibold">Ajusta los números</h3>
+                    </div>
+                    <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-muted">
+                      <X className="h-5 w-5 text-muted-foreground" />
+                    </button>
                   </div>
-                  <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-muted">
-                    <X className="h-5 w-5 text-muted-foreground" />
-                  </button>
                 </div>
-                {panelContent}
+                <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-2">
+                  {panelFields}
+                </div>
+                <div className="shrink-0 border-t border-gray-100 px-5 py-3">
+                  {panelButton}
+                </div>
               </div>
             </div>
           )}

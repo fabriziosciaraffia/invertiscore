@@ -309,9 +309,8 @@ export default function NuevoAnalisisPage() {
     arriendo: "",
     gastos: "",
     contribuciones: "",
-    vacanciaMeses: "1",
-    usaAdministrador: false,
-    comisionAdministrador: "7",
+    vacanciaPct: "5",
+    adminPct: "7",
   });
 
   const setField = useCallback((field: string, value: string | boolean) => {
@@ -751,9 +750,9 @@ export default function NuevoAnalisisPage() {
           provisionMantencion,
           tipoRenta: "larga",
           arriendo,
-          vacanciaMeses: parseFloat(form.vacanciaMeses),
-          usaAdministrador: !!form.usaAdministrador,
-          comisionAdministrador: form.usaAdministrador ? parseFloat(form.comisionAdministrador || "7") : undefined,
+          vacanciaMeses: parseFloat(form.vacanciaPct) * 12 / 100,
+          usaAdministrador: parseFloat(form.adminPct) > 0,
+          comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
         }),
       });
 
@@ -1333,50 +1332,42 @@ export default function NuevoAnalisisPage() {
             </div>
 
             <div>
-              <FieldLabel tip={TIPS.vacanciaMeses}>Vacancia (meses/año)</FieldLabel>
-              <ButtonGroup
-                options={[
-                  { value: "0", label: "0" }, { value: "1", label: "1" },
-                  { value: "2", label: "2" }, { value: "3", label: "3" },
-                ]}
-                value={form.vacanciaMeses}
-                onChange={(v) => setField("vacanciaMeses", v)}
+              <FieldLabel tip={TIPS.vacanciaMeses}>Vacancia</FieldLabel>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">{form.vacanciaPct}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={25}
+                step={1}
+                value={form.vacanciaPct}
+                onChange={(e) => setField("vacanciaPct", e.target.value)}
+                className="w-full accent-primary"
               />
+              <p className="mt-1 text-xs text-muted-foreground">{`\u2248 ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
             </div>
 
             {/* Administración de arriendo */}
             <div>
-              <div className="flex items-center justify-between">
-                <FieldLabel tip="Si contratas un corredor o empresa para gestionar el arriendo (cobrar, buscar arrendatarios, coordinar reparaciones). Típicamente cobran entre 5% y 10% del arriendo mensual.">Administración de arriendo</FieldLabel>
-                <button
-                  type="button"
-                  onClick={() => setField("usaAdministrador", !form.usaAdministrador)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${form.usaAdministrador ? "bg-primary" : "bg-muted"}`}
-                >
-                  <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${form.usaAdministrador ? "translate-x-5" : "translate-x-0"}`} />
-                </button>
+              <FieldLabel tip="Si contratas un corredor o empresa para gestionar el arriendo (cobrar, buscar arrendatarios, coordinar reparaciones). Típicamente cobran entre 5% y 10% del arriendo mensual. En 0% se desactiva.">Administración</FieldLabel>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-muted-foreground">{form.adminPct}%</span>
               </div>
-              {form.usaAdministrador && (
-                <div className="mt-3 space-y-2 rounded-lg border border-border/50 bg-secondary/30 p-3">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm text-muted-foreground">Comisión administrador (%)</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={15}
-                      value={form.comisionAdministrador}
-                      onChange={(e) => setField("comisionAdministrador", e.target.value)}
-                      className="w-16 rounded border border-border bg-background px-2 py-1 text-right text-sm"
-                      placeholder="7"
-                    />
-                  </div>
-                  {parseNum(form.arriendo) > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      = ${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.comisionAdministrador || "7") / 100))}/mes
-                    </p>
-                  )}
-                </div>
-              )}
+              <input
+                type="range"
+                min={0}
+                max={15}
+                step={1}
+                value={form.adminPct}
+                onChange={(e) => setField("adminPct", e.target.value)}
+                className="w-full accent-primary"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {parseFloat(form.adminPct) > 0 && parseNum(form.arriendo) > 0
+                  ? `= $${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
+                  : "Sin administrador"}
+              </p>
             </div>
           </SectionCard>
 

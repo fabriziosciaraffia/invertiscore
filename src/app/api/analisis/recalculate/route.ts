@@ -69,6 +69,16 @@ export async function POST(request: Request) {
 
     const result = runAnalysis(inputData);
 
+    // DEBUG: verificar que administración se procesa
+    console.log("[RECALC SERVER]", {
+      usaAdmin: inputData.usaAdministrador,
+      comision: inputData.comisionAdministrador,
+      flujoNeto: result.metrics?.flujoNetoMensual,
+      egresosMensuales: result.metrics?.egresosMensuales,
+      rentNeta: result.metrics?.rentabilidadNeta,
+      cashflow0Admin: result.cashflowYear1?.[1]?.administracion,
+    });
+
     const { error } = await supabase
       .from("analisis")
       .update({
