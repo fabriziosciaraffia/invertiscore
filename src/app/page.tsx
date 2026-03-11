@@ -265,7 +265,11 @@ export default function HomePage() {
       </nav>
 
       {/* ============ 2. HERO SECTION ============ */}
-      <section className="px-6 py-20 md:py-28" style={{ background: "linear-gradient(180deg, #0F0F0F 0%, #1a1a2e 60%, #0F0F0F 100%)" }}>
+      <section className="relative overflow-hidden px-6 py-20 md:py-28" style={{ background: "linear-gradient(135deg, #0F0F0F 0%, #2A2A2A 100%)" }}>
+        {/* Red glow */}
+        <div className="pointer-events-none absolute -top-10 -right-10 h-72 w-72 rounded-full bg-[#C8323C]/[0.05] blur-3xl" />
+        {/* Bottom accent line */}
+        <div className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-transparent via-[#C8323C]/20 to-transparent" />
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[3fr_2fr]">
           {/* Texto (columna izquierda) */}
           <div className="text-center lg:text-left">
@@ -282,7 +286,7 @@ export default function HomePage() {
             <FadeIn delay={200}>
               <div className="mt-8">
                 <Link href="/analisis/nuevo">
-                  <Button className="rounded-lg bg-[#C8323C] px-7 py-3.5 font-body text-base font-semibold text-white transition-colors hover:bg-[#C8323C]/90">
+                  <Button className="rounded-lg bg-[#C8323C] px-7 py-3.5 font-body text-base font-semibold text-white shadow-[0_4px_16px_rgba(200,50,60,0.25)] transition-colors hover:bg-[#C8323C]/90">
                     Analizar propiedad gratis <ArrowRight className="ml-1 h-4 w-4" />
                   </Button>
                 </Link>
@@ -293,7 +297,7 @@ export default function HomePage() {
 
           {/* Score Preview Card (columna derecha) */}
           <FadeIn delay={300}>
-            <div className="mx-auto max-w-[300px] rounded-2xl border border-white/10 bg-white p-6 shadow-2xl">
+            <div className="mx-auto max-w-[300px] rounded-2xl border border-white/10 bg-white p-6 shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_8px_rgba(0,0,0,0.1)]">
               <div className="font-body text-[10px] uppercase tracking-[0.1em] text-[#71717A] mb-1">Franco Score</div>
               <div className="font-heading text-5xl font-bold leading-none text-[#0F0F0F]">54</div>
               <div className="mt-2 font-body text-sm font-bold text-[#C8323C]">No compres — negocia primero</div>
@@ -440,8 +444,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 4. ¿POR QUÉ TU CORREDOR NO TE MUESTRA ESTOS NÚMEROS? ============ */}
-      <section className="px-6 py-16 md:py-24" style={{ background: "linear-gradient(180deg, #0F0F0F 0%, #161622 50%, #0F0F0F 100%)" }}>
-        <div className="mx-auto max-w-6xl">
+      <section className="relative overflow-hidden px-6 py-16 md:py-24" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 50%, #2A2A2A 100%)" }}>
+        {/* Red glow */}
+        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-[#C8323C]/[0.04] blur-3xl" />
+        <div className="relative mx-auto max-w-6xl">
           <FadeIn>
             <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-white md:text-4xl">
               ¿Por qué tu corredor no te muestra estos números?
@@ -454,7 +460,7 @@ export default function HomePage() {
               { title: "Si la inversión sale mal, el corredor no devuelve la comisión.", desc: "Tú asumes todo el riesgo por 25 años. El corredor desaparece después de la firma. Franco no te vende propiedades ni cobra comisiones de venta. Nuestro único incentivo es que tengas la información completa antes de decidir." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
-                <div className="flex h-full flex-col rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                <div className="flex h-full flex-col rounded-xl border border-white/[0.07] bg-white/[0.03] p-6 backdrop-blur-sm">
                   <h3 className="mb-2 font-body text-base font-bold text-white">{item.title}</h3>
                   <p className="flex-1 font-body text-sm leading-relaxed text-white/60">{item.desc}</p>
                 </div>
@@ -834,8 +840,10 @@ export default function HomePage() {
       </section>
 
       {/* ============ 9. CTA FINAL ============ */}
-      <section className="bg-[#0F0F0F] px-6 py-20 md:py-24">
-        <div className="mx-auto max-w-6xl text-center">
+      <section className="relative overflow-hidden px-6 py-20 md:py-24" style={{ background: "linear-gradient(145deg, #0F0F0F 0%, #1C1917 60%, #292524 100%)" }}>
+        {/* Centered red glow */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C8323C]/[0.03] blur-3xl" />
+        <div className="relative mx-auto max-w-6xl text-center">
           <FadeIn>
             <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
               Antes de firmar, sé franco.
@@ -845,7 +853,7 @@ export default function HomePage() {
             </p>
             <div className="mt-6">
               <Link href="/analisis/nuevo">
-                <Button className="rounded-lg bg-[#C8323C] px-8 py-4 font-body text-base font-bold text-white transition-colors hover:bg-[#C8323C]/90">
+                <Button className="rounded-lg bg-[#C8323C] px-8 py-4 font-body text-base font-bold text-white shadow-[0_4px_20px_rgba(200,50,60,0.3)] transition-colors hover:bg-[#C8323C]/90">
                   Analizar propiedad gratis <ArrowRight className="ml-1 h-4 w-4" />
                 </Button>
               </Link>
@@ -859,6 +867,9 @@ export default function HomePage() {
           </FadeIn>
         </div>
       </section>
+
+      {/* Separator between CTA and footer */}
+      <div className="h-px bg-white/[0.05]" />
 
       {/* ============ 10. FOOTER ============ */}
       <footer className="bg-[#0F0F0F] px-6 py-10 sm:py-14">
