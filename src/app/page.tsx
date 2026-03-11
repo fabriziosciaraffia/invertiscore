@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -138,9 +138,19 @@ function TooltipIcon({ text }: { text: string }) {
 // ============================================================
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const [analysisCount, setAnalysisCount] = useState<number | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
+
+  const handleScroll = useCallback(() => {
+    setScrolled(window.scrollY > 80);
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -168,16 +178,20 @@ export default function HomePage() {
       `}</style>
 
       {/* ============ 1. HEADER / NAVBAR ============ */}
-      <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white/80 backdrop-blur-md">
+      <nav className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? "border-b border-[#E6E6E2] bg-white/85 backdrop-blur-xl"
+          : "bg-transparent"
+      }`}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <FrancoLogo size="sm" href="/" />
+          <FrancoLogo size="sm" href="/" inverted={!scrolled} />
           <div className="hidden items-center gap-6 sm:flex">
             {user ? (
               <>
-                <Link href="/dashboard" className="font-body text-sm text-[#71717A] transition-colors hover:text-[#0F0F0F]">
+                <Link href="/dashboard" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
                   Dashboard
                 </Link>
-                <Link href="/analisis/nuevo" className="font-body text-sm text-[#71717A] transition-colors hover:text-[#0F0F0F]">
+                <Link href="/analisis/nuevo" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
                   Nuevo análisis
                 </Link>
                 <Link href="/pricing">
@@ -190,28 +204,28 @@ export default function HomePage() {
                     setUser(null);
                     router.refresh();
                   }}
-                  className="font-body text-sm text-[#71717A] transition-colors hover:text-[#0F0F0F]"
+                  className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}
                 >
                   Cerrar Sesión
                 </button>
               </>
             ) : (
               <>
-                <Link href="/pricing" className="font-body text-sm text-[#71717A] transition-colors hover:text-[#0F0F0F]">
+                <Link href="/pricing" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
                   Pricing
                 </Link>
-                <Link href="/login" className="font-body text-sm text-[#71717A] transition-colors hover:text-[#0F0F0F]">
+                <Link href="/login" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
                   Iniciar Sesión
                 </Link>
                 <Link href="/analisis/nuevo">
-                  <Button size="sm" className="rounded-lg bg-[#0F0F0F] text-white transition-colors hover:bg-[#0F0F0F]/90">
+                  <Button size="sm" className={`rounded-lg transition-colors ${scrolled ? "bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90" : "bg-white text-[#0F0F0F] hover:bg-white/90"}`}>
                     Analizar gratis
                   </Button>
                 </Link>
               </>
             )}
           </div>
-          <button className="p-2 text-[#71717A] sm:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu">
+          <button className={`p-2 sm:hidden ${scrolled ? "text-[#71717A]" : "text-white/60"}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu">
             {mobileMenuOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
@@ -251,7 +265,7 @@ export default function HomePage() {
       </nav>
 
       {/* ============ 2. HERO SECTION ============ */}
-      <section className="bg-[#0F0F0F] px-6 py-20 md:py-28">
+      <section className="px-6 py-20 md:py-28" style={{ background: "linear-gradient(180deg, #0F0F0F 0%, #1a1a2e 60%, #0F0F0F 100%)" }}>
         <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[3fr_2fr]">
           {/* Texto (columna izquierda) */}
           <div className="text-center lg:text-left">
@@ -426,7 +440,7 @@ export default function HomePage() {
       </section>
 
       {/* ============ 4. ¿POR QUÉ TU CORREDOR NO TE MUESTRA ESTOS NÚMEROS? ============ */}
-      <section className="bg-[#0F0F0F] px-6 py-16 md:py-24">
+      <section className="px-6 py-16 md:py-24" style={{ background: "linear-gradient(180deg, #0F0F0F 0%, #161622 50%, #0F0F0F 100%)" }}>
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-white md:text-4xl">
