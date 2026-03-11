@@ -29,10 +29,10 @@ export default function FrancoLogo({
   const logo = (
     <span className={`inline-flex flex-col ${className}`}>
       <span className={`${s.text} leading-tight`}>
-        <span className={`font-heading font-normal ${baseColor} ${reOpacity}`}>
+        <span className={`font-heading font-normal transition-colors duration-300 ${baseColor} ${reOpacity}`}>
           re
         </span>
-        <span className={`font-heading font-bold ${baseColor}`}>franco</span>
+        <span className={`font-heading font-bold transition-colors duration-300 ${baseColor}`}>franco</span>
         <span
           className={`font-body font-semibold text-franco-red ${s.dot} tracking-wide`}
         >

@@ -144,10 +144,11 @@ export default function HomePage() {
   const router = useRouter();
 
   const handleScroll = useCallback(() => {
-    setScrolled(window.scrollY > 80);
+    setScrolled(window.scrollY > 60);
   }, []);
 
   useEffect(() => {
+    handleScroll(); // check initial position (browser may restore scroll)
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
@@ -180,8 +181,8 @@ export default function HomePage() {
       {/* ============ 1. HEADER / NAVBAR ============ */}
       <nav className={`sticky top-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "border-b border-[#E6E6E2] bg-white/85 backdrop-blur-xl"
-          : "bg-transparent"
+          ? "border-b border-[#E6E6E2] bg-white/90 shadow-sm backdrop-blur-xl"
+          : "border-b border-transparent bg-transparent"
       }`}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
           <FrancoLogo size="sm" href="/" inverted={!scrolled} />
