@@ -107,7 +107,7 @@ function TypewriterText({ text, speed = 25, onComplete }: { text: string; speed?
     const t = setTimeout(() => setIndex((i) => i + 1), speed);
     return () => clearTimeout(t);
   }, [index, text, speed, onComplete]);
-  return <>{text.slice(0, index)}{index < text.length && <span className="inline-block w-0.5 h-4 bg-primary animate-pulse align-text-bottom" />}</>;
+  return <>{text.slice(0, index)}{index < text.length && <span className="inline-block w-0.5 h-4 bg-[#C8323C] animate-pulse align-text-bottom" />}</>;
 }
 
 function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; children: React.ReactNode }) {
@@ -167,19 +167,19 @@ function AIAnalysisSection({
       {/* Loading phase */}
       {phaseIndex === 0 && (
         <div className="flex flex-col items-center gap-3 py-8">
-          <Sparkles className="h-8 w-8 animate-pulse text-primary" />
-          <p className="text-sm text-muted-foreground">Analizando tu inversión con IA...</p>
+          <Sparkles className="h-8 w-8 animate-pulse text-[#C8323C]" />
+          <p className="font-body text-sm text-[#71717A]">Analizando tu inversión con IA...</p>
           <div className="flex gap-1">
-            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "0ms" }} />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "150ms" }} />
-            <span className="h-2 w-2 animate-bounce rounded-full bg-primary" style={{ animationDelay: "300ms" }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "0ms" }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "150ms" }} />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "300ms" }} />
           </div>
         </div>
       )}
 
       {/* 1. Resumen Ejecutivo */}
       {phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#16A34A]/30 bg-[#16A34A]/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#16A34A]/30 bg-[#16A34A]/5" : score >= 40 ? "border-[#C8323C]/30 bg-[#C8323C]/5" : "border-[#DC2626]/30 bg-[#DC2626]/5"}`}>
           <p className="text-sm font-medium leading-relaxed">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} speed={charSpeed} onComplete={next(2)} />
@@ -192,7 +192,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 2}>
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-primary" />
+            <Wallet className="h-4 w-4 text-[#0F0F0F]" />
             <h4 className="font-heading text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -201,8 +201,8 @@ function AIAnalysisSection({
             ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
           </p>
           {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
-            <div className="mt-3 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2">
-              <p className="flex items-start gap-2 text-xs text-red-400">
+            <div className="mt-3 rounded-md border border-[#C8323C]/20 bg-[#C8323C]/5 px-3 py-2">
+              <p className="flex items-start gap-2 text-xs text-[#C8323C]">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta")}
               </p>
@@ -215,7 +215,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 3}>
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Scale className="h-4 w-4 text-primary" />
+            <Scale className="h-4 w-4 text-[#0F0F0F]" />
             <h4 className="font-heading text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -230,7 +230,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 4}>
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Handshake className="h-4 w-4 text-primary" />
+            <Handshake className="h-4 w-4 text-[#0F0F0F]" />
             <h4 className="font-heading text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -251,7 +251,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 5}>
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <TrendingUp className="h-4 w-4 text-[#0F0F0F]" />
             <h4 className="font-heading text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -266,14 +266,14 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 6}>
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-primary" />
+            <Shield className="h-4 w-4 text-[#0F0F0F]" />
             <h4 className="font-heading text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
           </div>
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
               <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 300}>
                 <li className="text-sm leading-relaxed text-muted-foreground">
-                  <span className="mr-1 font-medium text-red-400">⚠</span> {stripBullet(r)}
+                  <span className="mr-1 font-medium text-[#C8323C]">⚠</span> {stripBullet(r)}
                 </li>
               </FadeIn>
             ))}
@@ -282,20 +282,10 @@ function AIAnalysisSection({
         </div>
       </FadeIn>
 
-      {/* 7. Veredicto */}
+      {/* 7. Veredicto — inline during typewriter */}
       <FadeIn show={phaseIndex >= 7}>
-        <div className="rounded-2xl border-2 border-franco-border bg-white p-5 shadow-sm">
-          <div className="mb-3 flex items-center gap-3">
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
-            <span className={`rounded-md px-3 py-1 font-mono text-xs font-bold uppercase tracking-wide ${
-              aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-verdict-buy/10 border border-verdict-buy/30 text-verdict-buy" :
-              aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-franco-red/10 border border-franco-red/30 text-franco-red" :
-              "bg-verdict-avoid/10 border border-verdict-avoid/30 text-verdict-avoid"
-            }`}>
-              {aiAnalysis.veredicto.decision}
-            </span>
-          </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+        <div className="rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] p-4">
+          <p className="text-sm leading-relaxed text-[#0F0F0F]">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
               <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} speed={charSpeed} onComplete={next(8)} />
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
@@ -319,7 +309,7 @@ function AIAnalysisSection({
             </ul>
           </div>
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-red-400">
+            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-[#C8323C]">
               <AlertTriangle className="h-4 w-4" /> Atención
             </h4>
             <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
@@ -340,51 +330,132 @@ function AIAnalysisSection({
     </div>
   ) : null;
 
-  return (
-    <div ref={sectionRef}>
-      <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-        {/* No AI yet: show generate button */}
-        {!aiAnalysis && !aiLoading && !aiError && (
+  const isAnalyzing = aiLoading || (phaseIndex >= 0 && phaseIndex < 9 && !!aiAnalysis);
+  const isComplete = phaseIndex >= 9 || (showAll && !!aiAnalysis);
+  const showCTA = !aiAnalysis && !aiLoading && !aiError;
+
+  // Gate: if not premium, wrap in SectionCard with paywall
+  if (currentAccess !== "premium") {
+    return (
+      <div ref={sectionRef}>
+        <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
           <div className="flex flex-col items-center gap-4 py-8">
-            <Sparkles className="h-10 w-10 text-primary/60" />
+            <span className="text-3xl opacity-50">✦</span>
             <div className="text-center">
-              <h4 className="mb-1 text-sm font-semibold">Genera el análisis completo con IA</h4>
-              <p className="text-xs text-muted-foreground">Claude analiza tu inversión y genera recomendaciones personalizadas</p>
+              <h4 className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1">Genera el análisis completo con IA</h4>
+              <p className="font-body text-[13px] text-[#71717A]">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</p>
             </div>
-            <button
-              type="button"
-              onClick={loadAiAnalysis}
-              className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-primary/90"
-            >
-              <Brain className="h-4 w-4" />
-              Analizar con IA
-            </button>
           </div>
-        )}
+        </SectionCard>
+      </div>
+    );
+  }
 
-        {/* Real loading */}
-        {aiLoading && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Analizando tu inversión con IA... (15-30 segundos)</p>
-          </div>
-        )}
-
-        {/* Error */}
-        {aiError && (
-          <div className="space-y-3">
-            <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-400">
-              Error: {aiError}
+  return (
+    <div ref={sectionRef} className="mb-8">
+      <div className="rounded-2xl overflow-hidden">
+        {/* Dark header */}
+        <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-8 py-6 relative overflow-hidden">
+          <div className="absolute -top-5 -right-5 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
+          <div className="relative z-10 flex justify-between items-center">
+            <div>
+              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1.5">ANÁLISIS IA</div>
+              <div className="font-heading font-bold text-xl text-white">Análisis Detallado</div>
+              {isComplete && <div className="font-body text-xs text-white/40 mt-1">Generado con IA usando datos reales del mercado chileno</div>}
+              {showCTA && <div className="font-body text-xs text-white/40 mt-1">IA analiza tu inversión con datos reales del mercado chileno</div>}
             </div>
-            <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-primary hover:underline">
-              Reintentar
-            </button>
+            {isAnalyzing && (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#C8323C] animate-pulse" />
+                <span className="font-mono text-[11px] text-white/50">Analizando...</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* AI content with typewriter */}
-        {content}
-      </SectionCard>
+        {/* Body */}
+        <div className="bg-white border border-[#E6E6E2] border-t-0 rounded-b-2xl relative overflow-hidden">
+          {/* STATE A: CTA to generate */}
+          {showCTA && (
+            <div className="py-12 px-8 flex flex-col items-center relative">
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#0F0F0F 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.08) 0%, transparent 70%)", animation: "glow-pulse 3s ease-in-out infinite" }} />
+              <div className="relative z-10 text-center">
+                <div className="text-3xl mb-4 opacity-50">✦</div>
+                <div className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1.5">Genera el análisis completo con IA</div>
+                <div className="font-body text-[13px] text-[#71717A] mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
+                <button
+                  type="button"
+                  onClick={loadAiAnalysis}
+                  className="bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] flex items-center gap-2 mx-auto hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"
+                >
+                  <span className="text-base">✦</span>
+                  Generar análisis IA →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STATE B: Loading (real fetch) */}
+          {aiLoading && (
+            <div className="py-12 px-8 flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-[#C8323C]" />
+              <p className="font-body text-sm text-[#71717A]">Analizando tu inversión con IA... (15-30 segundos)</p>
+            </div>
+          )}
+
+          {/* Error */}
+          {aiError && (
+            <div className="p-8 space-y-3">
+              <div className="rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4 text-sm text-[#C8323C]">
+                Error: {aiError}
+              </div>
+              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-[#0F0F0F] hover:underline">
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {/* STATE B/C: AI content with typewriter */}
+          {aiAnalysis && (
+            <div className="p-8">
+              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-4">Siendo franco:</div>
+              {content}
+
+              {/* Veredicto final — shown after all phases complete */}
+              {isComplete && aiAnalysis.veredicto && (
+                <div className="mt-8 pt-6 border-t border-[#E6E6E2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <div className="font-body text-xs text-[#71717A]">Veredicto Franco</div>
+                    <div className="font-heading font-bold text-xl text-[#0F0F0F] mt-1">{aiAnalysis.veredicto.titulo}</div>
+                  </div>
+                  <span className={`font-mono font-bold uppercase text-sm tracking-wide px-5 py-2.5 rounded-lg border ${
+                    aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-[#16A34A]/10 border-[#16A34A]/30 text-[#16A34A]" :
+                    aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-[#C8323C]/10 border-[#C8323C]/30 text-[#C8323C]" :
+                    "bg-[#DC2626]/10 border-[#DC2626]/30 text-[#DC2626]"
+                  }`}>
+                    {aiAnalysis.veredicto.decision}
+                  </span>
+                </div>
+              )}
+
+              {/* CTAs after complete */}
+              {isComplete && (
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <a href="/analisis/nuevo" className="bg-[#0F0F0F] text-white font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
+                    Analizar otra propiedad →
+                  </a>
+                </div>
+              )}
+
+              {isComplete && (
+                <p className="mt-6 text-center text-[10px] text-[#71717A]/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes glow-pulse { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.15); } }`}</style>
     </div>
   );
 }
@@ -438,8 +509,8 @@ function calcTIR(flujos: number[]): number {
 function RegisterOverlay() {
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/90 px-6 py-5 shadow-lg">
-        <Lock className="h-6 w-6 text-primary" />
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-[#0F0F0F]/20 bg-card/90 px-6 py-5 shadow-lg">
+        <Lock className="h-6 w-6 text-[#0F0F0F]" />
         <span className="text-sm font-medium">Reg&iacute;strate gratis para ver esta secci&oacute;n</span>
         <a href="/register">
           <Button size="sm" className="gap-2">
@@ -479,14 +550,15 @@ function PaywallOverlay({ analysisId }: { analysisId: string }) {
 
   return (
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/90 px-6 py-5 shadow-lg">
-        <Sparkles className="h-6 w-6 text-primary" />
-        <span className="text-sm font-medium">Secci&oacute;n exclusiva del Informe Pro</span>
-        <Button size="sm" className="gap-2" onClick={handleUnlock} disabled={loading}>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-[#E6E6E2] bg-white/90 px-6 py-5 shadow-lg">
+        <Sparkles className="h-6 w-6 text-[#C8323C]" />
+        <span className="font-body text-sm font-medium text-[#0F0F0F]">Sección exclusiva del Informe Pro</span>
+        <Button size="sm" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock} disabled={loading}>
           <Sparkles className="h-4 w-4" />
-          {loading ? "Procesando..." : "Desbloquear — $4.990"}
+          {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
         </Button>
-        {error && <p className="text-xs text-red-500">{error}</p>}
+        <span className="font-body text-xs text-[#71717A]">$4.990 por análisis</span>
+        {error && <p className="text-xs text-[#C8323C]">{error}</p>}
       </div>
     </div>
   );
@@ -519,19 +591,19 @@ function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
   }
 
   return (
-    <Card className="border border-franco-red/30 bg-franco-red/5">
+    <Card className="border border-[#E6E6E2] bg-white rounded-2xl">
       <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-        <Sparkles className="h-8 w-8 text-primary" />
-        <h3 className="text-xl font-bold">Desbloquea Flujo, Patrimonio y Salida</h3>
-        <p className="max-w-md text-sm text-muted-foreground">
+        <Sparkles className="h-8 w-8 text-[#C8323C]" />
+        <h3 className="font-heading text-xl font-bold text-[#0F0F0F]">Desbloquea Flujo, Patrimonio y Salida</h3>
+        <p className="max-w-md font-body text-sm text-[#71717A]">
           Accede a la cascada de costos, flujo de caja proyectado, patrimonio neto
-          y escenarios de salida con horizonte ajustable de 1 a 20 a&ntilde;os.
+          y escenarios de salida con horizonte ajustable de 1 a 20 años.
         </p>
-        <Button size="lg" className="gap-2" onClick={handleUnlock} disabled={loading}>
+        <Button size="lg" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock} disabled={loading}>
           <Sparkles className="h-4 w-4" />
-          {loading ? "Procesando..." : "Desbloquear Informe Pro \u2014 $4.990"}
+          {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
         </Button>
-        {error && <p className="text-sm text-red-500">{error}</p>}
+        {error && <p className="text-sm text-[#C8323C]">{error}</p>}
       </CardContent>
     </Card>
   );
@@ -576,14 +648,14 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
           className="relative flex h-8 w-20 items-center rounded-full bg-muted p-1 transition-colors"
         >
           <div
-            className={`absolute h-6 w-9 rounded-full bg-primary transition-transform ${
+            className={`absolute h-6 w-9 rounded-full bg-[#0F0F0F] transition-transform ${
               currency === "UF" ? "translate-x-[40px]" : "translate-x-0"
             }`}
           />
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-primary-foreground" : "text-muted-foreground"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-white" : "text-muted-foreground"}`}>
             CLP
           </span>
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-primary-foreground" : "text-muted-foreground"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-white" : "text-muted-foreground"}`}>
             UF
           </span>
         </button>
@@ -887,9 +959,9 @@ export function PremiumResults({
     const nMeses = inputData.plazoCredito * 12;
 
     const configs = [
-      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#ef4444", borderClass: "border-red-300/60", bgClass: "", labelClass: "text-red-500" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30 ring-0", bgClass: "bg-secondary/30", labelClass: "" },
-      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#3b82f6", borderClass: "border-blue-300/60", bgClass: "", labelClass: "text-blue-500" },
+      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-[#C8323C]/60", bgClass: "", labelClass: "text-[#C8323C]" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30 ring-0", bgClass: "bg-[#FAFAF8]", labelClass: "" },
+      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30", bgClass: "", labelClass: "" },
     ];
 
     return configs.map(cfg => {
@@ -1003,7 +1075,7 @@ export function PremiumResults({
       items.push({
         name: s.name,
         range: [bottom, top],
-        fill: s.delta >= 0 ? "#10b981" : "#ef4444",
+        fill: s.delta >= 0 ? "#0F0F0F" : "#C8323C",
         isResult: false,
         delta: s.delta,
         running: newRunning,
@@ -1015,7 +1087,7 @@ export function PremiumResults({
     items.push({
       name: "Neto",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
-      fill: "#1e40af",
+      fill: flujo >= 0 ? "#0F0F0F" : "#C8323C",
       isResult: true,
       delta: flujo,
       running: flujo,
@@ -1168,14 +1240,14 @@ export function PremiumResults({
   // Egreso bar series ordered by average absolute impact (descending), filtered to non-zero
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
-      { key: "Dividendo", label: "Dividendo", color: "#ef4444" },
-      { key: "GGCC", label: "GGCC", color: "#f97316" },
-      { key: "Contribuciones", label: "Contribuciones", color: "#d97706" },
-      { key: "Mantencion", label: "Mantención", color: "#f43f5e" },
-      { key: "Vacancia", label: "Vacancia", color: "#6b7280" },
-      { key: "Corretaje", label: "Corretaje", color: "#8b5cf6" },
-      { key: "Recambio", label: "Recambio", color: "#64748b" },
-      { key: "Administracion", label: "Administración", color: "#a855f7" },
+      { key: "Dividendo", label: "Dividendo", color: "#C8323C" },
+      { key: "GGCC", label: "GGCC", color: "#DC2626" },
+      { key: "Contribuciones", label: "Contribuciones", color: "#71717A" },
+      { key: "Mantencion", label: "Mantención", color: "#9f1239" },
+      { key: "Vacancia", label: "Vacancia", color: "#0F0F0F" },
+      { key: "Corretaje", label: "Corretaje", color: "#525252" },
+      { key: "Recambio", label: "Recambio", color: "#404040" },
+      { key: "Administracion", label: "Administración", color: "#a3a3a3" },
     ];
     const dataRows = cashflowData.filter(r => r._x > 0);
     if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
@@ -1363,62 +1435,65 @@ export function PremiumResults({
   const exit = dynamicExit;
   const refi = dynamicRefi;
 
+  // Automatic "Siendo franco:" text based on score
+  const siendoFrancoText = useMemo(() => {
+    const flujoAbs = fmt(Math.abs(flujoUnificado));
+    if (score >= 75) {
+      return `Este depto da los números. Rentabilidad sobre el promedio y flujo ${flujoUnificado >= 0 ? "positivo" : "casi neutro"}.`;
+    }
+    if (score >= 40) {
+      return `Este depto te cuesta ${flujoAbs}/mes de tu bolsillo. Negociable si consigues mejor precio.`;
+    }
+    return `Los números no dan. Flujo negativo de ${flujoAbs}/mes sin perspectiva de mejora razonable.`;
+  }, [score, flujoUnificado, fmt]);
+
   const mainContent = (
     <>
-      {/* Resumen ejecutivo with currency conversion */}
-      <p className="mb-4 text-sm text-muted-foreground">{resumenEjecutivo}</p>
+      {/* ═══════ BLOQUE 1 — RESUMEN EJECUTIVO (SIN REGISTRO) ═══════ */}
+      <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-6">
+        {/* Currency Toggle */}
+        <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
 
-      {/* Currency Toggle */}
-      <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
-
-      {/* ===== a) 3 Free Metric Boxes ===== */}
-      <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
-              <DollarSign className="h-4 w-4 text-franco-ink" />
-              <span>Rentabilidad Bruta</span>
-              <InfoTooltip content="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor." />
-            </div>
-            <div className="mt-1 font-mono text-2xl font-bold text-franco-ink">{freeYieldBruto.toFixed(1)}%</div>
-          </CardContent>
-        </Card>
-        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
-              <BarChart3 className="h-4 w-4 text-franco-ink" />
-              <span>Flujo Mensual</span>
-              <InfoTooltip content={`Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención. Provisión mantención: ${inputData ? (getMantencionRate(inputData.antiguedad) * 100).toFixed(1) : "1.0"}% anual basado en antigüedad${inputData ? ` de ${inputData.antiguedad} años` : ""}. Aumenta con el tiempo.`} />
-            </div>
-            <div className={`mt-1 font-mono text-2xl font-bold ${flujoUnificado >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
+        {/* 3 Metric Boxes */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
+          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
+            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">RENT. BRUTA</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-[#0F0F0F]">{freeYieldBruto.toFixed(1)}%</div>
+            <InfoTooltip content="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor." />
+          </div>
+          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
+            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">FLUJO MENSUAL</div>
+            <div className={`mt-1 font-mono text-2xl font-bold ${flujoUnificado >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
               {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">{flujoText}</p>
-          </CardContent>
-        </Card>
-        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
-              <Building2 className="h-4 w-4 text-franco-ink" />
-              <span>{currency === "UF" ? "UF/m²" : "Precio/m²"}</span>
-              <InfoTooltip content="Precio por metro cuadrado. Permite comparar con otras propiedades de la zona." />
-            </div>
-            <div className="mt-1 font-mono text-2xl font-bold text-franco-ink">
+            <p className="mt-1 font-body text-xs text-[#71717A]">{flujoText}</p>
+          </div>
+          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
+            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">{currency === "UF" ? "UF/M²" : "PRECIO/M²"}</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-[#0F0F0F]">
               {currency === "UF" ? `UF ${freePrecioM2.toFixed(1)}` : fmtCLP(freePrecioM2 * UF_CLP)}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </div>
 
-      {/* ===== SECTIONS ===== */}
-      {results && m && (
-        <>
-          {/* ===== b) GRATIS SIN REGISTRO: Radar ===== */}
-          <SectionCard title="Dimensiones del Score" icon={Target}>
+        {/* "Siendo franco:" resumen */}
+        <div className="p-4 bg-white rounded-xl border border-[#E6E6E2]">
+          <span className="font-body font-bold text-[#0F0F0F]">Siendo franco: </span>
+          <span className="font-body text-sm text-[#0F0F0F]">{siendoFrancoText}</span>
+          {resumenEjecutivo && <p className="font-body text-xs text-[#71717A] mt-2">{resumenEjecutivo}</p>}
+        </div>
+
+        {/* Radar Chart */}
+        {results && m && (
+          <div className="mt-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Target className="h-5 w-5 text-[#0F0F0F]" />
+              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Dimensiones del Score</h3>
+            </div>
             <div className="mb-3 flex flex-wrap gap-2">
               {radarData.map((d) => (
-                <div key={d.dimension} className="flex items-center gap-1 rounded bg-secondary/30 px-2 py-1 text-xs">
-                  <span>{d.dimension}: <strong>{Math.round(d.value)}</strong></span>
+                <div key={d.dimension} className="flex items-center gap-1 rounded-md bg-[#F0F0EC] px-2.5 py-1 text-xs font-body text-[#0F0F0F]">
+                  <span>{d.dimension}: <strong className="font-mono">{Math.round(d.value)}</strong></span>
                   <InfoTooltip content={RADAR_TOOLTIPS[d.dimension] || ""} />
                 </div>
               ))}
@@ -1426,29 +1501,40 @@ export function PremiumResults({
             <div className="mx-auto h-52 w-full max-w-xs overflow-hidden sm:h-72 sm:max-w-md">
               <ResponsiveContainer>
                 <RadarChart data={radarData.map(d => ({ ...d, label: { "Rentabilidad": "Rent.", "Flujo Caja": "Flujo", "Plusvalía": "Plusv.", "Bajo Riesgo": "Riesgo", "Eficiencia": "Efic." }[d.dimension] || d.dimension }))}>
-                  <PolarGrid stroke="hsl(var(--border))" />
-                  <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} className="text-[11px] sm:text-xs" />
+                  <PolarGrid stroke="#E6E6E2" />
+                  <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "#71717A" }} className="text-[11px] sm:text-xs" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
-                  <Radar name="Score" dataKey="value" stroke="#0F0F0F" fill="#0F0F0F" fillOpacity={0.2} strokeWidth={2} />
+                  <Radar name="Score" dataKey="value" stroke="rgba(15,15,15,0.5)" fill="rgba(15,15,15,0.12)" strokeWidth={2} dot={{ fill: "#0F0F0F", r: 3 }} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
-          </SectionCard>
+          </div>
+        )}
 
-          {/* CTA for guests — after radar */}
-          {currentAccess === "guest" && (
-            <Card className="mb-8 border border-franco-red/30 bg-franco-red/5">
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold">Tu Franco Score es {score}. ¿Quieres saber por qué?</h3>
-                  <p className="text-sm text-muted-foreground">Regístrate gratis para ver 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.</p>
-                </div>
-                <a href="/register">
-                  <Button size="lg" className="shrink-0 gap-2">Regístrate gratis</Button>
-                </a>
-              </CardContent>
-            </Card>
-          )}
+        {/* CTA for guests — after radar */}
+        {currentAccess === "guest" && (
+          <div className="mt-6 p-6 bg-white rounded-xl border border-[#E6E6E2] text-center md:text-left md:flex md:items-center md:gap-4">
+            <div className="flex-1">
+              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Tu Franco Score es {score}. ¿Quieres saber por qué?</h3>
+              <p className="font-body text-sm text-[#71717A] mt-1">Regístrate gratis para ver 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.</p>
+            </div>
+            <a href="/register" className="mt-4 md:mt-0">
+              <Button size="lg" className="shrink-0 gap-2 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90">Regístrate gratis</Button>
+            </a>
+          </div>
+        )}
+      </div>
+      {/* end Bloque 1 */}
+
+      {/* ═══════ BLOQUE 2 — EL DETALLE (REGISTRADO GRATIS) ═══════ */}
+      {results && m && (
+        <>
+          {/* Separator */}
+          <div className="flex items-center gap-3 mb-6 mt-2">
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
+            <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
+          </div>
 
           {/* ===== c) GRATIS CON REGISTRO: 8 Métricas ===== */}
           <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess}>
@@ -1483,12 +1569,12 @@ export function PremiumResults({
                 <div className="mb-6">
                   <div className="flex items-center justify-between mb-1">
                     <h4 className="text-sm font-semibold">Horizonte de venta</h4>
-                    <span className="text-sm font-bold text-primary">{sensHorizon} años</span>
+                    <span className="font-mono text-sm font-bold text-[#0F0F0F]">{sensHorizon} años</span>
                   </div>
                   <input
                     type="range" min={3} max={20} step={1} value={sensHorizon}
                     onChange={(e) => setSensHorizon(Number(e.target.value))}
-                    className="w-full accent-primary h-2"
+                    className="w-full accent-[#0F0F0F] h-2"
                   />
                   <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
                     <span>3 años</span><span>20 años</span>
@@ -1498,7 +1584,7 @@ export function PremiumResults({
                 {/* 3 scenario cards */}
                 <div className="grid gap-3 sm:grid-cols-3">
                   {sensScenarios.map((s) => (
-                    <div key={s.key} className={`rounded-xl border ${s.borderClass} ${s.bgClass} p-4`}>
+                    <div key={s.key} className={`rounded-xl border border-[#E6E6E2] ${s.bgClass} p-4 ${s.key === "pesimista" ? "border-l-[3px] border-l-[#C8323C]" : s.key === "base" ? "border-l-[3px] border-l-[#0F0F0F]" : "border-l-[3px] border-l-[#0F0F0F]"}`}>
                       <div className="flex items-center gap-2 mb-3">
                         <span className="text-base">{s.icon}</span>
                         <div className={`text-sm font-semibold ${s.labelClass}`}>{s.sub}</div>
@@ -1507,7 +1593,7 @@ export function PremiumResults({
                       {/* Flujo mensual año 1 */}
                       <div className="mb-2">
                         <div className="text-[10px] text-muted-foreground">Flujo mensual (año 1)</div>
-                        <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
+                        <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
                           {fmt(s.flujoMensual)}<span className="text-xs font-normal text-muted-foreground">/mes</span>
                         </div>
                       </div>
@@ -1515,7 +1601,7 @@ export function PremiumResults({
                       {/* Bolsillo acumulado */}
                       <div className="mb-3">
                         <div className="text-[10px] text-muted-foreground">Bolsillo acumulado ({sensHorizon} años)</div>
-                        <div className={`font-mono text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
+                        <div className={`font-mono text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
                           {fmt(s.bolsilloTotal)}
                         </div>
                       </div>
@@ -1526,7 +1612,7 @@ export function PremiumResults({
                       <div className="space-y-1.5 text-[11px]">
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Ganancia venta</span>
-                          <span className={`font-medium ${s.gananciaBruta >= 0 ? "" : "text-red-500"}`}>{fmt(s.gananciaBruta)}</span>
+                          <span className={`font-medium ${s.gananciaBruta >= 0 ? "" : "text-[#C8323C]"}`}>{fmt(s.gananciaBruta)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Pie invertido</span>
@@ -1534,11 +1620,11 @@ export function PremiumResults({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Utilidad neta</span>
-                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>{fmt(s.utilidadNeta)}</span>
+                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(s.utilidadNeta)}</span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5">
                           <span className="text-muted-foreground">Retorno</span>
-                          <span className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-red-500"}`}>{s.retorno}x</span>
+                          <span className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{s.retorno}x</span>
                         </div>
                       </div>
 
@@ -1627,15 +1713,15 @@ export function PremiumResults({
                         <div className="mb-1 text-xs text-muted-foreground">{label}</div>
                         <div className="mb-1 flex items-center gap-3">
                           <span className="w-20 text-xs">Tu propiedad</span>
-                          <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
+                          <div className="h-4 flex-1 rounded-full bg-[#E6E6E2]">
+                            <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
                           </div>
-                          <span className="w-16 text-right text-xs font-medium">{fmtVal(tuyo)}</span>
+                          <span className="w-16 text-right font-mono text-xs font-medium text-[#0F0F0F]">{fmtVal(tuyo)}</span>
                         </div>
                         <div className="flex items-center gap-3">
                           <span className="w-20 text-xs">Promedio zona</span>
-                          <div className="h-4 flex-1 rounded-full bg-muted">
-                            <div className="h-full rounded-full bg-muted-foreground/40" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
+                          <div className="h-4 flex-1 rounded-full bg-[#F0F0EC]">
+                            <div className="h-full rounded-full bg-[#E6E6E2]" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
                           </div>
                           <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
                         </div>
@@ -1650,20 +1736,38 @@ export function PremiumResults({
                 <MapPin className="h-4 w-4" />
                 <span>Ubicación: {mapQuery}</span>
               </div>
-              <div className="overflow-hidden rounded-lg border border-border/50">
+              <div className="overflow-hidden rounded-xl border border-[#E6E6E2]">
                 <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
               </div>
             </div>
           </SectionCard>
 
+          {/* Paywall CTA between Bloque 2 and Bloque 3 */}
+          {currentAccess === "free" && analysisId && (
+            <div className="mt-8 text-center py-10 border-t border-[#E6E6E2] mb-8">
+              <div className="font-heading font-bold text-lg text-[#0F0F0F] mb-2">¿Quieres el análisis completo?</div>
+              <div className="font-body text-sm text-[#71717A] mb-5 max-w-md mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</div>
+              <BottomPaywallCTA analysisId={analysisId} />
+            </div>
+          )}
+
+          {/* ═══════ BLOQUE 3 — PROYECCIONES (PREMIUM) ═══════ */}
+          {/* Separator */}
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
+            <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">PROYECCIONES</span>
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
+          </div>
+
+          <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-6">
           {/* ===== PREMIUM: g) Cascada de Costos Mensual ===== */}
           <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
             <div className="h-72">
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
                     content={({ active, payload, label: wfLabel }) => {
                       if (!active || !payload || payload.length === 0) return null;
@@ -1674,7 +1778,7 @@ export function PremiumResults({
                       return (
                         <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                           <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-red-400"}>
+                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
                           </div>
                           <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
@@ -1682,7 +1786,7 @@ export function PremiumResults({
                       );
                     }}
                   />
-                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1.5} />
+                  <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1.5} />
                   <Bar dataKey="range" radius={[4, 4, 0, 0]}>
                     {waterfallData.map((entry, i) => (
                       <Cell
@@ -1698,13 +1802,13 @@ export function PremiumResults({
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af" }} />Resultado</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Egreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Resultado</span>
             </div>
             {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
             {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-red-500/10 text-red-500"}`}>
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
               </div>
             )}
@@ -1712,11 +1816,11 @@ export function PremiumResults({
 
           {/* ===== PREMIUM: h) Flujo, Patrimonio y Salida ===== */}
           <div className="relative mb-8">
-            <Card className="border-border/50 bg-primary/[0.03]">
+            <Card className="border border-[#E6E6E2] rounded-2xl bg-white shadow-sm">
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-primary" />
-                  <CardTitle>Flujo, Patrimonio y Salida</CardTitle>
+                  <Calendar className="h-5 w-5 text-[#0F0F0F]" />
+                  <CardTitle className="font-heading font-bold text-lg text-[#0F0F0F]">Flujo, Patrimonio y Salida</CardTitle>
                 </div>
                 <p className="text-sm text-muted-foreground">Ajusta el horizonte para ver cómo evoluciona tu inversión en el tiempo.</p>
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1725,7 +1829,7 @@ export function PremiumResults({
                       <span className="text-xs text-muted-foreground">Horizonte:</span>
                       <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
                     </div>
-                    <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
                     <p className="mt-0.5 text-[10px] text-muted-foreground">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
                   </div>
                   <div>
@@ -1733,7 +1837,7 @@ export function PremiumResults({
                       <span className="text-xs text-muted-foreground">Plusvalía anual:</span>
                       <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
                     </div>
-                    <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico: 3-5% anual</p>
                   </div>
                   <div>
@@ -1741,7 +1845,7 @@ export function PremiumResults({
                       <span className="text-xs text-muted-foreground">Crecimiento arriendo:</span>
                       <span className="text-sm font-medium">{arriendoGrowth.toFixed(1)}%/año</span>
                     </div>
-                    <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
                   </div>
                   <div>
@@ -1749,7 +1853,7 @@ export function PremiumResults({
                       <span className="text-xs text-muted-foreground">Crecimiento gastos:</span>
                       <span className="text-sm font-medium">{costGrowth.toFixed(1)}%/año</span>
                     </div>
-                    <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-primary" />
+                    <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
                     <p className="mt-0.5 text-[10px] text-muted-foreground">Aplica a GGCC, contribuciones y mantención</p>
                   </div>
                 </div>
@@ -1760,16 +1864,16 @@ export function PremiumResults({
                   <h4 className="mb-1 text-sm font-semibold">
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
-                  <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea azul muestra tu acumulado.</p>
+                  <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                        <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
@@ -1778,42 +1882,42 @@ export function PremiumResults({
                             return (
                               <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                 <div className="mb-1.5 font-semibold">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-[#16A34A]">{fmt(row.Ingreso)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso: <span className="font-medium text-[#0F0F0F]">{fmt(row.Ingreso)}</span></div>
                                 {egresoBarSeries.map(s => (
-                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-red-400">{fmt(row[s.key] as number)}</span></div>
+                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
                                 ))}
                                 <div className="my-1 border-t border-border/50" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="font-bold text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className="font-bold text-[#0F0F0F]">Acumulado: {fmt(row.Acumulado)}</div>
                               </div>
                             );
                           }}
                         />
-                        <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="6 3" strokeWidth={1} />
+                        <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Ingreso siempre primero */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#0F0F0F" radius={[4, 4, 0, 0]} />
                         {/* Egresos ordenados por impacto promedio descendente */}
                         {egresoBarSeries.map((s, i) => (
                           <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
                         ))}
                         {/* Línea acumulado */}
-                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#3b82f6" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#0F0F0F" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
                         {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
                     {horizonBeforeDelivery && (
                       <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[1px]">
-                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-primary/30 bg-card/95 px-6 py-5 text-center shadow-lg">
-                          <Clock className="h-7 w-7 text-primary" />
+                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-[#0F0F0F]/20 bg-card/95 px-6 py-5 text-center shadow-lg">
+                          <Clock className="h-7 w-7 text-[#0F0F0F]" />
                           <span className="text-sm font-semibold">Tu inversión aún no genera flujo</span>
                           <p className="text-xs text-muted-foreground">
                             La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
                             Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
                           </p>
-                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-primary hover:underline">
+                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#0F0F0F] hover:underline">
                             Ver desde la entrega →
                           </button>
                         </div>
@@ -1823,11 +1927,11 @@ export function PremiumResults({
                   {/* Leyenda manual */}
                   <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
                       {egresoBarSeries.map(s => (
                         <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
                       ))}
-                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#3b82f6", height: 2 }} />Acumulado</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 2 }} />Acumulado</span>
                     </div>
                   </div>
                   {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: '#9ca3af' }}>Toca las barras para ver el detalle</div>}
@@ -1842,7 +1946,7 @@ export function PremiumResults({
                       <div className="mb-1 flex items-center gap-2">
                         <h4 className="text-sm font-semibold">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
                         {horizonBeforeDelivery && (
-                          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                          <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
                             Período pre-entrega: tu patrimonio crece con los pagos del pie
                           </span>
                         )}
@@ -1851,12 +1955,12 @@ export function PremiumResults({
                       <div className="h-72">
                         <ResponsiveContainer>
                           <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal vertical={false} />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
                             {/* Eje categórico visible: barras uniformes */}
-                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "hsl(var(--muted-foreground))" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
+                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                             {/* Eje numérico oculto: posiciona la línea de entrega */}
                             <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                            <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={fmtAxis} />
+                            <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
                             <RechartsTooltip
                               content={({ active, payload }) => {
                                 if (!active || !payload || payload.length === 0) return null;
@@ -1868,51 +1972,51 @@ export function PremiumResults({
                                     <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.piePagado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.plusvalia)}</span></div>
-                                        <div style={{ color: "#6b7280" }}>Deuda: <span style={{ color: "#6b7280" }}>$0 (crédito aún no comienza)</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie acumulado: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
+                                        <div style={{ color: "#71717A" }}>Deuda: <span style={{ color: "#71717A" }}>$0 (crédito aún no comienza)</span></div>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.valorPropiedad)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium" style={{ color: "#ef4444" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.valorPropiedad)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie + amortización: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
                                       </>
                                     )}
-                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#16A34A" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#0F0F0F" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                                   </div>
                                 );
                               }}
                             />
-                            {/* Área azul oscuro: valor propiedad (0 pre-entrega futura, valor real post-entrega) */}
-                            <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#1e40af" fillOpacity={0.12} stroke="#1e40af" strokeWidth={2} />
-                            {/* Área roja: deuda */}
-                            <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
+                            {/* Área valor propiedad */}
+                            <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#0F0F0F" fillOpacity={0.08} stroke="#0F0F0F" strokeWidth={2} />
+                            {/* Área deuda */}
+                            <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.08} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
-                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#71717A" name="Pie pagado" radius={[0, 0, 0, 0]} />
                             <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#0F0F0F" name="Capital amortizado" radius={[0, 0, 0, 0]} />
-                            {/* Plusvalía: azul */}
-                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} />
-                            {/* Línea: deuda roja */}
-                            <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#ef4444" strokeWidth={2} dot={false} name="Deuda restante" />
-                            {/* Línea principal: patrimonio neto naranja */}
-                            <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#f59e0b" strokeWidth={3} dot={{ r: 3, fill: "#f59e0b" }} name="Patrimonio neto" />
+                            {/* Plusvalía */}
+                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.25} stroke="#0F0F0F" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                            {/* Línea: deuda */}
+                            <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
+                            {/* Línea principal: patrimonio neto */}
+                            <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#0F0F0F" strokeWidth={3} dot={{ r: 3, fill: "#0F0F0F" }} name="Patrimonio neto" />
                             {/* Línea vertical de entrega */}
                             {mesesPreEntregaTop > 0 && (
-                              <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                              <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
                             )}
                           </ComposedChart>
                         </ResponsiveContainer>
                       </div>
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie pagado</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Capital amortizado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#f59e0b", height: 3 }} />Patrimonio neto</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Valor propiedad</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.4 }} />Deuda</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 3 }} />Patrimonio neto</span>
                       </div>
                       {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
                       {/* Desglose de patrimonio */}
@@ -1935,7 +2039,7 @@ export function PremiumResults({
                                 { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
                                 { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#16A34A]" },
                                 { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#16A34A]" },
-                                { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-primary", bold: true },
+                                { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#0F0F0F]", bold: true },
                               ].map(({ label, value, color, bold }) => (
                                 <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
                                   <div className="text-[11px] text-muted-foreground">{label}</div>
@@ -1960,7 +2064,7 @@ export function PremiumResults({
                                 </tr>
                                 <tr className="border-t border-border/50">
                                   <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
-                                  <td className="py-2 px-4 text-right font-bold text-primary">{fmt(patrimonioTotal)}</td>
+                                  <td className="py-2 px-4 text-right font-bold text-[#0F0F0F]">{fmt(patrimonioTotal)}</td>
                                 </tr>
                               </tbody>
                             </table>
@@ -1972,11 +2076,11 @@ export function PremiumResults({
                               <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                                <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
+                                <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
                               </div>
                               <div className="mt-1.5 border-t border-border/30 pt-1.5">
                                 <p className="text-[11px] text-muted-foreground">
-                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-red-400"}`}>{fmt(gananciaReal)}</span>
+                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
                                 </p>
                               </div>
                             </div>
@@ -1994,14 +2098,14 @@ export function PremiumResults({
                 {horizonBeforeDelivery ? (
                   <div>
                     <h4 className="mb-1 text-sm font-semibold">Escenario de Salida</h4>
-                    <div className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
-                      <Clock className="h-5 w-5 shrink-0 text-amber-500" />
+                    <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
+                      <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
                       <div>
                         <p className="text-sm font-medium">No puedes vender ni refinanciar antes de la entrega</p>
                         <p className="mt-1 text-xs text-muted-foreground">
                           La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
                         </p>
-                        <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-primary hover:underline">
+                        <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#0F0F0F] hover:underline">
                           Ver desde la entrega →
                         </button>
                       </div>
@@ -2012,8 +2116,8 @@ export function PremiumResults({
                     <h4 className="mb-1 text-sm font-semibold">Escenario de Salida {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`}</h4>
                     <p className="mb-3 text-xs text-muted-foreground">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
                     <div className="mb-4 flex overflow-hidden rounded-lg border border-border">
-                      <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "venta" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Venta</button>
-                      <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "refinanciamiento" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/50"}`}>Refinanciamiento</button>
+                      <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "venta" ? "bg-[#0F0F0F] text-white" : "text-muted-foreground hover:bg-muted/50"}`}>Venta</button>
+                      <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "refinanciamiento" ? "bg-[#0F0F0F] text-white" : "text-muted-foreground hover:bg-muted/50"}`}>Refinanciamiento</button>
                     </div>
 
                     {exitMode === "venta" ? (
@@ -2033,7 +2137,7 @@ export function PremiumResults({
                         ].map(({ label, value, negative, positive, bold }) => (
                           <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
                             <span className="text-muted-foreground">{label}</span>
-                            <span className={negative ? "text-red-400" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
+                            <span className={negative ? "text-[#C8323C]" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
                           </div>
                         ))}
                         {exit.multiplicadorCapital > 1 && (
@@ -2052,7 +2156,7 @@ export function PremiumResults({
                           <div className="flex flex-wrap gap-1">
                             {[60, 70, 80, 90].map((pct) => (
                               <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                                className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                                className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#0F0F0F] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
                               >{pct}%</button>
                             ))}
                           </div>
@@ -2071,7 +2175,7 @@ export function PremiumResults({
                           </div>
                         ))}
                         {refi.capitalLiberado > 0 && (
-                          <p className="mt-2 rounded-lg bg-blue-500/10 p-3 text-xs text-blue-400">
+                          <p className="mt-2 rounded-lg bg-[#0F0F0F]/5 p-3 text-xs text-[#0F0F0F]">
                             Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión.
                           </p>
                         )}
@@ -2086,8 +2190,10 @@ export function PremiumResults({
               <PaywallOverlay analysisId={analysisId} />
             )}
           </div>
+          </div>
+          {/* end Bloque 3 (FAFAF8 wrapper) */}
 
-          {/* ===== PREMIUM: i) Análisis Detallado (IA) — ÚLTIMO ===== */}
+          {/* ═══════ BLOQUE 4 — ANÁLISIS IA (PREMIUM) ═══════ */}
           <AIAnalysisSection
             aiAnalysis={aiAnalysis}
             aiLoading={aiLoading}
@@ -2102,22 +2208,16 @@ export function PremiumResults({
 
           {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
-            <Card className="mb-8 border border-franco-red/30 bg-franco-red/5">
-              <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-                <Lock className="h-8 w-8 text-primary" />
-                <h3 className="text-xl font-bold">Regístrate para ver el análisis completo</h3>
-                <p className="max-w-md text-sm text-muted-foreground">
-                  Accede gratis a 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.
-                </p>
-                <a href="/register">
-                  <Button size="lg" className="gap-2">Regístrate gratis</Button>
-                </a>
-              </CardContent>
-            </Card>
-          )}
-
-          {currentAccess === "free" && analysisId && (
-            <BottomPaywallCTA analysisId={analysisId} />
+            <div className="mb-8 p-8 bg-white rounded-2xl border border-[#E6E6E2] text-center">
+              <Lock className="h-8 w-8 text-[#0F0F0F] mx-auto mb-3" />
+              <h3 className="font-heading text-xl font-bold text-[#0F0F0F]">Regístrate para ver el análisis completo</h3>
+              <p className="max-w-md mx-auto font-body text-sm text-[#71717A] mt-2">
+                Accede gratis a 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.
+              </p>
+              <a href="/register" className="mt-4 inline-block">
+                <Button size="lg" className="gap-2 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90">Regístrate gratis</Button>
+              </a>
+            </div>
           )}
         </>
       )}

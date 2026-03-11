@@ -56,15 +56,15 @@ export function CashflowChart({
         {/* Legend */}
         <div className="mb-4 flex flex-wrap gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#16A34A]" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#0F0F0F]" />
             Ingreso
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-400" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#C8323C]" />
             Egreso
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-4 bg-primary" />
+            <span className="inline-block h-0.5 w-4 bg-[#0F0F0F]" />
             Acumulado
           </span>
         </div>
@@ -75,7 +75,7 @@ export function CashflowChart({
           {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
             <div
               key={pct}
-              className="absolute left-0 right-0 border-t border-border/30"
+              className="absolute left-0 right-0 border-t border-[#E6E6E2]/30"
               style={{ top: (1 - pct) * chartH }}
             />
           ))}
@@ -92,22 +92,22 @@ export function CashflowChart({
                   className="group relative flex flex-col items-center"
                 >
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-border bg-card px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
-                    <div className="text-[#16A34A]">
+                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-[#E6E6E2] bg-card px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
+                    <div className="text-[#0F0F0F]">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
-                    <div className="text-red-400">
+                    <div className="text-[#C8323C]">
                       Egreso: {fmt(m.egreso)}
                     </div>
                     <div
                       className={
-                        m.flujo >= 0 ? "text-[#16A34A]" : "text-red-400"
+                        m.flujo >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"
                       }
                     >
                       Flujo: {fmt(m.flujo)}
                     </div>
                     {m.gastoExtra > 0 && (
-                      <div className="text-orange-400">
+                      <div className="text-[#C8323C]">
                         Corretaje: {fmt(m.gastoExtra)}
                       </div>
                     )}
@@ -116,11 +116,11 @@ export function CashflowChart({
                   {/* Bar pair */}
                   <div className="flex items-end gap-0.5">
                     <div
-                      className="w-3 rounded-t-sm bg-[#16A34A]/80 transition-all group-hover:bg-[#16A34A]"
+                      className="w-3 rounded-t-sm bg-[#0F0F0F]/80 transition-all group-hover:bg-[#0F0F0F]"
                       style={{ height: ingresoH }}
                     />
                     <div
-                      className="w-3 rounded-t-sm bg-red-400/80 transition-all group-hover:bg-red-400"
+                      className="w-3 rounded-t-sm bg-[#C8323C]/80 transition-all group-hover:bg-[#C8323C]"
                       style={{ height: egresoH }}
                     />
                   </div>
@@ -138,7 +138,7 @@ export function CashflowChart({
           >
             <polyline
               fill="none"
-              stroke="hsl(217, 91%, 60%)"
+              stroke="#0F0F0F"
               strokeWidth="2.5"
               strokeLinejoin="round"
               points={mesConAcumulado
@@ -164,7 +164,7 @@ export function CashflowChart({
                   cx={x}
                   cy={y}
                   r="3"
-                  fill="hsl(217, 91%, 60%)"
+                  fill="#0F0F0F"
                 />
               );
             })}
