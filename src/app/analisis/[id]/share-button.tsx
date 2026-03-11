@@ -41,7 +41,7 @@ export function ShareButton({ id, score, nombre }: { id: string; score: number; 
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
-          title: `Análisis InvertiScore: ${nombre}`,
+          title: `Análisis Franco: ${nombre}`,
           text: `Mira el análisis de este depto. Score: ${score}/100`,
           url,
         });
@@ -60,20 +60,20 @@ export function ShareButton({ id, score, nombre }: { id: string; score: number; 
   };
 
   const shareWhatsApp = () => {
-    const text = `Mira el análisis de este depto: ${nombre}. InvertiScore: ${score}/100 → ${url}`;
+    const text = `Mira el análisis de este depto: ${nombre}. Franco: ${score}/100 → ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     setOpen(false);
   };
 
   const shareEmail = () => {
-    const subject = `Análisis InvertiScore: ${nombre}`;
+    const subject = `Análisis Franco: ${nombre}`;
     const body = `Te comparto este análisis de inversión inmobiliaria.\n\nScore: ${score}/100\n\nVer análisis completo: ${url}`;
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setOpen(false);
   };
 
   const shareX = () => {
-    const text = `Analicé este depto con InvertiScore: Score ${score}/100. ${url}`;
+    const text = `Analicé este depto con Franco: Score ${score}/100. ${url}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
     setOpen(false);
   };
@@ -91,7 +91,7 @@ export function ShareButton({ id, score, nombre }: { id: string; score: number; 
             WhatsApp
           </button>
           <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">
-            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
+            {copied ? <Check className="h-4 w-4 text-[#16A34A]" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
             {copied ? "Link copiado" : "Copiar link"}
           </button>
           <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">

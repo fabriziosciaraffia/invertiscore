@@ -10,29 +10,29 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 10%;
-    --primary: 160 94% 30%;
+    --background: 40 20% 98%;
+    --foreground: 0 0% 6%;
+    --card: 40 20% 98%;
+    --card-foreground: 0 0% 6%;
+    --popover: 40 20% 98%;
+    --popover-foreground: 0 0% 6%;
+    --primary: 0 0% 6%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 40 5% 96%;
-    --secondary-foreground: 0 0% 10%;
-    --muted: 40 5% 96%;
-    --muted-foreground: 220 9% 46%;
-    --accent: 40 5% 96%;
-    --accent-foreground: 0 0% 10%;
-    --destructive: 0 72% 51%;
+    --secondary: 40 8% 94%;
+    --secondary-foreground: 0 0% 6%;
+    --muted: 40 8% 94%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 40 8% 94%;
+    --accent-foreground: 0 0% 6%;
+    --destructive: 354 60% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 160 94% 30%;
-    --chart-1: 160 94% 30%;
-    --chart-2: 160 60% 45%;
+    --border: 40 8% 90%;
+    --input: 40 8% 90%;
+    --ring: 354 60% 50%;
+    --chart-1: 354 60% 50%;
+    --chart-2: 0 0% 6%;
     --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
+    --chart-4: 240 4% 46%;
     --chart-5: 340 75% 55%;
     --radius: 0.5rem;
   }
@@ -41,6 +41,10 @@
 html,
 body {
   overflow-x: clip;
+}
+
+body {
+  font-family: var(--font-body);
 }
 
 html {

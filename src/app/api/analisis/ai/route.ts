@@ -154,7 +154,7 @@ DATOS DE LA PROPIEDAD:
 - Estado: ${input.estadoVenta}${fechaEntregaFmt ? " (entrega " + fechaEntregaFmt + ")" : ""}
 
 MÉTRICAS CALCULADAS:
-- InvertiScore: ${results.score}/100 (${results.clasificacion})
+- Franco Score: ${results.score}/100 (${results.clasificacion})
 - Rentabilidad Bruta: ${m.rentabilidadBruta.toFixed(1)}%
 - Rentabilidad Operativa (CAP Rate): ${m.capRate.toFixed(1)}%
 - Rentabilidad Neta: ${m.rentabilidadNeta.toFixed(1)}%
@@ -167,7 +167,7 @@ MÉTRICAS CALCULADAS:
 - Precio con 10% descuento: ${fmtUF(precioConDescuento10)}
 
 IMPORTANTE SOBRE EL SCORE:
-El InvertiScore TOTAL es ${results.score}/100. Este es EL ÚNICO score que debes mencionar como "score" o "InvertiScore".
+El Franco Score TOTAL es ${results.score}/100. Este es EL ÚNICO score que debes mencionar como "score" o "Franco Score".
 Las siguientes son DIMENSIONES (sub-scores), NO el score total. Si mencionas alguna, di "sub-score de X: Y/100":
 - Rentabilidad: ${Math.round(d.rentabilidad)}/100
 - Flujo de Caja: ${Math.round(d.flujoCaja)}/100

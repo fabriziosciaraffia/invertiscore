@@ -7,23 +7,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Building2,
   Check,
   X,
   ArrowLeft,
   Clock,
 } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 
 export default function PricingPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
-      <nav className="border-b border-border/50">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/" className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">InvertiScore</span>
-          </Link>
+      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4">
+          <FrancoLogo size="sm" href="/" />
           <div className="flex items-center gap-2">
             <Link href="/login">
               <Button variant="ghost" size="sm">
@@ -62,7 +59,7 @@ export default function PricingPage() {
               <ul className="space-y-3 text-sm">
                 <li className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                  <span>InvertiScore (1-100)</span>
+                  <span>Franco Score (1-100)</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />

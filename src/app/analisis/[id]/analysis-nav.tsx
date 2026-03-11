@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Building2, ArrowLeft, Menu, X } from "lucide-react";
+import { ArrowLeft, Menu, X } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 import { ShareButton } from "./share-button";
 import { DeleteButton } from "./delete-button";
 
@@ -33,12 +34,9 @@ export function AnalysisNav({
   }, [menuOpen]);
 
   return (
-    <nav className="border-b border-border/50">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link href={userId ? "/dashboard" : "/"} className="flex items-center gap-2">
-          <Building2 className="h-6 w-6 text-primary" />
-          <span className="text-xl font-bold">InvertiScore</span>
-        </Link>
+    <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
+      <div className="container mx-auto flex h-14 items-center justify-between px-4">
+        <FrancoLogo size="sm" href={userId ? "/dashboard" : "/"} />
 
         {/* Desktop */}
         <div className="hidden items-center gap-2 md:flex">

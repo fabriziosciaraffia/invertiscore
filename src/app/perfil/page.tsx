@@ -8,7 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Building2, User, CreditCard, Clock, ArrowLeft } from "lucide-react";
+import { User, CreditCard, Clock, ArrowLeft } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { ChangePasswordForm } from "./change-password-form";
 
@@ -41,12 +42,9 @@ export default async function PerfilPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Navbar */}
-      <nav className="border-b">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Building2 className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">InvertiScore</span>
-          </Link>
+      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
+        <div className="container mx-auto flex h-14 items-center justify-between px-4">
+          <FrancoLogo size="sm" href="/dashboard" />
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">

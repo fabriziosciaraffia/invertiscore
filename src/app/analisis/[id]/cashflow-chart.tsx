@@ -56,7 +56,7 @@ export function CashflowChart({
         {/* Legend */}
         <div className="mb-4 flex flex-wrap gap-4 text-xs">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#16A34A]" />
             Ingreso
           </span>
           <span className="flex items-center gap-1.5">
@@ -93,7 +93,7 @@ export function CashflowChart({
                 >
                   {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-border bg-card px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
-                    <div className="text-emerald-400">
+                    <div className="text-[#16A34A]">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
                     <div className="text-red-400">
@@ -101,7 +101,7 @@ export function CashflowChart({
                     </div>
                     <div
                       className={
-                        m.flujo >= 0 ? "text-emerald-400" : "text-red-400"
+                        m.flujo >= 0 ? "text-[#16A34A]" : "text-red-400"
                       }
                     >
                       Flujo: {fmt(m.flujo)}
@@ -116,7 +116,7 @@ export function CashflowChart({
                   {/* Bar pair */}
                   <div className="flex items-end gap-0.5">
                     <div
-                      className="w-3 rounded-t-sm bg-emerald-500/80 transition-all group-hover:bg-emerald-500"
+                      className="w-3 rounded-t-sm bg-[#16A34A]/80 transition-all group-hover:bg-[#16A34A]"
                       style={{ height: ingresoH }}
                     />
                     <div

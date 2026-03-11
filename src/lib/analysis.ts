@@ -545,7 +545,7 @@ function calcValorMaximoCompra(input: AnalisisInput, metrics: AnalysisMetrics): 
 }
 
 // =========================================
-// InvertiScore Calculation
+// Franco Score Calculation
 // =========================================
 
 const COMUNAS_PREMIUM = [

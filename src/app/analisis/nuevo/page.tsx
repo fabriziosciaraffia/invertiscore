@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { Building2, ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 import { COMUNAS } from "@/lib/comunas";
 
 const UF_CLP_FALLBACK = 38800;
@@ -215,22 +216,22 @@ function AISuggestion({ children, onClick }: { children: React.ReactNode; onClic
       <button
         type="button"
         onClick={onClick}
-        className="mt-1.5 flex w-full items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-left transition-colors hover:bg-emerald-100 dark:border-emerald-900 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60"
+        className="mt-1.5 flex w-full items-start gap-1.5 rounded-md border border-[#E6E6E2] bg-[#FAFAF8] px-2.5 py-1.5 text-left transition-colors hover:bg-[#F0F0EC]"
       >
-        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />
-        <span className="text-xs text-emerald-700 dark:text-emerald-400">{children} <span className="font-medium underline">Usar</span></span>
+        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-[#0F0F0F]" />
+        <span className="text-xs text-[#0F0F0F]">{children} <span className="font-medium underline">Usar</span></span>
       </button>
     );
   }
   return (
-    <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 dark:border-emerald-900 dark:bg-emerald-950/40">
-      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-emerald-600" />
-      <span className="text-xs text-emerald-700 dark:text-emerald-400">{children}</span>
+    <div className="mt-1.5 flex items-start gap-1.5 rounded-md border border-[#E6E6E2] bg-[#FAFAF8] px-2.5 py-1.5">
+      <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-[#0F0F0F]" />
+      <span className="text-xs text-[#0F0F0F]">{children}</span>
     </div>
   );
 }
 
-const LS_KEY = "invertiscore_form_draft";
+const LS_KEY = "franco_form_draft";
 
 // ─── Main Form ───────────────────────────────────────
 
@@ -773,12 +774,9 @@ export default function NuevoAnalisisPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Nav */}
-      <nav className="border-b">
+      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-primary" />
-            <span className="text-lg font-bold">InvertiScore</span>
-          </Link>
+          <FrancoLogo size="sm" href="/dashboard" />
           <Link href="/dashboard">
             <Button variant="ghost" size="sm" className="gap-1.5 text-sm">
               <ArrowLeft className="h-4 w-4" /> Dashboard
@@ -817,7 +815,7 @@ export default function NuevoAnalisisPage() {
         <div className="sticky top-0 z-50 -mx-4 mb-4 border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur">
           <div className="mb-1.5 flex items-center justify-between">
             {progress.pct === 100 ? (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+              <span className="flex items-center gap-1.5 text-xs font-medium text-[#0F0F0F]">
                 <CheckCircle2 className="h-3.5 w-3.5" /> Todo listo para analizar
               </span>
             ) : (
@@ -829,14 +827,14 @@ export default function NuevoAnalisisPage() {
           </div>
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${progress.pct === 100 ? "bg-emerald-500" : "bg-primary"}`}
+              className={`h-full rounded-full transition-all duration-500 ${progress.pct === 100 ? "bg-[#0F0F0F]" : "bg-primary"}`}
               style={{ width: `${progress.pct}%` }}
             />
           </div>
         </div>
 
         {/* Link paste / file upload section */}
-        <div className="mb-4 rounded-xl border border-emerald-200 bg-[#f0fdf4] p-5 space-y-4">
+        <div className="mb-4 rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] p-5 space-y-4">
           <div className="text-center">
             <p className="text-base font-semibold">¿Tienes el link de la publicación? 🔗</p>
             <p className="mt-1 text-sm text-muted-foreground">Pégalo y nosotros extraemos los datos automáticamente. Sin escribir nada.</p>
@@ -847,13 +845,13 @@ export default function NuevoAnalisisPage() {
               placeholder="Pega aquí el link de Portal Inmobiliario, TocToc o Yapo"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-emerald-300 bg-white px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-400"
+              className="flex h-10 w-full rounded-md border border-[#E6E6E2] bg-white px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0F0F0F]"
             />
             <Button
               type="button"
               disabled={linkLoading || !linkUrl.trim()}
               onClick={handleLinkExtract}
-              className="shrink-0 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50"
+              className="shrink-0 gap-1.5 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90 disabled:opacity-50"
             >
               {linkLoading ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Leyendo...</>
@@ -863,9 +861,9 @@ export default function NuevoAnalisisPage() {
             </Button>
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="h-px flex-1 bg-emerald-200" />
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
             <span>o sube una cotización</span>
-            <div className="h-px flex-1 bg-emerald-200" />
+            <div className="h-px flex-1 bg-[#E6E6E2]" />
           </div>
           <div className="text-center space-y-2">
             <input
@@ -883,7 +881,7 @@ export default function NuevoAnalisisPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={quotationLoading || linkLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-4 py-2 text-sm text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E6E6E2] bg-white px-4 py-2 text-sm text-[#0F0F0F] transition-colors hover:bg-[#FAFAF8] disabled:opacity-50"
             >
               {quotationLoading ? (
                 <><Loader2 className="h-4 w-4 animate-spin" /> Analizando cotización con IA...</>
@@ -898,7 +896,7 @@ export default function NuevoAnalisisPage() {
           {extractMsg && (
             <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
               extractMsg.type === "success"
-                ? "border border-emerald-200 bg-emerald-50 text-emerald-700"
+                ? "border border-[#0F0F0F] bg-[#0F0F0F]/5 text-[#0F0F0F]"
                 : "border border-red-200 bg-red-50 text-red-700"
             }`}>
               {extractMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
@@ -1104,7 +1102,7 @@ export default function NuevoAnalisisPage() {
             <button
               type="button"
               onClick={autoFillAll}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 py-3 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-100"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] py-3 text-sm font-medium text-[#0F0F0F] transition-colors hover:bg-[#F0F0EC]"
             >
               <Sparkles className="h-4 w-4" />
               Auto-rellenar con datos de {form.comuna}
@@ -1378,7 +1376,7 @@ export default function NuevoAnalisisPage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between text-sm">
                 <span>Arriendo</span>
-                <span className="font-medium text-emerald-600">+{fmtCLP(toCLP("arriendo", parseNum(form.arriendo)))}</span>
+                <span className="font-medium text-[#16A34A]">+{fmtCLP(toCLP("arriendo", parseNum(form.arriendo)))}</span>
               </div>
               <div className="mt-1 flex items-center justify-between text-sm">
                 <span>Dividendo</span>
@@ -1390,7 +1388,7 @@ export default function NuevoAnalisisPage() {
                   {(() => {
                     const flujo = toCLP("arriendo", parseNum(form.arriendo)) - calc.dividendo;
                     return (
-                      <span className={`text-lg font-bold ${flujo >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                      <span className={`text-lg font-bold ${flujo >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
                         {flujo >= 0 ? "+" : ""}{fmtCLP(flujo)}/mes
                       </span>
                     );
@@ -1410,18 +1408,18 @@ export default function NuevoAnalisisPage() {
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
         <div className="mx-auto max-w-2xl px-4 py-3">
           <Button
-            className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse bg-emerald-600 hover:bg-emerald-700" : ""}`}
+            className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse bg-[#0F0F0F] hover:bg-[#0F0F0F]/90" : ""}`}
             size="lg"
             type="submit"
             disabled={loading || !canSubmit}
             onClick={handleSubmit}
           >
             {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Generando InvertiScore...</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Generando Franco Score...</>
             ) : canSubmit ? (
-              <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
+              <><CheckCircle2 className="h-4 w-4" /> Generar Franco Score</>
             ) : (
-              <><CheckCircle2 className="h-4 w-4" /> Generar InvertiScore</>
+              <><CheckCircle2 className="h-4 w-4" /> Generar Franco Score</>
             )}
           </Button>
           {!canSubmit && !loading && (

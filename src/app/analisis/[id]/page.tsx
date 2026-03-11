@@ -12,11 +12,9 @@ import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 
 function getClasificacionLabel(score: number): { text: string; color: string } {
-  if (score >= 80) return { text: "Inversión Excelente", color: "text-green-500" };
-  if (score >= 65) return { text: "Inversión Buena", color: "text-blue-500" };
-  if (score >= 50) return { text: "Inversión Regular", color: "text-yellow-500" };
-  if (score >= 30) return { text: "Inversión Débil", color: "text-orange-500" };
-  return { text: "Evitar", color: "text-red-500" };
+  if (score >= 75) return { text: "Buena inversión", color: "text-verdict-buy" };
+  if (score >= 40) return { text: "No compres — negocia primero", color: "text-franco-red" };
+  return { text: "Busca otra", color: "text-verdict-avoid" };
 }
 
 export default async function AnalisisDetallePage({
@@ -84,14 +82,14 @@ export default async function AnalisisDetallePage({
         <div className="mb-8 flex flex-col items-center gap-4 px-1 sm:gap-6 md:flex-row md:items-start">
           <ScoreCircle score={analisis.score} />
           <div className="text-center md:text-left">
-            <div className={`mb-1 text-sm font-semibold ${clasificacion.color}`}>
+            <div className={`mb-1 font-body text-sm font-bold ${clasificacion.color}`}>
               {clasificacion.text}
             </div>
-            <h1 className="text-xl font-bold break-words sm:text-3xl">{analisis.nombre}</h1>
-            <p className="text-muted-foreground">
+            <h1 className="font-heading text-xl font-bold tracking-tight break-words text-franco-ink sm:text-3xl">{analisis.nombre}</h1>
+            <p className="font-body text-franco-muted">
               {analisis.comuna}, {analisis.ciudad} · {new Date(analisis.created_at).toLocaleDateString("es-CL")}
             </p>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 font-body text-sm text-franco-muted">
               {resumenEjecutivo}
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs sm:gap-3 sm:text-sm">

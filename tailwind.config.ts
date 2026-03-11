@@ -10,10 +10,24 @@ const config: Config = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ['var(--font-inter)', 'Inter', 'system-ui', 'sans-serif'],
-  			serif: ['Georgia', 'Cambria', '"Times New Roman"', 'serif'],
+  			heading: ['var(--font-heading)', 'Georgia', 'serif'],
+  			body: ['var(--font-body)', '-apple-system', 'sans-serif'],
+  			mono: ['var(--font-mono)', 'monospace'],
   		},
   		colors: {
+  			franco: {
+  				ink: '#0F0F0F',
+  				red: '#C8323C',
+  				muted: '#71717A',
+  				bg: '#FAFAF8',
+  				'bg-dark': '#F0F0EC',
+  				border: '#E6E6E2',
+  			},
+  			verdict: {
+  				buy: '#16A34A',
+  				negotiate: '#C8323C',
+  				avoid: '#DC2626',
+  			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

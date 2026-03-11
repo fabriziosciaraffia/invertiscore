@@ -4,13 +4,14 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 import type { Analisis, Desglose } from "@/lib/types";
 
-const CHART_COLORS = ["#059669", "#3b82f6", "#f59e0b"];
+const CHART_COLORS = ["#0F0F0F", "#3b82f6", "#f59e0b"];
 const UF_CLP = 38800;
 
 function getScoreColor(score: number) {
-  if (score >= 65) return "#059669";
+  if (score >= 65) return "#16A34A";
   if (score >= 50) return "#eab308";
   if (score >= 30) return "#f59e0b";
   return "#ef4444";
@@ -184,7 +185,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
     section: "Score",
     rows: [
       {
-        label: "InvertiScore total",
+        label: "Franco Score total",
         values: analisis.map((a) => a.score.toString() + "/100"),
         raw: analisis.map((a) => a.score),
         higherIsBetter: true,
@@ -231,7 +232,7 @@ function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): st
   const best = higherIsBetter ? Math.max(...raw) : Math.min(...raw);
   const worst = higherIsBetter ? Math.min(...raw) : Math.max(...raw);
   if (raw.every((v) => v === val)) return "text-[#111827]";
-  if (val === best) return "font-bold text-[#059669]";
+  if (val === best) return "font-bold text-[#0F0F0F]";
   if (val === worst) return "text-[#ef4444]";
   return "text-[#111827]";
 }
@@ -255,7 +256,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
 
   return (
     <div className="mt-10">
-      <h3 className="text-center font-serif text-xl font-bold text-[#111827] sm:text-2xl">Radar de dimensiones</h3>
+      <h3 className="text-center font-heading text-xl font-bold tracking-tight text-[#111827] sm:text-2xl">Radar de dimensiones</h3>
       <div className="mt-6 flex justify-center">
         <svg viewBox="0 0 300 300" className="h-64 w-64 sm:h-80 sm:w-80">
           {/* Grid */}
@@ -390,11 +391,9 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       {/* Navbar */}
-      <nav className="border-b border-[#e5e7eb] bg-white">
+      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
-          <Link href="/" className="font-serif text-xl font-bold text-[#1a1a1a]">
-            InvertiScore
-          </Link>
+          <FrancoLogo size="sm" href="/" />
         </div>
       </nav>
 
@@ -405,7 +404,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
             <Link href="/dashboard" className="mb-3 inline-flex items-center gap-1.5 text-sm text-[#6b7280] transition-colors hover:text-[#111827]">
               <ArrowLeft className="h-4 w-4" /> Volver al Dashboard
             </Link>
-            <h1 className="font-serif text-2xl font-bold text-[#111827] sm:text-3xl">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">
               Comparación de {analisis.length} propiedades
             </h1>
           </div>
@@ -433,7 +432,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
               return (
                 <div key={a.id} className="rounded-xl border bg-white p-4 text-center" style={{ borderColor: CHART_COLORS[i], borderWidth: "2px" }}>
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-[3px]" style={{ borderColor: color }}>
-                    <span className="text-lg font-bold" style={{ color }}>{a.score}</span>
+                    <span className="font-mono text-lg font-bold" style={{ color }}>{a.score}</span>
                   </div>
                   <div className="mt-2 text-sm font-semibold text-[#111827]">{a.nombre}</div>
                   <div className="text-xs text-[#9ca3af]">{a.comuna}</div>
@@ -478,7 +477,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
                 {/* Card header */}
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-[3px]" style={{ borderColor: color }}>
-                    <span className="text-sm font-bold" style={{ color }}>{a.score}</span>
+                    <span className="font-mono text-sm font-bold" style={{ color }}>{a.score}</span>
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-[#111827]">{a.nombre}</div>
@@ -510,7 +509,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
         <RadarChart analisis={analisis} />
 
         {/* Verdict */}
-        <div className="mt-10 rounded-2xl border-2 border-[#059669] bg-white p-6 sm:p-8" style={{ background: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)" }}>
+        <div className="mt-10 rounded-2xl border-2 border-[#0F0F0F] bg-[#FAFAF8] p-6 sm:p-8">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-[3px]" style={{ borderColor: verdict.bestColor }}>
               <span className="text-xl font-bold" style={{ color: verdict.bestColor }}>{verdict.bestScore}</span>

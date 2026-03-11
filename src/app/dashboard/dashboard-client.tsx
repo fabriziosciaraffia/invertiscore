@@ -16,14 +16,15 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { LogoutButton } from "@/components/logout-button";
+import FrancoLogo from "@/components/franco-logo";
 import type { Analisis } from "@/lib/types";
 
 type SortKey = "score" | "date" | "precio" | "flujo";
 type FilterKey = "all" | "buena" | "regular" | "debil";
 
 function getScoreColor(score: number) {
-  if (score >= 80) return "#059669";
-  if (score >= 65) return "#059669";
+  if (score >= 80) return "#16A34A";
+  if (score >= 65) return "#16A34A";
   if (score >= 50) return "#eab308";
   if (score >= 30) return "#f59e0b";
   return "#ef4444";
@@ -146,14 +147,18 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   return (
     <div className="min-h-screen bg-[#fafafa]">
       {/* Navbar */}
-      <nav className="border-b border-[#e5e7eb] bg-white">
+      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
-          <Link href="/" className="font-serif text-xl font-bold text-[#1a1a1a]">
-            InvertiScore
-          </Link>
-          <div className="flex items-center gap-2">
+          <FrancoLogo size="sm" href="/" />
+          <div className="flex items-center gap-3">
+            <Link href="/analisis/nuevo" className="font-body text-sm text-franco-muted transition-colors hover:text-franco-ink">
+              Nuevo análisis
+            </Link>
+            <Link href="/pricing">
+              <span className="rounded-md bg-franco-red px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-franco-red/90">Premium</span>
+            </Link>
             <Link href="/perfil">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-[#6b7280] hover:text-[#1a1a1a]">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-franco-muted hover:text-franco-ink">
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Perfil</span>
               </Button>
             </Link>
@@ -166,7 +171,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="font-serif text-2xl font-bold text-[#111827] sm:text-3xl">Mis Análisis</h1>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">Mis Análisis</h1>
             {stats && (
               <p className="mt-1 text-sm text-[#6b7280]">
                 {stats.count} análisis · Score promedio: {stats.avgScore} · Mejor inversión: {stats.bestName}
@@ -174,7 +179,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
             )}
           </div>
           <Link href="/analisis/nuevo">
-            <Button className="w-full gap-2 rounded-xl bg-[#059669] text-white transition-all hover:bg-[#047857] hover:shadow-md sm:w-auto">
+            <Button className="w-full gap-2 rounded-xl bg-franco-ink text-white transition-all hover:bg-[#0F0F0F]/90 hover:shadow-md sm:w-auto">
               <Plus className="h-4 w-4" /> Nuevo Análisis
             </Button>
           </Link>
@@ -183,15 +188,15 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
         {analisis.length === 0 ? (
           /* Empty state */
           <div className="mt-16 flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d1d5db] bg-white p-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ecfdf5]">
-              <BarChart3 className="h-8 w-8 text-[#059669]" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-franco-bg">
+              <BarChart3 className="h-8 w-8 text-franco-ink" />
             </div>
             <h2 className="mt-5 text-xl font-semibold text-[#111827]">Aún no has analizado ninguna propiedad</h2>
             <p className="mt-2 text-[#6b7280]">
               Crea tu primer análisis y descubre si es buena inversión.
             </p>
             <Link href="/analisis/nuevo" className="mt-6">
-              <Button className="gap-2 rounded-xl bg-[#059669] px-6 py-5 text-white transition-all hover:bg-[#047857] hover:shadow-md">
+              <Button className="gap-2 rounded-xl bg-franco-ink px-6 py-5 text-white transition-all hover:bg-[#0F0F0F]/90 hover:shadow-md">
                 Hacer mi primer análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
@@ -206,7 +211,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                   placeholder="Buscar por nombre..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 rounded-lg border-[#e5e7eb] pl-9 text-sm focus-visible:ring-[#059669]"
+                  className="h-9 rounded-lg border-[#e5e7eb] pl-9 text-sm focus-visible:ring-franco-ink"
                 />
               </div>
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
@@ -218,7 +223,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                       onClick={() => setSortBy(opt.key)}
                       className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                         sortBy === opt.key
-                          ? "bg-[#059669] text-white"
+                          ? "bg-franco-ink text-white"
                           : "text-[#6b7280] hover:text-[#111827]"
                       }`}
                     >
@@ -233,7 +238,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                       onClick={() => setFilter(opt.key)}
                       className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                         filter === opt.key
-                          ? "bg-[#059669] text-white"
+                          ? "bg-franco-ink text-white"
                           : "text-[#6b7280] hover:text-[#111827]"
                       }`}
                     >
@@ -263,7 +268,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                   <div
                     key={item.id}
                     className={`group rounded-xl border bg-white transition-all duration-200 hover:shadow-md ${
-                      isSelected ? "border-[#059669] shadow-sm" : "border-[#e5e7eb]"
+                      isSelected ? "border-franco-ink shadow-sm" : "border-[#e5e7eb]"
                     } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
                   >
                     <div className="flex items-start gap-3 p-4 sm:items-center sm:gap-4 sm:p-5">
@@ -272,8 +277,8 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                         onClick={() => toggleSelect(item.id)}
                         className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors sm:mt-0 ${
                           isSelected
-                            ? "border-[#059669] bg-[#059669]"
-                            : "border-[#d1d5db] hover:border-[#059669]"
+                            ? "border-franco-ink bg-franco-ink"
+                            : "border-[#d1d5db] hover:border-franco-ink"
                         }`}
                         title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
                       >
@@ -290,14 +295,14 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                         style={{ borderColor: color }}
                       >
                         <div className="text-center">
-                          <div className="text-sm font-bold" style={{ color }}>{item.score}</div>
+                          <div className="font-mono text-sm font-bold" style={{ color }}>{item.score}</div>
                         </div>
                       </div>
 
                       {/* Info */}
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                          <Link href={`/analisis/${item.id}`} className="truncate text-sm font-semibold text-[#111827] hover:text-[#059669] sm:text-base">
+                          <Link href={`/analisis/${item.id}`} className="truncate text-sm font-semibold text-[#111827] hover:text-franco-ink sm:text-base">
                             {item.nombre}
                           </Link>
                           <div className="flex items-center gap-2">
@@ -305,7 +310,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                               {label}
                             </span>
                             {item.is_premium && (
-                              <span className="rounded-full bg-[#059669]/10 px-2 py-0.5 text-[11px] font-medium text-[#059669]">Pro</span>
+                              <span className="rounded-full bg-franco-red/10 px-2 py-0.5 text-[11px] font-medium text-franco-red">Pro</span>
                             )}
                             {!item.is_premium && (
                               <span className="rounded-full bg-[#f3f4f6] px-2 py-0.5 text-[11px] font-medium text-[#9ca3af]">Gratis</span>
@@ -324,7 +329,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                           </div>
                           <div>
                             <span className="text-[11px] text-[#9ca3af]">Flujo mensual</span>
-                            <div className={`text-xs font-semibold ${m.flujoMensual >= 0 ? "text-[#059669]" : "text-[#ef4444]"}`}>
+                            <div className={`text-xs font-semibold ${m.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#ef4444]"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
@@ -342,7 +347,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                       {/* Actions */}
                       <div className="flex shrink-0 items-center gap-2">
                         <Link href={`/analisis/${item.id}`}>
-                          <Button variant="ghost" size="sm" className="hidden text-xs text-[#059669] hover:bg-[#ecfdf5] hover:text-[#047857] sm:inline-flex">
+                          <Button variant="ghost" size="sm" className="hidden text-xs text-franco-ink hover:bg-franco-bg hover:text-franco-ink sm:inline-flex">
                             Ver análisis
                           </Button>
                         </Link>
@@ -371,13 +376,13 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
 
       {/* Floating compare bar */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#047857] bg-[#059669] shadow-2xl shadow-black/20">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-franco-ink bg-franco-ink shadow-2xl shadow-black/20">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3 sm:px-6">
             <span className="text-sm font-medium text-white">
               {selected.size} análisis seleccionados
             </span>
             <Link href={`/comparar?ids=${Array.from(selected).join(",")}`}>
-              <Button className="gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-[#059669] hover:bg-[#f0fdf4]">
+              <Button className="gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-franco-ink hover:bg-franco-bg">
                 Comparar {selected.size} análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

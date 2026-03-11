@@ -1,30 +1,46 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Source_Serif_4, Source_Sans_3, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({
+const sourceSerif = Source_Serif_4({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "700"],
+  variable: "--font-heading",
+  display: "swap",
+});
+
+const sourceSans = Source_Sans_3({
+  subsets: ["latin", "latin-ext"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-inter",
+  weight: ["400", "500", "700"],
+  variable: "--font-mono",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "InvertiScore - Análisis de Inversión Inmobiliaria en Chile",
+  title: "Franco — Análisis de inversión inmobiliaria con IA",
   description:
-    "Analiza cualquier propiedad de inversión en Chile en 30 segundos. Score de 1-100, flujo de caja real, proyecciones y análisis IA. Sin sesgos, sin comisiones.",
+    "Re franco con tu inversión. Análisis objetivo de departamentos para inversión en Chile. Score, flujo de caja real, y veredicto sin conflictos de interés.",
   openGraph: {
-    title: "InvertiScore - Análisis de Inversión Inmobiliaria en Chile",
+    title: "Franco — Re franco con tu inversión",
     description:
-      "Analiza cualquier propiedad de inversión en Chile en 30 segundos. Score de 1-100, flujo de caja real, proyecciones y análisis IA.",
+      "Tu corredor gana si compras. Franco gana si decides bien.",
     type: "website",
-    url: "https://invertiscore.cl",
-    siteName: "InvertiScore",
+    url: "https://refranco.ai",
+    siteName: "Franco",
     locale: "es_CL",
   },
   twitter: {
     card: "summary_large_image",
-    title: "InvertiScore - Análisis de Inversión Inmobiliaria",
+    title: "Franco — Análisis de inversión inmobiliaria con IA",
     description:
-      "Score de 1-100, flujo de caja real, proyecciones y análisis IA para cualquier propiedad en Chile.",
+      "Re franco con tu inversión. Análisis objetivo de departamentos para inversión en Chile.",
   },
   robots: {
     index: true,
@@ -39,11 +55,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${sourceSerif.variable} ${sourceSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         {children}
-        <div className="border-t border-border/30 px-4 pb-6 pt-4 text-center">
+        <div className="border-t border-franco-border px-4 pb-6 pt-4 text-center">
           <p className="mx-auto max-w-xl text-[11px] leading-relaxed text-[#9ca3af]">
-            InvertiScore es una herramienta informativa. Los resultados son estimaciones basadas en los datos ingresados y no constituyen asesoría financiera, tributaria ni legal. Consulta con un profesional antes de tomar decisiones de inversión.
+            Franco es una herramienta informativa. Los resultados son estimaciones basadas en los datos ingresados y no constituyen asesoría financiera, tributaria ni legal. Consulta con un profesional antes de tomar decisiones de inversión.
           </p>
         </div>
       </body>

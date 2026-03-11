@@ -30,7 +30,7 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
   "Payback Pie": "Meses que toma recuperar el pie invertido solo con flujo de caja. N/A si el flujo es negativo.",
-  "InvertiScore": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Eficiencia de compra (10%)",
+  "Franco Score": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Eficiencia de compra (10%)",
 };
 
 const RADAR_TOOLTIPS: Record<string, string> = {
@@ -179,7 +179,7 @@ function AIAnalysisSection({
 
       {/* 1. Resumen Ejecutivo */}
       {phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-emerald-500/30 bg-emerald-500/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
+        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#16A34A]/30 bg-[#16A34A]/5" : score >= 40 ? "border-amber-500/30 bg-amber-500/5" : "border-red-500/30 bg-red-500/5"}`}>
           <p className="text-sm font-medium leading-relaxed">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} speed={charSpeed} onComplete={next(2)} />
@@ -190,10 +190,10 @@ function AIAnalysisSection({
 
       {/* 2. Tu Bolsillo */}
       <FadeIn show={phaseIndex >= 2}>
-        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Wallet className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
@@ -213,10 +213,10 @@ function AIAnalysisSection({
 
       {/* 3. Vs Alternativas */}
       <FadeIn show={phaseIndex >= 3}>
-        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Scale className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
@@ -228,10 +228,10 @@ function AIAnalysisSection({
 
       {/* 4. Negociación */}
       <FadeIn show={phaseIndex >= 4}>
-        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Handshake className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
@@ -241,7 +241,7 @@ function AIAnalysisSection({
           {aiAnalysis.negociacion.precioSugerido && (
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Precio sugerido:</span>
-              <span className="rounded-md bg-emerald-500/10 px-3 py-1 text-sm font-bold text-emerald-500">{aiAnalysis.negociacion.precioSugerido}</span>
+              <span className="rounded-md bg-[#16A34A]/10 px-3 py-1 text-sm font-bold text-[#16A34A]">{aiAnalysis.negociacion.precioSugerido}</span>
             </div>
           )}
         </div>
@@ -249,10 +249,10 @@ function AIAnalysisSection({
 
       {/* 5. Proyección */}
       <FadeIn show={phaseIndex >= 5}>
-        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
@@ -264,10 +264,10 @@ function AIAnalysisSection({
 
       {/* 6. Riesgos */}
       <FadeIn show={phaseIndex >= 6}>
-        <div className="rounded-lg border border-border/50 bg-card/50 p-4">
+        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Shield className="h-4 w-4 text-primary" />
-            <h4 className="text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
           </div>
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
@@ -284,13 +284,13 @@ function AIAnalysisSection({
 
       {/* 7. Veredicto */}
       <FadeIn show={phaseIndex >= 7}>
-        <div className="rounded-lg border-2 border-border/50 bg-card/50 p-5">
+        <div className="rounded-2xl border-2 border-franco-border bg-white p-5 shadow-sm">
           <div className="mb-3 flex items-center gap-3">
-            <h4 className="text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
-            <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider ${
-              aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-emerald-500/15 text-emerald-500" :
-              aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-amber-500/15 text-amber-500" :
-              "bg-red-500/15 text-red-500"
+            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.veredicto.titulo}</h4>
+            <span className={`rounded-md px-3 py-1 font-mono text-xs font-bold uppercase tracking-wide ${
+              aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-verdict-buy/10 border border-verdict-buy/30 text-verdict-buy" :
+              aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-franco-red/10 border border-franco-red/30 text-franco-red" :
+              "bg-verdict-avoid/10 border border-verdict-avoid/30 text-verdict-avoid"
             }`}>
               {aiAnalysis.veredicto.decision}
             </span>
@@ -307,7 +307,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 8}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-400">
+            <h4 className="mb-2 flex items-center gap-1.5 font-heading text-sm font-semibold text-verdict-buy">
               <CheckCircle2 className="h-4 w-4" /> A favor
             </h4>
             <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
@@ -519,7 +519,7 @@ function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
   }
 
   return (
-    <Card className="border-primary/30 bg-primary/5">
+    <Card className="border border-franco-red/30 bg-franco-red/5">
       <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
         <Sparkles className="h-8 w-8 text-primary" />
         <h3 className="text-xl font-bold">Desbloquea Flujo, Patrimonio y Salida</h3>
@@ -537,7 +537,7 @@ function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
   );
 }
 
-function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId, muted = false }: {
+function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId }: {
   title: string;
   description?: string;
   icon: React.ElementType;
@@ -545,17 +545,16 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   gate?: "none" | "login" | "premium";
   accessLevel?: "guest" | "free" | "premium";
   analysisId?: string;
-  muted?: boolean;
 }) {
   const showRegister = (gate === "login" && accessLevel === "guest") || (gate === "premium" && accessLevel === "guest");
   const showPaywall = gate === "premium" && accessLevel === "free";
   return (
     <div className="relative mb-8">
-      <Card className={`border-border/50 ${muted ? "bg-muted/20" : "bg-card/50"}`}>
+      <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-primary" />
-            <CardTitle>{title}</CardTitle>
+            <Icon className="h-5 w-5 text-franco-ink" />
+            <CardTitle className="font-heading font-bold text-lg text-franco-ink">{title}</CardTitle>
           </div>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </CardHeader>
@@ -569,7 +568,7 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
 
 function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onToggle: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between rounded-lg border border-border/50 bg-card/50 px-4 py-3">
+    <div className="mb-6 flex items-center justify-between border border-franco-border bg-white rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -889,7 +888,7 @@ export function PremiumResults({
 
     const configs = [
       { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#ef4444", borderClass: "border-red-300/60", bgClass: "", labelClass: "text-red-500" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#059669", borderClass: "border-emerald-400/60 ring-1 ring-emerald-400/20", bgClass: "bg-emerald-50/30", labelClass: "" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30 ring-0", bgClass: "bg-secondary/30", labelClass: "" },
       { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#3b82f6", borderClass: "border-blue-300/60", bgClass: "", labelClass: "text-blue-500" },
     ];
 
@@ -1374,37 +1373,37 @@ export function PremiumResults({
 
       {/* ===== a) 3 Free Metric Boxes ===== */}
       <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-border/50 bg-card/50">
+        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <DollarSign className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
+              <DollarSign className="h-4 w-4 text-franco-ink" />
               <span>Rentabilidad Bruta</span>
               <InfoTooltip content="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor." />
             </div>
-            <div className="mt-1 text-2xl font-bold">{freeYieldBruto.toFixed(1)}%</div>
+            <div className="mt-1 font-mono text-2xl font-bold text-franco-ink">{freeYieldBruto.toFixed(1)}%</div>
           </CardContent>
         </Card>
-        <Card className="border-border/50 bg-card/50">
+        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <BarChart3 className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
+              <BarChart3 className="h-4 w-4 text-franco-ink" />
               <span>Flujo Mensual</span>
               <InfoTooltip content={`Lo que te queda (o falta) cada mes después de pagar dividendo, gastos comunes, contribuciones y mantención. Provisión mantención: ${inputData ? (getMantencionRate(inputData.antiguedad) * 100).toFixed(1) : "1.0"}% anual basado en antigüedad${inputData ? ` de ${inputData.antiguedad} años` : ""}. Aumenta con el tiempo.`} />
             </div>
-            <div className={`mt-1 text-2xl font-bold ${flujoUnificado >= 0 ? "text-emerald-500" : "text-red-500"}`}>
+            <div className={`mt-1 font-mono text-2xl font-bold ${flujoUnificado >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
               {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
             </div>
             <p className="mt-1 text-xs text-muted-foreground">{flujoText}</p>
           </CardContent>
         </Card>
-        <Card className="border-border/50 bg-card/50">
+        <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
           <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Building2 className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2 font-body text-xs text-franco-muted">
+              <Building2 className="h-4 w-4 text-franco-ink" />
               <span>{currency === "UF" ? "UF/m²" : "Precio/m²"}</span>
               <InfoTooltip content="Precio por metro cuadrado. Permite comparar con otras propiedades de la zona." />
             </div>
-            <div className="mt-1 text-2xl font-bold">
+            <div className="mt-1 font-mono text-2xl font-bold text-franco-ink">
               {currency === "UF" ? `UF ${freePrecioM2.toFixed(1)}` : fmtCLP(freePrecioM2 * UF_CLP)}
             </div>
           </CardContent>
@@ -1430,7 +1429,7 @@ export function PremiumResults({
                   <PolarGrid stroke="hsl(var(--border))" />
                   <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} className="text-[11px] sm:text-xs" />
                   <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
-                  <Radar name="Score" dataKey="value" stroke="#059669" fill="#059669" fillOpacity={0.2} strokeWidth={2} />
+                  <Radar name="Score" dataKey="value" stroke="#0F0F0F" fill="#0F0F0F" fillOpacity={0.2} strokeWidth={2} />
                 </RadarChart>
               </ResponsiveContainer>
             </div>
@@ -1438,10 +1437,10 @@ export function PremiumResults({
 
           {/* CTA for guests — after radar */}
           {currentAccess === "guest" && (
-            <Card className="mb-8 border-primary/30 bg-primary/5">
+            <Card className="mb-8 border border-franco-red/30 bg-franco-red/5">
               <CardContent className="flex flex-col items-center gap-4 p-6 text-center md:flex-row md:text-left">
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold">Tu InvertiScore es {score}. ¿Quieres saber por qué?</h3>
+                  <h3 className="text-lg font-semibold">Tu Franco Score es {score}. ¿Quieres saber por qué?</h3>
                   <p className="text-sm text-muted-foreground">Regístrate gratis para ver 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.</p>
                 </div>
                 <a href="/register">
@@ -1452,7 +1451,7 @@ export function PremiumResults({
           )}
 
           {/* ===== c) GRATIS CON REGISTRO: 8 Métricas ===== */}
-          <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess} muted>
+          <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess}>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { label: "Rentabilidad Bruta", value: `${(m.rentabilidadBruta ?? 0).toFixed(1)}%` },
@@ -1464,12 +1463,12 @@ export function PremiumResults({
                 { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
                 { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `UF ${m.precioM2.toFixed(1)}` : fmtCLP(m.precioM2 * UF_CLP) },
               ].map(({ label, value, subtitle }) => (
-                <div key={label} className="rounded-lg border border-border/50 bg-secondary/30 p-3">
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div key={label} className="rounded-lg border border-franco-border bg-white p-3">
+                  <div className="flex items-center gap-1 font-body text-xs text-franco-muted">
                     {label}
                     {METRIC_TOOLTIPS[label] && <InfoTooltip content={METRIC_TOOLTIPS[label]} />}
                   </div>
-                  <div className="text-lg font-bold">{value}</div>
+                  <div className="font-mono text-sm font-medium text-franco-ink">{value}</div>
                   {subtitle && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{subtitle}</div>}
                 </div>
               ))}
@@ -1477,7 +1476,7 @@ export function PremiumResults({
           </SectionCard>
 
           {/* ===== d) GRATIS CON REGISTRO: Sensibilidad ===== */}
-          <SectionCard title="Análisis de Sensibilidad" description="¿Cómo cambia tu inversión según el escenario de mercado?" icon={Shield} gate="login" accessLevel={currentAccess} muted>
+          <SectionCard title="Análisis de Sensibilidad" description="¿Cómo cambia tu inversión según el escenario de mercado?" icon={Shield} gate="login" accessLevel={currentAccess}>
             {sensScenarios && inputData && (
               <>
                 {/* Horizonte slider */}
@@ -1508,7 +1507,7 @@ export function PremiumResults({
                       {/* Flujo mensual año 1 */}
                       <div className="mb-2">
                         <div className="text-[10px] text-muted-foreground">Flujo mensual (año 1)</div>
-                        <div className={`text-lg font-bold ${s.flujoMensual >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
                           {fmt(s.flujoMensual)}<span className="text-xs font-normal text-muted-foreground">/mes</span>
                         </div>
                       </div>
@@ -1516,7 +1515,7 @@ export function PremiumResults({
                       {/* Bolsillo acumulado */}
                       <div className="mb-3">
                         <div className="text-[10px] text-muted-foreground">Bolsillo acumulado ({sensHorizon} años)</div>
-                        <div className={`text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                        <div className={`font-mono text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
                           {fmt(s.bolsilloTotal)}
                         </div>
                       </div>
@@ -1535,16 +1534,16 @@ export function PremiumResults({
                         </div>
                         <div className="flex justify-between">
                           <span className="text-muted-foreground">Utilidad neta</span>
-                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-emerald-600" : "text-red-500"}`}>{fmt(s.utilidadNeta)}</span>
+                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>{fmt(s.utilidadNeta)}</span>
                         </div>
                         <div className="flex justify-between items-center pt-0.5">
                           <span className="text-muted-foreground">Retorno</span>
-                          <span className={`text-base font-bold ${s.retorno >= 1 ? "text-emerald-600" : "text-red-500"}`}>{s.retorno}x</span>
+                          <span className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-red-500"}`}>{s.retorno}x</span>
                         </div>
                       </div>
 
                       {/* Supuestos */}
-                      <div className="mt-3 border-t border-dashed border-border/40 pt-2 text-[11px] leading-relaxed text-gray-400">
+                      <div className="mt-3 border-t border-dashed border-border/40 pt-2 text-[11px] leading-relaxed text-franco-muted">
                         <div>Tasa {s.scenTasa.toFixed(2)}% · Arr. {fmtM(s.scenArriendo)}</div>
                         <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
                       </div>
@@ -1556,11 +1555,11 @@ export function PremiumResults({
           </SectionCard>
 
           {/* ===== e) GRATIS CON REGISTRO: Puntos Críticos ===== */}
-          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess} muted>
+          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess}>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+              <div className="rounded-lg border border-franco-border bg-white p-4">
                 <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
-                <div className="mt-1 text-2xl font-bold">
+                <div className="mt-1 font-mono text-2xl font-bold">
                   {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -1571,9 +1570,9 @@ export function PremiumResults({
                       : `Tu flujo es positivo. Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, pasarías a flujo negativo. Margen de ${inputData ? (results.breakEvenTasa - inputData.tasaInteres).toFixed(2) : "—"} puntos porcentuales.`}
                 </p>
               </div>
-              <div className="rounded-lg border border-border/50 bg-secondary/30 p-4">
+              <div className="rounded-lg border border-franco-border bg-white p-4">
                 <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
-                <div className="mt-1 text-2xl font-bold">
+                <div className="mt-1 font-mono text-2xl font-bold">
                   {currency === "UF"
                     ? fmtUF(results.valorMaximoCompra)
                     : fmtCLP(results.valorMaximoCompra * UF_CLP)}
@@ -1675,7 +1674,7 @@ export function PremiumResults({
                       return (
                         <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                           <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-emerald-500" : "text-red-400"}>
+                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-red-400"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
                           </div>
                           <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
@@ -1705,7 +1704,7 @@ export function PremiumResults({
             </div>
             {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
             {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500"}`}>
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-red-500/10 text-red-500"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
               </div>
             )}
@@ -1779,12 +1778,12 @@ export function PremiumResults({
                             return (
                               <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
                                 <div className="mb-1.5 font-semibold">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-emerald-500">{fmt(row.Ingreso)}</span></div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#10b981" }} />Ingreso: <span className="font-medium text-[#16A34A]">{fmt(row.Ingreso)}</span></div>
                                 {egresoBarSeries.map(s => (
                                   <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-red-400">{fmt(row[s.key] as number)}</span></div>
                                 ))}
                                 <div className="my-1 border-t border-border/50" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-emerald-500" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
                                 <div className="font-bold text-blue-400">Acumulado: {fmt(row.Acumulado)}</div>
                               </div>
                             );
@@ -1869,19 +1868,19 @@ export function PremiumResults({
                                     <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                     {pre ? (
                                       <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.piePagado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie acumulado: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.piePagado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.plusvalia)}</span></div>
                                         <div style={{ color: "#6b7280" }}>Deuda: <span style={{ color: "#6b7280" }}>$0 (crédito aún no comienza)</span></div>
                                       </>
                                     ) : (
                                       <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.valorPropiedad)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.valorPropiedad)}</span></div>
                                         <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444" }} />Deuda restante: <span className="font-medium" style={{ color: "#ef4444" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#059669" }}>{fmt(row.plusvalia)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie + amortización: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                        <div className="flex items-center gap-1.5" style={{ color: "#6b7280" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#16A34A" }}>{fmt(row.plusvalia)}</span></div>
                                       </>
                                     )}
-                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#059669" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#16A34A" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                                   </div>
                                 );
                               }}
@@ -1892,7 +1891,7 @@ export function PremiumResults({
                             <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#ef4444" fillOpacity={0.12} stroke="none" />
                             {/* Barras apiladas: pie + amortización */}
                             <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#065f46" name="Pie pagado" radius={[0, 0, 0, 0]} />
-                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#059669" name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#0F0F0F" name="Capital amortizado" radius={[0, 0, 0, 0]} />
                             {/* Plusvalía: azul */}
                             <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#22c55e" fillOpacity={0.4} stroke="#22c55e" strokeOpacity={0.6} name="Plusvalía" radius={[4, 4, 0, 0]} />
                             {/* Línea: deuda roja */}
@@ -1909,7 +1908,7 @@ export function PremiumResults({
                       {/* Leyenda manual */}
                       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#065f46" }} />Pie pagado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#059669" }} />Capital amortizado</span>
+                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Capital amortizado</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#22c55e", opacity: 0.5 }} />Plusvalía</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#1e40af", opacity: 0.3 }} />Valor propiedad</span>
                         <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#ef4444", opacity: 0.4 }} />Deuda</span>
@@ -1934,8 +1933,8 @@ export function PremiumResults({
                             <div className="space-y-0 divide-y divide-border/30 sm:hidden">
                               {[
                                 { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
-                                { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-emerald-400" },
-                                { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-emerald-400" },
+                                { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#16A34A]" },
+                                { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#16A34A]" },
                                 { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-primary", bold: true },
                               ].map(({ label, value, color, bold }) => (
                                 <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
@@ -1953,11 +1952,11 @@ export function PremiumResults({
                                 </tr>
                                 <tr className="border-b border-border/30">
                                   <td className="py-2 px-4 text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
-                                  <td className="py-2 px-4 text-right font-medium text-emerald-400">{fmt(plusvaliaGanancia)}</td>
+                                  <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(plusvaliaGanancia)}</td>
                                 </tr>
                                 <tr className="border-b border-border/30">
                                   <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
-                                  <td className="py-2 px-4 text-right font-medium text-emerald-400">{fmt(capitalAmortizado)}</td>
+                                  <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(capitalAmortizado)}</td>
                                 </tr>
                                 <tr className="border-t border-border/50">
                                   <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
@@ -1973,11 +1972,11 @@ export function PremiumResults({
                               <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
                               <div className="flex justify-between text-sm">
                                 <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                                <span className={`font-medium ${flujoAcum >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
+                                <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-red-400"}`}>{fmt(flujoAcum)}</span>
                               </div>
                               <div className="mt-1.5 border-t border-border/30 pt-1.5">
                                 <p className="text-[11px] text-muted-foreground">
-                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-emerald-400" : "text-red-400"}`}>{fmt(gananciaReal)}</span>
+                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-red-400"}`}>{fmt(gananciaReal)}</span>
                                 </p>
                               </div>
                             </div>
@@ -2034,11 +2033,11 @@ export function PremiumResults({
                         ].map(({ label, value, negative, positive, bold }) => (
                           <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
                             <span className="text-muted-foreground">{label}</span>
-                            <span className={negative ? "text-red-400" : positive ? "text-emerald-400" : ""}>{negative ? "-" : ""}{value}</span>
+                            <span className={negative ? "text-red-400" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
                           </div>
                         ))}
                         {exit.multiplicadorCapital > 1 && (
-                          <p className="mt-2 rounded-lg bg-emerald-500/10 p-3 text-xs text-emerald-400">
+                          <p className="mt-2 rounded-lg bg-[#16A34A]/10 p-3 text-xs text-[#16A34A]">
                             Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
                           </p>
                         )}
@@ -2068,7 +2067,7 @@ export function PremiumResults({
                         ].map(({ label, value, positive }) => (
                           <div key={label} className="flex justify-between">
                             <span className="text-muted-foreground">{label}</span>
-                            <span className={positive ? "text-emerald-400 font-medium" : ""}>{value}</span>
+                            <span className={positive ? "text-[#16A34A] font-medium" : ""}>{value}</span>
                           </div>
                         ))}
                         {refi.capitalLiberado > 0 && (
@@ -2103,7 +2102,7 @@ export function PremiumResults({
 
           {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
-            <Card className="mb-8 border-primary/30 bg-primary/5">
+            <Card className="mb-8 border border-franco-red/30 bg-franco-red/5">
               <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
                 <Lock className="h-8 w-8 text-primary" />
                 <h3 className="text-xl font-bold">Regístrate para ver el análisis completo</h3>
@@ -2162,82 +2161,82 @@ export function PremiumResults({
   const panelFields = hasPanelContent ? (
     <div className="space-y-2">
       <div>
-        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto cuesta</h4>
+        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Cuánto cuesta</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Precio (UF)</label>
-              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
+              <label className="font-body text-sm font-semibold text-franco-ink">Precio (UF)</label>
+              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
             </div>
-            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Pie</label>
+              <label className="font-body text-sm font-semibold text-franco-ink">Pie</label>
               <span className="text-[11px] font-medium">{adjPiePct}%</span>
             </div>
-            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Financiamiento</h4>
+        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Financiamiento</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Plazo</label>
+              <label className="font-body text-sm font-semibold text-franco-ink">Plazo</label>
               <span className="text-[11px] font-medium">{adjPlazo} años</span>
             </div>
-            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Tasa (%)</label>
-              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
+              <label className="font-body text-sm font-semibold text-franco-ink">Tasa (%)</label>
+              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
             </div>
-            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Cuánto genera</h4>
+        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Cuánto genera</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Arriendo</label>
-              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
+              <label className="font-body text-sm font-semibold text-franco-ink">Arriendo</label>
+              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
             </div>
-            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">GGCC</label>
-              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
+              <label className="font-body text-sm font-semibold text-franco-ink">GGCC</label>
+              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
             </div>
-            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Contrib. /trim</label>
-              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px]" />
+              <label className="font-body text-sm font-semibold text-franco-ink">Contrib. /trim</label>
+              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
             </div>
-            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-primary h-1.5" />
+            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Vacancia</label>
+              <label className="font-body text-sm font-semibold text-franco-ink">Vacancia</label>
               <span className="text-[11px] font-medium">{adjVacanciaPct}%</span>
             </div>
-            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
-            <p className="text-[10px] text-gray-400 leading-tight">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <p className="text-[10px] text-franco-muted leading-tight">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-[11px] font-semibold text-foreground">Administración</label>
+              <label className="font-body text-sm font-semibold text-franco-ink">Administración</label>
               <span className="text-[11px] font-medium">{adjAdminPct}%</span>
             </div>
-            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-primary h-1.5" />
-            <p className="text-[10px] text-gray-400 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
+            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <p className="text-[10px] text-franco-muted leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
       </div>
@@ -2246,11 +2245,11 @@ export function PremiumResults({
 
   const panelButton = hasPanelContent ? (
     <div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2">
+      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-franco-ink text-white hover:bg-franco-ink/90">
         {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
-      {recalcSuccess && <p className="mt-1 text-center text-xs text-emerald-500">Actualizado</p>}
+      {recalcSuccess && <p className="mt-1 text-center text-xs text-[#16A34A]">Actualizado</p>}
     </div>
   ) : null;
 
@@ -2266,19 +2265,19 @@ export function PremiumResults({
         <aside id="param-panel-wrapper" className="hidden w-[260px] shrink-0 lg:block">
           <div
             id="param-panel"
-            className="flex flex-col rounded-xl border border-[#e5e7eb] bg-white"
+            className="flex flex-col rounded-2xl border border-franco-border bg-white shadow-sm"
             style={{ maxHeight: "calc(100vh - 100px)" }}
           >
             <div className="shrink-0 px-3 pt-3 pb-1">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-primary" />
-                <h3 className="text-xs font-semibold">Ajusta los números</h3>
+                <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
+                <h3 className="font-heading text-xs font-semibold text-franco-ink">Ajusta los números</h3>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
               {panelFields}
             </div>
-            <div className="shrink-0 border-t border-gray-100 px-3 py-2">
+            <div className="shrink-0 border-t border-franco-border px-3 py-2">
               {panelButton}
             </div>
           </div>
@@ -2290,14 +2289,14 @@ export function PremiumResults({
         <>
           <div className="fixed bottom-20 right-4 z-40 flex items-center gap-3 lg:hidden">
             {!fabShown && (
-              <div className="animate-pulse rounded-full bg-[#059669] px-4 py-2 text-sm font-medium text-white shadow-lg">
+              <div className="animate-pulse rounded-full bg-[#0F0F0F] px-4 py-2 text-sm font-medium text-white shadow-lg">
                 Ajusta el análisis
               </div>
             )}
             <button
               type="button"
               onClick={() => { setDrawerOpen(true); setFabShown(true); }}
-              className={`flex items-center justify-center rounded-full bg-[#059669] text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-[52px] w-[52px]" : "h-[72px] w-[72px]"}`}
+              className={`flex items-center justify-center rounded-full bg-[#0F0F0F] text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-[52px] w-[52px]" : "h-[72px] w-[72px]"}`}
             >
               <SlidersHorizontal className={`transition-all duration-500 ${fabShown ? "h-5 w-5" : "h-7 w-7"}`} />
             </button>
@@ -2310,8 +2309,8 @@ export function PremiumResults({
                 <div className="shrink-0 px-5 pt-5 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4 text-primary" />
-                      <h3 className="text-sm font-semibold">Ajusta los números</h3>
+                      <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
+                      <h3 className="font-heading text-sm font-semibold text-franco-ink">Ajusta los números</h3>
                     </div>
                     <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-muted">
                       <X className="h-5 w-5 text-muted-foreground" />
@@ -2321,7 +2320,7 @@ export function PremiumResults({
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-2">
                   {panelFields}
                 </div>
-                <div className="shrink-0 border-t border-gray-100 px-5 py-3">
+                <div className="shrink-0 border-t border-franco-border px-5 py-3">
                   {panelButton}
                 </div>
               </div>

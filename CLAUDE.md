@@ -1,7 +1,7 @@
-# InvertiScore
+# Franco (refranco.ai)
 
 ## Qué es
-SaaS de análisis de inversión inmobiliaria en Chile. El usuario ingresa datos de un departamento y recibe un score de 1-100 con análisis completo. Posicionamiento: anti-corredor.
+SaaS de análisis de inversión inmobiliaria en Chile. El usuario ingresa datos de un departamento y recibe un Franco Score de 1-100 con análisis completo. Posicionamiento: anti-corredor. "Re franco con tu inversión."
 
 ## Stack
 Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude API (Anthropic)
@@ -30,12 +30,41 @@ Next.js 14 + App Router + TypeScript + Tailwind + shadcn/ui + Supabase + Claude 
 ID: 6db7a9ac-f030-4ccf-b5a8-5232ae997fb1
 No se puede eliminar. Siempre is_premium=true. Se usa en la landing.
 
-## Estilo visual
-- Colores: verde #059669 (primario), blanco, grises
-- Tipografía: serif (Georgia) para títulos, sans-serif para body
-- Cards con bordes finos, border-radius 12px
-- Tooltips en todas las métricas explicando qué significan
-- Toggle CLP/UF que cambia TODOS los valores de la página
+## BRANDING — FRANCO (refranco.ai)
+
+### Identidad Visual
+- **Nombre**: Franco (antes InvertiScore)
+- **Dominio**: refranco.ai
+- **Tagline**: RE FRANCO CON TU INVERSIÓN (JetBrains Mono, uppercase, muted)
+- **Wordmark**: "re" en Source Serif 4 Regular (opacity 28%) + "franco" en Source Serif 4 Bold + ".ai" en Source Sans 3 SemiBold color Signal Red
+
+### Paleta
+- Ink: #0F0F0F (primary, textos, fondos oscuros, CTAs)
+- Signal Red: #C8323C (acento, veredictos, .ai, premium CTAs)
+- Muted: #71717A (texto secundario)
+- Warm Bg: #FAFAF8 (fondo alternativo)
+- Cool Bg: #F0F0EC (badges, inputs)
+- Border: #E6E6E2
+
+### Tipografía
+- Headings: Source Serif 4 (font-heading) — Bold para títulos, Regular para "re" del wordmark
+- Body/UI: Source Sans 3 (font-body) — Regular, Medium, SemiBold, Bold
+- Data/Mono: JetBrains Mono (font-mono) — métricas, scores, veredictos, tagline
+
+### Colores de Veredicto
+- COMPRAR: #16A34A (verde)
+- NEGOCIAR: #C8323C (signal red)
+- BUSCAR OTRA: #DC2626 (rojo)
+
+### Regla del rojo
+Signal Red SOLO aparece cuando hay info que requiere atención: veredictos, métricas negativas, .ai del wordmark, CTAs premium. Nunca como decoración.
+
+### Tono
+- Directo > Diplomático
+- Accionable > Vago
+- Franco > Corporativo
+- Contextualiza > Alarma
+- Desafía > Se vende
 
 ## Reglas importantes
 - Todos los textos en español chileno
@@ -44,3 +73,6 @@ No se puede eliminar. Siempre is_premium=true. Se usa en la landing.
 - Formato UF: "UF 3.200" (símbolo antes del número)
 - No mencionar Portal Inmobiliario ni TocToc como fuentes de datos
 - Sí mencionar Banco Central, SII, CMF (fuentes públicas)
+- Cards con bordes finos (border-franco-border), rounded-2xl, shadow-sm
+- Tooltips en todas las métricas explicando qué significan
+- Toggle CLP/UF que cambia TODOS los valores de la página

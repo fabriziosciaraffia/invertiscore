@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Building2 } from "lucide-react";
+import FrancoLogo from "@/components/franco-logo";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -66,9 +66,8 @@ export default function RegisterPage() {
       <Card className="w-full max-w-md">
         <form onSubmit={handleRegister}>
           <CardHeader className="text-center">
-            <div className="mx-auto mb-2 flex items-center gap-2">
-              <Building2 className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">InvertiScore</span>
+            <div className="mx-auto mb-2">
+              <FrancoLogo size="xl" />
             </div>
             <CardTitle className="text-2xl">Crear Cuenta</CardTitle>
             <CardDescription>

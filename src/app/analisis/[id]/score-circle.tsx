@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 
 function getScoreColor(score: number): string {
-  if (score >= 80) return "hsl(142, 71%, 45%)"; // green
-  if (score >= 65) return "hsl(217, 91%, 60%)"; // blue
-  if (score >= 50) return "hsl(48, 96%, 53%)";  // yellow
-  if (score >= 30) return "hsl(25, 95%, 53%)";  // orange
-  return "hsl(0, 84%, 60%)";                     // red
+  if (score >= 75) return "#16A34A";  // verdict-buy
+  if (score >= 40) return "#C8323C";  // franco-red
+  return "#DC2626";                    // verdict-avoid
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 75) return "Buena inversión";
+  if (score >= 40) return "No compres — negocia primero";
+  return "Busca otra";
 }
 
 export function ScoreCircle({ score, size = "lg" }: { score: number; size?: "sm" | "lg" }) {
@@ -34,13 +38,14 @@ export function ScoreCircle({ score, size = "lg" }: { score: number; size?: "sm"
   }, [score]);
 
   const color = getScoreColor(score);
+  const label = getScoreLabel(score);
   const containerSize = size === "lg" ? "h-36 w-36" : "h-24 w-24";
-  const textSize = size === "lg" ? "text-4xl" : "text-2xl";
+  const textSize = size === "lg" ? "text-5xl" : "text-2xl";
 
   return (
     <div className={`relative flex ${containerSize} shrink-0 items-center justify-center`}>
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="#E6E6E2" strokeWidth="8" />
         <circle
           cx="60" cy="60" r={radius} fill="none"
           stroke={color} strokeWidth="8" strokeLinecap="round"
@@ -49,8 +54,11 @@ export function ScoreCircle({ score, size = "lg" }: { score: number; size?: "sm"
         />
       </svg>
       <div className="text-center">
-        <div className={`${textSize} font-bold`} style={{ color }}>{displayed}</div>
-        <div className="text-[10px] text-muted-foreground">InvertiScore</div>
+        <div className="font-body text-[8px] uppercase tracking-widest text-franco-muted">Franco Score</div>
+        <div className={`${textSize} font-heading font-bold text-franco-ink`}>{displayed}</div>
+        {size === "lg" && (
+          <div className="text-[10px] font-bold" style={{ color }}>{label}</div>
+        )}
       </div>
     </div>
   );
