@@ -434,7 +434,7 @@ export default function HomePage() {
           </div>
           <FadeIn delay={300}>
             <p className="mt-10 text-center font-body text-base text-[#71717A]">
-              El mismo departamento. Los mismos datos. La diferencia es quién te los muestra — y qué gana con eso.
+              El mismo departamento. Las mismas 4 paredes. Distintos incentivos.
             </p>
             <div className="mt-6 text-center">
               <Link href="/analisis/nuevo" className="inline-flex items-center gap-1 font-body font-medium text-[#0F0F0F] transition-colors hover:text-[#0F0F0F]/80 hover:underline">
@@ -738,7 +738,7 @@ export default function HomePage() {
               Gratis. En serio.
             </h2>
             <p className="mt-3 text-center font-body text-[#71717A]">
-              Tu primer análisis completo sin pagar nada. El informe Pro va más profundo.
+              Tu primer análisis completo sin pagar nada. El Informe Pro es para los que quieren todo.
             </p>
           </FadeIn>
           <div className="mt-8 grid gap-4 md:grid-cols-2">
@@ -895,15 +895,17 @@ export default function HomePage() {
               <div>
                 <h4 className="font-body text-xs uppercase tracking-wider text-white/40">Empresa</h4>
                 <div className="mt-3 flex flex-col gap-2">
-                  <Link href="/" className="font-body text-white/60 transition-colors hover:text-white/80">Inicio</Link>
-                  <Link href="/login" className="font-body text-white/60 transition-colors hover:text-white/80">Iniciar sesión</Link>
-                  <Link href="/register" className="font-body text-white/60 transition-colors hover:text-white/80">Registrarse</Link>
+                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Sobre Franco</Link>
+                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Blog</Link>
+                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Contacto</Link>
                 </div>
               </div>
               <div>
                 <h4 className="font-body text-xs uppercase tracking-wider text-white/40">Legal</h4>
                 <div className="mt-3 flex flex-col gap-2">
-                  <span className="font-body text-white/60">Datos: Banco Central, SII, CMF</span>
+                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Términos</Link>
+                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Privacidad</Link>
+                  <span className="font-body text-white/40">Datos: Banco Central, SII, CMF</span>
                 </div>
               </div>
             </div>
