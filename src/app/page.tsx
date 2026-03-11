@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
+import LeverageSection from "@/components/leverage-section";
 import type { User } from "@supabase/supabase-js";
 
 // ============================================================
@@ -185,7 +186,7 @@ export default function HomePage() {
           : "border-b border-transparent bg-transparent"
       }`}>
         <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <FrancoLogo size="sm" href="/" inverted={!scrolled} />
+          <FrancoLogo size="header" href="/" inverted={!scrolled} />
           <div className="hidden items-center gap-6 sm:flex">
             {user ? (
               <>
@@ -266,7 +267,7 @@ export default function HomePage() {
       </nav>
 
       {/* ============ 2. HERO SECTION ============ */}
-      <section className="relative overflow-hidden px-6 py-20 md:py-28" style={{ background: "linear-gradient(135deg, #0F0F0F 0%, #2A2A2A 100%)" }}>
+      <section className="relative -mt-14 overflow-hidden px-6 pb-20 pt-[136px] md:pb-28 md:pt-[168px]" style={{ background: "linear-gradient(135deg, #0F0F0F 0%, #2A2A2A 100%)" }}>
         {/* Red glow */}
         <div className="pointer-events-none absolute -top-10 -right-10 h-72 w-72 rounded-full bg-[#C8323C]/[0.05] blur-3xl" />
         {/* Bottom accent line */}
@@ -367,20 +368,20 @@ export default function HomePage() {
             <SlideIn delay={100} direction="left">
               <div className="h-full rounded-xl border border-[#E6E6E2] bg-white/80 p-6 opacity-50">
                 <div className="mb-5 font-mono text-[10px] uppercase tracking-wider text-[#71717A]">Lo que te muestra el corredor</div>
-                <h3 className="font-body text-lg font-bold text-[#0F0F0F]">Depto 2D1B en Providencia</h3>
+                <h3 className="font-body text-lg font-bold text-[#71717A]">Depto 2D1B en Providencia</h3>
                 <div className="my-4 h-px bg-[#E6E6E2]" />
                 <div className="space-y-0">
                   <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
                     <span className="font-body text-sm text-[#71717A]">Precio</span>
-                    <span className="font-mono text-sm font-medium text-[#0F0F0F]">UF 3.200</span>
+                    <span className="font-mono text-sm font-medium text-[#71717A]">UF 3.200</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
                     <span className="font-body text-sm text-[#71717A]">Arriendo</span>
-                    <span className="font-mono text-sm font-medium text-[#0F0F0F]">$420.000/mes</span>
+                    <span className="font-mono text-sm font-medium text-[#71717A]">$420.000/mes</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
                     <span className="flex items-center font-body text-sm text-[#71717A]">Rent. Bruta<TooltipIcon text="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto." /></span>
-                    <span className="font-mono text-sm font-medium text-[#0F0F0F]">4.0%</span>
+                    <span className="font-mono text-sm font-medium text-[#71717A]">4.0%</span>
                   </div>
                   <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
                     <span className="font-body text-sm text-[#71717A]">Flujo mensual</span>
@@ -388,7 +389,7 @@ export default function HomePage() {
                   </div>
                   <div className="flex items-center justify-between py-3">
                     <span className="font-body text-sm text-[#71717A]">Conclusión</span>
-                    <span className="font-body text-sm font-semibold italic text-[#0F0F0F]">&ldquo;Excelente oportunidad!&rdquo;</span>
+                    <span className="font-body text-sm font-semibold italic text-[#71717A]">&ldquo;Excelente oportunidad!&rdquo;</span>
                   </div>
                 </div>
               </div>
@@ -396,8 +397,8 @@ export default function HomePage() {
 
             {/* Card DERECHA — Franco */}
             <SlideIn delay={200} direction="right">
-              <div className="relative h-full rounded-xl border-2 border-[#C8323C] bg-white p-6" style={{ boxShadow: "0 0 20px rgba(200,50,60,0.08)" }}>
-                <div className="absolute -top-2.5 right-4 rounded bg-[#C8323C] px-2 py-0.5 font-mono text-[9px] font-bold text-white">LA VERDAD</div>
+              <div className="relative h-full rounded-xl border-2 border-[#C8323C] bg-white p-6" style={{ boxShadow: "0 0 24px rgba(200,50,60,0.06)" }}>
+                <div className="absolute -top-2.5 right-3 rounded bg-[#C8323C] px-2 py-0.5 font-mono text-[9px] font-bold text-white">LA VERDAD</div>
                 <div className="mb-5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#0F0F0F]">Lo que Franco te muestra</div>
                 <h3 className="font-body text-lg font-bold text-[#0F0F0F]">Depto 2D1B en Providencia</h3>
                 <div className="my-4 h-px bg-[#E6E6E2]" />
@@ -461,9 +462,9 @@ export default function HomePage() {
               { title: "Si la inversión sale mal, el corredor no devuelve la comisión.", desc: "Tú asumes todo el riesgo por 25 años. El corredor desaparece después de la firma. Franco no te vende propiedades ni cobra comisiones de venta. Nuestro único incentivo es que tengas la información completa antes de decidir." },
             ].map((item, i) => (
               <FadeIn key={item.title} delay={i * 150}>
-                <div className="flex h-full flex-col rounded-xl border border-white/[0.07] bg-white/[0.03] p-6 backdrop-blur-sm">
-                  <h3 className="mb-2 font-body text-base font-bold text-white">{item.title}</h3>
-                  <p className="flex-1 font-body text-sm leading-relaxed text-white/60">{item.desc}</p>
+                <div className="flex h-full flex-col rounded-xl border border-white/[0.06] bg-white/[0.03] p-6 backdrop-blur-sm">
+                  <h3 className="mb-2 font-body text-sm font-bold text-white">{item.title}</h3>
+                  <p className="flex-1 font-body text-[13px] leading-relaxed text-white/[0.45]">{item.desc}</p>
                 </div>
               </FadeIn>
             ))}
@@ -796,7 +797,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ 8b. SOLO DATOS. CERO COMISIONES. ============ */}
+      {/* ============ 9. APALANCAMIENTO INMOBILIARIO ============ */}
+      <LeverageSection />
+
+      {/* ============ 10. SOLO DATOS. CERO COMISIONES. ============ */}
       <section className="bg-white px-6 py-16 md:py-24">
         <div className="mx-auto max-w-6xl text-center">
           <FadeIn>

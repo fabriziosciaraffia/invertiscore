@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 interface FrancoLogoProps {
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "sm" | "header" | "md" | "lg" | "xl";
   inverted?: boolean;
   showTagline?: boolean;
   className?: string;
@@ -10,6 +10,7 @@ interface FrancoLogoProps {
 
 const sizeConfig = {
   sm: { text: "text-[14px]", dot: "text-[11px]", tagline: "text-[7px]" },
+  header: { text: "text-[26px]", dot: "text-[18px]", tagline: "text-[8px]" },
   md: { text: "text-[22px]", dot: "text-[17px]", tagline: "text-[9px]" },
   lg: { text: "text-[36px]", dot: "text-[27px]", tagline: "text-[12px]" },
   xl: { text: "text-[48px]", dot: "text-[36px]", tagline: "text-[14px]" },
