@@ -5,6 +5,7 @@ import "./globals.css";
 const sourceSerif = Source_Serif_4({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "700"],
+  style: ["normal", "italic"],
   variable: "--font-heading",
   display: "swap",
 });
@@ -24,13 +25,13 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Franco — Análisis de inversión inmobiliaria con IA",
+  title: "Franco — ¿Ese depto es buena inversión?",
   description:
-    "Re franco con tu inversión. Análisis objetivo de departamentos para inversión en Chile. Score, flujo de caja real, y veredicto sin conflictos de interés.",
+    "Tu corredor gana si compras. Franco te muestra los números reales. Análisis de inversión inmobiliaria con IA. Gratis, en 30 segundos.",
   openGraph: {
     title: "Franco — Re franco con tu inversión",
     description:
-      "Tu corredor gana si compras. Franco gana si decides bien.",
+      "Tu corredor gana si compras. Franco gana si decides bien. Análisis objetivo de departamentos para inversión en Chile.",
     type: "website",
     url: "https://refranco.ai",
     siteName: "Franco",
@@ -38,9 +39,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Franco — Análisis de inversión inmobiliaria con IA",
+    title: "Franco — ¿Ese depto es buena inversión?",
     description:
-      "Re franco con tu inversión. Análisis objetivo de departamentos para inversión en Chile.",
+      "Tu corredor gana si compras. Franco te muestra los números reales. Análisis de inversión inmobiliaria con IA.",
   },
   robots: {
     index: true,
@@ -57,11 +58,6 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${sourceSerif.variable} ${sourceSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         {children}
-        <div className="border-t border-franco-border px-4 pb-6 pt-4 text-center">
-          <p className="mx-auto max-w-xl text-[11px] leading-relaxed text-[#9ca3af]">
-            Franco es una herramienta informativa. Los resultados son estimaciones basadas en los datos ingresados y no constituyen asesoría financiera, tributaria ni legal. Consulta con un profesional antes de tomar decisiones de inversión.
-          </p>
-        </div>
       </body>
     </html>
   );

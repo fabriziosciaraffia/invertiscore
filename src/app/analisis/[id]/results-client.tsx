@@ -3,15 +3,13 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer, RadarChart, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Radar, ComposedChart, Cell, ReferenceLine,
+  Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, Cell, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
-  Lock, DollarSign, BarChart3, Brain, Calendar,
-  Building2, Sparkles, Target, Shield, MapPin,
+  Lock, Sparkles, Shield, MapPin,
   SlidersHorizontal, RefreshCw, Loader2, Clock,
   Wallet, Scale, Handshake, TrendingUp, AlertTriangle, CheckCircle2, X,
 } from "lucide-react";
@@ -22,6 +20,7 @@ import type { MarketDataRow } from "@/lib/market-data";
 // Module-level UF value, updated from server prop on mount
 let UF_CLP = 38800;
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const METRIC_TOOLTIPS: Record<string, string> = {
   "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor.",
   "Rentabilidad Neta": "Rentabilidad después de TODOS los gastos: operativos, vacancia, corretaje y recambio de arrendatario. Es el número más honesto de rentabilidad.",
@@ -33,6 +32,7 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   "Franco Score": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Eficiencia de compra (10%)",
 };
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RADAR_TOOLTIPS: Record<string, string> = {
   "Rentabilidad": "Evalúa rentabilidad bruta y neta. Peso: 30%",
   "Flujo Caja": "Evalúa el flujo de caja mensual neto. Peso: 25%",
@@ -121,6 +121,117 @@ function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; 
   return <div className="animate-fadeIn">{children}</div>;
 }
 
+function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, locked = false, analysisId, children }: {
+  title: string;
+  subtitle?: string;
+  helpText?: string;
+  defaultOpen?: boolean;
+  locked?: boolean;
+  analysisId?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [payLoading, setPayLoading] = useState(false);
+
+  async function handleUnlock() {
+    if (!analysisId) return;
+    setPayLoading(true);
+    try {
+      const res = await fetch("/api/payment/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (res.ok) window.location.reload();
+    } catch { /* ignore */ } finally { setPayLoading(false); }
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-[#E6E6E2] mb-3 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => !locked && setOpen(!open)}
+        className="w-full flex justify-between items-center p-4 px-5 text-left"
+      >
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="font-body text-[15px] font-bold text-[#0F0F0F]">{title}</span>
+            {locked && <span className="font-mono text-[8px] font-bold text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded">PRO</span>}
+          </div>
+          {subtitle && <p className="font-body text-xs text-[#71717A] mt-0.5">{subtitle}</p>}
+        </div>
+        {locked ? (
+          <Lock className="h-4 w-4 text-[#71717A] shrink-0" />
+        ) : (
+          <span className={`font-body text-lg text-[#71717A] transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
+        )}
+      </button>
+
+      {open && !locked && (
+        <div className="px-5 pb-5">
+          {helpText && (
+            <p className="font-body text-[13px] text-[#71717A] leading-snug p-2.5 px-3.5 bg-[#FAFAF8] rounded-lg mb-3.5">{helpText}</p>
+          )}
+          {children}
+        </div>
+      )}
+
+      {locked && (
+        <div className="px-5 pb-5 text-center">
+          <div className="filter blur-[4px] opacity-30 pointer-events-none h-[60px] overflow-hidden">
+            {children}
+          </div>
+          <button
+            type="button"
+            onClick={handleUnlock}
+            disabled={payLoading}
+            className="bg-[#C8323C] text-white font-body text-xs font-bold px-5 py-2 rounded-md mt-2 shadow-[0_2px_10px_rgba(200,50,60,0.15)]"
+          >
+            {payLoading ? "Procesando..." : "Desbloquear — $4.990"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricRow({ label, value, color, tooltip }: { label: string; value: string; color?: string; tooltip?: string }) {
+  return (
+    <div className="flex justify-between items-center py-2.5 border-b border-[#E6E6E2]">
+      <span className="font-body text-[13px] text-[#71717A] flex items-center gap-1">
+        {label}
+        {tooltip && <InfoTooltip content={tooltip} />}
+      </span>
+      <span className={`font-mono text-sm font-semibold ${color || "text-[#0F0F0F]"}`}>{value}</span>
+    </div>
+  );
+}
+
+function ScoreCircleInline({ score }: { score: number }) {
+  const radius = 36;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
+  return (
+    <svg width="90" height="90" viewBox="0 0 90 90" className="-rotate-90">
+      <circle cx="45" cy="45" r={radius} fill="none" stroke="#E6E6E2" strokeWidth="5" />
+      <circle cx="45" cy="45" r={radius} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700" />
+      <text x="45" y="45" textAnchor="middle" dominantBaseline="central" className="rotate-90 origin-center"
+        fill="#0F0F0F" fontSize="28" fontWeight="bold" fontFamily="var(--font-heading)">{score}</text>
+    </svg>
+  );
+}
+
+function VerdictBadge({ score }: { score: number }) {
+  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
+  const label = score >= 75 ? "COMPRAR" : score >= 40 ? "NEGOCIAR" : "BUSCAR OTRA";
+  return (
+    <span className="font-mono text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md mt-1.5"
+      style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}30` }}>{label}</span>
+  );
+}
+
 // ─── AI Analysis Section with typewriter ────────────
 function AIAnalysisSection({
   aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
@@ -193,7 +304,7 @@ function AIAnalysisSection({
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Wallet className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.tuBolsillo.titulo}</h4>
+            <h4 className="font-body text-sm font-bold">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
@@ -216,7 +327,7 @@ function AIAnalysisSection({
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Scale className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.vsAlternativas.titulo}</h4>
+            <h4 className="font-body text-sm font-bold">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
@@ -231,7 +342,7 @@ function AIAnalysisSection({
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Handshake className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.negociacion.titulo}</h4>
+            <h4 className="font-body text-sm font-bold">{aiAnalysis.negociacion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
@@ -252,7 +363,7 @@ function AIAnalysisSection({
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.proyeccion.titulo}</h4>
+            <h4 className="font-body text-sm font-bold">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
@@ -267,7 +378,7 @@ function AIAnalysisSection({
         <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Shield className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-heading text-sm font-semibold">{aiAnalysis.riesgos.titulo}</h4>
+            <h4 className="font-body text-sm font-bold">{aiAnalysis.riesgos.titulo}</h4>
           </div>
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
@@ -297,7 +408,7 @@ function AIAnalysisSection({
       <FadeIn show={phaseIndex >= 8}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 font-heading text-sm font-semibold text-verdict-buy">
+            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-bold text-verdict-buy">
               <CheckCircle2 className="h-4 w-4" /> A favor
             </h4>
             <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
@@ -334,11 +445,16 @@ function AIAnalysisSection({
   const isComplete = phaseIndex >= 9 || (showAll && !!aiAnalysis);
   const showCTA = !aiAnalysis && !aiLoading && !aiError;
 
-  // Gate: if not premium, wrap in SectionCard with paywall
+  // Gate: if not premium, wrap in CollapsibleSection with lock
   if (currentAccess !== "premium") {
     return (
       <div ref={sectionRef}>
-        <SectionCard title="Análisis Detallado" icon={Brain} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
+        <CollapsibleSection
+          title="Análisis Detallado con IA"
+          subtitle="Franco analiza tu inversión y te dice la verdad — con datos, sin filtro."
+          locked
+          analysisId={analysisId}
+        >
           <div className="flex flex-col items-center gap-4 py-8">
             <span className="text-3xl opacity-50">✦</span>
             <div className="text-center">
@@ -346,7 +462,7 @@ function AIAnalysisSection({
               <p className="font-body text-[13px] text-[#71717A]">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</p>
             </div>
           </div>
-        </SectionCard>
+        </CollapsibleSection>
       </div>
     );
   }
@@ -511,10 +627,10 @@ function RegisterOverlay() {
     <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
       <div className="flex flex-col items-center gap-3 rounded-xl border border-[#0F0F0F]/20 bg-card/90 px-6 py-5 shadow-lg">
         <Lock className="h-6 w-6 text-[#0F0F0F]" />
-        <span className="text-sm font-medium">Reg&iacute;strate gratis para ver esta secci&oacute;n</span>
+        <span className="text-sm font-medium">Regístrate gratis para ver esta sección</span>
         <a href="/register">
           <Button size="sm" className="gap-2">
-            Reg&iacute;strate gratis
+            Regístrate gratis
           </Button>
         </a>
       </div>
@@ -591,24 +707,21 @@ function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
   }
 
   return (
-    <Card className="border border-[#E6E6E2] bg-white rounded-2xl">
-      <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
-        <Sparkles className="h-8 w-8 text-[#C8323C]" />
-        <h3 className="font-heading text-xl font-bold text-[#0F0F0F]">Desbloquea Flujo, Patrimonio y Salida</h3>
-        <p className="max-w-md font-body text-sm text-[#71717A]">
-          Accede a la cascada de costos, flujo de caja proyectado, patrimonio neto
-          y escenarios de salida con horizonte ajustable de 1 a 20 años.
-        </p>
-        <Button size="lg" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock} disabled={loading}>
-          <Sparkles className="h-4 w-4" />
-          {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
-        </Button>
-        {error && <p className="text-sm text-[#C8323C]">{error}</p>}
-      </CardContent>
-    </Card>
+    <div>
+      <button
+        type="button"
+        onClick={handleUnlock}
+        disabled={loading}
+        className="bg-[#C8323C] text-white font-body text-sm font-bold px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.25)] hover:shadow-[0_4px_24px_rgba(200,50,60,0.35)] transition-shadow"
+      >
+        {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
+      </button>
+      {error && <p className="text-sm text-[#C8323C] mt-2">{error}</p>}
+    </div>
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SectionCard({ title, description, icon: Icon, children, gate = "none", accessLevel = "premium", analysisId }: {
   title: string;
   description?: string;
@@ -626,7 +739,7 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
         <CardHeader>
           <div className="flex items-center gap-2">
             <Icon className="h-5 w-5 text-franco-ink" />
-            <CardTitle className="font-heading font-bold text-lg text-franco-ink">{title}</CardTitle>
+            <CardTitle className="font-body font-bold text-lg text-franco-ink">{title}</CardTitle>
           </div>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </CardHeader>
@@ -669,8 +782,11 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
 
 export function PremiumResults({
   results, accessLevel = "free", analysisId, inputData, comuna,
-  score, freeYieldBruto, freeFlujo, freePrecioM2, resumenEjecutivo,
+  score, freeYieldBruto, freeFlujo, freePrecioM2,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  resumenEjecutivo: _resumenEjecutivo,
   ufValue, zoneData, aiAnalysisInitial,
+  nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium";
@@ -685,6 +801,11 @@ export function PremiumResults({
   ufValue?: number;
   zoneData?: MarketDataRow[] | null;
   aiAnalysisInitial?: AIAnalysis | unknown;
+  nombre?: string;
+  ciudad?: string;
+  createdAt?: string;
+  superficie?: number;
+  precioUF?: number;
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
@@ -838,6 +959,7 @@ export function PremiumResults({
     }).flujoNeto;
   }, [m, inputData, freeFlujo]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const flujoText = useMemo(() => {
     const f = flujoUnificado;
     const abs = Math.abs(f);
@@ -846,6 +968,21 @@ export function PremiumResults({
     if (abs <= 300000) return "Aporte mensual significativo de tu bolsillo";
     return "Aporte mensual elevado — evalúa bien";
   }, [flujoUnificado]);
+
+  const flujoBreakdown = useMemo(() => {
+    if (!m || !inputData) return null;
+    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
+    return calcFlujoDesglose({
+      arriendo: inputData.arriendo,
+      dividendo: m.dividendo,
+      ggcc: inputData.gastos,
+      contribuciones: inputData.contribuciones,
+      mantencion,
+      vacanciaMeses: inputData.vacanciaMeses ?? 1,
+      usaAdministrador: inputData.usaAdministrador,
+      comisionAdministrador: inputData.comisionAdministrador,
+    });
+  }, [m, inputData]);
 
   // Recalculate projections when plusvaliaRate changes
   const dynamicProjections = useMemo(() => {
@@ -1241,13 +1378,13 @@ export function PremiumResults({
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
       { key: "Dividendo", label: "Dividendo", color: "#C8323C" },
-      { key: "GGCC", label: "GGCC", color: "#DC2626" },
+      { key: "GGCC", label: "GGCC", color: "#C8323C" },
       { key: "Contribuciones", label: "Contribuciones", color: "#71717A" },
-      { key: "Mantencion", label: "Mantención", color: "#9f1239" },
+      { key: "Mantencion", label: "Mantención", color: "#C8323C" },
       { key: "Vacancia", label: "Vacancia", color: "#0F0F0F" },
-      { key: "Corretaje", label: "Corretaje", color: "#525252" },
-      { key: "Recambio", label: "Recambio", color: "#404040" },
-      { key: "Administracion", label: "Administración", color: "#a3a3a3" },
+      { key: "Corretaje", label: "Corretaje", color: "#71717A" },
+      { key: "Recambio", label: "Recambio", color: "#0F0F0F" },
+      { key: "Administracion", label: "Administración", color: "#71717A" },
     ];
     const dataRows = cashflowData.filter(r => r._x > 0);
     if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
@@ -1449,418 +1586,527 @@ export function PremiumResults({
 
   const mainContent = (
     <>
-      {/* ═══════ BLOQUE 1 — RESUMEN EJECUTIVO (SIN REGISTRO) ═══════ */}
-      <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-6">
-        {/* Currency Toggle */}
-        <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
+      {/* ═══════ BLOCK 1 — EXECUTIVE SUMMARY (NO REGISTRATION) ═══════ */}
+      <div className="bg-[#FAFAF8] rounded-2xl p-7 md:p-8 mb-5">
+        <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-start">
+          {/* Left: Score Circle */}
+          <div className="flex flex-col items-center">
+            <p className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.12em] mb-1">FRANCO SCORE</p>
+            <ScoreCircleInline score={score} />
+            <VerdictBadge score={score} />
+          </div>
 
-        {/* 3 Metric Boxes */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 mb-6">
-          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
-            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">RENT. BRUTA</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-[#0F0F0F]">{freeYieldBruto.toFixed(1)}%</div>
-            <InfoTooltip content="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor." />
-          </div>
-          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
-            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">FLUJO MENSUAL</div>
-            <div className={`mt-1 font-mono text-2xl font-bold ${flujoUnificado >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
-              {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
+          {/* Right: Info + Metrics + Siendo Franco */}
+          <div>
+            <h1 className="font-heading font-bold text-xl md:text-2xl text-[#0F0F0F]">{nombre}</h1>
+            <p className="font-body text-xs text-[#71717A] mt-1">
+              {ciudad && <>{ciudad} · </>}{superficie}m² · {fmtUF(precioUF)} ({fmt(freePrecioM2)}/m²) · Pie {inputData?.piePct ?? 20}%
+            </p>
+            {createdAt && (
+              <p className="font-body text-[10px] text-[#71717A]/60 mt-0.5">
+                Analizado el {new Date(createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+            )}
+
+            {/* Currency Toggle */}
+            <div className="mt-3">
+              <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
             </div>
-            <p className="mt-1 font-body text-xs text-[#71717A]">{flujoText}</p>
-          </div>
-          <div className="bg-white rounded-xl border border-[#E6E6E2] p-4">
-            <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">{currency === "UF" ? "UF/M²" : "PRECIO/M²"}</div>
-            <div className="mt-1 font-mono text-2xl font-bold text-[#0F0F0F]">
-              {currency === "UF" ? `UF ${freePrecioM2.toFixed(1)}` : fmtCLP(freePrecioM2 * UF_CLP)}
+
+            {/* 3 metrics grid */}
+            <div className="grid grid-cols-3 gap-2.5 mt-4">
+              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
+                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Flujo mensual</p>
+                <p className={`font-mono text-lg font-bold mt-1 ${flujoUnificado >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"}`}>
+                  {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
+                </p>
+              </div>
+              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
+                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Rent. neta</p>
+                <p className="font-mono text-lg font-bold mt-1 text-[#0F0F0F]">
+                  {m ? `${(m.rentabilidadNeta ?? 0).toFixed(1)}%` : `${freeYieldBruto.toFixed(1)}%`}
+                </p>
+              </div>
+              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
+                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Retorno 10a</p>
+                <p className="font-mono text-lg font-bold mt-1 text-[#0F0F0F]">
+                  {exit ? `${exit.multiplicadorCapital}x` : "—"}
+                </p>
+              </div>
+            </div>
+
+            {/* "Siendo franco:" box */}
+            <div className="mt-3.5 p-3 px-3.5 bg-white rounded-[10px] border-l-[3px] border-[#C8323C]">
+              <p className="font-body text-[13px] text-[#0F0F0F] leading-relaxed">
+                <strong>Siendo franco:</strong> {siendoFrancoText}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* "Siendo franco:" resumen */}
-        <div className="p-4 bg-white rounded-xl border border-[#E6E6E2]">
-          <span className="font-body font-bold text-[#0F0F0F]">Siendo franco: </span>
-          <span className="font-body text-sm text-[#0F0F0F]">{siendoFrancoText}</span>
-          {resumenEjecutivo && <p className="font-body text-xs text-[#71717A] mt-2">{resumenEjecutivo}</p>}
-        </div>
-
-        {/* Radar Chart */}
-        {results && m && (
-          <div className="mt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Target className="h-5 w-5 text-[#0F0F0F]" />
-              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Dimensiones del Score</h3>
-            </div>
-            <div className="mb-3 flex flex-wrap gap-2">
-              {radarData.map((d) => (
-                <div key={d.dimension} className="flex items-center gap-1 rounded-md bg-[#F0F0EC] px-2.5 py-1 text-xs font-body text-[#0F0F0F]">
-                  <span>{d.dimension}: <strong className="font-mono">{Math.round(d.value)}</strong></span>
-                  <InfoTooltip content={RADAR_TOOLTIPS[d.dimension] || ""} />
+        {/* Dimension bars */}
+        {results && (
+          <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-[#E6E6E2]">
+            {radarData.map((d) => {
+              const barColor = d.value < 40 ? "bg-[#C8323C]" : "bg-[#0F0F0F]";
+              return (
+                <div key={d.dimension} className="flex-1 min-w-[100px]">
+                  <div className="flex justify-between mb-0.5">
+                    <span className="font-body text-[9px] text-[#71717A]">{d.dimension}</span>
+                    <span className={`font-mono text-[10px] font-medium ${d.value < 40 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>{Math.round(d.value)}</span>
+                  </div>
+                  <div className="h-1 rounded-full bg-[#F0F0EC] overflow-hidden">
+                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${d.value}%` }} />
+                  </div>
                 </div>
-              ))}
-            </div>
-            <div className="mx-auto h-52 w-full max-w-xs overflow-hidden sm:h-72 sm:max-w-md">
-              <ResponsiveContainer>
-                <RadarChart data={radarData.map(d => ({ ...d, label: { "Rentabilidad": "Rent.", "Flujo Caja": "Flujo", "Plusvalía": "Plusv.", "Bajo Riesgo": "Riesgo", "Eficiencia": "Efic." }[d.dimension] || d.dimension }))}>
-                  <PolarGrid stroke="#E6E6E2" />
-                  <PolarAngleAxis dataKey="label" tick={{ fontSize: 11, fill: "#71717A" }} className="text-[11px] sm:text-xs" />
-                  <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} />
-                  <Radar name="Score" dataKey="value" stroke="rgba(15,15,15,0.5)" fill="rgba(15,15,15,0.12)" strokeWidth={2} dot={{ fill: "#0F0F0F", r: 3 }} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
+              );
+            })}
           </div>
         )}
 
-        {/* CTA for guests — after radar */}
+        {/* Scroll prompt */}
+        <button
+          type="button"
+          onClick={() => document.getElementById("bloque-detalle")?.scrollIntoView({ behavior: "smooth" })}
+          className="block mx-auto mt-4 font-body text-[11px] text-[#71717A] cursor-pointer hover:text-[#0F0F0F] transition-colors"
+        >
+          Profundizar en el análisis ↓
+        </button>
+
+        {/* Guest CTA */}
         {currentAccess === "guest" && (
           <div className="mt-6 p-6 bg-white rounded-xl border border-[#E6E6E2] text-center md:text-left md:flex md:items-center md:gap-4">
             <div className="flex-1">
               <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Tu Franco Score es {score}. ¿Quieres saber por qué?</h3>
-              <p className="font-body text-sm text-[#71717A] mt-1">Regístrate gratis para ver 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.</p>
+              <p className="font-body text-sm text-[#71717A] mt-1">Regístrate gratis para ver 8 métricas, sensibilidad, riesgos, comparación con zona y más.</p>
             </div>
-            <a href="/register" className="mt-4 md:mt-0">
-              <Button size="lg" className="shrink-0 gap-2 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90">Regístrate gratis</Button>
+            <a href="/register" className="mt-4 md:mt-0 inline-block">
+              <button type="button" className="bg-[#0F0F0F] text-white font-body text-sm font-semibold px-6 py-2.5 rounded-lg">Regístrate gratis</button>
             </a>
           </div>
         )}
       </div>
-      {/* end Bloque 1 */}
+      {/* end Block 1 */}
 
-      {/* ═══════ BLOQUE 2 — EL DETALLE (REGISTRADO GRATIS) ═══════ */}
+      {/* ═══════ BLOCK 2 — DETAIL (REGISTERED FREE) ═══════ */}
       {results && m && (
         <>
           {/* Separator */}
-          <div className="flex items-center gap-3 mb-6 mt-2">
+          <div id="bloque-detalle" className="flex items-center gap-3 mb-4 mt-2">
             <div className="h-px flex-1 bg-[#E6E6E2]" />
             <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
             <div className="h-px flex-1 bg-[#E6E6E2]" />
           </div>
 
-          {/* ===== c) GRATIS CON REGISTRO: 8 Métricas ===== */}
-          <SectionCard title="Métricas de Inversión" description="Los números clave. Pasa el cursor por cada métrica para saber qué significa." icon={BarChart3} gate="login" accessLevel={currentAccess}>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                { label: "Rentabilidad Bruta", value: `${(m.rentabilidadBruta ?? 0).toFixed(1)}%` },
-                { label: "Rentabilidad Neta", value: `${(m.rentabilidadNeta ?? 0).toFixed(1)}%` },
-                { label: "Rent. Operativa (CAP Rate)", value: `${(m.capRate ?? 0).toFixed(1)}%`, subtitle: "NOI / Precio — solo gastos operativos directos" },
-                { label: "Cash-on-Cash", value: `${(m.cashOnCash ?? 0).toFixed(1)}%` },
-                { label: "ROI Total", value: exit ? `${exit.multiplicadorCapital}x` : "\u2014" },
-                { label: "TIR", value: exit ? `${exit.tir.toFixed(1)}%` : "\u2014" },
-                { label: "Payback Pie", value: m.mesesPaybackPie < 999 ? `${m.mesesPaybackPie} meses` : "N/A" },
-                { label: currency === "UF" ? "UF/m\u00B2" : "CLP/m\u00B2", value: currency === "UF" ? `UF ${m.precioM2.toFixed(1)}` : fmtCLP(m.precioM2 * UF_CLP) },
-              ].map(({ label, value, subtitle }) => (
-                <div key={label} className="rounded-lg border border-franco-border bg-white p-3">
-                  <div className="flex items-center gap-1 font-body text-xs text-franco-muted">
-                    {label}
-                    {METRIC_TOOLTIPS[label] && <InfoTooltip content={METRIC_TOOLTIPS[label]} />}
-                  </div>
-                  <div className="font-mono text-sm font-medium text-franco-ink">{value}</div>
-                  {subtitle && <div className="mt-0.5 text-[10px] text-muted-foreground/70">{subtitle}</div>}
-                </div>
-              ))}
+          {/* Login gate if guest */}
+          {currentAccess === "guest" && (
+            <div className="bg-[#FAFAF8] rounded-xl border border-[#E6E6E2] text-center py-10 px-5 mb-5">
+              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Regístrate para ver el detalle</h3>
+              <p className="font-body text-[13px] text-[#71717A] mt-1.5 mb-4">8 métricas, sensibilidad, comparación con la zona y más. Gratis.</p>
+              <a href="/register">
+                <button type="button" className="bg-[#0F0F0F] text-white font-body text-[13px] font-semibold px-6 py-2.5 rounded-lg">Registrarme gratis →</button>
+              </a>
             </div>
-          </SectionCard>
+          )}
 
-          {/* ===== d) GRATIS CON REGISTRO: Sensibilidad ===== */}
-          <SectionCard title="Análisis de Sensibilidad" description="¿Cómo cambia tu inversión según el escenario de mercado?" icon={Shield} gate="login" accessLevel={currentAccess}>
-            {sensScenarios && inputData && (
-              <>
-                {/* Horizonte slider */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-sm font-semibold">Horizonte de venta</h4>
-                    <span className="font-mono text-sm font-bold text-[#0F0F0F]">{sensHorizon} años</span>
+          {/* Collapsible sections if logged in */}
+          {currentAccess !== "guest" && (
+            <>
+              {/* Section 1: Flujo desglose */}
+              <CollapsibleSection
+                title="¿Cuánto sale de tu bolsillo cada mes?"
+                subtitle="Desglose real: arriendo vs todos los costos"
+                helpText="El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."
+                defaultOpen
+              >
+                {flujoBreakdown && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
+                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Arriendo</p>
+                      <p className="font-mono text-lg font-bold text-[#0F0F0F] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
+                    </div>
+                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
+                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Dividendo</p>
+                      <p className="font-mono text-lg font-bold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
+                    </div>
+                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
+                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Gastos</p>
+                      <p className="font-mono text-lg font-bold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
+                    </div>
+                    <div className="bg-white rounded-[10px] p-3 text-center border-2 border-[#C8323C]">
+                      <p className="font-body text-[9px] text-[#C8323C] uppercase tracking-wide font-semibold">Flujo neto</p>
+                      <p className={`font-mono text-lg font-bold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
+                        {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
+                      </p>
+                    </div>
                   </div>
-                  <input
-                    type="range" min={3} max={20} step={1} value={sensHorizon}
-                    onChange={(e) => setSensHorizon(Number(e.target.value))}
-                    className="w-full accent-[#0F0F0F] h-2"
-                  />
-                  <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                    <span>3 años</span><span>20 años</span>
-                  </div>
+                )}
+              </CollapsibleSection>
+
+              {/* Section 2: Rentabilidad */}
+              <CollapsibleSection
+                title="¿Qué tan buena es la rentabilidad?"
+                subtitle="3 formas de medirla — tu corredor solo te muestra la primera"
+                helpText="Hay 3 formas de medir rentabilidad. La bruta no descuenta nada. La operativa descuenta gastos operacionales. La neta descuenta TODO. La que importa es la neta."
+              >
+                <div>
+                  <MetricRow label="Rentabilidad Bruta" value={`${(m.rentabilidadBruta ?? 0).toFixed(1)}%`} tooltip="Arriendo × 12 / Precio. No descuenta ningún gasto. Es el número bonito que te muestra tu corredor." />
+                  <MetricRow label="Rentabilidad Operativa (CAP Rate)" value={`${(m.capRate ?? 0).toFixed(1)}%`} tooltip="Descuenta GGCC, contribuciones y mantención. Más real que la bruta." />
+                  <MetricRow label="Rentabilidad Neta" value={`${(m.rentabilidadNeta ?? 0).toFixed(1)}%`} color="text-[#C8323C]" tooltip="Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. Esta es la real." />
+                  <MetricRow label="Cash-on-Cash" value={`${(m.cashOnCash ?? 0).toFixed(1)}%`} color={(m.cashOnCash ?? 0) < 0 ? "text-[#C8323C]" : undefined} tooltip="Cuánto te renta el pie que pusiste. Negativo = estás poniendo plata extra cada mes." />
+                  <MetricRow label="TIR (10 años)" value={exit ? `${exit.tir.toFixed(1)}%` : "—"} tooltip="Tasa Interna de Retorno considerando plusvalía y amortización en 10 años." />
+                  <MetricRow label="ROI (10 años)" value={exit ? `${exit.multiplicadorCapital}x` : "—"} tooltip="Cuántas veces multiplicas tu inversión total en 10 años." />
                 </div>
+              </CollapsibleSection>
 
-                {/* 3 scenario cards */}
-                <div className="grid gap-3 sm:grid-cols-3">
-                  {sensScenarios.map((s) => (
-                    <div key={s.key} className={`rounded-xl border border-[#E6E6E2] ${s.bgClass} p-4 ${s.key === "pesimista" ? "border-l-[3px] border-l-[#C8323C]" : s.key === "base" ? "border-l-[3px] border-l-[#0F0F0F]" : "border-l-[3px] border-l-[#0F0F0F]"}`}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-base">{s.icon}</span>
-                        <div className={`text-sm font-semibold ${s.labelClass}`}>{s.sub}</div>
-                      </div>
-
-                      {/* Flujo mensual año 1 */}
-                      <div className="mb-2">
-                        <div className="text-[10px] text-muted-foreground">Flujo mensual (año 1)</div>
-                        <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
-                          {fmt(s.flujoMensual)}<span className="text-xs font-normal text-muted-foreground">/mes</span>
+              {/* Section 3: Zone comparison */}
+              <CollapsibleSection
+                title="¿Cómo se compara con la zona?"
+                subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
+              >
+                {(() => {
+                  if (!zoneData || zoneData.length === 0) {
+                    return <p className="text-sm text-[#71717A]">Datos de mercado no disponibles para esta comuna.</p>;
+                  }
+                  const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+                  const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+                  const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
+                  const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0 ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) : 50;
+                  const yieldZona = avgM2Zona > 0 && avgSuperficie > 0 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100 : (m.rentabilidadBruta ?? 0) * 0.9;
+                  const items = [
+                    { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
+                    { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
+                    { label: "Rent. Bruta (%)", tuyo: m.rentabilidadBruta, zona: Math.round(yieldZona * 10) / 10 },
+                  ];
+                  return (
+                    <div className="space-y-4">
+                      <p className="text-xs text-[#71717A]">Basado en {totalPubs} publicaciones activas en {comuna}.</p>
+                      {items.map(({ label, tuyo, zona }) => {
+                        const maxVal = Math.max(tuyo, zona) || 1;
+                        const fmtVal = (v: number) => label.includes("Rent.") ? v.toFixed(1) + "%" : label.includes("Arriendo") ? fmt(v) : currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v);
+                        return (
+                          <div key={label}>
+                            <div className="mb-1 text-xs text-[#71717A]">{label}</div>
+                            <div className="mb-1 flex items-center gap-3">
+                              <span className="w-20 text-xs">Tu propiedad</span>
+                              <div className="h-4 flex-1 rounded-full bg-[#E6E6E2]">
+                                <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
+                              </div>
+                              <span className="w-16 text-right font-mono text-xs font-medium text-[#0F0F0F]">{fmtVal(tuyo)}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="w-20 text-xs">Promedio zona</span>
+                              <div className="h-4 flex-1 rounded-full bg-[#F0F0EC]">
+                                <div className="h-full rounded-full bg-[#E6E6E2]" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
+                              </div>
+                              <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Map */}
+                      <div className="mt-4">
+                        <div className="mb-2 flex items-center gap-2 text-sm text-[#71717A]">
+                          <MapPin className="h-4 w-4" />
+                          <span>Ubicación: {mapQuery}</span>
+                        </div>
+                        <div className="overflow-hidden rounded-xl border border-[#E6E6E2]">
+                          <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
                         </div>
                       </div>
+                    </div>
+                  );
+                })()}
+              </CollapsibleSection>
 
-                      {/* Bolsillo acumulado */}
-                      <div className="mb-3">
-                        <div className="text-[10px] text-muted-foreground">Bolsillo acumulado ({sensHorizon} años)</div>
-                        <div className={`font-mono text-sm font-semibold ${s.bolsilloTotal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
-                          {fmt(s.bolsilloTotal)}
-                        </div>
-                      </div>
-
-                      <hr className="border-border/30 mb-3" />
-
-                      {/* Resultado venta */}
-                      <div className="space-y-1.5 text-[11px]">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Ganancia venta</span>
-                          <span className={`font-medium ${s.gananciaBruta >= 0 ? "" : "text-[#C8323C]"}`}>{fmt(s.gananciaBruta)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Pie invertido</span>
-                          <span className="font-medium">{fmt(s.pieCLP)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Utilidad neta</span>
-                          <span className={`font-semibold ${s.utilidadNeta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(s.utilidadNeta)}</span>
-                        </div>
-                        <div className="flex justify-between items-center pt-0.5">
-                          <span className="text-muted-foreground">Retorno</span>
-                          <span className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{s.retorno}x</span>
-                        </div>
-                      </div>
-
-                      {/* Supuestos */}
-                      <div className="mt-3 border-t border-dashed border-border/40 pt-2 text-[11px] leading-relaxed text-franco-muted">
-                        <div>Tasa {s.scenTasa.toFixed(2)}% · Arr. {fmtM(s.scenArriendo)}</div>
-                        <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
-                      </div>
+              {/* Section 4: Risks */}
+              <CollapsibleSection
+                title="¿Cuáles son los riesgos?"
+                subtitle="Qué puede salir mal y cuánto te afecta"
+              >
+                <div className="space-y-2">
+                  <div className={`bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] ${results.breakEvenTasa !== -1 && inputData && results.breakEvenTasa > inputData.tasaInteres ? "border-l-[#E6E6E2]" : "border-l-[#C8323C]"}`}>
+                    <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">Break-even tasa: <span className="font-mono">{results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}</span></p>
+                    <p className="font-body text-[12px] text-[#71717A] mt-0.5">
+                      {results.breakEvenTasa === -1
+                        ? "Incluso con tasa 0%, el flujo sería negativo."
+                        : inputData && results.breakEvenTasa < inputData.tasaInteres
+                          ? `Para flujo positivo necesitas tasa ${results.breakEvenTasa.toFixed(2)}%, bajo la actual (${inputData.tasaInteres.toFixed(2)}%).`
+                          : `Si la tasa sube sobre ${results.breakEvenTasa.toFixed(2)}%, pasas a flujo negativo.`}
+                    </p>
+                  </div>
+                  <div className="bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] border-l-[#71717A]">
+                    <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">Precio máximo: {currency === "UF" ? fmtUF(results.valorMaximoCompra) : fmtCLP(results.valorMaximoCompra * UF_CLP)}</p>
+                    <p className="font-body text-[12px] text-[#71717A] mt-0.5">Para flujo positivo con estos datos, no deberías pagar más de este precio.</p>
+                  </div>
+                  {results.contras && results.contras.map((contra, i) => (
+                    <div key={i} className="bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] border-l-[#C8323C]">
+                      <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">{contra}</p>
                     </div>
                   ))}
                 </div>
-              </>
-            )}
-          </SectionCard>
+              </CollapsibleSection>
 
-          {/* ===== e) GRATIS CON REGISTRO: Puntos Críticos ===== */}
-          <SectionCard title="Puntos Críticos" description="Los límites que debes conocer antes de decidir." icon={Target} gate="login" accessLevel={currentAccess}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border border-franco-border bg-white p-4">
-                <div className="text-xs text-muted-foreground">Break-even tasa de interés</div>
-                <div className="mt-1 font-mono text-2xl font-bold">
-                  {results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {results.breakEvenTasa === -1
-                    ? "Incluso con tasa 0%, el flujo sería negativo. Los gastos operativos superan el arriendo."
-                    : inputData && results.breakEvenTasa < inputData.tasaInteres
-                      ? `Para tener flujo positivo necesitarías una tasa de ${results.breakEvenTasa.toFixed(2)}%, muy por debajo de la actual (${inputData.tasaInteres.toFixed(2)}%). El retorno viene por la plusvalía, no por el flujo mensual.`
-                      : `Tu flujo es positivo. Si la tasa sube por encima de ${results.breakEvenTasa.toFixed(2)}%, pasarías a flujo negativo. Margen de ${inputData ? (results.breakEvenTasa - inputData.tasaInteres).toFixed(2) : "—"} puntos porcentuales.`}
-                </p>
-              </div>
-              <div className="rounded-lg border border-franco-border bg-white p-4">
-                <div className="text-xs text-muted-foreground">Precio máximo de compra</div>
-                <div className="mt-1 font-mono text-2xl font-bold">
-                  {currency === "UF"
-                    ? fmtUF(results.valorMaximoCompra)
-                    : fmtCLP(results.valorMaximoCompra * UF_CLP)}
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Para tener flujo positivo con estos datos, no deberías pagar más de este precio.
-                </p>
-              </div>
-            </div>
-          </SectionCard>
-
-          {/* ===== f) GRATIS CON REGISTRO: Comparación zona + Mapa ===== */}
-          <SectionCard title="Comparación con Zona" icon={Building2} gate="login" accessLevel={currentAccess}>
-            {(() => {
-              if (!zoneData || zoneData.length === 0) {
-                return (
-                  <p className="text-sm text-muted-foreground">
-                    Datos de mercado no disponibles para esta comuna.
-                  </p>
-                );
-              }
-
-              const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
-              const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
-              const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
-
-              const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0
-                ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045)
-                : 50;
-              const yieldZona = avgM2Zona > 0 && avgSuperficie > 0
-                ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100
-                : (m.rentabilidadBruta ?? 0) * 0.9;
-
-              const items = [
-                { label: currency === "UF" ? "Precio/m\u00B2 (UF)" : "Precio/m\u00B2 (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
-                { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
-                { label: "Rent. Bruta (%)", tuyo: m.rentabilidadBruta, zona: Math.round(yieldZona * 10) / 10 },
-              ];
-              return (
-                <div className="space-y-4">
-                  <p className="text-xs text-muted-foreground">
-                    Basado en {totalPubs} publicaciones activas en {comuna}.
-                  </p>
-                  {items.map(({ label, tuyo, zona }) => {
-                    const maxVal = Math.max(tuyo, zona) || 1;
-                    const fmtVal = (v: number) =>
-                      label.includes("Rent.") ? v.toFixed(1) + "%"
-                      : label.includes("Arriendo") ? fmt(v)
-                      : currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v);
-                    return (
-                      <div key={label}>
-                        <div className="mb-1 text-xs text-muted-foreground">{label}</div>
-                        <div className="mb-1 flex items-center gap-3">
-                          <span className="w-20 text-xs">Tu propiedad</span>
-                          <div className="h-4 flex-1 rounded-full bg-[#E6E6E2]">
-                            <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
-                          </div>
-                          <span className="w-16 text-right font-mono text-xs font-medium text-[#0F0F0F]">{fmtVal(tuyo)}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="w-20 text-xs">Promedio zona</span>
-                          <div className="h-4 flex-1 rounded-full bg-[#F0F0EC]">
-                            <div className="h-full rounded-full bg-[#E6E6E2]" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
-                          </div>
-                          <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
-                        </div>
+              {/* Section 5: Sensitivity */}
+              <CollapsibleSection
+                title="¿Qué pasa si cambian las condiciones?"
+                subtitle="3 escenarios: pesimista, base y optimista"
+              >
+                {sensScenarios && inputData && (
+                  <>
+                    {/* Horizonte slider */}
+                    <div className="mb-5">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className="text-sm font-semibold">Horizonte de venta</h4>
+                        <span className="font-mono text-sm font-bold text-[#0F0F0F]">{sensHorizon} años</span>
                       </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-            <div className="mt-6">
-              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <MapPin className="h-4 w-4" />
-                <span>Ubicación: {mapQuery}</span>
-              </div>
-              <div className="overflow-hidden rounded-xl border border-[#E6E6E2]">
-                <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
-              </div>
-            </div>
-          </SectionCard>
+                      <input type="range" min={3} max={20} step={1} value={sensHorizon} onChange={(e) => setSensHorizon(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-2" />
+                      <div className="flex justify-between text-[10px] text-[#71717A] mt-0.5"><span>3 años</span><span>20 años</span></div>
+                    </div>
+                    {/* 3 scenario cards */}
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                      {sensScenarios.map((s) => (
+                        <div key={s.key} className={`rounded-xl border border-[#E6E6E2] ${s.bgClass} p-4 ${s.key === "pesimista" ? "border-l-4 border-l-[#C8323C]" : s.key === "base" ? "border-l-4 border-l-[#0F0F0F] bg-[#FAFAF8]" : "border-l-4 border-l-[#0F0F0F]"}`}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="text-base">{s.icon}</span>
+                            <div className={`text-sm font-semibold ${s.labelClass}`}>{s.sub}</div>
+                          </div>
+                          <div className="mb-2">
+                            <div className="text-[10px] text-[#71717A]">Flujo mensual (año 1)</div>
+                            <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
+                              {fmt(s.flujoMensual)}<span className="text-xs font-normal text-[#71717A]">/mes</span>
+                            </div>
+                          </div>
+                          <div className="mb-3">
+                            <div className="text-[10px] text-[#71717A]">Retorno ({sensHorizon} años)</div>
+                            <div className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{s.retorno}x</div>
+                          </div>
+                          <div className="border-t border-dashed border-[#E6E6E2] pt-2 text-[11px] leading-relaxed text-[#71717A]">
+                            <div>Tasa {s.scenTasa.toFixed(2)}% · Arr. {fmtM(s.scenArriendo)}</div>
+                            <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CollapsibleSection>
+            </>
+          )}
 
-          {/* Paywall CTA between Bloque 2 and Bloque 3 */}
+          {/* Paywall CTA between Block 2 and Block 3 */}
           {currentAccess === "free" && analysisId && (
-            <div className="mt-8 text-center py-10 border-t border-[#E6E6E2] mb-8">
-              <div className="font-heading font-bold text-lg text-[#0F0F0F] mb-2">¿Quieres el análisis completo?</div>
-              <div className="font-body text-sm text-[#71717A] mb-5 max-w-md mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</div>
+            <div className="text-center py-8 mt-4 border-t border-[#E6E6E2] mb-5">
+              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">¿Quieres el análisis completo?</h3>
+              <p className="font-body text-[13px] text-[#71717A] mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
               <BottomPaywallCTA analysisId={analysisId} />
             </div>
           )}
 
-          {/* ═══════ BLOQUE 3 — PROYECCIONES (PREMIUM) ═══════ */}
+          {/* ═══════ BLOCK 3 — PROJECTIONS (PREMIUM) ═══════ */}
           {/* Separator */}
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4">
             <div className="h-px flex-1 bg-[#E6E6E2]" />
             <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">PROYECCIONES</span>
             <div className="h-px flex-1 bg-[#E6E6E2]" />
           </div>
 
-          <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-6">
-          {/* ===== PREMIUM: g) Cascada de Costos Mensual ===== */}
-          <SectionCard title="Cascada de Costos Mensual" description="Un mes típico estabilizado: así se reparte tu arriendo." icon={DollarSign} gate="premium" accessLevel={currentAccess} analysisId={analysisId}>
-            <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
-                  <RechartsTooltip
-                    content={({ active, payload, label: wfLabel }) => {
-                      if (!active || !payload || payload.length === 0) return null;
-                      const item = waterfallData.find((d) => d.name === wfLabel);
-                      if (!item) return null;
-                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
-                      const displayName = fullNames[item.name] || item.name;
-                      return (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}>
-                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
-                          </div>
-                          <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
-                    {waterfallData.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={entry.fill}
-                        stroke={entry.isResult ? entry.fill : "none"}
-                        strokeWidth={entry.isResult ? 3 : 0}
-                        fillOpacity={entry.isResult ? 1 : 0.85}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Resultado</span>
-            </div>
-            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
-            {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
-                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
-              </div>
-            )}
-          </SectionCard>
-
-          {/* ===== PREMIUM: h) Flujo, Patrimonio y Salida ===== */}
-          <div className="relative mb-8">
-            <Card className="border border-[#E6E6E2] rounded-2xl bg-white shadow-sm">
-              <CardHeader>
+          <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-5">
+          {/* Horizon + growth controls (only show for premium) */}
+          {currentAccess === "premium" && (
+            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div>
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5 text-[#0F0F0F]" />
-                  <CardTitle className="font-heading font-bold text-lg text-[#0F0F0F]">Flujo, Patrimonio y Salida</CardTitle>
+                  <span className="text-xs text-[#71717A]">Horizonte:</span>
+                  <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
                 </div>
-                <p className="text-sm text-muted-foreground">Ajusta el horizonte para ver cómo evoluciona tu inversión en el tiempo.</p>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Horizonte:</span>
-                      <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
-                    </div>
-                    <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Plusvalía anual:</span>
-                      <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
-                    </div>
-                    <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico: 3-5% anual</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Crecimiento arriendo:</span>
-                      <span className="text-sm font-medium">{arriendoGrowth.toFixed(1)}%/año</span>
-                    </div>
-                    <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Crecimiento gastos:</span>
-                      <span className="text-sm font-medium">{costGrowth.toFixed(1)}%/año</span>
-                    </div>
-                    <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">Aplica a GGCC, contribuciones y mantención</p>
-                  </div>
+                <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
+                <p className="mt-0.5 text-[10px] text-[#71717A]">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#71717A]">Plusvalía anual:</span>
+                  <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                {/* Flujo de Caja */}
+                <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
+                <p className="mt-0.5 text-[10px] text-[#71717A]">Promedio histórico: 3-5% anual</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#71717A]">Crecimiento arriendo:</span>
+                  <span className="text-sm font-medium">{arriendoGrowth.toFixed(1)}%/año</span>
+                </div>
+                <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
+                <p className="mt-0.5 text-[10px] text-[#71717A]">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#71717A]">Crecimiento gastos:</span>
+                  <span className="text-sm font-medium">{costGrowth.toFixed(1)}%/año</span>
+                </div>
+                <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
+                <p className="mt-0.5 text-[10px] text-[#71717A]">Aplica a GGCC, contribuciones y mantención</p>
+              </div>
+            </div>
+          )}
+
+          {/* Patrimonio projection */}
+          <CollapsibleSection
+            title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
+            subtitle="Proyección de patrimonio con plusvalía y amortización"
+            defaultOpen
+            locked={currentAccess !== "premium"}
+            analysisId={analysisId}
+          >
+            {/* Patrimonio chart + breakdown */}
+            {projData.length > 0 && (
+              <>
                 <div>
+                  <div className="mb-1 flex items-center gap-2">
+                    <h4 className="text-sm font-semibold">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
+                    {horizonBeforeDelivery && (
+                      <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
+                        Período pre-entrega: tu patrimonio crece con los pagos del pie
+                      </span>
+                    )}
+                  </div>
+                  <p className="mb-3 text-xs text-[#71717A]">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +{arriendoGrowth.toFixed(1)}%/año.</p>
+                  <div className="h-72">
+                    <ResponsiveContainer>
+                      <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
+                        <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload || payload.length === 0) return null;
+                            const row = payload[0]?.payload as PatrimonioRow | undefined;
+                            if (!row) return null;
+                            const pre = row.isPreEntrega;
+                            return (
+                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                                <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
+                                {pre ? (
+                                  <>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div style={{ color: "#71717A" }}>Deuda: <span style={{ color: "#71717A" }}>$0 (crédito aún no comienza)</span></div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.valorPropiedad)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
+                                  </>
+                                )}
+                                <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#0F0F0F" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#0F0F0F" fillOpacity={0.06} stroke="#0F0F0F" strokeWidth={2} />
+                        <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.06} stroke="none" />
+                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                        <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
+                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#0F0F0F" strokeWidth={3} dot={{ r: 3, fill: "#0F0F0F" }} name="Patrimonio neto" />
+                        {mesesPreEntregaTop > 0 && (
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
+                        )}
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie pagado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.4 }} />Capital amortizado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Valor propiedad</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.4 }} />Deuda</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 3 }} />Patrimonio neto</span>
+                  </div>
+                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+                  {/* Desglose de patrimonio */}
+                  {(() => {
+                    const lastProj = dynamicProjections[horizonYears - 1];
+                    if (!lastProj || !m || !inputData) return null;
+                    const precioOriginal = inputData.precio * UF_CLP;
+                    const creditoOriginal = precioOriginal * (1 - inputData.piePct / 100);
+                    const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
+                    const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
+                    const flujoAcum = flujoAcumuladoReal;
+                    const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
+                    const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
+                    return (
+                      <>
+                      <div className="mt-4 rounded-lg border border-border/50 bg-secondary/30">
+                        <div className="space-y-0 divide-y divide-border/30 sm:hidden">
+                          {[
+                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
+                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#16A34A]" },
+                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#16A34A]" },
+                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#0F0F0F]", bold: true },
+                          ].map(({ label, value, color, bold }) => (
+                            <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
+                              <div className="text-[11px] text-muted-foreground">{label}</div>
+                              <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <table className="hidden w-full text-sm sm:table">
+                          <tbody>
+                            <tr className="border-b border-border/30">
+                              <td className="py-2 px-4 text-muted-foreground">Tu inversión inicial (pie)</td>
+                              <td className="py-2 px-4 text-right font-medium">{fmt(m.pieCLP)}</td>
+                            </tr>
+                            <tr className="border-b border-border/30">
+                              <td className="py-2 px-4 text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
+                              <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(plusvaliaGanancia)}</td>
+                            </tr>
+                            <tr className="border-b border-border/30">
+                              <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
+                              <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(capitalAmortizado)}</td>
+                            </tr>
+                            <tr className="border-t border-border/50">
+                              <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
+                              <td className="py-2 px-4 text-right font-bold text-[#0F0F0F]">{fmt(patrimonioTotal)}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= valor propiedad − deuda restante</p>
+                      </div>
+                      <div className="mt-3 rounded-lg border border-border/50 bg-secondary/20">
+                        <div className="px-3 py-2 sm:px-4">
+                          <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                            <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
+                          </div>
+                          <div className="mt-1.5 border-t border-border/30 pt-1.5">
+                            <p className="text-[11px] text-muted-foreground">
+                              Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      </>
+                    );
+                  })()}
+                </div>
+              </>
+            )}
+          </CollapsibleSection>
+
+          {/* Cashflow year by year */}
+          <CollapsibleSection
+            title="¿Cómo es el flujo año a año?"
+            subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
+            locked={currentAccess !== "premium"}
+            analysisId={analysisId}
+          >
+            <div>
                   <h4 className="mb-1 text-sm font-semibold">
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
@@ -1935,263 +2181,165 @@ export function PremiumResults({
                     </div>
                   </div>
                   {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: '#9ca3af' }}>Toca las barras para ver el detalle</div>}
+            </div>
+          </CollapsibleSection>
+
+          {/* Waterfall chart */}
+          <CollapsibleSection
+            title="¿Cuáles son todos los costos?"
+            subtitle="Cascada de costos mensuales — cada peso que entra y sale"
+            locked={currentAccess !== "premium"}
+            analysisId={analysisId}
+          >
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip
+                    content={({ active, payload, label: wfLabel }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const item = waterfallData.find((d) => d.name === wfLabel);
+                      if (!item) return null;
+                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
+                      const displayName = fullNames[item.name] || item.name;
+                      return (
+                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
+                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
+                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}>
+                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
+                          </div>
+                          <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1.5} />
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
+                    {waterfallData.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={entry.fill}
+                        stroke={entry.isResult ? entry.fill : "none"}
+                        strokeWidth={entry.isResult ? 3 : 0}
+                        fillOpacity={entry.isResult ? 1 : 0.85}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Egreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Resultado</span>
+            </div>
+            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+            {m && (
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
+                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
+              </div>
+            )}
+          </CollapsibleSection>
+
+          {/* Exit scenarios */}
+          <CollapsibleSection
+            title="¿Qué pasa si vendes o refinancias?"
+            subtitle="Escenarios de salida: venta y refinanciamiento"
+            locked={currentAccess !== "premium"}
+            analysisId={analysisId}
+          >
+            {horizonBeforeDelivery ? (
+              <div>
+                <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
+                  <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
+                  <div>
+                    <p className="text-sm font-medium">No puedes vender ni refinanciar antes de la entrega</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
+                    </p>
+                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#0F0F0F] hover:underline">
+                      Ver desde la entrega →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : exit && refi ? (
+              <div>
+                <p className="mb-3 text-xs text-muted-foreground">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
+                <div className="mb-4 flex gap-2">
+                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#0F0F0F] text-white" : "bg-transparent border border-[#E6E6E2] text-[#71717A] hover:text-[#0F0F0F] hover:border-[#0F0F0F]"}`}>Venta</button>
+                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#0F0F0F] text-white" : "bg-transparent border border-[#E6E6E2] text-[#71717A] hover:text-[#0F0F0F] hover:border-[#0F0F0F]"}`}>Refinanciamiento</button>
                 </div>
 
-                <hr className="border-border/30" />
-
-                {/* Proyección de Patrimonio */}
-                {projData.length > 0 && (
-                  <>
-                    <div>
-                      <div className="mb-1 flex items-center gap-2">
-                        <h4 className="text-sm font-semibold">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
-                        {horizonBeforeDelivery && (
-                          <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
-                            Período pre-entrega: tu patrimonio crece con los pagos del pie
-                          </span>
-                        )}
+                {exitMode === "venta" ? (
+                  <div className="space-y-3 text-sm">
+                    <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+                      Si vendieras {exit.anios === 1 ? "al año 1" : `a los ${exit.anios} años`} al valor proyectado (plusvalía {plusvaliaRate.toFixed(1)}%/año), ¿cuánto ganarías después de pagar el crédito y la comisión?
+                    </p>
+                    {[
+                      { label: "Valor venta estimado", value: fmt(exit.valorVenta) },
+                      { label: "Saldo crédito restante", value: fmt(exit.saldoCredito), negative: true },
+                      { label: "Comisión venta (2%)", value: fmt(exit.comisionVenta), negative: true },
+                      { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), positive: true },
+                      { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), positive: exit.flujoAcumulado > 0 },
+                      { label: "Retorno total", value: fmt(exit.retornoTotal), bold: true, positive: true },
+                      { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, bold: true },
+                      { label: "TIR", value: `${exit.tir.toFixed(1)}%`, bold: true },
+                    ].map(({ label, value, negative, positive, bold }) => (
+                      <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className={negative ? "text-[#C8323C]" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
                       </div>
-                      <p className="mb-3 text-xs text-muted-foreground">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +{arriendoGrowth.toFixed(1)}%/año.</p>
-                      <div className="h-72">
-                        <ResponsiveContainer>
-                          <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
-                            {/* Eje categórico visible: barras uniformes */}
-                            <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
-                            {/* Eje numérico oculto: posiciona la línea de entrega */}
-                            <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                            <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
-                            <RechartsTooltip
-                              content={({ active, payload }) => {
-                                if (!active || !payload || payload.length === 0) return null;
-                                const row = payload[0]?.payload as PatrimonioRow | undefined;
-                                if (!row) return null;
-                                const pre = row.isPreEntrega;
-                                return (
-                                  <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                    <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
-                                    {pre ? (
-                                      <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie acumulado: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
-                                        <div style={{ color: "#71717A" }}>Deuda: <span style={{ color: "#71717A" }}>$0 (crédito aún no comienza)</span></div>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.valorPropiedad)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie + amortización: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                        <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
-                                      </>
-                                    )}
-                                    <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#0F0F0F" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
-                                  </div>
-                                );
-                              }}
-                            />
-                            {/* Área valor propiedad */}
-                            <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#0F0F0F" fillOpacity={0.08} stroke="#0F0F0F" strokeWidth={2} />
-                            {/* Área deuda */}
-                            <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.08} stroke="none" />
-                            {/* Barras apiladas: pie + amortización */}
-                            <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#71717A" name="Pie pagado" radius={[0, 0, 0, 0]} />
-                            <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#0F0F0F" name="Capital amortizado" radius={[0, 0, 0, 0]} />
-                            {/* Plusvalía */}
-                            <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.25} stroke="#0F0F0F" strokeOpacity={0.4} name="Plusvalía" radius={[4, 4, 0, 0]} />
-                            {/* Línea: deuda */}
-                            <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
-                            {/* Línea principal: patrimonio neto */}
-                            <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#0F0F0F" strokeWidth={3} dot={{ r: 3, fill: "#0F0F0F" }} name="Patrimonio neto" />
-                            {/* Línea vertical de entrega */}
-                            {mesesPreEntregaTop > 0 && (
-                              <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
-                            )}
-                          </ComposedChart>
-                        </ResponsiveContainer>
-                      </div>
-                      {/* Leyenda manual */}
-                      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#71717A" }} />Pie pagado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Capital amortizado</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Valor propiedad</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.4 }} />Deuda</span>
-                        <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 3 }} />Patrimonio neto</span>
-                      </div>
-                      {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
-                      {/* Desglose de patrimonio */}
-                      {(() => {
-                        const lastProj = dynamicProjections[horizonYears - 1];
-                        if (!lastProj || !m || !inputData) return null;
-                        const precioOriginal = inputData.precio * UF_CLP;
-                        const creditoOriginal = precioOriginal * (1 - inputData.piePct / 100);
-                        const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
-                        const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
-                        const flujoAcum = flujoAcumuladoReal;
-                        const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
-                        const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
-                        return (
-                          <>
-                          <div className="mt-4 rounded-lg border border-border/50 bg-secondary/30">
-                            {/* Mobile: stacked list */}
-                            <div className="space-y-0 divide-y divide-border/30 sm:hidden">
-                              {[
-                                { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
-                                { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#16A34A]" },
-                                { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#16A34A]" },
-                                { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#0F0F0F]", bold: true },
-                              ].map(({ label, value, color, bold }) => (
-                                <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
-                                  <div className="text-[11px] text-muted-foreground">{label}</div>
-                                  <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
-                                </div>
-                              ))}
-                            </div>
-                            {/* Desktop: table */}
-                            <table className="hidden w-full text-sm sm:table">
-                              <tbody>
-                                <tr className="border-b border-border/30">
-                                  <td className="py-2 px-4 text-muted-foreground">Tu inversión inicial (pie)</td>
-                                  <td className="py-2 px-4 text-right font-medium">{fmt(m.pieCLP)}</td>
-                                </tr>
-                                <tr className="border-b border-border/30">
-                                  <td className="py-2 px-4 text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
-                                  <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(plusvaliaGanancia)}</td>
-                                </tr>
-                                <tr className="border-b border-border/30">
-                                  <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
-                                  <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(capitalAmortizado)}</td>
-                                </tr>
-                                <tr className="border-t border-border/50">
-                                  <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
-                                  <td className="py-2 px-4 text-right font-bold text-[#0F0F0F]">{fmt(patrimonioTotal)}</td>
-                                </tr>
-                              </tbody>
-                            </table>
-                            <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= valor propiedad − deuda restante</p>
-                          </div>
-                          {/* Lo que pusiste de tu bolsillo */}
-                          <div className="mt-3 rounded-lg border border-border/50 bg-secondary/20">
-                            <div className="px-3 py-2 sm:px-4">
-                              <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                                <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
-                              </div>
-                              <div className="mt-1.5 border-t border-border/30 pt-1.5">
-                                <p className="text-[11px] text-muted-foreground">
-                                  Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          </>
-
-                        );
-                      })()}
-                    </div>
-                    <hr className="border-border/30" />
-                  </>
-                )}
-
-                {/* Escenario de Salida */}
-                {horizonBeforeDelivery ? (
-                  <div>
-                    <h4 className="mb-1 text-sm font-semibold">Escenario de Salida</h4>
-                    <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
-                      <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
-                      <div>
-                        <p className="text-sm font-medium">No puedes vender ni refinanciar antes de la entrega</p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
-                        </p>
-                        <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#0F0F0F] hover:underline">
-                          Ver desde la entrega →
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : exit && refi ? (
-                  <div>
-                    <h4 className="mb-1 text-sm font-semibold">Escenario de Salida {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`}</h4>
-                    <p className="mb-3 text-xs text-muted-foreground">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
-                    <div className="mb-4 flex overflow-hidden rounded-lg border border-border">
-                      <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "venta" ? "bg-[#0F0F0F] text-white" : "text-muted-foreground hover:bg-muted/50"}`}>Venta</button>
-                      <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-4 py-2 text-sm font-medium transition-colors ${exitMode === "refinanciamiento" ? "bg-[#0F0F0F] text-white" : "text-muted-foreground hover:bg-muted/50"}`}>Refinanciamiento</button>
-                    </div>
-
-                    {exitMode === "venta" ? (
-                      <div className="space-y-3 text-sm">
-                        <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
-                          Si vendieras {exit.anios === 1 ? "al año 1" : `a los ${exit.anios} años`} al valor proyectado (plusvalía {plusvaliaRate.toFixed(1)}%/año), ¿cuánto ganarías después de pagar el crédito y la comisión?
-                        </p>
-                        {[
-                          { label: "Valor venta estimado", value: fmt(exit.valorVenta) },
-                          { label: "Saldo crédito restante", value: fmt(exit.saldoCredito), negative: true },
-                          { label: "Comisión venta (2%)", value: fmt(exit.comisionVenta), negative: true },
-                          { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), positive: true },
-                          { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), positive: exit.flujoAcumulado > 0 },
-                          { label: "Retorno total", value: fmt(exit.retornoTotal), bold: true, positive: true },
-                          { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, bold: true },
-                          { label: "TIR", value: `${exit.tir.toFixed(1)}%`, bold: true },
-                        ].map(({ label, value, negative, positive, bold }) => (
-                          <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
-                            <span className="text-muted-foreground">{label}</span>
-                            <span className={negative ? "text-[#C8323C]" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
-                          </div>
-                        ))}
-                        {exit.multiplicadorCapital > 1 && (
-                          <p className="mt-2 rounded-lg bg-[#16A34A]/10 p-3 text-xs text-[#16A34A]">
-                            Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="space-y-3 text-sm">
-                        <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
-                          Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
-                        </p>
-                        <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/20 p-3">
-                          <span className="text-xs text-muted-foreground">% refinanciamiento:</span>
-                          <div className="flex flex-wrap gap-1">
-                            {[60, 70, 80, 90].map((pct) => (
-                              <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                                className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#0F0F0F] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-                              >{pct}%</button>
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">Los bancos en Chile financian hasta 80% del valor de tasación. Algunos ofrecen hasta 90% para propiedades de inversión con buen historial.</p>
-                        {[
-                          { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
-                          { label: `Nuevo crédito (${refiPct}%)`, value: fmt(refi.nuevoCredito) },
-                          { label: "Capital liberado", value: fmt(refi.capitalLiberado), positive: true },
-                          { label: "Nuevo dividendo", value: fmt(refi.nuevoDividendo) },
-                          { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
-                        ].map(({ label, value, positive }) => (
-                          <div key={label} className="flex justify-between">
-                            <span className="text-muted-foreground">{label}</span>
-                            <span className={positive ? "text-[#16A34A] font-medium" : ""}>{value}</span>
-                          </div>
-                        ))}
-                        {refi.capitalLiberado > 0 && (
-                          <p className="mt-2 rounded-lg bg-[#0F0F0F]/5 p-3 text-xs text-[#0F0F0F]">
-                            Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión.
-                          </p>
-                        )}
-                      </div>
+                    ))}
+                    {exit.multiplicadorCapital > 1 && (
+                      <p className="mt-2 rounded-lg bg-[#16A34A]/10 p-3 text-xs text-[#16A34A]">
+                        Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
+                      </p>
                     )}
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
-            {currentAccess === "guest" && <RegisterOverlay />}
-            {currentAccess === "free" && analysisId && (
-              <PaywallOverlay analysisId={analysisId} />
-            )}
+                ) : (
+                  <div className="space-y-3 text-sm">
+                    <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+                      Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
+                    </p>
+                    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/20 p-3">
+                      <span className="text-xs text-muted-foreground">% refinanciamiento:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {[60, 70, 80, 90].map((pct) => (
+                          <button key={pct} type="button" onClick={() => setRefiPct(pct)}
+                            className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#0F0F0F] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                          >{pct}%</button>
+                        ))}
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Los bancos en Chile financian hasta 80% del valor de tasación. Algunos ofrecen hasta 90% para propiedades de inversión con buen historial.</p>
+                    {[
+                      { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
+                      { label: `Nuevo crédito (${refiPct}%)`, value: fmt(refi.nuevoCredito) },
+                      { label: "Capital liberado", value: fmt(refi.capitalLiberado), positive: true },
+                      { label: "Nuevo dividendo", value: fmt(refi.nuevoDividendo) },
+                      { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
+                    ].map(({ label, value, positive }) => (
+                      <div key={label} className="flex justify-between">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className={positive ? "text-[#16A34A] font-medium" : ""}>{value}</span>
+                      </div>
+                    ))}
+                    {refi.capitalLiberado > 0 && (
+                      <p className="mt-2 rounded-lg bg-[#0F0F0F]/5 p-3 text-xs text-[#0F0F0F]">
+                        Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </CollapsibleSection>
+
           </div>
-          </div>
-          {/* end Bloque 3 (FAFAF8 wrapper) */}
+          {/* end Block 3 (FAFAF8 wrapper) */}
 
           {/* ═══════ BLOQUE 4 — ANÁLISIS IA (PREMIUM) ═══════ */}
           <AIAnalysisSection
@@ -2328,7 +2476,7 @@ export function PremiumResults({
               <span className="text-[11px] font-medium">{adjVacanciaPct}%</span>
             </div>
             <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
-            <p className="text-[10px] text-franco-muted leading-tight">{`\u2248 ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+            <p className="text-[10px] text-franco-muted leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
           </div>
           <div>
             <div className="flex items-center justify-between">
@@ -2371,7 +2519,7 @@ export function PremiumResults({
             <div className="shrink-0 px-3 pt-3 pb-1">
               <div className="flex items-center gap-2">
                 <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
-                <h3 className="font-heading text-xs font-semibold text-franco-ink">Ajusta los números</h3>
+                <h3 className="font-body text-xs font-semibold text-franco-ink">Ajusta los números</h3>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
@@ -2410,7 +2558,7 @@ export function PremiumResults({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
-                      <h3 className="font-heading text-sm font-semibold text-franco-ink">Ajusta los números</h3>
+                      <h3 className="font-body text-sm font-semibold text-franco-ink">Ajusta los números</h3>
                     </div>
                     <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-muted">
                       <X className="h-5 w-5 text-muted-foreground" />

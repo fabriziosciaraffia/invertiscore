@@ -1,22 +1,14 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import {
-  ArrowRight,
-  Check,
-  Menu,
-  X as XIcon,
-} from "lucide-react";
+import { Check, Menu, X as XIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
-import LeverageSection from "@/components/leverage-section";
 import type { User } from "@supabase/supabase-js";
 
 // ============================================================
-// FadeIn — standard slide-up, 30px, 0.6s desktop / 0.4s mobile
+// FadeIn — standard slide-up animation
 // ============================================================
 function FadeIn({ children, className = "", delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -27,7 +19,7 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
     if (!el) return;
     const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
     obs.observe(el);
     return () => obs.disconnect();
@@ -39,7 +31,7 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
       className={className}
       style={{
         opacity: visible ? 1 : 0,
-        transform: visible ? "translateY(0)" : "translateY(30px)",
+        transform: visible ? "translateY(0)" : "translateY(24px)",
         transition: `opacity 0.6s ease-out ${delay}ms, transform 0.6s ease-out ${delay}ms`,
         willChange: "transform, opacity",
       }}
@@ -50,421 +42,398 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 }
 
 // ============================================================
-// SlideIn — horizontal slide for desktop, fallback to slide-up on mobile
+// MAIN LANDING
 // ============================================================
-function SlideIn({ children, className = "", delay = 0, direction = "left" }: { children: React.ReactNode; className?: string; delay?: number; direction?: "left" | "right" }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    setIsMobile(window.innerWidth < 768);
-  }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold: 0.2 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, []);
-
-  const hiddenTransform = isMobile
-    ? "translateY(30px)"
-    : direction === "left" ? "translateX(-40px)" : "translateX(40px)";
-  const duration = isMobile ? "0.4s" : "0.6s";
-
-  return (
-    <div
-      ref={ref}
-      className={className}
-      style={{
-        opacity: visible ? 1 : 0,
-        transform: visible ? "translate(0)" : hiddenTransform,
-        transition: `opacity ${duration} ease-out ${delay}ms, transform ${duration} ease-out ${delay}ms`,
-        willChange: "transform, opacity",
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ============================================================
-// Tooltip icon (?) for fields with extra info
-// ============================================================
-function TooltipIcon({ text }: { text: string }) {
-  const [show, setShow] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
-  const [pos, setPos] = useState<"above" | "below">("above");
-
-  useEffect(() => {
-    if (show && ref.current) {
-      const rect = ref.current.getBoundingClientRect();
-      setPos(rect.top < 120 ? "below" : "above");
-    }
-  }, [show]);
-
-  return (
-    <span ref={ref} className="relative ml-1 inline-flex">
-      <span
-        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-[#E6E6E2] text-[10px] font-medium leading-none text-[#71717A] transition-colors hover:border-[#0F0F0F] hover:text-[#0F0F0F]"
-        onMouseEnter={() => setShow(true)}
-        onMouseLeave={() => setShow(false)}
-      >
-        ?
-      </span>
-      {show && (
-        <span
-          className={`absolute z-50 w-[220px] sm:w-[250px] rounded-lg bg-[#0F0F0F] px-3 py-2 text-xs leading-relaxed text-white shadow-lg ${
-            pos === "above" ? "bottom-full mb-2" : "top-full mt-2"
-          } left-1/2 -translate-x-1/2`}
-        >
-          {text}
-          <span className={`absolute left-1/2 -translate-x-1/2 border-4 border-transparent ${
-            pos === "above" ? "top-full border-t-[#0F0F0F]" : "bottom-full border-b-[#0F0F0F]"
-          }`} />
-        </span>
-      )}
-    </span>
-  );
-}
-
-
-// ============================================================
-// Main Page
-// ============================================================
-export default function HomePage() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [analysisCount, setAnalysisCount] = useState<number | null>(null);
+export default function LandingPage() {
   const [user, setUser] = useState<User | null>(null);
-  const router = useRouter();
-
-  const handleScroll = useCallback(() => {
-    setScrolled(window.scrollY > 60);
-  }, []);
-
-  useEffect(() => {
-    handleScroll(); // check initial position (browser may restore scroll)
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    const fetchData = async () => {
-      try {
-        const [{ data: { user: currentUser } }, { count }] = await Promise.all([
-          supabase.auth.getUser(),
-          supabase.from("analisis").select("*", { count: "exact", head: true }),
-        ]);
-        if (currentUser) setUser(currentUser);
-        if (count !== null) setAnalysisCount(count);
-      } catch {
-        // silently fail
-      }
-    };
-    fetchData();
+    supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);
 
-  return (
-    <div className="overflow-x-hidden bg-white text-[#0F0F0F]">
-      <style jsx global>{`
-        @media (max-width: 767px) {
-          .transition-gpu { transition-duration: 0.4s !important; }
-        }
-      `}</style>
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    window.addEventListener("scroll", onScroll);
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
-      {/* ============ 1. HEADER / NAVBAR ============ */}
-      <nav className={`sticky top-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "border-b border-[#E6E6E2] bg-white/90 shadow-sm backdrop-blur-xl"
-          : "border-b border-transparent bg-transparent"
-      }`}>
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <FrancoLogo size="header" href="/" inverted={!scrolled} />
-          <div className="hidden items-center gap-6 sm:flex">
-            {user ? (
-              <>
-                <Link href="/dashboard" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
-                  Dashboard
-                </Link>
-                <Link href="/analisis/nuevo" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
-                  Nuevo análisis
-                </Link>
-                <Link href="/pricing">
-                  <span className="rounded-md bg-[#C8323C] px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
-                </Link>
-                <button
-                  onClick={async () => {
-                    const supabase = createClient();
-                    await supabase.auth.signOut();
-                    setUser(null);
-                    router.refresh();
-                  }}
-                  className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}
-                >
-                  Cerrar Sesión
-                </button>
-              </>
-            ) : (
-              <>
-                <Link href="/pricing" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
-                  Pricing
-                </Link>
-                <Link href="/login" className={`font-body text-sm transition-colors ${scrolled ? "text-[#71717A] hover:text-[#0F0F0F]" : "text-white/60 hover:text-white/80"}`}>
-                  Iniciar Sesión
-                </Link>
-                <Link href="/analisis/nuevo">
-                  <Button size="sm" className={`rounded-lg transition-colors ${scrolled ? "bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90" : "bg-white text-[#0F0F0F] hover:bg-white/90"}`}>
-                    Analizar gratis
-                  </Button>
-                </Link>
-              </>
+  const ctaHref = user ? "/analisis/nuevo" : "/register";
+  const transparent = !scrolled;
+
+  return (
+    <div className="min-h-screen">
+      {/* ============================================================ */}
+      {/* HEADER */}
+      {/* ============================================================ */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+          transparent
+            ? "bg-transparent border-transparent"
+            : "bg-white/90 backdrop-blur-xl border-b border-[#E6E6E2]"
+        }`}
+      >
+        <div className="max-w-[1100px] mx-auto px-6 h-14 flex items-center justify-between">
+          <FrancoLogo size="header" inverted={transparent} href="/" />
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-6">
+            <a href="#como-funciona" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
+              Cómo funciona
+            </a>
+            <a href="#pricing" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
+              Precios
+            </a>
+            {user && (
+              <Link href="/dashboard" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
+                Dashboard
+              </Link>
             )}
-          </div>
-          <button className={`p-2 sm:hidden ${scrolled ? "text-[#71717A]" : "text-white/60"}`} onClick={() => setMobileMenuOpen(!mobileMenuOpen)} aria-label="Menu">
-            {mobileMenuOpen ? <XIcon className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <Link
+              href={ctaHref}
+              className="bg-[#C8323C] text-white font-body text-sm font-bold px-5 py-2 rounded-lg hover:bg-[#b02a33] transition-colors"
+            >
+              Analizar gratis
+            </Link>
+          </nav>
+
+          {/* Mobile hamburger */}
+          <button
+            className="md:hidden p-2"
+            onClick={() => setMobileMenu(!mobileMenu)}
+          >
+            {mobileMenu
+              ? <XIcon className={transparent ? "text-white" : "text-[#0F0F0F]"} size={22} />
+              : <Menu className={transparent ? "text-white" : "text-[#0F0F0F]"} size={22} />
+            }
           </button>
         </div>
-        {mobileMenuOpen && (
-          <div className="border-t border-[#E6E6E2] bg-white px-6 py-4 sm:hidden">
-            <div className="flex flex-col gap-3">
-              {user ? (
-                <>
-                  <Link href="/dashboard" onClick={() => setMobileMenuOpen(false)} className="font-body text-sm text-[#71717A]">Dashboard</Link>
-                  <Link href="/analisis/nuevo" onClick={() => setMobileMenuOpen(false)} className="font-body text-sm text-[#71717A]">Nuevo análisis</Link>
-                  <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="inline-flex w-fit rounded-md bg-[#C8323C] px-3 py-1.5 text-xs font-bold text-white">Premium</Link>
-                  <button
-                    onClick={async () => {
-                      const supabase = createClient();
-                      await supabase.auth.signOut();
-                      setUser(null);
-                      setMobileMenuOpen(false);
-                      router.refresh();
-                    }}
-                    className="text-left font-body text-sm text-[#71717A]"
-                  >
-                    Cerrar Sesión
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="font-body text-sm text-[#71717A]">Pricing</Link>
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="font-body text-sm text-[#71717A]">Iniciar Sesión</Link>
-                  <Link href="/analisis/nuevo" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full rounded-lg bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90">Analizar gratis</Button>
-                  </Link>
-                </>
-              )}
-            </div>
+
+        {/* Mobile menu */}
+        {mobileMenu && (
+          <div className="md:hidden bg-white border-b border-[#E6E6E2] px-6 py-4 flex flex-col gap-3">
+            <a href="#como-funciona" className="font-body text-sm text-[#71717A]" onClick={() => setMobileMenu(false)}>Cómo funciona</a>
+            <a href="#pricing" className="font-body text-sm text-[#71717A]" onClick={() => setMobileMenu(false)}>Precios</a>
+            {user && <Link href="/dashboard" className="font-body text-sm text-[#71717A]" onClick={() => setMobileMenu(false)}>Dashboard</Link>}
+            <Link href={ctaHref} className="bg-[#C8323C] text-white font-body text-sm font-bold px-5 py-2.5 rounded-lg text-center" onClick={() => setMobileMenu(false)}>
+              Analizar gratis
+            </Link>
           </div>
         )}
-      </nav>
+      </header>
 
-      {/* ============ 2. HERO SECTION ============ */}
-      <section className="relative -mt-14 overflow-hidden px-6 pb-20 pt-[136px] md:pb-28 md:pt-[168px]" style={{ background: "linear-gradient(135deg, #0F0F0F 0%, #2A2A2A 100%)" }}>
+      {/* ============================================================ */}
+      {/* SECTION 1 — HERO */}
+      {/* ============================================================ */}
+      <section
+        className="relative overflow-hidden pt-14"
+        style={{ background: "linear-gradient(135deg, #0F0F0F 0%, #2A2A2A 100%)" }}
+      >
         {/* Red glow */}
-        <div className="pointer-events-none absolute -top-10 -right-10 h-72 w-72 rounded-full bg-[#C8323C]/[0.05] blur-3xl" />
-        {/* Bottom accent line */}
-        <div className="pointer-events-none absolute bottom-0 left-0 h-[2px] w-full bg-gradient-to-r from-transparent via-[#C8323C]/20 to-transparent" />
-        <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-[3fr_2fr]">
-          {/* Texto (columna izquierda) */}
-          <div className="text-center lg:text-left">
-            <FadeIn>
-              <h1 className="font-heading text-4xl font-bold leading-[1.1] tracking-tight text-white md:text-5xl lg:text-[3.5rem]">
-                La mayoría de los deptos de inversión en Santiago pierden plata cada mes.
-              </h1>
-            </FadeIn>
-            <FadeIn delay={100}>
-              <p className="mx-auto mt-6 max-w-lg font-body text-lg leading-relaxed text-white/60 lg:mx-0">
-                Eso no aparece en la cotización. Franco te muestra la rentabilidad real, el flujo verdadero, y te dice si vale la pena — sin conflictos de interés.
-              </p>
-            </FadeIn>
-            <FadeIn delay={200}>
-              <div className="mt-8">
-                <Link href="/analisis/nuevo">
-                  <Button className="rounded-lg bg-[#C8323C] px-7 py-3.5 font-body text-base font-semibold text-white shadow-[0_4px_16px_rgba(200,50,60,0.25)] transition-colors hover:bg-[#C8323C]/90">
-                    Analizar propiedad gratis <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
+        <div
+          className="absolute top-[-40px] right-[-40px] w-[300px] h-[300px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(200,50,60,0.03), transparent 70%)" }}
+        />
+        {/* Bottom red line */}
+        <div
+          className="absolute bottom-0 w-full h-[2px] pointer-events-none"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(200,50,60,0.12), transparent)" }}
+        />
+
+        <div className="max-w-[960px] mx-auto px-6 py-[72px] pb-20">
+          <div className="grid grid-cols-1 md:grid-cols-[1.3fr_0.7fr] gap-8 md:gap-12 items-center">
+            {/* Left column — text */}
+            <div>
+              <FadeIn>
+                <h1 className="font-heading font-bold text-4xl md:text-[44px] text-white leading-[1.08] tracking-tight">
+                  ¿Ese depto es buena inversión?
+                </h1>
+              </FadeIn>
+
+              <FadeIn delay={100}>
+                <p className="font-body text-[17px] text-white/50 mt-5 leading-relaxed max-w-[460px]">
+                  Tu corredor dice que sí — él gana <span className="text-white/75 font-semibold">$3.5M si compras</span>. Franco te muestra los números reales. Gratis, en 30 segundos.
+                </p>
+              </FadeIn>
+
+              <FadeIn delay={200}>
+                <Link
+                  href={ctaHref}
+                  className="inline-block bg-[#C8323C] text-white font-body text-base font-bold px-8 py-4 rounded-lg mt-8 hover:bg-[#b02a33] transition-colors"
+                  style={{ boxShadow: "0 4px 20px rgba(200,50,60,0.3)" }}
+                >
+                  Analizar un departamento →
                 </Link>
-                <p className="mt-3 font-body text-xs text-white/40">Sin tarjeta de crédito. Tu corredor gana si compras. Franco gana si decides bien.</p>
-              </div>
-            </FadeIn>
-          </div>
+                <p className="font-body text-xs text-white/25 mt-3">
+                  Sin registro. Sin tarjeta. Resultado inmediato.
+                </p>
+              </FadeIn>
 
-          {/* Score Preview Card (columna derecha) */}
-          <FadeIn delay={300}>
-            <div className="mx-auto max-w-[300px] rounded-2xl border border-white/10 bg-white p-6 shadow-[0_8px_40px_rgba(0,0,0,0.25),0_2px_8px_rgba(0,0,0,0.1)]">
-              <div className="font-body text-[10px] uppercase tracking-[0.1em] text-[#71717A] mb-1">Franco Score</div>
-              <div className="font-heading text-5xl font-bold leading-none text-[#0F0F0F]">54</div>
-              <div className="mt-2 font-body text-sm font-bold text-[#C8323C]">No compres — negocia primero</div>
+              {/* Stats bar */}
+              <FadeIn delay={300}>
+                <div className="flex mt-9 border-t border-white/[0.08] pt-5 gap-0">
+                  <div className="flex-1 pr-5 border-r border-white/[0.08]">
+                    <p className="font-mono text-xl font-bold text-[#C8323C]">73%</p>
+                    <p className="font-body text-[10px] text-white/35 mt-0.5">de los deptos analizados tienen flujo negativo</p>
+                  </div>
+                  <div className="flex-1 px-5 border-r border-white/[0.08]">
+                    <p className="font-mono text-xl font-bold text-[#C8323C]">-$412K</p>
+                    <p className="font-body text-[10px] text-white/35 mt-0.5">flujo mensual promedio en Santiago Centro</p>
+                  </div>
+                  <div className="flex-1 pl-5">
+                    <p className="font-mono text-xl font-bold text-[#C8323C]">0</p>
+                    <p className="font-body text-[10px] text-white/35 mt-0.5">corredores que te muestran estos datos</p>
+                  </div>
+                </div>
+              </FadeIn>
+            </div>
 
-              <div className="mt-5 flex gap-3">
-                {[
-                  { label: "Rent.", value: "3.9%", w: "39%" },
-                  { label: "Flujo", value: "-$378K", w: "25%" },
-                  { label: "Plusv.", value: "Alta", w: "80%" },
-                  { label: "Riesgo", value: "Medio", w: "50%" },
-                ].map((m) => (
-                  <div key={m.label} className="flex-1">
-                    <div className="mb-1 font-body text-[8px] text-[#71717A]">{m.label}</div>
-                    <div className="h-1 overflow-hidden rounded-full bg-[#F0F0EC]">
-                      <div className={`h-full rounded-full ${parseInt(m.w) < 30 ? "bg-[#C8323C]" : "bg-[#0F0F0F]/30"}`} style={{ width: m.w }} />
+            {/* Right column — score card preview */}
+            <FadeIn delay={200} className="flex flex-col items-center">
+              <p className="font-mono text-[8px] text-white/30 uppercase tracking-[0.1em] text-center mb-2">
+                Ejemplo de análisis
+              </p>
+              <div className="bg-white rounded-2xl p-5 w-[260px]" style={{ boxShadow: "0 8px 40px rgba(0,0,0,0.3)" }}>
+                <p className="font-mono text-[8px] text-[#71717A] uppercase tracking-[0.1em]">Franco Score</p>
+                <p className="font-heading font-bold text-[42px] text-[#0F0F0F] leading-none">54</p>
+                <p className="font-body text-[11px] text-[#C8323C] font-bold mt-1">No compres — negocia primero</p>
+
+                {/* Mini bars */}
+                <div className="mt-4 space-y-2.5">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-body text-[9px] text-[#71717A]">Rent.</span>
+                      <span className="font-mono text-[9px] font-bold text-[#0F0F0F]">3.9%</span>
                     </div>
-                    <div className="mt-1 font-mono text-[9px] font-medium text-[#0F0F0F]">{m.value}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-4 inline-flex items-center rounded-md border border-[#C8323C]/30 bg-[#C8323C]/10 px-3 py-1">
-                <span className="font-mono text-[10px] font-bold tracking-wide text-[#C8323C]">NEGOCIAR</span>
-              </div>
-
-              <div className="mt-4 border-t border-[#E6E6E2] pt-3 font-body text-[11px] leading-relaxed text-[#0F0F0F]">
-                <span className="font-semibold">Siendo franco:</span> este depto te cuesta $378K de tu bolsillo cada mes.
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ============ 2b. STATS CON ACTITUD ============ */}
-      <section className="bg-white px-6 py-12 md:py-16">
-        <div className="mx-auto max-w-4xl">
-          <FadeIn>
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3 md:gap-0 md:divide-x md:divide-[#E6E6E2]">
-              <div className="text-center md:px-8">
-                <div className="font-heading text-4xl font-bold leading-none text-[#C8323C]">73%</div>
-                <div className="mt-2 font-body text-sm leading-snug text-[#71717A]">de los deptos que analizamos tienen flujo negativo</div>
-              </div>
-              <div className="text-center md:px-8">
-                <div className="font-heading text-4xl font-bold leading-none text-[#C8323C]">-$412K</div>
-                <div className="mt-2 font-body text-sm leading-snug text-[#71717A]">flujo mensual promedio en Santiago Centro</div>
-              </div>
-              <div className="text-center md:px-8">
-                <div className="font-heading text-4xl font-bold leading-none text-[#C8323C]">0</div>
-                <div className="mt-2 font-body text-sm leading-snug text-[#71717A]">corredores que te muestran estos números</div>
-              </div>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ============ 3. COMPARADOR — Corredor vs Franco ============ */}
-      <section className="bg-[#FAFAF8] px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
-          <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-[#0F0F0F] md:text-4xl">
-              Lo que tu corredor te muestra vs lo que Franco te muestra
-            </h2>
-          </FadeIn>
-          <div className="mt-14 grid gap-4 md:grid-cols-2 md:gap-6">
-            {/* Card IZQUIERDA — Corredor */}
-            <SlideIn delay={100} direction="left">
-              <div className="h-full rounded-xl border border-[#E6E6E2] bg-white/80 p-6 opacity-50">
-                <div className="mb-5 font-mono text-[10px] uppercase tracking-wider text-[#71717A]">Lo que te muestra el corredor</div>
-                <h3 className="font-body text-lg font-bold text-[#71717A]">Depto 2D1B en Providencia</h3>
-                <div className="my-4 h-px bg-[#E6E6E2]" />
-                <div className="space-y-0">
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="font-body text-sm text-[#71717A]">Precio</span>
-                    <span className="font-mono text-sm font-medium text-[#71717A]">UF 3.200</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="font-body text-sm text-[#71717A]">Arriendo</span>
-                    <span className="font-mono text-sm font-medium text-[#71717A]">$420.000/mes</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="flex items-center font-body text-sm text-[#71717A]">Rent. Bruta<TooltipIcon text="Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto." /></span>
-                    <span className="font-mono text-sm font-medium text-[#71717A]">4.0%</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="font-body text-sm text-[#71717A]">Flujo mensual</span>
-                    <span className="font-body text-sm italic text-[#71717A]/60">No informado</span>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="font-body text-sm text-[#71717A]">Conclusión</span>
-                    <span className="font-body text-sm font-semibold italic text-[#71717A]">&ldquo;Excelente oportunidad!&rdquo;</span>
-                  </div>
-                </div>
-              </div>
-            </SlideIn>
-
-            {/* Card DERECHA — Franco */}
-            <SlideIn delay={200} direction="right">
-              <div className="relative h-full rounded-xl border-2 border-[#C8323C] bg-white p-6" style={{ boxShadow: "0 0 24px rgba(200,50,60,0.06)" }}>
-                <div className="absolute -top-2.5 right-3 rounded bg-[#C8323C] px-2 py-0.5 font-mono text-[9px] font-bold text-white">LA VERDAD</div>
-                <div className="mb-5 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#0F0F0F]">Lo que Franco te muestra</div>
-                <h3 className="font-body text-lg font-bold text-[#0F0F0F]">Depto 2D1B en Providencia</h3>
-                <div className="my-4 h-px bg-[#E6E6E2]" />
-                <div className="space-y-0">
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="flex items-center font-body text-sm text-[#71717A]">Flujo mensual<TooltipIcon text="Ingreso por arriendo menos todos los gastos: dividendo, GGCC, contribuciones, seguro, mantención y vacancia" /></span>
-                    <span className="font-heading text-lg font-bold text-[#C8323C]">-$359.000</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="flex items-center font-body text-sm text-[#71717A]">Cash-on-Cash<TooltipIcon text="Retorno anual sobre el capital que pusiste de tu bolsillo (pie + gastos)" /></span>
-                    <span className="font-mono text-sm font-medium text-[#C8323C]">-17.8%</span>
-                  </div>
-                  <div className="flex items-center justify-between border-b border-[#E6E6E2]/50 py-3">
-                    <span className="flex items-center font-body text-sm text-[#71717A]">Rent. Neta<TooltipIcon text="Rentabilidad después de TODOS los gastos: operativos, vacancia, corretaje y recambio de arrendatario." /></span>
-                    <span className="font-mono text-sm font-medium text-[#71717A]">2.07%</span>
-                  </div>
-                  <div className="flex items-center justify-between py-3">
-                    <span className="flex items-center font-body text-sm text-[#71717A]">Plusvalía 10 años<TooltipIcon text="Cuántas veces se multiplica tu inversión inicial en 10 años considerando plusvalía del sector" /></span>
-                    <span className="font-mono text-sm font-medium text-[#0F0F0F]">3.3x</span>
-                  </div>
-                </div>
-                <div className="mt-5 flex items-center gap-3 rounded-xl bg-[#FAFAF8] p-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-[#C8323C]">
-                    <span className="font-heading text-sm font-bold text-[#C8323C]">54</span>
+                    <div className="h-1.5 bg-[#F0F0EC] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#0F0F0F]/30 rounded-full" style={{ width: "39%" }} />
+                    </div>
                   </div>
                   <div>
-                    <div className="font-body text-sm font-semibold text-[#0F0F0F]">Score: 54 <span className="text-[#C8323C]">&ldquo;No compres — negocia primero&rdquo;</span></div>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-body text-[9px] text-[#71717A]">Flujo</span>
+                      <span className="font-mono text-[9px] font-bold text-[#C8323C]">-$378K</span>
+                    </div>
+                    <div className="h-1.5 bg-[#F0F0EC] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#C8323C]/40 rounded-full" style={{ width: "60%" }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <span className="font-body text-[9px] text-[#71717A]">Plusv.</span>
+                      <span className="font-mono text-[9px] font-bold text-[#0F0F0F]">Alta</span>
+                    </div>
+                    <div className="h-1.5 bg-[#F0F0EC] rounded-full overflow-hidden">
+                      <div className="h-full bg-[#0F0F0F]/30 rounded-full" style={{ width: "75%" }} />
+                    </div>
                   </div>
                 </div>
-                <p className="mt-3 font-body text-sm font-medium text-[#C8323C]">Pones $4.3M al año de tu bolsillo</p>
+
+                {/* Badge NEGOCIAR */}
+                <div className="mt-4 flex justify-center">
+                  <span className="font-mono text-[10px] font-bold text-[#C8323C] bg-[#C8323C]/10 px-3 py-1 rounded-md tracking-wide">
+                    NEGOCIAR
+                  </span>
+                </div>
               </div>
-            </SlideIn>
+            </FadeIn>
           </div>
-          <FadeIn delay={300}>
-            <p className="mt-10 text-center font-body text-base text-[#71717A]">
-              El mismo departamento. Las mismas 4 paredes. Distintos incentivos.
+
+          {/* Scroll indicator */}
+          <div className="text-center mt-10">
+            <p className="font-body text-[11px] text-white/20">Descubre cómo funciona</p>
+            <p className="font-body text-lg text-white/15 mt-1 animate-bounce">↓</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* SECTION 2 — CÓMO FUNCIONA */}
+      {/* ============================================================ */}
+      <section id="como-funciona" className="bg-white py-16">
+        <div className="max-w-[800px] mx-auto px-6">
+          <FadeIn>
+            <h2 className="font-heading font-bold text-[28px] text-[#0F0F0F] text-center tracking-tight">
+              Así de simple
+            </h2>
+            <p className="font-body text-sm text-[#71717A] text-center mt-1.5 mb-10">
+              30 segundos. Sin registro. Sin letra chica.
             </p>
-            <div className="mt-6 text-center">
-              <Link href="/analisis/nuevo" className="inline-flex items-center gap-1 font-body font-medium text-[#0F0F0F] transition-colors hover:text-[#0F0F0F]/80 hover:underline">
-                Pruébalo con tu propiedad <ArrowRight className="h-4 w-4" />
+          </FadeIn>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {[
+              { emoji: "📝", num: "1", title: "Ingresa los datos", desc: "Precio, arriendo, gastos. O pega el link de la publicación y Franco extrae todo." },
+              { emoji: "⚡", num: "2", title: "Franco analiza", desc: "Flujo real, rentabilidad neta, plusvalía y 8 métricas más. Con datos de mercado, no supuestos." },
+              { emoji: "✓", num: "3", title: "Decide informado", desc: "Score de 1-100 y un veredicto claro: COMPRAR, NEGOCIAR o BUSCAR OTRA. Sin jerga." },
+            ].map((step, i) => (
+              <FadeIn key={step.num} delay={i * 100} className="text-center">
+                <p className="text-[28px] mb-3">{step.emoji}</p>
+                <div className="w-6 h-6 rounded-full bg-[#0F0F0F] flex items-center justify-center mx-auto mb-2.5">
+                  <span className="font-mono text-[11px] font-bold text-white">{step.num}</span>
+                </div>
+                <p className="font-body text-sm font-bold text-[#0F0F0F] mb-1.5">{step.title}</p>
+                <p className="font-body text-[13px] text-[#71717A] leading-snug">{step.desc}</p>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn delay={300}>
+            <div className="text-center mt-8">
+              <Link
+                href={ctaHref}
+                className="inline-block bg-[#0F0F0F] text-white font-body text-sm font-semibold px-7 py-3 rounded-lg hover:bg-[#2A2A2A] transition-colors"
+              >
+                Probar ahora — es gratis →
               </Link>
             </div>
           </FadeIn>
         </div>
       </section>
 
-      {/* ============ 4. ¿POR QUÉ TU CORREDOR NO TE MUESTRA ESTOS NÚMEROS? ============ */}
-      <section className="relative overflow-hidden px-6 py-16 md:py-24" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 50%, #2A2A2A 100%)" }}>
-        {/* Red glow */}
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-[#C8323C]/[0.04] blur-3xl" />
-        <div className="relative mx-auto max-w-6xl">
+      {/* ============================================================ */}
+      {/* SECTION 3 — DEMO */}
+      {/* ============================================================ */}
+      <section className="bg-[#FAFAF8] py-16">
+        <div className="max-w-[560px] mx-auto px-6">
           <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-white md:text-4xl">
-              ¿Por qué tu corredor no te muestra estos números?
+            <h2 className="font-heading font-bold text-[28px] text-[#0F0F0F] text-center tracking-tight">
+              Mira un análisis real
+            </h2>
+            <p className="font-body text-sm text-[#71717A] text-center mt-1.5 mb-8">
+              Depto 2D1B en Providencia. Sin filtros, sin maquillaje.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={100}>
+            <div className="bg-white rounded-2xl border border-[#E6E6E2] p-8 shadow-sm">
+              {/* Score + Badge */}
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">Franco Score</p>
+                  <p className="font-heading font-bold text-[42px] text-[#0F0F0F] leading-none">54</p>
+                </div>
+                <span className="font-mono text-[10px] font-bold text-[#C8323C] bg-[#C8323C]/10 px-3 py-1 rounded-md tracking-wide mt-2">
+                  NEGOCIAR
+                </span>
+              </div>
+              <p className="font-body text-xs text-[#71717A] mt-1">Depto 2D1B · Providencia · 55m²</p>
+
+              {/* 3 metrics */}
+              <div className="grid grid-cols-3 gap-3 mt-5">
+                <div className="bg-[#FAFAF8] rounded-[10px] p-3.5 text-center">
+                  <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Flujo mensual</p>
+                  <p className="font-mono text-lg font-bold text-[#C8323C]">-$378K</p>
+                </div>
+                <div className="bg-[#FAFAF8] rounded-[10px] p-3.5 text-center">
+                  <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Rent. neta</p>
+                  <p className="font-mono text-lg font-bold text-[#0F0F0F]">2.3%</p>
+                </div>
+                <div className="bg-[#FAFAF8] rounded-[10px] p-3.5 text-center">
+                  <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Retorno 10a</p>
+                  <p className="font-mono text-lg font-bold text-[#0F0F0F]">1.9x</p>
+                </div>
+              </div>
+
+              {/* Siendo franco box */}
+              <div className="mt-5 p-3.5 bg-[#C8323C]/[0.03] rounded-[10px] border-l-[3px] border-[#C8323C]">
+                <p className="font-body text-[13px] text-[#0F0F0F] leading-relaxed">
+                  <strong>Siendo franco:</strong> este depto te cuesta $378K/mes de tu bolsillo. Con plusvalía de 4%, en 10 años tu patrimonio se multiplica 1.9x. Negociable si consigues mejor precio.
+                </p>
+              </div>
+
+              {/* Link to demo */}
+              <div className="text-center mt-5">
+                <Link
+                  href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1"
+                  className="font-body text-[13px] font-semibold text-[#C8323C] hover:underline"
+                >
+                  Ver análisis completo →
+                </Link>
+                <p className="font-body text-[10px] text-[#71717A] mt-1">Es gratis. Sin registro.</p>
+              </div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
+      {/* SECTION 4 — POR QUÉ FRANCO */}
+      {/* ============================================================ */}
+      <section
+        className="relative overflow-hidden py-[68px]"
+        style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 50%, #2A2A2A 100%)" }}
+      >
+        {/* Red glow bottom-left */}
+        <div
+          className="absolute bottom-[-60px] left-[-60px] w-[300px] h-[300px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(200,50,60,0.03), transparent 70%)" }}
+        />
+
+        <div className="max-w-[800px] mx-auto px-6">
+          <FadeIn>
+            <h2 className="font-heading font-bold text-[28px] text-white text-center">
+              Tu corredor gana si compras.
+            </h2>
+            <h2 className="font-heading font-bold text-[28px] text-[#C8323C] text-center mt-2">
+              Franco gana si decides bien.
             </h2>
           </FadeIn>
-          <div className="mt-10 grid items-stretch gap-6 lg:grid-cols-3">
+
+          {/* Comparador */}
+          <FadeIn delay={100}>
+            <div className="flex flex-col md:flex-row gap-4 md:gap-5 mt-9 mb-8">
+              {/* Card corredor */}
+              <div className="flex-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-6 md:p-8 opacity-50">
+                <p className="font-mono text-[9px] text-white/40 uppercase tracking-[0.1em] mb-3">TU CORREDOR TE MUESTRA</p>
+                <p className="font-heading font-bold text-4xl md:text-5xl text-white/50">5.2%</p>
+                <p className="font-body text-xs text-white/30 mt-1">Rentabilidad bruta</p>
+                <p className="font-body text-[11px] text-white/20 italic mt-3">&ldquo;Excelente oportunidad&rdquo;</p>
+              </div>
+
+              {/* Card Franco */}
+              <div className="flex-1 relative bg-white/[0.05] border-2 border-[#C8323C] rounded-xl p-6 md:p-8" style={{ boxShadow: "0 0 30px rgba(200,50,60,0.06)" }}>
+                <span className="absolute top-[-10px] right-3.5 bg-[#C8323C] text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded">
+                  LA VERDAD
+                </span>
+                <p className="font-mono text-[9px] text-white uppercase tracking-[0.1em] font-semibold mb-3">FRANCO TE MUESTRA</p>
+                <p className="font-heading font-bold text-4xl md:text-5xl text-[#C8323C]">2.3%</p>
+                <p className="font-body text-xs text-white font-semibold mt-1">Rentabilidad neta real</p>
+                <p className="font-body text-[11px] text-white/50 mt-3">-$378K/mes de tu bolsillo</p>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* Punchline */}
+          <FadeIn delay={200}>
+            <p className="font-body text-[13px] text-white/40 text-center mb-8">
+              El mismo departamento. Las mismas 4 paredes. <span className="text-white font-semibold">Distintos incentivos.</span>
+            </p>
+          </FadeIn>
+
+          {/* 3 reason cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              { title: "Su comisión: $3.5M. Tu riesgo: $359.000 al mes.", desc: "Un corredor gana entre 1% y 2% del precio de venta. En un depto de 3.200 UF, eso son $2.5 a $5 millones. Los cobra el día que firmas. Si el depto pierde plata, ese ya es tu problema — él ya cobró." },
-              { title: "Te muestra rent. bruta de 4%. No te dice que el flujo es -$359.000.", desc: "La rentabilidad bruta no descuenta nada: ni dividendo, ni gastos comunes, ni contribuciones, ni vacancia. El flujo real — cuánto sale de tu bolsillo cada mes — es lo que importa. Y nunca aparece en la cotización." },
-              { title: "Si la inversión sale mal, el corredor no devuelve la comisión.", desc: "Tú asumes todo el riesgo por 25 años. El corredor desaparece después de la firma. Franco no te vende propiedades ni cobra comisiones de venta. Nuestro único incentivo es que tengas la información completa antes de decidir." },
-            ].map((item, i) => (
-              <FadeIn key={item.title} delay={i * 150}>
-                <div className="flex h-full flex-col rounded-xl border border-white/[0.06] bg-white/[0.03] p-6 backdrop-blur-sm">
-                  <h3 className="mb-2 font-body text-sm font-bold text-white">{item.title}</h3>
-                  <p className="flex-1 font-body text-[13px] leading-relaxed text-white/[0.45]">{item.desc}</p>
+              {
+                title: "Su comisión: $3.5M",
+                text: "El corredor gana entre 1% y 2% del precio. Los cobra el día que firmas. Si el depto pierde plata, él ya cobró.",
+              },
+              {
+                title: "Te muestra el 5%, no el 2.3%",
+                text: "La rentabilidad bruta no descuenta nada. El flujo real — cuánto sale de tu bolsillo — nunca aparece en la cotización.",
+              },
+              {
+                title: "Si sale mal, no devuelve nada",
+                text: "Tú asumes el riesgo por 25 años. Franco no vende propiedades ni cobra comisiones de venta.",
+              },
+            ].map((card, i) => (
+              <FadeIn key={i} delay={250 + i * 80}>
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-[10px] p-4">
+                  <p className="font-body text-[13px] font-bold text-white mb-2">{card.title}</p>
+                  <p className="font-body text-[11px] text-white/40 leading-relaxed">{card.text}</p>
                 </div>
               </FadeIn>
             ))}
@@ -472,324 +441,74 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ 5. ESTO ES LO QUE VAS A VER (análisis demo) ============ */}
-      <section className="bg-white px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
+      {/* ============================================================ */}
+      {/* SECTION 5 — PRICING */}
+      {/* ============================================================ */}
+      <section id="pricing" className="bg-white py-16">
+        <div className="max-w-[620px] mx-auto px-6">
           <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-[#0F0F0F]">
-              Esto es lo que vas a ver
-            </h2>
-            <p className="mt-4 text-center font-body text-[#71717A]">
-              No una lista de features. El análisis real de un depto en Providencia.
-            </p>
-          </FadeIn>
-
-          {/* FILA 1 — 3 cards */}
-          <div className="mt-10 grid grid-cols-1 gap-4 sm:mt-14 lg:grid-cols-3 lg:items-stretch">
-            {/* CARD 1 — Cascada de costos */}
-            <FadeIn delay={100}>
-              <div className="h-full rounded-xl border border-[#E6E6E2] bg-white p-5 shadow-sm">
-                <h3 className="mb-3 font-body text-sm font-bold text-[#0F0F0F] sm:text-base">A dónde va tu plata cada mes</h3>
-                <div className="space-y-1">
-                  {[
-                    { label: "Arriendo", value: 420000, positive: true },
-                    { label: "Dividendo", value: -579000, positive: false },
-                    { label: "Contribuciones", value: -60000, positive: false },
-                    { label: "Mantención", value: -53000, positive: false },
-                    { label: "Vacancia", value: -35000, positive: false },
-                    { label: "Administración", value: -29000, positive: false },
-                    { label: "Otros", value: -23000, positive: false },
-                  ].map((item) => {
-                    const maxVal = 579000;
-                    const pct = Math.round((Math.abs(item.value) / maxVal) * 100);
-                    return (
-                      <div key={item.label} className="flex items-center gap-1.5">
-                        <span className="w-28 shrink-0 font-body text-xs text-[#71717A]">{item.label}</span>
-                        <div className="flex-1 overflow-hidden">
-                          <div
-                            className={`min-h-[10px] rounded-sm lg:min-h-[12px] ${item.positive ? "bg-[#0F0F0F]/70" : "bg-[#C8323C]/40"}`}
-                            style={{ width: `${Math.max(pct, 5)}%` }}
-                          />
-                        </div>
-                        <span className={`w-24 shrink-0 text-right font-mono text-xs font-medium ${item.positive ? "text-[#0F0F0F]" : "text-[#C8323C]"}`}>
-                          {item.positive ? "+" : ""}{item.value < 0 ? "-" : ""}${Math.abs(item.value).toLocaleString("es-CL")}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 flex items-center justify-between border-t border-[#E6E6E2] pt-2">
-                  <span className="font-body text-sm font-semibold text-[#0F0F0F]">Flujo neto</span>
-                  <span className="font-mono text-base font-bold text-[#C8323C] lg:text-lg">-$359.000</span>
-                </div>
-              </div>
-            </FadeIn>
-
-            {/* CARD 2 — Escenarios */}
-            <FadeIn delay={200}>
-              <div className="h-full rounded-xl border border-[#E6E6E2] bg-white p-5 shadow-sm">
-                <h3 className="mb-3 font-body text-sm font-bold text-[#0F0F0F] sm:text-base">¿Qué pasa si el mercado cambia?</h3>
-                <div className="flex items-center pb-2 text-[10px] text-[#71717A]">
-                  <div className="w-[100px] shrink-0 sm:w-[110px]" />
-                  <div className="flex-1 text-center">Flujo/mes</div>
-                  <div className="flex-1 text-center">Utilidad 10a</div>
-                  <div className="w-[52px] shrink-0 text-right sm:w-[60px]">Retorno</div>
-                </div>
-                <div>
-                  {[
-                    { icon: "🌧", label: "Pesimista", flujo: "-$485K", utilidad: "$20M", retorno: "1.8x", retornoColor: "text-[#71717A]", highlight: false },
-                    { icon: "📊", label: "Base", flujo: "-$359K", utilidad: "$59M", retorno: "3.3x", retornoColor: "text-[#0F0F0F]", highlight: true },
-                    { icon: "☀️", label: "Optimista", flujo: "-$249K", utilidad: "$104M", retorno: "5.1x", retornoColor: "text-[#0F0F0F]", highlight: false },
-                  ].map((s, i, arr) => (
-                    <div
-                      key={s.label}
-                      className={`flex items-center px-3 py-2.5 ${i < arr.length - 1 ? "border-b border-[#E6E6E2]/50" : ""} ${s.highlight ? "rounded-lg bg-[#FAFAF8]" : ""}`}
-                    >
-                      <div className="flex w-[100px] shrink-0 items-center gap-1.5 sm:w-[110px]">
-                        <span className="text-sm">{s.icon}</span>
-                        <span className="font-body text-xs font-medium text-[#0F0F0F] sm:text-sm">{s.label}</span>
-                      </div>
-                      <div className="flex-1 text-center font-mono text-xs font-medium text-[#C8323C] sm:text-sm">{s.flujo}</div>
-                      <div className="flex-1 text-center font-mono text-xs font-medium text-[#0F0F0F] sm:text-sm">{s.utilidad}</div>
-                      <div className={`w-[52px] shrink-0 text-right font-mono text-base font-bold sm:w-[60px] sm:text-lg ${s.retornoColor}`}>{s.retorno}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </FadeIn>
-
-            {/* CARD 3 — Patrimonio en el tiempo */}
-            <FadeIn delay={300}>
-              <div className="h-full rounded-xl border border-[#E6E6E2] bg-white p-5 shadow-sm">
-                <h3 className="mb-3 font-body text-sm font-bold text-[#0F0F0F] sm:text-base">Tu patrimonio en el tiempo</h3>
-                <div className="relative">
-                  <svg viewBox="0 0 400 140" className="w-full" preserveAspectRatio="xMidYMid meet">
-                    <defs>
-                      <linearGradient id="patrimonioFill" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#0F0F0F" stopOpacity="0.25" />
-                        <stop offset="100%" stopColor="#0F0F0F" stopOpacity="0.03" />
-                      </linearGradient>
-                    </defs>
-                    <line x1="40" y1="15" x2="40" y2="110" stroke="#E6E6E2" strokeWidth="1" />
-                    <line x1="40" y1="110" x2="380" y2="110" stroke="#E6E6E2" strokeWidth="1" />
-                    <line x1="40" y1="62" x2="380" y2="62" stroke="#E6E6E2" strokeWidth="0.5" strokeDasharray="4 4" />
-                    <path d="M40,100 C100,96 160,84 210,68 C260,52 320,30 380,18 L380,110 L40,110 Z" fill="url(#patrimonioFill)" />
-                    <path d="M40,100 C100,96 160,84 210,68 C260,52 320,30 380,18" fill="none" stroke="#0F0F0F" strokeWidth="2.5" strokeLinecap="round" />
-                    <circle cx="210" cy="68" r="4" fill="#0F0F0F" />
-                    <circle cx="210" cy="68" r="7" fill="none" stroke="#0F0F0F" strokeWidth="1.5" opacity="0.4" />
-                    <line x1="210" y1="74" x2="210" y2="110" stroke="#0F0F0F" strokeWidth="0.8" strokeDasharray="3 3" opacity="0.4" />
-                    <text x="40" y="125" fontSize="10" fill="#71717A" textAnchor="middle">Hoy</text>
-                    <text x="125" y="125" fontSize="10" fill="#71717A" textAnchor="middle">5 años</text>
-                    <text x="210" y="125" fontSize="10" fill="#0F0F0F" fontWeight="600" textAnchor="middle">10 años</text>
-                    <text x="380" y="125" fontSize="10" fill="#71717A" textAnchor="middle">20 años</text>
-                  </svg>
-                  <div className="mt-2 flex items-center justify-center gap-4 text-center sm:gap-6">
-                    <div>
-                      <div className="font-mono text-base font-bold text-[#0F0F0F] lg:text-lg">$114M</div>
-                      <div className="font-body text-[10px] text-[#71717A]">patrimonio año 10</div>
-                    </div>
-                    <div className="h-8 w-px bg-[#E6E6E2]" />
-                    <div>
-                      <div className="font-mono text-base font-bold text-[#71717A] lg:text-lg">$43M</div>
-                      <div className="font-body text-[10px] text-[#71717A]">de tu bolsillo</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </FadeIn>
-          </div>
-
-          {/* FILA 2 — Card IA full width */}
-          <FadeIn delay={400}>
-            <div className="mt-4 rounded-xl border border-[#E6E6E2] bg-white p-5 shadow-lg lg:p-6">
-              <h3 className="mb-3 font-body text-sm font-bold text-[#0F0F0F] sm:text-base">Análisis IA — Sin jerga, con veredicto</h3>
-              <div className="rounded-lg bg-[#FAFAF8] p-4 lg:flex lg:gap-6">
-                <div className="lg:flex-1">
-                  <p className="font-heading text-[13px] leading-relaxed text-[#0F0F0F]/70 sm:text-sm">
-                    &ldquo;Este departamento tiene flujo negativo de $359.000 mensuales. El arriendo cubre el 54% de los costos totales. Sin embargo, la plusvalía proyectada de Providencia y el retorno de 3.3x en 10 años lo hacen viable como inversión patrimonial de largo plazo — si puedes mantener el aporte mensual.&rdquo;
-                  </p>
-                </div>
-                <div className="relative mt-3 border-t border-[#E6E6E2] pt-3 lg:mt-0 lg:w-[280px] lg:shrink-0 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
-                  <div className="space-y-1.5 select-none" style={{ filter: "blur(3px)" }}>
-                    <p className="font-body text-[13px] text-[#0F0F0F]/70">Precio sugerido de negociación: UF 2.950 (-7.8%)</p>
-                    <p className="font-body text-[13px] text-[#0F0F0F]/70">Comparación vs depósito a plazo: retorno 1.4x mayor en 10 años</p>
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="rounded-full bg-[#C8323C] px-3 py-1 font-mono text-xs font-bold text-white shadow-md">PRO</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </FadeIn>
-
-          {/* CTA */}
-          <FadeIn delay={500}>
-            <div className="mt-10 text-center sm:mt-14">
-              <Link href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="inline-flex items-center gap-1.5 font-body text-base font-semibold text-[#C8323C] transition-colors hover:text-[#C8323C]/80 hover:underline">
-                Ver un análisis real completo <ArrowRight className="h-4 w-4" />
-              </Link>
-              <p className="mt-2 font-body text-sm text-[#71717A]">Es gratis. No necesitas registrarte para verlo.</p>
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ============ 6. NO TODOS LOS DEPTOS SON IGUALES ============ */}
-      <section className="bg-[#FAFAF8] px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
-          <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-[#0F0F0F] md:text-4xl">
-              No todos los deptos son iguales
-            </h2>
-            <p className="mt-4 text-center font-body text-[#71717A]">
-              El mismo presupuesto, tres resultados muy distintos. El score te dice cuáles valen la pena.
-            </p>
-          </FadeIn>
-          <FadeIn delay={100}>
-            <div className="mt-10 flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory sm:gap-6 md:grid md:grid-cols-3 md:overflow-visible md:pb-0 md:snap-none">
-              {[
-                {
-                  score: 45, label: "BUSCAR OTRA",
-                  labelColor: "text-[#DC2626]",
-                  borderBottom: "border-b-[#DC2626]",
-                  title: "Depto 1D1B", comuna: "Santiago Centro",
-                  yield: "3.2%", flujo: "-$380.000", flujoColor: "text-[#C8323C]",
-                },
-                {
-                  score: 54, label: "NEGOCIAR",
-                  labelColor: "text-[#C8323C]",
-                  borderBottom: "border-b-[#C8323C]",
-                  title: "Depto 2D1B", comuna: "Providencia",
-                  yield: "4.0%", flujo: "-$359.000", flujoColor: "text-[#C8323C]",
-                },
-                {
-                  score: 78, label: "COMPRAR",
-                  labelColor: "text-[#16A34A]",
-                  borderBottom: "border-b-[#16A34A]",
-                  title: "Depto 2D2B", comuna: "La Florida",
-                  yield: "5.8%", flujo: "+$45.000", flujoColor: "text-[#16A34A]",
-                },
-              ].map((card) => (
-                <div
-                  key={card.score}
-                  className={`min-w-[220px] shrink-0 snap-center rounded-xl border border-[#E6E6E2] border-b-2 ${card.borderBottom} bg-white p-5 transition-all duration-200 hover:shadow-md sm:min-w-[240px] md:min-w-0 md:shrink`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="font-heading text-3xl font-bold text-[#0F0F0F]">{card.score}</div>
-                    <div>
-                      <div className={`font-mono text-xs font-bold ${card.labelColor}`}>{card.label}</div>
-                      <div className="font-body text-[15px] font-semibold text-[#0F0F0F]">{card.title}</div>
-                      <div className="font-body text-[13px] text-[#71717A]">{card.comuna}</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-body text-sm text-[#71717A]">Rent. Bruta</span>
-                      <span className="font-mono text-sm font-medium text-[#0F0F0F]">{card.yield}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-body text-sm text-[#71717A]">Flujo mensual</span>
-                      <span className={`font-mono text-sm font-medium ${card.flujoColor}`}>{card.flujo}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ============ 7. CHECKLIST ============ */}
-      <section className="bg-white px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl">
-          <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-[#0F0F0F] md:text-4xl">
-              Toda la información que tu corredor no te va a dar
-            </h2>
-          </FadeIn>
-          <FadeIn delay={100}>
-            <div className="mx-auto mt-10 grid max-w-3xl grid-cols-1 gap-3 lg:grid-cols-2">
-              {[
-                "Flujo real: cuánto vas a poner de tu bolsillo cada mes, con todos los costos",
-                "Punto de equilibrio: a qué tasa de interés tu flujo se hace cero",
-                "Precio de mercado: si estás pagando más o menos que el promedio de la zona",
-                "Comparación: cómo rinde vs depósito a plazo u otras alternativas",
-                "Escenarios: qué pasa con tu inversión si suben las tasas o baja el arriendo",
-                "Proyección real: cuánto vale tu patrimonio en 5, 10 y 20 años",
-              ].map((text) => (
-                <div key={text} className="flex items-start gap-2.5">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#0F0F0F]" />
-                  <span className="font-body text-sm text-[#71717A] sm:text-base">{text}</span>
-                </div>
-              ))}
-            </div>
-            <p className="mt-8 text-center font-body text-sm text-[#71717A]">
-              Todo basado en datos públicos del Banco Central, SII y CMF. Sin supuestos mágicos.
-            </p>
-          </FadeIn>
-        </div>
-      </section>
-
-      {/* ============ 8. PRICING COMPACTO ============ */}
-      <section className="bg-[#FAFAF8] px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-3xl">
-          <FadeIn>
-            <h2 className="text-center font-heading text-3xl font-bold tracking-tight text-[#0F0F0F]">
+            <h2 className="font-heading font-bold text-[28px] text-[#0F0F0F] text-center">
               Gratis. En serio.
             </h2>
-            <p className="mt-3 text-center font-body text-[#71717A]">
-              Tu primer análisis completo sin pagar nada. El Informe Pro es para los que quieren todo.
+            <p className="font-body text-sm text-[#71717A] text-center mt-1.5 mb-8">
+              Analiza gratis. El Informe Pro incluye proyecciones a 20 años y análisis IA.
             </p>
           </FadeIn>
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            <FadeIn delay={100}>
-              <div className="rounded-xl border border-[#E6E6E2] bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md">
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-body text-lg font-bold text-[#0F0F0F]">Gratis</h3>
-                  <span className="font-heading text-3xl font-bold text-[#0F0F0F]">$0</span>
-                </div>
-                <p className="mt-3 font-body text-sm leading-relaxed text-[#71717A]">
-                  Score de inversión + métricas de rentabilidad + análisis de sensibilidad + comparación con la zona.
-                </p>
-                <div className="mt-4 space-y-2">
-                  {["Franco Score (1-100)", "Rentabilidad bruta y neta", "Flujo mensual real", "Sensibilidad a tasas", "Comparación zona"].map((f) => (
-                    <div key={f} className="flex items-center gap-2">
-                      <Check className="h-3.5 w-3.5 text-[#0F0F0F]" />
-                      <span className="font-body text-sm text-[#71717A]">{f}</span>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {/* Free tier */}
+            <FadeIn delay={0}>
+              <div className="bg-white border border-[#E6E6E2] rounded-xl p-6 h-full flex flex-col">
+                <p className="font-body text-sm font-bold text-[#0F0F0F]">Gratis</p>
+                <p className="font-heading font-bold text-[32px] text-[#0F0F0F] mt-1">$0</p>
+                <p className="font-body text-[11px] text-[#71717A] mt-1 mb-4">Score + métricas + comparación</p>
+                <div className="space-y-2.5 flex-1">
+                  {["Franco Score 1-100", "8 métricas de rentabilidad", "Comparación con la zona", "Análisis de sensibilidad"].map((f) => (
+                    <div key={f} className="flex items-start gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#0F0F0F] mt-0.5 flex-shrink-0" />
+                      <span className="font-body text-[11.5px] text-[#71717A]">{f}</span>
                     </div>
                   ))}
                 </div>
-                <Link href="/register" className="mt-5 block">
-                  <Button className="w-full rounded-lg bg-[#0F0F0F] text-white transition-colors hover:bg-[#0F0F0F]/90">
-                    Comenzar gratis
-                  </Button>
+                <Link
+                  href={ctaHref}
+                  className="block w-full bg-[#0F0F0F] text-white font-body text-[13px] font-semibold py-2.5 rounded-lg mt-4 text-center hover:bg-[#2A2A2A] transition-colors"
+                >
+                  Comenzar gratis
                 </Link>
               </div>
             </FadeIn>
-            <FadeIn delay={200}>
-              <div className="relative rounded-xl border-2 border-[#C8323C] bg-white p-6 shadow-sm transition-all duration-200 hover:shadow-md">
-                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 rounded bg-[#C8323C] px-3 py-0.5 font-mono text-[11px] font-bold text-white">
-                  Completo
-                </div>
-                <div className="flex items-baseline justify-between">
-                  <h3 className="font-body text-lg font-bold text-[#0F0F0F]">Informe Pro</h3>
-                  <span className="font-heading text-3xl font-bold text-[#0F0F0F]">$4.990</span>
-                </div>
-                <p className="mt-3 font-body text-sm leading-relaxed text-[#71717A]">
-                  Todo lo gratis + análisis IA completo + proyecciones a 20 años + escenarios de salida y refinanciamiento.
-                </p>
-                <div className="mt-4 space-y-2">
-                  {["Todo lo del plan gratis", "Análisis IA personalizado", "Proyección patrimonio 20 años", "Escenarios de salida", "Precio sugerido de negociación"].map((f) => (
-                    <div key={f} className="flex items-center gap-2">
-                      <Check className="h-3.5 w-3.5 text-[#0F0F0F]" />
-                      <span className="font-body text-sm text-[#71717A]">{f}</span>
+
+            {/* Pro tier */}
+            <FadeIn delay={100}>
+              <div className="relative bg-white border-2 border-[#C8323C] rounded-xl p-6 h-full flex flex-col">
+                <span className="absolute top-[-10px] right-3.5 bg-[#C8323C] text-white font-mono text-[8px] font-bold px-2 py-0.5 rounded">
+                  POPULAR
+                </span>
+                <p className="font-body text-sm font-bold text-[#0F0F0F]">Informe Pro</p>
+                <p className="font-heading font-bold text-[32px] text-[#0F0F0F] mt-1">$4.990</p>
+                <p className="font-body text-[11px] text-[#71717A] mt-1 mb-4">Todo lo gratis + análisis profundo</p>
+                <div className="space-y-2.5 flex-1">
+                  {[
+                    "Todo lo gratuito",
+                    "Flujo de caja 1-20 años",
+                    "Proyección de patrimonio",
+                    "Escenario de salida",
+                    "Análisis IA personalizado",
+                    "Veredicto con precio sugerido",
+                  ].map((f) => (
+                    <div key={f} className="flex items-start gap-2">
+                      <Check className="w-3.5 h-3.5 text-[#C8323C] mt-0.5 flex-shrink-0" />
+                      <span className="font-body text-[11.5px] text-[#71717A]">{f}</span>
                     </div>
                   ))}
                 </div>
-                <Link href={user ? "/analisis/nuevo" : "/register"} className="mt-5 block">
-                  <Button className="w-full rounded-lg bg-[#C8323C] font-bold text-white transition-colors hover:bg-[#C8323C]/90">
-                    Desbloquear la verdad <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
+                <Link
+                  href={ctaHref}
+                  className="block w-full bg-[#C8323C] text-white font-body text-[13px] font-bold py-2.5 rounded-lg mt-4 text-center hover:bg-[#b02a33] transition-colors"
+                  style={{ boxShadow: "0 2px 12px rgba(200,50,60,0.2)" }}
+                >
+                  Desbloquear la verdad
                 </Link>
               </div>
             </FadeIn>
@@ -797,122 +516,148 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ============ 9. APALANCAMIENTO INMOBILIARIO ============ */}
-      <LeverageSection />
-
-      {/* ============ 10. SOLO DATOS. CERO COMISIONES. ============ */}
-      <section className="bg-white px-6 py-16 md:py-24">
-        <div className="mx-auto max-w-6xl text-center">
+      {/* ============================================================ */}
+      {/* SECTION 6 — TRUST */}
+      {/* ============================================================ */}
+      <section className="bg-[#FAFAF8] py-12">
+        <div className="max-w-[600px] mx-auto px-6 text-center">
           <FadeIn>
-            <h2 className="font-heading text-3xl font-bold tracking-tight text-[#0F0F0F] md:text-4xl">
-              Solo datos. Cero comisiones.
-            </h2>
-            <p className="mx-auto mt-4 max-w-xl font-body text-[#71717A]">
-              Franco no vende propiedades. No cobra comisiones. No trabaja para inmobiliarias. Analizamos datos públicos para que tú tengas la información completa antes de decidir.
+            <p className="font-body text-sm font-semibold text-[#0F0F0F]">Solo datos. Cero comisiones.</p>
+            <p className="font-body text-[13px] text-[#71717A] leading-relaxed mt-1.5 mb-5">
+              Franco no vende propiedades. No trabaja para inmobiliarias. Analizamos datos públicos para que decidas mejor.
             </p>
           </FadeIn>
+
+          {/* Sources */}
           <FadeIn delay={100}>
-            <div className="mt-8 flex items-center justify-center gap-6 sm:gap-10">
+            <div className="flex justify-center gap-6">
               {[
-                {
-                  label: "Banco Central",
-                  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-4h6v4"/><path d="M9 10h1"/><path d="M14 10h1"/><path d="M9 14h1"/><path d="M14 14h1"/></svg>,
-                },
-                {
-                  label: "SII",
-                  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
-                },
-                {
-                  label: "CMF",
-                  icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#71717A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>,
-                },
-              ].map((source) => (
-                <div key={source.label} className="flex flex-col items-center gap-1.5">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F0F0EC]">
-                    {source.icon}
+                { abbr: "BC", name: "Banco Central" },
+                { abbr: "SII", name: "SII" },
+                { abbr: "CMF", name: "CMF" },
+              ].map((src) => (
+                <div key={src.abbr} className="flex items-center gap-1.5">
+                  <div className="w-7 h-7 rounded-md bg-[#F0F0EC] flex items-center justify-center">
+                    <span className="font-mono text-[8px] text-[#71717A] font-semibold">{src.abbr}</span>
                   </div>
-                  <span className="font-body text-[11px] font-medium text-[#71717A] sm:text-xs">{source.label}</span>
+                  <span className="font-body text-[11px] text-[#71717A]">{src.name}</span>
                 </div>
               ))}
             </div>
           </FadeIn>
+
+          {/* Double RE reading */}
           <FadeIn delay={200}>
-            <p className="mx-auto mt-8 max-w-xl font-body text-sm text-[#71717A]">
-              ¿Y ChatGPT? Puedes usarlo, pero inventa datos de arriendo, te da un resultado distinto cada vez, y no guarda nada. Franco usa datos reales, metodología consistente, y gráficos claros.
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-6 max-w-[340px] mx-auto">
+              <div className="bg-white border border-[#E6E6E2] rounded-lg p-4 text-center">
+                <p className="font-mono text-[14px] font-bold text-[#C8323C]">RE</p>
+                <p className="font-body text-[10px] text-[#71717A] mt-0.5">= Real Estate</p>
+                <p className="font-body text-[10px] font-semibold text-[#0F0F0F] mt-0.5">Inmobiliario</p>
+              </div>
+              <div className="bg-white border border-[#E6E6E2] rounded-lg p-4 text-center">
+                <p className="font-mono text-[14px] font-bold text-[#C8323C]">RE</p>
+                <p className="font-body text-[10px] text-[#71717A] mt-0.5">= Re franco</p>
+                <p className="font-body text-[10px] font-semibold text-[#0F0F0F] mt-0.5">Muy honesto</p>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* ChatGPT note */}
+          <FadeIn delay={300}>
+            <p className="mt-5 font-body text-xs text-[#71717A] italic">
+              ¿Y ChatGPT? Inventa datos de arriendo y te da un resultado distinto cada vez. Franco usa datos reales y metodología consistente.
             </p>
           </FadeIn>
         </div>
       </section>
 
-      {/* ============ 9. CTA FINAL ============ */}
-      <section className="relative overflow-hidden px-6 py-20 md:py-24" style={{ background: "linear-gradient(145deg, #0F0F0F 0%, #1C1917 60%, #292524 100%)" }}>
-        {/* Centered red glow */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-96 w-96 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#C8323C]/[0.03] blur-3xl" />
-        <div className="relative mx-auto max-w-6xl text-center">
+      {/* ============================================================ */}
+      {/* SECTION 7 — CTA FINAL */}
+      {/* ============================================================ */}
+      <section
+        className="relative overflow-hidden py-[72px] text-center"
+        style={{ background: "linear-gradient(145deg, #0F0F0F 0%, #1C1917 60%, #292524 100%)" }}
+      >
+        {/* Red glow central */}
+        <div
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full pointer-events-none"
+          style={{ background: "radial-gradient(circle, rgba(200,50,60,0.03), transparent 70%)" }}
+        />
+
+        <div className="relative z-10 px-6">
           <FadeIn>
-            <h2 className="font-heading text-3xl font-bold leading-tight tracking-tight text-white md:text-4xl">
+            <h2 className="font-heading font-bold text-[32px] text-white tracking-tight">
               Antes de firmar, sé franco.
             </h2>
-            <p className="mx-auto mt-3 max-w-xl font-body text-white/60">
+            <p className="font-body text-sm text-white/40 mt-2.5">
               Tu corredor gana si compras. Franco gana si decides bien.
             </p>
-            <div className="mt-6">
-              <Link href="/analisis/nuevo">
-                <Button className="rounded-lg bg-[#C8323C] px-8 py-4 font-body text-base font-bold text-white shadow-[0_4px_20px_rgba(200,50,60,0.3)] transition-colors hover:bg-[#C8323C]/90">
-                  Analizar propiedad gratis <ArrowRight className="ml-1 h-4 w-4" />
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-4 font-body text-sm text-white/40">Tu primer análisis en 30 segundos</p>
-            {analysisCount !== null && analysisCount >= 50 && (
-              <p className="mt-3 font-body text-xs text-white/30">
-                Ya analizaron {analysisCount.toLocaleString("es-CL")} propiedades con Franco
-              </p>
-            )}
+          </FadeIn>
+
+          <FadeIn delay={100}>
+            <Link
+              href={ctaHref}
+              className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-4 rounded-lg mt-6 hover:bg-[#b02a33] transition-colors"
+              style={{ boxShadow: "0 4px 20px rgba(200,50,60,0.3)" }}
+            >
+              Analizar un departamento →
+            </Link>
+            <p className="font-body text-[11px] text-white/20 mt-2.5">
+              Gratis. Sin registro. 30 segundos.
+            </p>
           </FadeIn>
         </div>
       </section>
 
-      {/* Separator between CTA and footer */}
-      <div className="h-px bg-white/[0.05]" />
-
-      {/* ============ 10. FOOTER ============ */}
-      <footer className="bg-[#0F0F0F] px-6 py-10 sm:py-14">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-col gap-10 md:flex-row md:justify-between">
-            <div className="shrink-0">
-              <FrancoLogo size="md" inverted showTagline />
+      {/* ============================================================ */}
+      {/* FOOTER */}
+      {/* ============================================================ */}
+      <footer className="bg-[#0F0F0F] py-9 px-6">
+        <div className="max-w-[780px] mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-8">
+            {/* Left */}
+            <div>
+              <FrancoLogo inverted size="sm" href="/" />
+              <p className="font-mono text-[8px] text-white/25 uppercase tracking-[0.1em] mt-1">
+                RE FRANCO CON TU INVERSIÓN
+              </p>
             </div>
-            <div className="grid grid-cols-3 gap-8 text-sm">
+
+            {/* Right — 3 columns */}
+            <div className="flex gap-9 flex-wrap">
               <div>
-                <h4 className="font-body text-xs uppercase tracking-wider text-white/40">Producto</h4>
-                <div className="mt-3 flex flex-col gap-2">
-                  <Link href="/analisis/nuevo" className="font-body text-white/60 transition-colors hover:text-white/80">Nuevo análisis</Link>
-                  <Link href="/dashboard" className="font-body text-white/60 transition-colors hover:text-white/80">Dashboard</Link>
-                  <Link href="/pricing" className="font-body text-white/60 transition-colors hover:text-white/80">Pricing</Link>
+                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Producto</p>
+                <div className="space-y-1.5">
+                  <Link href={ctaHref} className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Análisis gratis</Link>
+                  <Link href="/pricing" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Informe Pro</Link>
+                  <Link href="/dashboard" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Dashboard</Link>
                 </div>
               </div>
               <div>
-                <h4 className="font-body text-xs uppercase tracking-wider text-white/40">Empresa</h4>
-                <div className="mt-3 flex flex-col gap-2">
-                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Sobre Franco</Link>
-                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Blog</Link>
-                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Contacto</Link>
+                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Empresa</p>
+                <div className="space-y-1.5">
+                  <span className="block font-body text-[11px] text-white/45">Sobre Franco</span>
+                  <span className="block font-body text-[11px] text-white/45">Blog</span>
+                  <span className="block font-body text-[11px] text-white/45">Contacto</span>
                 </div>
               </div>
               <div>
-                <h4 className="font-body text-xs uppercase tracking-wider text-white/40">Legal</h4>
-                <div className="mt-3 flex flex-col gap-2">
-                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Términos</Link>
-                  <Link href="#" className="font-body text-white/60 transition-colors hover:text-white/80">Privacidad</Link>
-                  <span className="font-body text-white/40">Datos: Banco Central, SII, CMF</span>
+                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Legal</p>
+                <div className="space-y-1.5">
+                  <span className="block font-body text-[11px] text-white/45">Términos</span>
+                  <span className="block font-body text-[11px] text-white/45">Privacidad</span>
                 </div>
               </div>
             </div>
           </div>
-          <div className="mt-8 border-t border-white/10 pt-6 text-center">
-            <p className="font-body text-xs text-white/30">
-              &copy; 2026 refranco.ai — No somos asesores financieros. Somos francos.
+
+          {/* Bottom */}
+          <div className="border-t border-white/[0.05] mt-6 pt-3.5">
+            <p className="font-body text-[10px] text-white/[0.18]">
+              © 2026 refranco.ai — No somos asesores financieros. Somos francos.
+            </p>
+            <p className="font-body text-[9px] text-white/10 mt-2">
+              Franco es una herramienta informativa. Los resultados son estimaciones basadas en los datos ingresados y no constituyen asesoría financiera, tributaria ni legal.
             </p>
           </div>
         </div>

@@ -1,21 +1,10 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { ScoreCircle } from "./score-circle";
 import { AnalysisNav } from "./analysis-nav";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
-
-function getClasificacionLabel(score: number): { text: string; color: string } {
-  if (score >= 75) return { text: "Buena inversión", color: "text-verdict-buy" };
-  if (score >= 40) return { text: "No compres — negocia primero", color: "text-franco-red" };
-  return { text: "Busca otra", color: "text-verdict-avoid" };
-}
 
 export default async function AnalisisDetallePage({
   params,
@@ -41,7 +30,6 @@ export default async function AnalisisDetallePage({
 
   const analisis = data as Analisis;
   const results: FullAnalysisResult | null = analisis.results || null;
-  const clasificacion = getClasificacionLabel(analisis.score);
 
   // Access level: "guest" | "free" | "premium"
   const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
@@ -65,10 +53,8 @@ export default async function AnalisisDetallePage({
   // Fetch zone comparison data
   const zoneData = await getZoneComparison(analisis.comuna);
 
-  const fmt = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
-
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#FAFAF8]">
       {/* Navbar */}
       <AnalysisNav
         userId={user?.id ?? null}
@@ -78,32 +64,6 @@ export default async function AnalisisDetallePage({
       />
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
-        {/* ===== FREE: Section 1 - Score + Classification ===== */}
-        <div className="mb-8 flex flex-col items-center gap-4 px-1 sm:gap-6 md:flex-row md:items-start">
-          <ScoreCircle score={analisis.score} />
-          <div className="text-center md:text-left">
-            <div className={`mb-1 font-body text-sm font-bold ${clasificacion.color}`}>
-              {clasificacion.text}
-            </div>
-            <h1 className="font-heading text-xl font-bold tracking-tight break-words text-franco-ink sm:text-3xl">{analisis.nombre}</h1>
-            <p className="font-body text-franco-muted">
-              {analisis.comuna}, {analisis.ciudad} · {new Date(analisis.created_at).toLocaleDateString("es-CL")}
-            </p>
-            <p className="mt-2 font-body text-sm text-franco-muted">
-              {resumenEjecutivo}
-            </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs sm:gap-3 sm:text-sm">
-              <span className="rounded bg-secondary px-2.5 py-1">{analisis.tipo}</span>
-              <span className="rounded bg-secondary px-2.5 py-1">
-                {analisis.dormitorios}D{analisis.banos}B · {analisis.superficie} m²
-              </span>
-              <span className="rounded bg-secondary px-2.5 py-1">{analisis.precio} UF</span>
-              <span className="rounded bg-secondary px-2.5 py-1">{fmt(analisis.arriendo)}/mes</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ===== Toggle + Free Metrics + CTA + Premium sections ===== */}
         <PremiumResults
           results={results}
           accessLevel={accessLevel}
@@ -118,18 +78,21 @@ export default async function AnalisisDetallePage({
           ufValue={ufValue}
           zoneData={zoneData}
           aiAnalysisInitial={(data as Record<string, unknown>).ai_analysis as Record<string, unknown> | undefined ?? undefined}
+          nombre={analisis.nombre}
+          ciudad={analisis.ciudad}
+          createdAt={analisis.created_at}
+          superficie={analisis.superficie}
+          precioUF={analisis.precio}
         />
 
         {/* Fallback for old analyses without full results */}
         {!results && (
-          <Card className="mb-8 border-border/50 bg-card/50">
-            <CardContent className="p-6">
-              <h3 className="mb-2 text-sm font-semibold">Resumen</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {analisis.resumen}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="mb-8 rounded-2xl border border-[#E6E6E2] bg-white p-6">
+            <h3 className="mb-2 text-sm font-semibold">Resumen</h3>
+            <p className="text-sm leading-relaxed text-[#71717A]">
+              {analisis.resumen}
+            </p>
+          </div>
         )}
       </div>
     </div>

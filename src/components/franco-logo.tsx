@@ -24,18 +24,25 @@ export default function FrancoLogo({
   href,
 }: FrancoLogoProps) {
   const s = sizeConfig[size];
-  const baseColor = inverted ? "text-white" : "text-franco-ink";
-  const reOpacity = inverted ? "opacity-25" : "opacity-[0.28]";
 
   const logo = (
     <span className={`inline-flex flex-col ${className}`}>
       <span className={`${s.text} leading-tight`}>
-        <span className={`font-heading font-normal transition-colors duration-300 ${baseColor} ${reOpacity}`}>
+        <span
+          className="font-heading italic font-normal transition-colors duration-300"
+          style={{ color: inverted ? 'rgba(255,255,255,0.32)' : 'rgba(15,15,15,0.28)' }}
+        >
           re
         </span>
-        <span className={`font-heading font-bold transition-colors duration-300 ${baseColor}`}>franco</span>
         <span
-          className={`font-body font-semibold text-franco-red ${s.dot} tracking-wide`}
+          className="font-heading font-bold transition-colors duration-300"
+          style={{ color: inverted ? '#FFFFFF' : '#0F0F0F' }}
+        >
+          franco
+        </span>
+        <span
+          className={`font-body font-semibold text-[#C8323C] ${s.dot} tracking-wide`}
+          style={{ fontSize: '0.35em', letterSpacing: '0.1em' }}
         >
           .ai
         </span>
