@@ -3,39 +3,26 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Trash2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Plus,
-  BarChart3,
-  Search,
-  Trash2,
-  ArrowRight,
-  User,
-  ArrowUpDown,
-} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { LogoutButton } from "@/components/logout-button";
 import FrancoLogo from "@/components/franco-logo";
+import { LogoutButton } from "@/components/logout-button";
 import type { Analisis } from "@/lib/types";
+import { User } from "lucide-react";
 
-type SortKey = "score" | "date" | "precio" | "flujo";
-type FilterKey = "all" | "buena" | "regular" | "debil";
+type VerdictFilter = "todos" | "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA";
 
-function getScoreColor(score: number) {
-  if (score >= 80) return "#16A34A";
-  if (score >= 65) return "#16A34A";
-  if (score >= 50) return "#eab308";
-  if (score >= 30) return "#f59e0b";
-  return "#ef4444";
+function getVerdict(score: number): "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA" {
+  if (score >= 75) return "COMPRAR";
+  if (score >= 40) return "NEGOCIAR";
+  return "BUSCAR OTRA";
 }
 
-function getScoreLabel(score: number) {
-  if (score >= 80) return "Excelente";
-  if (score >= 65) return "Buena";
-  if (score >= 50) return "Regular";
-  if (score >= 30) return "Débil";
-  return "Evitar";
+function getVerdictColor(verdict: string) {
+  if (verdict === "COMPRAR") return "#16A34A";
+  if (verdict === "NEGOCIAR") return "#C8323C";
+  return "#DC2626";
 }
 
 function getMetrics(item: Analisis) {
@@ -48,9 +35,9 @@ function getMetrics(item: Analisis) {
       flujoMensual: r.metrics.flujoNetoMensual ?? 0,
       capRate: raw.capRate ?? 0,
       precioM2: r.metrics.precioM2 ?? 0,
+      multiplicador: r.exitScenario?.multiplicadorCapital ?? 0,
     };
   }
-  // Fallback: calculate basic metrics from raw data
   const precioCLP = item.precio * 38800;
   const rentabilidadBruta = precioCLP > 0 ? ((item.arriendo * 12) / precioCLP) * 100 : 0;
   const flujoMensual = item.arriendo - item.gastos - item.contribuciones;
@@ -59,6 +46,7 @@ function getMetrics(item: Analisis) {
     flujoMensual,
     capRate: 0,
     precioM2: item.superficie > 0 ? item.precio / item.superficie : 0,
+    multiplicador: 0,
   };
 }
 
@@ -68,43 +56,85 @@ function formatCLP(n: number) {
   return `$${Math.round(n)}`;
 }
 
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  const months = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function getSiendoFranco(score: number, flujo: number) {
+  if (score >= 75) return "Flujo positivo y buena plusvalía. Da los números.";
+  if (score >= 40) return `Te cuesta ${formatCLP(Math.abs(flujo))}/mes. Negociable si consigues mejor precio.`;
+  return "Flujo muy negativo y retorno bajo. No vale la pena.";
+}
+
+function VerdictBadge({ verdict }: { verdict: string }) {
+  const styles: Record<string, { color: string; bg: string; border: string }> = {
+    COMPRAR: { color: "#16A34A", bg: "rgba(22,163,74,0.07)", border: "rgba(22,163,74,0.2)" },
+    NEGOCIAR: { color: "#C8323C", bg: "rgba(200,50,60,0.07)", border: "rgba(200,50,60,0.2)" },
+    "BUSCAR OTRA": { color: "#DC2626", bg: "rgba(220,38,38,0.07)", border: "rgba(220,38,38,0.2)" },
+  };
+  const s = styles[verdict] || styles.NEGOCIAR;
+  return (
+    <span
+      className="inline-flex font-mono text-[9px] font-bold tracking-wide"
+      style={{ padding: "3px 10px", borderRadius: 5, background: s.bg, border: `1.5px solid ${s.border}`, color: s.color }}
+    >
+      {verdict}
+    </span>
+  );
+}
+
+function ScoreCircle({ score }: { score: number }) {
+  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
+  const dashLen = (score / 100) * 126;
+  return (
+    <div className="relative h-12 w-12 shrink-0">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke="#E6E6E2" strokeWidth="3" />
+        <circle
+          cx="24" cy="24" r="20" fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeDasharray={`${dashLen} 126`}
+          strokeLinecap="round"
+          transform="rotate(-90 24 24)"
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="font-heading text-base font-bold text-[#0F0F0F]">{score}</span>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   const router = useRouter();
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortKey>("date");
-  const [filter, setFilter] = useState<FilterKey>("all");
+  const [activeFilter, setActiveFilter] = useState<VerdictFilter>("todos");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Stats
-  const stats = useMemo(() => {
-    if (analisis.length === 0) return null;
-    const scores = analisis.map((a) => a.score);
-    const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+  // Summary stats
+  const summaryData = useMemo(() => {
+    if (analisis.length < 3) return null;
     const best = analisis.reduce((a, b) => (a.score > b.score ? a : b));
-    return { count: analisis.length, avgScore, bestName: best.nombre, bestScore: best.score };
+    const avgScore = Math.round(analisis.reduce((sum, a) => sum + a.score, 0) / analisis.length);
+    const positiveFlowCount = analisis.filter((a) => getMetrics(a).flujoMensual >= 0).length;
+    return { best, avgScore, positiveFlowCount, total: analisis.length };
   }, [analisis]);
 
-  // Filter + sort
-  const filtered = useMemo(() => {
-    let list = analisis.filter((a) =>
-      a.nombre.toLowerCase().includes(search.toLowerCase())
-    );
-    if (filter === "buena") list = list.filter((a) => a.score >= 60);
-    else if (filter === "regular") list = list.filter((a) => a.score >= 40 && a.score < 60);
-    else if (filter === "debil") list = list.filter((a) => a.score < 40);
+  // Verdict counts
+  const verdictCounts = useMemo(() => {
+    const counts = { COMPRAR: 0, NEGOCIAR: 0, "BUSCAR OTRA": 0 };
+    analisis.forEach((a) => { counts[getVerdict(a.score)]++; });
+    return counts;
+  }, [analisis]);
 
-    list.sort((a, b) => {
-      switch (sortBy) {
-        case "score": return b.score - a.score;
-        case "date": return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        case "precio": return b.precio - a.precio;
-        case "flujo": return getMetrics(b).flujoMensual - getMetrics(a).flujoMensual;
-        default: return 0;
-      }
-    });
-    return list;
-  }, [analisis, search, filter, sortBy]);
+  // Filtered list
+  const filtered = useMemo(() => {
+    if (activeFilter === "todos") return analisis;
+    return analisis.filter((a) => getVerdict(a.score) === activeFilter);
+  }, [analisis, activeFilter]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -115,7 +145,8 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
     });
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (id === "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1") return;
     if (!confirm("¿Estás seguro de eliminar este análisis?")) return;
     setDeletingId(id);
@@ -130,35 +161,25 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
     router.refresh();
   };
 
-  const sortOptions: { key: SortKey; label: string }[] = [
-    { key: "score", label: "Score" },
-    { key: "date", label: "Fecha" },
-    { key: "precio", label: "Precio" },
-    { key: "flujo", label: "Flujo" },
-  ];
-
-  const filterOptions: { key: FilterKey; label: string }[] = [
-    { key: "all", label: "Todas" },
-    { key: "buena", label: "Buena (60+)" },
-    { key: "regular", label: "Regular (40-59)" },
-    { key: "debil", label: "Débil (<40)" },
+  const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
+    { key: "todos", label: "Todos", count: analisis.length, color: null },
+    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#16A34A" },
+    { key: "NEGOCIAR", label: "Negociar", count: verdictCounts.NEGOCIAR, color: "#C8323C" },
+    { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#DC2626" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#fafafa]">
+    <div className="min-h-screen bg-[#FAFAF8]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
+      <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
+        <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
           <FrancoLogo size="sm" href="/" />
           <div className="flex items-center gap-3">
-            <Link href="/analisis/nuevo" className="font-body text-sm text-franco-muted transition-colors hover:text-franco-ink">
-              Nuevo análisis
-            </Link>
             <Link href="/pricing">
-              <span className="rounded-md bg-franco-red px-3 py-1.5 text-sm font-bold text-white transition-colors hover:bg-franco-red/90">Premium</span>
+              <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
             </Link>
             <Link href="/perfil">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-franco-muted hover:text-franco-ink">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-[#71717A] hover:text-[#0F0F0F]">
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Perfil</span>
               </Button>
             </Link>
@@ -167,222 +188,233 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
         </div>
       </nav>
 
-      <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6">
-        {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#111827] sm:text-3xl">Mis Análisis</h1>
-            {stats && (
-              <p className="mt-1 text-sm text-[#6b7280]">
-                {stats.count} análisis · Score promedio: {stats.avgScore} · Mejor inversión: {stats.bestName}
-              </p>
-            )}
-          </div>
-          <Link href="/analisis/nuevo">
-            <Button className="w-full gap-2 rounded-xl bg-franco-ink text-white transition-all hover:bg-[#0F0F0F]/90 hover:shadow-md sm:w-auto">
-              <Plus className="h-4 w-4" /> Nuevo Análisis
-            </Button>
-          </Link>
-        </div>
-
+      <div className="mx-auto max-w-[820px] px-5 py-7">
         {analisis.length === 0 ? (
-          /* Empty state */
-          <div className="mt-16 flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#d1d5db] bg-white p-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-franco-bg">
-              <BarChart3 className="h-8 w-8 text-franco-ink" />
+          /* ─── Empty State ─── */
+          <div className="px-6 py-16 text-center">
+            <div className="mb-6 flex select-none items-baseline justify-center opacity-[0.08]">
+              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[#0F0F0F]">re</span>
+              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[#0F0F0F]">franco</span>
+              <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
             </div>
-            <h2 className="mt-5 text-xl font-semibold text-[#111827]">Aún no has analizado ninguna propiedad</h2>
-            <p className="mt-2 text-[#6b7280]">
-              Crea tu primer análisis y descubre si es buena inversión.
-            </p>
-            <Link href="/analisis/nuevo" className="mt-6">
-              <Button className="gap-2 rounded-xl bg-franco-ink px-6 py-5 text-white transition-all hover:bg-[#0F0F0F]/90 hover:shadow-md">
-                Hacer mi primer análisis <ArrowRight className="h-4 w-4" />
-              </Button>
+            <div className="mb-1.5 font-heading text-xl font-bold text-[#0F0F0F]">
+              Todavía no has analizado ningún departamento
+            </div>
+            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[#71717A]">
+              Ingresa los datos de cualquier propiedad y Franco te dice si vale la pena en 30 segundos.
+            </div>
+            <Link href="/analisis/nuevo">
+              <button className="rounded-lg bg-[#C8323C] px-7 py-3 font-body text-sm font-bold text-white shadow-[0_2px_12px_rgba(200,50,60,0.2)]">
+                Analizar mi primer departamento →
+              </button>
             </Link>
+            <div className="mt-3">
+              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[#71717A] no-underline hover:text-[#0F0F0F]">
+                O mira un ejemplo primero →
+              </a>
+            </div>
           </div>
         ) : (
           <>
-            {/* Filters bar */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9ca3af]" />
-                <Input
-                  placeholder="Buscar por nombre..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-9 rounded-lg border-[#e5e7eb] pl-9 text-sm focus-visible:ring-franco-ink"
-                />
+            {/* ─── Header ─── */}
+            <div className="mb-5 flex items-start justify-between">
+              <div>
+                <h1 className="font-heading text-2xl font-bold text-[#0F0F0F]">Mis Análisis</h1>
+                <p className="mt-0.5 font-body text-[13px] text-[#71717A]">
+                  {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
+                </p>
               </div>
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-                <div className="flex items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white p-0.5">
-                  <ArrowUpDown className="ml-2 h-3.5 w-3.5 text-[#9ca3af]" />
-                  {sortOptions.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setSortBy(opt.key)}
-                      className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                        sortBy === opt.key
-                          ? "bg-franco-ink text-white"
-                          : "text-[#6b7280] hover:text-[#111827]"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-1 rounded-lg border border-[#e5e7eb] bg-white p-0.5">
-                  {filterOptions.map((opt) => (
-                    <button
-                      key={opt.key}
-                      onClick={() => setFilter(opt.key)}
-                      className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                        filter === opt.key
-                          ? "bg-franco-ink text-white"
-                          : "text-[#6b7280] hover:text-[#111827]"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <Link href="/analisis/nuevo">
+                <button className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-[13px] font-bold text-white shadow-[0_2px_10px_rgba(200,50,60,0.15)]">
+                  Analizar nuevo →
+                </button>
+              </Link>
             </div>
 
-            {/* Results count */}
-            <p className="mt-4 text-xs text-[#9ca3af]">
-              {filtered.length} de {analisis.length} análisis
-              {selected.size > 0 && ` · ${selected.size} seleccionados`}
-            </p>
+            {/* ─── Summary Cards ─── */}
+            {summaryData && (
+              <div className="mb-5 grid grid-cols-1 gap-2.5 md:grid-cols-3">
+                {/* Best analysis */}
+                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">MEJOR ANÁLISIS</div>
+                  <div className="font-body text-[13px] font-semibold text-[#0F0F0F]">
+                    {summaryData.best.nombre} · {summaryData.best.comuna}
+                  </div>
+                  <div className="mt-0.5 font-mono text-[11px] text-[#71717A]">Score {summaryData.best.score}</div>
+                </div>
+                {/* Average */}
+                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">PROMEDIO</div>
+                  <div className="font-heading text-[22px] font-bold text-[#0F0F0F]">{summaryData.avgScore}</div>
+                  <div className="mt-0.5 font-body text-[10px] text-[#71717A]">score promedio</div>
+                </div>
+                {/* Positive flow */}
+                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">FLUJO POSITIVO</div>
+                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>
+                    {summaryData.positiveFlowCount}/{summaryData.total}
+                  </div>
+                  <div className="mt-0.5 font-body text-[10px] text-[#71717A]">propiedades</div>
+                </div>
+              </div>
+            )}
 
-            {/* Analysis cards */}
-            <div className="mt-4 space-y-3">
-              {filtered.map((item) => {
-                const m = getMetrics(item);
-                const color = getScoreColor(item.score);
-                const label = getScoreLabel(item.score);
-                const isSelected = selected.has(item.id);
-                const isDeleting = deletingId === item.id;
+            {/* ─── Verdict Filters ─── */}
+            <div className="mb-4 flex flex-wrap gap-1.5">
+              {filters.map((f) => {
+                const isActive = activeFilter === f.key;
+                const c = f.color;
+
+                let className = "font-body text-xs px-3.5 py-1.5 rounded-md cursor-pointer border transition-colors ";
+                if (isActive) {
+                  if (c) {
+                    // Colored active filter - use inline styles for dynamic colors
+                    className += "font-semibold";
+                  } else {
+                    className += "font-semibold bg-[#0F0F0F]/[0.05] border-[#0F0F0F]/40 text-[#0F0F0F]";
+                  }
+                } else {
+                  className += "bg-white border-[#E6E6E2] text-[#71717A]";
+                }
 
                 return (
-                  <div
-                    key={item.id}
-                    className={`group rounded-xl border bg-white transition-all duration-200 hover:shadow-md ${
-                      isSelected ? "border-franco-ink shadow-sm" : "border-[#e5e7eb]"
-                    } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
+                  <button
+                    key={f.key}
+                    onClick={() => setActiveFilter(f.key)}
+                    className={className}
+                    style={isActive && c ? {
+                      backgroundColor: `${c}10`,
+                      borderColor: `${c}66`,
+                      color: c,
+                      borderWidth: "1.5px",
+                    } : undefined}
                   >
-                    <div className="flex items-start gap-3 p-4 sm:items-center sm:gap-4 sm:p-5">
-                      {/* Checkbox */}
-                      <button
-                        onClick={() => toggleSelect(item.id)}
-                        className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors sm:mt-0 ${
-                          isSelected
-                            ? "border-franco-ink bg-franco-ink"
-                            : "border-[#d1d5db] hover:border-franco-ink"
-                        }`}
-                        title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
-                      >
-                        {isSelected && (
-                          <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-
-                      {/* Score circle */}
-                      <div
-                        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-[3px]"
-                        style={{ borderColor: color }}
-                      >
-                        <div className="text-center">
-                          <div className="font-mono text-sm font-bold" style={{ color }}>{item.score}</div>
-                        </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
-                          <Link href={`/analisis/${item.id}`} className="truncate text-sm font-semibold text-[#111827] hover:text-franco-ink sm:text-base">
-                            {item.nombre}
-                          </Link>
-                          <div className="flex items-center gap-2">
-                            <span className="rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ background: `${color}15`, color }}>
-                              {label}
-                            </span>
-                            {item.is_premium && (
-                              <span className="rounded-full bg-franco-red/10 px-2 py-0.5 text-[11px] font-medium text-franco-red">Pro</span>
-                            )}
-                            {!item.is_premium && (
-                              <span className="rounded-full bg-[#f3f4f6] px-2 py-0.5 text-[11px] font-medium text-[#9ca3af]">Gratis</span>
-                            )}
-                          </div>
-                        </div>
-                        <p className="mt-0.5 text-xs text-[#9ca3af]">
-                          {item.comuna} · {new Date(item.created_at).toLocaleDateString("es-CL")}
-                        </p>
-
-                        {/* Metrics mini-grid */}
-                        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-4 sm:gap-x-6">
-                          <div>
-                            <span className="text-[11px] text-[#9ca3af]">Rent. Bruta</span>
-                            <div className="text-xs font-semibold text-[#111827]">{m.rentabilidadBruta.toFixed(1)}%</div>
-                          </div>
-                          <div>
-                            <span className="text-[11px] text-[#9ca3af]">Flujo mensual</span>
-                            <div className={`text-xs font-semibold ${m.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#ef4444]"}`}>
-                              {formatCLP(m.flujoMensual)}
-                            </div>
-                          </div>
-                          <div>
-                            <span className="text-[11px] text-[#9ca3af]">Rent. Operativa</span>
-                            <div className="text-xs font-semibold text-[#111827]">{m.capRate.toFixed(1)}%</div>
-                          </div>
-                          <div>
-                            <span className="text-[11px] text-[#9ca3af]">UF/m²</span>
-                            <div className="text-xs font-semibold text-[#111827]">{m.precioM2.toFixed(1)}</div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex shrink-0 items-center gap-2">
-                        <Link href={`/analisis/${item.id}`}>
-                          <Button variant="ghost" size="sm" className="hidden text-xs text-franco-ink hover:bg-franco-bg hover:text-franco-ink sm:inline-flex">
-                            Ver análisis
-                          </Button>
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(item.id)}
-                          className="rounded-lg p-2 text-[#d1d5db] transition-colors hover:bg-red-50 hover:text-[#ef4444]"
-                          title="Eliminar análisis"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+                    {f.label} <span className="ml-1 font-mono text-[10px] opacity-70">{f.count}</span>
+                  </button>
                 );
               })}
             </div>
 
-            {filtered.length === 0 && analisis.length > 0 && (
-              <div className="mt-8 text-center">
-                <p className="text-sm text-[#9ca3af]">No se encontraron análisis con ese filtro.</p>
+            {/* ─── Analysis Cards ─── */}
+            {filtered.length === 0 ? (
+              <div className="py-10 text-center font-body text-[13px] text-[#71717A]">
+                No hay análisis con este filtro.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2.5">
+                {filtered.map((item) => {
+                  const m = getMetrics(item);
+                  const verdict = getVerdict(item.score);
+                  const isDeleting = deletingId === item.id;
+                  const isSelected = selected.has(item.id);
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => router.push(`/analisis/${item.id}`)}
+                      className={`cursor-pointer rounded-xl border bg-white p-4 px-5 transition-all hover:border-[#0F0F0F]/20 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${
+                        isSelected ? "border-[#0F0F0F]/30" : "border-[#E6E6E2]"
+                      } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
+                    >
+                      {/* Row 1: Score + Name + Verdict + Metrics */}
+                      <div className="flex items-center gap-3.5">
+                        {/* Compare checkbox */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
+                            isSelected
+                              ? "border-[#0F0F0F] bg-[#0F0F0F]"
+                              : "border-[#E6E6E2] hover:border-[#0F0F0F]/40"
+                          }`}
+                          title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
+                        >
+                          {isSelected && (
+                            <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+
+                        <ScoreCircle score={item.score} />
+
+                        {/* Info */}
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-body text-sm font-bold text-[#0F0F0F]">{item.nombre}</span>
+                            <span className="text-[#71717A]">·</span>
+                            <span className="font-body text-xs text-[#71717A]">{item.comuna}</span>
+                            {item.is_premium && (
+                              <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <VerdictBadge verdict={verdict} />
+                            <span className="text-[#71717A]">·</span>
+                            <span className="font-body text-[11px] text-[#71717A]">{formatDate(item.created_at)}</span>
+                          </div>
+                        </div>
+
+                        {/* Metrics (hidden on mobile) */}
+                        <div className="hidden items-center gap-4 sm:flex">
+                          <div className="min-w-[55px] text-right">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">FLUJO</div>
+                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>
+                              {formatCLP(m.flujoMensual)}
+                            </div>
+                          </div>
+                          <div className="min-w-[55px] text-right">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">RENT.</div>
+                            <div className="font-mono text-sm font-semibold text-[#0F0F0F]">
+                              {m.rentabilidadBruta.toFixed(1)}%
+                            </div>
+                          </div>
+                          <div className="min-w-[55px] text-right">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">RETORNO</div>
+                            <div className="font-mono text-sm font-semibold text-[#0F0F0F]">
+                              {m.multiplicador > 0 ? `${m.multiplicador.toFixed(1)}x` : "—"}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Delete */}
+                        {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
+                          <button
+                            onClick={(e) => handleDelete(e, item.id)}
+                            className="shrink-0 rounded-lg p-2 text-[#E6E6E2] transition-colors hover:bg-red-50 hover:text-[#DC2626]"
+                            title="Eliminar análisis"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Row 2: "Siendo franco:" summary */}
+                      <div className="mt-2.5 border-t border-[#E6E6E2] pt-2.5">
+                        <p className="font-body text-xs leading-snug text-[#71717A]">
+                          <span className="font-semibold text-[#0F0F0F]">Siendo franco:</span>{" "}
+                          {item.results?.resumen
+                            ? item.results.resumen.split(".")[0] + "."
+                            : getSiendoFranco(item.score, m.flujoMensual)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Floating compare bar */}
+      {/* ─── Floating Compare Bar ─── */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-franco-ink bg-franco-ink shadow-2xl shadow-black/20">
-          <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3 sm:px-6">
-            <span className="text-sm font-medium text-white">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#0F0F0F] bg-[#0F0F0F] shadow-2xl shadow-black/20">
+          <div className="mx-auto flex max-w-[820px] items-center justify-between px-5 py-3">
+            <span className="font-body text-sm font-medium text-white">
               {selected.size} análisis seleccionados
             </span>
             <Link href={`/comparar?ids=${Array.from(selected).join(",")}`}>
-              <Button className="gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-franco-ink hover:bg-franco-bg">
+              <Button className="gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-[#0F0F0F] hover:bg-[#FAFAF8]">
                 Comparar {selected.size} análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
