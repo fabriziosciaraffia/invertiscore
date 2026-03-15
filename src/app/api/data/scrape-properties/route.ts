@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { scrapeTocToc, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+import { scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = ReturnType<typeof createClient<any>>;
@@ -18,11 +18,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const batch = parseInt(url.searchParams.get("batch") || "0");
+  const comunas = getComunasBatch(batch);
+
   const supabase = getSupabase();
 
-  // Scrapear arriendos y ventas
-  const arriendoResult = await scrapeTocToc("arriendo");
-  const ventaResult = await scrapeTocToc("venta");
+  // Scrapear arriendos y ventas para este batch de comunas
+  const arriendoResult = await scrapeTocToc("arriendo", comunas);
+  const ventaResult = await scrapeTocToc("venta", comunas);
 
   const allProperties = [...arriendoResult.properties, ...ventaResult.properties];
   const allErrors = [...arriendoResult.errors, ...ventaResult.errors];
@@ -51,6 +55,9 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
+    batch,
+    totalBatches: TOTAL_BATCHES,
+    comunas,
     inserted,
     skipped,
     totalScraped: allProperties.length,
