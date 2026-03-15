@@ -57,6 +57,36 @@ const TIPS: Record<string, string> = {
   piso: "Pisos altos se arriendan más fácil y caro, y tienen mejor plusvalía.",
 };
 
+// ─── Estimaciones por comuna ─────────────────────────
+// TODO: Reemplazar por datos reales vía API/scraping
+// Estos valores son estimaciones basadas en promedios de mercado Q1 2026
+const ESTIMACIONES_POR_COMUNA: Record<string, {
+  arriendoM2: number;    // $/m² de arriendo mensual
+  ggccM2: number;        // $/m² de gastos comunes
+  contribUfM2: number;   // UF/m²/año de contribuciones
+}> = {
+  "Providencia": { arriendoM2: 7600, ggccM2: 1200, contribUfM2: 0.018 },
+  "Las Condes": { arriendoM2: 8200, ggccM2: 1400, contribUfM2: 0.020 },
+  "Ñuñoa": { arriendoM2: 7000, ggccM2: 1100, contribUfM2: 0.016 },
+  "Santiago Centro": { arriendoM2: 6200, ggccM2: 1000, contribUfM2: 0.014 },
+  "La Florida": { arriendoM2: 5800, ggccM2: 900, contribUfM2: 0.013 },
+  "Macul": { arriendoM2: 5500, ggccM2: 850, contribUfM2: 0.012 },
+  "San Miguel": { arriendoM2: 6000, ggccM2: 950, contribUfM2: 0.013 },
+  "Estación Central": { arriendoM2: 5600, ggccM2: 900, contribUfM2: 0.012 },
+  "Independencia": { arriendoM2: 5400, ggccM2: 850, contribUfM2: 0.011 },
+  "Recoleta": { arriendoM2: 5200, ggccM2: 800, contribUfM2: 0.011 },
+  "Vitacura": { arriendoM2: 9500, ggccM2: 1800, contribUfM2: 0.025 },
+  "Lo Barnechea": { arriendoM2: 8500, ggccM2: 1600, contribUfM2: 0.022 },
+  "Maipú": { arriendoM2: 5000, ggccM2: 750, contribUfM2: 0.010 },
+  "Puente Alto": { arriendoM2: 4500, ggccM2: 700, contribUfM2: 0.009 },
+  "Peñalolén": { arriendoM2: 5300, ggccM2: 850, contribUfM2: 0.012 },
+  "La Reina": { arriendoM2: 7200, ggccM2: 1200, contribUfM2: 0.017 },
+  "San Joaquín": { arriendoM2: 5100, ggccM2: 800, contribUfM2: 0.011 },
+  "Pedro Aguirre Cerda": { arriendoM2: 4800, ggccM2: 750, contribUfM2: 0.010 },
+  "Quinta Normal": { arriendoM2: 5000, ggccM2: 800, contribUfM2: 0.011 },
+  "Conchalí": { arriendoM2: 4600, ggccM2: 700, contribUfM2: 0.010 },
+};
+
 // ─── Tasa de mantención por antigüedad ──────────────
 function getMantencionRate(antiguedad: number): number {
   if (antiguedad <= 2) return 0.003;
@@ -70,9 +100,9 @@ function getMantencionRate(antiguedad: number): number {
 // ─── Reusable components ─────────────────────────────
 
 function SectionCard({
-  title, defaultOpen = true, forceOpen, summary, children,
+  title, subtitle, defaultOpen = true, forceOpen, summary, children,
 }: {
-  title: string; defaultOpen?: boolean; forceOpen?: boolean; summary?: string; children: React.ReactNode;
+  title: string; subtitle?: string; defaultOpen?: boolean; forceOpen?: boolean; summary?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const prevForce = useRef(forceOpen);
@@ -81,19 +111,22 @@ function SectionCard({
     prevForce.current = forceOpen;
   }, [forceOpen]);
   return (
-    <div className="rounded-xl border border-border bg-card">
+    <div className="rounded-xl border border-[#E6E6E2] bg-white mb-3 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-5 py-4 text-left"
+        className="flex w-full items-center justify-between px-4 py-3.5 text-left"
       >
-        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+        <div>
+          <h3 className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.08em]">{title}</h3>
+          {subtitle && <p className="font-body text-[11px] text-[#71717A]">{subtitle}</p>}
+        </div>
         <div className="flex items-center gap-2">
-          {!open && summary && <span className="text-xs text-muted-foreground">{summary}</span>}
-          {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          {!open && summary && <span className="font-body text-[11px] text-[#71717A]">{summary}</span>}
+          <span className={`text-[#71717A] text-sm transition-transform ${open ? "rotate-180" : ""}`}>↓</span>
         </div>
       </button>
-      {open && <div className="space-y-4 border-t border-border/50 px-5 pb-5 pt-4">{children}</div>}
+      {open && <div className="space-y-4 px-4 pb-4">{children}</div>}
     </div>
   );
 }
@@ -101,7 +134,7 @@ function SectionCard({
 function FieldLabel({ htmlFor, children, tip }: { htmlFor?: string; children: React.ReactNode; tip?: string }) {
   return (
     <div className="mb-1 flex items-center gap-1">
-      <label htmlFor={htmlFor} className="text-sm font-medium">{children}</label>
+      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[#0F0F0F]">{children}</label>
       {tip && <InfoTooltip content={tip} />}
     </div>
   );
@@ -118,10 +151,10 @@ function ButtonGroup({
         <button
           key={o.value} type="button"
           onClick={() => onChange(o.value)}
-          className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+          className={`min-w-[40px] rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
             value === o.value
-              ? "border-primary bg-primary/10 font-medium text-primary"
-              : "border-border text-muted-foreground hover:bg-muted/50"
+              ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
+              : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
           }`}
         >
           {o.label}
@@ -179,7 +212,7 @@ function MoneyInput({
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[#71717A]">
         {isUF ? "UF" : "$"}
       </span>
       <input
@@ -193,14 +226,14 @@ function MoneyInput({
         placeholder={placeholder}
         required={required}
         min={min}
-        className="flex h-10 w-full rounded-md border border-input bg-background py-2 pl-10 pr-14 text-[16px] shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        style={{ fontSize: "16px" }}
+        className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white py-2 pl-10 pr-14 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 transition-colors focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        style={{ fontSize: "13px" }}
       />
       {onCurrencyToggle && (
         <button
           type="button"
           onClick={onCurrencyToggle}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted"
+          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[#71717A] cursor-pointer hover:text-[#0F0F0F]"
           title={`Cambiar a ${isUF ? "CLP" : "UF"}`}
         >
           {isUF ? "→CLP" : "→UF"}
@@ -237,6 +270,7 @@ const LS_KEY = "franco_form_draft";
 
 export default function NuevoAnalisisPage() {
   const router = useRouter();
+  const [mode, setMode] = useState("larga");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
@@ -636,6 +670,72 @@ export default function NuevoAnalisisPage() {
     });
   }, [suggestions]);
 
+  // ─── "Franco sugiere" estimations ───────────────────
+  const [sugeridos, setSugeridos] = useState<Record<string, boolean>>({});
+
+  const francoSugerencias = useMemo(() => {
+    const supUtil = parseNum(form.superficieUtil) || 0;
+    if (!form.comuna || supUtil <= 0) return null;
+    const data = ESTIMACIONES_POR_COMUNA[form.comuna];
+    if (!data) return null;
+
+    const dorm = Number(form.dormitorios) || 2;
+    const ajusteDorm = dorm >= 3 ? 1.05 : dorm === 1 ? 0.95 : 1.0;
+
+    const arriendo = Math.round(data.arriendoM2 * supUtil * ajusteDorm / 1000) * 1000;
+    const ggcc = Math.round(data.ggccM2 * supUtil / 1000) * 1000;
+
+    const precioUF = (fieldCurrency.precio === "UF"
+      ? parseNum(form.precio)
+      : parseNum(form.precio) / UF_CLP) || 3000;
+    const avaluoFiscal = precioUF * 0.7;
+    const contribAnualUF = avaluoFiscal * data.contribUfM2;
+    const contribTrim = Math.round(contribAnualUF / 4 * UF_CLP / 1000) * 1000;
+
+    return { arriendo, ggcc, contribTrim };
+  }, [form.comuna, form.superficieUtil, form.dormitorios, form.precio, fieldCurrency.precio, UF_CLP]);
+
+  const aplicarSugerencia = useCallback((campo: string, valor: number) => {
+    if (campo === "arriendo") {
+      setFieldCurrency((prev) => ({ ...prev, arriendo: "CLP" }));
+      setField("arriendo", String(valor));
+    }
+    if (campo === "ggcc") {
+      setFieldCurrency((prev) => ({ ...prev, gastos: "CLP" }));
+      setField("gastos", String(valor));
+    }
+    if (campo === "contribuciones") {
+      setFieldCurrency((prev) => ({ ...prev, contribuciones: "CLP" }));
+      setField("contribuciones", String(valor));
+    }
+    setSugeridos((prev) => ({ ...prev, [campo]: true }));
+  }, [setField]);
+
+  const aplicarTodas = useCallback((sug: NonNullable<typeof francoSugerencias>) => {
+    setFieldCurrency((prev) => ({ ...prev, arriendo: "CLP", gastos: "CLP", contribuciones: "CLP" }));
+    setField("arriendo", String(sug.arriendo));
+    setField("gastos", String(sug.ggcc));
+    setField("contribuciones", String(sug.contribTrim));
+    setSugeridos({ arriendo: true, ggcc: true, contribuciones: true });
+  }, [setField]);
+
+  // Clear "sugerido" badge when user manually edits the field
+  useEffect(() => {
+    if (sugeridos.arriendo && form.arriendo && francoSugerencias && String(francoSugerencias.arriendo) !== form.arriendo) {
+      setSugeridos((prev) => ({ ...prev, arriendo: false }));
+    }
+  }, [form.arriendo, sugeridos.arriendo, francoSugerencias]);
+  useEffect(() => {
+    if (sugeridos.ggcc && form.gastos && francoSugerencias && String(francoSugerencias.ggcc) !== form.gastos) {
+      setSugeridos((prev) => ({ ...prev, ggcc: false }));
+    }
+  }, [form.gastos, sugeridos.ggcc, francoSugerencias]);
+  useEffect(() => {
+    if (sugeridos.contribuciones && form.contribuciones && francoSugerencias && String(francoSugerencias.contribTrim) !== form.contribuciones) {
+      setSugeridos((prev) => ({ ...prev, contribuciones: false }));
+    }
+  }, [form.contribuciones, sugeridos.contribuciones, francoSugerencias]);
+
   // ─── Real-time calculations ────────────────────────
   const toCLP = useCallback((field: string, value: number) => {
     return fieldCurrency[field] === "UF" ? value * UF_CLP : value;
@@ -772,25 +872,58 @@ export default function NuevoAnalisisPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#FAFAF8]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
+      <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
+        <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
           <FrancoLogo size="sm" href="/dashboard" />
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="gap-1.5 text-sm">
-              <ArrowLeft className="h-4 w-4" /> Dashboard
-            </Button>
+          <Link href="/dashboard" className="font-body text-sm text-[#71717A] hover:text-[#0F0F0F] transition-colors">
+            ← Dashboard
           </Link>
         </div>
       </nav>
 
-      <div className="container mx-auto max-w-2xl px-4 pb-28 pt-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold">Nuevo Análisis</h1>
-          <p className="text-sm text-muted-foreground">
-            Ingresa los datos de la propiedad · UF hoy: {fmtCLP(UF_CLP)}
+      <div className="mx-auto max-w-[620px] px-4 pb-28 pt-6">
+        <div className="mb-5">
+          <h1 className="font-heading font-bold text-2xl text-[#0F0F0F]">Nuevo Análisis</h1>
+          <p className="font-body text-[13px] text-[#71717A] mt-1">
+            Los números que tu corredor no te va a mostrar. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
           </p>
+        </div>
+
+        {/* Mode selector */}
+        <div className="mb-5">
+          <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em] mb-2.5">¿QUÉ TIPO DE INVERSIÓN ANALIZAMOS?</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => setMode("larga")}
+              className={`text-left rounded-xl p-5 transition-all ${
+                mode === "larga"
+                  ? "bg-white border-2 border-[#0F0F0F]"
+                  : "bg-white border border-[#E6E6E2] hover:border-[#0F0F0F]/20"
+              }`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[22px]">🏢</div>
+                {mode === "larga" && (
+                  <span className="bg-[#0F0F0F] text-white font-mono text-[7px] font-bold px-2 py-0.5 rounded tracking-wide">SELECCIONADO</span>
+                )}
+              </div>
+              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-1">Renta larga</div>
+              <div className="font-body text-xs text-[#71717A] leading-snug">Arriendo tradicional. Contrato anual con un inquilino fijo.</div>
+              <div className="font-mono text-[10px] text-[#0F0F0F] font-medium mt-2.5">Flujo mensual · Plusvalía · ROI</div>
+            </button>
+            <div className="text-left rounded-xl p-5 bg-white border border-[#E6E6E2] opacity-50 cursor-default overflow-hidden">
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-[22px]">✈️</div>
+                <span className="bg-[#C8323C] text-white font-mono text-[7px] font-bold px-2 py-0.5 rounded tracking-wide">PRÓXIMAMENTE</span>
+              </div>
+              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-1">Renta corta</div>
+              <div className="font-body text-xs text-[#71717A] leading-snug">Tipo Airbnb. Arriendos por noche con rotación de huéspedes.</div>
+              <div className="font-mono text-[10px] text-[#71717A] font-medium mt-2.5">Ocupación · Tarifa/noche · RevPAR</div>
+            </div>
+          </div>
         </div>
 
         {/* Draft banner */}
@@ -811,61 +944,53 @@ export default function NuevoAnalisisPage() {
           </div>
         )}
 
-        {/* Progress bar — sticky */}
-        <div className="sticky top-0 z-50 -mx-4 mb-4 border-b bg-background/95 px-4 py-3 shadow-sm backdrop-blur">
-          <div className="mb-1.5 flex items-center justify-between">
-            {progress.pct === 100 ? (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-[#0F0F0F]">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Todo listo para analizar
-              </span>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                Faltan: {progress.missing.join(", ")}
-              </span>
-            )}
-            <span className="text-xs font-medium text-muted-foreground">{progress.done}/{progress.total}</span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+        {/* Progress bar */}
+        <div className="bg-white border border-[#E6E6E2] rounded-[10px] px-4 py-2.5 mb-4 flex justify-between items-center gap-3">
+          <div className="flex-1 h-1 rounded-full bg-[#F0F0EC] overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${progress.pct === 100 ? "bg-[#0F0F0F]" : "bg-primary"}`}
+              className="h-full bg-[#0F0F0F] rounded-full transition-all duration-500"
               style={{ width: `${progress.pct}%` }}
             />
           </div>
+          <span className="font-mono text-[11px] text-[#0F0F0F] font-semibold">{progress.done}/{progress.total}</span>
+          {progress.missing.length > 0 && (
+            <span className="font-body text-[10px] text-[#71717A]">Faltan: {progress.missing.join(", ")}</span>
+          )}
         </div>
 
         {/* Link paste / file upload section */}
-        <div className="mb-4 rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] p-5 space-y-4">
-          <div className="text-center">
-            <p className="text-base font-semibold">¿Tienes el link de la publicación? 🔗</p>
-            <p className="mt-1 text-sm text-muted-foreground">Pégalo y nosotros extraemos los datos automáticamente. Sin escribir nada.</p>
+        <div className="mb-3 rounded-xl border border-[#E6E6E2] bg-white p-5 text-center space-y-3.5">
+          <div>
+            <p className="font-body text-sm font-bold text-[#0F0F0F]">¿Tienes el link de la publicación? 🔗</p>
+            <p className="font-body text-xs text-[#71717A] mb-3.5">Pégalo y Franco extrae los datos. Sin escribir nada.</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="url"
-              placeholder="Pega aquí el link de Portal Inmobiliario, TocToc o Yapo"
+              placeholder="Pega aquí el link de la publicación"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex h-10 w-full rounded-md border border-[#E6E6E2] bg-white px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#0F0F0F]"
+              className="flex-1 border border-[#E6E6E2] rounded-lg bg-[#FAFAF8] px-3 py-2.5 font-body text-xs text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
             />
-            <Button
+            <button
               type="button"
               disabled={linkLoading || !linkUrl.trim()}
               onClick={handleLinkExtract}
-              className="shrink-0 gap-1.5 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90 disabled:opacity-50"
+              className="bg-[#0F0F0F] text-white font-body text-xs font-bold px-4 py-2.5 rounded-lg shrink-0 disabled:opacity-50 hover:bg-[#0F0F0F]/90 transition-colors flex items-center justify-center gap-1.5"
             >
               {linkLoading ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Leyendo...</>
               ) : (
-                <>Extraer datos <Sparkles className="h-3.5 w-3.5" /></>
+                <>Extraer datos ✦</>
               )}
-            </Button>
+            </button>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-3 font-body text-xs text-[#71717A]">
             <div className="h-px flex-1 bg-[#E6E6E2]" />
             <span>o sube una cotización</span>
             <div className="h-px flex-1 bg-[#E6E6E2]" />
           </div>
-          <div className="text-center space-y-2">
+          <div className="space-y-2">
             <input
               ref={fileInputRef}
               type="file"
@@ -881,20 +1006,20 @@ export default function NuevoAnalisisPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={quotationLoading || linkLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#E6E6E2] bg-white px-4 py-2 text-sm text-[#0F0F0F] transition-colors hover:bg-[#FAFAF8] disabled:opacity-50"
+              className="border border-[#E6E6E2] rounded-lg px-4 py-2 font-body text-xs text-[#71717A] transition-colors hover:border-[#0F0F0F]/30 disabled:opacity-50"
             >
               {quotationLoading ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Analizando cotización con IA...</>
+                <><Loader2 className="inline h-3.5 w-3.5 animate-spin mr-1.5" /> Analizando cotización con IA...</>
               ) : (
-                <><Upload className="h-4 w-4" /> Subir cotización (PDF o imagen)</>
+                <>📄 Subir cotización (PDF o imagen)</>
               )}
             </button>
             {quotationFile && !quotationLoading && (
-              <p className="text-xs text-muted-foreground">{quotationFile.name}</p>
+              <p className="font-body text-[11px] text-[#71717A]">{quotationFile.name}</p>
             )}
           </div>
           {extractMsg && (
-            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${
+            <div className={`flex items-center gap-2 rounded-lg px-3 py-2 font-body text-xs ${
               extractMsg.type === "success"
                 ? "border border-[#0F0F0F] bg-[#0F0F0F]/5 text-[#0F0F0F]"
                 : "border border-red-200 bg-red-50 text-red-700"
@@ -904,16 +1029,16 @@ export default function NuevoAnalisisPage() {
             </div>
           )}
           {extractMissing.length > 0 && extractMsg?.type === "success" && (
-            <p className="text-center text-xs text-amber-600">
+            <p className="font-body text-[11px] text-amber-600">
               No se encontró: {extractMissing.join(", ")}
             </p>
           )}
-          <p className="text-center text-xs text-muted-foreground">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
+          <p className="font-body text-[11px] text-[#71717A]">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 font-body text-sm text-red-700">{error}</div>
           )}
 
           {/* Nombre del análisis — siempre visible */}
@@ -925,13 +1050,13 @@ export default function NuevoAnalisisPage() {
               placeholder="Se generará automáticamente si lo dejas vacío"
               value={form.nombreAnalisis}
               onChange={(e) => setField("nombreAnalisis", e.target.value)}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
             />
-            <p className="mt-1 text-xs text-muted-foreground">Ej: Depto Providencia 2D1B, Inversión Ñuñoa</p>
+            <p className="mt-1 font-body text-[10px] text-[#71717A]">Ej: Depto Providencia 2D1B, Inversión Ñuñoa</p>
           </div>
 
           {/* ══════ SECCIÓN 1: ¿Dónde está? ══════ */}
-          <SectionCard title="¿Dónde está?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.comuna ? `${form.comuna}${form.direccion ? ` · ${form.direccion}` : ""}` : "Sin completar"}>
+          <SectionCard title="¿DÓNDE ESTÁ?" subtitle="Ubicación de la propiedad" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.comuna ? `${form.comuna}${form.direccion ? ` · ${form.direccion}` : ""}` : "Sin completar"}>
             <div ref={comunaRef} className="relative">
               <FieldLabel htmlFor="comunaSearch">Comuna</FieldLabel>
               <input
@@ -947,24 +1072,24 @@ export default function NuevoAnalisisPage() {
                 placeholder="Buscar comuna..."
                 required
                 autoComplete="off"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
               />
               {form.comuna && (
                 <button
                   type="button"
                   onClick={() => { setField("comuna", ""); setComunaSearch(""); setComunaOpen(true); }}
-                  className="absolute right-3 top-[38px] text-xs text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-[38px] text-xs text-[#71717A] hover:text-[#0F0F0F]"
                 >✕</button>
               )}
               {comunaOpen && !form.comuna && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-border bg-card shadow-lg">
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[#E6E6E2] bg-white shadow-lg">
                   {filteredComunas.length === 0 ? (
-                    <div className="p-3 text-sm text-muted-foreground">No encontrada</div>
+                    <div className="p-3 text-sm text-[#71717A]">No encontrada</div>
                   ) : (
                     filteredComunas.map((c) => (
                       <button
                         key={c.comuna} type="button"
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-muted/50"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[#F0F0EC]"
                         onClick={() => {
                           setField("comuna", c.comuna);
                           setComunaSearch("");
@@ -972,7 +1097,7 @@ export default function NuevoAnalisisPage() {
                         }}
                       >
                         <span>{c.comuna}</span>
-                        <span className="text-xs text-muted-foreground">{c.ciudad}, {c.region}</span>
+                        <span className="text-xs text-[#71717A]">{c.ciudad}, {c.region}</span>
                       </button>
                     ))
                   )}
@@ -987,13 +1112,13 @@ export default function NuevoAnalisisPage() {
                 placeholder="Ej: Av Providencia 1234, Providencia"
                 value={form.direccion}
                 onChange={(e) => setField("direccion", e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
               />
             </div>
           </SectionCard>
 
           {/* ══════ SECCIÓN 2: ¿Cómo es? (colapsada) ══════ */}
-          <SectionCard title="¿Cómo es?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion2Summary}>
+          <SectionCard title="¿CÓMO ES?" subtitle="Características del departamento" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion2Summary}>
             <div>
               <FieldLabel>Superficie total (m²)</FieldLabel>
               <input
@@ -1005,9 +1130,9 @@ export default function NuevoAnalisisPage() {
                 value={form.superficieUtil}
                 onChange={(e) => setField("superficieUtil", e.target.value)}
                 required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <p className="mt-1 text-xs text-muted-foreground">Superficie total según escritura o ficha. Incluye terrazas y logias si están en la escritura.</p>
+              <p className="mt-1 font-body text-[10px] text-[#71717A]">Superficie total según escritura o ficha. Incluye terrazas y logias si están en la escritura.</p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -1042,7 +1167,7 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.antiguedad}
                     onChange={(e) => setField("antiguedad", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
                   >
                     <option value="0-2">0-2 años (nuevo)</option>
                     <option value="3-5">3-5 años</option>
@@ -1050,7 +1175,7 @@ export default function NuevoAnalisisPage() {
                     <option value="11-20">11-20 años</option>
                     <option value="20+">20+ años</option>
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                 </div>
               </div>
               <div>
@@ -1059,14 +1184,14 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.piso}
                     onChange={(e) => setField("piso", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
                   >
                     <option value="1-3">1-3 (bajo)</option>
                     <option value="4-8">4-8 (medio)</option>
                     <option value="9-15">9-15 (alto)</option>
                     <option value="16+">16+ (muy alto)</option>
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                 </div>
               </div>
             </div>
@@ -1110,7 +1235,7 @@ export default function NuevoAnalisisPage() {
           )}
 
           {/* ══════ SECCIÓN 3: ¿Cuánto cuesta? ══════ */}
-          <SectionCard title="¿Cuánto cuesta?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.precio ? `${fieldCurrency.precio === "UF" ? fmtUF(parseNum(form.precio)) : fmtCLP(parseNum(form.precio))}, pie ${form.piePct}%` : "Sin completar"}>
+          <SectionCard title="¿CUÁNTO CUESTA?" subtitle="Precio y condiciones de compra" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.precio ? `${fieldCurrency.precio === "UF" ? fmtUF(parseNum(form.precio)) : fmtCLP(parseNum(form.precio))}, pie ${form.piePct}%` : "Sin completar"}>
             <div>
               <FieldLabel htmlFor="precio" tip={TIPS.precio}>Precio de venta</FieldLabel>
               <MoneyInput
@@ -1123,7 +1248,7 @@ export default function NuevoAnalisisPage() {
                 required
               />
               {calc.precioUF > 0 && (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="mt-1 text-xs text-[#71717A]">
                   {fieldCurrency.precio === "UF" ? fmtCLP(calc.precioCLP) : fmtUF(calc.precioUF)}
                   {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
                 </p>
@@ -1144,10 +1269,10 @@ export default function NuevoAnalisisPage() {
                 id="piePct" type="range" min="10" max="50" step="5"
                 value={form.piePct}
                 onChange={(e) => setField("piePct", e.target.value)}
-                className="mt-1 w-full accent-primary"
+                className="mt-1 w-full accent-[#0F0F0F]"
                 style={{ height: "44px" }}
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between font-mono text-xs text-[#71717A]">
                 <span>{fmtUF(calc.pieUF)} ({fmtCLP(calc.pieCLP)})</span>
                 <span>Financiamiento: {calc.financiamientoPct}%</span>
               </div>
@@ -1159,10 +1284,10 @@ export default function NuevoAnalisisPage() {
                 <button
                   type="button"
                   onClick={() => setField("estadoVenta", "inmediata")}
-                  className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                  className={`rounded-lg border px-4 py-2 font-body text-[13px] transition-colors ${
                     form.estadoVenta === "inmediata"
-                      ? "border-primary bg-primary/10 font-medium text-primary"
-                      : "border-border text-muted-foreground hover:bg-muted/50"
+                      ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
+                      : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
                   }`}
                 >
                   Entrega inmediata
@@ -1170,27 +1295,27 @@ export default function NuevoAnalisisPage() {
                 <button
                   type="button"
                   onClick={() => setField("estadoVenta", "futura")}
-                  className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                  className={`rounded-lg border px-4 py-2 font-body text-[13px] transition-colors ${
                     form.estadoVenta !== "inmediata"
-                      ? "border-primary bg-primary/10 font-medium text-primary"
-                      : "border-border text-muted-foreground hover:bg-muted/50"
+                      ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
+                      : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
                   }`}
                 >
                   <span>Entrega futura</span>
-                  <span className="block text-[11px] font-normal opacity-70">Venta en blanco o en verde</span>
+                  <span className="block font-body text-[9px] font-normal text-[#71717A]">Venta en blanco o en verde</span>
                 </button>
               </div>
             </div>
 
             {form.estadoVenta !== "inmediata" && (
-              <div className="rounded-lg border border-border/50 bg-muted/30 p-4 space-y-3">
+              <div className="rounded-lg border border-[#E6E6E2]/50 bg-[#F0F0EC]/50 p-4 space-y-3">
                 <FieldLabel>Fecha de entrega estimada</FieldLabel>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="relative">
                     <select
                       value={form.fechaEntregaMes}
                       onChange={(e) => setField("fechaEntregaMes", e.target.value)}
-                      className="flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
                     >
                       <option value="">Mes...</option>
                       {Array.from({ length: 12 }, (_, i) => (
@@ -1199,20 +1324,20 @@ export default function NuevoAnalisisPage() {
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                   </div>
                   <div className="relative">
                     <select
                       value={form.fechaEntregaAnio}
                       onChange={(e) => setField("fechaEntregaAnio", e.target.value)}
-                      className="flex h-10 w-full appearance-none rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
                     >
                       <option value="">Año...</option>
                       {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
                         <option key={y} value={String(y)}>{y}</option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                   </div>
                 </div>
               </div>
@@ -1220,17 +1345,17 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ SECCIÓN 4: ¿Cómo lo financias? (colapsada) ══════ */}
-          <SectionCard title="¿Cómo lo financias?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion4Summary}>
+          <SectionCard title="¿CÓMO LO FINANCIAS?" subtitle="Crédito hipotecario" defaultOpen={false} forceOpen={sectionsForceOpen} summary={seccion4Summary}>
             <div>
               <FieldLabel htmlFor="plazoCredito">Plazo crédito: {form.plazoCredito} años</FieldLabel>
               <input
                 id="plazoCredito" type="range" min="10" max="30" step="5"
                 value={form.plazoCredito}
                 onChange={(e) => setField("plazoCredito", e.target.value)}
-                className="mt-1 w-full accent-primary"
+                className="mt-1 w-full accent-[#0F0F0F]"
                 style={{ height: "44px" }}
               />
-              <div className="flex justify-between text-xs text-muted-foreground">
+              <div className="flex justify-between font-mono text-xs text-[#71717A]">
                 <span>10 años</span><span>30 años</span>
               </div>
             </div>
@@ -1245,28 +1370,90 @@ export default function NuevoAnalisisPage() {
                 value={form.tasaInteres}
                 onChange={(e) => setField("tasaInteres", e.target.value)}
                 required
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-[16px] shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-[#71717A]">
                 Mercado actual: ~{tasaRef.value}%
                 {tasaRef.updated_at && ` (act. ${new Date(tasaRef.updated_at).toLocaleDateString("es-CL")})`}
               </p>
             </div>
 
             {calc.dividendo > 0 && (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <div className="rounded-lg border border-[#E6E6E2] bg-[#FAFAF8] p-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Dividendo estimado</span>
-                  <span className="text-lg font-bold text-primary">{fmtCLP(calc.dividendo)}/mes</span>
+                  <span className="font-body text-[13px] font-medium text-[#0F0F0F]">Dividendo estimado</span>
+                  <span className="font-mono text-[15px] font-bold text-[#0F0F0F]">{fmtCLP(calc.dividendo)}/mes</span>
                 </div>
               </div>
             )}
           </SectionCard>
 
+          {/* ══════ Franco sugiere ══════ */}
+          {francoSugerencias && (!form.arriendo || !form.gastos || !form.contribuciones) && (
+            <div className="bg-white border border-[#E6E6E2] rounded-xl p-4 mb-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">✦</span>
+                  <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Franco sugiere</span>
+                </div>
+                <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-wide">Estimación para {form.comuna}</span>
+              </div>
+
+              <div className="font-body text-xs text-[#71717A] mb-3">
+                Basado en datos de mercado de {form.comuna}. Puedes ajustar estos valores si tienes datos más precisos.
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {!form.arriendo && (
+                  <div className="bg-[#FAFAF8] rounded-lg p-3">
+                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Arriendo /mes</div>
+                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.arriendo)}</div>
+                    <button type="button" onClick={() => aplicarSugerencia("arriendo", francoSugerencias.arriendo)}
+                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                      Usar este valor →
+                    </button>
+                  </div>
+                )}
+                {!form.gastos && (
+                  <div className="bg-[#FAFAF8] rounded-lg p-3">
+                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">GGCC /mes</div>
+                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.ggcc)}</div>
+                    <button type="button" onClick={() => aplicarSugerencia("ggcc", francoSugerencias.ggcc)}
+                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                      Usar este valor →
+                    </button>
+                  </div>
+                )}
+                {!form.contribuciones && (
+                  <div className="bg-[#FAFAF8] rounded-lg p-3">
+                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Contrib. /trim</div>
+                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.contribTrim)}</div>
+                    <button type="button" onClick={() => aplicarSugerencia("contribuciones", francoSugerencias.contribTrim)}
+                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                      Usar este valor →
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {!form.arriendo && !form.gastos && !form.contribuciones && (
+                <button type="button" onClick={() => aplicarTodas(francoSugerencias)}
+                  className="mt-3 w-full py-2 rounded-lg border border-[#0F0F0F] text-[#0F0F0F] font-body text-xs font-semibold hover:bg-[#0F0F0F] hover:text-white transition-colors">
+                  Usar todas las sugerencias
+                </button>
+              )}
+            </div>
+          )}
+
           {/* ══════ SECCIÓN 5: ¿Cuánto genera? ══════ */}
-          <SectionCard title="¿Cuánto genera?" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
+          <SectionCard title="¿CUÁNTO GENERA?" subtitle="Ingresos y gastos operacionales" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
             <div>
-              <FieldLabel htmlFor="arriendo" tip={TIPS.arriendo}>Arriendo esperado /mes</FieldLabel>
+              <div className="flex items-center gap-1.5">
+                <FieldLabel htmlFor="arriendo" tip={TIPS.arriendo}>Arriendo esperado /mes</FieldLabel>
+                {sugeridos.arriendo && (
+                  <span className="font-mono text-[8px] text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded mb-1">✦ Sugerido</span>
+                )}
+              </div>
               <MoneyInput
                 id="arriendo"
                 value={form.arriendo}
@@ -1294,7 +1481,12 @@ export default function NuevoAnalisisPage() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <FieldLabel htmlFor="gastos" tip={TIPS.gastos}>Gastos comunes /mes</FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="gastos" tip={TIPS.gastos}>Gastos comunes /mes</FieldLabel>
+                  {sugeridos.ggcc && (
+                    <span className="font-mono text-[8px] text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded mb-1">✦ Sugerido</span>
+                  )}
+                </div>
                 <MoneyInput
                   id="gastos"
                   value={form.gastos}
@@ -1311,7 +1503,12 @@ export default function NuevoAnalisisPage() {
                 )}
               </div>
               <div>
-                <FieldLabel htmlFor="contribuciones" tip={TIPS.contribuciones}>Contribuciones /trim</FieldLabel>
+                <div className="flex items-center gap-1.5">
+                  <FieldLabel htmlFor="contribuciones" tip={TIPS.contribuciones}>Contribuciones /trim</FieldLabel>
+                  {sugeridos.contribuciones && (
+                    <span className="font-mono text-[8px] text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded mb-1">✦ Sugerido</span>
+                  )}
+                </div>
                 <MoneyInput
                   id="contribuciones"
                   value={form.contribuciones}
@@ -1332,7 +1529,7 @@ export default function NuevoAnalisisPage() {
             <div>
               <FieldLabel tip={TIPS.vacanciaMeses}>Vacancia</FieldLabel>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">{form.vacanciaPct}%</span>
+                <span className="font-mono text-[13px] font-semibold text-[#0F0F0F]">{form.vacanciaPct}%</span>
               </div>
               <input
                 type="range"
@@ -1341,16 +1538,16 @@ export default function NuevoAnalisisPage() {
                 step={1}
                 value={form.vacanciaPct}
                 onChange={(e) => setField("vacanciaPct", e.target.value)}
-                className="w-full accent-primary"
+                className="w-full accent-[#0F0F0F]"
               />
-              <p className="mt-1 text-xs text-muted-foreground">{`\u2248 ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
+              <p className="mt-1 font-body text-[10px] text-[#71717A]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
             </div>
 
             {/* Administración de arriendo */}
             <div>
               <FieldLabel tip="Si contratas un corredor o empresa para gestionar el arriendo (cobrar, buscar arrendatarios, coordinar reparaciones). Típicamente cobran entre 5% y 10% del arriendo mensual. En 0% se desactiva.">Administración</FieldLabel>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-muted-foreground">{form.adminPct}%</span>
+                <span className="font-mono text-[13px] font-semibold text-[#0F0F0F]">{form.adminPct}%</span>
               </div>
               <input
                 type="range"
@@ -1359,9 +1556,9 @@ export default function NuevoAnalisisPage() {
                 step={1}
                 value={form.adminPct}
                 onChange={(e) => setField("adminPct", e.target.value)}
-                className="w-full accent-primary"
+                className="w-full accent-[#0F0F0F]"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="mt-1 text-xs text-[#71717A]">
                 {parseFloat(form.adminPct) > 0
                   ? parseNum(form.arriendo) > 0
                     ? `${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
@@ -1373,28 +1570,28 @@ export default function NuevoAnalisisPage() {
 
           {/* Dividendo preview (outside cards) */}
           {calc.dividendo > 0 && calc.precioUF > 0 && parseNum(form.arriendo) > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span>Arriendo</span>
-                <span className="font-medium text-[#16A34A]">+{fmtCLP(toCLP("arriendo", parseNum(form.arriendo)))}</span>
+            <div className="rounded-xl border border-[#E6E6E2] bg-white p-4">
+              <div className="flex items-center justify-between font-body text-[13px]">
+                <span className="text-[#0F0F0F]">Arriendo</span>
+                <span className="font-mono font-medium text-[#16A34A]">+{fmtCLP(toCLP("arriendo", parseNum(form.arriendo)))}</span>
               </div>
-              <div className="mt-1 flex items-center justify-between text-sm">
-                <span>Dividendo</span>
-                <span className="font-medium text-red-500">-{fmtCLP(calc.dividendo)}</span>
+              <div className="mt-1 flex items-center justify-between font-body text-[13px]">
+                <span className="text-[#0F0F0F]">Dividendo</span>
+                <span className="font-mono font-medium text-red-500">-{fmtCLP(calc.dividendo)}</span>
               </div>
-              <div className="mt-2 border-t border-border pt-2">
+              <div className="mt-2 border-t border-[#E6E6E2] pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold">Flujo estimado</span>
+                  <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Flujo estimado</span>
                   {(() => {
                     const flujo = toCLP("arriendo", parseNum(form.arriendo)) - calc.dividendo;
                     return (
-                      <span className={`text-lg font-bold ${flujo >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
+                      <span className={`font-mono text-[15px] font-bold ${flujo >= 0 ? "text-[#16A34A]" : "text-red-500"}`}>
                         {flujo >= 0 ? "+" : ""}{fmtCLP(flujo)}/mes
                       </span>
                     );
                   })()}
                 </div>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 font-body text-[10px] text-[#71717A]">
                   Solo arriendo vs dividendo. El score incluye todos los costos.
                 </p>
               </div>
@@ -1404,28 +1601,29 @@ export default function NuevoAnalisisPage() {
         </form>
       </div>
 
-      {/* Sticky submit footer — PC & mobile */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background shadow-[0_-2px_10px_rgba(0,0,0,0.06)]">
-        <div className="mx-auto max-w-2xl px-4 py-3">
-          <Button
-            className={`w-full gap-2 ${canSubmit && !loading ? "animate-pulse bg-[#0F0F0F] hover:bg-[#0F0F0F]/90" : ""}`}
-            size="lg"
-            type="submit"
+      {/* Sticky submit footer */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-[#E6E6E2] py-3 px-5 z-50">
+        <div className="max-w-[620px] mx-auto">
+          <button
+            type="button"
             disabled={loading || !canSubmit}
             onClick={handleSubmit}
+            className={`w-full py-3.5 rounded-[10px] font-body text-sm font-bold flex items-center justify-center gap-1.5 transition-all ${
+              canSubmit && !loading
+                ? "bg-[#C8323C] text-white shadow-[0_-2px_16px_rgba(200,50,60,0.15)]"
+                : "bg-[#C8323C]/80 text-white"
+            } disabled:cursor-not-allowed`}
           >
             {loading ? (
               <><Loader2 className="h-4 w-4 animate-spin" /> Generando Franco Score...</>
-            ) : canSubmit ? (
-              <><CheckCircle2 className="h-4 w-4" /> Generar Franco Score</>
             ) : (
-              <><CheckCircle2 className="h-4 w-4" /> Generar Franco Score</>
+              <><span>✦</span> Generar Franco Score</>
             )}
-          </Button>
+          </button>
           {!canSubmit && !loading && (
-            <p className="mt-1.5 text-center text-xs text-muted-foreground">
-              Falta: {progress.missing.join(", ")}
-            </p>
+            <div className="font-body text-[10px] text-[#71717A] text-center mt-1">
+              Faltan: {progress.missing.join(", ")}
+            </div>
           )}
         </div>
       </div>

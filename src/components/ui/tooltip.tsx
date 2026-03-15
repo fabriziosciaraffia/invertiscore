@@ -1,82 +1,176 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Info } from "lucide-react";
+import { createPortal } from "react-dom";
+
+interface TooltipBubbleProps {
+  content: string;
+  triggerRef: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+}
+
+function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
+  const bubbleRef = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
+  const [arrowSide, setArrowSide] = useState<"bottom" | "left" | "right">("bottom");
+
+  useEffect(() => {
+    if (!triggerRef.current || !bubbleRef.current) return;
+
+    const trigger = triggerRef.current.getBoundingClientRect();
+    const bubble = bubbleRef.current;
+    const bw = bubble.offsetWidth;
+    const bh = bubble.offsetHeight;
+    const margin = 12;
+    const gap = 8;
+    const vw = window.innerWidth;
+
+    // Try top-center first
+    let top = trigger.top - bh - gap;
+    let left = trigger.left + trigger.width / 2 - bw / 2;
+
+    // Clamp horizontal so it stays on screen
+    if (left < margin) left = margin;
+    if (left + bw > vw - margin) left = vw - margin - bw;
+
+    // Arrow points down to trigger
+    let side: "bottom" | "left" | "right" = "bottom";
+    const arrowLeft = trigger.left + trigger.width / 2 - left;
+
+    // If no room above, try right
+    if (top < margin) {
+      top = trigger.top + trigger.height / 2 - bh / 2;
+      left = trigger.right + gap;
+      side = "left";
+
+      // If no room right either, go left of trigger
+      if (left + bw > vw - margin) {
+        left = trigger.left - bw - gap;
+        side = "right";
+      }
+    }
+
+    setArrowSide(side);
+
+    if (side === "bottom") {
+      // Arrow at bottom center, pointing down toward trigger
+      const clampedArrowLeft = Math.max(8, Math.min(arrowLeft, bw - 8));
+      setArrowStyle({
+        position: "absolute",
+        bottom: -4,
+        left: clampedArrowLeft,
+        transform: "translateX(-50%) rotate(45deg)",
+      });
+    } else if (side === "left") {
+      // Arrow on left side pointing left toward trigger
+      setArrowStyle({
+        position: "absolute",
+        left: -4,
+        top: "50%",
+        transform: "translateY(-50%) rotate(45deg)",
+      });
+    } else {
+      // Arrow on right side pointing right toward trigger
+      setArrowStyle({
+        position: "absolute",
+        right: -4,
+        top: "50%",
+        transform: "translateY(-50%) rotate(45deg)",
+      });
+    }
+
+    setStyle({
+      position: "fixed",
+      top,
+      left,
+      opacity: 1,
+    });
+  }, [triggerRef]);
+
+  // Close on outside click/touch
+  useEffect(() => {
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (
+        bubbleRef.current && !bubbleRef.current.contains(e.target as Node) &&
+        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [onClose, triggerRef]);
+
+  return createPortal(
+    <div
+      ref={bubbleRef}
+      style={style}
+      className="z-[9999] bg-[#0F0F0F] text-white font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto"
+    >
+      {content}
+      <div className="w-2 h-2 bg-[#0F0F0F]" style={arrowStyle} />
+    </div>,
+    document.body,
+  );
+}
+
+export function InfoTooltip({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  return (
+    <span className="inline-flex">
+      <button
+        ref={triggerRef}
+        type="button"
+        className="inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#F0F0EC] font-mono text-[9px] text-[#71717A] cursor-help shrink-0"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen((v) => !v)}
+      >
+        ?
+      </button>
+      {open && (
+        <TooltipBubble
+          content={content}
+          triggerRef={triggerRef}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </span>
+  );
+}
 
 interface TooltipProps {
   content: string;
   children?: React.ReactNode;
 }
 
-export function InfoTooltip({ content }: { content: string }) {
+export function Tooltip({ content, children }: TooltipProps) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
-  }, [open]);
+  const triggerRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div ref={ref} className="relative inline-flex">
-      <button
-        type="button"
-        className="inline-flex items-center justify-center rounded-full text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+    <div className="inline-flex">
+      <div
+        ref={triggerRef}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}
       >
-        <Info className="h-3.5 w-3.5" />
-      </button>
+        {children}
+      </div>
       {open && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg bg-zinc-900 px-3 py-2 text-xs leading-relaxed text-zinc-100 shadow-lg">
-          {content}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function Tooltip({ content, children }: TooltipProps) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent | TouchEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    document.addEventListener("touchstart", handler);
-    return () => {
-      document.removeEventListener("mousedown", handler);
-      document.removeEventListener("touchstart", handler);
-    };
-  }, [open]);
-
-  return (
-    <div
-      ref={ref}
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onClick={() => setOpen((v) => !v)}
-    >
-      {children}
-      {open && (
-        <div className="absolute bottom-full left-1/2 z-50 mb-2 w-64 -translate-x-1/2 rounded-lg bg-zinc-900 px-3 py-2 text-xs leading-relaxed text-zinc-100 shadow-lg">
-          {content}
-          <div className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-zinc-900" />
-        </div>
+        <TooltipBubble
+          content={content}
+          triggerRef={triggerRef}
+          onClose={() => setOpen(false)}
+        />
       )}
     </div>
   );
