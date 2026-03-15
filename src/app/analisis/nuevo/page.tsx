@@ -284,6 +284,24 @@ export default function NuevoAnalisisPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formInitialized = useRef(false);
 
+  // Geocoding state
+  const [geoLat, setGeoLat] = useState<number | null>(null);
+  const [geoLng, setGeoLng] = useState<number | null>(null);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [radius, setRadius] = useState(800);
+  const geocodeTimeout = useRef<ReturnType<typeof setTimeout>>();
+
+  // Sugerencias por radio/comuna
+  const [radioSugerencias, setRadioSugerencias] = useState<{
+    arriendo: number;
+    ggcc: number | null;
+    contribTrim: number;
+    source: "radio" | "comuna" | "estimacion";
+    sampleSize: number;
+    radiusMeters?: number;
+    precioM2?: number;
+  } | null>(null);
+
   // Fetch real UF value + tasa hipotecaria on mount
   const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
   useEffect(() => {
@@ -608,6 +626,65 @@ export default function NuevoAnalisisPage() {
       .then((d) => setMarketData(d.data))
       .catch(() => setMarketData(null));
   }, [form.comuna, form.dormitorios]);
+
+  // ─── Geocoding when address changes ────────────────
+  useEffect(() => {
+    if (form.direccion && form.comuna) {
+      clearTimeout(geocodeTimeout.current);
+      setGeoLoading(true);
+      geocodeTimeout.current = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(form.direccion)}&comuna=${encodeURIComponent(form.comuna)}`);
+          const data = await res.json();
+          if (data.lat && data.lng) {
+            setGeoLat(data.lat);
+            setGeoLng(data.lng);
+          } else {
+            setGeoLat(null);
+            setGeoLng(null);
+          }
+        } catch {
+          setGeoLat(null);
+          setGeoLng(null);
+        } finally {
+          setGeoLoading(false);
+        }
+      }, 1000);
+    } else {
+      setGeoLat(null);
+      setGeoLng(null);
+    }
+    return () => clearTimeout(geocodeTimeout.current);
+  }, [form.direccion, form.comuna]);
+
+  // ─── Fetch sugerencias por radio/comuna ───────────
+  useEffect(() => {
+    const supUtil = parseNum(form.superficieUtil) || 0;
+    if (!form.comuna || supUtil <= 0) { setRadioSugerencias(null); return; }
+
+    const params = new URLSearchParams({
+      comuna: form.comuna,
+      superficie: String(supUtil),
+      dormitorios: form.dormitorios,
+      radius: String(radius),
+    });
+    if (geoLat && geoLng) {
+      params.set("lat", String(geoLat));
+      params.set("lng", String(geoLng));
+    }
+    const precioUF = fieldCurrency.precio === "UF"
+      ? parseNum(form.precio)
+      : parseNum(form.precio) / UF_CLP;
+    if (precioUF > 0) params.set("precioUF", String(precioUF));
+
+    fetch(`/api/data/suggestions?${params}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.arriendo) setRadioSugerencias(d);
+        else setRadioSugerencias(null);
+      })
+      .catch(() => setRadioSugerencias(null));
+  }, [form.comuna, form.superficieUtil, form.dormitorios, form.precio, fieldCurrency.precio, geoLat, geoLng, radius, UF_CLP]);
 
   // ─── Computed suggestions ──────────────────────────
   const suggestions = useMemo(() => {
@@ -1113,7 +1190,45 @@ export default function NuevoAnalisisPage() {
                 onChange={(e) => setField("direccion", e.target.value)}
                 className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
               />
+              {geoLoading && (
+                <p className="mt-1 font-body text-[10px] text-[#71717A]">Geocodificando dirección...</p>
+              )}
+              {geoLat && geoLng && !geoLoading && (
+                <p className="mt-1 font-body text-[10px] text-[#16A34A]">Dirección georeferenciada</p>
+              )}
             </div>
+
+            {/* Radio de búsqueda — solo visible cuando hay dirección geocodificada */}
+            {geoLat && geoLng && (
+              <div className="mt-1">
+                <div className="flex justify-between items-center mb-1.5">
+                  <div className="flex items-center gap-1">
+                    <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Radio de búsqueda</span>
+                    <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado. Más chico = más preciso pero menos datos." />
+                  </div>
+                  <span className="font-mono text-[13px] font-semibold text-[#0F0F0F]">{radius}m</span>
+                </div>
+                <input
+                  type="range"
+                  min={300}
+                  max={2000}
+                  step={100}
+                  value={radius}
+                  onChange={(e) => setRadius(parseInt(e.target.value))}
+                  className="w-full accent-[#0F0F0F]"
+                />
+                <div className="flex justify-between font-mono text-[9px] text-[#71717A] mt-1">
+                  <span>300m</span>
+                  <span>2km</span>
+                </div>
+                <div className="font-body text-[10px] text-[#71717A] mt-1">
+                  {radius <= 500 ? "Hiperlocalizado — solo tu barrio inmediato" :
+                   radius <= 800 ? "~10 min caminando — buen balance precisión/datos" :
+                   radius <= 1200 ? "Zona amplia — más datos, menos preciso" :
+                   "Zona muy amplia — útil si hay pocos datos cerca"}
+                </div>
+              </div>
+            )}
           </SectionCard>
 
           {/* ══════ SECCIÓN 2: ¿Cómo es? (colapsada) ══════ */}
@@ -1388,61 +1503,90 @@ export default function NuevoAnalisisPage() {
           </SectionCard>
 
           {/* ══════ Franco sugiere ══════ */}
-          {francoSugerencias && (!form.arriendo || !form.gastos || !form.contribuciones) && (
-            <div className="bg-white border border-[#E6E6E2] rounded-xl p-4 mb-3">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">✦</span>
-                  <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Franco sugiere</span>
+          {(() => {
+            // Use radioSugerencias if available, otherwise fallback to francoSugerencias
+            const sug = radioSugerencias || (francoSugerencias ? {
+              arriendo: francoSugerencias.arriendo,
+              ggcc: francoSugerencias.ggcc,
+              contribTrim: francoSugerencias.contribTrim,
+              source: "estimacion" as const,
+              sampleSize: 0,
+              radiusMeters: undefined as number | undefined,
+              precioM2: undefined as number | undefined,
+            } : null);
+            if (!sug || (form.arriendo && form.gastos && form.contribuciones)) return null;
+
+            return (
+              <div className="bg-white border border-[#E6E6E2] rounded-xl p-4 mb-3">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">✦</span>
+                    <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Franco sugiere</span>
+                  </div>
+                  <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-wide">
+                    {sug.source === "radio"
+                      ? `${sug.sampleSize} publicaciones en ${sug.radiusMeters}m`
+                      : sug.source === "comuna"
+                      ? `${sug.sampleSize} publicaciones en ${form.comuna}`
+                      : `Estimación para ${form.comuna}`
+                    }
+                  </span>
                 </div>
-                <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-wide">Estimación para {form.comuna}</span>
-              </div>
 
-              <div className="font-body text-xs text-[#71717A] mb-3">
-                Basado en datos de mercado de {form.comuna}. Puedes ajustar estos valores si tienes datos más precisos.
-              </div>
+                <div className="font-body text-xs text-[#71717A] mb-3">
+                  {sug.source === "radio"
+                    ? `Basado en ${sug.sampleSize} propiedades similares dentro de ${sug.radiusMeters}m de tu dirección.`
+                    : sug.source === "comuna"
+                    ? `Basado en ${sug.sampleSize} publicaciones activas en ${form.comuna}.`
+                    : `Estimación basada en promedios de mercado. Ingresa la dirección para datos más precisos.`
+                  }
+                  {sug.precioM2 && (
+                    <span className="font-mono text-[#0F0F0F]"> Precio/m²: ${sug.precioM2.toLocaleString("es-CL")}</span>
+                  )}
+                </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                {!form.arriendo && (
-                  <div className="bg-[#FAFAF8] rounded-lg p-3">
-                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Arriendo /mes</div>
-                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.arriendo)}</div>
-                    <button type="button" onClick={() => aplicarSugerencia("arriendo", francoSugerencias.arriendo)}
-                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
-                      Usar este valor →
-                    </button>
-                  </div>
-                )}
-                {!form.gastos && (
-                  <div className="bg-[#FAFAF8] rounded-lg p-3">
-                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">GGCC /mes</div>
-                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.ggcc)}</div>
-                    <button type="button" onClick={() => aplicarSugerencia("ggcc", francoSugerencias.ggcc)}
-                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
-                      Usar este valor →
-                    </button>
-                  </div>
-                )}
-                {!form.contribuciones && (
-                  <div className="bg-[#FAFAF8] rounded-lg p-3">
-                    <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Contrib. /trim</div>
-                    <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(francoSugerencias.contribTrim)}</div>
-                    <button type="button" onClick={() => aplicarSugerencia("contribuciones", francoSugerencias.contribTrim)}
-                      className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
-                      Usar este valor →
-                    </button>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {!form.arriendo && (
+                    <div className="bg-[#FAFAF8] rounded-lg p-3">
+                      <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Arriendo /mes</div>
+                      <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(sug.arriendo)}</div>
+                      <button type="button" onClick={() => aplicarSugerencia("arriendo", sug.arriendo)}
+                        className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                        Usar este valor →
+                      </button>
+                    </div>
+                  )}
+                  {!form.gastos && sug.ggcc && (
+                    <div className="bg-[#FAFAF8] rounded-lg p-3">
+                      <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">GGCC /mes</div>
+                      <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(sug.ggcc)}</div>
+                      <button type="button" onClick={() => aplicarSugerencia("ggcc", sug.ggcc!)}
+                        className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                        Usar este valor →
+                      </button>
+                    </div>
+                  )}
+                  {!form.contribuciones && (
+                    <div className="bg-[#FAFAF8] rounded-lg p-3">
+                      <div className="font-body text-[9px] text-[#71717A] uppercase tracking-wide mb-1">Contrib. /trim</div>
+                      <div className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtCLP(sug.contribTrim)}</div>
+                      <button type="button" onClick={() => aplicarSugerencia("contribuciones", sug.contribTrim)}
+                        className="mt-2 font-body text-[10px] text-[#C8323C] font-semibold cursor-pointer hover:underline">
+                        Usar este valor →
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {!form.arriendo && !form.gastos && !form.contribuciones && sug.ggcc && (
+                  <button type="button" onClick={() => aplicarTodas({ arriendo: sug.arriendo, ggcc: sug.ggcc!, contribTrim: sug.contribTrim })}
+                    className="mt-3 w-full py-2 rounded-lg border border-[#0F0F0F] text-[#0F0F0F] font-body text-xs font-semibold hover:bg-[#0F0F0F] hover:text-white transition-colors">
+                    Usar todas las sugerencias
+                  </button>
                 )}
               </div>
-
-              {!form.arriendo && !form.gastos && !form.contribuciones && (
-                <button type="button" onClick={() => aplicarTodas(francoSugerencias)}
-                  className="mt-3 w-full py-2 rounded-lg border border-[#0F0F0F] text-[#0F0F0F] font-body text-xs font-semibold hover:bg-[#0F0F0F] hover:text-white transition-colors">
-                  Usar todas las sugerencias
-                </button>
-              )}
-            </div>
-          )}
+            );
+          })()}
 
           {/* ══════ SECCIÓN 5: ¿Cuánto genera? ══════ */}
           <SectionCard title="¿CUÁNTO GENERA?" subtitle="Ingresos y gastos operacionales" defaultOpen={false} forceOpen={sectionsForceOpen} summary={form.arriendo ? `Arriendo ${fieldCurrency.arriendo === "UF" ? fmtUF(parseNum(form.arriendo)) : fmtCLP(parseNum(form.arriendo))}/mes` : "Sin completar"}>
