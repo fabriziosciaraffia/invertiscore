@@ -1,16 +1,16 @@
 {
   "crons": [
     {
+      "path": "/api/data/scrape-properties",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/data/geocode-toctoc",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/scraping/update-market-data",
       "schedule": "0 10 * * *"
-    },
-    {
-      "path": "/api/data/scrape-properties",
-      "schedule": "0 6 * * 1"
-    },
-    {
-      "path": "/api/data/geocode-pending",
-      "schedule": "0 8 * * *"
     }
   ]
 }
