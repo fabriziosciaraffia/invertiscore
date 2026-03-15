@@ -95,19 +95,15 @@ function stripBullet(text: string): string {
 }
 
 
-// ─── Typewriter + FadeIn animation components ──────
-function TypewriterText({ text, speed = 25, onComplete }: { text: string; speed?: number; onComplete?: () => void }) {
-  const [index, setIndex] = useState(0);
-  const completed = useRef(false);
+// ─── FadeIn animation components ────────────────────
+function FadeInText({ text, onComplete, delay = 600 }: { text: string; onComplete?: () => void; delay?: number }) {
   useEffect(() => {
-    if (index >= text.length) {
-      if (!completed.current) { completed.current = true; onComplete?.(); }
-      return;
-    }
-    const t = setTimeout(() => setIndex((i) => i + 1), speed);
+    if (!onComplete) return;
+    const t = setTimeout(onComplete, delay);
     return () => clearTimeout(t);
-  }, [index, text, speed, onComplete]);
-  return <>{text.slice(0, index)}{index < text.length && <span className="inline-block w-0.5 h-4 bg-[#C8323C] animate-pulse align-text-bottom" />}</>;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally run only on mount
+  return <span className="animate-fadeIn">{text}</span>;
 }
 
 function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; children: React.ReactNode }) {
@@ -235,6 +231,7 @@ function VerdictBadge({ score }: { score: number }) {
 // ─── AI Analysis Section with typewriter ────────────
 function AIAnalysisSection({
   aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
+  projectionsContent, aiAnalysisInitiallyLoaded = false,
 }: {
   aiAnalysis: AIAnalysis | null;
   aiLoading: boolean;
@@ -245,14 +242,20 @@ function AIAnalysisSection({
   ci: (obj: Record<string, unknown>, field: string) => string[];
   currentAccess: "guest" | "free" | "premium";
   analysisId?: string;
+  projectionsContent?: React.ReactNode;
+  aiAnalysisInitiallyLoaded?: boolean;
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
-  const [phaseIndex, setPhaseIndex] = useState(-1); // -1=idle, 0=loading, 1=resumen, 2=bolsillo, 3=alternativas, 4=negociacion, 5=proyeccion, 6=riesgos, 7=veredicto, 8=listas, 9=done
+  // If AI analysis was pre-loaded from DB, skip animation entirely
+  const [phaseIndex, setPhaseIndex] = useState(() => {
+    if (aiAnalysisInitiallyLoaded) return 9; // show all immediately
+    return -1; // -1=idle, 0=loading, 1..8=sections, 9=done
+  });
 
-  // Intersection observer: trigger animation once when visible
+  // Intersection observer: trigger animation once when visible (only for freshly generated)
   useEffect(() => {
-    if (!aiAnalysis || hasAnimated.current) return;
+    if (!aiAnalysis || hasAnimated.current || phaseIndex >= 9) return;
     const el = sectionRef.current;
     if (!el) return;
     const obs = new IntersectionObserver(([entry]) => {
@@ -264,10 +267,7 @@ function AIAnalysisSection({
     }, { threshold: 0.2 });
     obs.observe(el);
     return () => obs.disconnect();
-  }, [aiAnalysis]);
-
-  const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-  const charSpeed = isMobile ? 15 : 25;
+  }, [aiAnalysis, phaseIndex]);
 
   const showAll = phaseIndex >= 9;
   const next = (to: number) => () => setTimeout(() => setPhaseIndex(to), 300);
@@ -293,7 +293,7 @@ function AIAnalysisSection({
         <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#16A34A]/30 bg-[#16A34A]/5" : score >= 40 ? "border-[#C8323C]/30 bg-[#C8323C]/5" : "border-[#DC2626]/30 bg-[#DC2626]/5"}`}>
           <p className="text-sm font-medium leading-relaxed">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
-              <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} speed={charSpeed} onComplete={next(2)} />
+              <FadeInText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
             ) : ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}
           </p>
         </div>
@@ -308,7 +308,7 @@ function AIAnalysisSection({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
-              <TypewriterText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(3)} />
+              <FadeInText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} onComplete={next(3)} />
             ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
           </p>
           {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
@@ -331,7 +331,7 @@ function AIAnalysisSection({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
-              <TypewriterText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(4)} />
+              <FadeInText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} onComplete={next(4)} />
             ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
@@ -346,7 +346,7 @@ function AIAnalysisSection({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
-              <TypewriterText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(5)} />
+              <FadeInText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} onComplete={next(5)} />
             ) : ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}
           </p>
           {aiAnalysis.negociacion.precioSugerido && (
@@ -367,7 +367,7 @@ function AIAnalysisSection({
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
-              <TypewriterText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} speed={charSpeed} onComplete={next(6)} />
+              <FadeInText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} onComplete={next(6)} />
             ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
@@ -398,7 +398,7 @@ function AIAnalysisSection({
         <div className="rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] p-4">
           <p className="text-sm leading-relaxed text-[#0F0F0F]">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
-              <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} speed={charSpeed} onComplete={next(8)} />
+              <FadeInText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} onComplete={next(8)} />
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
           </p>
         </div>
@@ -445,40 +445,49 @@ function AIAnalysisSection({
   const isComplete = phaseIndex >= 9 || (showAll && !!aiAnalysis);
   const showCTA = !aiAnalysis && !aiLoading && !aiError;
 
-  // Gate: if not premium, wrap in CollapsibleSection with lock
+  // Gate: if not premium, show locked CTA
   if (currentAccess !== "premium") {
     return (
-      <div ref={sectionRef}>
-        <CollapsibleSection
-          title="Análisis Detallado con IA"
-          subtitle="Franco analiza tu inversión y te dice la verdad — con datos, sin filtro."
-          locked
-          analysisId={analysisId}
-        >
-          <div className="flex flex-col items-center gap-4 py-8">
-            <span className="text-3xl opacity-50">✦</span>
-            <div className="text-center">
-              <h4 className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1">Genera el análisis completo con IA</h4>
-              <p className="font-body text-[13px] text-[#71717A]">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</p>
+      <div ref={sectionRef} className="mb-8">
+        <div className="rounded-2xl overflow-hidden mt-5">
+          {/* Dark header */}
+          <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-6 md:px-8 py-5 relative overflow-hidden">
+            <div className="absolute -top-5 -right-5 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.05) 0%, transparent 70%)" }} />
+            <div className="relative z-10">
+              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1">INFORME PRO</div>
+              <div className="font-heading font-bold text-lg md:text-xl text-white">Análisis completo con IA</div>
+              <div className="font-body text-xs text-white/40 mt-1">Análisis personalizado + proyecciones a 20 años</div>
             </div>
           </div>
-        </CollapsibleSection>
+          {/* Locked body */}
+          <div className="bg-white border border-[#E6E6E2] border-t-0 rounded-b-2xl">
+            <div className="py-11 px-6 flex flex-col items-center relative overflow-hidden">
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#0F0F0F 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full animate-pulse" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
+              <div className="relative z-10 text-center">
+                <div className="text-[28px] mb-3 opacity-50">✦</div>
+                <div className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1">Análisis IA + proyecciones a 20 años</div>
+                <div className="font-body text-[13px] text-[#71717A] mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
+                <BottomPaywallCTA analysisId={analysisId ?? ""} />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div ref={sectionRef} className="mb-8">
-      <div className="rounded-2xl overflow-hidden">
+      <div className="rounded-2xl overflow-hidden mt-5">
         {/* Dark header */}
-        <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-8 py-6 relative overflow-hidden">
+        <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-6 md:px-8 py-5 relative overflow-hidden">
           <div className="absolute -top-5 -right-5 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
           <div className="relative z-10 flex justify-between items-center">
             <div>
-              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1.5">ANÁLISIS IA</div>
-              <div className="font-heading font-bold text-xl text-white">Análisis Detallado</div>
-              {isComplete && <div className="font-body text-xs text-white/40 mt-1">Generado con IA usando datos reales del mercado chileno</div>}
-              {showCTA && <div className="font-body text-xs text-white/40 mt-1">IA analiza tu inversión con datos reales del mercado chileno</div>}
+              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1">INFORME PRO</div>
+              <div className="font-heading font-bold text-lg md:text-xl text-white">Análisis completo con IA</div>
+              <div className="font-body text-xs text-white/40 mt-1">Análisis personalizado + proyecciones a 20 años</div>
             </div>
             {isAnalyzing && (
               <div className="flex items-center gap-2">
@@ -534,16 +543,16 @@ function AIAnalysisSection({
 
           {/* STATE B/C: AI content with typewriter */}
           {aiAnalysis && (
-            <div className="p-8">
-              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-4">Siendo franco:</div>
+            <div className="p-6 md:p-8">
+              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-3">Siendo franco:</div>
               {content}
 
               {/* Veredicto final — shown after all phases complete */}
               {isComplete && aiAnalysis.veredicto && (
-                <div className="mt-8 pt-6 border-t border-[#E6E6E2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="mt-6 pt-5 border-t border-[#E6E6E2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div>
                     <div className="font-body text-xs text-[#71717A]">Veredicto Franco</div>
-                    <div className="font-heading font-bold text-xl text-[#0F0F0F] mt-1">{aiAnalysis.veredicto.titulo}</div>
+                    <div className="font-heading font-bold text-lg text-[#0F0F0F] mt-1">{aiAnalysis.veredicto.titulo}</div>
                   </div>
                   <span className={`font-mono font-bold uppercase text-sm tracking-wide px-5 py-2.5 rounded-lg border ${
                     aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-[#16A34A]/10 border-[#16A34A]/30 text-[#16A34A]" :
@@ -554,20 +563,37 @@ function AIAnalysisSection({
                   </span>
                 </div>
               )}
-
-              {/* CTAs after complete */}
-              {isComplete && (
-                <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                  <a href="/analisis/nuevo" className="bg-[#0F0F0F] text-white font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
-                    Analizar otra propiedad →
-                  </a>
-                </div>
-              )}
-
-              {isComplete && (
-                <p className="mt-6 text-center text-[10px] text-[#71717A]/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
-              )}
             </div>
+          )}
+
+          {/* Projections separator + content — only visible after AI is triggered */}
+          {projectionsContent && (aiAnalysis || aiLoading) && (
+            <>
+              <div className="mx-6 md:mx-8">
+                <div className="flex items-center gap-2">
+                  <div className="h-px flex-1 bg-[#E6E6E2]" />
+                  <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">PROYECCIONES</span>
+                  <div className="h-px flex-1 bg-[#E6E6E2]" />
+                </div>
+              </div>
+              <div className="p-6 md:p-8 pt-4">
+                {projectionsContent}
+              </div>
+            </>
+          )}
+
+          {/* CTAs at the end — only after AI triggered */}
+          {(aiAnalysis || aiLoading) && (
+            <>
+              <div className="px-6 md:px-8 pb-6 flex flex-col sm:flex-row gap-2.5">
+                <a href="/analisis/nuevo" className="bg-[#0F0F0F] text-white font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
+                  Analizar otra propiedad →
+                </a>
+              </div>
+              {isComplete && (
+                <p className="px-6 md:px-8 pb-6 text-center text-[10px] text-[#71717A]/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -1614,22 +1640,22 @@ export function PremiumResults({
             </div>
 
             {/* 3 metrics grid */}
-            <div className="grid grid-cols-3 gap-2.5 mt-4">
-              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
-                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Flujo mensual</p>
-                <p className={`font-mono text-lg font-bold mt-1 ${flujoUnificado >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"}`}>
-                  {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Flujo mensual</p>
+                <p className={`font-mono text-sm sm:text-lg font-bold mt-1 truncate ${flujoUnificado >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"}`}>
+                  {flujoUnificado >= 0 ? "+" : ""}{fmtM(flujoUnificado)}
                 </p>
               </div>
-              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
-                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Rent. neta</p>
-                <p className="font-mono text-lg font-bold mt-1 text-[#0F0F0F]">
+              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Rent. neta</p>
+                <p className="font-mono text-sm sm:text-lg font-bold mt-1 truncate text-[#0F0F0F]">
                   {m ? `${(m.rentabilidadNeta ?? 0).toFixed(1)}%` : `${freeYieldBruto.toFixed(1)}%`}
                 </p>
               </div>
-              <div className="bg-white rounded-[10px] p-2.5 px-3 border border-[#E6E6E2]">
-                <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Retorno 10a</p>
-                <p className="font-mono text-lg font-bold mt-1 text-[#0F0F0F]">
+              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Retorno 10a</p>
+                <p className="font-mono text-sm sm:text-lg font-bold mt-1 truncate text-[#0F0F0F]">
                   {exit ? `${exit.multiplicadorCapital}x` : "—"}
                 </p>
               </div>
@@ -1903,15 +1929,20 @@ export function PremiumResults({
             </div>
           )}
 
-          {/* ═══════ BLOCK 3 — PROJECTIONS (PREMIUM) ═══════ */}
-          {/* Separator */}
-          <div className="flex items-center gap-3 mb-4">
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
-            <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">PROYECCIONES</span>
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
-          </div>
-
-          <div className="bg-[#FAFAF8] rounded-2xl p-6 md:p-8 mb-5">
+          {/* ═══════ BLOCK 3 — INFORME PRO (AI + PROJECTIONS) ═══════ */}
+          <AIAnalysisSection
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+            aiError={aiError}
+            loadAiAnalysis={loadAiAnalysis}
+            score={score}
+            ct={ct}
+            ci={ci}
+            currentAccess={currentAccess}
+            analysisId={analysisId}
+            aiAnalysisInitiallyLoaded={!!(aiAnalysisInitial && typeof aiAnalysisInitial === "object" && "veredicto" in aiAnalysisInitial)}
+            projectionsContent={<>
+          {/* Projection controls */}
           {/* Horizon + growth controls (only show for premium) */}
           {currentAccess === "premium" && (
             <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -2338,20 +2369,7 @@ export function PremiumResults({
             ) : null}
           </CollapsibleSection>
 
-          </div>
-          {/* end Block 3 (FAFAF8 wrapper) */}
-
-          {/* ═══════ BLOQUE 4 — ANÁLISIS IA (PREMIUM) ═══════ */}
-          <AIAnalysisSection
-            aiAnalysis={aiAnalysis}
-            aiLoading={aiLoading}
-            aiError={aiError}
-            loadAiAnalysis={loadAiAnalysis}
-            score={score}
-            ct={ct}
-            ci={ci}
-            currentAccess={currentAccess}
-            analysisId={analysisId}
+            </>}
           />
 
           {/* ===== Bottom CTAs ===== */}

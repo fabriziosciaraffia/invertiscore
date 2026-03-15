@@ -393,7 +393,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
-          <FrancoLogo size="sm" href="/" />
+          <FrancoLogo size="header" href="/" />
         </div>
       </nav>
 

@@ -44,7 +44,7 @@ export default async function PerfilPage() {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="sm" href="/dashboard" />
+          <FrancoLogo size="header" href="/" />
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
               <Button variant="ghost" size="sm" className="gap-2">

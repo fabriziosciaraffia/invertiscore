@@ -9,12 +9,11 @@ import { ShareButton } from "./share-button";
 import { DeleteButton } from "./delete-button";
 
 export function AnalysisNav({
-  userId,
   analysisId,
   score,
   nombre,
 }: {
-  userId: string | null;
+  userId?: string | null;
   analysisId: string;
   score: number;
   nombre: string;
@@ -36,7 +35,7 @@ export function AnalysisNav({
   return (
     <nav className="sticky top-0 z-50 border-b border-franco-border bg-white">
       <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <FrancoLogo size="sm" href={userId ? "/dashboard" : "/"} />
+        <FrancoLogo size="header" href="/" />
 
         {/* Desktop */}
         <div className="hidden items-center gap-2 md:flex">

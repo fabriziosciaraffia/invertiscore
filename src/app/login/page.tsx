@@ -42,7 +42,7 @@ export default function LoginPage() {
             {/* Header */}
             <div className="px-6 pt-8 pb-2 text-center">
               <div className="mx-auto mb-4">
-                <FrancoLogo size="xl" />
+                <FrancoLogo size="xl" href="/" />
               </div>
               <h1 className="font-heading text-xl font-bold text-[#0F0F0F]">Bienvenido de vuelta</h1>
               <p className="mt-1.5 font-body text-sm text-[#71717A]">

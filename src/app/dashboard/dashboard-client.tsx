@@ -19,11 +19,6 @@ function getVerdict(score: number): "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA" {
   return "BUSCAR OTRA";
 }
 
-function getVerdictColor(verdict: string) {
-  if (verdict === "COMPRAR") return "#16A34A";
-  if (verdict === "NEGOCIAR") return "#C8323C";
-  return "#DC2626";
-}
 
 function getMetrics(item: Analisis) {
   const r = item.results;
@@ -173,7 +168,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
       {/* Navbar */}
       <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
         <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
-          <FrancoLogo size="sm" href="/" />
+          <FrancoLogo size="header" href="/" />
           <div className="flex items-center gap-3">
             <Link href="/pricing">
               <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>

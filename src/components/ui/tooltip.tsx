@@ -13,8 +13,6 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
-  const [arrowSide, setArrowSide] = useState<"bottom" | "left" | "right">("bottom");
-
   useEffect(() => {
     if (!triggerRef.current || !bubbleRef.current) return;
 
@@ -50,8 +48,6 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
         side = "right";
       }
     }
-
-    setArrowSide(side);
 
     if (side === "bottom") {
       // Arrow at bottom center, pointing down toward trigger

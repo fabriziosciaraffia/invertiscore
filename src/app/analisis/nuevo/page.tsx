@@ -3,9 +3,8 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { ArrowLeft, Loader2, ChevronDown, ChevronUp, Sparkles, Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, ChevronDown, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { COMUNAS } from "@/lib/comunas";
 
@@ -876,7 +875,7 @@ export default function NuevoAnalisisPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
-          <FrancoLogo size="sm" href="/dashboard" />
+          <FrancoLogo size="header" href="/" />
           <Link href="/dashboard" className="font-body text-sm text-[#71717A] hover:text-[#0F0F0F] transition-colors">
             ← Dashboard
           </Link>

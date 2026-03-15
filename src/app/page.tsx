@@ -617,7 +617,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-start gap-8">
             {/* Left */}
             <div>
-              <FrancoLogo inverted size="sm" href="/" />
+              <FrancoLogo inverted size="header" href="/" />
               <p className="font-mono text-[8px] text-white/25 uppercase tracking-[0.1em] mt-1">
                 RE FRANCO CON TU INVERSIÓN
               </p>
