@@ -665,10 +665,34 @@ export default function NuevoAnalisisPage() {
     return () => clearTimeout(geocodeTimeout.current);
   }, [form.direccion, form.comuna]);
 
-  // ─── Fetch sugerencias por radio/comuna ───────────
+  // ─── Fetch propiedades para el MAPA (solo necesita lat/lng) ───
+  useEffect(() => {
+    if (!geoLat || !geoLng || !form.comuna) {
+      setNearbyProperties([]);
+      setTotalInRadius(0);
+      return;
+    }
+    const params = new URLSearchParams({
+      comuna: form.comuna,
+      lat: String(geoLat),
+      lng: String(geoLng),
+      radius: String(radius),
+      superficie: "50",
+      dormitorios: "0",
+    });
+    fetch(`/api/data/suggestions?${params}`)
+      .then((r) => r.json())
+      .then((d) => {
+        setNearbyProperties(d.nearbyProperties || []);
+        setTotalInRadius(d.totalInRadius || 0);
+      })
+      .catch(() => { setNearbyProperties([]); setTotalInRadius(0); });
+  }, [geoLat, geoLng, radius, form.comuna]);
+
+  // ─── Fetch sugerencias de precio (necesita superficie + dormitorios) ───
   useEffect(() => {
     const supUtil = parseNum(form.superficieUtil) || 0;
-    if (!form.comuna || supUtil <= 0) { setRadioSugerencias(null); return; }
+    if (!form.comuna || supUtil <= 0) { setRadioSugerencias(null); setFilteredInRadius(0); return; }
 
     const params = new URLSearchParams({
       comuna: form.comuna,
@@ -690,11 +714,9 @@ export default function NuevoAnalisisPage() {
       .then((d) => {
         if (d.arriendo) setRadioSugerencias(d);
         else setRadioSugerencias(null);
-        setNearbyProperties(d.nearbyProperties || []);
-        setTotalInRadius(d.totalInRadius || 0);
         setFilteredInRadius(d.filteredInRadius || 0);
       })
-      .catch(() => { setRadioSugerencias(null); setNearbyProperties([]); setTotalInRadius(0); setFilteredInRadius(0); });
+      .catch(() => { setRadioSugerencias(null); setFilteredInRadius(0); });
   }, [form.comuna, form.superficieUtil, form.dormitorios, form.precio, fieldCurrency.precio, geoLat, geoLng, radius, UF_CLP]);
 
   // ─── Computed suggestions ──────────────────────────
