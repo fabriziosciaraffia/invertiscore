@@ -312,6 +312,7 @@ export default function NuevoAnalisisPage() {
 
   // Fetch real UF value + tasa hipotecaria on mount
   const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
+  const [tasaModificada, setTasaModificada] = useState(false);
   useEffect(() => {
     fetch("/api/uf")
       .then((r) => r.json())
@@ -322,7 +323,12 @@ export default function NuevoAnalisisPage() {
       .then((d) => {
         if (d.value) {
           setTasaRef({ value: d.value, updated_at: d.updated_at });
-          setForm((prev) => ({ ...prev, tasaInteres: d.value }));
+          setTasaModificada((modified) => {
+            if (!modified) {
+              setForm((prev) => ({ ...prev, tasaInteres: d.value }));
+            }
+            return modified;
+          });
         }
       })
       .catch(() => {});
@@ -862,7 +868,7 @@ export default function NuevoAnalisisPage() {
     const supUtil = parseNum(form.superficieUtil) || 0;
     const piePct = parseFloat(form.piePct) || 20;
     const plazo = parseFloat(form.plazoCredito) || 25;
-    const tasa = parseFloat(form.tasaInteres) || 4.72;
+    const tasa = parseFloat(form.tasaInteres) || parseFloat(tasaRef.value) || 4.72;
 
     const precioCLP = precioUF * UF_CLP;
     const precioM2 = supUtil > 0 ? precioUF / supUtil : 0;
@@ -877,7 +883,7 @@ export default function NuevoAnalisisPage() {
     const gastosAuto = Math.round(supUtil * 1200);
 
     return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto, contribucionesAuto, gastosAuto };
-  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, form.antiguedad, form.estadoVenta, fieldCurrency.precio, UF_CLP]);
+  }, [form.precio, form.superficieUtil, form.piePct, form.plazoCredito, form.tasaInteres, form.antiguedad, form.estadoVenta, fieldCurrency.precio, UF_CLP, tasaRef.value]);
 
   // ─── Collapsible section summaries ─────────────────
   const seccion2Summary = form.superficieUtil
@@ -1534,9 +1540,9 @@ export default function NuevoAnalisisPage() {
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="4.72"
+                placeholder={tasaRef.value}
                 value={form.tasaInteres}
-                onChange={(e) => setField("tasaInteres", e.target.value)}
+                onChange={(e) => { setField("tasaInteres", e.target.value); setTasaModificada(true); }}
                 required
                 className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
