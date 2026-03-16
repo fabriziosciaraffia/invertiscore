@@ -229,11 +229,9 @@ export async function scrapeTocTocMap(
   return { source: "toctoc-map", properties, errors, scrapedAt: new Date() };
 }
 
-// ─── Listing + detail page approach (fallback: coords from detail pages) ───
+// ─── Coordinate extraction from detail pages ───
 
-const DETAIL_BATCH_SIZE = 10;
-
-async function fetchCoordinates(url: string): Promise<{ lat: number; lng: number } | null> {
+export async function fetchCoordinates(url: string): Promise<{ lat: number; lng: number } | null> {
   try {
     const response = await fetch(url, { headers: HEADERS });
     if (!response.ok) return null;
@@ -249,43 +247,7 @@ async function fetchCoordinates(url: string): Promise<{ lat: number; lng: number
   }
 }
 
-async function enrichWithCoordinates(
-  properties: ScrapedProperty[],
-  errors: string[]
-): Promise<void> {
-  const toEnrich = properties.filter(p => !p.lat && p.url);
-
-  for (let i = 0; i < toEnrich.length; i += DETAIL_BATCH_SIZE) {
-    const batch = toEnrich.slice(i, i + DETAIL_BATCH_SIZE);
-    const results = await Promise.all(
-      batch.map(async (prop) => {
-        try {
-          return await fetchCoordinates(prop.url!);
-        } catch {
-          return null;
-        }
-      })
-    );
-
-    for (let j = 0; j < batch.length; j++) {
-      if (results[j]) {
-        batch[j].lat = results[j]!.lat;
-        batch[j].lng = results[j]!.lng;
-      }
-    }
-
-    // Rate limit between batches
-    if (i + DETAIL_BATCH_SIZE < toEnrich.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-
-  const enriched = properties.filter(p => p.lat).length;
-  const total = properties.length;
-  if (enriched < total) {
-    errors.push(`Coords: ${enriched}/${total} enriched`);
-  }
-}
+// ─── Listing page scraper (fast, no coord enrichment) ───
 
 export async function scrapeTocToc(
   type: "arriendo" | "venta" = "arriendo",
@@ -322,9 +284,6 @@ export async function scrapeTocToc(
       errors.push(`TocToc ${comuna}: ${error}`);
     }
   }
-
-  // Enrich properties with coordinates from detail pages
-  await enrichWithCoordinates(properties, errors);
 
   return { source: "toctoc", properties, errors, scrapedAt: new Date() };
 }
