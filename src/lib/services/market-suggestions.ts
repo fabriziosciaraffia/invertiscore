@@ -7,6 +7,14 @@ function getSupabase() {
   );
 }
 
+export interface NearbyPropertyPoint {
+  lat: number;
+  lng: number;
+  precio: number;
+  superficie_m2: number | null;
+  distance_meters: number;
+}
+
 export interface Sugerencias {
   arriendo: number;
   ggcc: number | null;
@@ -15,6 +23,7 @@ export interface Sugerencias {
   sampleSize: number;
   radiusMeters?: number;
   precioM2?: number;
+  nearbyProperties?: NearbyPropertyPoint[];
 }
 
 export async function getSugerencias(
@@ -26,26 +35,77 @@ export async function getSugerencias(
   lng?: number,
   radiusMeters: number = 800
 ): Promise<Sugerencias> {
+  // Fetch nearby properties for map (independent of suggestion level)
+  let nearbyProperties: NearbyPropertyPoint[] | undefined;
+  if (lat && lng) {
+    nearbyProperties = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormitorios);
+  }
+
   // NIVEL 1: Si tenemos coordenadas, buscar por radio
   if (lat && lng) {
     const radioResult = await getSugerenciasPorRadio(
       lat, lng, radiusMeters, superficie, dormitorios
     );
-    if (radioResult) return radioResult;
+    if (radioResult) return { ...radioResult, nearbyProperties };
 
     // Expandir radio si no hay suficientes datos
     const expandedResult = await getSugerenciasPorRadio(
       lat, lng, radiusMeters * 2, superficie, dormitorios
     );
-    if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2 };
+    if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2, nearbyProperties };
   }
 
   // NIVEL 2: Estadísticas por comuna + dormitorios
   const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormitorios);
-  if (comunaResult) return comunaResult;
+  if (comunaResult) return { ...comunaResult, nearbyProperties };
 
   // NIVEL 3: Fallback a estimación hardcodeada
-  return getFallbackEstimacion(comuna, superficie, dormitorios, precioUF);
+  const fallback = getFallbackEstimacion(comuna, superficie, dormitorios, precioUF);
+  return { ...fallback, nearbyProperties };
+}
+
+async function getNearbyPropertiesForMap(
+  lat: number,
+  lng: number,
+  radiusMeters: number,
+  dormitorios: number
+): Promise<NearbyPropertyPoint[]> {
+  const supabase = getSupabase();
+
+  // Try with dormitorios filter first, fallback to all
+  const { data } = await supabase.rpc("properties_within_radius", {
+    center_lat: lat,
+    center_lng: lng,
+    radius_meters: radiusMeters,
+    prop_type: "arriendo",
+    prop_dorms: dormitorios,
+  });
+
+  const props = data || [];
+  if (props.length < 3) {
+    const { data: allProps } = await supabase.rpc("properties_within_radius", {
+      center_lat: lat,
+      center_lng: lng,
+      radius_meters: radiusMeters,
+      prop_type: "arriendo",
+      prop_dorms: null,
+    });
+    return (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
+      lat: p.lat,
+      lng: p.lng,
+      precio: p.precio,
+      superficie_m2: p.superficie_m2,
+      distance_meters: p.distance_meters,
+    }));
+  }
+
+  return props.map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
+    lat: p.lat,
+    lng: p.lng,
+    precio: p.precio,
+    superficie_m2: p.superficie_m2,
+    distance_meters: p.distance_meters,
+  }));
 }
 
 async function getSugerenciasPorRadio(

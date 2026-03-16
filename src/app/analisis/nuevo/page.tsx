@@ -6,6 +6,7 @@ import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
+import GoogleMapRadius from "@/components/GoogleMapRadius";
 import { COMUNAS } from "@/lib/comunas";
 
 const UF_CLP_FALLBACK = 38800;
@@ -301,6 +302,11 @@ export default function NuevoAnalisisPage() {
     radiusMeters?: number;
     precioM2?: number;
   } | null>(null);
+
+  // Propiedades cercanas para el mapa
+  const [nearbyProperties, setNearbyProperties] = useState<{
+    lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number;
+  }[]>([]);
 
   // Fetch real UF value + tasa hipotecaria on mount
   const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
@@ -682,8 +688,9 @@ export default function NuevoAnalisisPage() {
       .then((d) => {
         if (d.arriendo) setRadioSugerencias(d);
         else setRadioSugerencias(null);
+        setNearbyProperties(d.nearbyProperties || []);
       })
-      .catch(() => setRadioSugerencias(null));
+      .catch(() => { setRadioSugerencias(null); setNearbyProperties([]); });
   }, [form.comuna, form.superficieUtil, form.dormitorios, form.precio, fieldCurrency.precio, geoLat, geoLng, radius, UF_CLP]);
 
   // ─── Computed suggestions ──────────────────────────
@@ -1198,34 +1205,59 @@ export default function NuevoAnalisisPage() {
               )}
             </div>
 
-            {/* Radio de búsqueda — solo visible cuando hay dirección geocodificada */}
+            {/* Mapa + Radio de búsqueda — solo visible cuando hay dirección geocodificada */}
             {geoLat && geoLng && (
-              <div className="mt-1">
-                <div className="flex justify-between items-center mb-1.5">
-                  <div className="flex items-center gap-1">
-                    <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Radio de búsqueda</span>
-                    <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado. Más chico = más preciso pero menos datos." />
-                  </div>
-                  <span className="font-mono text-[13px] font-semibold text-[#0F0F0F]">{radius}m</span>
-                </div>
-                <input
-                  type="range"
-                  min={300}
-                  max={2000}
-                  step={100}
-                  value={radius}
-                  onChange={(e) => setRadius(parseInt(e.target.value))}
-                  className="w-full accent-[#0F0F0F]"
+              <div className="mt-1 space-y-3">
+                {/* Mapa interactivo */}
+                <GoogleMapRadius
+                  lat={geoLat}
+                  lng={geoLng}
+                  radiusMeters={radius}
+                  nearbyProperties={nearbyProperties}
+                  comuna={form.comuna}
                 />
-                <div className="flex justify-between font-mono text-[9px] text-[#71717A] mt-1">
-                  <span>300m</span>
-                  <span>2km</span>
+
+                {/* Slider de radio */}
+                <div>
+                  <div className="flex justify-between items-center mb-1.5">
+                    <div className="flex items-center gap-1">
+                      <span className="font-body text-[13px] font-semibold text-[#0F0F0F]">Radio de búsqueda</span>
+                      <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado. Más chico = más preciso pero menos datos." />
+                    </div>
+                    <span className="font-mono text-[13px] font-semibold text-[#0F0F0F]">{radius}m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={300}
+                    max={2000}
+                    step={100}
+                    value={radius}
+                    onChange={(e) => setRadius(parseInt(e.target.value))}
+                    className="w-full accent-[#0F0F0F]"
+                  />
+                  <div className="flex justify-between font-mono text-[9px] text-[#71717A] mt-1">
+                    <span>300m</span>
+                    <span>2km</span>
+                  </div>
                 </div>
-                <div className="font-body text-[10px] text-[#71717A] mt-1">
-                  {radius <= 500 ? "Hiperlocalizado — solo tu barrio inmediato" :
-                   radius <= 800 ? "~10 min caminando — buen balance precisión/datos" :
-                   radius <= 1200 ? "Zona amplia — más datos, menos preciso" :
-                   "Zona muy amplia — útil si hay pocos datos cerca"}
+
+                {/* Indicador de datos */}
+                <div className="flex items-center gap-2 px-3 py-2 bg-[#FAFAF8] rounded-lg">
+                  <div className={`w-2 h-2 rounded-full ${
+                    nearbyProperties.length >= 10 ? 'bg-[#16A34A]' :
+                    nearbyProperties.length >= 5 ? 'bg-[#0F0F0F]' :
+                    nearbyProperties.length > 0 ? 'bg-[#C8323C]' : 'bg-[#71717A]'
+                  }`} />
+                  <span className="font-body text-xs text-[#71717A]">
+                    {nearbyProperties.length >= 10
+                      ? `${nearbyProperties.length} propiedades encontradas — datos confiables`
+                      : nearbyProperties.length >= 5
+                      ? `${nearbyProperties.length} propiedades encontradas — datos suficientes`
+                      : nearbyProperties.length > 0
+                      ? `Solo ${nearbyProperties.length} propiedades — intenta ampliar el radio`
+                      : 'Sin datos en este radio — amplía el radio o usa estimación por comuna'
+                    }
+                  </span>
                 </div>
               </div>
             )}
