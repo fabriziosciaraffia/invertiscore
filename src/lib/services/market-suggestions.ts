@@ -24,6 +24,8 @@ export interface Sugerencias {
   radiusMeters?: number;
   precioM2?: number;
   nearbyProperties?: NearbyPropertyPoint[];
+  totalInRadius?: number;
+  filteredInRadius?: number;
 }
 
 export async function getSugerencias(
@@ -35,33 +37,40 @@ export async function getSugerencias(
   lng?: number,
   radiusMeters: number = 800
 ): Promise<Sugerencias> {
-  // Fetch nearby properties for map (independent of suggestion level)
+  // Fetch nearby properties for map: ALL properties (sin filtro dormitorios) for density
   let nearbyProperties: NearbyPropertyPoint[] | undefined;
+  let totalInRadius = 0;
+  let filteredInRadius = 0;
   if (lat && lng) {
-    nearbyProperties = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormitorios);
+    const mapData = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormitorios);
+    nearbyProperties = mapData.all;
+    totalInRadius = mapData.all.length;
+    filteredInRadius = mapData.filteredCount;
   }
+
+  const mapFields = { nearbyProperties, totalInRadius, filteredInRadius };
 
   // NIVEL 1: Si tenemos coordenadas, buscar por radio
   if (lat && lng) {
     const radioResult = await getSugerenciasPorRadio(
       lat, lng, radiusMeters, superficie, dormitorios
     );
-    if (radioResult) return { ...radioResult, nearbyProperties };
+    if (radioResult) return { ...radioResult, ...mapFields };
 
     // Expandir radio si no hay suficientes datos
     const expandedResult = await getSugerenciasPorRadio(
       lat, lng, radiusMeters * 2, superficie, dormitorios
     );
-    if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2, nearbyProperties };
+    if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2, ...mapFields };
   }
 
   // NIVEL 2: Estadísticas por comuna + dormitorios
   const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormitorios);
-  if (comunaResult) return { ...comunaResult, nearbyProperties };
+  if (comunaResult) return { ...comunaResult, ...mapFields };
 
   // NIVEL 3: Fallback a estimación hardcodeada
   const fallback = getFallbackEstimacion(comuna, superficie, dormitorios, precioUF);
-  return { ...fallback, nearbyProperties };
+  return { ...fallback, ...mapFields };
 }
 
 async function getNearbyPropertiesForMap(
@@ -69,43 +78,32 @@ async function getNearbyPropertiesForMap(
   lng: number,
   radiusMeters: number,
   dormitorios: number
-): Promise<NearbyPropertyPoint[]> {
+): Promise<{ all: NearbyPropertyPoint[]; filteredCount: number }> {
   const supabase = getSupabase();
 
-  // Try with dormitorios filter first, fallback to all
-  const { data } = await supabase.rpc("properties_within_radius", {
+  // Query ALL properties without dormitorios filter for map density
+  const { data: allProps } = await supabase.rpc("properties_within_radius", {
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
     prop_type: "arriendo",
-    prop_dorms: dormitorios,
+    prop_dorms: null,
   });
 
-  const props = data || [];
-  if (props.length < 3) {
-    const { data: allProps } = await supabase.rpc("properties_within_radius", {
-      center_lat: lat,
-      center_lng: lng,
-      radius_meters: radiusMeters,
-      prop_type: "arriendo",
-      prop_dorms: null,
-    });
-    return (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
-      lat: p.lat,
-      lng: p.lng,
-      precio: p.precio,
-      superficie_m2: p.superficie_m2,
-      distance_meters: p.distance_meters,
-    }));
-  }
-
-  return props.map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
+  const all = (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number; dormitorios: number | null }) => ({
     lat: p.lat,
     lng: p.lng,
     precio: p.precio,
     superficie_m2: p.superficie_m2,
     distance_meters: p.distance_meters,
   }));
+
+  // Count how many match the dormitorios filter
+  const filteredCount = (allProps || []).filter(
+    (p: { dormitorios: number | null }) => p.dormitorios === dormitorios
+  ).length;
+
+  return { all, filteredCount };
 }
 
 async function getSugerenciasPorRadio(

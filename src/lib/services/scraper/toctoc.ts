@@ -33,7 +33,7 @@ const COMUNAS_SANTIAGO = [
   "maipu", "puente-alto", "san-joaquin", "quinta-normal", "conchali",
 ];
 
-export const BATCH_SIZE = 3;
+export const BATCH_SIZE = 2;
 export const TOTAL_BATCHES = Math.ceil(COMUNAS_SANTIAGO.length / BATCH_SIZE);
 
 export function getComunasBatch(batch: number): string[] {
@@ -51,7 +51,7 @@ export async function scrapeTocToc(
 
   for (const comuna of targetComunas) {
     try {
-      for (let page = 1; page <= 3; page++) {
+      for (let page = 1; page <= 6; page++) {
         const url = `https://www.toctoc.com/${type}/departamento/metropolitana/${comuna}?pagina=${page}`;
 
         const response = await fetch(url, {

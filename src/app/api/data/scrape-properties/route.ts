@@ -21,13 +21,12 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url);
 
-  // Batch: explícito o auto-rotación por día de la semana
+  // Batch: explícito o auto-rotación por día del mes
   let batch: number;
   if (url.searchParams.has("batch")) {
     batch = parseInt(url.searchParams.get("batch")!);
   } else {
-    const dayOfWeek = new Date().getDay(); // 0=domingo, 1=lunes...
-    batch = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    batch = new Date().getDate() % TOTAL_BATCHES;
   }
   const comunas = getComunasBatch(batch);
 

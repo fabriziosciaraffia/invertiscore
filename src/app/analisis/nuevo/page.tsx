@@ -307,6 +307,8 @@ export default function NuevoAnalisisPage() {
   const [nearbyProperties, setNearbyProperties] = useState<{
     lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number;
   }[]>([]);
+  const [totalInRadius, setTotalInRadius] = useState(0);
+  const [filteredInRadius, setFilteredInRadius] = useState(0);
 
   // Fetch real UF value + tasa hipotecaria on mount
   const [tasaRef, setTasaRef] = useState<{ value: string; updated_at: string | null }>({ value: "4.72", updated_at: null });
@@ -689,8 +691,10 @@ export default function NuevoAnalisisPage() {
         if (d.arriendo) setRadioSugerencias(d);
         else setRadioSugerencias(null);
         setNearbyProperties(d.nearbyProperties || []);
+        setTotalInRadius(d.totalInRadius || 0);
+        setFilteredInRadius(d.filteredInRadius || 0);
       })
-      .catch(() => { setRadioSugerencias(null); setNearbyProperties([]); });
+      .catch(() => { setRadioSugerencias(null); setNearbyProperties([]); setTotalInRadius(0); setFilteredInRadius(0); });
   }, [form.comuna, form.superficieUtil, form.dormitorios, form.precio, fieldCurrency.precio, geoLat, geoLng, radius, UF_CLP]);
 
   // ─── Computed suggestions ──────────────────────────
@@ -1244,17 +1248,13 @@ export default function NuevoAnalisisPage() {
                 {/* Indicador de datos */}
                 <div className="flex items-center gap-2 px-3 py-2 bg-[#FAFAF8] rounded-lg">
                   <div className={`w-2 h-2 rounded-full ${
-                    nearbyProperties.length >= 10 ? 'bg-[#16A34A]' :
-                    nearbyProperties.length >= 5 ? 'bg-[#0F0F0F]' :
-                    nearbyProperties.length > 0 ? 'bg-[#C8323C]' : 'bg-[#71717A]'
+                    totalInRadius >= 10 ? 'bg-[#16A34A]' :
+                    totalInRadius >= 5 ? 'bg-[#0F0F0F]' :
+                    totalInRadius > 0 ? 'bg-[#C8323C]' : 'bg-[#71717A]'
                   }`} />
                   <span className="font-body text-xs text-[#71717A]">
-                    {nearbyProperties.length >= 10
-                      ? `${nearbyProperties.length} propiedades encontradas — datos confiables`
-                      : nearbyProperties.length >= 5
-                      ? `${nearbyProperties.length} propiedades encontradas — datos suficientes`
-                      : nearbyProperties.length > 0
-                      ? `Solo ${nearbyProperties.length} propiedades — intenta ampliar el radio`
+                    {totalInRadius > 0
+                      ? `${totalInRadius} propiedades en ${radius}m (${filteredInRadius} de ${form.dormitorios} dorm.)`
                       : 'Sin datos en este radio — amplía el radio o usa estimación por comuna'
                     }
                   </span>
