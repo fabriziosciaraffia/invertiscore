@@ -259,7 +259,7 @@ export async function scrapeTocToc(
 
   for (const comuna of targetComunas) {
     try {
-      for (let page = 1; page <= 15; page++) {
+      for (let page = 1; page <= 1; page++) {
         const url = `https://www.toctoc.com/${type}/departamento/metropolitana/${comuna}?pagina=${page}`;
 
         const response = await fetch(url, { headers: HEADERS });
@@ -276,10 +276,10 @@ export async function scrapeTocToc(
         if (parsed.length === 0) break;
         properties.push(...parsed);
 
-        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 3000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     } catch (error) {
       errors.push(`TocToc ${comuna}: ${error}`);
     }

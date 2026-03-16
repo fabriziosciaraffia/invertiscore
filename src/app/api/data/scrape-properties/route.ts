@@ -38,14 +38,10 @@ export async function POST(request: Request) {
   const allProperties: ScrapedProperty[] = [];
   const allErrors: string[] = [];
 
-  const types: ("arriendo" | "venta")[] =
-    typeParam === "arriendo" || typeParam === "venta" ? [typeParam] : ["arriendo", "venta"];
-
-  for (const t of types) {
-    const result = await scrapeTocToc(t, comunas);
-    allProperties.push(...result.properties);
-    allErrors.push(...result.errors);
-  }
+  const type: "arriendo" | "venta" = typeParam === "venta" ? "venta" : "arriendo";
+  const result = await scrapeTocToc(type, comunas);
+  allProperties.push(...result.properties);
+  allErrors.push(...result.errors);
 
   let inserted = 0;
   let skipped = 0;
