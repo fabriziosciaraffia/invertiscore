@@ -2,29 +2,19 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-interface NearbyProperty {
-  lat: number;
-  lng: number;
-  precio: number;
-  superficie_m2: number | null;
-  distance_meters: number;
-}
-
 interface GoogleMapRadiusProps {
   lat: number;
   lng: number;
   radiusMeters: number;
-  nearbyProperties?: NearbyProperty[];
   comuna: string;
 }
 
 export default function GoogleMapRadius({
-  lat, lng, radiusMeters, nearbyProperties = [],
+  lat, lng, radiusMeters,
 }: GoogleMapRadiusProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
-  const markersRef = useRef<google.maps.Marker[]>([]);
   const mainMarkerRef = useRef<google.maps.Marker | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
 
@@ -84,7 +74,7 @@ export default function GoogleMapRadius({
     }
   }, [mapLoaded, lat, lng]);
 
-  // Actualizar centro, radio y markers
+  // Actualizar centro y radio
   useEffect(() => {
     if (!mapInstanceRef.current) return;
     const map = mapInstanceRef.current;
@@ -132,44 +122,11 @@ export default function GoogleMapRadius({
         strokeWeight: 1.5,
       });
     }
-
-    // Limpiar markers anteriores
-    markersRef.current.forEach(m => m.setMap(null));
-    markersRef.current = [];
-
-    // Markers de propiedades cercanas
-    for (const prop of nearbyProperties) {
-      const marker = new google.maps.Marker({
-        position: { lat: prop.lat, lng: prop.lng },
-        map,
-        icon: {
-          path: google.maps.SymbolPath.CIRCLE,
-          scale: 4,
-          fillColor: '#0F0F0F',
-          fillOpacity: 0.3,
-          strokeColor: '#0F0F0F',
-          strokeOpacity: 0.5,
-          strokeWeight: 1,
-        },
-        zIndex: 5,
-      });
-      markersRef.current.push(marker);
-    }
-  }, [lat, lng, radiusMeters, nearbyProperties, mapLoaded]);
+  }, [lat, lng, radiusMeters, mapLoaded]);
 
   return (
     <div className="relative w-full rounded-xl overflow-hidden border border-[#E6E6E2]">
       <div ref={mapRef} className="w-full" style={{ height: 220 }} />
-
-      {/* Overlay con contador */}
-      <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5 rounded-lg bg-white/95 backdrop-blur-sm px-3 py-1.5 shadow-sm">
-        <div className={`w-2 h-2 rounded-full ${
-          nearbyProperties.length >= 5 ? 'bg-[#16A34A]' : nearbyProperties.length > 0 ? 'bg-[#C8323C]' : 'bg-[#71717A]'
-        }`} />
-        <span className="font-body text-xs font-semibold text-[#0F0F0F]">
-          {nearbyProperties.length} propiedad{nearbyProperties.length !== 1 ? 'es' : ''} en {radiusMeters}m
-        </span>
-      </div>
 
       {/* Leyenda */}
       <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-white/95 backdrop-blur-sm px-2 py-1 shadow-sm">

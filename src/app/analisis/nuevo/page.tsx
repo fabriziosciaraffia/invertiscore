@@ -303,10 +303,6 @@ export default function NuevoAnalisisPage() {
     precioM2?: number;
   } | null>(null);
 
-  // Propiedades cercanas para el mapa
-  const [nearbyProperties, setNearbyProperties] = useState<{
-    lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number;
-  }[]>([]);
   const [totalInRadius, setTotalInRadius] = useState(0);
   const [filteredInRadius, setFilteredInRadius] = useState(0);
 
@@ -671,7 +667,6 @@ export default function NuevoAnalisisPage() {
   // ─── Fetch propiedades para el MAPA (solo necesita lat/lng) ───
   useEffect(() => {
     if (!geoLat || !geoLng || !form.comuna) {
-      setNearbyProperties([]);
       setTotalInRadius(0);
       return;
     }
@@ -686,10 +681,9 @@ export default function NuevoAnalisisPage() {
     fetch(`/api/data/suggestions?${params}`)
       .then((r) => r.json())
       .then((d) => {
-        setNearbyProperties(d.nearbyProperties || []);
         setTotalInRadius(d.totalInRadius || 0);
       })
-      .catch(() => { setNearbyProperties([]); setTotalInRadius(0); });
+      .catch(() => { setTotalInRadius(0); });
   }, [geoLat, geoLng, radius, form.comuna]);
 
   // ─── Fetch sugerencias de precio (necesita superficie + dormitorios) ───
@@ -1242,9 +1236,63 @@ export default function NuevoAnalisisPage() {
                   lat={geoLat}
                   lng={geoLng}
                   radiusMeters={radius}
-                  nearbyProperties={nearbyProperties}
                   comuna={form.comuna}
                 />
+
+                {/* Indicador de datos — prominente */}
+                <div className="mt-3 p-4 bg-[#FAFAF8] border border-[#E6E6E2] rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-2xl font-bold text-[#0F0F0F]">
+                        {totalInRadius}
+                      </span>
+                      <div>
+                        <div className="font-body text-sm font-semibold text-[#0F0F0F]">
+                          propiedades en {radius}m
+                        </div>
+                        <div className="font-body text-xs text-[#71717A]">
+                          {filteredInRadius > 0
+                            ? `${filteredInRadius} de ${form.dormitorios || '?'} dormitorios`
+                            : form.dormitorios
+                              ? `0 de ${form.dormitorios} dormitorios — se usa promedio general`
+                              : 'Selecciona dormitorios para filtrar'
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    <div className={`px-3 py-1.5 rounded-full font-mono text-[10px] font-bold uppercase tracking-wide ${
+                      totalInRadius >= 20 ? 'bg-[#16A34A]/10 text-[#16A34A]' :
+                      totalInRadius >= 10 ? 'bg-[#0F0F0F]/10 text-[#0F0F0F]' :
+                      totalInRadius >= 5 ? 'bg-[#C8323C]/10 text-[#C8323C]' :
+                      'bg-[#71717A]/10 text-[#71717A]'
+                    }`}>
+                      {totalInRadius >= 20 ? 'Datos robustos' :
+                       totalInRadius >= 10 ? 'Datos suficientes' :
+                       totalInRadius >= 5 ? 'Datos limitados' :
+                       'Pocos datos'}
+                    </div>
+                  </div>
+
+                  <div className="mt-2.5 h-1.5 bg-[#E6E6E2] rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full transition-all duration-300 ${
+                      totalInRadius >= 20 ? 'bg-[#16A34A]' :
+                      totalInRadius >= 10 ? 'bg-[#0F0F0F]' :
+                      totalInRadius >= 5 ? 'bg-[#C8323C]' :
+                      'bg-[#71717A]'
+                    }`} style={{ width: `${Math.min(totalInRadius / 20 * 100, 100)}%` }} />
+                  </div>
+
+                  {totalInRadius < 5 && totalInRadius > 0 && (
+                    <div className="font-body text-[11px] text-[#71717A] mt-2">
+                      Intenta ampliar el radio para obtener más datos de referencia.
+                    </div>
+                  )}
+                  {totalInRadius === 0 && (
+                    <div className="font-body text-[11px] text-[#71717A] mt-2">
+                      Sin datos georeferenciados en este radio. Las sugerencias usarán el promedio de {form.comuna}.
+                    </div>
+                  )}
+                </div>
 
                 {/* Slider de radio */}
                 <div>
@@ -1268,21 +1316,6 @@ export default function NuevoAnalisisPage() {
                     <span>300m</span>
                     <span>2km</span>
                   </div>
-                </div>
-
-                {/* Indicador de datos */}
-                <div className="flex items-center gap-2 px-3 py-2 bg-[#FAFAF8] rounded-lg">
-                  <div className={`w-2 h-2 rounded-full ${
-                    totalInRadius >= 10 ? 'bg-[#16A34A]' :
-                    totalInRadius >= 5 ? 'bg-[#0F0F0F]' :
-                    totalInRadius > 0 ? 'bg-[#C8323C]' : 'bg-[#71717A]'
-                  }`} />
-                  <span className="font-body text-xs text-[#71717A]">
-                    {totalInRadius > 0
-                      ? `${totalInRadius} propiedades en ${radius}m (${filteredInRadius} de ${form.dormitorios} dorm.)`
-                      : 'Sin datos en este radio — amplía el radio o usa estimación por comuna'
-                    }
-                  </span>
                 </div>
               </div>
             )}

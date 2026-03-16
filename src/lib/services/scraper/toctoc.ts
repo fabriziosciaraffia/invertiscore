@@ -51,7 +51,7 @@ export async function scrapeTocToc(
 
   for (const comuna of targetComunas) {
     try {
-      for (let page = 1; page <= 6; page++) {
+      for (let page = 1; page <= 15; page++) {
         const url = `https://www.toctoc.com/${type}/departamento/metropolitana/${comuna}?pagina=${page}`;
 
         const response = await fetch(url, {
