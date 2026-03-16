@@ -33,7 +33,7 @@ const COMUNAS_SANTIAGO = [
   "maipu", "puente-alto", "san-joaquin", "quinta-normal", "conchali",
 ];
 
-export const BATCH_SIZE = 2;
+export const BATCH_SIZE = 1; // Reducido para diagnóstico de timeout (era 2)
 export const TOTAL_BATCHES = Math.ceil(COMUNAS_SANTIAGO.length / BATCH_SIZE);
 
 export function getComunasBatch(batch: number): string[] {

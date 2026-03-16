@@ -38,11 +38,17 @@ export async function POST(request: Request) {
   const allProperties: ScrapedProperty[] = [];
   const allErrors: string[] = [];
 
+  const t0 = Date.now();
+
+  // --- SCRAPING ---
   const type: "arriendo" | "venta" = typeParam === "venta" ? "venta" : "arriendo";
   const result = await scrapeTocToc(type, comunas);
   allProperties.push(...result.properties);
   allErrors.push(...result.errors);
 
+  const t1 = Date.now();
+
+  // --- UPSERTS ---
   let inserted = 0;
   let skipped = 0;
 
@@ -62,8 +68,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // Recalcular estadísticas de mercado
-  const statsResult = await calculateMarketStats();
+  const t2 = Date.now();
+
+  // --- STATS (DESACTIVADO para diagnóstico de timeout) ---
+  // const statsResult = await calculateMarketStats();
+  const statsResult = { skipped: "disabled for timeout diagnosis" };
+
+  const t3 = Date.now();
 
   return NextResponse.json({
     success: true,
@@ -77,6 +88,12 @@ export async function POST(request: Request) {
     withCoords: allProperties.filter(p => p.lat && p.lng).length,
     errors: allErrors.slice(0, 20),
     stats: statsResult,
+    timing: {
+      scrape_ms: t1 - t0,
+      upsert_ms: t2 - t1,
+      stats_ms: t3 - t2,
+      total_ms: t3 - t0,
+    },
   });
 }
 
