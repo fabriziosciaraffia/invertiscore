@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { scrapeTocToc, scrapeTocTocMap, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+import { scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
 import { calculateMarketStats } from "@/lib/services/scraper/stats";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,16 +41,8 @@ export async function POST(request: Request) {
   const types: ("arriendo" | "venta")[] =
     typeParam === "arriendo" || typeParam === "venta" ? [typeParam] : ["arriendo", "venta"];
 
-  let mapMethod = false;
   for (const t of types) {
-    // Try map API first (up to 510 props with coords per comuna)
-    let result = await scrapeTocTocMap(t, comunas);
-    if (result.properties.length > 0) {
-      mapMethod = true;
-    } else {
-      // Fallback: listing pages + detail page coord enrichment
-      result = await scrapeTocToc(t, comunas);
-    }
+    const result = await scrapeTocToc(t, comunas);
     allProperties.push(...result.properties);
     allErrors.push(...result.errors);
   }
@@ -82,7 +74,7 @@ export async function POST(request: Request) {
     batch,
     totalBatches: TOTAL_BATCHES,
     comunas,
-    method: mapMethod ? "map-api" : "listing+detail",
+    method: "listing",
     inserted,
     skipped,
     totalScraped: allProperties.length,
