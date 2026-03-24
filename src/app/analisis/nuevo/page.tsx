@@ -127,12 +127,16 @@ function MoneyInput({
   const isUF = currency === "UF";
 
   // Sync display when value changes externally
+  // Use Number() not parseNum() — form state stores raw JS numbers like "24.67"
+  // where the dot is a decimal, not a thousands separator
   useEffect(() => {
     if (!value) { setDisplay(""); return; }
-    const num = parseNum(value);
+    const num = Number(value) || 0;
     if (num === 0) { setDisplay(""); return; }
     if (isUF) {
-      setDisplay((Math.round(num * 10) / 10).toLocaleString("es-CL"));
+      const rounded = Math.round(num * 100) / 100;
+      const [int, dec] = rounded.toFixed(2).split(".");
+      setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
     } else {
       setDisplay(Math.round(num).toLocaleString("es-CL"));
     }
@@ -150,7 +154,9 @@ function MoneyInput({
     const num = parseNum(display);
     if (num > 0) {
       if (isUF) {
-        setDisplay((Math.round(num * 10) / 10).toLocaleString("es-CL"));
+        const rounded = Math.round(num * 100) / 100;
+        const [int, dec] = rounded.toFixed(2).split(".");
+        setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
       } else {
         setDisplay(Math.round(num).toLocaleString("es-CL"));
       }
