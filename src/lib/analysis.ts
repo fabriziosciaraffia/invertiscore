@@ -32,7 +32,9 @@ export function getMantencionRate(antiguedad: number): number {
 const PLUSVALIA_ANUAL = 0.04;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
+const INFLACION_UF = 0.03; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
 const COMISION_VENTA = 0.02;
+const GASTOS_CIERRE_PCT = 0.02; // ~2% of purchase price (notaría, CBR, timbres, tasación)
 
 // =========================================
 // Helpers
@@ -201,10 +203,11 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
   const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
 
-  // Cash-on-Cash: for verde/blanco, include pie installments as capital invested
+  // Cash-on-Cash: pie + closing costs + pre-delivery installments
   const mesesPreEntrega = calcMesesHastaEntrega(input);
   const cuotasPieTotal = mesesPreEntrega > 0 ? (input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega) * (input.montoCuota > 0 ? input.montoCuota : (pieCLP / (input.cuotasPie || mesesPreEntrega))) : 0;
-  const capitalInvertido = pieCLP + cuotasPieTotal;
+  const gastosCompra = Math.round(precioCLP * GASTOS_CIERRE_PCT);
+  const capitalInvertido = pieCLP + cuotasPieTotal + gastosCompra;
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -329,10 +332,13 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
     const mantencionBase = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
     const mantencionAnual = Math.round(mantencionBase * Math.pow(1 + GGCC_INFLACION, anio - 1));
 
+    // Dividendo in UF is constant, but in CLP it grows with UF (≈ inflation)
+    const dividendoAnio = Math.round(metrics.dividendo * Math.pow(1 + INFLACION_UF, anio - 1));
+
     // Usar función centralizada para costos recurrentes del mes
     const flujoMes = calcFlujoDesglose({
       arriendo: arriendoActual,
-      dividendo: metrics.dividendo,
+      dividendo: dividendoAnio,
       ggcc: gastosActual,
       contribuciones: contribucionesActual,
       mantencion: mantencionAnual,
@@ -395,10 +401,14 @@ function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projec
   const comisionVenta = Math.round(valorVenta * COMISION_VENTA);
   const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
   const retornoTotal = proy.flujoAcumulado + gananciaNeta;
-  const multiplicadorCapital = metrics.pieCLP > 0 ? Math.round((retornoTotal / metrics.pieCLP) * 100) / 100 : 0;
 
-  // TIR: initial investment negative, annual cashflows, final year includes sale
-  const flujos: number[] = [-metrics.pieCLP];
+  // Inversión real = pie + gastos de cierre (notaría, CBR, timbres, tasación)
+  const gastosCompra = Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
+  const inversionTotal = metrics.pieCLP + gastosCompra;
+  const multiplicadorCapital = inversionTotal > 0 ? Math.round((retornoTotal / inversionTotal) * 100) / 100 : 0;
+
+  // TIR: initial investment includes closing costs
+  const flujos: number[] = [-inversionTotal];
   for (let i = 0; i < anios; i++) {
     let flujo = projections[i].flujoAnual;
     if (i === anios - 1) {
@@ -631,11 +641,14 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   flujoCaja = clamp(flujoCaja, 0, 100);
 
   // Plusvalía (20%): granular by comuna
-  let plusvalia = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
+  const plusvaliaComuna = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
   const precioM2 = metrics.precioM2;
-  // High price/m² reduces upside; premium zones have smaller penalty (hold value better)
-  const plusvaliaBase = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
-  plusvalia += plusvaliaBase >= 80 ? lerp(precioM2, 30, 120, 8, -8) : lerp(precioM2, 30, 100, 12, -12);
+  // High price/m² in premium zones = overpaying premium → lower score
+  // In normal zones, wider swing allowed
+  const precioAdj = plusvaliaComuna >= 80
+    ? lerp(precioM2, 30, 120, 5, -15)
+    : lerp(precioM2, 30, 100, 12, -12);
+  let plusvalia = plusvaliaComuna + precioAdj;
   if (input.enConstruccion || input.antiguedad <= 2) plusvalia += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvalia += 5;
   else if (input.antiguedad > 20) plusvalia -= 15;
