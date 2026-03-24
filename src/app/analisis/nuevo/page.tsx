@@ -793,7 +793,11 @@ export default function NuevoAnalisisPage() {
     const precioM2VentaUF = ventaRef?.precioM2
       ? ventaRef.precioM2 / UF_CLP
       : (marketData?.precio_m2_venta_promedio ?? 0);
-    const precioSugeridoUF = supUtil > 0 && precioM2VentaUF > 0 ? Math.round(precioM2VentaUF * supUtil) : 0;
+    // Deptos nuevos: precio/m² baja con la superficie (unidad "desde" ~25m² es la más cara/m²)
+    const precioM2Ajustado = form.tipoPropiedad === "nuevo" && supUtil > 25
+      ? precioM2VentaUF * Math.pow(25 / supUtil, 0.15)
+      : precioM2VentaUF;
+    const precioSugeridoUF = supUtil > 0 && precioM2Ajustado > 0 ? Math.round(precioM2Ajustado * supUtil) : 0;
 
     const precioUFForCalc = (fieldCurrency.precio === "UF"
       ? parseNum(form.precio)
