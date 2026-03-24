@@ -27,6 +27,7 @@ export interface AnalisisInput {
   cuotasPie: number;
   montoCuota: number;
   precio: number;
+  valorMercado?: number; // Valor de mercado estimado en UF (default = precio compra)
   piePct: number;
   plazoCredito: number;
   tasaInteres: number;
@@ -110,6 +111,16 @@ export interface AnalysisMetrics {
   precioCLP: number;
   ingresoMensual: number;
   egresosMensuales: number;
+  // Plusvalía inmediata
+  plusvaliaInmediata?: number;      // CLP (positivo = compró barato)
+  plusvaliaInmediataPct?: number;   // %
+  valorMercadoUF?: number;
+  // Precios de equilibrio
+  precioFlujoNeutroCLP?: number;
+  precioFlujoNeutroUF?: number;
+  precioFlujoPositivoCLP?: number;
+  precioFlujoPositivoUF?: number;
+  descuentoParaNeutro?: number;     // %
 }
 
 export interface FullAnalysisResult {

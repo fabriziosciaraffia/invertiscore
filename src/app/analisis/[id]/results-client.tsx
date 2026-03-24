@@ -62,6 +62,14 @@ function normalizeMetrics(metrics: any): import("@/lib/types").AnalysisMetrics |
     precioCLP: metrics.precioCLP ?? 0,
     ingresoMensual: metrics.ingresoMensual ?? 0,
     egresosMensuales: metrics.egresosMensuales ?? 0,
+    plusvaliaInmediata: metrics.plusvaliaInmediata ?? 0,
+    plusvaliaInmediataPct: metrics.plusvaliaInmediataPct ?? 0,
+    valorMercadoUF: metrics.valorMercadoUF ?? 0,
+    precioFlujoNeutroCLP: metrics.precioFlujoNeutroCLP ?? 0,
+    precioFlujoNeutroUF: metrics.precioFlujoNeutroUF ?? 0,
+    precioFlujoPositivoCLP: metrics.precioFlujoPositivoCLP ?? 0,
+    precioFlujoPositivoUF: metrics.precioFlujoPositivoUF ?? 0,
+    descuentoParaNeutro: metrics.descuentoParaNeutro ?? 0,
   };
 }
 
@@ -2205,6 +2213,67 @@ export function PremiumResults({
                   }
                 </div>
               </CollapsibleSection>
+
+              {/* Section 2b: Plusvalía inmediata + Precios de equilibrio */}
+              {m && (m.plusvaliaInmediata !== 0 || (m.precioFlujoNeutroUF ?? 0) > 0) && (
+                <CollapsibleSection
+                  title="¿A qué precio conviene?"
+                  subtitle="Plusvalía inmediata y precios de equilibrio"
+                >
+                  {/* Plusvalía inmediata */}
+                  {m.plusvaliaInmediata !== undefined && Math.abs(m.plusvaliaInmediataPct ?? 0) > 2 && (
+                    <div
+                      className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed mb-3"
+                      style={{
+                        borderLeft: `3px solid ${(m.plusvaliaInmediata ?? 0) > 0 ? '#B0BEC5' : '#C8323C'}`,
+                        background: (m.plusvaliaInmediata ?? 0) > 0 ? 'rgba(176,190,197,0.04)' : 'rgba(200,50,60,0.04)',
+                        color: 'rgba(250,250,248,0.6)',
+                      }}
+                    >
+                      {(m.plusvaliaInmediata ?? 0) > 0
+                        ? <>
+                            <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Pasada:</span>{' '}
+                            compraste {fmtUF(Math.abs((m.plusvaliaInmediata ?? 0) / UF_CLP))} bajo mercado ({fmtPct(Math.abs(m.plusvaliaInmediataPct ?? 0))}).
+                            {m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs((m.plusvaliaInmediata ?? 0) / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}
+                          </>
+                        : <>
+                            <span style={{ color: '#C8323C', fontWeight: 600 }}>Sobreprecio:</span>{' '}
+                            pagaste {fmtUF(Math.abs((m.plusvaliaInmediata ?? 0) / UF_CLP))} sobre mercado ({fmtPct(Math.abs(m.plusvaliaInmediataPct ?? 0))}).
+                            {' '}Necesitas ~{Math.ceil(Math.abs(m.plusvaliaInmediataPct ?? 0) / 4)} años extra de plusvalía para recuperar.
+                          </>
+                      }
+                    </div>
+                  )}
+
+                  {/* Precios de equilibrio */}
+                  {m.flujoNetoMensual >= 0 ? (
+                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #B0BEC5', background: 'rgba(176,190,197,0.04)', color: 'rgba(250,250,248,0.6)' }}>
+                      <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Flujo positivo.</span> Buen precio para este financiamiento.
+                    </div>
+                  ) : (m.descuentoParaNeutro ?? 0) > 0 && (m.descuentoParaNeutro ?? 0) <= 15 ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-[2px]">
+                        <div className="bg-[#1A1A1A] rounded-l-lg px-4 py-3">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Flujo neutro</p>
+                          <p className="font-mono font-semibold text-lg text-[#FBBF24]">{fmtUF(m.precioFlujoNeutroUF ?? 0)}</p>
+                          <p className="text-[10px] text-[#FAFAF8]/20">{fmtPct(m.descuentoParaNeutro ?? 0)} menos</p>
+                        </div>
+                        <div className="bg-[#1A1A1A] rounded-r-lg px-4 py-3">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Flujo +$50K</p>
+                          <p className="font-mono font-semibold text-lg text-[#B0BEC5]">{fmtUF(m.precioFlujoPositivoUF ?? 0)}</p>
+                          <p className="text-[10px] text-[#FAFAF8]/20">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-[#FAFAF8]/30">Precios máximos de compra para lograr cada nivel de flujo con tu financiamiento actual.</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #C8323C', background: 'rgba(200,50,60,0.04)', color: 'rgba(250,250,248,0.6)' }}>
+                      <span style={{ color: '#C8323C', fontWeight: 600 }}>Sin equilibrio alcanzable.</span>{' '}
+                      Ni con 15% de descuento logras flujo neutro. El arriendo no cubre los costos con este financiamiento. Considera más pie, menor tasa, o buscar otra propiedad.
+                    </div>
+                  )}
+                </CollapsibleSection>
+              )}
 
               {/* Section 3: Zone comparison */}
               <CollapsibleSection

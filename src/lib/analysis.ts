@@ -153,6 +153,39 @@ function calcMesesHastaEntrega(input: AnalisisInput): number {
   return Math.max(0, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
 }
 
+/**
+ * Calcula el precio máximo de compra (CLP) para lograr un flujo mensual objetivo.
+ * Despeja precio de: flujo = arriendo - dividendo(precio) - todos_los_gastos.
+ * Mantención se omite (depende del precio, efecto pequeño vs dividendo).
+ */
+function calcPrecioParaFlujo(
+  flujoObjetivo: number, arriendo: number, ggcc: number, contribucionesAnual: number,
+  vacanciaPct: number, gestionPct: number, piePct: number, tasaAnual: number, plazoAnios: number
+): number {
+  const r = tasaAnual / 100 / 12;
+  const n = plazoAnios * 12;
+  if (r === 0 || n === 0) return 0;
+  const factorAmort = r / (1 - Math.pow(1 + r, -n));
+  const financiamiento = (100 - piePct) / 100;
+  if (financiamiento <= 0) return 0;
+
+  // Mirror calcFlujoDesglose exactly (except dividendo which depends on price)
+  const vacMeses = vacanciaPct / 100 * 12;
+  const ggccVac = Math.round(ggcc * vacMeses / 12);
+  const contribMes = Math.round(contribucionesAnual / 4 / 3);
+  const vacProrrata = Math.round(arriendo * vacMeses / 12);
+  const admin = gestionPct > 0 ? Math.round(arriendo * gestionPct / 100 * (12 - vacMeses) / 12) : 0;
+  const recamb = Math.round(arriendo * 0.5 / 24);
+  const corr = Math.round(arriendo * 0.5 / 24);
+
+  const disponibleParaDividendo = arriendo - ggccVac - contribMes - vacProrrata - corr - recamb - admin - flujoObjetivo;
+  if (disponibleParaDividendo <= 0) return 0;
+
+  // dividendo = precioCLP * financiamiento * factorAmort
+  // precioCLP = disponibleParaDividendo / (financiamiento * factorAmort)
+  return disponibleParaDividendo / (financiamiento * factorAmort);
+}
+
 function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
@@ -211,6 +244,17 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
+  // Plusvalía inmediata ("la pasada")
+  const valorMercadoUF = input.valorMercado || input.precio;
+  const valorMercadoCLP = valorMercadoUF * UF_CLP;
+  const plusvaliaInmediata = valorMercadoCLP - precioCLP;
+  const plusvaliaInmediataPct = precioCLP > 0 ? ((valorMercadoCLP / precioCLP) - 1) * 100 : 0;
+
+  // Precios de equilibrio
+  const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
+  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
+  const descuentoParaNeutro = precioCLP > 0 && precioFlujoNeutroCLP > 0 ? ((precioCLP - precioFlujoNeutroCLP) / precioCLP) * 100 : 0;
+
   return {
     rentabilidadBruta: Math.round(rentabilidadBruta * 100) / 100,
     rentabilidadNeta: Math.round(rentabilidadNeta * 100) / 100,
@@ -225,6 +269,14 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     precioCLP,
     ingresoMensual,
     egresosMensuales,
+    plusvaliaInmediata: Math.round(plusvaliaInmediata),
+    plusvaliaInmediataPct: Math.round(plusvaliaInmediataPct * 10) / 10,
+    valorMercadoUF: Math.round(valorMercadoUF * 10) / 10,
+    precioFlujoNeutroCLP: Math.round(precioFlujoNeutroCLP),
+    precioFlujoNeutroUF: Math.round(precioFlujoNeutroCLP / UF_CLP * 100) / 100,
+    precioFlujoPositivoCLP: Math.round(precioFlujoPositivoCLP),
+    precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / UF_CLP * 100) / 100,
+    descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
   };
 }
 
@@ -316,8 +368,9 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = input.gastos;
   let contribucionesActual = input.contribuciones;
-  // Plusvalía starts from purchase date (even during construction)
-  let valorPropiedad = precioCLP;
+  // Plusvalía starts from market value (captures "la pasada" if bought below market)
+  const valorMercadoCLP = (input.valorMercado || input.precio) * UF_CLP;
+  let valorPropiedad = valorMercadoCLP;
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
 

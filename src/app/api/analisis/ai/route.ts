@@ -131,13 +131,18 @@ export async function POST(request: Request) {
     }
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
-    const inversionTotal = m.pieCLP + Math.round(m.precioCLP * 0.03); // pie + ~3% costos entrada
+    const GASTOS_CIERRE_PCT = 0.02; // consistent with analysis.ts
+    const inversionTotal = m.pieCLP + Math.round(m.precioCLP * GASTOS_CIERRE_PCT);
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const fechaEntregaFmt = input.fechaEntrega ? (() => { const [a, me] = input.fechaEntrega.split("-").map(Number); return `${mesesEs[(me || 1) - 1]} ${a}`; })() : "";
 
     const precioConDescuento10 = Math.round(input.precio * 0.9);
-    const flujoNegAcum10 = m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
+    // Use projected accumulated cashflow from the engine (includes inflation-adjusted dividendo)
+    const projections = results.projections as { flujoAcumulado: number }[] | undefined;
+    const flujoNegAcum10 = projections && projections.length >= 10 && projections[9].flujoAcumulado < 0
+      ? Math.round(Math.abs(projections[9].flujoAcumulado))
+      : m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
     const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
     const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
     const valorProp5 = Math.round(m.precioCLP * Math.pow(1.04, 5));

@@ -301,7 +301,7 @@ export default function NuevoAnalisisPage() {
 
   // Per-field currency toggles
   const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
-    precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP", arriendoEstac: "CLP", arriendoBodega: "CLP",
+    valorMercado: "UF", precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP", arriendoEstac: "CLP", arriendoBodega: "CLP",
   });
   // Store original CLP values so CLP→UF→CLP round-trip is lossless
   const [originalCLP, setOriginalCLP] = useState<Record<string, number>>({});
@@ -352,6 +352,7 @@ export default function NuevoAnalisisPage() {
     fechaEntregaMes: "",
     fechaEntregaAnio: "",
     cuotasPie: "",
+    valorMercado: "",
     precio: "",
     piePct: "20",
     plazoCredito: "25",
@@ -998,6 +999,7 @@ export default function NuevoAnalisisPage() {
           cuotasPie: Number(form.cuotasPie) || 0,
           montoCuota: Number(form.cuotasPie) > 0 ? Math.round((calc.pieUF / Number(form.cuotasPie)) * UF_CLP) : 0,
           precio: precioUF,
+          valorMercado: form.valorMercado ? toUF("valorMercado", Number(form.valorMercado) || 0) : undefined,
           piePct: parseFloat(form.piePct),
           plazoCredito: parseFloat(form.plazoCredito),
           tasaInteres: parseFloat(form.tasaInteres),
@@ -1485,7 +1487,39 @@ export default function NuevoAnalisisPage() {
         <div className="rounded-xl border border-white/[0.08] bg-[#151515] p-5 space-y-4 mt-3">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Cuánto cuesta y genera?</div>
 
-          {/* Precio de compra (UF) */}
+          {/* Valor de mercado estimado */}
+          <div>
+            <div className="flex items-baseline justify-between mb-1">
+              <div className="flex items-center gap-1">
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Valor de mercado ({fieldCurrency.valorMercado === "UF" ? "UF" : "$"})</label>
+                <InfoTooltip content="Precio al que se venden deptos similares en la zona. Se pre-rellena con datos del mercado. Si crees que vale más o menos, ajústalo." />
+              </div>
+              {suggestions && suggestions.precioSugeridoUF > 0 && !form.valorMercado && (
+                <span
+                  className="font-mono text-[11px] text-[#C8323C] cursor-pointer hover:underline"
+                  onClick={() => {
+                    setFieldCurrency((prev) => ({ ...prev, valorMercado: "UF" }));
+                    setField("valorMercado", String(suggestions.precioSugeridoUF));
+                  }}
+                >
+                  Usar sugerencia: {fmtUF(suggestions.precioSugeridoUF)} ↗
+                </span>
+              )}
+            </div>
+            <MoneyInput
+              id="valorMercado"
+              value={form.valorMercado}
+              onChange={(v) => setField("valorMercado", v)}
+              placeholder={suggestions?.precioSugeridoUF ? String(suggestions.precioSugeridoUF) : "5.000"}
+              currency={fieldCurrency.valorMercado}
+              onCurrencyToggle={() => toggleFieldCurrency("valorMercado")}
+            />
+            {!form.valorMercado && (
+              <p className="mt-1 font-body text-[11px] text-[#71717A]">Si lo dejas vacío, se asume igual al precio de compra.</p>
+            )}
+          </div>
+
+          {/* Precio de compra */}
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
@@ -1525,6 +1559,16 @@ export default function NuevoAnalisisPage() {
                 {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
               </p>
             )}
+            {(() => {
+              const vm = Number(form.valorMercado) || 0;
+              const pc = calc.precioUF;
+              if (vm <= 0 || pc <= 0) return null;
+              const diff = vm - pc;
+              const pct = Math.abs(diff / pc * 100);
+              if (pct < 2) return <p className="mt-1 text-xs text-[#71717A]">Precio alineado con el mercado</p>;
+              if (diff > 0) return <p className="mt-1 text-xs text-[#B0BEC5]">Pasada: {fmtUF(diff)} bajo mercado ({pct.toFixed(1).replace(".",",")}% descuento)</p>;
+              return <p className="mt-1 text-xs text-[#C8323C]">Sobreprecio: {fmtUF(Math.abs(diff))} sobre mercado ({pct.toFixed(1).replace(".",",")}% extra)</p>;
+            })()}
           </div>
 
           {/* Entrega futura (solo si tipo=Nuevo) */}
