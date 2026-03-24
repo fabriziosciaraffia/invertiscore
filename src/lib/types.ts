@@ -27,7 +27,8 @@ export interface AnalisisInput {
   cuotasPie: number;
   montoCuota: number;
   precio: number;
-  valorMercado?: number; // Valor de mercado estimado en UF (default = precio compra)
+  valorMercadoUsuario?: number;  // Lo que el usuario estima (referencial)
+  valorMercadoFranco?: number;   // Sugerencia de Franco basada en datos reales (para cálculos)
   piePct: number;
   plazoCredito: number;
   tasaInteres: number;
@@ -112,9 +113,12 @@ export interface AnalysisMetrics {
   ingresoMensual: number;
   egresosMensuales: number;
   // Plusvalía inmediata
-  plusvaliaInmediata?: number;      // CLP (positivo = compró barato)
-  plusvaliaInmediataPct?: number;   // %
-  valorMercadoUF?: number;
+  valorMercadoFrancoUF?: number;       // para cálculos (datos reales)
+  valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)
+  plusvaliaInmediataFranco?: number;    // CLP vs datos reales
+  plusvaliaInmediataFrancoPct?: number;
+  plusvaliaInmediataUsuario?: number;   // CLP vs estimación usuario
+  plusvaliaInmediataUsuarioPct?: number;
   // Precios de equilibrio
   precioFlujoNeutroCLP?: number;
   precioFlujoNeutroUF?: number;

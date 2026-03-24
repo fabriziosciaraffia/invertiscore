@@ -244,11 +244,15 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
-  // Plusvalía inmediata ("la pasada")
-  const valorMercadoUF = input.valorMercado || input.precio;
-  const valorMercadoCLP = valorMercadoUF * UF_CLP;
-  const plusvaliaInmediata = valorMercadoCLP - precioCLP;
-  const plusvaliaInmediataPct = precioCLP > 0 ? ((valorMercadoCLP / precioCLP) - 1) * 100 : 0;
+  // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
+  const vmFrancoUF = input.valorMercadoFranco || input.precio;
+  const vmUsuarioUF = input.valorMercadoUsuario || input.precio;
+  const vmFrancoCLP = vmFrancoUF * UF_CLP;
+  const vmUsuarioCLP = vmUsuarioUF * UF_CLP;
+  const plusvaliaFranco = vmFrancoCLP - precioCLP;
+  const plusvaliaFrancoPct = precioCLP > 0 ? ((vmFrancoCLP / precioCLP) - 1) * 100 : 0;
+  const plusvaliaUsuario = vmUsuarioCLP - precioCLP;
+  const plusvaliaUsuarioPct = precioCLP > 0 ? ((vmUsuarioCLP / precioCLP) - 1) * 100 : 0;
 
   // Precios de equilibrio
   const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
@@ -269,9 +273,12 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     precioCLP,
     ingresoMensual,
     egresosMensuales,
-    plusvaliaInmediata: Math.round(plusvaliaInmediata),
-    plusvaliaInmediataPct: Math.round(plusvaliaInmediataPct * 10) / 10,
-    valorMercadoUF: Math.round(valorMercadoUF * 10) / 10,
+    valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
+    valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
+    plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
+    plusvaliaInmediataFrancoPct: Math.round(plusvaliaFrancoPct * 10) / 10,
+    plusvaliaInmediataUsuario: Math.round(plusvaliaUsuario),
+    plusvaliaInmediataUsuarioPct: Math.round(plusvaliaUsuarioPct * 10) / 10,
     precioFlujoNeutroCLP: Math.round(precioFlujoNeutroCLP),
     precioFlujoNeutroUF: Math.round(precioFlujoNeutroCLP / UF_CLP * 100) / 100,
     precioFlujoPositivoCLP: Math.round(precioFlujoPositivoCLP),
@@ -368,9 +375,9 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = input.gastos;
   let contribucionesActual = input.contribuciones;
-  // Plusvalía starts from market value (captures "la pasada" if bought below market)
-  const valorMercadoCLP = (input.valorMercado || input.precio) * UF_CLP;
-  let valorPropiedad = valorMercadoCLP;
+  // Plusvalía starts from Franco's market value (real data, captures "la pasada")
+  const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * UF_CLP;
+  let valorPropiedad = vmFrancoCLP;
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
 
