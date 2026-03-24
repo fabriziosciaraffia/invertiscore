@@ -164,7 +164,7 @@ export interface AIAnalysis {
   };
   veredicto: {
     titulo: string;
-    decision: "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA";
+    decision: "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
     explicacion_clp: string;
     explicacion_uf: string;
   };

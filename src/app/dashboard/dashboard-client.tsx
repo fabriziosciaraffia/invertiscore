@@ -11,11 +11,11 @@ import { LogoutButton } from "@/components/logout-button";
 import type { Analisis } from "@/lib/types";
 import { User } from "lucide-react";
 
-type VerdictFilter = "todos" | "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA";
+type VerdictFilter = "todos" | "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
 
-function getVerdict(score: number): "COMPRAR" | "NEGOCIAR" | "BUSCAR OTRA" {
+function getVerdict(score: number): "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA" {
   if (score >= 75) return "COMPRAR";
-  if (score >= 40) return "NEGOCIAR";
+  if (score >= 40) return "AJUSTA EL PRECIO";
   return "BUSCAR OTRA";
 }
 
@@ -66,10 +66,10 @@ function getSiendoFranco(score: number, flujo: number) {
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
     COMPRAR: { color: "#B0BEC5", bg: "rgba(176,190,197,0.07)", border: "rgba(176,190,197,0.2)" },
-    NEGOCIAR: { color: "#FBBF24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.2)" },
+    "AJUSTA EL PRECIO": { color: "#FBBF24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.2)" },
     "BUSCAR OTRA": { color: "#C8323C", bg: "rgba(220,38,38,0.07)", border: "rgba(220,38,38,0.2)" },
   };
-  const s = styles[verdict] || styles.NEGOCIAR;
+  const s = styles[verdict] || styles["AJUSTA EL PRECIO"];
   return (
     <span
       className="inline-flex font-mono text-[9px] font-bold tracking-wide"
@@ -120,7 +120,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
 
   // Verdict counts
   const verdictCounts = useMemo(() => {
-    const counts = { COMPRAR: 0, NEGOCIAR: 0, "BUSCAR OTRA": 0 };
+    const counts: Record<string, number> = { COMPRAR: 0, "AJUSTA EL PRECIO": 0, "BUSCAR OTRA": 0 };
     analisis.forEach((a) => { counts[getVerdict(a.score)]++; });
     return counts;
   }, [analisis]);
@@ -159,7 +159,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
     { key: "todos", label: "Todos", count: analisis.length, color: null },
     { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#B0BEC5" },
-    { key: "NEGOCIAR", label: "Negociar", count: verdictCounts.NEGOCIAR, color: "#FBBF24" },
+    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", count: verdictCounts["AJUSTA EL PRECIO"], color: "#FBBF24" },
     { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#C8323C" },
   ];
 

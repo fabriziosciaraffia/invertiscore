@@ -98,7 +98,7 @@ const projections = generateProjections();
 
 const DEMO_RESULTS: FullAnalysisResult = {
   score: 58,
-  clasificacion: "NEGOCIAR",
+  clasificacion: "AJUSTA EL PRECIO",
   clasificacionColor: "#FBBF24",
   resumenEjecutivo: "Inversión con flujo negativo pero plusvalía atractiva en Providencia. Score 58/100 — negociable.",
   desglose: {
@@ -218,8 +218,8 @@ const DEMO_AI: AIAnalysis = {
     ],
   },
   veredicto: {
-    titulo: "NEGOCIAR el precio",
-    decision: "NEGOCIAR" as const,
+    titulo: "AJUSTA EL PRECIO",
+    decision: "AJUSTA EL PRECIO" as const,
     explicacion_clp: "El departamento tiene fundamentos sólidos: buena ubicación, precio bajo el promedio de la zona y plusvalía proyectada atractiva. El flujo negativo de $290K/mes es el punto débil. Recomendación: negocia el precio a UF 2.900-3.040 o busca un arriendo de $480.000 (+14%) para mejorar la ecuación.",
     explicacion_uf: "El departamento tiene fundamentos sólidos: buena ubicación, precio bajo el promedio de la zona y plusvalía proyectada atractiva. El flujo negativo de UF 7,5/mes es el punto débil. Recomendación: negocia el precio a UF 2.900-3.040 o busca un arriendo de UF 12,4 (+14%) para mejorar la ecuación.",
   },

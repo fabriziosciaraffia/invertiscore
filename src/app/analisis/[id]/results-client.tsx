@@ -268,7 +268,7 @@ function MetricRow({ label, value, color, tooltip }: { label: string; value: str
 
 function ScoreBarInline({ score }: { score: number }) {
   const color = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
-  const label = score >= 70 ? "COMPRAR" : score >= 40 ? "NEGOCIAR" : "BUSCAR OTRA";
+  const label = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
   const badgeColor = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
   const badgeBg = score >= 70 ? "rgba(176,190,197,0.12)" : score >= 40 ? "rgba(251,191,36,0.12)" : "rgba(220,38,38,0.12)";
   const badgeBorder = score >= 70 ? "rgba(176,190,197,0.3)" : score >= 40 ? "rgba(251,191,36,0.3)" : "rgba(220,38,38,0.3)";
@@ -287,7 +287,7 @@ function ScoreBarInline({ score }: { score: number }) {
       {/* Zone labels — aligned under each zone */}
       <div className="flex mt-2">
         <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[40%] text-left tracking-wide">BUSCAR OTRA</span>
-        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-center tracking-wide">NEGOCIAR</span>
+        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-center tracking-wide">AJUSTA EL PRECIO</span>
         <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-right tracking-wide">COMPRAR</span>
       </div>
       {/* Verdict badge */}
@@ -295,6 +295,9 @@ function ScoreBarInline({ score }: { score: number }) {
         <span className="font-mono text-[11px] font-semibold uppercase tracking-[2px] px-4 py-1 rounded-md inline-block"
           style={{ color: badgeColor, backgroundColor: badgeBg, border: `0.5px solid ${badgeBorder}` }}>{label}</span>
       </div>
+      <p className="text-[11px] text-[#71717A] text-center mt-3 max-w-[260px] leading-relaxed font-body">
+        Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.
+      </p>
     </div>
   );
 }
@@ -658,7 +661,7 @@ function AIAnalysisSection({
               <div id="ai-anchor-veredicto-final" />
               {isComplete && aiAnalysis.veredicto && (() => {
                 const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "#B0BEC5"
-                  : aiAnalysis.veredicto.decision === "NEGOCIAR" ? "#FBBF24"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "#FBBF24"
                   : "#C8323C";
                 return (
                   <div className="mt-6 pt-6 border-t border-white/[0.06] animate-fadeIn">
@@ -693,6 +696,9 @@ function AIAnalysisSection({
                             Precio sugerido: {aiAnalysis.negociacion.precioSugerido}
                           </div>
                         )}
+                        <p className="text-[11px] text-zinc-500 text-center mt-4 max-w-md mx-auto leading-relaxed">
+                          Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión. Consulta con un profesional antes de decidir.
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -2233,7 +2239,7 @@ export function PremiumResults({
                       {
                         id: "cap_rate_bajo",
                         titulo: `CAP rate bajo: ${fmtPct(m.capRate ?? 0)}`,
-                        detalle: "Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.",
+                        detalle: "Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.",
                         severity: "critical" as const,
                         show: (m.capRate ?? 0) < 4.0,
                       },

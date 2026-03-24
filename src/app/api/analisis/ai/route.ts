@@ -42,7 +42,7 @@ CONTEXTO IMPORTANTE DEL MERCADO CHILENO 2024-2026:
 
 CRITERIOS PARA VEREDICTO:
 - COMPRAR: Score >65, O flujo negativo <$200K con buena plusvalía, O yield sobre promedio zona
-- NEGOCIAR: Score 45-65, flujo negativo manejable ($200K-$400K), buena zona
+- AJUSTA EL PRECIO: Score 45-65, flujo negativo manejable ($200K-$400K), buena zona
 - BUSCAR OTRA: Score <45, O flujo negativo >$500K, O ubicación mala, O yield muy bajo sin compensación de plusvalía
 
 TONO: No seas alarmista sobre flujo negativo — es la norma del mercado. Sé realista pero constructivo. Tu rol es informar para que decida bien, no asustarlo. Si la inversión tiene potencial de plusvalía en buena zona, reconócelo aunque el flujo sea negativo. Reserva el tono negativo para inversiones realmente malas (score <40, mala zona, sin plusvalía).`;
@@ -219,7 +219,7 @@ Responde SOLO con un JSON válido con esta estructura:
   },
 
   "negociacion": {
-    "titulo": "¿Vale la pena negociar?",
+    "titulo": "¿Vale la pena ajustar el precio?",
     "contenido_clp": "Análisis de negociación con montos en CLP. Ver REGLAS DE NEGOCIACIÓN abajo.",
     "contenido_uf": "Lo mismo pero con montos en UF.",
     "precioSugerido": "${fmtUF(precioConDescuento10)}"
@@ -244,7 +244,7 @@ Responde SOLO con un JSON válido con esta estructura:
 
   "veredicto": {
     "titulo": "Veredicto",
-    "decision": "COMPRAR | NEGOCIAR | BUSCAR OTRA",
+    "decision": "COMPRAR | AJUSTA EL PRECIO | BUSCAR OTRA",
     "explicacion_clp": "2-3 oraciones con montos en CLP.",
     "explicacion_uf": "Lo mismo pero con montos en UF."
   },
@@ -268,7 +268,7 @@ REGLAS GENERALES:
 - Si los números no favorecen la inversión, dilo claramente
 - Los cálculos de comparación con alternativas deben ser correctos matemáticamente
 - Adapta el tono: si el score es >70 sé positivo, si es 50-70 sé cauteloso, si es <50 sé directo sobre los problemas
-- El veredicto debe ser UNA de las tres opciones: COMPRAR, NEGOCIAR, o BUSCAR OTRA
+- El veredicto debe ser UNA de las tres opciones: COMPRAR, AJUSTA EL PRECIO, o BUSCAR OTRA
 - Los campos "alerta_clp" y "alerta_uf" en tuBolsillo deben ser string vacío "" si no aplica
 - Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.
 - Si el estado es "En blanco" o "En verde" con fecha de entrega futura, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".`;

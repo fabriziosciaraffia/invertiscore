@@ -754,7 +754,7 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
   const fmtP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
   if (metrics.capRate < 3.5)
-    contras.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.`);
+    contras.push(`La rentabilidad operativa (CAP rate ${metrics.capRate.toFixed(1)}%) está bajo el promedio. Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.`);
   if (metrics.flujoNetoMensual < 0)
     contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
   if (input.antiguedad > 15)
@@ -867,7 +867,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const resumen = `El arriendo genera ${fmtR(metrics.ingresoMensual)} al mes y los costos totales (dividendo + gastos + mantención) suman ${fmtR(metrics.egresosMensuales)}. ` +
     `${metrics.flujoNetoMensual >= 0 ? `Te quedan ${fmtR(metrics.flujoNetoMensual)} de ganancia mensual.` : `Falta cubrir ${fmtR(metrics.flujoNetoMensual)} al mes de tu bolsillo.`} ` +
     `La rentabilidad bruta es de ${metrics.rentabilidadBruta.toFixed(1)}% y la rentabilidad operativa (CAP rate) es ${metrics.capRate.toFixed(1)}%. ` +
-    `${metrics.capRate >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena negociar el precio o buscar otras opciones."} ` +
+    `${metrics.capRate >= 4 ? "La rentabilidad es atractiva para el mercado chileno." : metrics.capRate >= 3 ? "La rentabilidad es aceptable." : "La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones."} ` +
     `${input.enConstruccion || input.antiguedad <= 2 ? "Al ser nueva, los costos de mantención serán bajos por años." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención inesperada." : input.antiguedad > 20 ? "Ojo: la antigüedad puede traer gastos de mantención importantes pronto." : "La antigüedad es moderada."} ` +
     `Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.`;
 

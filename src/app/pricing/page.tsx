@@ -265,6 +265,9 @@ export default function PricingPage() {
             </FadeIn>
           </div>
         </div>
+        <p className="text-[11px] text-[#71717A] text-center mt-8 max-w-md mx-auto leading-relaxed font-body">
+          Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión. Consulta con un profesional antes de decidir.
+        </p>
       </section>
 
       {/* FAQ */}
@@ -286,6 +289,11 @@ export default function PricingPage() {
               { q: "¿Qué métodos de pago aceptan?", a: "Tarjeta de crédito, débito y transferencia bancaria a través de Flow.cl." },
             ]} />
           </FadeIn>
+          <div className="text-center mt-8">
+            <Link href="/faq" className="font-body text-xs text-[#C8323C] hover:underline underline-offset-4 transition-colors">
+              Ver todas las preguntas frecuentes →
+            </Link>
+          </div>
         </div>
       </section>
 

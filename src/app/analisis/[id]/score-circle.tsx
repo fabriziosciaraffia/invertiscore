@@ -10,7 +10,7 @@ function getScoreColor(score: number): string {
 
 function getScoreLabel(score: number): string {
   if (score >= 75) return "Los números respaldan esta inversión";
-  if (score >= 40) return "Los números sugieren negociar el precio";
+  if (score >= 40) return "Los números sugieren ajustar el precio";
   return "Busca otra";
 }
 

@@ -12,17 +12,17 @@ export function getScoreColor(value: number): string {
   return FRANCO_COLORS.negative;
 }
 
-export function getVerdictColor(verdict: 'COMPRAR' | 'NEGOCIAR' | 'BUSCAR OTRA'): string {
+export function getVerdictColor(verdict: 'COMPRAR' | 'AJUSTA EL PRECIO' | 'BUSCAR OTRA'): string {
   switch (verdict) {
     case 'COMPRAR': return FRANCO_COLORS.positive;
-    case 'NEGOCIAR': return FRANCO_COLORS.warning;
+    case 'AJUSTA EL PRECIO': return FRANCO_COLORS.warning;
     case 'BUSCAR OTRA': return FRANCO_COLORS.negative;
   }
 }
 
-export function getVerdictLabel(score: number): 'COMPRAR' | 'NEGOCIAR' | 'BUSCAR OTRA' {
+export function getVerdictLabel(score: number): 'COMPRAR' | 'AJUSTA EL PRECIO' | 'BUSCAR OTRA' {
   if (score >= 70) return 'COMPRAR';
-  if (score >= 40) return 'NEGOCIAR';
+  if (score >= 40) return 'AJUSTA EL PRECIO';
   return 'BUSCAR OTRA';
 }
 

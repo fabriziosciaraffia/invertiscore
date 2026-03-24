@@ -191,7 +191,7 @@ export default function LandingPage() {
                   </div>
                 </div>
                 <p className="font-body text-xs text-white/30 text-center mt-3">
-                  Basado en 12.000+ propiedades en 24 comunas · Santiago, 2026
+                  Basado en 20.000+ propiedades en 24 comunas · Santiago, 2026
                 </p>
               </FadeIn>
             </div>
@@ -244,7 +244,7 @@ export default function LandingPage() {
                       <p className="font-heading text-[13px] font-bold text-white truncate">Depto 3D2B Las Condes</p>
                       <p className="font-body text-[9px] text-white/40 mt-0.5">78m² · UF 5.201 · Pie 20%</p>
                       <span className="inline-block mt-1.5 font-mono text-[8px] font-bold text-[#FBBF24] bg-[#FBBF24]/12 border border-[#FBBF24]/30 px-2 py-0.5 rounded">
-                        NEGOCIAR
+                        AJUSTA EL PRECIO
                       </span>
                     </div>
                   </div>
@@ -342,7 +342,7 @@ export default function LandingPage() {
                     </div>
                   </div>
                   <div className="flex justify-center mt-2">
-                    <span className="font-mono text-[7px] font-bold text-[#FBBF24] bg-[#FBBF24]/12 border border-[#FBBF24]/25 px-2 py-0.5 rounded">NEGOCIAR</span>
+                    <span className="font-mono text-[7px] font-bold text-[#FBBF24] bg-[#FBBF24]/12 border border-[#FBBF24]/25 px-2 py-0.5 rounded">AJUSTA EL PRECIO</span>
                   </div>
                 </div>
 
@@ -402,7 +402,7 @@ export default function LandingPage() {
                   <div className="min-w-0">
                     <p className="font-heading text-[15px] font-bold text-white">Depto 3D2B Las Condes</p>
                     <p className="font-body text-[10px] text-white/40 mt-0.5">78m² · UF 5.201 · Pie 20%</p>
-                    <span className="inline-block mt-1.5 font-mono text-[9px] font-bold text-[#FBBF24] bg-[#FBBF24]/12 border border-[#FBBF24]/30 px-2 py-0.5 rounded">NEGOCIAR</span>
+                    <span className="inline-block mt-1.5 font-mono text-[9px] font-bold text-[#FBBF24] bg-[#FBBF24]/12 border border-[#FBBF24]/30 px-2 py-0.5 rounded">AJUSTA EL PRECIO</span>
                   </div>
                 </div>
 
@@ -522,7 +522,7 @@ export default function LandingPage() {
             {[
               { emoji: "📝", num: "1", title: "Ingresa los datos", desc: <>Precio, arriendo, gastos. O pega el link de la publicación y Franco extrae todo.</> },
               { emoji: "⚡", num: "2", title: "Franco analiza", desc: <>Flujo real, rentabilidad neta, plusvalía y 8 métricas más. Con datos de mercado, no supuestos.</> },
-              { emoji: "✓", num: "3", title: "Decide informado", desc: <>Score de 1-100 y un veredicto claro. Sin jerga.<span className="flex justify-center gap-1.5 mt-2.5"><span className="font-mono text-[10px] font-bold text-[#B0BEC5] bg-[#B0BEC5]/10 border border-[#B0BEC5]/30 px-2 py-1 rounded-md">COMPRAR</span><span className="font-mono text-[10px] font-bold text-[#FBBF24] bg-[#FBBF24]/10 border border-[#FBBF24]/30 px-2 py-1 rounded-md">NEGOCIAR</span><span className="font-mono text-[10px] font-bold text-[#C8323C] bg-[#C8323C]/10 border border-[#C8323C]/30 px-2 py-1 rounded-md">BUSCAR OTRA</span></span></> },
+              { emoji: "✓", num: "3", title: "Decide informado", desc: <>Score de 1-100 y un veredicto claro. Sin jerga.<span className="flex justify-center gap-1.5 mt-2.5"><span className="font-mono text-[10px] font-bold text-[#B0BEC5] bg-[#B0BEC5]/10 border border-[#B0BEC5]/30 px-2 py-1 rounded-md">COMPRAR</span><span className="font-mono text-[10px] font-bold text-[#FBBF24] bg-[#FBBF24]/10 border border-[#FBBF24]/30 px-2 py-1 rounded-md">AJUSTA EL PRECIO</span><span className="font-mono text-[10px] font-bold text-[#C8323C] bg-[#C8323C]/10 border border-[#C8323C]/30 px-2 py-1 rounded-md">BUSCAR OTRA</span></span></> },
             ].map((step, i) => (
               <FadeIn key={step.num} delay={i * 100} className="text-center">
                 <p className="text-[28px] mb-3">{step.emoji}</p>
@@ -571,7 +571,7 @@ export default function LandingPage() {
                   <p className="font-heading font-bold text-[42px] text-[#0F0F0F] leading-none">58</p>
                 </div>
                 <span className="font-mono text-[11px] font-bold text-[#FBBF24] bg-[#FBBF24]/10 px-3 py-1.5 rounded-md tracking-wide mt-2">
-                  NEGOCIAR
+                  AJUSTA EL PRECIO
                 </span>
               </div>
               <p className="font-body text-sm text-[#71717A] mt-1">Depto 2D1B · Providencia · 55m²</p>
@@ -897,6 +897,7 @@ export default function LandingPage() {
                 <div className="space-y-1.5">
                   <Link href="/about" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Sobre Franco</Link>
                   <Link href="/aprende" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Aprende</Link>
+                  <Link href="/faq" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Preguntas frecuentes</Link>
                   <Link href="/contact" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Contacto</Link>
                 </div>
               </div>
