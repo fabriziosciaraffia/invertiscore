@@ -9,7 +9,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 303);
   }
 
-  return await updateSession(request);
+  // Timeout guard: si updateSession tarda >5s, dejar pasar sin bloquear
+  const timeout = new Promise<NextResponse>((resolve) =>
+    setTimeout(() => resolve(NextResponse.next()), 5000)
+  );
+  return await Promise.race([updateSession(request), timeout]);
 }
 
 export const config = {
