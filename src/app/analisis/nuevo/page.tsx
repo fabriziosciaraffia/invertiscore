@@ -85,7 +85,7 @@ function SectionCard({
     prevForce.current = forceOpen;
   }, [forceOpen]);
   return (
-    <div className="rounded-xl border border-[#E6E6E2] bg-white mb-3 overflow-hidden">
+    <div className="rounded-xl border border-white/[0.08] bg-[#151515] mb-3 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -108,7 +108,7 @@ function SectionCard({
 function FieldLabel({ htmlFor, children, tip }: { htmlFor?: string; children: React.ReactNode; tip?: string }) {
   return (
     <div className="mb-1 flex items-center gap-1">
-      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[#0F0F0F]">{children}</label>
+      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[#FAFAF8]">{children}</label>
       {tip && <InfoTooltip content={tip} />}
     </div>
   );
@@ -177,14 +177,14 @@ function MoneyInput({
         placeholder={placeholder}
         required={required}
         min={min}
-        className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white py-2 pl-10 pr-14 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 transition-colors focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-white/[0.05] py-2 pl-10 pr-14 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 transition-colors focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         style={{ fontSize: "13px" }}
       />
       {onCurrencyToggle && (
         <button
           type="button"
           onClick={onCurrencyToggle}
-          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[#71717A] cursor-pointer hover:text-[#0F0F0F]"
+          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/40 cursor-pointer hover:text-white/70"
           title={`Cambiar a ${isUF ? "CLP" : "UF"}`}
         >
           {isUF ? "→CLP" : "→UF"}
@@ -295,11 +295,24 @@ export default function NuevoAnalisisPage() {
 
   // Per-field currency toggles
   const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
-    precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP",
+    precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP", arriendoEstac: "CLP", arriendoBodega: "CLP",
   });
-  const toggleFieldCurrency = (field: string) => {
-    setFieldCurrency((prev) => ({ ...prev, [field]: prev[field] === "CLP" ? "UF" : "CLP" }));
-  };
+  const toggleFieldCurrency = useCallback((field: string) => {
+    setFieldCurrency((prev) => {
+      const wasUF = prev[field] === "UF";
+      const newCurrency = wasUF ? "CLP" : "UF";
+      // Convert the field value
+      setForm((f) => {
+        const raw = parseNum(f[field as keyof typeof f] as string);
+        if (!raw || raw === 0) return f;
+        const converted = wasUF
+          ? Math.round(raw * UF_CLP)        // UF → CLP
+          : Math.round((raw / UF_CLP) * 100) / 100; // CLP → UF (2 decimals)
+        return { ...f, [field]: String(converted) };
+      });
+      return { ...prev, [field]: newCurrency };
+    });
+  }, [UF_CLP]);
 
   // ─── Form state ────────────────────────────────────
   const [form, setForm] = useState({
@@ -851,7 +864,7 @@ export default function NuevoAnalisisPage() {
       contribuciones, precioSugeridoUF: 0, precioM2VentaUF: 0,
       source: "estimate" as const, publicaciones: 0,
     };
-  }, [form.comuna, form.superficieUtil, form.precio, form.estacionamiento, form.arriendoEstac, form.bodega, form.arriendoBodega, marketData, apiSuggestions, ventaRef, UF_CLP, fieldCurrency.precio]);
+  }, [form.comuna, form.superficieUtil, form.precio, form.estacionamiento, form.arriendoEstac, form.bodega, form.arriendoBodega, form.tipoPropiedad, marketData, apiSuggestions, ventaRef, UF_CLP, fieldCurrency.precio]);
 
   // ─── Real-time calculations ────────────────────────
   const toCLP = useCallback((field: string, value: number) => {
@@ -896,16 +909,6 @@ export default function NuevoAnalisisPage() {
       case "11-20": return 15;
       case "20+": return 25;
       default: return 5;
-    }
-  }
-
-  function pisoToNumber(val: string): number {
-    switch (val) {
-      case "1-3": return 2;
-      case "4-8": return 6;
-      case "9-15": return 12;
-      case "16+": return 20;
-      default: return 6;
     }
   }
 
@@ -959,7 +962,7 @@ export default function NuevoAnalisisPage() {
           superficieTotal: supUtil,
           antiguedad,
           enConstruccion: form.estadoVenta !== "inmediata",
-          piso: pisoToNumber(form.piso),
+          piso: 0,
           estacionamiento: Number(form.estacionamiento) > 0 ? "si" : "no",
           cantidadEstacionamientos: Number(form.estacionamiento),
           precioEstacionamiento: 0,
@@ -1007,15 +1010,15 @@ export default function NuevoAnalisisPage() {
   };
 
   // ─── Shared input class ────────────────────────────
-  const inputClass = "flex h-9 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  const inputClass = "flex h-9 w-full rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-[#0F0F0F]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
           <FrancoLogo size="header" href="/" />
-          <Link href="/dashboard" className="font-body text-sm text-[#71717A] hover:text-[#0F0F0F] transition-colors">
+          <Link href="/dashboard" className="font-body text-sm text-white/50 hover:text-white/80 transition-colors">
             ← Dashboard
           </Link>
         </div>
@@ -1025,10 +1028,10 @@ export default function NuevoAnalisisPage() {
         {/* Guest blocked — already used their free analysis */}
         {guestBlocked && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-full bg-[#F0F0EC] flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-full bg-white/[0.05] flex items-center justify-center mb-4">
               <CheckCircle2 className="h-7 w-7 text-[#B0BEC5]" />
             </div>
-            <h2 className="font-heading font-bold text-xl text-[#0F0F0F]">Ya hiciste tu primer análisis gratis</h2>
+            <h2 className="font-heading font-bold text-xl text-[#FAFAF8]">Ya hiciste tu primer análisis gratis</h2>
             <p className="font-body text-base text-[#71717A] mt-2 max-w-[360px]">
               Crea tu cuenta para análisis ilimitados — gratis, sin tarjeta.
             </p>
@@ -1041,7 +1044,7 @@ export default function NuevoAnalisisPage() {
               </Link>
               <Link
                 href="/login"
-                className="font-body text-sm text-[#71717A] hover:text-[#0F0F0F] transition-colors py-2"
+                className="font-body text-sm text-white/50 hover:text-white/80 transition-colors py-2"
               >
                 Ya tengo cuenta →
               </Link>
@@ -1051,7 +1054,7 @@ export default function NuevoAnalisisPage() {
 
         {!guestBlocked && (<>
         <div className="mb-5">
-          <h1 className="font-heading font-bold text-2xl text-[#0F0F0F]">Nuevo Análisis</h1>
+          <h1 className="font-heading font-bold text-2xl text-[#FAFAF8]">Nuevo Análisis</h1>
           <p className="font-body text-[13px] text-[#71717A] mt-1">
             Los números que tu corredor no te va a mostrar. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
           </p>
@@ -1076,9 +1079,9 @@ export default function NuevoAnalisisPage() {
         )}
 
         {/* Link paste / file upload section */}
-        <div className="mb-3 rounded-xl border border-[#E6E6E2] bg-white p-5 text-center space-y-3.5">
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-[#151515] p-5 text-center space-y-3.5">
           <div>
-            <p className="font-body text-sm font-bold text-[#0F0F0F]">¿Tienes el link de la publicación?</p>
+            <p className="font-body text-sm font-bold text-[#FAFAF8]">¿Tienes el link de la publicación?</p>
             <p className="font-body text-xs text-[#71717A] mb-3.5">Pégalo y Franco extrae los datos. Sin escribir nada.</p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -1087,13 +1090,13 @@ export default function NuevoAnalisisPage() {
               placeholder="Pega aquí el link de la publicación"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex-1 border border-[#E6E6E2] rounded-lg bg-[#FAFAF8] px-3 py-2.5 font-body text-xs text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
+              className="flex-1 border border-white/[0.1] rounded-lg bg-white/[0.05] px-3 py-2.5 font-body text-xs text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
             />
             <button
               type="button"
               disabled={linkLoading || !linkUrl.trim()}
               onClick={handleLinkExtract}
-              className="bg-[#0F0F0F] text-white font-body text-xs font-bold px-4 py-2.5 rounded-lg shrink-0 disabled:opacity-50 hover:bg-[#0F0F0F]/90 transition-colors flex items-center justify-center gap-1.5"
+              className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-xs font-bold px-4 py-2.5 rounded-lg shrink-0 disabled:opacity-50 hover:bg-white transition-colors flex items-center justify-center gap-1.5"
             >
               {linkLoading ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Leyendo...</>
@@ -1138,8 +1141,8 @@ export default function NuevoAnalisisPage() {
           {extractMsg && (
             <div className={`flex items-center gap-2 rounded-lg px-3 py-2 font-body text-xs ${
               extractMsg.type === "success"
-                ? "border border-[#0F0F0F] bg-[#0F0F0F]/5 text-[#0F0F0F]"
-                : "border border-red-200 bg-red-50 text-red-700"
+                ? "border border-[#B0BEC5]/30 bg-[#B0BEC5]/10 text-[#B0BEC5]"
+                : "border border-[#C8323C]/30 bg-[#C8323C]/10 text-[#C8323C]"
             }`}>
               {extractMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
               {extractMsg.text}
@@ -1160,7 +1163,7 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 1: ¿Qué depto estás evaluando?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-[#E6E6E2] bg-white p-5 space-y-4">
+        <div className="rounded-xl border border-white/[0.08] bg-[#151515] p-5 space-y-4">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Qué depto estás evaluando?</div>
 
           {/* Comuna + Tipo row */}
@@ -1187,18 +1190,18 @@ export default function NuevoAnalisisPage() {
                 <button
                   type="button"
                   onClick={() => { setField("comuna", ""); setComunaSearch(""); setComunaOpen(true); }}
-                  className="absolute right-3 top-[34px] text-xs text-[#71717A] hover:text-[#0F0F0F]"
+                  className="absolute right-3 top-[34px] text-xs text-white/40 hover:text-white/70"
                 >✕</button>
               )}
               {comunaOpen && !form.comuna && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[#E6E6E2] bg-white shadow-lg">
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-white/[0.1] bg-[#1A1A1A] shadow-lg">
                   {filteredComunas.length === 0 ? (
-                    <div className="p-3 text-sm text-[#71717A]">No encontrada</div>
+                    <div className="p-3 text-sm text-white/50">No encontrada</div>
                   ) : (
                     filteredComunas.map((c) => (
                       <button
                         key={c.comuna} type="button"
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[#F0F0EC]"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#FAFAF8] hover:bg-white/[0.08]"
                         onClick={() => {
                           setField("comuna", c.comuna);
                           setComunaSearch("");
@@ -1223,8 +1226,8 @@ export default function NuevoAnalisisPage() {
                   onClick={() => { setField("tipoPropiedad", "usado"); setField("estadoVenta", "inmediata"); }}
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "usado"
-                      ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
-                      : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
+                      ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
+                      : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
                   }`}
                 >Usado</button>
                 <button
@@ -1232,8 +1235,8 @@ export default function NuevoAnalisisPage() {
                   onClick={() => { setField("tipoPropiedad", "nuevo"); setField("estadoVenta", "futura"); setField("antiguedad", "0-2"); }}
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "nuevo"
-                      ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
-                      : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
+                      ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
+                      : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
                   }`}
                 >Nuevo</button>
               </div>
@@ -1284,9 +1287,9 @@ export default function NuevoAnalisisPage() {
                     {/* Indicador de datos + slider de radio */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-lg font-bold text-[#0F0F0F]">{totalComparables}</span>
+                        <span className="font-mono text-lg font-bold text-[#FAFAF8]">{totalComparables}</span>
                         <div>
-                          <div className="font-body text-[13px] font-semibold text-[#0F0F0F]">comparables en {radius}m</div>
+                          <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">comparables en {radius}m</div>
                           <div className="font-body text-[11px] text-[#71717A]">
                             {arriendosCount} arriendos · {ventasCount} {condicionLabel}{dormLabel}
                           </div>
@@ -1294,7 +1297,7 @@ export default function NuevoAnalisisPage() {
                       </div>
                       <div className={`shrink-0 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wide ${
                         minCount >= 20 ? 'bg-[#B0BEC5]/10 text-[#B0BEC5]' :
-                        minCount >= 10 ? 'bg-[#0F0F0F]/10 text-[#0F0F0F]' :
+                        minCount >= 10 ? 'bg-[#FAFAF8]/10 text-[#FAFAF8]' :
                         minCount >= 5 ? 'bg-[#C8323C]/10 text-[#C8323C]' :
                         'bg-[#71717A]/10 text-[#71717A]'
                       }`}>
@@ -1306,11 +1309,11 @@ export default function NuevoAnalisisPage() {
                     </div>
 
                     {/* Progress bar under indicator */}
-                    <div className="mt-2 h-1 bg-[#E6E6E2] rounded-full overflow-hidden">
+                    <div className="mt-2 h-1 bg-white/[0.08] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           minCount >= 20 ? 'bg-[#B0BEC5]' :
-                          minCount >= 10 ? 'bg-[#0F0F0F]' :
+                          minCount >= 10 ? 'bg-[#FAFAF8]' :
                           minCount >= 5 ? 'bg-[#C8323C]' :
                           'bg-[#71717A]'
                         }`}
@@ -1327,13 +1330,13 @@ export default function NuevoAnalisisPage() {
                     <span className="font-body text-[12px] text-[#71717A]">Radio</span>
                     <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado." />
                   </div>
-                  <span className="font-mono text-[12px] font-semibold text-[#0F0F0F]">{radius}m</span>
+                  <span className="font-mono text-[12px] font-semibold text-[#FAFAF8]">{radius}m</span>
                 </div>
                 <input
                   type="range" min={300} max={2000} step={100}
                   value={radius}
                   onChange={(e) => setRadius(parseInt(e.target.value))}
-                  className="w-full accent-[#0F0F0F]"
+                  className="w-full accent-[#C8323C]"
                 />
               </div>
             </div>
@@ -1430,39 +1433,24 @@ export default function NuevoAnalisisPage() {
               </div>
             </div>
 
-            {/* Arriendo estacionamiento/bodega — solo si hay al menos 1 */}
-            {(Number(form.estacionamiento) > 0 || Number(form.bodega) > 0) && (
-              <div className="grid grid-cols-2 gap-3 mt-3">
-                {Number(form.estacionamiento) > 0 && (
-                  <div>
-                    <div className="flex items-center gap-0.5 mb-1">
-                      <label className="font-mono text-[11px] text-[#71717A] uppercase">Arriendo estac. ($/mes)</label>
-                    </div>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="$40.000"
-                      value={form.arriendoEstac}
-                      onChange={(e) => setField("arriendoEstac", e.target.value.replace(/[^0-9]/g, ""))}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
-                {Number(form.bodega) > 0 && (
-                  <div>
-                    <div className="flex items-center gap-0.5 mb-1">
-                      <label className="font-mono text-[11px] text-[#71717A] uppercase">Arriendo bodega ($/mes)</label>
-                    </div>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      placeholder="$15.000"
-                      value={form.arriendoBodega}
-                      onChange={(e) => setField("arriendoBodega", e.target.value.replace(/[^0-9]/g, ""))}
-                      className={inputClass}
-                    />
-                  </div>
-                )}
+            {/* Antigüedad (solo para tipo usado) */}
+            {form.tipoPropiedad === "usado" && (
+              <div>
+                <FieldLabel tip={TIPS.antiguedad}>Antigüedad</FieldLabel>
+                <div className="relative">
+                  <select
+                    value={form.antiguedad}
+                    onChange={(e) => setField("antiguedad", e.target.value)}
+                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                  >
+                    <option value="0-2">0-2 años (nuevo)</option>
+                    <option value="3-5">3-5 años</option>
+                    <option value="6-10">6-10 años</option>
+                    <option value="11-20">11-20 años</option>
+                    <option value="20+">20+ años</option>
+                  </select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
+                </div>
               </div>
             )}
           </div>
@@ -1471,14 +1459,14 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 2: ¿Cuánto cuesta y genera?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-[#E6E6E2] bg-white p-5 space-y-4 mt-3">
+        <div className="rounded-xl border border-white/[0.08] bg-[#151515] p-5 space-y-4 mt-3">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Cuánto cuesta y genera?</div>
 
           {/* Precio de compra (UF) */}
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#0F0F0F]">Precio de compra (UF)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Precio de compra (UF)</label>
                 <InfoTooltip content={TIPS.precio} />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
@@ -1518,7 +1506,7 @@ export default function NuevoAnalisisPage() {
 
           {/* Entrega futura (solo si tipo=Nuevo) */}
           {form.tipoPropiedad === "nuevo" && (
-            <div className="rounded-lg border border-[#E6E6E2]/60 bg-[#F0F0EC]/40 p-4 space-y-3">
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-4 space-y-3">
               <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.08em]">Detalle entrega futura</div>
               <div>
                 <FieldLabel>Estado de entrega</FieldLabel>
@@ -1528,8 +1516,8 @@ export default function NuevoAnalisisPage() {
                     onClick={() => setField("estadoVenta", "verde")}
                     className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                       form.estadoVenta === "verde"
-                        ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
-                        : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
+                        ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
+                        : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
                     }`}
                   >En verde</button>
                   <button
@@ -1537,8 +1525,8 @@ export default function NuevoAnalisisPage() {
                     onClick={() => setField("estadoVenta", "blanco")}
                     className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                       form.estadoVenta === "blanco"
-                        ? "bg-[#0F0F0F] text-white font-semibold border-[#0F0F0F]"
-                        : "bg-white border-[#E6E6E2] text-[#71717A] hover:border-[#0F0F0F]/30"
+                        ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
+                        : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
                     }`}
                   >En blanco</button>
                 </div>
@@ -1549,7 +1537,7 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.fechaEntregaMes}
                     onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
                     <option value="">Mes...</option>
                     {Array.from({ length: 12 }, (_, i) => (
@@ -1565,7 +1553,7 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.fechaEntregaAnio}
                     onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
                     <option value="">Año...</option>
                     {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
@@ -1623,7 +1611,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#0F0F0F]">Arriendo mensual ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Arriendo mensual ($)</label>
                 <InfoTooltip content={TIPS.arriendo} />
               </div>
               {suggestions?.arriendo && !form.arriendo && (
@@ -1658,11 +1646,43 @@ export default function NuevoAnalisisPage() {
             )}
           </div>
 
+          {/* Arriendo estacionamiento/bodega — solo si hay al menos 1 */}
+          {(Number(form.estacionamiento) > 0 || Number(form.bodega) > 0) && (
+            <div className="grid grid-cols-2 gap-3">
+              {Number(form.estacionamiento) > 0 && (
+                <div>
+                  <FieldLabel>Arriendo estac. ($/mes)</FieldLabel>
+                  <MoneyInput
+                    id="arriendoEstac"
+                    value={form.arriendoEstac}
+                    onChange={(v) => setField("arriendoEstac", v)}
+                    placeholder="40.000"
+                    currency={fieldCurrency.arriendoEstac}
+                    onCurrencyToggle={() => toggleFieldCurrency("arriendoEstac")}
+                  />
+                </div>
+              )}
+              {Number(form.bodega) > 0 && (
+                <div>
+                  <FieldLabel>Arriendo bodega ($/mes)</FieldLabel>
+                  <MoneyInput
+                    id="arriendoBodega"
+                    value={form.arriendoBodega}
+                    onChange={(v) => setField("arriendoBodega", v)}
+                    placeholder="15.000"
+                    currency={fieldCurrency.arriendoBodega}
+                    onCurrencyToggle={() => toggleFieldCurrency("arriendoBodega")}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Gastos comunes ($) */}
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#0F0F0F]">Gastos comunes ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Gastos comunes ($)</label>
                 <InfoTooltip content={TIPS.gastos} />
               </div>
               {suggestions?.gastos && !form.gastos && (
@@ -1696,7 +1716,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#0F0F0F]">Contribuciones trimestrales ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ($)</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
             </div>
@@ -1716,6 +1736,36 @@ export default function NuevoAnalisisPage() {
                 }
               </p>
             )}
+          </div>
+
+          {/* Vacancia + Administración */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <FieldLabel tip={TIPS.vacanciaMeses}>Vacancia: {form.vacanciaPct}%</FieldLabel>
+              <input
+                type="range" min={0} max={25} step={1}
+                value={form.vacanciaPct}
+                onChange={(e) => setField("vacanciaPct", e.target.value)}
+                className="w-full accent-[#C8323C]"
+              />
+              <p className="mt-1 font-body text-[10px] text-[#71717A]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
+            </div>
+            <div>
+              <FieldLabel tip="Comisión si contratas administrador de arriendo. En 0% se desactiva.">Administración: {form.adminPct}%</FieldLabel>
+              <input
+                type="range" min={0} max={15} step={1}
+                value={form.adminPct}
+                onChange={(e) => setField("adminPct", e.target.value)}
+                className="w-full accent-[#C8323C]"
+              />
+              <p className="mt-1 text-xs text-[#71717A]">
+                {parseFloat(form.adminPct) > 0
+                  ? parseNum(form.arriendo) > 0
+                    ? `${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
+                    : "Ingresa el arriendo para calcular"
+                  : "Sin administrador"}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -1737,7 +1787,7 @@ export default function NuevoAnalisisPage() {
                 id="piePct" type="range" min="10" max="50" step="5"
                 value={form.piePct}
                 onChange={(e) => setField("piePct", e.target.value)}
-                className="mt-1 w-full accent-[#0F0F0F]"
+                className="mt-1 w-full accent-[#C8323C]"
                 style={{ height: "44px" }}
               />
               <div className="flex justify-between font-mono text-xs text-[#71717A]">
@@ -1753,7 +1803,7 @@ export default function NuevoAnalisisPage() {
                 id="plazoCredito" type="range" min="10" max="30" step="5"
                 value={form.plazoCredito}
                 onChange={(e) => setField("plazoCredito", e.target.value)}
-                className="mt-1 w-full accent-[#0F0F0F]"
+                className="mt-1 w-full accent-[#C8323C]"
                 style={{ height: "44px" }}
               />
               <div className="flex justify-between font-mono text-xs text-[#71717A]">
@@ -1773,7 +1823,7 @@ export default function NuevoAnalisisPage() {
                 value={form.tasaInteres}
                 onChange={(e) => { setField("tasaInteres", e.target.value); tasaModificadaRef.current = true; }}
                 required
-                className="flex h-10 w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
               />
               <p className="mt-1 text-xs text-[#71717A]">
                 Mercado actual: ~{tasaRef.value}%
@@ -1781,78 +1831,11 @@ export default function NuevoAnalisisPage() {
               </p>
             </div>
 
-            {/* Vacancia + Administración */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <FieldLabel tip={TIPS.vacanciaMeses}>Vacancia: {form.vacanciaPct}%</FieldLabel>
-                <input
-                  type="range" min={0} max={25} step={1}
-                  value={form.vacanciaPct}
-                  onChange={(e) => setField("vacanciaPct", e.target.value)}
-                  className="w-full accent-[#0F0F0F]"
-                />
-                <p className="mt-1 font-body text-[10px] text-[#71717A]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
-              </div>
-              <div>
-                <FieldLabel tip="Comisión si contratas administrador de arriendo. En 0% se desactiva.">Administración: {form.adminPct}%</FieldLabel>
-                <input
-                  type="range" min={0} max={15} step={1}
-                  value={form.adminPct}
-                  onChange={(e) => setField("adminPct", e.target.value)}
-                  className="w-full accent-[#0F0F0F]"
-                />
-                <p className="mt-1 text-xs text-[#71717A]">
-                  {parseFloat(form.adminPct) > 0
-                    ? parseNum(form.arriendo) > 0
-                      ? `${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
-                      : "Ingresa el arriendo para calcular"
-                    : "Sin administrador"}
-                </p>
-              </div>
-            </div>
-
-            {/* Antigüedad + Piso */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <FieldLabel tip={TIPS.antiguedad}>Antigüedad</FieldLabel>
-                <div className="relative">
-                  <select
-                    value={form.antiguedad}
-                    onChange={(e) => setField("antiguedad", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
-                  >
-                    <option value="0-2">0-2 años (nuevo)</option>
-                    <option value="3-5">3-5 años</option>
-                    <option value="6-10">6-10 años</option>
-                    <option value="11-20">11-20 años</option>
-                    <option value="20+">20+ años</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
-                </div>
-              </div>
-              <div>
-                <FieldLabel tip={TIPS.piso}>Piso</FieldLabel>
-                <div className="relative">
-                  <select
-                    value={form.piso}
-                    onChange={(e) => setField("piso", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-[13px] text-[#71717A] focus:border-[#0F0F0F] focus:ring-1 focus:ring-[#0F0F0F]/10 focus:outline-none"
-                  >
-                    <option value="1-3">1-3 (bajo)</option>
-                    <option value="4-8">4-8 (medio)</option>
-                    <option value="9-15">9-15 (alto)</option>
-                    <option value="16+">16+ (muy alto)</option>
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
-                </div>
-              </div>
-            </div>
-
             {calc.dividendo > 0 && (
-              <div className="rounded-lg border border-[#E6E6E2] bg-[#FAFAF8] p-3">
+              <div className="rounded-lg border border-white/[0.08] bg-white/[0.03] p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-body text-[13px] font-medium text-[#0F0F0F]">Dividendo estimado</span>
-                  <span className="font-mono text-[15px] font-bold text-[#0F0F0F]">{fmtCLP(calc.dividendo)}/mes</span>
+                  <span className="font-body text-[13px] font-medium text-[#FAFAF8]">Dividendo estimado</span>
+                  <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmtCLP(calc.dividendo)}/mes</span>
                 </div>
               </div>
             )}
