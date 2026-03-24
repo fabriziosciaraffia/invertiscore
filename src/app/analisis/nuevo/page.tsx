@@ -298,21 +298,22 @@ export default function NuevoAnalisisPage() {
     precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP", arriendoEstac: "CLP", arriendoBodega: "CLP",
   });
   const toggleFieldCurrency = useCallback((field: string) => {
-    setFieldCurrency((prev) => {
-      const wasUF = prev[field] === "UF";
-      const newCurrency = wasUF ? "CLP" : "UF";
-      // Convert the field value
-      setForm((f) => {
-        const raw = parseNum(f[field as keyof typeof f] as string);
-        if (!raw || raw === 0) return f;
-        const converted = wasUF
-          ? Math.round(raw * UF_CLP)        // UF → CLP
-          : Math.round((raw / UF_CLP) * 100) / 100; // CLP → UF (2 decimals)
-        return { ...f, [field]: String(converted) };
-      });
-      return { ...prev, [field]: newCurrency };
+    const currentCurrency = fieldCurrency[field] || "CLP";
+    const wasUF = currentCurrency === "UF";
+    const newCurrency = wasUF ? "CLP" : "UF";
+    const uf = UF_CLP; // capture current value
+
+    // Convert the field value
+    setForm((f) => {
+      const raw = parseNum(f[field as keyof typeof f] as string);
+      if (!raw || raw === 0) return f;
+      const converted = wasUF
+        ? Math.round(raw * uf)                        // UF → CLP
+        : Math.round((raw / uf) * 100) / 100;         // CLP → UF (2 decimals)
+      return { ...f, [field]: String(converted) };
     });
-  }, [UF_CLP]);
+    setFieldCurrency((prev) => ({ ...prev, [field]: newCurrency }));
+  }, [UF_CLP, fieldCurrency]);
 
   // ─── Form state ────────────────────────────────────
   const [form, setForm] = useState({
@@ -325,9 +326,9 @@ export default function NuevoAnalisisPage() {
     superficieUtil: "",
     antiguedad: "3-5",
     piso: "4-8",
-    estacionamiento: "0",
+    estacionamiento: "",
     arriendoEstac: "",
-    bodega: "0",
+    bodega: "",
     arriendoBodega: "",
     estadoVenta: "inmediata",
     fechaEntregaMes: "",
@@ -1443,11 +1444,11 @@ export default function NuevoAnalisisPage() {
                     onChange={(e) => setField("antiguedad", e.target.value)}
                     className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
-                    <option value="0-2">0-2 años (nuevo)</option>
-                    <option value="3-5">3-5 años</option>
-                    <option value="6-10">6-10 años</option>
-                    <option value="11-20">11-20 años</option>
-                    <option value="20+">20+ años</option>
+                    <option value="0-2" className="bg-[#1A1A1A] text-[#FAFAF8]">0-2 años (nuevo)</option>
+                    <option value="3-5" className="bg-[#1A1A1A] text-[#FAFAF8]">3-5 años</option>
+                    <option value="6-10" className="bg-[#1A1A1A] text-[#FAFAF8]">6-10 años</option>
+                    <option value="11-20" className="bg-[#1A1A1A] text-[#FAFAF8]">11-20 años</option>
+                    <option value="20+" className="bg-[#1A1A1A] text-[#FAFAF8]">20+ años</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                 </div>
@@ -1466,7 +1467,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Precio de compra (UF)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Precio de compra ({fieldCurrency.precio === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.precio} />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
@@ -1539,9 +1540,9 @@ export default function NuevoAnalisisPage() {
                     onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
                     className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
-                    <option value="">Mes...</option>
+                    <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Mes...</option>
                     {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={String(i + 1).padStart(2, "0")}>
+                      <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[#1A1A1A] text-[#FAFAF8]">
                         {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
                       </option>
                     ))}
@@ -1555,9 +1556,9 @@ export default function NuevoAnalisisPage() {
                     onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
                     className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
-                    <option value="">Año...</option>
+                    <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Año...</option>
                     {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
-                      <option key={y} value={String(y)}>{y}</option>
+                      <option key={y} value={String(y)} className="bg-[#1A1A1A] text-[#FAFAF8]">{y}</option>
                     ))}
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
@@ -1611,7 +1612,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Arriendo mensual ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Arriendo mensual ({fieldCurrency.arriendo === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.arriendo} />
               </div>
               {suggestions?.arriendo && !form.arriendo && (
@@ -1644,6 +1645,14 @@ export default function NuevoAnalisisPage() {
                 Ref: {fmtCLP(suggestions.precioM2Arriendo)}/m² mes en la zona
               </p>
             )}
+            {form.arriendo && parseNum(form.arriendo) > 0 && (
+              <p className="mt-1 text-xs text-[#71717A]">
+                {fieldCurrency.arriendo === "UF"
+                  ? fmtCLP(parseNum(form.arriendo) * UF_CLP)
+                  : fmtUF(parseNum(form.arriendo) / UF_CLP)
+                }/mes
+              </p>
+            )}
           </div>
 
           {/* Arriendo estacionamiento/bodega — solo si hay al menos 1 */}
@@ -1651,28 +1660,34 @@ export default function NuevoAnalisisPage() {
             <div className="grid grid-cols-2 gap-3">
               {Number(form.estacionamiento) > 0 && (
                 <div>
-                  <FieldLabel>Arriendo estac. ($/mes)</FieldLabel>
+                  <FieldLabel>Arriendo estac. ({fieldCurrency.arriendoEstac === "UF" ? "UF" : "$"}/mes)</FieldLabel>
                   <MoneyInput
                     id="arriendoEstac"
                     value={form.arriendoEstac}
                     onChange={(v) => setField("arriendoEstac", v)}
-                    placeholder="40.000"
+                    placeholder={fieldCurrency.arriendoEstac === "UF" ? "1" : "40.000"}
                     currency={fieldCurrency.arriendoEstac}
                     onCurrencyToggle={() => toggleFieldCurrency("arriendoEstac")}
                   />
+                  {!form.arriendoEstac && (
+                    <p className="mt-1 font-body text-[11px] text-[#71717A]">Ref: ~$40.000/mes por estacionamiento</p>
+                  )}
                 </div>
               )}
               {Number(form.bodega) > 0 && (
                 <div>
-                  <FieldLabel>Arriendo bodega ($/mes)</FieldLabel>
+                  <FieldLabel>Arriendo bodega ({fieldCurrency.arriendoBodega === "UF" ? "UF" : "$"}/mes)</FieldLabel>
                   <MoneyInput
                     id="arriendoBodega"
                     value={form.arriendoBodega}
                     onChange={(v) => setField("arriendoBodega", v)}
-                    placeholder="15.000"
+                    placeholder={fieldCurrency.arriendoBodega === "UF" ? "0,4" : "15.000"}
                     currency={fieldCurrency.arriendoBodega}
                     onCurrencyToggle={() => toggleFieldCurrency("arriendoBodega")}
                   />
+                  {!form.arriendoBodega && (
+                    <p className="mt-1 font-body text-[11px] text-[#71717A]">Ref: ~$15.000/mes por bodega</p>
+                  )}
                 </div>
               )}
             </div>
@@ -1682,7 +1697,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Gastos comunes ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Gastos comunes ({fieldCurrency.gastos === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.gastos} />
               </div>
               {suggestions?.gastos && !form.gastos && (
@@ -1716,7 +1731,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ($)</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
             </div>
