@@ -304,9 +304,11 @@ export default function NuevoAnalisisPage() {
     const uf = UF_CLP; // capture current value
 
     // Convert the field value
+    // Form state stores raw numbers from String(num) — use Number() not parseNum()
+    // to avoid parseNum stripping the decimal dot in UF values like "23.92"
     setForm((f) => {
-      const raw = parseNum(f[field as keyof typeof f] as string);
-      if (!raw || raw === 0) return f;
+      const raw = Number(f[field as keyof typeof f]) || 0;
+      if (raw === 0) return f;
       const converted = wasUF
         ? Math.round(raw * uf)                        // UF → CLP
         : Math.round((raw / uf) * 100) / 100;         // CLP → UF (2 decimals)
