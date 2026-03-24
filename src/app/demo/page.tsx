@@ -50,6 +50,8 @@ const DEMO_INPUT: AnalisisInput = {
   provisionMantencion: 0,
   tipoRenta: "larga",
   arriendo: ARRIENDO,
+  arriendoEstacionamiento: 0,
+  arriendoBodega: 0,
   vacanciaMeses: 1,
   usaAdministrador: false,
 };

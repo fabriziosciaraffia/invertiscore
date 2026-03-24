@@ -35,6 +35,8 @@ export interface AnalisisInput {
   provisionMantencion: number;
   tipoRenta: "larga";
   arriendo: number;
+  arriendoEstacionamiento: number;
+  arriendoBodega: number;
   vacanciaMeses: number;
   // Administración de arriendo (property management)
   usaAdministrador?: boolean;

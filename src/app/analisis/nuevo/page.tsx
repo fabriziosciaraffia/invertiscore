@@ -313,7 +313,9 @@ export default function NuevoAnalisisPage() {
     antiguedad: "3-5",
     piso: "4-8",
     estacionamiento: "0",
+    arriendoEstac: "",
     bodega: "0",
+    arriendoBodega: "",
     estadoVenta: "inmediata",
     fechaEntregaMes: "",
     fechaEntregaAnio: "",
@@ -781,7 +783,10 @@ export default function NuevoAnalisisPage() {
 
     const nEstac = Number(form.estacionamiento) || 0;
     const nBodega = Number(form.bodega) || 0;
-    const extraArriendo = nEstac * 40000 + nBodega * 15000;
+    // Use user-entered rental income; fall back to estimates if empty
+    const estacIncome = Number(form.arriendoEstac) || (nEstac * 40000);
+    const bodegaIncome = Number(form.arriendoBodega) || (nBodega * 15000);
+    const extraArriendo = estacIncome + bodegaIncome;
 
     // Precio venta: prefer ventaRef (radius-based) over marketData (static)
     // ventaRef.precioM2 is CLP/m² (from scraped_properties), marketData is UF/m²
@@ -842,7 +847,7 @@ export default function NuevoAnalisisPage() {
       contribuciones, precioSugeridoUF: 0, precioM2VentaUF: 0,
       source: "estimate" as const, publicaciones: 0,
     };
-  }, [form.comuna, form.superficieUtil, form.precio, form.estacionamiento, form.bodega, marketData, apiSuggestions, ventaRef, UF_CLP, fieldCurrency.precio]);
+  }, [form.comuna, form.superficieUtil, form.precio, form.estacionamiento, form.arriendoEstac, form.bodega, form.arriendoBodega, marketData, apiSuggestions, ventaRef, UF_CLP, fieldCurrency.precio]);
 
   // ─── Real-time calculations ────────────────────────
   const toCLP = useCallback((field: string, value: number) => {
@@ -971,6 +976,8 @@ export default function NuevoAnalisisPage() {
           provisionMantencion,
           tipoRenta: "larga",
           arriendo,
+          arriendoEstacionamiento: Number(form.arriendoEstac) || 0,
+          arriendoBodega: Number(form.arriendoBodega) || 0,
           vacanciaMeses: parseFloat(form.vacanciaPct) * 12 / 100,
           usaAdministrador: parseFloat(form.adminPct) > 0,
           comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
@@ -1418,6 +1425,42 @@ export default function NuevoAnalisisPage() {
                 />
               </div>
             </div>
+
+            {/* Arriendo estacionamiento/bodega — solo si hay al menos 1 */}
+            {(Number(form.estacionamiento) > 0 || Number(form.bodega) > 0) && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                {Number(form.estacionamiento) > 0 && (
+                  <div>
+                    <div className="flex items-center gap-0.5 mb-1">
+                      <label className="font-mono text-[11px] text-[#71717A] uppercase">Arriendo estac. ($/mes)</label>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="$40.000"
+                      value={form.arriendoEstac}
+                      onChange={(e) => setField("arriendoEstac", e.target.value.replace(/[^0-9]/g, ""))}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+                {Number(form.bodega) > 0 && (
+                  <div>
+                    <div className="flex items-center gap-0.5 mb-1">
+                      <label className="font-mono text-[11px] text-[#71717A] uppercase">Arriendo bodega ($/mes)</label>
+                    </div>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="$15.000"
+                      value={form.arriendoBodega}
+                      onChange={(e) => setField("arriendoBodega", e.target.value.replace(/[^0-9]/g, ""))}
+                      className={inputClass}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

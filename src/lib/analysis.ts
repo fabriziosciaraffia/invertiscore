@@ -84,9 +84,8 @@ function clamp(val: number, min: number, max: number): number {
 // =========================================
 
 function calcIngresoMensual(input: AnalisisInput): number {
-  // Use the rent exactly as the user entered it — no silent adjustments.
-  // Floor (piso) is still used in the score calculation (plusvalía dimension).
-  return input.arriendo;
+  // Base rent + parking + storage income
+  return input.arriendo + (input.arriendoEstacionamiento || 0) + (input.arriendoBodega || 0);
 }
 
 // =========================================
@@ -128,7 +127,8 @@ export function calcFlujoDesglose(datos: {
   const mantencion = datos.mantencion;
   const vacanciaProrrata = Math.round((datos.arriendo * datos.vacanciaMeses) / 12);
   const corretajeProrrata = Math.round((datos.arriendo * 0.5) / 24);
-  const recambio = Math.round(250000 / 24);
+  // Turnover costs (painting, deep clean, minor repairs) ≈ half month's rent every 2 years
+  const recambio = Math.round((datos.arriendo * 0.5) / 24);
   // Administración: % del arriendo, prorrateado por meses con arrendatario
   const administracion = datos.usaAdministrador
     ? Math.round((datos.arriendo * (datos.comisionAdministrador ?? 7) / 100) * (12 - datos.vacanciaMeses) / 12)

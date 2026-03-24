@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { getUFValue } from "../uf";
 
 function getSupabase() {
   return createClient(
@@ -75,7 +76,8 @@ export async function getSugerencias(
   if (comunaResult) return { ...comunaResult, ...mapFields };
 
   // NIVEL 3: Fallback a estimación hardcodeada
-  const fallback = getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF);
+  const ufCLP = await getUFValue();
+  const fallback = getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF, ufCLP);
   return { ...fallback, ...mapFields };
 }
 
@@ -151,8 +153,8 @@ async function getSugerenciasPorRadio(
     prop_condicion: condicion,
   });
 
-  // Filter outliers and check minimum
-  const clean = filterOutliers(arriendos || []);
+  // Filter outliers, then by surface range ±30%
+  const clean = filterBySurface(filterOutliers(arriendos || []), superficie);
   if (clean.length < 5) {
     // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
     if (dormitorios === null) return null;
@@ -166,7 +168,7 @@ async function getSugerenciasPorRadio(
       prop_condicion: condicion,
     });
 
-    const cleanGeneral = filterOutliers(arriendosGeneral || []);
+    const cleanGeneral = filterBySurface(filterOutliers(arriendosGeneral || []), superficie);
     if (cleanGeneral.length < 5) return null;
 
     const preciosM2 = cleanGeneral
@@ -247,7 +249,8 @@ function getFallbackEstimacion(
   comuna: string,
   superficie: number,
   dormitorios: number,
-  precioUF?: number
+  precioUF?: number,
+  ufCLP: number = 38800
 ): Sugerencias {
   const ESTIMACIONES: Record<string, { arriendoM2: number; ggccM2: number }> = {
     "Providencia": { arriendoM2: 7600, ggccM2: 1200 },
@@ -272,19 +275,16 @@ function getFallbackEstimacion(
   const data = ESTIMACIONES[comuna] || { arriendoM2: 6000, ggccM2: 1000 };
   const ajusteDorm = dormitorios >= 3 ? 1.05 : dormitorios === 1 ? 0.95 : 1.0;
 
-  const ufCLP = 39842;
-
   return {
     arriendo: Math.round(data.arriendoM2 * superficie * ajusteDorm / 1000) * 1000,
     ggcc: Math.round(data.ggccM2 * superficie / 1000) * 1000,
-    contribTrim: estimateContribuciones(superficie, precioUF ? precioUF * ufCLP / superficie : undefined),
+    contribTrim: estimateContribuciones(superficie, precioUF ? precioUF * ufCLP / superficie : undefined, ufCLP),
     source: "estimacion",
     sampleSize: 0,
   };
 }
 
-function estimateContribuciones(superficie: number, precioM2CLP?: number): number {
-  const ufCLP = 39842;
+function estimateContribuciones(superficie: number, precioM2CLP?: number, ufCLP: number = 38800): number {
   const precioEstimadoUF = precioM2CLP ? (precioM2CLP * superficie / ufCLP) : 3000;
   const avaluoFiscal = precioEstimadoUF * 0.7;
   const contribAnualUF = avaluoFiscal * 0.012;
@@ -303,6 +303,17 @@ function percentile(sorted: number[], p: number): number {
   const hi = Math.ceil(idx);
   if (lo === hi) return sorted[lo];
   return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+/** Filter by surface area ±30% — falls back to unfiltered if fewer than 4 remain */
+function filterBySurface<T extends { superficie_m2: number | null }>(props: T[], targetSup: number): T[] {
+  if (!targetSup || targetSup <= 0) return props;
+  const minSup = targetSup * 0.7;
+  const maxSup = targetSup * 1.3;
+  const filtered = props.filter(
+    (p) => p.superficie_m2 && p.superficie_m2 >= minSup && p.superficie_m2 <= maxSup
+  );
+  return filtered.length >= 4 ? filtered : props;
 }
 
 /** Filter outliers by superficie range + IQR on precio/m2 */
