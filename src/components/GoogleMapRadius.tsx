@@ -2,20 +2,27 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+export interface NearbyPoint {
+  lat: number;
+  lng: number;
+}
+
 interface GoogleMapRadiusProps {
   lat: number;
   lng: number;
   radiusMeters: number;
   comuna: string;
+  nearbyProperties?: NearbyPoint[];
 }
 
 export default function GoogleMapRadius({
-  lat, lng, radiusMeters,
+  lat, lng, radiusMeters, nearbyProperties,
 }: GoogleMapRadiusProps) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const circleRef = useRef<google.maps.Circle | null>(null);
   const mainMarkerRef = useRef<google.maps.Marker | null>(null);
+  const nearbyMarkersRef = useRef<google.maps.Marker[]>([]);
   const [mapLoaded, setMapLoaded] = useState(false);
 
   // Cargar Google Maps script
@@ -40,7 +47,7 @@ export default function GoogleMapRadius({
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=geometry,places`;
     script.async = true;
     script.defer = true;
     script.onload = () => setMapLoaded(true);
@@ -124,14 +131,53 @@ export default function GoogleMapRadius({
     }
   }, [lat, lng, radiusMeters, mapLoaded]);
 
+  // Renderizar puntos de propiedades cercanas
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    const map = mapInstanceRef.current;
+
+    // Limpiar marcadores anteriores
+    nearbyMarkersRef.current.forEach(m => m.setMap(null));
+    nearbyMarkersRef.current = [];
+
+    if (!nearbyProperties || nearbyProperties.length === 0) return;
+
+    const validProps = nearbyProperties.filter(p => p.lat && p.lng);
+    for (const prop of validProps) {
+      const marker = new google.maps.Marker({
+        position: { lat: prop.lat, lng: prop.lng },
+        map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 5,
+          fillColor: '#71717A',
+          fillOpacity: 0.6,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 1,
+        },
+        zIndex: 1,
+        clickable: false,
+      });
+      nearbyMarkersRef.current.push(marker);
+    }
+  }, [nearbyProperties, mapLoaded]);
+
   return (
     <div className="relative w-full rounded-xl overflow-hidden border border-[#E6E6E2]">
       <div ref={mapRef} className="w-full" style={{ height: 220 }} />
 
       {/* Leyenda */}
-      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 rounded-md bg-white/95 backdrop-blur-sm px-2 py-1 shadow-sm">
-        <div className="w-1.5 h-1.5 rounded-full bg-[#C8323C]" />
-        <span className="font-body text-[9px] text-[#71717A]">Tu propiedad</span>
+      <div className="absolute top-2.5 right-2.5 flex flex-col gap-0.5 rounded-md bg-white/95 backdrop-blur-sm px-2 py-1 shadow-sm">
+        <div className="flex items-center gap-1">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#C8323C]" />
+          <span className="font-body text-[9px] text-[#71717A]">Tu propiedad</span>
+        </div>
+        {nearbyProperties && nearbyProperties.length > 0 && (
+          <div className="flex items-center gap-1">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#71717A] opacity-60" />
+            <span className="font-body text-[9px] text-[#71717A]">Arriendos cercanos</span>
+          </div>
+        )}
       </div>
     </div>
   );

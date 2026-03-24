@@ -68,3 +68,52 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Google Places Autocomplete — Franco branding */
+.pac-container {
+  border: 1px solid #E6E6E2;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  margin-top: 4px;
+  font-family: var(--font-body);
+  z-index: 9999;
+  max-width: calc(100vw - 2rem) !important;
+}
+
+/* Prevent iOS zoom on input focus (triggers when font-size < 16px) */
+@media (max-width: 640px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+.pac-item {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #0F0F0F;
+  border-top: 1px solid #F0F0EC;
+  cursor: pointer;
+}
+.pac-item:first-child {
+  border-top: none;
+}
+.pac-item:hover {
+  background-color: #F0F0EC;
+}
+.pac-item-selected {
+  background-color: #F0F0EC;
+}
+.pac-item-query {
+  font-size: 13px;
+  color: #0F0F0F;
+  font-weight: 600;
+}
+.pac-matched {
+  color: #C8323C;
+  font-weight: 700;
+}
+.pac-icon {
+  display: none;
+}
+.pac-logo::after {
+  display: none;
+}

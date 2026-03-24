@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
-import { calculateMarketStats } from "@/lib/services/scraper/stats";
+import { scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = ReturnType<typeof createClient<any>>;
@@ -41,38 +41,47 @@ export async function POST(request: Request) {
   const t0 = Date.now();
 
   // --- SCRAPING ---
-  const type: "arriendo" | "venta" = typeParam === "venta" ? "venta" : "arriendo";
-  const result = await scrapeTocToc(type, comunas);
-  allProperties.push(...result.properties);
-  allErrors.push(...result.errors);
+  const maxPages = parseInt(url.searchParams.get("maxPages") || "5");
+  const types: ("arriendo" | "venta")[] = typeParam === "arriendo" ? ["arriendo"] : typeParam === "venta" ? ["venta"] : ["arriendo", "venta"];
+  let method = "api-paginated";
+
+  for (const type of types) {
+    // Intentar API paginada primero
+    let result = await scrapeTocTocAPI(type, comunas, maxPages);
+    if (result.properties.length === 0) {
+      // Fallback al método __NEXT_DATA__
+      result = await scrapeTocToc(type, comunas);
+      method = "listing-fallback";
+    }
+    allProperties.push(...result.properties);
+    allErrors.push(...result.errors);
+  }
 
   const t1 = Date.now();
 
-  // --- UPSERTS ---
+  // --- BULK UPSERT ---
+  const validProps = allProperties.filter(p => p.precio > 0);
+  const skipped = allProperties.length - validProps.length;
   let inserted = 0;
-  let skipped = 0;
 
-  for (const prop of allProperties) {
-    if (prop.precio <= 0) { skipped++; continue; }
+  const rows = validProps.map(propertyToRow);
 
-    const row = propertyToRow(prop);
+  if (rows.length > 0) {
     const { error } = await supabase
       .from("scraped_properties")
-      .upsert(row, { onConflict: "source,source_id" });
+      .upsert(rows, { onConflict: "source,source_id" });
 
     if (error) {
-      allErrors.push(`DB insert ${prop.sourceId}: ${error.message}`);
-      skipped++;
+      allErrors.push(`Bulk upsert error: ${error.message}`);
     } else {
-      inserted++;
+      inserted = rows.length;
     }
   }
 
   const t2 = Date.now();
 
-  // --- STATS (DESACTIVADO para diagnóstico de timeout) ---
-  // const statsResult = await calculateMarketStats();
-  const statsResult = { skipped: "disabled for timeout diagnosis" };
+  // Stats se recalculan via /api/data/calculate-stats (separado)
+  const statsResult = { skipped: "run /api/data/calculate-stats separately" };
 
   const t3 = Date.now();
 
@@ -81,7 +90,7 @@ export async function POST(request: Request) {
     batch,
     totalBatches: TOTAL_BATCHES,
     comunas,
-    method: "listing",
+    method,
     inserted,
     skipped,
     totalScraped: allProperties.length,
@@ -117,7 +126,9 @@ function propertyToRow(prop: ScrapedProperty) {
     piso: prop.piso || null,
     antiguedad: prop.antiguedad || null,
     url: prop.url || null,
+    condicion: prop.condicion || "usado",
     is_active: true,
     scraped_at: new Date().toISOString(),
+    geocode_attempted: false,
   };
 }

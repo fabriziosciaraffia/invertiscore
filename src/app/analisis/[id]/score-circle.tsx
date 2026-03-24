@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 
 function getScoreColor(score: number): string {
-  if (score >= 75) return "#16A34A";  // verdict-buy
+  if (score >= 75) return "#B0BEC5";  // verdict-buy
   if (score >= 40) return "#C8323C";  // franco-red
-  return "#DC2626";                    // verdict-avoid
+  return "#C8323C";                    // verdict-avoid
 }
 
 function getScoreLabel(score: number): string {
-  if (score >= 75) return "Buena inversión";
-  if (score >= 40) return "No compres — negocia primero";
+  if (score >= 75) return "Los números respaldan esta inversión";
+  if (score >= 40) return "Los números sugieren negociar el precio";
   return "Busca otra";
 }
 

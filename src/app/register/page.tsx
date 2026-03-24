@@ -51,17 +51,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FAFAF8] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F] px-4">
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-[#E6E6E2] bg-white shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm">
           <form onSubmit={handleRegister}>
             {/* Header */}
             <div className="px-6 pt-8 pb-2 text-center">
               <div className="mx-auto mb-4">
-                <FrancoLogo size="xl" href="/" />
+                <FrancoLogo size="xl" href="/" inverted />
               </div>
-              <h1 className="font-heading text-xl font-bold text-[#0F0F0F]">Crea tu cuenta gratis</h1>
-              <p className="mt-1.5 font-body text-sm text-[#71717A]">
+              <h1 className="font-heading text-xl font-bold text-[#FAFAF8]">Crea tu cuenta gratis</h1>
+              <p className="mt-1.5 font-body text-sm text-[#FAFAF8]/50">
                 Análisis completo de cualquier departamento en 30 segundos.
               </p>
             </div>
@@ -69,12 +69,12 @@ export default function RegisterPage() {
             {/* Fields */}
             <div className="space-y-4 px-6 pt-4 pb-2">
               {error && (
-                <div className="rounded-lg border border-[#DC2626]/20 bg-[#DC2626]/5 p-3 font-body text-sm text-[#DC2626]">
+                <div className="rounded-lg border border-[#C8323C]/20 bg-[#C8323C]/5 p-3 font-body text-sm text-[#C8323C]">
                   {error}
                 </div>
               )}
               <div className="space-y-2">
-                <label htmlFor="name" className="font-body text-sm font-semibold text-[#0F0F0F]">
+                <label htmlFor="name" className="font-body text-sm font-semibold text-[#FAFAF8]">
                   Nombre completo
                 </label>
                 <input
@@ -84,11 +84,11 @@ export default function RegisterPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-sm text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:outline-none focus:ring-1 focus:ring-[#0F0F0F]/10"
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="email" className="font-body text-sm font-semibold text-[#0F0F0F]">
+                <label htmlFor="email" className="font-body text-sm font-semibold text-[#FAFAF8]">
                   Email
                 </label>
                 <input
@@ -98,11 +98,11 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-sm text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:outline-none focus:ring-1 focus:ring-[#0F0F0F]/10"
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="font-body text-sm font-semibold text-[#0F0F0F]">
+                <label htmlFor="password" className="font-body text-sm font-semibold text-[#FAFAF8]">
                   Contraseña
                 </label>
                 <input
@@ -111,11 +111,11 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-sm text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:outline-none focus:ring-1 focus:ring-[#0F0F0F]/10"
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="confirm-password" className="font-body text-sm font-semibold text-[#0F0F0F]">
+                <label htmlFor="confirm-password" className="font-body text-sm font-semibold text-[#FAFAF8]">
                   Confirmar contraseña
                 </label>
                 <input
@@ -124,7 +124,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-[#E6E6E2] bg-white px-3 py-2.5 font-body text-sm text-[#0F0F0F] placeholder:text-[#71717A]/50 focus:border-[#0F0F0F] focus:outline-none focus:ring-1 focus:ring-[#0F0F0F]/10"
+                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
             </div>
@@ -134,23 +134,29 @@ export default function RegisterPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-[#0F0F0F] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#0F0F0F]/90 disabled:opacity-50"
+                className="w-full rounded-lg bg-[#C8323C] py-3 font-body text-sm font-semibold text-white transition-colors hover:bg-[#C8323C]/90 disabled:opacity-50"
               >
                 {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
               </button>
 
               {/* Separator */}
               <div className="flex items-center gap-2">
-                <div className="h-px flex-1 bg-[#E6E6E2]" />
-                <span className="font-body text-xs text-[#71717A]">o</span>
-                <div className="h-px flex-1 bg-[#E6E6E2]" />
+                <div className="h-px flex-1 bg-white/[0.08]" />
+                <span className="font-body text-xs text-[#FAFAF8]/50">o</span>
+                <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
 
               {/* Google button */}
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[#E6E6E2] bg-white py-3 font-body text-sm font-semibold text-[#0F0F0F] transition-colors hover:border-[#0F0F0F]/20 hover:bg-[#FAFAF8]"
-                onClick={() => alert("Próximamente: Login con Google estará disponible pronto.")}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-[#1A1A1A] py-3 font-body text-sm font-semibold text-[#FAFAF8] transition-colors hover:border-white/20 hover:bg-[#222]"
+                onClick={async () => {
+                  const supabase = createClient();
+                  await supabase.auth.signInWithOAuth({
+                    provider: "google",
+                    options: { redirectTo: `${window.location.origin}/auth/callback` },
+                  });
+                }}
               >
                 <svg className="h-4 w-4" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -161,9 +167,9 @@ export default function RegisterPage() {
                 Continuar con Google
               </button>
 
-              <p className="text-center font-body text-sm text-[#71717A]">
+              <p className="text-center font-body text-sm text-[#FAFAF8]/50">
                 ¿Ya tienes cuenta?{" "}
-                <Link href="/login" className="font-semibold text-[#0F0F0F] underline hover:text-[#C8323C]">
+                <Link href="/login" className="font-semibold text-[#FAFAF8] underline hover:text-[#C8323C]">
                   Inicia sesión
                 </Link>
               </p>
@@ -172,7 +178,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Franco tagline */}
-        <div className="mt-6 text-center font-body text-[11px] text-[#71717A]">
+        <div className="mt-6 text-center font-body text-[11px] text-[#FAFAF8]/50">
           Sin compromisos. Sin tarjeta. Solo datos.
         </div>
       </div>

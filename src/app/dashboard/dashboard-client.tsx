@@ -65,9 +65,9 @@ function getSiendoFranco(score: number, flujo: number) {
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
-    COMPRAR: { color: "#16A34A", bg: "rgba(22,163,74,0.07)", border: "rgba(22,163,74,0.2)" },
-    NEGOCIAR: { color: "#C8323C", bg: "rgba(200,50,60,0.07)", border: "rgba(200,50,60,0.2)" },
-    "BUSCAR OTRA": { color: "#DC2626", bg: "rgba(220,38,38,0.07)", border: "rgba(220,38,38,0.2)" },
+    COMPRAR: { color: "#B0BEC5", bg: "rgba(176,190,197,0.07)", border: "rgba(176,190,197,0.2)" },
+    NEGOCIAR: { color: "#FBBF24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.2)" },
+    "BUSCAR OTRA": { color: "#C8323C", bg: "rgba(220,38,38,0.07)", border: "rgba(220,38,38,0.2)" },
   };
   const s = styles[verdict] || styles.NEGOCIAR;
   return (
@@ -81,12 +81,12 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 }
 
 function ScoreCircle({ score }: { score: number }) {
-  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
+  const color = score >= 75 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
   const dashLen = (score / 100) * 126;
   return (
     <div className="relative h-12 w-12 shrink-0">
       <svg width="48" height="48" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" fill="none" stroke="#E6E6E2" strokeWidth="3" />
+        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
         <circle
           cx="24" cy="24" r="20" fill="none"
           stroke={color}
@@ -97,7 +97,7 @@ function ScoreCircle({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-heading text-base font-bold text-[#0F0F0F]">{score}</span>
+        <span className="font-heading text-base font-bold text-[#FAFAF8]">{score}</span>
       </div>
     </div>
   );
@@ -158,23 +158,23 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
 
   const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
     { key: "todos", label: "Todos", count: analisis.length, color: null },
-    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#16A34A" },
-    { key: "NEGOCIAR", label: "Negociar", count: verdictCounts.NEGOCIAR, color: "#C8323C" },
-    { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#DC2626" },
+    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#B0BEC5" },
+    { key: "NEGOCIAR", label: "Negociar", count: verdictCounts.NEGOCIAR, color: "#FBBF24" },
+    { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#C8323C" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-[#0F0F0F]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[#E6E6E2] bg-white">
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
         <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
-          <FrancoLogo size="header" href="/" />
+          <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-3">
             <Link href="/pricing">
               <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
             </Link>
             <Link href="/perfil">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-[#71717A] hover:text-[#0F0F0F]">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-[#FAFAF8]/50 hover:text-[#FAFAF8]">
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Perfil</span>
               </Button>
             </Link>
@@ -188,14 +188,14 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
           /* ─── Empty State ─── */
           <div className="px-6 py-16 text-center">
             <div className="mb-6 flex select-none items-baseline justify-center opacity-[0.08]">
-              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[#0F0F0F]">re</span>
-              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[#0F0F0F]">franco</span>
+              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[#FAFAF8]">re</span>
+              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[#FAFAF8]">franco</span>
               <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
             </div>
-            <div className="mb-1.5 font-heading text-xl font-bold text-[#0F0F0F]">
+            <div className="mb-1.5 font-heading text-xl font-bold text-[#FAFAF8]">
               Todavía no has analizado ningún departamento
             </div>
-            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[#71717A]">
+            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[#FAFAF8]/50">
               Ingresa los datos de cualquier propiedad y Franco te dice si vale la pena en 30 segundos.
             </div>
             <Link href="/analisis/nuevo">
@@ -204,7 +204,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
               </button>
             </Link>
             <div className="mt-3">
-              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[#71717A] no-underline hover:text-[#0F0F0F]">
+              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[#FAFAF8]/50 no-underline hover:text-[#FAFAF8]">
                 O mira un ejemplo primero →
               </a>
             </div>
@@ -214,8 +214,8 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
             {/* ─── Header ─── */}
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h1 className="font-heading text-2xl font-bold text-[#0F0F0F]">Mis Análisis</h1>
-                <p className="mt-0.5 font-body text-[13px] text-[#71717A]">
+                <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">Mis Análisis</h1>
+                <p className="mt-0.5 font-body text-[13px] text-[#FAFAF8]/50">
                   {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -230,26 +230,26 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
             {summaryData && (
               <div className="mb-5 grid grid-cols-1 gap-2.5 md:grid-cols-3">
                 {/* Best analysis */}
-                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">MEJOR ANÁLISIS</div>
-                  <div className="font-body text-[13px] font-semibold text-[#0F0F0F]">
+                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">MEJOR ANÁLISIS</div>
+                  <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">
                     {summaryData.best.nombre} · {summaryData.best.comuna}
                   </div>
-                  <div className="mt-0.5 font-mono text-[11px] text-[#71717A]">Score {summaryData.best.score}</div>
+                  <div className="mt-0.5 font-mono text-[11px] text-[#FAFAF8]/50">Score {summaryData.best.score}</div>
                 </div>
                 {/* Average */}
-                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">PROMEDIO</div>
-                  <div className="font-heading text-[22px] font-bold text-[#0F0F0F]">{summaryData.avgScore}</div>
-                  <div className="mt-0.5 font-body text-[10px] text-[#71717A]">score promedio</div>
+                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">PROMEDIO</div>
+                  <div className="font-heading text-[22px] font-bold text-[#FAFAF8]">{summaryData.avgScore}</div>
+                  <div className="mt-0.5 font-body text-[10px] text-[#FAFAF8]/50">score promedio</div>
                 </div>
                 {/* Positive flow */}
-                <div className="rounded-[10px] border border-[#E6E6E2] bg-white p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#71717A]">FLUJO POSITIVO</div>
-                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>
+                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">FLUJO POSITIVO</div>
+                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
                     {summaryData.positiveFlowCount}/{summaryData.total}
                   </div>
-                  <div className="mt-0.5 font-body text-[10px] text-[#71717A]">propiedades</div>
+                  <div className="mt-0.5 font-body text-[10px] text-[#FAFAF8]/50">propiedades</div>
                 </div>
               </div>
             )}
@@ -266,10 +266,10 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                     // Colored active filter - use inline styles for dynamic colors
                     className += "font-semibold";
                   } else {
-                    className += "font-semibold bg-[#0F0F0F]/[0.05] border-[#0F0F0F]/40 text-[#0F0F0F]";
+                    className += "font-semibold bg-white/[0.05] border-white/40 text-[#FAFAF8]";
                   }
                 } else {
-                  className += "bg-white border-[#E6E6E2] text-[#71717A]";
+                  className += "bg-[#151515] border-white/[0.08] text-[#FAFAF8]/50";
                 }
 
                 return (
@@ -292,7 +292,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
 
             {/* ─── Analysis Cards ─── */}
             {filtered.length === 0 ? (
-              <div className="py-10 text-center font-body text-[13px] text-[#71717A]">
+              <div className="py-10 text-center font-body text-[13px] text-[#FAFAF8]/50">
                 No hay análisis con este filtro.
               </div>
             ) : (
@@ -307,8 +307,8 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                     <div
                       key={item.id}
                       onClick={() => router.push(`/analisis/${item.id}`)}
-                      className={`cursor-pointer rounded-xl border bg-white p-4 px-5 transition-all hover:border-[#0F0F0F]/20 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] ${
-                        isSelected ? "border-[#0F0F0F]/30" : "border-[#E6E6E2]"
+                      className={`cursor-pointer rounded-xl border bg-[#151515] p-4 px-5 transition-all hover:border-white/20 hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
+                        isSelected ? "border-white/30" : "border-white/[0.08]"
                       } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
                     >
                       {/* Row 1: Score + Name + Verdict + Metrics */}
@@ -318,13 +318,13 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                           onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                             isSelected
-                              ? "border-[#0F0F0F] bg-[#0F0F0F]"
-                              : "border-[#E6E6E2] hover:border-[#0F0F0F]/40"
+                              ? "border-[#FAFAF8] bg-[#FAFAF8]"
+                              : "border-white/[0.08] hover:border-white/40"
                           }`}
                           title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
                         >
                           {isSelected && (
-                            <svg className="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="h-2.5 w-2.5 text-[#0F0F0F]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
@@ -335,37 +335,37 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-body text-sm font-bold text-[#0F0F0F]">{item.nombre}</span>
-                            <span className="text-[#71717A]">·</span>
-                            <span className="font-body text-xs text-[#71717A]">{item.comuna}</span>
+                            <span className="font-body text-sm font-bold text-[#FAFAF8]">{item.nombre}</span>
+                            <span className="text-[#FAFAF8]/50">·</span>
+                            <span className="font-body text-xs text-[#FAFAF8]/50">{item.comuna}</span>
                             {item.is_premium && (
                               <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1.5">
                             <VerdictBadge verdict={verdict} />
-                            <span className="text-[#71717A]">·</span>
-                            <span className="font-body text-[11px] text-[#71717A]">{formatDate(item.created_at)}</span>
+                            <span className="text-[#FAFAF8]/50">·</span>
+                            <span className="font-body text-[11px] text-[#FAFAF8]/50">{formatDate(item.created_at)}</span>
                           </div>
                         </div>
 
                         {/* Metrics (hidden on mobile) */}
                         <div className="hidden items-center gap-4 sm:flex">
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">FLUJO</div>
-                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">FLUJO</div>
+                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">RENT.</div>
-                            <div className="font-mono text-sm font-semibold text-[#0F0F0F]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">RENT.</div>
+                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
                               {m.rentabilidadBruta.toFixed(1)}%
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#71717A]">RETORNO</div>
-                            <div className="font-mono text-sm font-semibold text-[#0F0F0F]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">RETORNO</div>
+                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
                               {m.multiplicador > 0 ? `${m.multiplicador.toFixed(1)}x` : "—"}
                             </div>
                           </div>
@@ -375,7 +375,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                         {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
                           <button
                             onClick={(e) => handleDelete(e, item.id)}
-                            className="shrink-0 rounded-lg p-2 text-[#E6E6E2] transition-colors hover:bg-red-50 hover:text-[#DC2626]"
+                            className="shrink-0 rounded-lg p-2 text-white/20 transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
                             title="Eliminar análisis"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -384,9 +384,9 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
                       </div>
 
                       {/* Row 2: "Siendo franco:" summary */}
-                      <div className="mt-2.5 border-t border-[#E6E6E2] pt-2.5">
-                        <p className="font-body text-xs leading-snug text-[#71717A]">
-                          <span className="font-semibold text-[#0F0F0F]">Siendo franco:</span>{" "}
+                      <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
+                        <p className="font-body text-xs leading-snug text-[#FAFAF8]/50">
+                          <span className="font-semibold text-[#FAFAF8]">Siendo franco:</span>{" "}
                           {item.results?.resumen
                             ? item.results.resumen.split(".")[0] + "."
                             : getSiendoFranco(item.score, m.flujoMensual)}
@@ -403,7 +403,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
 
       {/* ─── Floating Compare Bar ─── */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[#0F0F0F] bg-[#0F0F0F] shadow-2xl shadow-black/20">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#151515] shadow-2xl shadow-black/20">
           <div className="mx-auto flex max-w-[820px] items-center justify-between px-5 py-3">
             <span className="font-body text-sm font-medium text-white">
               {selected.size} análisis seleccionados

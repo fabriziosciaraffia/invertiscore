@@ -36,7 +36,7 @@ No se puede eliminar. Siempre is_premium=true. Se usa en la landing.
 - **Nombre**: Franco (antes InvertiScore)
 - **Dominio**: refranco.ai
 - **Tagline**: RE FRANCO CON TU INVERSIÓN (JetBrains Mono, uppercase, muted)
-- **Wordmark**: "re" en Source Serif 4 Regular (opacity 28%) + "franco" en Source Serif 4 Bold + ".ai" en Source Sans 3 SemiBold color Signal Red
+- **Wordmark**: "re" en Source Serif 4 Regular (opacity 28%) + "franco" en Source Serif 4 Bold + ".ai" en IBM Plex Sans SemiBold color Signal Red
 
 ### Paleta
 - Ink: #0F0F0F (primary, textos, fondos oscuros, CTAs)
@@ -48,13 +48,36 @@ No se puede eliminar. Siempre is_premium=true. Se usa en la landing.
 
 ### Tipografía
 - Headings: Source Serif 4 (font-heading) — Bold para títulos, Regular para "re" del wordmark
-- Body/UI: Source Sans 3 (font-body) — Regular, Medium, SemiBold, Bold
+- Body/UI: IBM Plex Sans (font-body) — Regular, Medium, SemiBold, Bold
 - Data/Mono: JetBrains Mono (font-mono) — métricas, scores, veredictos, tagline
 
+### Pesos tipográficos
+- Source Serif 4: siempre Bold (700) en títulos de sección
+- IBM Plex Sans SemiBold (600): solo primera línea de riesgos/alertas y CTAs
+- IBM Plex Sans Medium (500): labels de sub-sección, nav items, nombres en tablas
+- IBM Plex Sans Regular (400): todo el resto (párrafos, descripciones, ayuda)
+- JetBrains Mono SemiBold (600): score grande, métricas principales, veredicto
+- JetBrains Mono Medium (500): valores en tablas y flujo
+- JetBrains Mono Regular (400): labels de métricas, tagline, footnotes
+- Regla: máximo 1-2 elementos bold por sección. Si hay más, algo sobra.
+
+### Análisis IA: formato de texto
+- El texto generado por IA se renderiza SIEMPRE en IBM Plex Sans Regular (400).
+- No se respeta markdown bold del output de IA.
+- Datos numéricos inline se renderizan en JetBrains Mono Regular (cambio de fuente, no de peso).
+- Sub-secciones numeradas del análisis usan IBM Plex Sans Medium (500).
+
 ### Colores de Veredicto
-- COMPRAR: #16A34A (verde)
-- NEGOCIAR: #C8323C (signal red)
-- BUSCAR OTRA: #DC2626 (rojo)
+- COMPRAR: #B0BEC5 (gris azulado)
+- NEGOCIAR: #FBBF24 (amber)
+- BUSCAR OTRA: #C8323C (signal red)
+
+### Colores de Estado
+- Positivo: #B0BEC5 — score ≥70, flujo positivo, sobre promedio
+- Advertencia: #FBBF24 — score 40-69, riesgo medio
+- Negativo: #C8323C — score <40, flujo negativo, bajo promedio
+- Neutro: #71717A — en el promedio, sin juicio
+- Informativo: #FAFAF8 — datos sin polaridad
 
 ### Regla del rojo
 Signal Red SOLO aparece cuando hay info que requiere atención: veredictos, métricas negativas, .ai del wordmark, CTAs premium. Nunca como decoración.

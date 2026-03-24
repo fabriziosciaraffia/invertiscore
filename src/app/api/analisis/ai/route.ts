@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { consumeCredit } from "@/lib/access";
 
 const anthropic = new Anthropic();
 
@@ -29,7 +30,7 @@ function createSupabaseServer() {
   );
 }
 
-const SYSTEM_PROMPT = `Eres un analista de inversión inmobiliaria en Chile. Hablas en español chileno, claro y directo. No usas jerga financiera sin explicar. Tu objetivo es que una persona sin conocimientos financieros entienda si esta inversión le conviene o no. Eres honesto: si es mala inversión lo dices sin rodeos. Respondes SOLO con el JSON solicitado, sin texto adicional ni backticks.
+const SYSTEM_PROMPT = `Eres un analista de inversión inmobiliaria en Chile. Hablas en español chileno, claro y directo. No usas jerga financiera sin explicar. Tu objetivo es que una persona sin conocimientos financieros entienda si esta inversión le conviene o no. Eres honesto: si los números no cuadran, lo dices sin rodeos. Respondes SOLO con el JSON solicitado, sin texto adicional ni backticks.
 
 CONTEXTO IMPORTANTE DEL MERCADO CHILENO 2024-2026:
 - Con tasas hipotecarias de 4-5%, prácticamente NINGÚN departamento de inversión en Santiago tiene flujo positivo con 80% de financiamiento. Flujo negativo es lo NORMAL, no la excepción.
@@ -76,6 +77,22 @@ export async function POST(request: Request) {
 
     if (!analysis) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // Allow admin email full access
+    const isAdmin = user.email === "fabriziosciaraffia@gmail.com";
+
+    // If not premium, try to consume a credit
+    if (!analysis.is_premium && !isAdmin) {
+      const credited = await consumeCredit(user.id, analysisId);
+      if (!credited) {
+        return NextResponse.json({ error: "Análisis no desbloqueado. Debes pagar para acceder al análisis IA." }, { status: 403 });
+      }
+    }
+
+    // Return cached AI analysis if it already exists
+    if (analysis.ai_analysis && typeof analysis.ai_analysis === "object" && "veredicto" in analysis.ai_analysis) {
+      return NextResponse.json(analysis.ai_analysis);
     }
 
     const input = analysis.input_data;
@@ -248,7 +265,7 @@ REGLAS GENERALES:
 - En la versión _clp, todos los montos en CLP ($XXX.XXX). En la versión _uf, todos los montos en UF.
 - No uses jerga sin explicar entre paréntesis
 - Sé directo y honesto, no diplomático
-- Si es mala inversión, dilo claramente
+- Si los números no favorecen la inversión, dilo claramente
 - Los cálculos de comparación con alternativas deben ser correctos matemáticamente
 - Adapta el tono: si el score es >70 sé positivo, si es 50-70 sé cauteloso, si es <50 sé directo sobre los problemas
 - El veredicto debe ser UNA de las tres opciones: COMPRAR, NEGOCIAR, o BUSCAR OTRA

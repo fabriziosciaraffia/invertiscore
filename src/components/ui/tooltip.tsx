@@ -124,7 +124,7 @@ export function InfoTooltip({ content }: { content: string }) {
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex items-center justify-center w-[15px] h-[15px] rounded-full bg-[#F0F0EC] font-mono text-[9px] text-[#71717A] cursor-help shrink-0"
+        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-white/[0.06] font-mono text-[9px] text-[#FAFAF8]/25 cursor-help shrink-0 hover:bg-white/[0.12] hover:text-[#FAFAF8]/50 transition-colors"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis, setUFValue } from "@/lib/analysis";
@@ -36,9 +37,7 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-    }
+    const isGuest = !user;
 
     const body: AnalisisInput = await request.json();
 
@@ -48,10 +47,19 @@ export async function POST(request: Request) {
 
     const result = runAnalysis(body);
 
-    const { data, error } = await supabase
+    // Guest: use service role to bypass RLS (user_id will be null)
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (isGuest && !serviceRoleKey) {
+      return NextResponse.json({ error: "Regístrate gratis para guardar tu análisis" }, { status: 401 });
+    }
+    const dbClient = isGuest
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey!)
+      : supabase;
+
+    const { data, error } = await dbClient
       .from("analisis")
       .insert({
-        user_id: user.id,
+        user_id: user?.id ?? null,
         nombre: body.nombre,
         comuna: body.comuna,
         ciudad: body.ciudad,
@@ -70,6 +78,7 @@ export async function POST(request: Request) {
         resumen: result.resumen,
         results: result,
         input_data: body,
+        creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
       })
       .select()
       .single();

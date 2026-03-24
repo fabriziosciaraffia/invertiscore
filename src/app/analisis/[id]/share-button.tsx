@@ -20,7 +20,7 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-export function ShareButton({ id, score, nombre }: { id: string; score: number; nombre: string }) {
+export function ShareButton({ id, score, nombre, comuna }: { id: string; score: number; nombre: string; comuna?: string }) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -60,20 +60,21 @@ export function ShareButton({ id, score, nombre }: { id: string; score: number; 
   };
 
   const shareWhatsApp = () => {
-    const text = `Mira el análisis de este depto: ${nombre}. Franco: ${score}/100 → ${url}`;
+    const text = `Analicé este depto con Franco y el Score es ${score}/100. Míralo acá → ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
     setOpen(false);
   };
 
   const shareEmail = () => {
-    const subject = `Análisis Franco: ${nombre}`;
-    const body = `Te comparto este análisis de inversión inmobiliaria.\n\nScore: ${score}/100\n\nVer análisis completo: ${url}`;
+    const subject = `Te comparto mi análisis Franco: ${nombre}`;
+    const comunaText = comuna ? `\nComuna: ${comuna}` : "";
+    const body = `Hice un análisis de inversión con Franco para este depto.\n\nScore: ${score}/100${comunaText}\n\nVer análisis: ${url}`;
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setOpen(false);
   };
 
   const shareX = () => {
-    const text = `Analicé este depto con Franco: Score ${score}/100. ${url}`;
+    const text = `Analicé este depto con Franco: Score ${score}/100 🏠 ${url}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
     setOpen(false);
   };
@@ -85,21 +86,21 @@ export function ShareButton({ id, score, nombre }: { id: string; score: number; 
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-border bg-white p-2 shadow-lg dark:bg-card">
-          <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#151515] p-2 shadow-lg">
+          <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
             <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
             WhatsApp
           </button>
-          <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">
-            {copied ? <Check className="h-4 w-4 text-[#16A34A]" /> : <Link2 className="h-4 w-4 text-muted-foreground" />}
+          <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
+            {copied ? <Check className="h-4 w-4 text-[#B0BEC5]" /> : <Link2 className="h-4 w-4 text-[#FAFAF8]/50" />}
             {copied ? "Link copiado" : "Copiar link"}
           </button>
-          <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">
-            <Mail className="h-4 w-4 text-muted-foreground" />
+          <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
+            <Mail className="h-4 w-4 text-[#FAFAF8]/50" />
             Email
           </button>
-          <button onClick={shareX} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted">
-            <XIcon className="h-4 w-4 text-foreground" />
+          <button onClick={shareX} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
+            <XIcon className="h-4 w-4 text-[#FAFAF8]" />
             X (Twitter)
           </button>
         </div>

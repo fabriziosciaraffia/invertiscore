@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { fetchCoordinates } from "@/lib/services/scraper/toctoc";
+import { cleanAddressFromTitle, geocodeAddress } from "@/lib/services/geocoding";
 
 function getSupabase() {
   return createClient(
@@ -19,13 +19,13 @@ export async function POST(request: Request) {
 
   const supabase = getSupabase();
 
-  // Get properties that have a URL but no coordinates and haven't been attempted
+  // Propiedades sin coordenadas que no se han intentado geocodificar
   const { data: rows, error: fetchError } = await supabase
     .from("scraped_properties")
-    .select("id, url")
+    .select("id, direccion, comuna")
     .is("lat", null)
     .eq("geocode_attempted", false)
-    .not("url", "is", null)
+    .not("direccion", "is", null)
     .limit(BATCH_LIMIT);
 
   if (fetchError) {
@@ -36,38 +36,55 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, message: "No properties to enrich", enriched: 0, failed: 0 });
   }
 
-  // Fetch coordinates in parallel
-  const results = await Promise.all(
-    rows.map(async (row) => {
-      const coords = await fetchCoordinates(row.url);
-      return { id: row.id, coords };
-    })
-  );
-
   let enriched = 0;
   let failed = 0;
   const errors: string[] = [];
 
-  for (const { id, coords } of results) {
-    if (coords) {
-      const { error } = await supabase
-        .from("scraped_properties")
-        .update({ lat: coords.lat, lng: coords.lng, geocode_attempted: true })
-        .eq("id", id);
-      if (error) {
-        errors.push(`Update ${id}: ${error.message}`);
-        failed++;
-      } else {
-        enriched++;
-      }
-    } else {
-      // Mark as attempted so we don't retry
+  for (const row of rows) {
+    const cleanAddress = cleanAddressFromTitle(row.direccion, row.comuna);
+
+    if (!cleanAddress) {
       await supabase
         .from("scraped_properties")
         .update({ geocode_attempted: true })
-        .eq("id", id);
+        .eq("id", row.id);
+      failed++;
+      continue;
+    }
+
+    try {
+      const result = await geocodeAddress(cleanAddress, row.comuna);
+
+      if (result) {
+        const { error } = await supabase
+          .from("scraped_properties")
+          .update({ lat: result.lat, lng: result.lng, geocode_attempted: true })
+          .eq("id", row.id);
+        if (error) {
+          errors.push(`Update ${row.id}: ${error.message}`);
+          failed++;
+        } else {
+          enriched++;
+        }
+      } else {
+        await supabase
+          .from("scraped_properties")
+          .update({ geocode_attempted: true })
+          .eq("id", row.id);
+        failed++;
+      }
+    } catch (e) {
+      errors.push(`Geocode ${row.id}: ${e instanceof Error ? e.message : "unknown"}`);
+      await supabase
+        .from("scraped_properties")
+        .update({ geocode_attempted: true })
+        .eq("id", row.id);
       failed++;
     }
+
+    // Rate limit: 200ms para Google, 1100ms para Nominatim
+    const delay = process.env.GOOGLE_MAPS_API_KEY ? 200 : 1100;
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   return NextResponse.json({

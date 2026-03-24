@@ -64,7 +64,7 @@ export function ChangePasswordForm() {
         </div>
       </div>
       {message && (
-        <div className={`rounded-md p-3 text-sm ${message.type === "success" ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-destructive/10 text-destructive"}`}>
+        <div className={`rounded-md p-3 text-sm ${message.type === "success" ? "bg-[#B0BEC5]/10 text-[#B0BEC5]" : "bg-destructive/10 text-destructive"}`}>
           {message.text}
         </div>
       )}

@@ -81,25 +81,10 @@ function clamp(val: number, min: number, max: number): number {
 // Ingreso mensual
 // =========================================
 
-function calcPisoAjuste(piso: number): number {
-  // Pisos altos get premium on rent, low floors get discount
-  if (piso >= 10) return 0.04; // +4%
-  if (piso >= 7) return 0.02; // +2%
-  if (piso >= 4) return 0; // neutral
-  if (piso >= 2) return -0.02; // -2%
-  if (piso === 1) return -0.04; // -4% (ground floor)
-  return 0;
-}
-
 function calcIngresoMensual(input: AnalisisInput): number {
-  let arriendo = input.arriendo;
-
-  // Piso adjustment (only if arriendo wasn't already manually adjusted)
-  if (input.piso > 0) {
-    arriendo = Math.round(arriendo * (1 + calcPisoAjuste(input.piso)));
-  }
-
-  return arriendo;
+  // Use the rent exactly as the user entered it — no silent adjustments.
+  // Floor (piso) is still used in the score calculation (plusvalía dimension).
+  return input.arriendo;
 }
 
 // =========================================
@@ -695,7 +680,7 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
 }
 
 function getClasificacion(score: number): { clasificacion: string; color: string } {
-  if (score >= 80) return { clasificacion: "Excelente", color: "green" };
+  if (score >= 80) return { clasificacion: "Excelente", color: "positive" };
   if (score >= 65) return { clasificacion: "Buena", color: "blue" };
   if (score >= 50) return { clasificacion: "Regular", color: "yellow" };
   if (score >= 30) return { clasificacion: "Débil", color: "orange" };

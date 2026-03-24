@@ -1,10 +1,49 @@
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { AnalysisNav } from "./analysis-nav";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("analisis")
+    .select("nombre, score, comuna, creator_name")
+    .eq("id", params.id)
+    .single();
+
+  if (!data) {
+    return { title: "Franco — Análisis de inversión inmobiliaria" };
+  }
+
+  const title = `Análisis Franco: ${data.nombre}`;
+  const creatorText = data.creator_name ? `Análisis de ${data.creator_name} — ` : "";
+  const description = `${creatorText}Franco Score: ${data.score}/100. Análisis de inversión inmobiliaria en ${data.comuna}.`;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
+  const ogImageUrl = `${siteUrl}/api/og?id=${params.id}`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `${siteUrl}/analisis/${params.id}`,
+      images: [{ url: ogImageUrl, width: 1200, height: 630, alt: title }],
+      siteName: "Franco",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImageUrl],
+    },
+  };
+}
 
 export default async function AnalisisDetallePage({
   params,
@@ -36,8 +75,21 @@ export default async function AnalisisDetallePage({
   const isAdmin = user?.email === "fabriziosciaraffia@gmail.com";
   const isLoggedIn = !!user;
   const isDemo = analisis.id === DEMO_ANALYSIS_ID;
+  const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;
+  const isSharedView = isLoggedIn && !isOwner && !isAdmin;
+  const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
-  const accessLevel: "guest" | "free" | "premium" = isDemo ? "premium" : !isLoggedIn ? "guest" : isPremium ? "premium" : "free";
+
+  let accessLevel: "guest" | "free" | "premium";
+  if (isDemo || isAdmin) {
+    accessLevel = "premium";
+  } else if (!isLoggedIn) {
+    accessLevel = "guest";
+  } else if (isSharedView) {
+    accessLevel = analisis.is_premium ? "premium" : "free";
+  } else {
+    accessLevel = isPremium ? "premium" : "free";
+  }
 
   const UF_CLP = ufValue;
 
@@ -54,13 +106,15 @@ export default async function AnalisisDetallePage({
   const zoneData = await getZoneComparison(analisis.comuna);
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
+    <div className="min-h-screen bg-[#0F0F0F]">
       {/* Navbar */}
       <AnalysisNav
         userId={user?.id ?? null}
         analysisId={analisis.id}
         score={analisis.score}
         nombre={analisis.nombre}
+        comuna={analisis.comuna}
+        isSharedView={isSharedView}
       />
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
@@ -83,13 +137,16 @@ export default async function AnalisisDetallePage({
           createdAt={analisis.created_at}
           superficie={analisis.superficie}
           precioUF={analisis.precio}
+          creatorName={(data as Record<string, unknown>).creator_name as string | undefined}
+          isSharedView={isSharedView}
+          isSharedLink={isSharedLink}
         />
 
         {/* Fallback for old analyses without full results */}
         {!results && (
-          <div className="mb-8 rounded-2xl border border-[#E6E6E2] bg-white p-6">
-            <h3 className="mb-2 text-sm font-semibold">Resumen</h3>
-            <p className="text-sm leading-relaxed text-[#71717A]">
+          <div className="mb-8 rounded-2xl border border-white/[0.08] bg-[#151515] p-6">
+            <h3 className="mb-2 text-sm font-semibold text-[#FAFAF8]">Resumen</h3>
+            <p className="text-sm leading-relaxed text-[#FAFAF8]/50">
               {analisis.resumen}
             </p>
           </div>

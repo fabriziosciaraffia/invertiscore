@@ -5,6 +5,8 @@ interface CashflowChartProps {
   dividendo: number;
   gastos: number;
   contribucionesMes: number;
+  currency: "CLP" | "UF";
+  ufValue: number;
 }
 
 export function CashflowChart({
@@ -12,6 +14,8 @@ export function CashflowChart({
   dividendo,
   gastos,
   contribucionesMes,
+  currency,
+  ufValue,
 }: CashflowChartProps) {
   const corretaje = arriendoMensual * 0.5;
 
@@ -47,16 +51,24 @@ export function CashflowChart({
 
   const chartH = 200;
 
-  const fmt = (n: number) =>
-    "$" + Math.round(n).toLocaleString("es-CL");
+  const fmt = (n: number) => {
+    if (currency === "UF") {
+      const uf = n / ufValue;
+      const rounded = Math.round(uf * 10) / 10;
+      if (Number.isInteger(rounded)) return "UF " + Math.round(rounded).toLocaleString("es-CL");
+      const [int, dec] = rounded.toFixed(1).split(".");
+      return "UF " + Number(int).toLocaleString("es-CL") + "," + dec;
+    }
+    return "$" + Math.round(n).toLocaleString("es-CL");
+  };
 
   return (
     <div className="w-full overflow-x-auto">
       <div className="min-w-[600px]">
         {/* Legend */}
-        <div className="mb-4 flex flex-wrap gap-4 text-xs">
+        <div className="mb-4 flex flex-wrap gap-4 text-xs text-[#FAFAF8]/60">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#0F0F0F]" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#FAFAF8]/70" />
             Ingreso
           </span>
           <span className="flex items-center gap-1.5">
@@ -64,7 +76,7 @@ export function CashflowChart({
             Egreso
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-4 bg-[#0F0F0F]" />
+            <span className="inline-block h-0.5 w-4 bg-[#FAFAF8]" />
             Acumulado
           </span>
         </div>
@@ -75,7 +87,7 @@ export function CashflowChart({
           {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
             <div
               key={pct}
-              className="absolute left-0 right-0 border-t border-[#E6E6E2]/30"
+              className="absolute left-0 right-0 border-t border-white/[0.06]"
               style={{ top: (1 - pct) * chartH }}
             />
           ))}
@@ -92,8 +104,8 @@ export function CashflowChart({
                   className="group relative flex flex-col items-center"
                 >
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-[#E6E6E2] bg-card px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
-                    <div className="text-[#0F0F0F]">
+                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-white/[0.15] bg-[#1E1E1E] px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
+                    <div className="text-[#FAFAF8]">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
                     <div className="text-[#C8323C]">
@@ -101,7 +113,7 @@ export function CashflowChart({
                     </div>
                     <div
                       className={
-                        m.flujo >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"
+                        m.flujo >= 0 ? "text-[#FAFAF8]" : "text-[#C8323C]"
                       }
                     >
                       Flujo: {fmt(m.flujo)}
@@ -116,7 +128,7 @@ export function CashflowChart({
                   {/* Bar pair */}
                   <div className="flex items-end gap-0.5">
                     <div
-                      className="w-3 rounded-t-sm bg-[#0F0F0F]/80 transition-all group-hover:bg-[#0F0F0F]"
+                      className="w-3 rounded-t-sm bg-[#FAFAF8]/60 transition-all group-hover:bg-[#FAFAF8]/80"
                       style={{ height: ingresoH }}
                     />
                     <div
@@ -138,7 +150,7 @@ export function CashflowChart({
           >
             <polyline
               fill="none"
-              stroke="#0F0F0F"
+              stroke="#FAFAF8"
               strokeWidth="2.5"
               strokeLinejoin="round"
               points={mesConAcumulado
@@ -164,14 +176,14 @@ export function CashflowChart({
                   cx={x}
                   cy={y}
                   r="3"
-                  fill="#0F0F0F"
+                  fill="#FAFAF8"
                 />
               );
             })}
           </svg>
 
           {/* Month labels */}
-          <div className="mt-2 flex justify-around text-[10px] text-muted-foreground">
+          <div className="mt-2 flex justify-around text-[10px] text-[#FAFAF8]/50">
             {mesConAcumulado.map((m) => (
               <span key={m.mes} className="w-7 text-center">
                 M{m.mes}

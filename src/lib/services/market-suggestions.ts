@@ -35,17 +35,22 @@ export async function getSugerencias(
   precioUF?: number,
   lat?: number,
   lng?: number,
-  radiusMeters: number = 800
+  radiusMeters: number = 800,
+  propType: string = "arriendo",
+  condicion: string | null = null
 ): Promise<Sugerencias> {
+  // dormitorios=0 means "no filter" → pass null to RPC
+  const dormFilter = dormitorios > 0 ? dormitorios : null;
+
   // Fetch nearby properties for map: ALL properties (sin filtro dormitorios) for density
   let nearbyProperties: NearbyPropertyPoint[] | undefined;
   let totalInRadius = 0;
   let filteredInRadius = 0;
   if (lat && lng) {
-    const mapData = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormitorios);
+    const mapData = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormFilter, comuna, propType, condicion);
     nearbyProperties = mapData.all;
     totalInRadius = mapData.all.length;
-    filteredInRadius = mapData.filteredCount;
+    filteredInRadius = dormFilter ? mapData.filteredCount : mapData.all.length;
   }
 
   const mapFields = { nearbyProperties, totalInRadius, filteredInRadius };
@@ -53,23 +58,24 @@ export async function getSugerencias(
   // NIVEL 1: Si tenemos coordenadas, buscar por radio
   if (lat && lng) {
     const radioResult = await getSugerenciasPorRadio(
-      lat, lng, radiusMeters, superficie, dormitorios
+      lat, lng, radiusMeters, superficie, dormFilter, comuna, propType, condicion
     );
     if (radioResult) return { ...radioResult, ...mapFields };
 
     // Expandir radio si no hay suficientes datos
     const expandedResult = await getSugerenciasPorRadio(
-      lat, lng, radiusMeters * 2, superficie, dormitorios
+      lat, lng, radiusMeters * 2, superficie, dormFilter, comuna, propType, condicion
     );
     if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2, ...mapFields };
   }
 
   // NIVEL 2: Estadísticas por comuna + dormitorios
-  const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormitorios);
+  const dormForComuna = dormFilter || 2; // comuna stats need a dorm value
+  const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormForComuna, propType);
   if (comunaResult) return { ...comunaResult, ...mapFields };
 
   // NIVEL 3: Fallback a estimación hardcodeada
-  const fallback = getFallbackEstimacion(comuna, superficie, dormitorios, precioUF);
+  const fallback = getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF);
   return { ...fallback, ...mapFields };
 }
 
@@ -77,7 +83,10 @@ async function getNearbyPropertiesForMap(
   lat: number,
   lng: number,
   radiusMeters: number,
-  dormitorios: number
+  dormitorios: number | null,
+  comuna?: string,
+  propType: string = "arriendo",
+  condicion: string | null = null
 ): Promise<{ all: NearbyPropertyPoint[]; filteredCount: number }> {
   const supabase = getSupabase();
 
@@ -86,22 +95,35 @@ async function getNearbyPropertiesForMap(
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
-    prop_type: "arriendo",
+    prop_type: propType,
     prop_dorms: null,
+    prop_comuna: comuna || null,
+    prop_condicion: condicion,
   });
 
-  const all = (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number; dormitorios: number | null }) => ({
+  const raw = (allProps || []).map((p: { lat: number; lng: number; precio: number; superficie_m2: number | null; distance_meters: number }) => ({
     lat: p.lat,
     lng: p.lng,
     precio: p.precio,
     superficie_m2: p.superficie_m2,
     distance_meters: p.distance_meters,
   }));
+  const all = filterOutliers(raw) as NearbyPropertyPoint[];
 
-  // Count how many match the dormitorios filter
-  const filteredCount = (allProps || []).filter(
-    (p: { dormitorios: number | null }) => p.dormitorios === dormitorios
-  ).length;
+  // Count filtered by dormitorios via a second RPC call (reliable, doesn't depend on RPC returning dormitorios)
+  let filteredCount = all.length;
+  if (dormitorios) {
+    const { data: filteredProps } = await supabase.rpc("properties_within_radius", {
+      center_lat: lat,
+      center_lng: lng,
+      radius_meters: radiusMeters,
+      prop_type: propType,
+      prop_dorms: dormitorios,
+      prop_comuna: comuna || null,
+      prop_condicion: condicion,
+    });
+    filteredCount = filterOutliers(filteredProps || []).length;
+  }
 
   return { all, filteredCount };
 }
@@ -111,7 +133,10 @@ async function getSugerenciasPorRadio(
   lng: number,
   radiusMeters: number,
   superficie: number,
-  dormitorios: number
+  dormitorios: number | null,
+  comuna?: string,
+  propType: string = "arriendo",
+  condicion: string | null = null
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
@@ -120,63 +145,70 @@ async function getSugerenciasPorRadio(
     center_lat: lat,
     center_lng: lng,
     radius_meters: radiusMeters,
-    prop_type: "arriendo",
+    prop_type: propType,
     prop_dorms: dormitorios,
+    prop_comuna: comuna || null,
+    prop_condicion: condicion,
   });
 
-  // Mínimo 5 propiedades para una sugerencia confiable
-  if (!arriendos || arriendos.length < 5) {
-    // Intentar sin filtro de dormitorios
+  // Filter outliers and check minimum
+  const clean = filterOutliers(arriendos || []);
+  if (clean.length < 5) {
+    // Intentar sin filtro de dormitorios (si ya estaba sin filtro, skip)
+    if (dormitorios === null) return null;
     const { data: arriendosGeneral } = await supabase.rpc("properties_within_radius", {
       center_lat: lat,
       center_lng: lng,
       radius_meters: radiusMeters,
-      prop_type: "arriendo",
+      prop_type: propType,
       prop_dorms: null,
+      prop_comuna: comuna || null,
+      prop_condicion: condicion,
     });
 
-    if (!arriendosGeneral || arriendosGeneral.length < 5) return null;
+    const cleanGeneral = filterOutliers(arriendosGeneral || []);
+    if (cleanGeneral.length < 5) return null;
 
-    const preciosM2 = arriendosGeneral
-      .filter((a: { superficie_m2: number }) => a.superficie_m2 && a.superficie_m2 > 0)
-      .map((a: { precio: number; superficie_m2: number }) => a.precio / a.superficie_m2)
-      .sort((a: number, b: number) => a - b);
+    const preciosM2 = cleanGeneral
+      .filter((a) => a.superficie_m2 && a.superficie_m2 > 0)
+      .map((a) => a.precio / a.superficie_m2!)
+      .sort((a, b) => a - b);
 
     if (preciosM2.length < 3) return null;
 
     const medianaM2 = preciosM2[Math.floor(preciosM2.length / 2)];
     const arriendo = Math.round(medianaM2 * superficie / 1000) * 1000;
 
-    const ggccs = arriendosGeneral
-      .filter((a: { gastos_comunes: number }) => a.gastos_comunes && a.gastos_comunes > 0)
-      .map((a: { gastos_comunes: number }) => a.gastos_comunes);
+    const ggccs = (cleanGeneral as Array<{ gastos_comunes?: number } & typeof cleanGeneral[0]>)
+      .filter((a) => a.gastos_comunes && a.gastos_comunes > 0)
+      .map((a) => a.gastos_comunes!);
 
     return {
       arriendo,
       ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
       contribTrim: estimateContribuciones(superficie, medianaM2),
       source: "radio",
-      sampleSize: arriendosGeneral.length,
+      sampleSize: cleanGeneral.length,
       radiusMeters,
       precioM2: Math.round(medianaM2),
     };
   }
 
-  // Tenemos suficientes datos con dormitorios
-  const precios = arriendos.map((a: { precio: number }) => a.precio).sort((a: number, b: number) => a - b);
-  const preciosM2 = arriendos
-    .filter((a: { superficie_m2: number }) => a.superficie_m2 && a.superficie_m2 > 0)
-    .map((a: { precio: number; superficie_m2: number }) => a.precio / a.superficie_m2);
-  const ggccs = arriendos
-    .filter((a: { gastos_comunes: number }) => a.gastos_comunes && a.gastos_comunes > 0)
-    .map((a: { gastos_comunes: number }) => a.gastos_comunes);
+  // Tenemos suficientes datos con dormitorios (post-filter)
+  const precios = clean.map((a) => a.precio).sort((a, b) => a - b);
+  const preciosM2 = clean
+    .filter((a) => a.superficie_m2 && a.superficie_m2 > 0)
+    .map((a) => a.precio / a.superficie_m2!);
+  const ggccs = (clean as Array<{ gastos_comunes?: number } & typeof clean[0]>)
+    .filter((a) => a.gastos_comunes && a.gastos_comunes > 0)
+    .map((a) => a.gastos_comunes!);
 
   return {
     arriendo: Math.round(median(precios) / 1000) * 1000,
     ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
     contribTrim: estimateContribuciones(superficie),
     source: "radio",
-    sampleSize: arriendos.length,
+    sampleSize: clean.length,
     radiusMeters,
     precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2)) : undefined,
   };
@@ -185,7 +217,8 @@ async function getSugerenciasPorRadio(
 async function getSugerenciasPorComuna(
   comuna: string,
   superficie: number,
-  dormitorios: number
+  dormitorios: number,
+  propType: string = "arriendo"
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
@@ -194,7 +227,7 @@ async function getSugerenciasPorComuna(
     .select("*")
     .eq("comuna", comuna)
     .eq("dormitorios", dormitorios)
-    .eq("type", "arriendo")
+    .eq("type", propType)
     .single();
 
   if (stats && stats.count >= 5) {
@@ -262,4 +295,40 @@ function median(arr: number[]): number {
   const sorted = [...arr].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function percentile(sorted: number[], p: number): number {
+  const idx = (p / 100) * (sorted.length - 1);
+  const lo = Math.floor(idx);
+  const hi = Math.ceil(idx);
+  if (lo === hi) return sorted[lo];
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (idx - lo);
+}
+
+/** Filter outliers by superficie range + IQR on precio/m2 */
+function filterOutliers<T extends { precio: number; superficie_m2: number | null }>(props: T[]): T[] {
+  // 1. Remove absurd superficie
+  const valid = props.filter(
+    (p) => !p.superficie_m2 || (p.superficie_m2 >= 15 && p.superficie_m2 <= 300)
+  );
+
+  // 2. IQR filter on precio/m2 (only for props with superficie)
+  const withM2 = valid.filter((p) => p.superficie_m2 && p.superficie_m2 > 0);
+  const withoutM2 = valid.filter((p) => !p.superficie_m2 || p.superficie_m2 <= 0);
+
+  if (withM2.length < 4) return valid; // not enough data for IQR
+
+  const ppm2 = withM2.map((p) => p.precio / p.superficie_m2!).sort((a, b) => a - b);
+  const q1 = percentile(ppm2, 25);
+  const q3 = percentile(ppm2, 75);
+  const iqr = q3 - q1;
+  const lo = q1 - 1.5 * iqr;
+  const hi = q3 + 1.5 * iqr;
+
+  const filtered = withM2.filter((p) => {
+    const pm2 = p.precio / p.superficie_m2!;
+    return pm2 >= lo && pm2 <= hi;
+  });
+
+  return [...filtered, ...withoutM2];
 }

@@ -17,6 +17,7 @@ export interface ScrapedProperty {
   piso?: number;
   antiguedad?: string;
   url?: string;
+  condicion?: string;
 }
 
 export interface ScraperResult {
@@ -32,6 +33,29 @@ const COMUNAS_SANTIAGO = [
   "la-reina", "estacion-central", "independencia", "recoleta",
   "maipu", "puente-alto", "san-joaquin", "quinta-normal", "conchali",
 ];
+
+// ─── Comuna IDs for gw-lista-seo API ───
+const COMUNA_IDS: Record<string, { id: number; label: string }> = {
+  "santiago":         { id: 339, label: "Santiago" },
+  "providencia":      { id: 337, label: "Providencia" },
+  "las-condes":       { id: 313, label: "Las Condes" },
+  "nunoa":            { id: 340, label: "Ñuñoa" },
+  "la-florida":       { id: 316, label: "La Florida" },
+  "vitacura":         { id: 312, label: "Vitacura" },
+  "lo-barnechea":     { id: 311, label: "Lo Barnechea" },
+  "san-miguel":       { id: 335, label: "San Miguel" },
+  "macul":            { id: 342, label: "Macul" },
+  "penalolen":        { id: 315, label: "Peñalolén" },
+  "la-reina":         { id: 314, label: "La Reina" },
+  "estacion-central": { id: 338, label: "Estación Central" },
+  "independencia":    { id: 324, label: "Independencia" },
+  "recoleta":         { id: 325, label: "Recoleta" },
+  "maipu":            { id: 320, label: "Maipú" },
+  "san-joaquin":      { id: 341, label: "San Joaquín" },
+  "quinta-normal":    { id: 336, label: "Quinta Normal" },
+  "conchali":         { id: 326, label: "Conchalí" },
+  // puente-alto: ID no confirmado, se usa fallback __NEXT_DATA__
+};
 
 export const BATCH_SIZE = 1; // Reducido para diagnóstico de timeout (era 2)
 export const TOTAL_BATCHES = Math.ceil(COMUNAS_SANTIAGO.length / BATCH_SIZE);
@@ -247,7 +271,169 @@ export async function fetchCoordinates(url: string): Promise<{ lat: number; lng:
   }
 }
 
-// ─── Listing page scraper (fast, no coord enrichment) ───
+// ─── Reusable property parser (shared by API and __NEXT_DATA__) ───
+
+function parsePropertyFromResult(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  item: any,
+  type: "arriendo" | "venta",
+  comunaFallback: string
+): ScrapedProperty | null {
+  try {
+    let precioCLP: number | null = null;
+    let precioUF: number | null = null;
+
+    if (item.precios && Array.isArray(item.precios)) {
+      for (const p of item.precios) {
+        if (p.prefix === "$" && p.value) {
+          precioCLP = parseInt(String(p.value).replace(/\./g, "").replace(/,/g, ""));
+        }
+        if (p.prefix === "UF" && p.value) {
+          precioUF = parseFloat(String(p.value).replace(/\./g, "").replace(",", "."));
+        }
+      }
+    }
+
+    const precio = precioCLP || (precioUF ? precioUF : 0);
+    if (precio === 0) return null;
+
+    let superficieM2: number | undefined;
+    if (item.superficie && Array.isArray(item.superficie) && item.superficie[0]) {
+      superficieM2 = parseInt(String(item.superficie[0]));
+      if (isNaN(superficieM2) || superficieM2 <= 0) superficieM2 = undefined;
+    }
+
+    let dormitorios: number | undefined;
+    if (item.dormitorios && Array.isArray(item.dormitorios) && item.dormitorios[0]) {
+      dormitorios = parseInt(String(item.dormitorios[0]));
+      if (isNaN(dormitorios)) dormitorios = undefined;
+    }
+
+    let banos: number | undefined;
+    if (item.bannos && Array.isArray(item.bannos) && item.bannos[0]) {
+      banos = parseInt(String(item.bannos[0]));
+      if (isNaN(banos)) banos = undefined;
+    }
+
+    const direccion = item.titulo || undefined;
+    const url = item.urlFicha || undefined;
+    const sourceId = url || `toctoc-${comunaFallback}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    return {
+      source: "toctoc",
+      sourceId,
+      type,
+      comuna: item.comuna || comunaFallback,
+      direccion,
+      precio,
+      moneda: precioCLP ? "CLP" : "UF",
+      superficieM2,
+      dormitorios,
+      banos,
+      url,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ─── Paginated API scraper (gw-lista-seo) ───
+
+export async function scrapeTocTocAPI(
+  type: "arriendo" | "venta" = "arriendo",
+  comunas?: string[],
+  maxPagesPerComuna: number = 5
+): Promise<ScraperResult> {
+  const properties: ScrapedProperty[] = [];
+  const errors: string[] = [];
+  const targetComunas = comunas || Object.keys(COMUNA_IDS);
+
+  // Paso 1: Obtener cookies de sesión
+  let cookies = "";
+  try {
+    const sessionResponse = await fetch(
+      "https://www.toctoc.com/arriendo/departamento/metropolitana/santiago",
+      { headers: HEADERS }
+    );
+    const setCookies = sessionResponse.headers.getSetCookie?.() || [];
+    cookies = setCookies.map(c => c.split(";")[0]).join("; ");
+  } catch (e) {
+    errors.push(`Session error: ${e}`);
+    return { source: "toctoc-api", properties, errors, scrapedAt: new Date() };
+  }
+
+  // Paso 2: Para cada comuna, paginar
+  for (const comunaSlug of targetComunas) {
+    const comunaInfo = COMUNA_IDS[comunaSlug];
+    if (!comunaInfo) {
+      // Sin ID para esta comuna, skip (se usa fallback)
+      continue;
+    }
+
+    const operacionFilter = type === "arriendo"
+      ? { id: 2, value: [3] }
+      : { id: 1, value: [1, 2] };
+
+    const filtros = JSON.stringify([
+      { id: "tipo-de-busqueda", type: "radio", values: [operacionFilter], mainFilter: true },
+      { id: "tipo-de-propiedad", type: "check", values: [{ id: 2, value: [2] }], mainFilter: true },
+      { id: "region", type: "select", values: [{ id: 13, value: [13] }] },
+      { id: "comuna", type: "select", values: [{ id: comunaInfo.id, value: [comunaInfo.id] }] },
+    ]);
+
+    let page = 1;
+    let totalPages = 1;
+
+    while (page <= Math.min(totalPages, maxPagesPerComuna)) {
+      try {
+        const apiUrl = `https://www.toctoc.com/gw-lista-seo/propiedades?filtros=${encodeURIComponent(filtros)}&order=1&page=${page}`;
+
+        const response = await fetch(apiUrl, {
+          headers: {
+            "User-Agent": HEADERS["User-Agent"],
+            "Accept": "application/json",
+            "Accept-Language": "es-CL,es;q=0.9",
+            "Referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
+            "Cookie": cookies,
+          },
+        });
+
+        if (!response.ok) {
+          errors.push(`API ${comunaSlug} p${page}: ${response.status}`);
+          break;
+        }
+
+        const data = await response.json() as { total: number; results: unknown[] };
+
+        if (!data.results || data.results.length === 0) break;
+
+        if (page === 1) {
+          totalPages = Math.ceil(data.total / 20);
+        }
+
+        for (const item of data.results) {
+          const parsed = parsePropertyFromResult(item, type, comunaInfo.label);
+          if (parsed) properties.push(parsed);
+        }
+
+        page++;
+
+        // Rate limiting entre páginas
+        await new Promise(resolve => setTimeout(resolve, 500));
+      } catch (error) {
+        errors.push(`API ${comunaSlug} p${page}: ${error}`);
+        break;
+      }
+    }
+
+    // Rate limiting entre comunas
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+
+  return { source: "toctoc-api", properties, errors, scrapedAt: new Date() };
+}
+
+// ─── Listing page scraper (__NEXT_DATA__ fallback) ───
 
 export async function scrapeTocToc(
   type: "arriendo" | "venta" = "arriendo",
@@ -301,62 +487,8 @@ function parseTocTocHTML(html: string, comunaSlug: string, type: string): Scrape
     if (!results || !Array.isArray(results)) return properties;
 
     for (const item of results) {
-      try {
-        let precioCLP: number | null = null;
-        let precioUF: number | null = null;
-
-        if (item.precios && Array.isArray(item.precios)) {
-          for (const p of item.precios) {
-            if (p.prefix === "$" && p.value) {
-              precioCLP = parseInt(String(p.value).replace(/\./g, "").replace(/,/g, ""));
-            }
-            if (p.prefix === "UF" && p.value) {
-              precioUF = parseFloat(String(p.value).replace(/\./g, "").replace(",", "."));
-            }
-          }
-        }
-
-        const precio = precioCLP || (precioUF ? precioUF : 0);
-        if (precio === 0) continue;
-
-        let superficieM2: number | undefined;
-        if (item.superficie && Array.isArray(item.superficie) && item.superficie[0]) {
-          superficieM2 = parseInt(String(item.superficie[0]));
-          if (isNaN(superficieM2) || superficieM2 <= 0) superficieM2 = undefined;
-        }
-
-        let dormitorios: number | undefined;
-        if (item.dormitorios && Array.isArray(item.dormitorios) && item.dormitorios[0]) {
-          dormitorios = parseInt(String(item.dormitorios[0]));
-          if (isNaN(dormitorios)) dormitorios = undefined;
-        }
-
-        let banos: number | undefined;
-        if (item.bannos && Array.isArray(item.bannos) && item.bannos[0]) {
-          banos = parseInt(String(item.bannos[0]));
-          if (isNaN(banos)) banos = undefined;
-        }
-
-        const direccion = item.titulo || undefined;
-        const url = item.urlFicha || undefined;
-        const sourceId = url || `toctoc-${comuna}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-        properties.push({
-          source: "toctoc",
-          sourceId,
-          type: type as "arriendo" | "venta",
-          comuna: item.comuna || comuna,
-          direccion,
-          precio,
-          moneda: precioCLP ? "CLP" : "UF",
-          superficieM2,
-          dormitorios,
-          banos,
-          url,
-        });
-      } catch {
-        continue;
-      }
+      const parsed = parsePropertyFromResult(item, type as "arriendo" | "venta", comuna);
+      if (parsed) properties.push(parsed);
     }
   } catch {
     // __NEXT_DATA__ parse error

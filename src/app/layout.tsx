@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Source_Serif_4, Source_Sans_3, JetBrains_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
 const sourceSerif = Source_Serif_4({
@@ -10,9 +10,9 @@ const sourceSerif = Source_Serif_4({
   display: "swap",
 });
 
-const sourceSans = Source_Sans_3({
+const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-body",
   display: "swap",
 });
@@ -23,6 +23,12 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata: Metadata = {
   title: "Franco — ¿Ese depto es buena inversión?",
@@ -56,7 +62,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${sourceSerif.variable} ${sourceSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
+      <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         {children}
       </body>
     </html>

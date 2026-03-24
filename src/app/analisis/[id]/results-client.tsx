@@ -9,13 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
-  Lock, Sparkles, Shield, MapPin,
+  Lock, Sparkles, Shield, MapPin, Check,
   SlidersHorizontal, RefreshCw, Loader2, Clock,
   Wallet, Scale, Handshake, TrendingUp, AlertTriangle, CheckCircle2, X,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate } from "@/lib/analysis";
 import type { MarketDataRow } from "@/lib/market-data";
+import FrancoLogo from "@/components/franco-logo";
+
 
 // Module-level UF value, updated from server prop on mount
 let UF_CLP = 38800;
@@ -50,6 +52,16 @@ function normalizeMetrics(metrics: any): import("@/lib/types").AnalysisMetrics |
     rentabilidadBruta: metrics.rentabilidadBruta ?? metrics.yieldBruto ?? 0,
     rentabilidadNeta: metrics.rentabilidadNeta ?? metrics.yieldNeto ?? 0,
     capRate: metrics.capRate ?? 0,
+    cashOnCash: metrics.cashOnCash ?? 0,
+    precioM2: metrics.precioM2 ?? 0,
+    mesesPaybackPie: metrics.mesesPaybackPie ?? 999,
+    dividendo: metrics.dividendo ?? 0,
+    flujoNetoMensual: metrics.flujoNetoMensual ?? 0,
+    noi: metrics.noi ?? 0,
+    pieCLP: metrics.pieCLP ?? 0,
+    precioCLP: metrics.precioCLP ?? 0,
+    ingresoMensual: metrics.ingresoMensual ?? 0,
+    egresosMensuales: metrics.egresosMensuales ?? 0,
   };
 }
 
@@ -72,9 +84,13 @@ function fmtMoney(n: number, currency: "CLP" | "UF"): string {
 }
 
 function fmtM(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
-  if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000) + "K";
-  return "$" + Math.round(n);
+  if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(".", ",") + "M";
+  if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000).toLocaleString("es-CL") + "K";
+  return "$" + Math.round(n).toLocaleString("es-CL");
+}
+
+function fmtPct(n: number, decimals: number = 1): string {
+  return n.toFixed(decimals).replace(".", ",") + "%";
 }
 
 function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
@@ -82,8 +98,8 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
     const uf = n / UF_CLP;
     if (Math.abs(uf) >= 1_000) return "UF " + (uf / 1_000).toFixed(0) + "K";
     if (Math.abs(uf) >= 100) return "UF " + Math.round(uf);
-    if (Math.abs(uf) >= 1) return "UF " + uf.toFixed(1);
-    return "UF " + uf.toFixed(2);
+    if (Math.abs(uf) >= 1) return "UF " + uf.toFixed(1).replace(".", ",");
+    return "UF " + uf.toFixed(2).replace(".", ",");
   }
   return fmtM(n);
 }
@@ -96,6 +112,41 @@ function stripBullet(text: string): string {
 
 
 // ─── FadeIn animation components ────────────────────
+function TypewriterText({ text, onComplete, speed = 40 }: { text: string; onComplete?: () => void; speed?: number }) {
+  const [wordIndex, setWordIndex] = useState(0);
+  const containerRef = useRef<HTMLSpanElement>(null);
+  const words = useMemo(() => text.split(/(\s+)/), [text]);
+
+  useEffect(() => {
+    if (wordIndex >= words.length) {
+      onComplete?.();
+      return;
+    }
+    const t = setTimeout(() => setWordIndex(i => i + 1), speed);
+    return () => clearTimeout(t);
+  }, [wordIndex, words.length, speed, onComplete]);
+
+  // Auto-scroll: keep the writing cursor centered vertically
+  useEffect(() => {
+    if (containerRef.current) {
+      const el = containerRef.current;
+      const rect = el.getBoundingClientRect();
+      const viewportCenter = window.innerHeight / 2;
+      if (rect.bottom > viewportCenter + 60) {
+        window.scrollBy({ top: rect.bottom - viewportCenter, behavior: "smooth" });
+      }
+    }
+  }, [wordIndex]);
+
+  return (
+    <span ref={containerRef}>
+      {words.slice(0, wordIndex).join("")}
+      {wordIndex < words.length && <span className="animate-pulse text-[#C8323C]">|</span>}
+    </span>
+  );
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function FadeInText({ text, onComplete, delay = 600 }: { text: string; onComplete?: () => void; delay?: number }) {
   useEffect(() => {
     if (!onComplete) return;
@@ -117,56 +168,68 @@ function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; 
   return <div className="animate-fadeIn">{children}</div>;
 }
 
-function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, locked = false, analysisId, children }: {
+function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, locked = false, guestLocked = false, analysisId, children }: {
   title: string;
   subtitle?: string;
   helpText?: string;
   defaultOpen?: boolean;
   locked?: boolean;
+  guestLocked?: boolean;
   analysisId?: string;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const [payLoading, setPayLoading] = useState(false);
+  const [open, setOpen] = useState(defaultOpen || guestLocked);
 
-  async function handleUnlock() {
+  function handleUnlock() {
     if (!analysisId) return;
-    setPayLoading(true);
-    try {
-      const res = await fetch("/api/payment/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId }),
-      });
-      if (res.ok) window.location.reload();
-    } catch { /* ignore */ } finally { setPayLoading(false); }
+    window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E6E6E2] mb-3 overflow-hidden">
+    <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 overflow-hidden">
       <button
         type="button"
-        onClick={() => !locked && setOpen(!open)}
+        onClick={() => !locked && !guestLocked && setOpen(!open)}
         className="w-full flex justify-between items-center p-4 px-5 text-left"
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-body text-[15px] font-bold text-[#0F0F0F]">{title}</span>
+            <span className="font-body text-[15px] font-semibold text-[#FAFAF8]">{title}</span>
             {locked && <span className="font-mono text-[8px] font-bold text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded">PRO</span>}
           </div>
-          {subtitle && <p className="font-body text-xs text-[#71717A] mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="font-body text-xs text-[#FAFAF8]/50 mt-0.5">{subtitle}</p>}
         </div>
         {locked ? (
-          <Lock className="h-4 w-4 text-[#71717A] shrink-0" />
+          <Lock className="h-4 w-4 text-[#FAFAF8]/50 shrink-0" />
+        ) : guestLocked ? (
+          <Lock className="h-4 w-4 text-[#FAFAF8]/50 shrink-0" />
         ) : (
-          <span className={`font-body text-lg text-[#71717A] transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
+          <span className={`font-body text-lg text-[#FAFAF8]/50 transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
         )}
       </button>
 
-      {open && !locked && (
+      {/* Guest locked: show blurred content + register overlay */}
+      {guestLocked && (
+        <div className="px-5 pb-5 relative">
+          <div className="filter blur-[6px] opacity-40 pointer-events-none h-[110px] overflow-hidden">
+            {children}
+          </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <Lock className="h-5 w-5 text-[#FAFAF8] mb-2" />
+            <p className="font-body text-sm font-medium text-[#FAFAF8] mb-1">Regístrate gratis para ver esta sección</p>
+            <a href="/register">
+              <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-xs font-semibold px-5 py-2 rounded-lg mt-1">
+                Crear cuenta gratis →
+              </button>
+            </a>
+          </div>
+        </div>
+      )}
+
+      {open && !locked && !guestLocked && (
         <div className="px-5 pb-5">
           {helpText && (
-            <p className="font-body text-[13px] text-[#71717A] leading-snug p-2.5 px-3.5 bg-[#FAFAF8] rounded-lg mb-3.5">{helpText}</p>
+            <p className="font-body text-[13px] text-[#FAFAF8]/60 leading-snug p-2.5 px-3.5 bg-[#1A1A1A] rounded-lg mb-3.5">{helpText}</p>
           )}
           {children}
         </div>
@@ -180,10 +243,9 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
           <button
             type="button"
             onClick={handleUnlock}
-            disabled={payLoading}
             className="bg-[#C8323C] text-white font-body text-xs font-bold px-5 py-2 rounded-md mt-2 shadow-[0_2px_10px_rgba(200,50,60,0.15)]"
           >
-            {payLoading ? "Procesando..." : "Desbloquear — $4.990"}
+            Desbloquear — $4.990
           </button>
         </div>
       )}
@@ -191,47 +253,57 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MetricRow({ label, value, color, tooltip }: { label: string; value: string; color?: string; tooltip?: string }) {
   return (
-    <div className="flex justify-between items-center py-2.5 border-b border-[#E6E6E2]">
-      <span className="font-body text-[13px] text-[#71717A] flex items-center gap-1">
+    <div className="flex justify-between items-center py-2.5 border-b border-white/[0.08]">
+      <span className="font-body text-[13px] text-[#FAFAF8]/70 flex items-center gap-1">
         {label}
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
-      <span className={`font-mono text-sm font-semibold ${color || "text-[#0F0F0F]"}`}>{value}</span>
+      <span className={`font-mono text-sm font-medium ${color || "text-[#FAFAF8]"}`}>{value}</span>
     </div>
   );
 }
 
-function ScoreCircleInline({ score }: { score: number }) {
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (score / 100) * circumference;
-  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
+function ScoreBarInline({ score }: { score: number }) {
+  const color = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+  const label = score >= 70 ? "COMPRAR" : score >= 40 ? "NEGOCIAR" : "BUSCAR OTRA";
+  const badgeColor = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+  const badgeBg = score >= 70 ? "rgba(176,190,197,0.12)" : score >= 40 ? "rgba(251,191,36,0.12)" : "rgba(220,38,38,0.12)";
+  const badgeBorder = score >= 70 ? "rgba(176,190,197,0.3)" : score >= 40 ? "rgba(251,191,36,0.3)" : "rgba(220,38,38,0.3)";
   return (
-    <svg width="90" height="90" viewBox="0 0 90 90" className="-rotate-90">
-      <circle cx="45" cy="45" r={radius} fill="none" stroke="#E6E6E2" strokeWidth="5" />
-      <circle cx="45" cy="45" r={radius} fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"
-        strokeDasharray={circumference} strokeDashoffset={offset} className="transition-all duration-700" />
-      <text x="45" y="45" textAnchor="middle" dominantBaseline="central" className="rotate-90 origin-center"
-        fill="#0F0F0F" fontSize="28" fontWeight="bold" fontFamily="var(--font-heading)">{score}</text>
-    </svg>
-  );
-}
-
-function VerdictBadge({ score }: { score: number }) {
-  const color = score >= 75 ? "#16A34A" : score >= 40 ? "#C8323C" : "#DC2626";
-  const label = score >= 75 ? "COMPRAR" : score >= 40 ? "NEGOCIAR" : "BUSCAR OTRA";
-  return (
-    <span className="font-mono text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-md mt-1.5"
-      style={{ color, backgroundColor: `${color}15`, border: `1px solid ${color}30` }}>{label}</span>
+    <div className="w-full min-w-[220px] max-w-[280px]">
+      <p className="font-mono text-[9px] text-[#FAFAF8]/35 uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
+      <p className="font-mono text-[52px] font-bold text-[#FAFAF8] leading-none">{score}</p>
+      {/* Bar with zones */}
+      <div className="relative mt-3 h-2 rounded-full overflow-hidden flex">
+        <div className="w-[40%] bg-[#C8323C]/15" />
+        <div className="w-[30%] bg-white/[0.06]" />
+        <div className="w-[30%] bg-[#B0BEC5]/15" />
+        <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700" style={{ width: `${score}%`, backgroundColor: color }} />
+        <div className="absolute rounded-full border-2 border-[#1A1A1A]" style={{ width: 14, height: 14, top: -3, left: `calc(${score}% - 7px)`, backgroundColor: color, transition: "left 0.7s" }} />
+      </div>
+      {/* Zone labels — aligned under each zone */}
+      <div className="flex mt-2">
+        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[40%] text-left tracking-wide">BUSCAR OTRA</span>
+        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-center tracking-wide">NEGOCIAR</span>
+        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-right tracking-wide">COMPRAR</span>
+      </div>
+      {/* Verdict badge */}
+      <div className="mt-3">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-[2px] px-4 py-1 rounded-md inline-block"
+          style={{ color: badgeColor, backgroundColor: badgeBg, border: `0.5px solid ${badgeBorder}` }}>{label}</span>
+      </div>
+    </div>
   );
 }
 
 // ─── AI Analysis Section with typewriter ────────────
 function AIAnalysisSection({
   aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
-  projectionsContent, aiAnalysisInitiallyLoaded = false,
+  projectionsContent, aiAnalysisInitiallyLoaded = false, isSharedView = false,
+  projectionsExpanded = false, onExpandProjections, projectionsCTALabel, projectionsCTAValue,
 }: {
   aiAnalysis: AIAnalysis | null;
   aiLoading: boolean;
@@ -242,16 +314,24 @@ function AIAnalysisSection({
   ci: (obj: Record<string, unknown>, field: string) => string[];
   currentAccess: "guest" | "free" | "premium";
   analysisId?: string;
-  projectionsContent?: React.ReactNode;
+  projectionsContent?: React.ReactNode | ((chartPhase: number, isFirstReveal: boolean) => React.ReactNode);
   aiAnalysisInitiallyLoaded?: boolean;
+  isSharedView?: boolean;
+  projectionsExpanded?: boolean;
+  onExpandProjections?: () => void;
+  projectionsCTALabel?: string;
+  projectionsCTAValue?: string;
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
+  const isFirstReveal = !aiAnalysisInitiallyLoaded && !isSharedView;
   // If AI analysis was pre-loaded from DB, skip animation entirely
   const [phaseIndex, setPhaseIndex] = useState(() => {
     if (aiAnalysisInitiallyLoaded) return 9; // show all immediately
     return -1; // -1=idle, 0=loading, 1..8=sections, 9=done
   });
+  // Charts show immediately (no sequential reveal) — controlled by projectionsExpanded in parent
+  const chartPhase = 5; // always show all charts when projections are visible
 
   // Intersection observer: trigger animation once when visible (only for freshly generated)
   useEffect(() => {
@@ -262,7 +342,7 @@ function AIAnalysisSection({
       if (entry.isIntersecting && !hasAnimated.current) {
         hasAnimated.current = true;
         setPhaseIndex(0); // loading
-        setTimeout(() => setPhaseIndex(1), 1500); // resumen
+        setTimeout(() => setPhaseIndex(1), 800); // resumen
       }
     }, { threshold: 0.2 });
     obs.observe(el);
@@ -270,7 +350,29 @@ function AIAnalysisSection({
   }, [aiAnalysis, phaseIndex]);
 
   const showAll = phaseIndex >= 9;
-  const next = (to: number) => () => setTimeout(() => setPhaseIndex(to), 300);
+  const next = (to: number) => () => setTimeout(() => setPhaseIndex(to), 250);
+
+  // Auto-scroll to non-typewriter AI sections
+  // Anchor divs are placed OUTSIDE FadeIn so they exist in DOM before content renders
+  // Scrolls so the anchor appears at ~30% from the top of the viewport
+  useEffect(() => {
+    if (!isFirstReveal) return;
+    const anchorId = phaseIndex === 6 ? "ai-anchor-riesgos" : phaseIndex === 7 ? "ai-anchor-veredicto" : phaseIndex === 8 ? "ai-anchor-afavor" : phaseIndex === 9 ? "ai-anchor-veredicto-final" : null;
+    if (anchorId) {
+      // For veredicto final (phase 9), wait longer for content to render
+      const scrollDelay = phaseIndex === 9 ? 800 : 400;
+      setTimeout(() => {
+        requestAnimationFrame(() => {
+          const el = document.getElementById(anchorId);
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            const targetY = window.scrollY + rect.top - window.innerHeight * 0.35;
+            window.scrollTo({ top: targetY, behavior: "smooth" });
+          }
+        });
+      }, scrollDelay);
+    }
+  }, [phaseIndex, isFirstReveal]);
 
   // If already animated, show everything
   const content = aiAnalysis ? (
@@ -279,7 +381,7 @@ function AIAnalysisSection({
       {phaseIndex === 0 && (
         <div className="flex flex-col items-center gap-3 py-8">
           <Sparkles className="h-8 w-8 animate-pulse text-[#C8323C]" />
-          <p className="font-body text-sm text-[#71717A]">Analizando tu inversión con IA...</p>
+          <p className="font-body text-sm text-[#FAFAF8]/50">Analizando tu inversión con IA...</p>
           <div className="flex gap-1">
             <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "0ms" }} />
             <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "150ms" }} />
@@ -290,10 +392,10 @@ function AIAnalysisSection({
 
       {/* 1. Resumen Ejecutivo */}
       {phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#16A34A]/30 bg-[#16A34A]/5" : score >= 40 ? "border-[#C8323C]/30 bg-[#C8323C]/5" : "border-[#DC2626]/30 bg-[#DC2626]/5"}`}>
-          <p className="text-sm font-medium leading-relaxed">
+        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#C8323C]/30 bg-[#C8323C]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+          <p className="text-sm font-medium leading-relaxed text-[#FAFAF8]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
-              <FadeInText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
+              <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
             ) : ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}
           </p>
         </div>
@@ -301,14 +403,14 @@ function AIAnalysisSection({
 
       {/* 2. Tu Bolsillo */}
       <FadeIn show={phaseIndex >= 2}>
-        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-body text-sm font-bold">{aiAnalysis.tuBolsillo.titulo}</h4>
+            <Wallet className="h-4 w-4 text-[#FAFAF8]" />
+            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
-              <FadeInText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} onComplete={next(3)} />
+              <TypewriterText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} onComplete={next(3)} />
             ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
           </p>
           {ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta") && (
@@ -324,14 +426,14 @@ function AIAnalysisSection({
 
       {/* 3. Vs Alternativas */}
       <FadeIn show={phaseIndex >= 3}>
-        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Scale className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-body text-sm font-bold">{aiAnalysis.vsAlternativas.titulo}</h4>
+            <Scale className="h-4 w-4 text-[#FAFAF8]" />
+            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
-              <FadeInText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} onComplete={next(4)} />
+              <TypewriterText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} onComplete={next(4)} />
             ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
@@ -339,20 +441,20 @@ function AIAnalysisSection({
 
       {/* 4. Negociación */}
       <FadeIn show={phaseIndex >= 4}>
-        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Handshake className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-body text-sm font-bold">{aiAnalysis.negociacion.titulo}</h4>
+            <Handshake className="h-4 w-4 text-[#FAFAF8]" />
+            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.negociacion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
-              <FadeInText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} onComplete={next(5)} />
+              <TypewriterText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} onComplete={next(5)} />
             ) : ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}
           </p>
           {aiAnalysis.negociacion.precioSugerido && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Precio sugerido:</span>
-              <span className="rounded-md bg-[#16A34A]/10 px-3 py-1 text-sm font-bold text-[#16A34A]">{aiAnalysis.negociacion.precioSugerido}</span>
+              <span className="text-xs text-[#FAFAF8]/50">Precio sugerido:</span>
+              <span className="rounded-md bg-[#B0BEC5]/10 px-3 py-1 text-sm font-bold text-[#B0BEC5]">{aiAnalysis.negociacion.precioSugerido}</span>
             </div>
           )}
         </div>
@@ -360,83 +462,86 @@ function AIAnalysisSection({
 
       {/* 5. Proyección */}
       <FadeIn show={phaseIndex >= 5}>
-        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-body text-sm font-bold">{aiAnalysis.proyeccion.titulo}</h4>
+            <TrendingUp className="h-4 w-4 text-[#FAFAF8]" />
+            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-muted-foreground">
+          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
-              <FadeInText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} onComplete={next(6)} />
+              <TypewriterText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} onComplete={next(6)} />
             ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
       </FadeIn>
 
       {/* 6. Riesgos */}
+      <div id="ai-anchor-riesgos" />
       <FadeIn show={phaseIndex >= 6}>
-        <div className="rounded-2xl border border-franco-border bg-white p-4 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-[#0F0F0F]" />
-            <h4 className="font-body text-sm font-bold">{aiAnalysis.riesgos.titulo}</h4>
+            <Shield className="h-4 w-4 text-[#FAFAF8]" />
+            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.riesgos.titulo}</h4>
           </div>
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
-              <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 300}>
-                <li className="text-sm leading-relaxed text-muted-foreground">
+              <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 150}>
+                <li className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
                   <span className="mr-1 font-medium text-[#C8323C]">⚠</span> {stripBullet(r)}
                 </li>
               </FadeIn>
             ))}
           </ul>
-          {phaseIndex === 6 && <DelayedCallback delay={ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").length * 300 + 400} onComplete={() => setPhaseIndex(7)} />}
+          {phaseIndex === 6 && <DelayedCallback delay={ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").length * 150 + 500} onComplete={() => setPhaseIndex(7)} />}
         </div>
       </FadeIn>
 
       {/* 7. Veredicto — inline during typewriter */}
+      <div id="ai-anchor-veredicto" />
       <FadeIn show={phaseIndex >= 7}>
-        <div className="rounded-xl border border-[#E6E6E2] bg-[#FAFAF8] p-4">
-          <p className="text-sm leading-relaxed text-[#0F0F0F]">
+        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-4">
+          <p className="text-sm leading-relaxed text-[#FAFAF8]">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
-              <FadeInText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} onComplete={next(8)} />
+              <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} onComplete={next(8)} />
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
           </p>
         </div>
       </FadeIn>
 
       {/* 8. A Favor / Puntos de Atención */}
+      <div id="ai-anchor-afavor" />
       <FadeIn show={phaseIndex >= 8}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-bold text-verdict-buy">
+            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#B0BEC5]">
               <CheckCircle2 className="h-4 w-4" /> A favor
             </h4>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+            <ul className="list-disc space-y-1 pl-4 text-sm text-[#FAFAF8]/60">
               {aiAnalysis.aFavor.map((p, i) => (
-                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : i * 200}>
+                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : i * 100}>
                   <li>{p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
                 </FadeIn>
               ))}
             </ul>
           </div>
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-[#C8323C]">
+            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#FBBF24]">
               <AlertTriangle className="h-4 w-4" /> Atención
             </h4>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+            <ul className="list-disc space-y-1 pl-4 text-sm text-[#FAFAF8]/60">
               {aiAnalysis.puntosAtencion.map((c, i) => (
-                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : (aiAnalysis.aFavor.length + i) * 200}>
+                <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : (aiAnalysis.aFavor.length + i) * 100}>
                   <li>{c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
                 </FadeIn>
               ))}
             </ul>
           </div>
         </div>
-        {phaseIndex === 8 && <DelayedCallback delay={(aiAnalysis.aFavor.length + aiAnalysis.puntosAtencion.length) * 200 + 500} onComplete={() => setPhaseIndex(9)} />}
+        {phaseIndex === 8 && <DelayedCallback delay={(aiAnalysis.aFavor.length + aiAnalysis.puntosAtencion.length) * 100 + 500} onComplete={() => setPhaseIndex(9)} />}
       </FadeIn>
 
       {showAll && (
-        <p className="text-center text-[10px] text-muted-foreground/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+        <p className="text-center text-[10px] text-[#FAFAF8]/30">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
       )}
     </div>
   ) : null;
@@ -451,23 +556,24 @@ function AIAnalysisSection({
       <div ref={sectionRef} className="mb-8">
         <div className="rounded-2xl overflow-hidden mt-5">
           {/* Dark header */}
-          <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-6 md:px-8 py-5 relative overflow-hidden">
-            <div className="absolute -top-5 -right-5 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.05) 0%, transparent 70%)" }} />
+          <div style={{ background: "linear-gradient(135deg, #1A1A1A 0%, rgba(200,50,60,0.08) 50%, #1A1A1A 100%)", borderBottom: "1px solid rgba(200,50,60,0.2)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
+            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.12) 0%, transparent 70%)" }} />
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
             <div className="relative z-10">
-              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1">INFORME PRO</div>
-              <div className="font-heading font-bold text-lg md:text-xl text-white">Análisis completo con IA</div>
-              <div className="font-body text-xs text-white/40 mt-1">Análisis personalizado + proyecciones a 20 años</div>
+              <div className="font-mono text-[10px] text-[#C8323C] uppercase tracking-[0.15em] mb-1.5">INFORME PRO</div>
+              <div className="font-heading font-bold text-xl md:text-2xl text-white">Análisis completo con IA</div>
+              <div className="font-body text-xs text-white/50 mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
             </div>
           </div>
           {/* Locked body */}
-          <div className="bg-white border border-[#E6E6E2] border-t-0 rounded-b-2xl">
+          <div className="bg-[#151515] border border-white/[0.08] border-t-0 rounded-b-2xl">
             <div className="py-11 px-6 flex flex-col items-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#0F0F0F 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#FAFAF8 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full animate-pulse" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
               <div className="relative z-10 text-center">
-                <div className="text-[28px] mb-3 opacity-50">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1">Análisis IA + proyecciones a 20 años</div>
-                <div className="font-body text-[13px] text-[#71717A] mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
+                <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
+                <div className="font-body text-[15px] font-semibold text-[#FAFAF8] mb-1">Análisis IA + proyecciones a 20 años</div>
+                <div className="font-body text-[13px] text-[#FAFAF8]/50 mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
                 <BottomPaywallCTA analysisId={analysisId ?? ""} />
               </div>
             </div>
@@ -478,16 +584,17 @@ function AIAnalysisSection({
   }
 
   return (
-    <div ref={sectionRef} className="mb-8">
+    <div ref={sectionRef} id="informe-pro-section" className="mb-8">
       <div className="rounded-2xl overflow-hidden mt-5">
         {/* Dark header */}
-        <div style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }} className="px-6 md:px-8 py-5 relative overflow-hidden">
-          <div className="absolute -top-5 -right-5 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
+        <div style={{ background: "linear-gradient(135deg, #1A1A1A 0%, rgba(200,50,60,0.08) 50%, #1A1A1A 100%)", borderBottom: "1px solid rgba(200,50,60,0.2)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
+          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.12) 0%, transparent 70%)" }} />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
           <div className="relative z-10 flex justify-between items-center">
             <div>
-              <div className="font-mono text-[9px] text-[#C8323C] uppercase tracking-[0.12em] mb-1">INFORME PRO</div>
-              <div className="font-heading font-bold text-lg md:text-xl text-white">Análisis completo con IA</div>
-              <div className="font-body text-xs text-white/40 mt-1">Análisis personalizado + proyecciones a 20 años</div>
+              <div className="font-mono text-[10px] text-[#C8323C] uppercase tracking-[0.15em] mb-1.5">INFORME PRO</div>
+              <div className="font-heading font-bold text-xl md:text-2xl text-white">Análisis completo con IA</div>
+              <div className="font-body text-xs text-white/50 mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
             </div>
             {isAnalyzing && (
               <div className="flex items-center gap-2">
@@ -499,16 +606,16 @@ function AIAnalysisSection({
         </div>
 
         {/* Body */}
-        <div className="bg-white border border-[#E6E6E2] border-t-0 rounded-b-2xl relative overflow-hidden">
+        <div className="bg-[#151515] border border-white/[0.08] border-t-0 rounded-b-2xl relative overflow-hidden">
           {/* STATE A: CTA to generate */}
           {showCTA && (
             <div className="py-12 px-8 flex flex-col items-center relative">
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#0F0F0F 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
+              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#FAFAF8 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.08) 0%, transparent 70%)", animation: "glow-pulse 3s ease-in-out infinite" }} />
               <div className="relative z-10 text-center">
-                <div className="text-3xl mb-4 opacity-50">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[#0F0F0F] mb-1.5">Genera el análisis completo con IA</div>
-                <div className="font-body text-[13px] text-[#71717A] mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
+                <div className="text-5xl mb-4 text-[#C8323C]/70">✦</div>
+                <div className="font-body text-[15px] font-semibold text-[#FAFAF8] mb-1.5">Genera el análisis completo con IA</div>
+                <div className="font-body text-[13px] text-[#FAFAF8]/50 mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
                 <button
                   type="button"
                   onClick={loadAiAnalysis}
@@ -525,7 +632,7 @@ function AIAnalysisSection({
           {aiLoading && (
             <div className="py-12 px-8 flex flex-col items-center gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-[#C8323C]" />
-              <p className="font-body text-sm text-[#71717A]">Analizando tu inversión con IA... (15-30 segundos)</p>
+              <p className="font-body text-sm text-[#FAFAF8]/50">Analizando tu inversión con IA... (15-30 segundos)</p>
             </div>
           )}
 
@@ -535,7 +642,7 @@ function AIAnalysisSection({
               <div className="rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4 text-sm text-[#C8323C]">
                 Error: {aiError}
               </div>
-              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-[#0F0F0F] hover:underline">
+              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-[#FAFAF8] hover:underline">
                 Reintentar
               </button>
             </div>
@@ -544,41 +651,110 @@ function AIAnalysisSection({
           {/* STATE B/C: AI content with typewriter */}
           {aiAnalysis && (
             <div className="p-6 md:p-8">
-              <div className="font-body text-[15px] font-bold text-[#0F0F0F] mb-3">Siendo franco:</div>
+              <div className="font-body text-[15px] font-bold text-[#FAFAF8] mb-3">Siendo franco:</div>
               {content}
 
               {/* Veredicto final — shown after all phases complete */}
-              {isComplete && aiAnalysis.veredicto && (
-                <div className="mt-6 pt-5 border-t border-[#E6E6E2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="font-body text-xs text-[#71717A]">Veredicto Franco</div>
-                    <div className="font-heading font-bold text-lg text-[#0F0F0F] mt-1">{aiAnalysis.veredicto.titulo}</div>
+              <div id="ai-anchor-veredicto-final" />
+              {isComplete && aiAnalysis.veredicto && (() => {
+                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "#B0BEC5"
+                  : aiAnalysis.veredicto.decision === "NEGOCIAR" ? "#FBBF24"
+                  : "#C8323C";
+                return (
+                  <div className="mt-6 pt-6 border-t border-white/[0.06] animate-fadeIn">
+                    <div
+                      className="relative overflow-hidden rounded-xl text-center"
+                      style={{ background: "#151515", border: `1px solid ${vc}15`, padding: "40px 24px" }}
+                    >
+                      {/* Radial gradient glow from top */}
+                      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at center top, ${vc}12 0%, transparent 55%)` }} />
+                      {/* Top accent line */}
+                      <div className="absolute top-0 left-0 right-0 h-px pointer-events-none" style={{ background: `linear-gradient(90deg, transparent 0%, ${vc}55 50%, transparent 100%)` }} />
+
+                      <div className="relative">
+                        <div className="flex items-baseline justify-center gap-2 mb-4">
+                          <span className="font-mono text-[10px] uppercase tracking-[3px] text-[#FAFAF8]/20">VEREDICTO</span>
+                          <FrancoLogo size="sm" inverted />
+                        </div>
+                        <div
+                          className="inline-block font-mono font-semibold text-2xl tracking-[5px] uppercase rounded-lg"
+                          style={{
+                            color: vc,
+                            background: `${vc}12`,
+                            border: `1px solid ${vc}35`,
+                            padding: "14px 36px",
+                            boxShadow: `0 0 40px ${vc}15, 0 0 15px ${vc}08, 0 4px 16px rgba(0,0,0,0.4)`,
+                          }}
+                        >
+                          {aiAnalysis.veredicto.decision}
+                        </div>
+                        {aiAnalysis.negociacion?.precioSugerido && (
+                          <div className="font-mono text-[13px] text-[#FAFAF8]/40 mt-4">
+                            Precio sugerido: {aiAnalysis.negociacion.precioSugerido}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <span className={`font-mono font-bold uppercase text-sm tracking-wide px-5 py-2.5 rounded-lg border ${
-                    aiAnalysis.veredicto.decision === "COMPRAR" ? "bg-[#16A34A]/10 border-[#16A34A]/30 text-[#16A34A]" :
-                    aiAnalysis.veredicto.decision === "NEGOCIAR" ? "bg-[#C8323C]/10 border-[#C8323C]/30 text-[#C8323C]" :
-                    "bg-[#DC2626]/10 border-[#DC2626]/30 text-[#DC2626]"
-                  }`}>
-                    {aiAnalysis.veredicto.decision}
-                  </span>
-                </div>
-              )}
+                );
+              })()}
             </div>
           )}
 
-          {/* Projections separator + content — only visible after AI is triggered */}
+          {/* Projections — collapsed CTA or expanded content */}
+          {/* Projections zone marker — always in DOM for FAB detection */}
+          <div id="projections-zone-marker" />
+
           {projectionsContent && (aiAnalysis || aiLoading) && (
             <>
-              <div className="mx-6 md:mx-8">
-                <div className="flex items-center gap-2">
-                  <div className="h-px flex-1 bg-[#E6E6E2]" />
-                  <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">PROYECCIONES</span>
-                  <div className="h-px flex-1 bg-[#E6E6E2]" />
+              {!projectionsExpanded && isComplete && onExpandProjections && (
+                <div className="px-6 md:px-8 pb-8">
+                  <div className="border-t border-white/[0.06] pt-6" />
+                  <div
+                    onClick={onExpandProjections}
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-white/[0.06] bg-[#151515] px-6 py-5 transition-all hover:border-white/[0.1] hover:bg-[#1A1A1A]"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#222222]">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#B0BEC5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                          <rect x="4" y="14" width="3" height="6" rx="0.5" />
+                          <rect x="10.5" y="10" width="3" height="10" rx="0.5" />
+                          <rect x="17" y="5" width="3" height="15" rx="0.5" />
+                        </svg>
+                      </div>
+                      <div>
+                        <div className="font-mono text-[10px] uppercase tracking-[2px] text-[#FAFAF8]/20">
+                          {projectionsCTALabel || "Patrimonio en 10 años"}
+                        </div>
+                        <div className="text-sm font-medium text-[#FAFAF8]">
+                          ¿Cuánto vale tu inversión a futuro?
+                        </div>
+                        {projectionsCTAValue && (
+                          <div className="font-mono text-[13px] font-medium text-[#B0BEC5]">
+                            {projectionsCTAValue}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-lg text-[#FAFAF8]/20">↓</span>
+                  </div>
                 </div>
-              </div>
-              <div className="p-6 md:p-8 pt-4">
-                {projectionsContent}
-              </div>
+              )}
+
+              {projectionsExpanded && (
+                <>
+                  <div id="projections-start" className="mx-6 md:mx-8">
+                    <div className="flex items-center gap-2">
+                      <div className="h-px flex-1 bg-white/[0.08]" />
+                      <span className="font-mono text-[9px] text-[#FAFAF8]/50 uppercase tracking-[0.1em]">PROYECCIONES</span>
+                      <div className="h-px flex-1 bg-white/[0.08]" />
+                    </div>
+                  </div>
+                  <div className="p-6 md:p-8 pt-4">
+                    {typeof projectionsContent === "function" ? projectionsContent(chartPhase, isFirstReveal) : projectionsContent}
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -586,18 +762,18 @@ function AIAnalysisSection({
           {(aiAnalysis || aiLoading) && (
             <>
               <div className="px-6 md:px-8 pb-6 flex flex-col sm:flex-row gap-2.5">
-                <a href="/analisis/nuevo" className="bg-[#0F0F0F] text-white font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
+                <a href="/analisis/nuevo" className="bg-[#FAFAF8] text-[#0F0F0F] font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
                   Analizar otra propiedad →
                 </a>
               </div>
               {isComplete && (
-                <p className="px-6 md:px-8 pb-6 text-center text-[10px] text-[#71717A]/50">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+                <p className="px-6 md:px-8 pb-6 text-center text-[10px] text-[#FAFAF8]/30">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
               )}
             </>
           )}
         </div>
       </div>
-      <style>{`@keyframes glow-pulse { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.15); } }`}</style>
+      <style>{`@keyframes glow-pulse { 0%, 100% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); } 50% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.15); } } @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );
 }
@@ -618,16 +794,19 @@ function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "
   if (typeof obj[key] === "string" && obj[key]) text = obj[key] as string;
   // Legacy fallback: old analyses without _clp/_uf suffixes
   else if (typeof obj[field] === "string") text = obj[field] as string;
-  return text.replace(/price score/gi, "Eficiencia de compra");
+  // Strip markdown bold and replace price score
+  return text.replace(/\*\*(.*?)\*\*/g, "$1").replace(/__(.*?)__/g, "$1").replace(/price score/gi, "Eficiencia de compra");
 }
 
 // Get the right AI items array based on currency toggle, with legacy fallback
 function aiItems(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string[] {
   const key = field + (currency === "UF" ? "_uf" : "_clp");
-  if (Array.isArray(obj[key]) && obj[key].length > 0) return obj[key] as string[];
+  let items: string[] = [];
+  if (Array.isArray(obj[key]) && obj[key].length > 0) items = obj[key] as string[];
   // Legacy fallback
-  if (Array.isArray(obj[field])) return obj[field] as string[];
-  return [];
+  else if (Array.isArray(obj[field])) items = obj[field] as string[];
+  // Strip markdown bold
+  return items.map(s => s.replace(/\*\*(.*?)\*\*/g, "$1").replace(/__(.*?)__/g, "$1"));
 }
 
 function calcTIR(flujos: number[]): number {
@@ -650,10 +829,10 @@ function calcTIR(flujos: number[]): number {
 
 function RegisterOverlay() {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-[#0F0F0F]/20 bg-card/90 px-6 py-5 shadow-lg">
-        <Lock className="h-6 w-6 text-[#0F0F0F]" />
-        <span className="text-sm font-medium">Regístrate gratis para ver esta sección</span>
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-[#151515]/60 backdrop-blur-[2px]">
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/90 px-6 py-5 shadow-lg">
+        <Lock className="h-6 w-6 text-[#FAFAF8]" />
+        <span className="text-sm font-medium text-[#FAFAF8]">Regístrate gratis para ver esta sección</span>
         <a href="/register">
           <Button size="sm" className="gap-2">
             Regístrate gratis
@@ -665,71 +844,28 @@ function RegisterOverlay() {
 }
 
 function PaywallOverlay({ analysisId }: { analysisId: string }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleUnlock() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/payment/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId }),
-      });
-      if (res.ok) {
-        window.location.reload();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error || "Error al procesar el pago");
-      }
-    } catch {
-      setError("Error de conexión. Intenta de nuevo.");
-    } finally {
-      setLoading(false);
-    }
+  function handleUnlock() {
+    window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-background/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-[#E6E6E2] bg-white/90 px-6 py-5 shadow-lg">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-[#151515]/60 backdrop-blur-[2px]">
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/90 px-6 py-5 shadow-lg">
         <Sparkles className="h-6 w-6 text-[#C8323C]" />
-        <span className="font-body text-sm font-medium text-[#0F0F0F]">Sección exclusiva del Informe Pro</span>
-        <Button size="sm" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock} disabled={loading}>
+        <span className="font-body text-sm font-medium text-[#FAFAF8]">Sección exclusiva del Informe Pro</span>
+        <Button size="sm" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock}>
           <Sparkles className="h-4 w-4" />
-          {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
+          Desbloquear la verdad — $4.990
         </Button>
-        <span className="font-body text-xs text-[#71717A]">$4.990 por análisis</span>
-        {error && <p className="text-xs text-[#C8323C]">{error}</p>}
+        <span className="font-body text-xs text-[#FAFAF8]/50">$4.990 por análisis</span>
       </div>
     </div>
   );
 }
 
 function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleUnlock() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/payment/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId }),
-      });
-      if (res.ok) {
-        window.location.reload();
-      } else {
-        const data = await res.json().catch(() => null);
-        setError(data?.error || "Error al procesar el pago");
-      }
-    } catch {
-      setError("Error de conexión. Intenta de nuevo.");
-    } finally {
-      setLoading(false);
-    }
+  function handleUnlock() {
+    window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
   return (
@@ -737,12 +873,10 @@ function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
       <button
         type="button"
         onClick={handleUnlock}
-        disabled={loading}
         className="bg-[#C8323C] text-white font-body text-sm font-bold px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.25)] hover:shadow-[0_4px_24px_rgba(200,50,60,0.35)] transition-shadow"
       >
-        {loading ? "Procesando..." : "Desbloquear la verdad — $4.990"}
+        Desbloquear la verdad — $4.990
       </button>
-      {error && <p className="text-sm text-[#C8323C] mt-2">{error}</p>}
     </div>
   );
 }
@@ -761,13 +895,13 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   const showPaywall = gate === "premium" && accessLevel === "free";
   return (
     <div className="relative mb-8">
-      <Card className="border border-franco-border rounded-2xl shadow-sm bg-white">
+      <Card className="border border-white/[0.08] rounded-2xl shadow-sm bg-[#151515]">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-franco-ink" />
-            <CardTitle className="font-body font-bold text-lg text-franco-ink">{title}</CardTitle>
+            <Icon className="h-5 w-5 text-[#FAFAF8]" />
+            <CardTitle className="font-body font-bold text-lg text-[#FAFAF8]">{title}</CardTitle>
           </div>
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {description && <p className="text-sm text-[#FAFAF8]/50">{description}</p>}
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
@@ -777,29 +911,113 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   );
 }
 
+function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl }: {
+  m: ReturnType<typeof normalizeMetrics>;
+  zoneData: MarketDataRow[] | null | undefined;
+  comuna?: string;
+  currency: "CLP" | "UF";
+  fmt: (n: number) => string;
+  mapQuery: string;
+  googleMapUrl: string;
+}) {
+  if (!m || !zoneData || zoneData.length === 0) {
+    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles para esta comuna.</p>;
+  }
+  const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+  const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+  const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
+  const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0 ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) : 50;
+  const yieldZona = avgM2Zona > 0 && avgSuperficie > 0 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100 : (m.rentabilidadBruta ?? 0) * 0.9;
+
+  const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP;
+  const zonaPrecioM2 = currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP;
+
+  const cards = [
+    {
+      title: currency === "UF" ? "PRECIO/M² (UF)" : "PRECIO/M²",
+      tuyo: tuyoPrecioM2,
+      zona: zonaPrecioM2,
+      fmtVal: (v: number) => currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v),
+      invertColor: true, // lower is better
+    },
+    {
+      title: "ARRIENDO",
+      tuyo: m.ingresoMensual,
+      zona: avgArriendoZona,
+      fmtVal: (v: number) => fmt(v),
+      invertColor: false, // higher is better
+    },
+    {
+      title: "RENT. BRUTA",
+      tuyo: m.rentabilidadBruta,
+      zona: Math.round(yieldZona * 10) / 10,
+      fmtVal: (v: number) => fmtPct(v),
+      invertColor: false, // higher is better
+    },
+  ];
+
+  return (
+    <div>
+      <p className="text-xs text-[#FAFAF8]/50 mb-3">Basado en {totalPubs} publicaciones activas en {comuna}.</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        {cards.map((c) => {
+          const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;
+          const isFavorable = c.invertColor ? delta < 0 : delta > 0;
+          const deltaColor = isFavorable ? "text-[#B0BEC5]" : "text-[#C8323C]";
+          const deltaSign = delta > 0 ? "+" : "";
+          const contextText = c.invertColor
+            ? (delta < 0 ? "bajo el promedio" : "sobre el promedio")
+            : (delta > 0 ? "sobre el promedio" : "bajo el promedio");
+          return (
+            <div key={c.title} className="bg-[#1A1A1A] rounded-[10px] p-4 text-center">
+              <p className="font-body text-[10px] text-[#FAFAF8]/40 uppercase tracking-wide">{c.title}</p>
+              <p className={`font-mono text-[32px] font-bold leading-none mt-1.5 ${deltaColor}`}>{deltaSign}{Math.round(delta)}%</p>
+              <p className="font-body text-[10px] text-[#FAFAF8]/35 mt-2">{contextText}</p>
+              <div className="border-t border-white/[0.06] mt-3 pt-2.5 space-y-1">
+                <p className="text-[11px]"><span className="font-body text-[#FAFAF8]/40">Tú: </span><span className="font-mono text-[#FAFAF8]">{c.fmtVal(c.tuyo)}</span></p>
+                <p className="text-[11px]"><span className="font-body text-[#FAFAF8]/30">Zona: </span><span className="font-mono text-[#FAFAF8]/50">{c.fmtVal(c.zona)}</span></p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {/* Map */}
+      <div className="mt-4">
+        <div className="mb-2 flex items-center gap-2 text-sm text-[#FAFAF8]/50">
+          <MapPin className="h-4 w-4" />
+          <span>Ubicación: {mapQuery}</span>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+          <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onToggle: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between border border-franco-border bg-white rounded-2xl px-4 py-3">
+    <div className="mb-6 flex items-center justify-between border border-white/[0.08] bg-[#151515] rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onToggle}
-          className="relative flex h-8 w-20 items-center rounded-full bg-muted p-1 transition-colors"
+          className="relative flex h-8 w-20 items-center rounded-full bg-white/[0.08] p-1 transition-colors"
         >
           <div
-            className={`absolute h-6 w-9 rounded-full bg-[#0F0F0F] transition-transform ${
+            className={`absolute h-6 w-9 rounded-full bg-[#FAFAF8] transition-transform ${
               currency === "UF" ? "translate-x-[40px]" : "translate-x-0"
             }`}
           />
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-white" : "text-muted-foreground"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-[#0F0F0F]" : "text-[#FAFAF8]/50"}`}>
             CLP
           </span>
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-white" : "text-muted-foreground"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-[#0F0F0F]" : "text-[#FAFAF8]/50"}`}>
             UF
           </span>
         </button>
         {currency === "CLP" && (
-          <span className="text-xs text-muted-foreground">Valores en CLP calculados con UF = ${UF_CLP.toLocaleString("es-CL")}</span>
+          <span className="text-xs text-[#FAFAF8]/40">Valores en CLP calculados con UF = ${UF_CLP.toLocaleString("es-CL")}</span>
         )}
       </div>
     </div>
@@ -813,6 +1031,11 @@ export function PremiumResults({
   resumenEjecutivo: _resumenEjecutivo,
   ufValue, zoneData, aiAnalysisInitial,
   nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
+  hidePanel = false,
+  demoAiData,
+  creatorName,
+  isSharedView = false,
+  isSharedLink = false,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium";
@@ -832,6 +1055,11 @@ export function PremiumResults({
   createdAt?: string;
   superficie?: number;
   precioUF?: number;
+  hidePanel?: boolean;
+  demoAiData?: AIAnalysis;
+  creatorName?: string;
+  isSharedView?: boolean;
+  isSharedLink?: boolean;
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
@@ -859,13 +1087,9 @@ export function PremiumResults({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
-  const [fabShown, setFabShown] = useState(false);
+  const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
+  const [projectionsExpanded, setProjectionsExpanded] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setFabShown(true), 3000);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: none)");
@@ -920,7 +1144,18 @@ export function PremiumResults({
   const [aiError, setAiError] = useState<string | null>(null);
 
   const loadAiAnalysis = useCallback(async () => {
-    if (!analysisId || aiLoading) return;
+    if (aiLoading) return;
+    // Demo mode: use hardcoded AI data with simulated delay
+    if (!analysisId && demoAiData) {
+      setAiLoading(true);
+      setAiError(null);
+      setTimeout(() => {
+        setAiAnalysis(demoAiData);
+        setAiLoading(false);
+      }, 1500);
+      return;
+    }
+    if (!analysisId) return;
     setAiLoading(true);
     setAiError(null);
     try {
@@ -937,7 +1172,7 @@ export function PremiumResults({
     } finally {
       setAiLoading(false);
     }
-  }, [analysisId, aiLoading]);
+  }, [analysisId, aiLoading, demoAiData]);
 
   const m = normalizeMetrics(results?.metrics);
 
@@ -1123,8 +1358,8 @@ export function PremiumResults({
 
     const configs = [
       { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-[#C8323C]/60", bgClass: "", labelClass: "text-[#C8323C]" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30 ring-0", bgClass: "bg-[#FAFAF8]", labelClass: "" },
-      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#0F0F0F", borderClass: "border-[#0F0F0F]/30", bgClass: "", labelClass: "" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30 ring-0", bgClass: "bg-[#1A1A1A]", labelClass: "text-[#FAFAF8]" },
+      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30", bgClass: "", labelClass: "text-[#B0BEC5]" },
     ];
 
     return configs.map(cfg => {
@@ -1238,7 +1473,7 @@ export function PremiumResults({
       items.push({
         name: s.name,
         range: [bottom, top],
-        fill: s.delta >= 0 ? "#0F0F0F" : "#C8323C",
+        fill: s.delta >= 0 ? "rgba(250,250,248,0.6)" : "rgba(200,50,60,0.8)",
         isResult: false,
         delta: s.delta,
         running: newRunning,
@@ -1250,7 +1485,7 @@ export function PremiumResults({
     items.push({
       name: "Neto",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
-      fill: flujo >= 0 ? "#0F0F0F" : "#C8323C",
+      fill: flujo >= 0 ? "rgba(250,250,248,0.5)" : "#C8323C",
       isResult: true,
       delta: flujo,
       running: flujo,
@@ -1403,14 +1638,14 @@ export function PremiumResults({
   // Egreso bar series ordered by average absolute impact (descending), filtered to non-zero
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
-      { key: "Dividendo", label: "Dividendo", color: "#C8323C" },
-      { key: "GGCC", label: "GGCC", color: "#C8323C" },
-      { key: "Contribuciones", label: "Contribuciones", color: "#71717A" },
-      { key: "Mantencion", label: "Mantención", color: "#C8323C" },
-      { key: "Vacancia", label: "Vacancia", color: "#0F0F0F" },
-      { key: "Corretaje", label: "Corretaje", color: "#71717A" },
-      { key: "Recambio", label: "Recambio", color: "#0F0F0F" },
-      { key: "Administracion", label: "Administración", color: "#71717A" },
+      { key: "Dividendo", label: "Dividendo", color: "rgba(200,50,60,0.85)" },
+      { key: "GGCC", label: "GGCC", color: "rgba(200,50,60,0.7)" },
+      { key: "Contribuciones", label: "Contribuciones", color: "rgba(250,250,248,0.35)" },
+      { key: "Mantencion", label: "Mantención", color: "rgba(200,50,60,0.6)" },
+      { key: "Vacancia", label: "Vacancia", color: "rgba(250,250,248,0.25)" },
+      { key: "Corretaje", label: "Corretaje", color: "rgba(250,250,248,0.35)" },
+      { key: "Recambio", label: "Recambio", color: "rgba(250,250,248,0.25)" },
+      { key: "Administracion", label: "Administración", color: "rgba(250,250,248,0.35)" },
     ];
     const dataRows = cashflowData.filter(r => r._x > 0);
     if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
@@ -1612,24 +1847,58 @@ export function PremiumResults({
 
   const mainContent = (
     <>
+      {/* Shared view banner (logged in user viewing someone else's analysis) */}
+      {isSharedView && (
+        <div className="bg-[#0F0F0F] text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-white/[0.08]">
+          <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
+          <a href="/analisis/nuevo" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
+            Analizar mi propio depto →
+          </a>
+        </div>
+      )}
+      {/* Shared link banner (guest arriving via shared link) */}
+      {isSharedLink && (
+        <div className="bg-[#0F0F0F] text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-white/[0.08]">
+          <p className="font-body text-sm">
+            {creatorName ? `${creatorName} te compartió este análisis.` : "Te compartieron un análisis."}
+            {" "}Regístrate para verlo completo.
+          </p>
+          <a href="/register" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
+            Crear cuenta gratis →
+          </a>
+        </div>
+      )}
+
       {/* ═══════ BLOCK 1 — EXECUTIVE SUMMARY (NO REGISTRATION) ═══════ */}
-      <div className="bg-[#FAFAF8] rounded-2xl p-7 md:p-8 mb-5">
+      <div className="bg-[#1A1A1A] rounded-2xl p-7 md:p-8 mb-5">
         <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-start">
-          {/* Left: Score Circle */}
-          <div className="flex flex-col items-center">
-            <p className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.12em] mb-1">FRANCO SCORE</p>
-            <ScoreCircleInline score={score} />
-            <VerdictBadge score={score} />
+          {/* Left: Score Bar */}
+          <div className="relative">
+            <div className={currentAccess === "guest" ? "filter blur-[8px] pointer-events-none" : ""}>
+              <ScoreBarInline score={score} />
+            </div>
+            {currentAccess === "guest" && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <Lock className="h-4 w-4 text-[#FAFAF8] mb-1.5" />
+                <p className="font-body text-[11px] font-medium text-[#FAFAF8] text-center leading-tight">Regístrate gratis<br />para ver tu Score</p>
+                <a href="/register" className="mt-2">
+                  <span className="font-body text-[10px] font-semibold text-[#C8323C] hover:underline">Crear cuenta →</span>
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Right: Info + Metrics + Siendo Franco */}
           <div>
-            <h1 className="font-heading font-bold text-xl md:text-2xl text-[#0F0F0F]">{nombre}</h1>
-            <p className="font-body text-xs text-[#71717A] mt-1">
-              {ciudad && <>{ciudad} · </>}{superficie}m² · {fmtUF(precioUF)} ({fmt(freePrecioM2)}/m²) · Pie {inputData?.piePct ?? 20}%
+            {currentAccess === "guest" && creatorName && (
+              <p className="font-body text-xs font-semibold text-[#C8323C] mb-1">Análisis de {creatorName}</p>
+            )}
+            <h1 className="font-heading font-bold text-xl md:text-2xl text-[#FAFAF8]">{nombre}</h1>
+            <p className="font-body text-xs text-[#FAFAF8]/50 mt-1">
+              {ciudad && <>{ciudad} · </>}{superficie}m² · {fmtUF(precioUF)} ({currency === "UF" ? fmtUF(freePrecioM2) : fmtCLP(freePrecioM2 * UF_CLP)}/m²) · Pie {inputData?.piePct ?? 20}%
             </p>
             {createdAt && (
-              <p className="font-body text-[10px] text-[#71717A]/60 mt-0.5">
+              <p className="font-body text-[10px] text-[#FAFAF8]/30 mt-0.5">
                 Analizado el {new Date(createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}
               </p>
             )}
@@ -1641,49 +1910,56 @@ export function PremiumResults({
 
             {/* 3 metrics grid */}
             <div className="grid grid-cols-3 gap-2 mt-4">
-              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Flujo mensual</p>
-                <p className={`font-mono text-sm sm:text-lg font-bold mt-1 truncate ${flujoUnificado >= 0 ? "text-[#0F0F0F]" : "text-[#C8323C]"}`}>
+              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Flujo mensual</p>
+                <p className={`font-mono text-sm sm:text-lg font-semibold mt-1 truncate ${flujoUnificado >= 0 ? "text-[#FAFAF8]" : "text-[#C8323C]"}`}>
                   {flujoUnificado >= 0 ? "+" : ""}{fmtM(flujoUnificado)}
                 </p>
               </div>
-              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Rent. neta</p>
-                <p className="font-mono text-sm sm:text-lg font-bold mt-1 truncate text-[#0F0F0F]">
-                  {m ? `${(m.rentabilidadNeta ?? 0).toFixed(1)}%` : `${freeYieldBruto.toFixed(1)}%`}
+              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Rent. neta</p>
+                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-[#FAFAF8]">
+                  {m ? `${fmtPct(m.rentabilidadNeta ?? 0)}` : `${fmtPct(freeYieldBruto)}`}
                 </p>
               </div>
-              <div className="bg-white rounded-[10px] p-2.5 border border-[#E6E6E2] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#71717A] uppercase tracking-wide truncate">Retorno 10a</p>
-                <p className="font-mono text-sm sm:text-lg font-bold mt-1 truncate text-[#0F0F0F]">
+              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Retorno 10a</p>
+                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-[#FAFAF8]">
                   {exit ? `${exit.multiplicadorCapital}x` : "—"}
                 </p>
               </div>
             </div>
 
             {/* "Siendo franco:" box */}
-            <div className="mt-3.5 p-3 px-3.5 bg-white rounded-[10px] border-l-[3px] border-[#C8323C]">
-              <p className="font-body text-[13px] text-[#0F0F0F] leading-relaxed">
-                <strong>Siendo franco:</strong> {siendoFrancoText}
-              </p>
-            </div>
+            {(() => {
+              const sfColor = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+              return (
+                <div className={`mt-3.5 ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`} style={{ borderLeft: `3px solid ${sfColor}`, background: `${sfColor}08`, borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
+                  <p className="font-body text-[13px] font-semibold" style={{ color: sfColor }}>Siendo franco:</p>
+                  <p className="font-body text-[12px] mt-1" style={{ color: "#888888" }}>{siendoFrancoText}</p>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
         {/* Dimension bars */}
         {results && (
-          <div className="flex flex-wrap gap-x-4 gap-y-2 mt-4 pt-4 border-t border-[#E6E6E2]">
+          <div className={`flex flex-col gap-2.5 mt-4 pt-4 border-t border-white/[0.08] ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`}>
             {radarData.map((d) => {
-              const barColor = d.value < 40 ? "bg-[#C8323C]" : "bg-[#0F0F0F]";
+              const val = Math.round(d.value);
+              const fillColor = val < 40 ? "#C8323C" : val < 70 ? "#FBBF24" : "rgba(176,190,197,0.8)";
+              const numColor = val < 40 ? "text-[#C8323C]" : val < 70 ? "text-[#FBBF24]" : "text-[#B0BEC5]";
               return (
-                <div key={d.dimension} className="flex-1 min-w-[100px]">
-                  <div className="flex justify-between mb-0.5">
-                    <span className="font-body text-[9px] text-[#71717A]">{d.dimension}</span>
-                    <span className={`font-mono text-[10px] font-medium ${d.value < 40 ? "text-[#C8323C]" : "text-[#0F0F0F]"}`}>{Math.round(d.value)}</span>
+                <div key={d.dimension} className="flex items-center gap-3">
+                  <span className="font-body text-[11px] text-[#FAFAF8]/50 w-[75px] shrink-0">{d.dimension}</span>
+                  <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex">
+                    <div className="w-[40%] bg-[#C8323C]/15" />
+                    <div className="w-[30%] bg-white/[0.06]" />
+                    <div className="w-[30%] bg-[#B0BEC5]/15" />
+                    <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${val}%`, backgroundColor: fillColor }} />
                   </div>
-                  <div className="h-1 rounded-full bg-[#F0F0EC] overflow-hidden">
-                    <div className={`h-full rounded-full ${barColor}`} style={{ width: `${d.value}%` }} />
-                  </div>
+                  <span className={`font-mono text-[11px] font-medium w-[28px] text-right shrink-0 ${numColor}`}>{val}</span>
                 </div>
               );
             })}
@@ -1694,20 +1970,28 @@ export function PremiumResults({
         <button
           type="button"
           onClick={() => document.getElementById("bloque-detalle")?.scrollIntoView({ behavior: "smooth" })}
-          className="block mx-auto mt-4 font-body text-[11px] text-[#71717A] cursor-pointer hover:text-[#0F0F0F] transition-colors"
+          className="block mx-auto mt-4 font-body text-[11px] text-[#FAFAF8]/60 cursor-pointer hover:text-[#FAFAF8] transition-colors"
         >
           Profundizar en el análisis ↓
         </button>
 
-        {/* Guest CTA */}
+        {/* Guest CTA — does not reveal score */}
         {currentAccess === "guest" && (
-          <div className="mt-6 p-6 bg-white rounded-xl border border-[#E6E6E2] text-center md:text-left md:flex md:items-center md:gap-4">
+          <div className="mt-6 p-6 bg-[#151515] rounded-xl border border-white/[0.08] text-center md:text-left md:flex md:items-center md:gap-4">
             <div className="flex-1">
-              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Tu Franco Score es {score}. ¿Quieres saber por qué?</h3>
-              <p className="font-body text-sm text-[#71717A] mt-1">Regístrate gratis para ver 8 métricas, sensibilidad, riesgos, comparación con zona y más.</p>
+              <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">
+                {isSharedLink
+                  ? (creatorName ? `${creatorName} te compartió este análisis` : "Te compartieron este análisis")
+                  : "Tu Franco Score está listo. ¿Quieres verlo?"}
+              </h3>
+              <p className="font-body text-sm text-[#FAFAF8]/50 mt-1">
+                {isSharedLink
+                  ? "Regístrate para ver el análisis completo."
+                  : "Regístrate gratis para ver tu score, 8 métricas, riesgos y más."}
+              </p>
             </div>
             <a href="/register" className="mt-4 md:mt-0 inline-block">
-              <button type="button" className="bg-[#0F0F0F] text-white font-body text-sm font-semibold px-6 py-2.5 rounded-lg">Regístrate gratis</button>
+              <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-sm font-semibold px-6 py-2.5 rounded-lg">Regístrate gratis</button>
             </a>
           </div>
         )}
@@ -1719,24 +2003,116 @@ export function PremiumResults({
         <>
           {/* Separator */}
           <div id="bloque-detalle" className="flex items-center gap-3 mb-4 mt-2">
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
-            <span className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
+            <div className="h-px flex-1 bg-white/[0.08]" />
+            <span className="font-mono text-[9px] text-[#FAFAF8]/50 uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
+            <div className="h-px flex-1 bg-white/[0.08]" />
           </div>
 
-          {/* Login gate if guest */}
-          {currentAccess === "guest" && (
-            <div className="bg-[#FAFAF8] rounded-xl border border-[#E6E6E2] text-center py-10 px-5 mb-5">
-              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">Regístrate para ver el detalle</h3>
-              <p className="font-body text-[13px] text-[#71717A] mt-1.5 mb-4">8 métricas, sensibilidad, comparación con la zona y más. Gratis.</p>
-              <a href="/register">
-                <button type="button" className="bg-[#0F0F0F] text-white font-body text-[13px] font-semibold px-6 py-2.5 rounded-lg">Registrarme gratis →</button>
-              </a>
-            </div>
-          )}
+          {/* ─── GUEST LAYOUT: visible sections → CTA → grouped locked block ─── */}
+          {currentAccess === "guest" ? (
+            <>
+              {/* Section 1: Bolsillo — VISIBLE */}
+              <CollapsibleSection
+                title="¿Cuánto sale de tu bolsillo cada mes?"
+                subtitle="Desglose real: arriendo vs todos los costos"
+                defaultOpen
+              >
+                {flujoBreakdown && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Arriendo</p>
+                      <p className="font-mono text-lg font-semibold text-[#FAFAF8] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
+                    </div>
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Dividendo</p>
+                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
+                    </div>
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Gastos</p>
+                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
+                    </div>
+                    <div className={`bg-[#151515] rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-[#B0BEC5]" : "border-[#C8323C]"}`}>
+                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto</p>
+                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                        {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </CollapsibleSection>
 
-          {/* Collapsible sections if logged in */}
-          {currentAccess !== "guest" && (
+              {/* Section 3: Zone — VISIBLE (moved up for guest) */}
+              <CollapsibleSection
+                title="¿Cómo se compara con la zona?"
+                subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
+                defaultOpen
+              >
+                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} />
+              </CollapsibleSection>
+
+              {/* CTA de registro */}
+              <div className="rounded-xl border-2 border-[#C8323C]/30 bg-[#C8323C]/[0.03] text-center py-8 px-5 mb-5 mt-2">
+                <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">
+                  {isSharedLink ? "Regístrate para ver el análisis completo" : "Regístrate gratis para ver tu Franco Score y el análisis completo"}
+                </h3>
+                <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1.5 mb-4">
+                  {isSharedLink
+                    ? "Te compartieron un análisis de inversión. Crea tu cuenta gratis para ver el Score, rentabilidad, riesgos y más."
+                    : "Crea tu cuenta en 10 segundos. Sin tarjeta."}
+                </p>
+                <a href="/register">
+                  <button type="button" className="bg-[#C8323C] text-white font-body text-[13px] font-bold px-6 py-2.5 rounded-lg shadow-[0_2px_10px_rgba(200,50,60,0.15)]">Crear cuenta gratis →</button>
+                </a>
+                <p className="font-body text-xs text-[#FAFAF8]/50 mt-3">
+                  <a href="/login" className="hover:underline">Ya tengo cuenta →</a>
+                </p>
+              </div>
+
+              {/* Grouped locked sections block */}
+              <div className="relative rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-6 mb-5 overflow-hidden">
+                {/* Decorative blur behind */}
+                <div className="absolute inset-0 top-[140px] filter blur-[8px] opacity-20 pointer-events-none overflow-hidden px-5">
+                  <div className="h-4 bg-white/[0.08] rounded mb-2 w-3/4" />
+                  <div className="h-4 bg-white/[0.08] rounded mb-2 w-1/2" />
+                  <div className="h-4 bg-white/[0.08] rounded mb-2 w-2/3" />
+                  <div className="h-4 bg-white/[0.08] rounded mb-2 w-3/5" />
+                  <div className="h-4 bg-white/[0.08] rounded mb-2 w-1/2" />
+                  <div className="h-4 bg-white/[0.08] rounded w-2/3" />
+                </div>
+
+                <div className="relative z-10 text-center">
+                  <Lock className="h-6 w-6 text-[#FAFAF8]/50 mx-auto mb-3" />
+                  <h3 className="font-heading font-bold text-lg text-[#FAFAF8] mb-4">Regístrate gratis para ver:</h3>
+
+                  <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 mb-6">
+                    {[
+                      "Rentabilidad detallada",
+                      "Análisis de riesgos",
+                      "Sensibilidad (3 escenarios)",
+                      "Tu Franco Score completo",
+                    ].map((feat) => (
+                      <div key={feat} className="flex items-center gap-1.5 justify-center">
+                        <Check className="w-3.5 h-3.5 text-[#B0BEC5] shrink-0" />
+                        <span className="font-body text-sm text-[#FAFAF8]/70">{feat}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {isSharedLink && creatorName && (
+                    <p className="font-body text-xs text-[#FAFAF8]/50 mb-4">Este análisis fue creado por {creatorName}</p>
+                  )}
+
+                  <a href="/register">
+                    <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-[13px] font-bold px-6 py-2.5 rounded-lg">Crear cuenta gratis →</button>
+                  </a>
+                  <p className="font-body text-xs text-[#FAFAF8]/50 mt-3">
+                    <a href="/login" className="hover:underline">Ya tengo cuenta →</a>
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ─── LOGGED IN LAYOUT: original order ─── */
             <>
               {/* Section 1: Flujo desglose */}
               <CollapsibleSection
@@ -1747,21 +2123,21 @@ export function PremiumResults({
               >
                 {flujoBreakdown && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
-                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Arriendo</p>
-                      <p className="font-mono text-lg font-bold text-[#0F0F0F] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Arriendo</p>
+                      <p className="font-mono text-lg font-semibold text-[#FAFAF8] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
                     </div>
-                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
-                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Dividendo</p>
-                      <p className="font-mono text-lg font-bold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Dividendo</p>
+                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className="bg-[#FAFAF8] rounded-[10px] p-3 text-center border border-[#E6E6E2]">
-                      <p className="font-body text-[9px] text-[#71717A] uppercase tracking-wide">Gastos</p>
-                      <p className="font-mono text-lg font-bold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
+                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
+                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Gastos</p>
+                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className="bg-white rounded-[10px] p-3 text-center border-2 border-[#C8323C]">
-                      <p className="font-body text-[9px] text-[#C8323C] uppercase tracking-wide font-semibold">Flujo neto</p>
-                      <p className={`font-mono text-lg font-bold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
+                    <div className={`bg-[#151515] rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-[#B0BEC5]" : "border-[#C8323C]"}`}>
+                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto</p>
+                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
                         {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
                       </p>
                     </div>
@@ -1772,16 +2148,47 @@ export function PremiumResults({
               {/* Section 2: Rentabilidad */}
               <CollapsibleSection
                 title="¿Qué tan buena es la rentabilidad?"
-                subtitle="3 formas de medirla — tu corredor solo te muestra la primera"
-                helpText="Hay 3 formas de medir rentabilidad. La bruta no descuenta nada. La operativa descuenta gastos operacionales. La neta descuenta TODO. La que importa es la neta."
+                subtitle="Tu corredor solo te muestra la primera"
               >
-                <div>
-                  <MetricRow label="Rentabilidad Bruta" value={`${(m.rentabilidadBruta ?? 0).toFixed(1)}%`} tooltip="Arriendo × 12 / Precio. No descuenta ningún gasto. Es el número bonito que te muestra tu corredor." />
-                  <MetricRow label="Rentabilidad Operativa (CAP Rate)" value={`${(m.capRate ?? 0).toFixed(1)}%`} tooltip="Descuenta GGCC, contribuciones y mantención. Más real que la bruta." />
-                  <MetricRow label="Rentabilidad Neta" value={`${(m.rentabilidadNeta ?? 0).toFixed(1)}%`} color="text-[#C8323C]" tooltip="Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. Esta es la real." />
-                  <MetricRow label="Cash-on-Cash" value={`${(m.cashOnCash ?? 0).toFixed(1)}%`} color={(m.cashOnCash ?? 0) < 0 ? "text-[#C8323C]" : undefined} tooltip="Cuánto te renta el pie que pusiste. Negativo = estás poniendo plata extra cada mes." />
-                  <MetricRow label="TIR (10 años)" value={exit ? `${exit.tir.toFixed(1)}%` : "—"} tooltip="Tasa Interna de Retorno considerando plusvalía y amortización en 10 años." />
-                  <MetricRow label="ROI (10 años)" value={exit ? `${exit.multiplicadorCapital}x` : "—"} tooltip="Cuántas veces multiplicas tu inversión total en 10 años." />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-[2px]">
+                  {[
+                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto." },
+                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención." },
+                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio." },
+                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra." },
+                    { label: "TIR 10a", value: exit ? `${fmtPct(exit.tir)}` : "—", hint: "Tasa interna", color: exit && exit.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización." },
+                    { label: "ROI 10a", value: exit ? `${exit.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: exit && exit.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años." },
+                  ].map((metric, i) => (
+                    <div
+                      key={metric.label}
+                      className="bg-[#1A1A1A] px-4 py-3.5 flex flex-col gap-1"
+                      style={{
+                        borderRadius: i === 0 ? '8px 0 0 0' : i === 2 ? '0 8px 0 0' : i === 3 ? '0 0 0 8px' : i === 5 ? '0 0 8px 0' : '0',
+                      }}
+                    >
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40 flex items-center gap-1">
+                        {metric.label}
+                        <InfoTooltip content={metric.tip} />
+                      </span>
+                      <span className="font-mono font-semibold text-lg" style={{ color: metric.color }}>{metric.value}</span>
+                      <span className="text-[10px] text-[#FAFAF8]/20">{metric.hint}</span>
+                    </div>
+                  ))}
+                </div>
+                {/* Insight contextual */}
+                <div
+                  className="mt-3.5 rounded-r-lg py-3 px-4 text-[13px] leading-relaxed"
+                  style={{
+                    borderLeft: `3px solid ${(m.rentabilidadNeta ?? 0) >= 3 ? '#B0BEC5' : '#C8323C'}`,
+                    background: (m.rentabilidadNeta ?? 0) >= 3 ? 'rgba(176,190,197,0.04)' : 'rgba(200,50,60,0.04)',
+                    color: 'rgba(250,250,248,0.6)',
+                  }}
+                >
+                  <span style={{ color: (m.rentabilidadNeta ?? 0) >= 3 ? '#B0BEC5' : '#C8323C', fontWeight: 600 }}>Siendo franco:</span>{' '}
+                  {(m.rentabilidadNeta ?? 0) >= 3
+                    ? `Rentabilidad neta de ${fmtPct(m.rentabilidadNeta ?? 0)} — los números cierran.`
+                    : `La bruta engaña — con ${fmtPct(m.rentabilidadNeta ?? 0)} neta y cash-on-cash de ${fmtPct(m.cashOnCash ?? 0)}, la inversión depende de la plusvalía.`
+                  }
                 </div>
               </CollapsibleSection>
 
@@ -1790,59 +2197,7 @@ export function PremiumResults({
                 title="¿Cómo se compara con la zona?"
                 subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
               >
-                {(() => {
-                  if (!zoneData || zoneData.length === 0) {
-                    return <p className="text-sm text-[#71717A]">Datos de mercado no disponibles para esta comuna.</p>;
-                  }
-                  const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
-                  const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
-                  const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
-                  const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0 ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) : 50;
-                  const yieldZona = avgM2Zona > 0 && avgSuperficie > 0 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100 : (m.rentabilidadBruta ?? 0) * 0.9;
-                  const items = [
-                    { label: currency === "UF" ? "Precio/m² (UF)" : "Precio/m² (CLP)", tuyo: currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP, zona: currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP },
-                    { label: "Arriendo promedio", tuyo: m.ingresoMensual, zona: avgArriendoZona },
-                    { label: "Rent. Bruta (%)", tuyo: m.rentabilidadBruta, zona: Math.round(yieldZona * 10) / 10 },
-                  ];
-                  return (
-                    <div className="space-y-4">
-                      <p className="text-xs text-[#71717A]">Basado en {totalPubs} publicaciones activas en {comuna}.</p>
-                      {items.map(({ label, tuyo, zona }) => {
-                        const maxVal = Math.max(tuyo, zona) || 1;
-                        const fmtVal = (v: number) => label.includes("Rent.") ? v.toFixed(1) + "%" : label.includes("Arriendo") ? fmt(v) : currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v);
-                        return (
-                          <div key={label}>
-                            <div className="mb-1 text-xs text-[#71717A]">{label}</div>
-                            <div className="mb-1 flex items-center gap-3">
-                              <span className="w-20 text-xs">Tu propiedad</span>
-                              <div className="h-4 flex-1 rounded-full bg-[#E6E6E2]">
-                                <div className="h-full rounded-full bg-[#0F0F0F]" style={{ width: `${Math.min((tuyo / maxVal) * 100, 100)}%` }} />
-                              </div>
-                              <span className="w-16 text-right font-mono text-xs font-medium text-[#0F0F0F]">{fmtVal(tuyo)}</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <span className="w-20 text-xs">Promedio zona</span>
-                              <div className="h-4 flex-1 rounded-full bg-[#F0F0EC]">
-                                <div className="h-full rounded-full bg-[#E6E6E2]" style={{ width: `${Math.min((zona / maxVal) * 100, 100)}%` }} />
-                              </div>
-                              <span className="w-16 text-right text-xs font-medium">{fmtVal(zona)}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                      {/* Map */}
-                      <div className="mt-4">
-                        <div className="mb-2 flex items-center gap-2 text-sm text-[#71717A]">
-                          <MapPin className="h-4 w-4" />
-                          <span>Ubicación: {mapQuery}</span>
-                        </div>
-                        <div className="overflow-hidden rounded-xl border border-[#E6E6E2]">
-                          <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
+                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} />
               </CollapsibleSection>
 
               {/* Section 4: Risks */}
@@ -1850,26 +2205,84 @@ export function PremiumResults({
                 title="¿Cuáles son los riesgos?"
                 subtitle="Qué puede salir mal y cuánto te afecta"
               >
-                <div className="space-y-2">
-                  <div className={`bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] ${results.breakEvenTasa !== -1 && inputData && results.breakEvenTasa > inputData.tasaInteres ? "border-l-[#E6E6E2]" : "border-l-[#C8323C]"}`}>
-                    <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">Break-even tasa: <span className="font-mono">{results.breakEvenTasa === -1 ? "N/A" : `${results.breakEvenTasa.toFixed(2)}%`}</span></p>
-                    <p className="font-body text-[12px] text-[#71717A] mt-0.5">
-                      {results.breakEvenTasa === -1
-                        ? "Incluso con tasa 0%, el flujo sería negativo."
-                        : inputData && results.breakEvenTasa < inputData.tasaInteres
-                          ? `Para flujo positivo necesitas tasa ${results.breakEvenTasa.toFixed(2)}%, bajo la actual (${inputData.tasaInteres.toFixed(2)}%).`
-                          : `Si la tasa sube sobre ${results.breakEvenTasa.toFixed(2)}%, pasas a flujo negativo.`}
-                    </p>
-                  </div>
-                  <div className="bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] border-l-[#71717A]">
-                    <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">Precio máximo: {currency === "UF" ? fmtUF(results.valorMaximoCompra) : fmtCLP(results.valorMaximoCompra * UF_CLP)}</p>
-                    <p className="font-body text-[12px] text-[#71717A] mt-0.5">Para flujo positivo con estos datos, no deberías pagar más de este precio.</p>
-                  </div>
-                  {results.contras && results.contras.map((contra, i) => (
-                    <div key={i} className="bg-[#FAFAF8] rounded-lg p-2.5 px-3.5 border-l-[3px] border-l-[#C8323C]">
-                      <p className="font-body text-[13px] font-semibold text-[#0F0F0F]">{contra}</p>
-                    </div>
-                  ))}
+                <div className="space-y-3">
+                  {(() => {
+                    // Build structured risks sorted by severity and impact
+                    const risks = ([
+                      {
+                        id: "flujo_negativo",
+                        titulo: `Flujo negativo: ${fmt(Math.abs(flujoUnificado))}/mes`,
+                        detalle: "Cada mes tendrás que poner esta plata de tu bolsillo para cubrir los costos. Asegúrate de tener este flujo disponible de forma estable.",
+                        severity: "critical" as const,
+                        show: flujoUnificado < 0,
+                      },
+                      {
+                        id: "cash_on_cash",
+                        titulo: `Cash-on-cash negativo: ${fmtPct(m.cashOnCash ?? 0)}`,
+                        detalle: "El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.",
+                        severity: "critical" as const,
+                        show: (m.cashOnCash ?? 0) < 0,
+                      },
+                      {
+                        id: "precio_maximo",
+                        titulo: `Precio máximo: ${currency === "UF" ? fmtUF(results.valorMaximoCompra) : fmtCLP(results.valorMaximoCompra * UF_CLP)}`,
+                        detalle: "Para flujo positivo con estos datos, no deberías pagar más de este precio.",
+                        severity: "critical" as const,
+                        show: true,
+                      },
+                      {
+                        id: "cap_rate_bajo",
+                        titulo: `CAP rate bajo: ${fmtPct(m.capRate ?? 0)}`,
+                        detalle: "Podrías negociar el precio de compra o buscar una propiedad más rentable en la zona.",
+                        severity: "critical" as const,
+                        show: (m.capRate ?? 0) < 4.0,
+                      },
+                      {
+                        id: "ggcc_altos",
+                        titulo: `Gastos comunes altos (${inputData ? Math.round((inputData.gastos / inputData.arriendo) * 100) : 0}% del arriendo)`,
+                        detalle: "Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.",
+                        severity: "warning" as const,
+                        show: !!inputData && inputData.arriendo > 0 && (inputData.gastos / inputData.arriendo) > 0.25,
+                      },
+                      {
+                        id: "breakeven_tasa",
+                        titulo: `Break-even tasa: ${results.breakEvenTasa === -1 ? "N/A" : `${fmtPct(results.breakEvenTasa, 2)}`}`,
+                        detalle: results.breakEvenTasa === -1
+                          ? "Incluso con tasa 0%, el flujo sería negativo. El problema es estructural."
+                          : inputData && results.breakEvenTasa < inputData.tasaInteres
+                            ? `Necesitarías una tasa de ${fmtPct(results.breakEvenTasa, 2)} para flujo positivo, bajo la actual (${fmtPct(inputData.tasaInteres, 2)}).`
+                            : `Si la tasa sube sobre ${fmtPct(results.breakEvenTasa, 2)}, pasas a flujo negativo.`,
+                        severity: "warning" as const,
+                        show: true,
+                      },
+                    ]).filter(r => r.show);
+
+                    // Also include contras that aren't covered by structured risks
+                    const structuredPhrases = ["flujo negativo", "cash-on-cash", "cash on cash", "pie está rentando", "de tu bolsillo", "precio máximo", "precio por m²", "cap rate", "gastos comunes", "break-even", "breakeven"];
+                    const extraContras = (results.contras || []).filter(c => {
+                      const lower = c.toLowerCase();
+                      return !structuredPhrases.some(p => lower.includes(p));
+                    });
+
+                    return (
+                      <>
+                        {risks.map((risk) => {
+                          const color = risk.severity === "critical" ? "#C8323C" : "#FBBF24";
+                          return (
+                            <div key={risk.id} style={{ borderLeft: `3px solid ${color}`, background: `${color}08`, borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
+                              <div className="font-body text-sm font-semibold" style={{ color }}>{risk.titulo}</div>
+                              <div className="font-body text-[13px] text-[#FAFAF8]/50 leading-relaxed mt-1">{risk.detalle}</div>
+                            </div>
+                          );
+                        })}
+                        {extraContras.map((contra, i) => (
+                          <div key={`extra-${i}`} style={{ borderLeft: "3px solid #FBBF24", background: "#FBBF2408", borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
+                            <div className="font-body text-[13px] text-[#FAFAF8]/50 leading-relaxed">{contra}</div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </div>
               </CollapsibleSection>
 
@@ -1880,39 +2293,43 @@ export function PremiumResults({
               >
                 {sensScenarios && inputData && (
                   <>
-                    {/* Horizonte slider */}
                     <div className="mb-5">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-sm font-semibold">Horizonte de venta</h4>
-                        <span className="font-mono text-sm font-bold text-[#0F0F0F]">{sensHorizon} años</span>
+                        <h4 className="text-sm font-medium text-[#FAFAF8]">Horizonte de venta</h4>
+                        <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{sensHorizon} años</span>
                       </div>
-                      <input type="range" min={3} max={20} step={1} value={sensHorizon} onChange={(e) => setSensHorizon(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-2" />
-                      <div className="flex justify-between text-[10px] text-[#71717A] mt-0.5"><span>3 años</span><span>20 años</span></div>
+                      <input type="range" min={3} max={20} step={1} value={sensHorizon} onChange={(e) => setSensHorizon(Number(e.target.value))} className="w-full accent-[#71717A] h-2" />
+                      <div className="flex justify-between text-[10px] text-[#FAFAF8]/50 mt-0.5"><span>3 años</span><span>20 años</span></div>
                     </div>
-                    {/* 3 scenario cards */}
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-                      {sensScenarios.map((s) => (
-                        <div key={s.key} className={`rounded-xl border border-[#E6E6E2] ${s.bgClass} p-4 ${s.key === "pesimista" ? "border-l-4 border-l-[#C8323C]" : s.key === "base" ? "border-l-4 border-l-[#0F0F0F] bg-[#FAFAF8]" : "border-l-4 border-l-[#0F0F0F]"}`}>
+                      {sensScenarios.map((s) => {
+                        const scColor = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "#B0BEC5" : "#333333";
+                        const scBg = s.key === "base" ? "#0F0F0F" : `${scColor}15`;
+                        const scBorder = s.key === "base" ? "#33333366" : `${scColor}35`;
+                        const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "#B0BEC5" : "#999999";
+                        return (
+                        <div key={s.key} className="rounded-lg" style={{ border: `1px solid ${scBorder}`, background: scBg, padding: "12px 16px" }}>
                           <div className="flex items-center gap-2 mb-3">
-                            <span className="text-base">{s.icon}</span>
-                            <div className={`text-sm font-semibold ${s.labelClass}`}>{s.sub}</div>
+                            <span className="text-base" style={{ color: scText }}>{s.icon}</span>
+                            <div className="text-sm font-medium" style={{ color: scText }}>{s.sub}</div>
                           </div>
                           <div className="mb-2">
-                            <div className="text-[10px] text-[#71717A]">Flujo mensual (año 1)</div>
-                            <div className={`font-mono text-lg font-bold ${s.flujoMensual >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>
-                              {fmt(s.flujoMensual)}<span className="text-xs font-normal text-[#71717A]">/mes</span>
+                            <div className="text-[10px] text-[#FAFAF8]/40">Flujo mensual (año 1)</div>
+                            <div className={`font-mono text-lg font-semibold ${s.flujoMensual >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                              {fmt(s.flujoMensual)}<span className="text-xs font-normal text-[#FAFAF8]/50">/mes</span>
                             </div>
                           </div>
                           <div className="mb-3">
-                            <div className="text-[10px] text-[#71717A]">Retorno ({sensHorizon} años)</div>
-                            <div className={`font-mono text-base font-bold ${s.retorno >= 1 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{s.retorno}x</div>
+                            <div className="text-[10px] text-[#FAFAF8]/40">Retorno ({sensHorizon} años)</div>
+                            <div className={`font-mono text-base font-semibold ${s.retorno >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{s.retorno}x</div>
                           </div>
-                          <div className="border-t border-dashed border-[#E6E6E2] pt-2 text-[11px] leading-relaxed text-[#71717A]">
-                            <div>Tasa {s.scenTasa.toFixed(2)}% · Arr. {fmtM(s.scenArriendo)}</div>
+                          <div className="border-t border-dashed border-white/[0.06] pt-2 text-[11px] leading-relaxed text-[#FAFAF8]/40">
+                            <div>Tasa {fmtPct(s.scenTasa, 2)} · Arr. {fmtM(s.scenArriendo)}</div>
                             <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}
@@ -1922,9 +2339,9 @@ export function PremiumResults({
 
           {/* Paywall CTA between Block 2 and Block 3 */}
           {currentAccess === "free" && analysisId && (
-            <div className="text-center py-8 mt-4 border-t border-[#E6E6E2] mb-5">
-              <h3 className="font-heading font-bold text-lg text-[#0F0F0F]">¿Quieres el análisis completo?</h3>
-              <p className="font-body text-[13px] text-[#71717A] mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
+            <div className="text-center py-8 mt-4 border-t border-white/[0.08] mb-5">
+              <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">¿Quieres el análisis completo?</h3>
+              <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
               <BottomPaywallCTA analysisId={analysisId} />
             </div>
           )}
@@ -1941,74 +2358,43 @@ export function PremiumResults({
             currentAccess={currentAccess}
             analysisId={analysisId}
             aiAnalysisInitiallyLoaded={!!(aiAnalysisInitial && typeof aiAnalysisInitial === "object" && "veredicto" in aiAnalysisInitial)}
-            projectionsContent={<>
-          {/* Projection controls */}
-          {/* Horizon + growth controls (only show for premium) */}
-          {currentAccess === "premium" && (
-            <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#71717A]">Horizonte:</span>
-                  <span className="text-sm font-medium">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
-                </div>
-                <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                <p className="mt-0.5 text-[10px] text-[#71717A]">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#71717A]">Plusvalía anual:</span>
-                  <span className="text-sm font-medium">{plusvaliaRate.toFixed(1)}%</span>
-                </div>
-                <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                <p className="mt-0.5 text-[10px] text-[#71717A]">Promedio histórico: 3-5% anual</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#71717A]">Crecimiento arriendo:</span>
-                  <span className="text-sm font-medium">{arriendoGrowth.toFixed(1)}%/año</span>
-                </div>
-                <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                <p className="mt-0.5 text-[10px] text-[#71717A]">Promedio histórico Santiago: 3-4% anual, ligado al IPC</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#71717A]">Crecimiento gastos:</span>
-                  <span className="text-sm font-medium">{costGrowth.toFixed(1)}%/año</span>
-                </div>
-                <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#0F0F0F]" />
-                <p className="mt-0.5 text-[10px] text-[#71717A]">Aplica a GGCC, contribuciones y mantención</p>
-              </div>
-            </div>
-          )}
-
+            isSharedView={isSharedView}
+            projectionsExpanded={projectionsExpanded}
+            onExpandProjections={() => setProjectionsExpanded(true)}
+            projectionsCTALabel={`Patrimonio en ${horizonYears} años`}
+            projectionsCTAValue={dynamicProjections.length > 0 ? fmt(dynamicProjections[Math.min(horizonYears - 1, dynamicProjections.length - 1)].patrimonioNeto) : undefined}
+            projectionsContent={(chartPhase, isFirstReveal) => (<>
           {/* Patrimonio projection */}
+          <div id="premium-chart-anchor-1" />
+          {(!isFirstReveal || chartPhase >= 1) && (
+          <div id="premium-chart-1" style={isFirstReveal && chartPhase === 1 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
           <CollapsibleSection
             title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
             subtitle="Proyección de patrimonio con plusvalía y amortización"
-            defaultOpen
             locked={currentAccess !== "premium"}
             analysisId={analysisId}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
           >
             {/* Patrimonio chart + breakdown */}
             {projData.length > 0 && (
               <>
                 <div>
                   <div className="mb-1 flex items-center gap-2">
-                    <h4 className="text-sm font-semibold">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
+                    <h4 className="text-sm font-semibold text-[#FAFAF8]">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
                     {horizonBeforeDelivery && (
                       <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
                         Período pre-entrega: tu patrimonio crece con los pagos del pie
                       </span>
                     )}
                   </div>
-                  <p className="mb-3 text-xs text-[#71717A]">De dónde viene tu patrimonio. Plusvalía {plusvaliaRate.toFixed(1)}%/año y arriendos +{arriendoGrowth.toFixed(1)}%/año.</p>
+                  <p className="mb-3 text-xs text-[#FAFAF8]/50">De dónde viene tu patrimonio. Plusvalía {fmtPct(plusvaliaRate)}/año y arriendos +{fmtPct(arriendoGrowth)}/año.</p>
                   <div className="h-72">
                     <ResponsiveContainer>
                       <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
+                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
@@ -2016,49 +2402,49 @@ export function PremiumResults({
                             if (!row) return null;
                             const pre = row.isPreEntrega;
                             return (
-                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                <div className="mb-1.5 font-semibold">{row.name}{pre ? " (pre-entrega)" : ""}</div>
+                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
+                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                 {pre ? (
                                   <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
-                                    <div style={{ color: "#71717A" }}>Deuda: <span style={{ color: "#71717A" }}>$0 (crédito aún no comienza)</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div style={{ color: "rgba(250,250,248,0.5)" }}>Deuda: <span style={{ color: "rgba(250,250,248,0.5)" }}>$0 (crédito aún no comienza)</span></div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.valorPropiedad)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "#71717A" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#0F0F0F" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.valorPropiedad)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.plusvalia)}</span></div>
                                   </>
                                 )}
-                                <div className="mt-1 border-t border-border/50 pt-1 font-semibold" style={{ color: "#0F0F0F" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                <div className="mt-1 border-t border-white/[0.06] pt-1 font-semibold" style={{ color: "#FAFAF8" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                               </div>
                             );
                           }}
                         />
-                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#0F0F0F" fillOpacity={0.06} stroke="#0F0F0F" strokeWidth={2} />
+                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#FAFAF8" fillOpacity={0.06} stroke="#FAFAF8" strokeWidth={2} />
                         <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.06} stroke="none" />
-                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#0F0F0F" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
                         <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
-                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#0F0F0F" strokeWidth={3} dot={{ r: 3, fill: "#0F0F0F" }} name="Patrimonio neto" />
+                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#FAFAF8" strokeWidth={3} dot={{ r: 3, fill: "#FAFAF8" }} name="Patrimonio neto" />
                         {mesesPreEntregaTop > 0 && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Pie pagado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.4 }} />Capital amortizado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.25 }} />Plusvalía</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F", opacity: 0.15 }} />Valor propiedad</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.4 }} />Deuda</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 3 }} />Patrimonio neto</span>
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.3 }} />Pie pagado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.6 }} />Capital amortizado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.4 }} />Plusvalía</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.2 }} />Valor propiedad</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
                   </div>
-                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
                   {/* Desglose de patrimonio */}
                   {(() => {
                     const lastProj = dynamicProjections[horizonYears - 1];
@@ -2072,52 +2458,52 @@ export function PremiumResults({
                     const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
                     return (
                       <>
-                      <div className="mt-4 rounded-lg border border-border/50 bg-secondary/30">
+                      <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.03]">
                         <div className="space-y-0 divide-y divide-border/30 sm:hidden">
                           {[
-                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP) },
-                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#16A34A]" },
-                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#16A34A]" },
-                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#0F0F0F]", bold: true },
+                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP), color: "text-[#FAFAF8]" },
+                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#B0BEC5]" },
+                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#B0BEC5]" },
+                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#FAFAF8]", bold: true },
                           ].map(({ label, value, color, bold }) => (
-                            <div key={label} className={`px-3 py-2 ${bold ? "bg-secondary/40" : ""}`}>
-                              <div className="text-[11px] text-muted-foreground">{label}</div>
+                            <div key={label} className={`px-3 py-2 ${bold ? "bg-white/[0.05]" : ""}`}>
+                              <div className="text-[11px] text-[#FAFAF8]/60">{label}</div>
                               <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
                             </div>
                           ))}
                         </div>
                         <table className="hidden w-full text-sm sm:table">
                           <tbody>
-                            <tr className="border-b border-border/30">
-                              <td className="py-2 px-4 text-muted-foreground">Tu inversión inicial (pie)</td>
-                              <td className="py-2 px-4 text-right font-medium">{fmt(m.pieCLP)}</td>
+                            <tr className="border-b border-white/[0.04]">
+                              <td className="py-2 px-4 text-[#FAFAF8]/70">Tu inversión inicial (pie)</td>
+                              <td className="py-2 px-4 text-right font-medium text-[#FAFAF8]">{fmt(m.pieCLP)}</td>
                             </tr>
-                            <tr className="border-b border-border/30">
-                              <td className="py-2 px-4 text-muted-foreground">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
-                              <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(plusvaliaGanancia)}</td>
+                            <tr className="border-b border-white/[0.04]">
+                              <td className="py-2 px-4 text-[#FAFAF8]/70">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
+                              <td className="py-2 px-4 text-right font-medium text-[#B0BEC5]">{fmt(plusvaliaGanancia)}</td>
                             </tr>
-                            <tr className="border-b border-border/30">
-                              <td className="py-2 px-4 text-muted-foreground">Capital amortizado (pagado del crédito)</td>
-                              <td className="py-2 px-4 text-right font-medium text-[#16A34A]">{fmt(capitalAmortizado)}</td>
+                            <tr className="border-b border-white/[0.04]">
+                              <td className="py-2 px-4 text-[#FAFAF8]/70">Capital amortizado (pagado del crédito)</td>
+                              <td className="py-2 px-4 text-right font-medium text-[#B0BEC5]">{fmt(capitalAmortizado)}</td>
                             </tr>
-                            <tr className="border-t border-border/50">
-                              <td className="py-2 px-4 font-semibold">Patrimonio neto total</td>
-                              <td className="py-2 px-4 text-right font-bold text-[#0F0F0F]">{fmt(patrimonioTotal)}</td>
+                            <tr className="border-t border-white/[0.06]">
+                              <td className="py-2 px-4 font-semibold text-[#FAFAF8]">Patrimonio neto total</td>
+                              <td className="py-2 px-4 text-right font-bold text-[#FAFAF8]">{fmt(patrimonioTotal)}</td>
                             </tr>
                           </tbody>
                         </table>
-                        <p className="px-3 pb-2 text-[10px] text-muted-foreground sm:px-4">= valor propiedad − deuda restante</p>
+                        <p className="px-3 pb-2 text-[10px] text-[#FAFAF8]/50 sm:px-4">= valor propiedad − deuda restante</p>
                       </div>
-                      <div className="mt-3 rounded-lg border border-border/50 bg-secondary/20">
+                      <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.03]">
                         <div className="px-3 py-2 sm:px-4">
-                          <div className="mb-1 text-[11px] font-semibold text-muted-foreground">Lo que pusiste de tu bolsillo</div>
+                          <div className="mb-1 text-[11px] font-semibold text-[#FAFAF8]/60">Lo que pusiste de tu bolsillo</div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                            <span className={`font-medium ${flujoAcum >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
+                            <span className="text-[#FAFAF8]/60">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                            <span className={`font-medium ${flujoAcum >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
                           </div>
-                          <div className="mt-1.5 border-t border-border/30 pt-1.5">
-                            <p className="text-[11px] text-muted-foreground">
-                              Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
+                          <div className="mt-1.5 border-t border-white/[0.04] pt-1.5">
+                            <p className="text-[11px] text-[#FAFAF8]/60">
+                              Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
                             </p>
                           </div>
                         </div>
@@ -2129,72 +2515,78 @@ export function PremiumResults({
               </>
             )}
           </CollapsibleSection>
+          </div>
+          )}
 
           {/* Cashflow year by year */}
+          <div id="premium-chart-anchor-2" />
+          {(!isFirstReveal || chartPhase >= 2) && (
+          <div id="premium-chart-2" style={isFirstReveal && chartPhase === 2 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
           <CollapsibleSection
             title="¿Cómo es el flujo año a año?"
             subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
             locked={currentAccess !== "premium"}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
             analysisId={analysisId}
           >
             <div>
-                  <h4 className="mb-1 text-sm font-semibold">
+                  <h4 className="mb-1 text-sm font-semibold text-[#FAFAF8]">
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
-                  <p className="mb-3 text-xs text-muted-foreground">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
+                  <p className="mb-3 text-xs text-[#FAFAF8]/50">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" horizontal vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
+                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
-                              <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                                <div className="mb-1.5 font-semibold">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso: <span className="font-medium text-[#0F0F0F]">{fmt(row.Ingreso)}</span></div>
+                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
+                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}</div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso: <span className="font-medium text-[#FAFAF8]">{fmt(row.Ingreso)}</span></div>
                                 {egresoBarSeries.map(s => (
                                   <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
                                 ))}
-                                <div className="my-1 border-t border-border/50" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="font-bold text-[#0F0F0F]">Acumulado: {fmt(row.Acumulado)}</div>
+                                <div className="my-1 border-t border-white/[0.06]" />
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className="font-bold text-[#FAFAF8]">Acumulado: {fmt(row.Acumulado)}</div>
                               </div>
                             );
                           }}
                         />
-                        <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1} />
+                        <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Ingreso siempre primero */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#0F0F0F" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#B0BEC5" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
                         {/* Egresos ordenados por impacto promedio descendente */}
                         {egresoBarSeries.map((s, i) => (
                           <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
                         ))}
                         {/* Línea acumulado */}
-                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#0F0F0F" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#FAFAF8" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
                         {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="#71717A" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "#71717A" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
                     {horizonBeforeDelivery && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80 backdrop-blur-[1px]">
-                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-[#0F0F0F]/20 bg-card/95 px-6 py-5 text-center shadow-lg">
-                          <Clock className="h-7 w-7 text-[#0F0F0F]" />
-                          <span className="text-sm font-semibold">Tu inversión aún no genera flujo</span>
-                          <p className="text-xs text-muted-foreground">
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#151515]/80 backdrop-blur-[1px]">
+                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/95 px-6 py-5 text-center shadow-lg">
+                          <Clock className="h-7 w-7 text-[#FAFAF8]" />
+                          <span className="text-sm font-semibold text-[#FAFAF8]">Tu inversión aún no genera flujo</span>
+                          <p className="text-xs text-[#FAFAF8]/50">
                             La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
                             Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
                           </p>
-                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#0F0F0F] hover:underline">
+                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#FAFAF8] hover:underline">
                             Ver desde la entrega →
                           </button>
                         </div>
@@ -2202,33 +2594,40 @@ export function PremiumResults({
                     )}
                   </div>
                   {/* Leyenda manual */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-[#FAFAF8]/60" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso</span>
                       {egresoBarSeries.map(s => (
                         <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
                       ))}
-                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#0F0F0F", height: 2 }} />Acumulado</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 2 }} />Acumulado</span>
                     </div>
                   </div>
-                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: '#9ca3af' }}>Toca las barras para ver el detalle</div>}
+                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: 'rgba(250,250,248,0.4)' }}>Toca las barras para ver el detalle</div>}
             </div>
           </CollapsibleSection>
+          </div>
+          )}
 
           {/* Waterfall chart */}
+          <div id="premium-chart-anchor-3" />
+          {(!isFirstReveal || chartPhase >= 3) && (
+          <div id="premium-chart-3" style={isFirstReveal && chartPhase === 3 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
           <CollapsibleSection
             title="¿Cuáles son todos los costos?"
             subtitle="Cascada de costos mensuales — cada peso que entra y sale"
             locked={currentAccess !== "premium"}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
             analysisId={analysisId}
           >
             <div className="h-72">
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E6E6E2" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#71717A" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "#71717A" }} tickFormatter={fmtAxis} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
+                    cursor={false}
                     content={({ active, payload, label: wfLabel }) => {
                       if (!active || !payload || payload.length === 0) return null;
                       const item = waterfallData.find((d) => d.name === wfLabel);
@@ -2236,18 +2635,18 @@ export function PremiumResults({
                       const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
                       const displayName = fullNames[item.name] || item.name;
                       return (
-                        <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-lg">
-                          <div className="mb-1 font-semibold">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[#16A34A]" : "text-[#C8323C]"}>
+                        <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
+                          <div className="mb-1 font-semibold text-[#FAFAF8]">{item.isResult ? `→ ${displayName}` : displayName}</div>
+                          <div className={item.delta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
                           </div>
-                          <div className="text-muted-foreground">Acumulado: {fmt(item.running)}</div>
+                          <div className="text-[#FAFAF8]/60">Acumulado: {fmt(item.running)}</div>
                         </div>
                       );
                     }}
                   />
-                  <ReferenceLine y={0} stroke="#71717A" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]}>
+                  <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1.5} />
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]} activeBar={false}>
                     {waterfallData.map((entry, i) => (
                       <Cell
                         key={i}
@@ -2261,36 +2660,42 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Ingreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#0F0F0F" }} />Resultado</span>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.6)" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />Resultado</span>
             </div>
-            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-muted-foreground">Toca las barras para ver el detalle</p>}
+            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
             {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-bold ${flujoUnificado >= 0 ? "bg-[#16A34A]/10 text-[#16A34A]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-[#B0BEC5]/10 text-[#B0BEC5]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
               </div>
             )}
           </CollapsibleSection>
+          </div>
+          )}
 
           {/* Exit scenarios */}
+          <div id="premium-chart-anchor-4" />
+          {(!isFirstReveal || chartPhase >= 4) && (
+          <div id="premium-chart-4" style={isFirstReveal && chartPhase === 4 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
           <CollapsibleSection
             title="¿Qué pasa si vendes o refinancias?"
             subtitle="Escenarios de salida: venta y refinanciamiento"
             locked={currentAccess !== "premium"}
             analysisId={analysisId}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
           >
             {horizonBeforeDelivery ? (
               <div>
                 <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
                   <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
                   <div>
-                    <p className="text-sm font-medium">No puedes vender ni refinanciar antes de la entrega</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
+                    <p className="text-sm font-medium text-[#FAFAF8]">No puedes vender ni refinanciar antes de la entrega</p>
+                    <p className="mt-1 text-xs text-[#FAFAF8]/50">
                       La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
                     </p>
-                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#0F0F0F] hover:underline">
+                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#FAFAF8] hover:underline">
                       Ver desde la entrega →
                     </button>
                   </div>
@@ -2298,54 +2703,60 @@ export function PremiumResults({
               </div>
             ) : exit && refi ? (
               <div>
-                <p className="mb-3 text-xs text-muted-foreground">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
+                <p className="mb-3 text-xs text-[#FAFAF8]/50">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
                 <div className="mb-4 flex gap-2">
-                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#0F0F0F] text-white" : "bg-transparent border border-[#E6E6E2] text-[#71717A] hover:text-[#0F0F0F] hover:border-[#0F0F0F]"}`}>Venta</button>
-                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#0F0F0F] text-white" : "bg-transparent border border-[#E6E6E2] text-[#71717A] hover:text-[#0F0F0F] hover:border-[#0F0F0F]"}`}>Refinanciamiento</button>
+                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Venta</button>
+                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Refinanciamiento</button>
                 </div>
 
                 {exitMode === "venta" ? (
-                  <div className="space-y-3 text-sm">
-                    <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
-                      Si vendieras {exit.anios === 1 ? "al año 1" : `a los ${exit.anios} años`} al valor proyectado (plusvalía {plusvaliaRate.toFixed(1)}%/año), ¿cuánto ganarías después de pagar el crédito y la comisión?
+                  <div className="space-y-3 text-sm text-[#FAFAF8]">
+                    <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
+                      Si vendieras {exit.anios === 1 ? "al año 1" : `a los ${exit.anios} años`} al valor proyectado (plusvalía {fmtPct(plusvaliaRate)}/año), ¿cuánto ganarías después de pagar el crédito y la comisión?
                     </p>
                     {[
-                      { label: "Valor venta estimado", value: fmt(exit.valorVenta) },
-                      { label: "Saldo crédito restante", value: fmt(exit.saldoCredito), negative: true },
-                      { label: "Comisión venta (2%)", value: fmt(exit.comisionVenta), negative: true },
-                      { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), positive: true },
-                      { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), positive: exit.flujoAcumulado > 0 },
-                      { label: "Retorno total", value: fmt(exit.retornoTotal), bold: true, positive: true },
-                      { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, bold: true },
-                      { label: "TIR", value: `${exit.tir.toFixed(1)}%`, bold: true },
-                    ].map(({ label, value, negative, positive, bold }) => (
-                      <div key={label} className={`flex justify-between ${bold ? "border-t border-border/50 pt-2 font-bold" : ""}`}>
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className={negative ? "text-[#C8323C]" : positive ? "text-[#16A34A]" : ""}>{negative ? "-" : ""}{value}</span>
+                      { label: "Valor venta estimado", value: fmt(exit.valorVenta), color: "text-[#FAFAF8]" },
+                      { label: "Saldo crédito restante", value: `-${fmt(exit.saldoCredito)}`, color: "text-[#C8323C]" },
+                      { label: "Comisión venta (2%)", value: `-${fmt(exit.comisionVenta)}`, color: "text-[#C8323C]" },
+                      { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), color: exit.gananciaNeta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]" },
+                      { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), color: exit.flujoAcumulado >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]" },
+                      { label: "Retorno total", value: fmt(exit.retornoTotal), color: exit.retornoTotal >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
+                      { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, color: exit.multiplicadorCapital >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
+                      { label: "TIR", value: `${fmtPct(exit.tir)}`, color: exit.tir >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
+                    ].map(({ label, value, color, summary }) => (
+                      <div key={label} className={`flex justify-between ${summary ? "border-t border-white/[0.06] pt-2" : ""}`}>
+                        <span className={`text-[#FAFAF8]/60 ${summary ? "font-medium" : ""}`}>{label}</span>
+                        <span className={`font-mono font-medium ${color} ${summary ? "font-semibold" : ""}`}>{value}</span>
                       </div>
                     ))}
-                    {exit.multiplicadorCapital > 1 && (
-                      <p className="mt-2 rounded-lg bg-[#16A34A]/10 p-3 text-xs text-[#16A34A]">
-                        Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
-                      </p>
-                    )}
+                    {(() => {
+                      const multState = exit.multiplicadorCapital >= 2.0 ? "positive" : exit.multiplicadorCapital >= 1.0 ? "neutral" : "negative";
+                      const multColor = multState === "positive" ? "#B0BEC5" : multState === "negative" ? "#C8323C" : "#71717A";
+                      return (
+                        <div className="mt-2" style={{ borderLeft: `3px solid ${multColor}`, background: `${multColor}08`, borderRadius: "0 8px 8px 0", padding: "10px 14px" }}>
+                          <p className="text-xs" style={{ color: multColor }}>
+                            Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
                 ) : (
-                  <div className="space-y-3 text-sm">
-                    <p className="rounded-lg bg-secondary/30 p-3 text-xs text-muted-foreground">
+                  <div className="space-y-3 text-sm text-[#FAFAF8]">
+                    <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
                       Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
                     </p>
-                    <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-secondary/20 p-3">
-                      <span className="text-xs text-muted-foreground">% refinanciamiento:</span>
+                    <div className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
+                      <span className="text-xs text-[#FAFAF8]/50">% refinanciamiento:</span>
                       <div className="flex flex-wrap gap-1">
                         {[60, 70, 80, 90].map((pct) => (
                           <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                            className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#0F0F0F] text-white" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+                            className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-white/[0.08] text-[#FAFAF8]/50 hover:bg-white/[0.06]"}`}
                           >{pct}%</button>
                         ))}
                       </div>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Los bancos en Chile financian hasta 80% del valor de tasación. Algunos ofrecen hasta 90% para propiedades de inversión con buen historial.</p>
+                    <p className="text-[10px] text-[#FAFAF8]/40">Los bancos en Chile financian hasta 80% del valor de tasación. Algunos ofrecen hasta 90% para propiedades de inversión con buen historial.</p>
                     {[
                       { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
                       { label: `Nuevo crédito (${refiPct}%)`, value: fmt(refi.nuevoCredito) },
@@ -2354,12 +2765,12 @@ export function PremiumResults({
                       { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
                     ].map(({ label, value, positive }) => (
                       <div key={label} className="flex justify-between">
-                        <span className="text-muted-foreground">{label}</span>
-                        <span className={positive ? "text-[#16A34A] font-medium" : ""}>{value}</span>
+                        <span className="text-[#FAFAF8]/60">{label}</span>
+                        <span className={positive ? "text-[#B0BEC5] font-medium" : "text-[#FAFAF8]"}>{value}</span>
                       </div>
                     ))}
                     {refi.capitalLiberado > 0 && (
-                      <p className="mt-2 rounded-lg bg-[#0F0F0F]/5 p-3 text-xs text-[#0F0F0F]">
+                      <p className="mt-2 rounded-lg bg-white/[0.05] p-3 text-xs text-[#FAFAF8]">
                         Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión.
                       </p>
                     )}
@@ -2368,20 +2779,22 @@ export function PremiumResults({
               </div>
             ) : null}
           </CollapsibleSection>
+          </div>
+          )}
 
-            </>}
+            </>)}
           />
 
           {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
-            <div className="mb-8 p-8 bg-white rounded-2xl border border-[#E6E6E2] text-center">
-              <Lock className="h-8 w-8 text-[#0F0F0F] mx-auto mb-3" />
-              <h3 className="font-heading text-xl font-bold text-[#0F0F0F]">Regístrate para ver el análisis completo</h3>
-              <p className="max-w-md mx-auto font-body text-sm text-[#71717A] mt-2">
+            <div className="mb-8 p-8 bg-[#151515] rounded-2xl border border-white/[0.08] text-center">
+              <Lock className="h-8 w-8 text-[#FAFAF8] mx-auto mb-3" />
+              <h3 className="font-heading text-xl font-bold text-[#FAFAF8]">Regístrate para ver el análisis completo</h3>
+              <p className="max-w-md mx-auto font-body text-sm text-[#FAFAF8]/50 mt-2">
                 Accede gratis a 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.
               </p>
               <a href="/register" className="mt-4 inline-block">
-                <Button size="lg" className="gap-2 bg-[#0F0F0F] text-white hover:bg-[#0F0F0F]/90">Regístrate gratis</Button>
+                <Button size="lg" className="gap-2 bg-[#FAFAF8] text-[#0F0F0F] hover:bg-[#FAFAF8]/90">Regístrate gratis</Button>
               </a>
             </div>
           )}
@@ -2391,118 +2804,111 @@ export function PremiumResults({
     </>
   );
 
-  // JS-based scroll follow for desktop panel (works regardless of ancestor overflow)
+  // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
+  const hasPanelContent = !hidePanel && !isSharedView && currentAccess !== "guest" && !!inputData;
+
+  // Mobile FAB: 3-state based on scroll (inputs → hidden → projections)
   useEffect(() => {
-    if (typeof window === "undefined" || window.innerWidth < 1024) return;
-    const panel = document.getElementById("param-panel");
-    const flexContainer = document.getElementById("results-flex-container");
-    if (!panel || !flexContainer) return;
-    const TOP_OFFSET = 80;
-    const BOTTOM_MARGIN = 20;
+    if (!hasPanelContent) return;
     const handleScroll = () => {
-      const containerRect = flexContainer.getBoundingClientRect();
-      const containerTop = window.scrollY + containerRect.top;
-      // Use the visible panel height (capped by maxHeight CSS), not scrollHeight
-      const panelHeight = panel.offsetHeight;
-      // Ensure panel + translate never exceeds container bottom
-      const maxTranslate = Math.max(0, flexContainer.offsetHeight - panelHeight - BOTTOM_MARGIN);
-      // Ensure panel + translate never pushes panel below viewport
-      const maxViewportTranslate = Math.max(0, window.scrollY + window.innerHeight - containerTop - panelHeight - BOTTOM_MARGIN);
-      const desired = window.scrollY - containerTop + TOP_OFFSET;
-      const translate = Math.max(0, Math.min(desired, maxTranslate, maxViewportTranslate));
-      panel.style.transform = `translateY(${translate}px)`;
+      const proSection = document.getElementById("informe-pro-section");
+      const projZone = document.getElementById("projections-zone-marker");
+      const threshold = 80;
+      if (!proSection) { setFabState('inputs'); return; }
+      const proTop = proSection.getBoundingClientRect().top;
+      if (proTop > threshold) {
+        setFabState('inputs');
+      } else if (!projZone) {
+        setFabState('hidden');
+      } else {
+        const projTop = projZone.getBoundingClientRect().top;
+        setFabState(projTop < threshold ? 'projections' : 'hidden');
+      }
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", handleScroll, { passive: true });
     handleScroll();
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleScroll);
-    };
-  }, [currentAccess, inputData]);
-
-  // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
-  const hasPanelContent = currentAccess !== "guest" && !!inputData;
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasPanelContent]);
 
   const panelFields = hasPanelContent ? (
     <div className="space-y-2">
       <div>
-        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Cuánto cuesta</h4>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto cuesta</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Precio (UF)</label>
-              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Precio (UF)</label>
+              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
             </div>
-            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Pie</label>
-              <span className="text-[11px] font-medium">{adjPiePct}%</span>
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Pie</label>
+              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjPiePct}%</span>
             </div>
-            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Financiamiento</h4>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Financiamiento</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Plazo</label>
-              <span className="text-[11px] font-medium">{adjPlazo} años</span>
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Plazo</label>
+              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjPlazo} años</span>
             </div>
-            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Tasa (%)</label>
-              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Tasa (%)</label>
+              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
             </div>
-            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1 font-body text-[10px] font-semibold uppercase tracking-wider text-franco-muted">Cuánto genera</h4>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto genera</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Arriendo</label>
-              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Arriendo</label>
+              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
             </div>
-            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">GGCC</label>
-              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">GGCC</label>
+              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
             </div>
-            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Contrib. /trim</label>
-              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-border bg-background px-2 py-0.5 text-right text-[11px] font-mono" />
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Contrib. /trim</label>
+              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
             </div>
-            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
+            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Vacancia</label>
-              <span className="text-[11px] font-medium">{adjVacanciaPct}%</span>
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Vacancia</label>
+              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjVacanciaPct}%</span>
             </div>
-            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
-            <p className="text-[10px] text-franco-muted leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
+            <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-semibold text-franco-ink">Administración</label>
-              <span className="text-[11px] font-medium">{adjAdminPct}%</span>
+              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Administración</label>
+              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjAdminPct}%</span>
             </div>
-            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#0F0F0F] h-1.5" />
-            <p className="text-[10px] text-franco-muted leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
+            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
+            <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
       </div>
@@ -2511,84 +2917,140 @@ export function PremiumResults({
 
   const panelButton = hasPanelContent ? (
     <div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-franco-ink text-white hover:bg-franco-ink/90">
+      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-[#FAFAF8] text-[#0F0F0F] hover:bg-[#FAFAF8]/90">
         {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
-      {recalcSuccess && <p className="mt-1 text-center text-xs text-[#16A34A]">Actualizado</p>}
+      {recalcSuccess && <p className="mt-1 text-center text-xs text-[#B0BEC5]">Actualizado</p>}
+    </div>
+  ) : null;
+
+  const projectionFields = hasPanelContent ? (
+    <div className="space-y-3">
+      <div>
+        <div className="flex items-center justify-between">
+          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Horizonte</label>
+          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
+        </div>
+        <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
+        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
+      </div>
+      <div>
+        <div className="flex items-center justify-between">
+          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Plusvalía anual</label>
+          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(plusvaliaRate)}</span>
+        </div>
+        <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
+        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Promedio histórico: 3-5% anual</p>
+      </div>
+      <div>
+        <div className="flex items-center justify-between">
+          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Crecimiento arriendo</label>
+          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(arriendoGrowth)}/año</span>
+        </div>
+        <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
+        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Promedio histórico: 3-4% anual</p>
+      </div>
+      <div>
+        <div className="flex items-center justify-between">
+          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Crecimiento gastos</label>
+          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(costGrowth)}/año</span>
+        </div>
+        <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
+        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Aplica a GGCC, contribuciones y mantención</p>
+      </div>
     </div>
   ) : null;
 
   return (
-    <div id="results-flex-container" className={`${hasPanelContent ? "lg:flex lg:items-start lg:gap-6" : ""}`}>
-      {/* Main content */}
-      <div className={hasPanelContent ? "min-w-0 lg:flex-1" : ""}>
+    <div className={hasPanelContent ? "lg:grid lg:grid-cols-[1fr_260px] lg:gap-6" : ""}>
+      {/* Main content — all zones */}
+      <div className="min-w-0">
         {mainContent}
       </div>
 
-      {/* Desktop: sidebar with JS-based scroll follow */}
+      {/* Sidebar column — both panels stacked */}
       {hasPanelContent && (
-        <aside id="param-panel-wrapper" className="hidden w-[260px] shrink-0 lg:block">
+        <aside className="hidden lg:block">
+          {/* Panel 1: Normal position, stays at top */}
           <div
-            id="param-panel"
-            className="flex flex-col rounded-2xl border border-franco-border bg-white shadow-sm"
-            style={{ maxHeight: "calc(100vh - 100px)" }}
+            className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm"
+            style={{ maxHeight: "calc(100vh - 2rem)" }}
           >
             <div className="shrink-0 px-3 pt-3 pb-1">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
-                <h3 className="font-body text-xs font-semibold text-franco-ink">Ajusta los números</h3>
+                <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
+                <h3 className="font-body text-xs font-semibold text-[#FAFAF8]">Ajusta los números</h3>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
               {panelFields}
             </div>
-            <div className="shrink-0 border-t border-franco-border px-3 py-2">
+            <div className="shrink-0 border-t border-white/[0.08] px-3 py-2">
               {panelButton}
             </div>
           </div>
+
+          {/* Panel 2: sticky, only visible when projections expanded */}
+          {projectionsExpanded && (
+            <div
+              className="sticky top-20 mt-8 flex flex-col rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm animate-fadeIn"
+              style={{ maxHeight: "calc(100vh - 2rem)" }}
+            >
+              <div className="shrink-0 px-3 pt-3 pb-1">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
+                  <h3 className="font-body text-xs font-semibold text-[#FAFAF8]">Proyecciones</h3>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
+                {projectionFields}
+              </div>
+            </div>
+          )}
         </aside>
       )}
 
-      {/* Mobile: floating button + drawer */}
+      {/* Mobile FAB + drawer */}
       {hasPanelContent && (
         <>
-          <div className="fixed bottom-20 right-4 z-40 flex items-center gap-3 lg:hidden">
-            {!fabShown && (
-              <div className="animate-pulse rounded-full bg-[#0F0F0F] px-4 py-2 text-sm font-medium text-white shadow-lg">
-                Ajusta el análisis
-              </div>
-            )}
+          {!drawerOpen && fabState !== 'hidden' && (
             <button
               type="button"
-              onClick={() => { setDrawerOpen(true); setFabShown(true); }}
-              className={`flex items-center justify-center rounded-full bg-[#0F0F0F] text-white shadow-lg transition-all duration-500 hover:scale-105 ${fabShown ? "h-[52px] w-[52px]" : "h-[72px] w-[72px]"}`}
+              onClick={() => setDrawerOpen(true)}
+              className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[#1E1E1E] border border-white/[0.10] text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] px-4 py-3 lg:hidden transition-opacity duration-200"
             >
-              <SlidersHorizontal className={`transition-all duration-500 ${fabShown ? "h-5 w-5" : "h-7 w-7"}`} />
+              <SlidersHorizontal className="h-4 w-4" />
+              <span className="font-body text-[13px] font-medium">{fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}</span>
             </button>
-          </div>
+          )}
 
           {drawerOpen && (
             <div className="fixed inset-0 z-50 lg:hidden">
-              <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
-              <div className="absolute bottom-0 left-0 right-0 flex max-h-[85vh] flex-col rounded-t-2xl bg-white shadow-2xl">
-                <div className="shrink-0 px-5 pt-5 pb-2">
+              <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
+              <div className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-[#1A1A1A] shadow-2xl" style={{ maxHeight: "80vh" }}>
+                <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[#FAFAF8]/20" />
+                <div className="shrink-0 px-5 pt-3 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4 text-franco-ink" />
-                      <h3 className="font-body text-sm font-semibold text-franco-ink">Ajusta los números</h3>
+                      <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
+                      <h3 className="font-body text-base font-medium text-[#FAFAF8]">
+                        {fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}
+                      </h3>
                     </div>
-                    <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-muted">
-                      <X className="h-5 w-5 text-muted-foreground" />
+                    <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-white/[0.08]">
+                      <X className="h-5 w-5 text-[#FAFAF8]/50" />
                     </button>
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-2">
-                  {panelFields}
+                  {fabState === 'projections' ? projectionFields : panelFields}
                 </div>
-                <div className="shrink-0 border-t border-franco-border px-5 py-3">
-                  {panelButton}
-                </div>
+                {fabState !== 'projections' && (
+                  <div className="shrink-0 border-t border-white/[0.08] px-5 py-3">
+                    {panelButton}
+                  </div>
+                )}
               </div>
             </div>
           )}

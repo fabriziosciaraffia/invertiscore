@@ -10,7 +10,7 @@
     },
     {
       "path": "/api/data/enrich-coords",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 12 * * *"
     },
     {
       "path": "/api/scraping/update-market-data",

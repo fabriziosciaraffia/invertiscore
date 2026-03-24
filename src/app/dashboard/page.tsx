@@ -17,6 +17,7 @@ export default async function DashboardPage() {
   const { data: analisisList } = await supabase
     .from("analisis")
     .select("*")
+    .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
   const analisis = (analisisList || []) as Analisis[];
