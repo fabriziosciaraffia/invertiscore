@@ -925,7 +925,7 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   );
 }
 
-function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl }: {
+function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl, inputData }: {
   m: ReturnType<typeof normalizeMetrics>;
   zoneData: MarketDataRow[] | null | undefined;
   comuna?: string;
@@ -933,15 +933,41 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
   fmt: (n: number) => string;
   mapQuery: string;
   googleMapUrl: string;
+  inputData?: import("@/lib/types").AnalisisInput;
 }) {
-  if (!m || !zoneData || zoneData.length === 0) {
-    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles para esta comuna.</p>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const zonaRadio = (inputData as any)?.zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number; arriendoPrecioM2?: number; sampleSizeArriendo?: number; sampleSizeVenta?: number; radioMetros?: number } | undefined;
+  const hasRadioData = zonaRadio && (zonaRadio.precioM2VentaCLP || zonaRadio.arriendoPromedio);
+
+  if (!m) {
+    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles.</p>;
   }
-  const avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
-  const avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
-  const totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
-  const avgSuperficie = avgArriendoZona > 0 && avgM2Zona > 0 ? avgArriendoZona / (avgM2Zona * UF_CLP / 12 * 0.045) : 50;
-  const yieldZona = avgM2Zona > 0 && avgSuperficie > 0 ? (avgArriendoZona * 12) / (avgM2Zona * avgSuperficie * UF_CLP) * 100 : (m.rentabilidadBruta ?? 0) * 0.9;
+
+  // Prefer radius-based data; fallback to comuna-level market_data
+  let avgArriendoZona: number;
+  let avgM2Zona: number; // UF/m²
+  let totalPubs: number;
+  let sourceLabel: string;
+
+  if (hasRadioData) {
+    avgArriendoZona = zonaRadio.arriendoPromedio || 0;
+    avgM2Zona = zonaRadio.precioM2VentaCLP ? Math.round(zonaRadio.precioM2VentaCLP / UF_CLP * 10) / 10 : 0;
+    totalPubs = Math.max(zonaRadio.sampleSizeArriendo || 0, zonaRadio.sampleSizeVenta || 0);
+    sourceLabel = `Basado en ${totalPubs} comparables en radio de ${zonaRadio.radioMetros || 800}m.`;
+  } else if (zoneData && zoneData.length > 0) {
+    avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+    avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+    totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
+    sourceLabel = `Basado en ${totalPubs} publicaciones activas en ${comuna}.`;
+  } else {
+    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles para esta zona.</p>;
+  }
+
+  // Yield zona: use radius arriendo and venta precio/m² if available
+  const superficie = inputData?.superficie || 50;
+  const yieldZona = avgM2Zona > 0 && avgArriendoZona > 0
+    ? (avgArriendoZona * 12) / (avgM2Zona * superficie * UF_CLP) * 100
+    : (m.rentabilidadBruta ?? 0) * 0.9;
 
   const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP;
   const zonaPrecioM2 = currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP;
@@ -951,7 +977,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
       title: currency === "UF" ? "PRECIO/M² (UF)" : "PRECIO/M²",
       tuyo: tuyoPrecioM2,
       zona: zonaPrecioM2,
-      fmtVal: (v: number) => currency === "UF" ? `UF ${v.toFixed(1)}` : fmtCLP(v),
+      fmtVal: (v: number) => currency === "UF" ? `UF ${v.toFixed(1).replace(".", ",")}` : fmtCLP(v),
       invertColor: true, // lower is better
     },
     {
@@ -972,7 +998,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
 
   return (
     <div>
-      <p className="text-xs text-[#FAFAF8]/50 mb-3">Basado en {totalPubs} publicaciones activas en {comuna}.</p>
+      <p className="text-xs text-[#FAFAF8]/50 mb-3">{sourceLabel}</p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {cards.map((c) => {
           const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;
@@ -2064,7 +2090,7 @@ export function PremiumResults({
                 subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
                 defaultOpen
               >
-                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} />
+                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} inputData={inputData} />
               </CollapsibleSection>
 
               {/* CTA de registro */}
@@ -2232,7 +2258,7 @@ export function PremiumResults({
                     >
                       {(m.plusvaliaInmediata ?? 0) > 0
                         ? <>
-                            <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Pasada:</span>{' '}
+                            <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Ventaja de compra:</span>{' '}
                             compraste {fmtUF(Math.abs((m.plusvaliaInmediata ?? 0) / UF_CLP))} bajo mercado ({fmtPct(Math.abs(m.plusvaliaInmediataPct ?? 0))}).
                             {m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs((m.plusvaliaInmediata ?? 0) / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}
                           </>
@@ -2250,7 +2276,7 @@ export function PremiumResults({
                     <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #B0BEC5', background: 'rgba(176,190,197,0.04)', color: 'rgba(250,250,248,0.6)' }}>
                       <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Flujo positivo.</span> Buen precio para este financiamiento.
                     </div>
-                  ) : (m.descuentoParaNeutro ?? 0) > 0 && (m.descuentoParaNeutro ?? 0) <= 15 ? (
+                  ) : (m.precioFlujoNeutroUF ?? 0) > 0 ? (
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-[2px]">
                         <div className="bg-[#1A1A1A] rounded-l-lg px-4 py-3">
@@ -2264,12 +2290,15 @@ export function PremiumResults({
                           <p className="text-[10px] text-[#FAFAF8]/20">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
                         </div>
                       </div>
-                      <p className="text-[11px] text-[#FAFAF8]/30">Precios máximos de compra para lograr cada nivel de flujo con tu financiamiento actual.</p>
+                      <p className="text-[11px] text-[#FAFAF8]/30">
+                        Precios máximos de compra para lograr cada nivel de flujo con tu financiamiento actual.
+                        {(m.descuentoParaNeutro ?? 0) > 15 && " El margen de negociación necesario es alto — considera más pie, menor tasa, o buscar otra propiedad."}
+                      </p>
                     </div>
                   ) : (
                     <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #C8323C', background: 'rgba(200,50,60,0.04)', color: 'rgba(250,250,248,0.6)' }}>
-                      <span style={{ color: '#C8323C', fontWeight: 600 }}>Sin equilibrio alcanzable.</span>{' '}
-                      Ni con 15% de descuento logras flujo neutro. El arriendo no cubre los costos con este financiamiento. Considera más pie, menor tasa, o buscar otra propiedad.
+                      <span style={{ color: '#C8323C', fontWeight: 600 }}>Sin precio de equilibrio.</span>{' '}
+                      El arriendo no alcanza a cubrir los gastos fijos (sin dividendo). Considera más pie, menor tasa, o buscar otra propiedad.
                     </div>
                   )}
                 </CollapsibleSection>
@@ -2280,7 +2309,7 @@ export function PremiumResults({
                 title="¿Cómo se compara con la zona?"
                 subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
               >
-                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} />
+                <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} inputData={inputData} />
               </CollapsibleSection>
 
               {/* Section 4: Risks */}

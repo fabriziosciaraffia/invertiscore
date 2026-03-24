@@ -124,19 +124,25 @@ function MoneyInput({
 }) {
   const [display, setDisplay] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const isFocused = useRef(false);
   const isUF = currency === "UF";
 
-  // Sync display when value changes externally
-  // Use Number() not parseNum() — form state stores raw JS numbers like "24.67"
-  // where the dot is a decimal, not a thousands separator
+  // Sync display when value changes externally (e.g. currency toggle, suggestion click)
+  // Skip when user is actively editing (focused) — handleBlur formats on exit
   useEffect(() => {
+    if (isFocused.current) return;
     if (!value) { setDisplay(""); return; }
     const num = Number(value) || 0;
     if (num === 0) { setDisplay(""); return; }
     if (isUF) {
       const rounded = Math.round(num * 100) / 100;
-      const [int, dec] = rounded.toFixed(2).split(".");
-      setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
+      if (rounded >= 100) {
+        // Large UF values: show with thousands separator, no forced decimals
+        setDisplay(Math.round(rounded).toLocaleString("es-CL"));
+      } else {
+        const [int, dec] = rounded.toFixed(2).split(".");
+        setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
+      }
     } else {
       setDisplay(Math.round(num).toLocaleString("es-CL"));
     }
@@ -150,13 +156,20 @@ function MoneyInput({
     onChange(num > 0 ? String(num) : "");
   };
 
+  const handleFocus = () => { isFocused.current = true; };
+
   const handleBlur = () => {
+    isFocused.current = false;
     const num = parseNum(display);
     if (num > 0) {
       if (isUF) {
         const rounded = Math.round(num * 100) / 100;
-        const [int, dec] = rounded.toFixed(2).split(".");
-        setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
+        if (rounded >= 100) {
+          setDisplay(Math.round(rounded).toLocaleString("es-CL"));
+        } else {
+          const [int, dec] = rounded.toFixed(2).split(".");
+          setDisplay(Number(int).toLocaleString("es-CL") + "," + dec);
+        }
       } else {
         setDisplay(Math.round(num).toLocaleString("es-CL"));
       }
@@ -179,6 +192,7 @@ function MoneyInput({
         inputMode="decimal"
         value={display}
         onChange={handleChange}
+        onFocus={handleFocus}
         onBlur={handleBlur}
         placeholder={placeholder}
         required={required}
@@ -1013,6 +1027,14 @@ export default function NuevoAnalisisPage() {
           vacanciaMeses: parseFloat(form.vacanciaPct) * 12 / 100,
           usaAdministrador: parseFloat(form.adminPct) > 0,
           comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
+          zonaRadio: {
+            precioM2VentaCLP: ventaRef?.precioM2 || null,
+            arriendoPromedio: apiSuggestions?.arriendo || null,
+            arriendoPrecioM2: apiSuggestions?.precioM2 || null,
+            sampleSizeArriendo: apiSuggestions?.sampleSize || 0,
+            sampleSizeVenta: ventaRef?.sampleSize || 0,
+            radioMetros: radius,
+          },
         }),
       });
 
@@ -1042,7 +1064,7 @@ export default function NuevoAnalisisPage() {
       {/* Nav */}
       <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" />
+          <FrancoLogo size="header" href="/" inverted />
           <Link href="/dashboard" className="font-body text-sm text-white/50 hover:text-white/80 transition-colors">
             ← Dashboard
           </Link>
@@ -1103,12 +1125,9 @@ export default function NuevoAnalisisPage() {
           </div>
         )}
 
-        {/* Link paste / file upload section */}
-        <div className="mb-3 rounded-xl border border-white/[0.08] bg-[#151515] p-5 text-center space-y-3.5">
-          <div>
-            <p className="font-body text-sm font-bold text-[#FAFAF8]">¿Tienes el link de la publicación?</p>
-            <p className="font-body text-xs text-[#71717A] mb-3.5">Pégalo y Franco extrae los datos. Sin escribir nada.</p>
-          </div>
+        {/* Link paste / file upload section — compact */}
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-[#151515] px-4 py-3 space-y-2.5">
+          <p className="font-body text-[11px] text-[#71717A]">¿Tienes el link o cotización? Pégalo y Franco extrae los datos.</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="url"
@@ -1131,9 +1150,9 @@ export default function NuevoAnalisisPage() {
             </button>
           </div>
           <div className="flex items-center gap-3 font-body text-xs text-[#71717A]">
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
-            <span>o sube una cotización</span>
-            <div className="h-px flex-1 bg-[#E6E6E2]" />
+            <div className="h-px flex-1 bg-white/[0.08]" />
+            <span>o sube cotización</span>
+            <div className="h-px flex-1 bg-white/[0.08]" />
           </div>
           <div className="space-y-2">
             <input
@@ -1151,7 +1170,7 @@ export default function NuevoAnalisisPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={quotationLoading || linkLoading}
-              className="border border-[#E6E6E2] rounded-lg px-4 py-2 font-body text-xs text-[#71717A] transition-colors hover:border-[#0F0F0F]/30 disabled:opacity-50"
+              className="border border-white/[0.1] rounded-lg px-4 py-2 font-body text-xs text-[#71717A] transition-colors hover:border-white/25 disabled:opacity-50"
             >
               {quotationLoading ? (
                 <><Loader2 className="inline h-3.5 w-3.5 animate-spin mr-1.5" /> Analizando cotización con IA...</>
@@ -1190,6 +1209,19 @@ export default function NuevoAnalisisPage() {
             ════════════════════════════════════════════════════════ */}
         <div className="rounded-xl border border-white/[0.08] bg-[#151515] p-5 space-y-4">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Qué depto estás evaluando?</div>
+
+          {/* Nombre del análisis */}
+          <div>
+            <FieldLabel htmlFor="nombreAnalisis">Nombre del análisis</FieldLabel>
+            <input
+              id="nombreAnalisis"
+              type="text"
+              placeholder="Ej: Depto Providencia 2D1B"
+              value={form.nombreAnalisis}
+              onChange={(e) => setField("nombreAnalisis", e.target.value)}
+              className={inputClass}
+            />
+          </div>
 
           {/* Comuna + Tipo row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1502,7 +1534,7 @@ export default function NuevoAnalisisPage() {
                     setField("valorMercado", String(suggestions.precioSugeridoUF));
                   }}
                 >
-                  Usar sugerencia: {fmtUF(suggestions.precioSugeridoUF)} ↗
+                  Usar sugerencia: {fmtUF(suggestions.precioSugeridoUF)}{ventaRef && ventaRef.sampleSize > 0 ? <span className="text-[#71717A]"> · sobre {ventaRef.sampleSize} deptos {form.tipoPropiedad === "nuevo" ? "nuevos" : "usados"}</span> : null} ↗
                 </span>
               )}
             </div>
@@ -1856,10 +1888,10 @@ export default function NuevoAnalisisPage() {
         <div className="mt-3">
           <SectionCard
             title="FINANCIAMIENTO"
-            subtitle={`Crédito a ${form.plazoCredito} años · tasa ${form.tasaInteres}% · pie ${form.piePct}%`}
+            subtitle={`Crédito a ${form.plazoCredito} años · tasa ${form.tasaInteres.replace(".", ",")}% · pie ${form.piePct}%`}
             defaultOpen={false}
             forceOpen={sectionsForceOpen}
-            summary={`${form.plazoCredito}a, ${form.tasaInteres}%, pie ${form.piePct}%`}
+            summary={`${form.plazoCredito}a, ${form.tasaInteres.replace(".", ",")}%, pie ${form.piePct}%`}
           >
             {/* Pie slider */}
             <div>
@@ -1892,22 +1924,26 @@ export default function NuevoAnalisisPage() {
               </div>
             </div>
 
-            {/* Tasa input */}
+            {/* Tasa input — accepts comma as decimal separator */}
             <div>
               <FieldLabel htmlFor="tasaInteres" tip={TIPS.tasaInteres}>Tasa interés anual (%)</FieldLabel>
               <input
                 id="tasaInteres"
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder={tasaRef.value}
-                value={form.tasaInteres}
-                onChange={(e) => { setField("tasaInteres", e.target.value); tasaModificadaRef.current = true; }}
+                type="text"
+                inputMode="decimal"
+                placeholder={tasaRef.value.replace(".", ",")}
+                value={form.tasaInteres.replace(".", ",")}
+                onChange={(e) => {
+                  // Store with dot internally, display with comma
+                  const val = e.target.value.replace(",", ".");
+                  setField("tasaInteres", val);
+                  tasaModificadaRef.current = true;
+                }}
                 required
-                className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                className={inputClass}
               />
               <p className="mt-1 text-xs text-[#71717A]">
-                Mercado actual: ~{tasaRef.value}%
+                Mercado actual: ~{tasaRef.value.replace(".", ",")}%
                 {tasaRef.updated_at && ` (act. ${new Date(tasaRef.updated_at).toLocaleDateString("es-CL")})`}
               </p>
             </div>
