@@ -303,25 +303,35 @@ export default function NuevoAnalisisPage() {
   const [fieldCurrency, setFieldCurrency] = useState<Record<string, "CLP" | "UF">>({
     precio: "UF", arriendo: "CLP", gastos: "CLP", contribuciones: "CLP", arriendoEstac: "CLP", arriendoBodega: "CLP",
   });
+  // Store original CLP values so CLP→UF→CLP round-trip is lossless
+  const [originalCLP, setOriginalCLP] = useState<Record<string, number>>({});
+  const [editedInUF, setEditedInUF] = useState<Record<string, boolean>>({});
+
   const toggleFieldCurrency = useCallback((field: string) => {
     const currentCurrency = fieldCurrency[field] || "CLP";
     const wasUF = currentCurrency === "UF";
     const newCurrency = wasUF ? "CLP" : "UF";
-    const uf = UF_CLP; // capture current value
+    const uf = UF_CLP;
 
-    // Convert the field value
-    // Form state stores raw numbers from String(num) — use Number() not parseNum()
-    // to avoid parseNum stripping the decimal dot in UF values like "23.92"
     setForm((f) => {
       const raw = Number(f[field as keyof typeof f]) || 0;
       if (raw === 0) return f;
-      const converted = wasUF
-        ? Math.round(raw * uf)                        // UF → CLP
-        : Math.round((raw / uf) * 100) / 100;         // CLP → UF (2 decimals)
-      return { ...f, [field]: String(converted) };
+
+      if (wasUF) {
+        // UF → CLP: restore original if not edited in UF mode
+        if (!editedInUF[field] && originalCLP[field]) {
+          return { ...f, [field]: String(originalCLP[field]) };
+        }
+        return { ...f, [field]: String(Math.round(raw * uf)) };
+      } else {
+        // CLP → UF: save original CLP before converting
+        setOriginalCLP((prev) => ({ ...prev, [field]: raw }));
+        setEditedInUF((prev) => ({ ...prev, [field]: false }));
+        return { ...f, [field]: String(Math.round((raw / uf) * 100) / 100) };
+      }
     });
     setFieldCurrency((prev) => ({ ...prev, [field]: newCurrency }));
-  }, [UF_CLP, fieldCurrency]);
+  }, [UF_CLP, fieldCurrency, originalCLP, editedInUF]);
 
   // ─── Form state ────────────────────────────────────
   const [form, setForm] = useState({
@@ -355,7 +365,11 @@ export default function NuevoAnalisisPage() {
 
   const setField = useCallback((field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  }, []);
+    // If user edits a monetary field while in UF mode, mark it so we don't restore stale CLP original
+    if (fieldCurrency[field] === "UF") {
+      setEditedInUF((prev) => ({ ...prev, [field]: true }));
+    }
+  }, [fieldCurrency]);
 
   // ─── localStorage persistence ──────────────────────
   // Restore draft on mount
@@ -576,8 +590,8 @@ export default function NuevoAnalisisPage() {
     const checks = [
       { label: "Comuna", done: !!form.comuna },
       { label: "Superficie", done: !!form.superficieUtil && parseNum(form.superficieUtil) > 0 },
-      { label: "Precio", done: !!form.precio && parseNum(form.precio) > 0 },
-      { label: "Arriendo", done: !!form.arriendo && parseNum(form.arriendo) > 0 },
+      { label: "Precio", done: !!form.precio && Number(form.precio) > 0 },
+      { label: "Arriendo", done: !!form.arriendo && Number(form.arriendo) > 0 },
     ];
     const done = checks.filter((c) => c.done).length;
     const missing = checks.filter((c) => !c.done).map((c) => c.label);
@@ -730,8 +744,8 @@ export default function NuevoAnalisisPage() {
       params.set("lng", String(geoLng));
     }
     const precioUF = fieldCurrency.precio === "UF"
-      ? parseNum(form.precio)
-      : parseNum(form.precio) / UF_CLP;
+      ? (Number(form.precio) || 0)
+      : (Number(form.precio) || 0) / UF_CLP;
     if (precioUF > 0) params.set("precioUF", String(precioUF));
 
     fetch(`/api/data/suggestions?${params}`)
@@ -822,8 +836,8 @@ export default function NuevoAnalisisPage() {
     const precioSugeridoUF = supUtil > 0 && precioM2Ajustado > 0 ? Math.round(precioM2Ajustado * supUtil) : 0;
 
     const precioUFForCalc = (fieldCurrency.precio === "UF"
-      ? parseNum(form.precio)
-      : parseNum(form.precio) / UF_CLP) || precioSugeridoUF;
+      ? (Number(form.precio) || 0)
+      : (Number(form.precio) || 0) / UF_CLP) || precioSugeridoUF;
 
     const avaluoFiscal = precioUFForCalc * UF_CLP * 0.65;
     const contribAnual = Math.round(avaluoFiscal * 0.011);
@@ -886,8 +900,8 @@ export default function NuevoAnalisisPage() {
 
   const calc = useMemo(() => {
     const precioUF = fieldCurrency.precio === "UF"
-      ? parseNum(form.precio)
-      : parseNum(form.precio) / UF_CLP;
+      ? (Number(form.precio) || 0)
+      : (Number(form.precio) || 0) / UF_CLP;
 
     const supUtil = parseNum(form.superficieUtil) || 0;
     const piePct = parseFloat(form.piePct) || 20;
@@ -946,10 +960,10 @@ export default function NuevoAnalisisPage() {
     setLoading(true);
 
     const supUtil = parseNum(form.superficieUtil) || 0;
-    const precioUF = toUF("precio", parseNum(form.precio));
-    const arriendo = Math.round(toCLP("arriendo", parseNum(form.arriendo)));
-    const gastos = Math.round(toCLP("gastos", parseNum(form.gastos)));
-    const contribuciones = Math.round(toCLP("contribuciones", parseNum(form.contribuciones)));
+    const precioUF = toUF("precio", Number(form.precio) || 0);
+    const arriendo = Math.round(toCLP("arriendo", Number(form.arriendo) || 0));
+    const gastos = Math.round(toCLP("gastos", Number(form.gastos) || 0));
+    const contribuciones = Math.round(toCLP("contribuciones", Number(form.contribuciones) || 0));
     const antiguedad = form.estadoVenta !== "inmediata" ? 0 : antiguedadToNumber(form.antiguedad);
     const provisionMantencion = calc.provisionAuto;
     const ciudad = selectedComuna?.ciudad || "Santiago";
@@ -1653,11 +1667,11 @@ export default function NuevoAnalisisPage() {
                 Ref: {fmtCLP(suggestions.precioM2Arriendo)}/m² mes en la zona
               </p>
             )}
-            {form.arriendo && parseNum(form.arriendo) > 0 && (
+            {form.arriendo && Number(form.arriendo) > 0 && (
               <p className="mt-1 text-xs text-[#71717A]">
                 {fieldCurrency.arriendo === "UF"
-                  ? fmtCLP(parseNum(form.arriendo) * UF_CLP)
-                  : fmtUF(parseNum(form.arriendo) / UF_CLP)
+                  ? fmtCLP(Number(form.arriendo) * UF_CLP)
+                  : fmtUF(Number(form.arriendo) / UF_CLP)
                 }/mes
               </p>
             )}
@@ -1783,8 +1797,8 @@ export default function NuevoAnalisisPage() {
               />
               <p className="mt-1 text-xs text-[#71717A]">
                 {parseFloat(form.adminPct) > 0
-                  ? parseNum(form.arriendo) > 0
-                    ? `${fmtCLP(Math.round(toCLP("arriendo", parseNum(form.arriendo)) * parseFloat(form.adminPct) / 100))}/mes`
+                  ? (Number(form.arriendo) || 0) > 0
+                    ? `${fmtCLP(Math.round(toCLP("arriendo", Number(form.arriendo) || 0) * parseFloat(form.adminPct) / 100))}/mes`
                     : "Ingresa el arriendo para calcular"
                   : "Sin administrador"}
               </p>
