@@ -1839,17 +1839,20 @@ export function PremiumResults({
   const exit = dynamicExit;
   const refi = dynamicRefi;
 
-  // Automatic "Siendo franco:" text based on score
+  // Automatic "Siendo franco:" text — crosses score WITH cashflow
   const siendoFrancoText = useMemo(() => {
-    const flujoAbs = fmt(Math.abs(flujoUnificado));
+    const flujoAbs = fmtCLP(Math.abs(flujoUnificado));
     if (score >= 75) {
-      return `Este depto da los números. Rentabilidad sobre el promedio y flujo ${flujoUnificado >= 0 ? "positivo" : "casi neutro"}.`;
+      if (flujoUnificado >= 0) return "Este depto da los números. Rentabilidad sobre el promedio y flujo positivo.";
+      if (flujoUnificado > -50000) return "Este depto da los números. Rentabilidad sobre el promedio, flujo casi neutro.";
+      return `Buenas métricas, pero cada mes pones ${flujoAbs} de tu bolsillo por el financiamiento. La inversión depende de la plusvalía.`;
     }
     if (score >= 40) {
+      if (flujoUnificado >= 0) return "Flujo positivo pero métricas justas. Puede funcionar si el precio es correcto.";
       return `Este depto te cuesta ${flujoAbs}/mes de tu bolsillo. Negociable si consigues mejor precio.`;
     }
     return `Los números no dan. Flujo negativo de ${flujoAbs}/mes sin perspectiva de mejora razonable.`;
-  }, [score, flujoUnificado, fmt]);
+  }, [score, flujoUnificado]);
 
   const mainContent = (
     <>
@@ -2159,8 +2162,8 @@ export function PremiumResults({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-[2px]">
                   {[
                     { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto." },
-                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención." },
-                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio." },
+                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento." },
+                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto." },
                     { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra." },
                     { label: "TIR 10a", value: exit ? `${fmtPct(exit.tir)}` : "—", hint: "Tasa interna", color: exit && exit.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización." },
                     { label: "ROI 10a", value: exit ? `${exit.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: exit && exit.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años." },
@@ -2191,9 +2194,14 @@ export function PremiumResults({
                   }}
                 >
                   <span style={{ color: (m.rentabilidadNeta ?? 0) >= 3 ? '#B0BEC5' : '#C8323C', fontWeight: 600 }}>Siendo franco:</span>{' '}
-                  {(m.rentabilidadNeta ?? 0) >= 3
-                    ? `Rentabilidad neta de ${fmtPct(m.rentabilidadNeta ?? 0)} — los números cierran.`
-                    : `La bruta engaña — con ${fmtPct(m.rentabilidadNeta ?? 0)} neta y cash-on-cash de ${fmtPct(m.cashOnCash ?? 0)}, la inversión depende de la plusvalía.`
+                  {(() => {
+                    const neta = m.rentabilidadNeta ?? 0;
+                    const flujo = m.flujoNetoMensual ?? 0;
+                    if (neta >= 3 && flujo >= 0) return `Rentabilidad neta de ${fmtPct(neta)} con flujo positivo — los números cierran.`;
+                    if (neta >= 3 && flujo < 0) return `Rentabilidad neta de ${fmtPct(neta)} pero flujo negativo de ${fmtCLP(Math.abs(flujo))}/mes. La propiedad rinde bien, el costo lo pone el financiamiento.`;
+                    if (neta < 3 && flujo >= 0) return `Rentabilidad neta baja (${fmtPct(neta)}), pero al menos el flujo es positivo.`;
+                    return `La bruta engaña — con ${fmtPct(neta)} neta y flujo de -${fmtCLP(Math.abs(flujo))}/mes, la inversión depende 100% de la plusvalía.`;
+                  })()
                   }
                 </div>
               </CollapsibleSection>
