@@ -131,6 +131,7 @@ export interface FullAnalysisResult {
   score: number;
   clasificacion: string;
   clasificacionColor: string;
+  veredicto: "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
   resumenEjecutivo: string;
   desglose: Desglose;
   metrics: AnalysisMetrics;

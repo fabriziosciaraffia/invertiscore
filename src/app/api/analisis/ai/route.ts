@@ -205,6 +205,24 @@ export async function POST(request: Request) {
       : "";
     const anomaliaValorTexto = anomaliaValorMercado ? `\n\nSOBRE EL VALOR DE MERCADO:\n${anomaliaValorMercado}` : "";
 
+    // --- Anomalías de financiamiento ---
+    const anomaliasFinanciamiento: string[] = [];
+    if (input.piePct < 15) {
+      anomaliasFinanciamiento.push(`PIE BAJO: ${input.piePct}% de pie es bajo. El estándar es 20-25%. Con menos pie, el dividendo es más alto y el riesgo aumenta.`);
+    }
+    if (input.tasaInteres > 5.5) {
+      anomaliasFinanciamiento.push(`TASA ALTA: ${input.tasaInteres}% es alta. El mercado actual está en ~4.1%. Con esta tasa el dividendo es significativamente mayor y el flujo se deteriora.`);
+    }
+    if (input.plazoCredito < 20) {
+      anomaliasFinanciamiento.push(`PLAZO CORTO: ${input.plazoCredito} años es corto. Plazos de 25-30 años reducen el dividendo mensual y mejoran el flujo.`);
+    }
+    if (input.piePct < 15 && input.tasaInteres > 5) {
+      anomaliasFinanciamiento.push(`COMBINACIÓN RIESGOSA: pie bajo (${input.piePct}%) + tasa alta (${input.tasaInteres}%) maximiza el flujo negativo. Evalúa mejorar al menos una variable.`);
+    }
+    const anomaliasFinTexto = anomaliasFinanciamiento.length > 0
+      ? `\n\nANOMALÍAS DE FINANCIAMIENTO:\n${anomaliasFinanciamiento.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nMenciona los problemas de financiamiento directamente: "tu financiamiento está empeorando esta inversión".`
+      : "";
+
     // --- Precios de equilibrio ---
     const precioFlujoNeutroUF = m.precioFlujoNeutroUF || 0;
     const precioFlujoPositivoUF = m.precioFlujoPositivoUF || 0;
@@ -295,7 +313,9 @@ DATOS DE MERCADO DE LA ZONA:
 - Precio/m² promedio zona: ${fmtUF(precioM2Zona)}
 - Arriendo promedio zona: ${fmtCLP(arriendoZona)}
 - Yield promedio zona: ${yieldZona.toFixed(1)}%
-${anomaliasTexto}${anomaliaValorTexto}
+${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}
+
+VEREDICTO OBLIGATORIO: El veredicto del motor es "${results.veredicto || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA")}". DEBES usar este mismo veredicto en tu respuesta. No lo cambies. Tu trabajo es explicar POR QUÉ el veredicto es ese, no decidir uno diferente. Si te parece contraintuitivo (ej: score 43 pero dice BUSCAR OTRA por flujo insostenible), explica qué señales negativas lo causan.
 
 DATOS DE NEGOCIACIÓN (calculados por el motor):
 ${datosNegociacion}

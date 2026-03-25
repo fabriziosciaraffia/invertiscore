@@ -1001,7 +1001,15 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
 
   return (
     <div>
-      <p className="text-xs text-[#FAFAF8]/50 mb-3">{sourceLabel}</p>
+      <p className="text-xs text-[#FAFAF8]/50 mb-3">
+        {sourceLabel}
+        {hasRadioData && avgArriendoZona > 0 && m.ingresoMensual > 0 && (() => {
+          const diff = ((m.ingresoMensual - avgArriendoZona) / avgArriendoZona) * 100;
+          return Math.abs(diff) > 10 && diff < 0
+            ? " La sugerencia de Franco usa la mediana (más conservadora que el promedio)."
+            : null;
+        })()}
+      </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
         {cards.map((c) => {
           const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;

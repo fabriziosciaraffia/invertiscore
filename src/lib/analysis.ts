@@ -913,6 +913,29 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
+  // Veredicto: base por score + overrides por señales fuertes
+  type Veredicto = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
+
+  // Override a BUSCAR OTRA si hay señales estructurales negativas
+  if (
+    metrics.cashOnCash < -30 ||
+    breakEvenTasa === -1 ||
+    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < -300000) ||
+    metrics.flujoNetoMensual < -400000
+  ) {
+    veredicto = "BUSCAR OTRA";
+  }
+
+  // Override a COMPRAR si hay señales muy positivas
+  if (
+    metrics.flujoNetoMensual >= 0 &&
+    metrics.rentabilidadNeta >= 4 &&
+    (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
+  ) {
+    veredicto = "COMPRAR";
+  }
+
   let resumenEjecutivo: string;
   if (metrics.flujoNetoMensual >= 0) {
     resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia. ` +
@@ -935,6 +958,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     score: clamp(score, 0, 100),
     clasificacion,
     clasificacionColor,
+    veredicto,
     resumenEjecutivo,
     desglose,
     metrics,

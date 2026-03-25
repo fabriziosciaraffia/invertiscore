@@ -100,6 +100,7 @@ const DEMO_RESULTS: FullAnalysisResult = {
   score: 58,
   clasificacion: "AJUSTA EL PRECIO",
   clasificacionColor: "#FBBF24",
+  veredicto: "AJUSTA EL PRECIO",
   resumenEjecutivo: "Inversión con flujo negativo pero plusvalía atractiva en Providencia. Score 58/100 — negociable.",
   desglose: {
     rentabilidad: 35,
