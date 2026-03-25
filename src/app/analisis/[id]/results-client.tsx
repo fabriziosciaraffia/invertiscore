@@ -407,7 +407,7 @@ function AIAnalysisSection({
 
       {/* 1. Resumen Ejecutivo */}
       {phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 60 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#C8323C]/30 bg-[#C8323C]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#FBBF24]/30 bg-[#FBBF24]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
           <p className="text-sm font-medium leading-relaxed text-[#FAFAF8]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
@@ -1276,7 +1276,8 @@ export function PremiumResults({
   const flujoText = useMemo(() => {
     const f = flujoUnificado;
     const abs = Math.abs(f);
-    if (f >= 0) return "La propiedad se paga sola y genera ganancia";
+    if (f === 0) return "Break-even — sin ganancia ni pérdida mensual.";
+    if (f > 0) return "La propiedad se paga sola y genera ganancia";
     if (abs <= 100000) return "Aporte mensual moderado para el mercado";
     if (abs <= 300000) return "Aporte mensual significativo de tu bolsillo";
     return "Aporte mensual elevado — evalúa bien";
@@ -1897,6 +1898,7 @@ export function PremiumResults({
       if (flujoUnificado >= 0) return "Flujo positivo pero métricas justas. Puede funcionar si el precio es correcto.";
       return `Este depto te cuesta ${flujoAbs}/mes de tu bolsillo. Negociable si consigues mejor precio.`;
     }
+    if (flujoUnificado >= 0) return "Score bajo a pesar del flujo positivo — otras métricas no acompañan.";
     return `Los números no dan. Flujo negativo de ${flujoAbs}/mes sin perspectiva de mejora razonable.`;
   }, [score, flujoUnificado]);
 
@@ -2173,7 +2175,7 @@ export function PremiumResults({
               <CollapsibleSection
                 title={flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
                 subtitle="Desglose real: arriendo vs todos los costos"
-                helpText={flujoUnificado >= 0 ? "El arriendo cubre todos los gastos y te genera excedente. Acá está el desglose completo." : "El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."}
+                helpText={flujoUnificado === 0 ? "El arriendo cubre exactamente todos los gastos. Break-even." : flujoUnificado > 0 ? "El arriendo cubre todos los gastos y te genera excedente. Acá está el desglose completo." : "El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."}
                 defaultOpen
               >
                 {flujoBreakdown && (
@@ -2276,7 +2278,7 @@ export function PremiumResults({
                         >
                           <span style={{ color: positive ? '#B0BEC5' : '#C8323C', fontWeight: 600 }}>{positive ? 'Ventaja de compra' : 'Sobreprecio'}{label ? ` (${label})` : ''}:</span>{' '}
                           {positive
-                            ? <>compraste {fmtUF(Math.abs(clp / UF_CLP))} bajo mercado ({fmtPct(Math.abs(pct))}).{m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs(clp / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}</>
+                            ? <>compraste {fmtUF(Math.abs(clp / UF_CLP))} bajo mercado ({fmtPct(Math.abs(pct))}).{m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs(clp / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}{m.flujoNetoMensual === 0 && <> Flujo neutro — la plusvalía es ganancia pura.</>}</>
                             : <>pagaste {fmtUF(Math.abs(clp / UF_CLP))} sobre mercado ({fmtPct(Math.abs(pct))}). Necesitas ~{Math.ceil(Math.abs(pct) / 4)} años extra de plusvalía para recuperar.</>
                           }
                           {extra && <span className="block text-[11px] text-[#FAFAF8]/30 mt-1">{extra}</span>}
@@ -2362,7 +2364,7 @@ export function PremiumResults({
                       {
                         id: "cash_on_cash",
                         titulo: `Cash-on-cash negativo: ${fmtPct(m.cashOnCash ?? 0)}`,
-                        detalle: "El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.",
+                        detalle: flujoUnificado >= 0 ? "Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo." : "El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.",
                         severity: "critical" as const,
                         show: (m.cashOnCash ?? 0) < 0,
                       },
@@ -2878,7 +2880,10 @@ export function PremiumResults({
                       return (
                         <div className="mt-2" style={{ borderLeft: `3px solid ${multColor}`, background: `${multColor}08`, borderRadius: "0 8px 8px 0", padding: "10px 14px" }}>
                           <p className="text-xs" style={{ color: multColor }}>
-                            Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.
+                            {exit.multiplicadorCapital < 1
+                              ? <>Tu pie se reduciría a {exit.multiplicadorCapital}x — pierdes dinero en este plazo.</>
+                              : <>Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.</>
+                            }
                           </p>
                         </div>
                       );

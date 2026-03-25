@@ -775,6 +775,8 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
     pros.push(`El arriendo representa un ${metrics.rentabilidadBruta.toFixed(1)}% anual del precio, sobre el promedio chileno (~4%). Buen precio de compra para la renta que genera.`);
   if (metrics.flujoNetoMensual > 0)
     pros.push(`Después de pagar dividendo, gastos y todos los costos, te sobran ${fmtP(metrics.flujoNetoMensual)} al mes. La propiedad se paga sola.`);
+  else if (metrics.flujoNetoMensual === 0)
+    pros.push("Flujo exactamente neutro — el arriendo cubre todos los costos.");
   if (metrics.cashOnCash > 5)
     pros.push(`Tu pie renta un ${metrics.cashOnCash.toFixed(1)}% anual (cash-on-cash), mejor que la mayoría de las alternativas de renta fija.`);
   if (input.enConstruccion || input.antiguedad <= 2) {
@@ -820,10 +822,15 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
     contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
   if (input.antiguedad > 15)
     contras.push(`Con ${input.antiguedad} años de antigüedad, es probable que pronto aparezcan gastos de mantención mayores (fachada, ascensores, impermeabilización). Pregunta por el fondo de reserva del edificio.`);
-  if (input.gastos > metrics.ingresoMensual * 0.25)
+  if (metrics.ingresoMensual > 0 && input.gastos > metrics.ingresoMensual * 0.25)
     contras.push("Los gastos comunes son altos (>25% del arriendo). Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.");
-  if (metrics.cashOnCash < 0)
-    contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
+  if (metrics.cashOnCash < 0) {
+    if (metrics.flujoNetoMensual >= 0) {
+      contras.push("Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo.");
+    } else {
+      contras.push(`Tu pie está rentando negativo (${metrics.cashOnCash.toFixed(1)}% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.`);
+    }
+  }
   if (input.vacanciaMeses >= 2)
     contras.push(`Con ${input.vacanciaMeses} meses de vacancia estimada al año, pierdes ingreso significativo. Considera si la ubicación justifica esa vacancia.`);
   if (metrics.precioM2 > 80)
@@ -883,7 +890,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
 
   let plusvaliaScore = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
   const plusvaliaBaseR = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
-  plusvaliaScore += plusvaliaBaseR >= 80 ? lerp(metrics.precioM2, 30, 120, 8, -8) : lerp(metrics.precioM2, 30, 100, 12, -12);
+  plusvaliaScore += plusvaliaBaseR >= 80 ? lerp(metrics.precioM2, 30, 120, 5, -15) : lerp(metrics.precioM2, 30, 100, 12, -12);
   if (input.enConstruccion || input.antiguedad <= 2) plusvaliaScore += 10;
   else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvaliaScore += 5;
   else if (input.antiguedad > 20) plusvaliaScore -= 15;
@@ -918,6 +925,9 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   type Veredicto = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
   let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
 
+  // NOTE: These overrides can make the veredicto badge contradict the score bar visually.
+  // This is intentional: structural signals (extreme flujo, zero break-even) override the composite score.
+
   // Override a BUSCAR OTRA si hay señales estructurales negativas
   if (
     metrics.cashOnCash < -30 ||
@@ -938,7 +948,11 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   }
 
   let resumenEjecutivo: string;
-  if (metrics.flujoNetoMensual >= 0) {
+  if (metrics.flujoNetoMensual === 0) {
+    resumenEjecutivo = `Esta propiedad se paga sola — break-even exacto, sin ganancia ni pérdida. ` +
+      `Renta un ${metrics.rentabilidadBruta.toFixed(1)}% bruto anual. ` +
+      `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
+  } else if (metrics.flujoNetoMensual > 0) {
     resumenEjecutivo = `Esta propiedad se paga sola y te deja ${fmtR(metrics.flujoNetoMensual)} al mes de ganancia. ` +
       `Renta un ${metrics.rentabilidadBruta.toFixed(1)}% bruto anual. ` +
       `${score >= 65 ? "Es una buena oportunidad de inversión." : "Revisa los detalles del informe para evaluar si conviene."}`;
