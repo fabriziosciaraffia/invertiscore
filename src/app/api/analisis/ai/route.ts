@@ -170,7 +170,8 @@ export async function POST(request: Request) {
     if (arriendoRef > 0 && input.arriendo > 0) {
       const diffArriendo = ((input.arriendo - arriendoRef) / arriendoRef) * 100;
       if (diffArriendo > 30) {
-        anomalias.push(`ARRIENDO ALTO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado de la zona indica ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre mercado). Probablemente sobreestima el arriendo. Advierte que el arriendo real puede ser menor y recalcula mentalmente el flujo con el arriendo de mercado.`);
+        const flujoConArriendoReal = m.flujoNetoMensual - (input.arriendo - arriendoRef);
+        anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero el mercado paga ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre mercado). Sé directo y ácido: "Estás inflando el arriendo un ${Math.round(diffArriendo)}%. El mercado de la zona paga ${fmtCLP(arriendoRef)}. Si no consigues tu precio, el flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}. No te autoengañes con arriendos que no vas a conseguir."`);
       } else if (diffArriendo < -30) {
         anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado indica ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo mercado). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
       }
@@ -235,9 +236,11 @@ export async function POST(request: Request) {
     }
 
     // Precio sugerido dinámico
-    const precioSugeridoUF = precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 10
-      ? Math.round(precioFlujoNeutroUF)
-      : Math.round(input.precio * 0.9);
+    const precioSugeridoUF = plusvaliaFrancoPct > 15
+      ? Math.round(input.precio) // ya compra muy bajo mercado, no sugerir más descuento
+      : precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 10
+        ? Math.round(precioFlujoNeutroUF)
+        : Math.round(input.precio * 0.9);
 
     const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con esta estructura exacta.
 
@@ -353,12 +356,13 @@ Responde SOLO con un JSON válido con esta estructura:
 }
 
 REGLAS DE NEGOCIACIÓN (OBLIGATORIAS):
+- Si la plusvalía inmediata es >15% (ya compra MUY bajo mercado): NO sugieras más descuento. En vez, di que ya está comprando excelente y que revise bien el estado del departamento: estructura, deuda de GGCC, litigios, humedad, estado de instalaciones. Un descuento tan grande puede esconder problemas. El precioSugerido debe ser el precio de compra actual.
 - USA los datos de negociación calculados arriba. NO inventes porcentajes de descuento genéricos.
 - Si el descuento para flujo neutro es ≤10%: sugiere ESE precio exacto. "Negociando a ${fmtUF(precioFlujoNeutroUF > 0 ? Math.round(precioFlujoNeutroUF) : input.precio)} logras flujo neutro — ese es tu objetivo."
 - Si el descuento para flujo neutro es >10% pero ≤20%: sugiere el máximo realista (10%) y advierte que aún tendrá flujo negativo.
 - Si el descuento es >20%: NO sugieras negociar por flujo. Di que solo funciona por plusvalía. Precio sugerido = máximo descuento realista (10%): ${fmtUF(Math.round(input.precio * 0.9))}.
 - NUNCA sugieras más de 10% de descuento como objetivo realista.
-- Si hay ventaja de compra (bajo mercado): destaca que YA está comprando bien.
+- Si hay ventaja de compra moderada (5-15% bajo mercado): destaca que YA está comprando bien.
 - CÓMO NEGOCIAR: da argumentos concretos:
   * Mucha oferta en la zona: "hay deptos similares publicados, tienes poder de negociación"
   * Flujo negativo: "el vendedor sabe que con las tasas actuales pocos pueden pagar precio lista"

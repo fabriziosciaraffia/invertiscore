@@ -2059,7 +2059,7 @@ export function PremiumResults({
             <>
               {/* Section 1: Bolsillo — VISIBLE */}
               <CollapsibleSection
-                title="¿Cuánto sale de tu bolsillo cada mes?"
+                title={flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
                 subtitle="Desglose real: arriendo vs todos los costos"
                 defaultOpen
               >
@@ -2162,9 +2162,9 @@ export function PremiumResults({
             <>
               {/* Section 1: Flujo desglose */}
               <CollapsibleSection
-                title="¿Cuánto sale de tu bolsillo cada mes?"
+                title={flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
                 subtitle="Desglose real: arriendo vs todos los costos"
-                helpText="El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."
+                helpText={flujoUnificado >= 0 ? "El arriendo cubre todos los gastos y te genera excedente. Acá está el desglose completo." : "El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."}
                 defaultOpen
               >
                 {flujoBreakdown && (
