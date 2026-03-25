@@ -250,9 +250,9 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   const vmFrancoCLP = vmFrancoUF * UF_CLP;
   const vmUsuarioCLP = vmUsuarioUF * UF_CLP;
   const plusvaliaFranco = vmFrancoCLP - precioCLP;
-  const plusvaliaFrancoPct = precioCLP > 0 ? ((vmFrancoCLP / precioCLP) - 1) * 100 : 0;
+  const plusvaliaFrancoPct = vmFrancoCLP > 0 ? ((vmFrancoCLP - precioCLP) / vmFrancoCLP) * 100 : 0;
   const plusvaliaUsuario = vmUsuarioCLP - precioCLP;
-  const plusvaliaUsuarioPct = precioCLP > 0 ? ((vmUsuarioCLP / precioCLP) - 1) * 100 : 0;
+  const plusvaliaUsuarioPct = vmUsuarioCLP > 0 ? ((vmUsuarioCLP - precioCLP) / vmUsuarioCLP) * 100 : 0;
 
   // Precios de equilibrio
   const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);

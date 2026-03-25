@@ -166,20 +166,25 @@ export async function POST(request: Request) {
     const anomalias: string[] = [];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const zonaRadio = (input as any).zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number } | undefined;
+    // Arriendo: prefer radio data (same source as suggestion), fallback to comuna
     const arriendoRef = zonaRadio?.arriendoPromedio || arriendoZona;
     if (arriendoRef > 0 && input.arriendo > 0) {
       const diffArriendo = ((input.arriendo - arriendoRef) / arriendoRef) * 100;
+      // Skip small differences (< 5%) — covers rounding between suggestion and input
       if (diffArriendo > 30) {
         const flujoConArriendoReal = m.flujoNetoMensual - (input.arriendo - arriendoRef);
         anomalias.push(`ARRIENDO ALTO: El usuario ingresó ${fmtCLP(input.arriendo)} pero el mercado paga ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre mercado). Sé directo y ácido: "Estás inflando el arriendo un ${Math.round(diffArriendo)}%. El mercado de la zona paga ${fmtCLP(arriendoRef)}. Si no consigues tu precio, el flujo real sería ${fmtCLP(flujoConArriendoReal)}, no ${fmtCLP(m.flujoNetoMensual)}. No te autoengañes con arriendos que no vas a conseguir."`);
       } else if (diffArriendo < -30) {
         anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado indica ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo mercado). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
       }
+      // Differences between 5-30% are normal and not flagged
     }
+    // Precio/m²: prefer radio data, fallback to comuna
     const precioM2Usuario = input.precio / input.superficie;
     const precioM2Ref = zonaRadio?.precioM2VentaCLP ? (zonaRadio.precioM2VentaCLP / UF_CLP) : precioM2Zona;
     if (precioM2Ref > 0 && precioM2Usuario > 0) {
       const diffPrecio = ((precioM2Usuario - precioM2Ref) / precioM2Ref) * 100;
+      // Skip small differences (< 5%) — covers rounding between suggestion and input
       if (diffPrecio > 30) {
         anomalias.push(`PRECIO ALTO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(diffPrecio)}% sobre el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Posible sobreprecio.`);
       } else if (diffPrecio < -30) {
