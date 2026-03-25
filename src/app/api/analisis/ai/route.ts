@@ -30,22 +30,29 @@ function createSupabaseServer() {
   );
 }
 
-const SYSTEM_PROMPT = `Eres un analista de inversión inmobiliaria en Chile. Hablas en español chileno, claro y directo. No usas jerga financiera sin explicar. Tu objetivo es que una persona sin conocimientos financieros entienda si esta inversión le conviene o no. Eres honesto: si los números no cuadran, lo dices sin rodeos. Respondes SOLO con el JSON solicitado, sin texto adicional ni backticks.
+const SYSTEM_PROMPT = `Eres Franco — un analista de inversión inmobiliaria brutalmente honesto. Hablas en español chileno, claro y sin rodeos. No usas jerga financiera sin explicar. Tu misión: que el inversionista entienda EXACTAMENTE en qué se mete, con números concretos.
 
-CONTEXTO IMPORTANTE DEL MERCADO CHILENO 2024-2026:
-- Con tasas hipotecarias de 4-5%, prácticamente NINGÚN departamento de inversión en Santiago tiene flujo positivo con 80% de financiamiento. Flujo negativo es lo NORMAL, no la excepción.
-- La estrategia estándar del inversionista chileno es: comprar con flujo negativo manejable y esperar plusvalía de 3-5% anual.
-- Un flujo negativo de hasta $200K/mes se considera manejable para alguien con ingresos de $2M+.
-- Un flujo negativo de $200K-$400K es alto pero viable si la plusvalía y ubicación lo justifican.
-- Un flujo negativo de más de $400K es difícil de sostener para la mayoría de los inversionistas.
-- NO digas "buscar otra" solo porque tiene flujo negativo — TODOS lo tienen. Di "buscar otra" solo si el flujo es extremo Y la plusvalía/ubicación no compensan.
+TU PERSONALIDAD:
+- Eres directo. Si los números no dan, lo dices sin suavizar.
+- Eres concreto. Siempre das cifras, nunca generalidades. "Necesitas ganar mínimo $X/mes" en vez de "necesitas buenos ingresos".
+- Eres constructivo. Si algo está mal, dices QUÉ hacer: negociar a UF X, buscar en zona Y, poner más pie, etc.
+- Eres honesto sobre el mercado. No vendes humo. Si el flujo es negativo, no lo escondes. Pero tampoco alarmas — en Chile 2024-2026 es lo normal con tasas de 4-5%.
+- Cuando recomiendas "buscar otra", dices QUÉ buscar: qué rango de precio, qué zona, qué superficie, qué arriendo necesita.
+- Cuando recomiendas negociar, dices CÓMO: qué argumentos usar, a qué precio apuntar, por qué.
 
-CRITERIOS PARA VEREDICTO:
-- COMPRAR: Score >65, O flujo negativo <$200K con buena plusvalía, O yield sobre promedio zona
-- AJUSTA EL PRECIO: Score 45-65, flujo negativo manejable ($200K-$400K), buena zona
-- BUSCAR OTRA: Score <45, O flujo negativo >$500K, O ubicación mala, O yield muy bajo sin compensación de plusvalía
+CONTEXTO MERCADO CHILENO 2024-2026:
+- Tasas hipotecarias 4-5%: prácticamente NINGÚN depto de inversión tiene flujo positivo con 80% financiamiento. Flujo negativo es la norma.
+- Estrategia estándar: comprar con flujo negativo manejable + plusvalía 3-5% anual.
+- Flujo negativo hasta $200K/mes = manejable (ingresos de $1.5M+)
+- $200K-$400K = alto, viable solo con buenos ingresos y confianza en plusvalía
+- Sobre $400K = difícil de sostener, solo para patrimonios altos
 
-TONO: No seas alarmista sobre flujo negativo — es la norma del mercado. Sé realista pero constructivo. Tu rol es informar para que decida bien, no asustarlo. Si la inversión tiene potencial de plusvalía en buena zona, reconócelo aunque el flujo sea negativo. Reserva el tono negativo para inversiones realmente malas (score <40, mala zona, sin plusvalía).`;
+CRITERIOS VEREDICTO:
+- COMPRAR: Score >65 con flujo manejable, O ventaja de compra significativa, O yield sobre promedio zona
+- AJUSTA EL PRECIO: Score 45-65, flujo negativo pero zona con potencial. Indica el precio EXACTO al que conviene.
+- BUSCAR OTRA: Score <45, O flujo insostenible sin compensación, O precio/m² muy sobre zona sin justificación. Indica QUÉ buscar.
+
+Respondes SOLO con el JSON solicitado, sin texto adicional ni backticks.`;
 
 function fmtCLP(n: number): string {
   return "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
@@ -150,6 +157,88 @@ export async function POST(request: Request) {
     const dividendoSiTasaSube1 = creditoCLP > 0 ? Math.round((creditoCLP * ((input.tasaInteres + 1) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 1) / 100 / 12, -(input.plazoCredito * 12)))) : 0;
     const dividendoSiTasaSube2 = creditoCLP > 0 ? Math.round((creditoCLP * ((input.tasaInteres + 2) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 2) / 100 / 12, -(input.plazoCredito * 12)))) : 0;
 
+    // --- Flujo acumulado 5 años (proyecciones del motor si disponibles) ---
+    const flujoNegAcum5 = projections && projections.length >= 5 && projections[4].flujoAcumulado < 0
+      ? Math.round(Math.abs(projections[4].flujoAcumulado))
+      : Math.round(Math.abs(m.flujoNetoMensual) * 60);
+
+    // --- Detección de anomalías ---
+    const anomalias: string[] = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const zonaRadio = (input as any).zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number } | undefined;
+    const arriendoRef = zonaRadio?.arriendoPromedio || arriendoZona;
+    if (arriendoRef > 0 && input.arriendo > 0) {
+      const diffArriendo = ((input.arriendo - arriendoRef) / arriendoRef) * 100;
+      if (diffArriendo > 30) {
+        anomalias.push(`ARRIENDO ALTO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado de la zona indica ${fmtCLP(arriendoRef)} (${Math.round(diffArriendo)}% sobre mercado). Probablemente sobreestima el arriendo. Advierte que el arriendo real puede ser menor y recalcula mentalmente el flujo con el arriendo de mercado.`);
+      } else if (diffArriendo < -30) {
+        anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado indica ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo mercado). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
+      }
+    }
+    const precioM2Usuario = input.precio / input.superficie;
+    const precioM2Ref = zonaRadio?.precioM2VentaCLP ? (zonaRadio.precioM2VentaCLP / UF_CLP) : precioM2Zona;
+    if (precioM2Ref > 0 && precioM2Usuario > 0) {
+      const diffPrecio = ((precioM2Usuario - precioM2Ref) / precioM2Ref) * 100;
+      if (diffPrecio > 30) {
+        anomalias.push(`PRECIO ALTO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(diffPrecio)}% sobre el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Posible sobreprecio.`);
+      } else if (diffPrecio < -30) {
+        anomalias.push(`PRECIO BAJO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(Math.abs(diffPrecio))}% bajo el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Excelente oportunidad si es correcto.`);
+      }
+    }
+    const ggccEstimado = input.superficie * 2000;
+    if (input.gastos > 0 && input.gastos > ggccEstimado * 1.5) {
+      anomalias.push(`GGCC ALTOS: Gastos comunes de ${fmtCLP(input.gastos)} parecen altos para ${input.superficie}m² (estimado ~${fmtCLP(ggccEstimado)}). Verificar si incluyen calefacción central u otros servicios.`);
+    }
+
+    const valorMercadoFrancoUF = m.valorMercadoFrancoUF || input.precio;
+    const valorMercadoUsuarioUF = m.valorMercadoUsuarioUF || input.precio;
+    let anomaliaValorMercado = "";
+    if (Math.abs(valorMercadoUsuarioUF - valorMercadoFrancoUF) / (valorMercadoFrancoUF || 1) > 0.05) {
+      anomaliaValorMercado = valorMercadoUsuarioUF > valorMercadoFrancoUF
+        ? `El usuario estima que vale ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible sobreestimación. Los cálculos usan el valor de Franco.`
+        : `El usuario estima ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible subvaloración o información adicional del usuario.`;
+    }
+
+    const anomaliasTexto = anomalias.length > 0
+      ? `\n\nANOMALÍAS DETECTADAS EN LOS INPUTS:\n${anomalias.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nDEBES mencionar cada anomalía en tu análisis. Si el arriendo está inflado, advierte que las métricas reales podrían ser peores. Si el precio está bajo, reconoce la oportunidad.`
+      : "";
+    const anomaliaValorTexto = anomaliaValorMercado ? `\n\nSOBRE EL VALOR DE MERCADO:\n${anomaliaValorMercado}` : "";
+
+    // --- Precios de equilibrio ---
+    const precioFlujoNeutroUF = m.precioFlujoNeutroUF || 0;
+    const precioFlujoPositivoUF = m.precioFlujoPositivoUF || 0;
+    const descuentoParaNeutro = m.descuentoParaNeutro || 0;
+
+    let datosNegociacion = "";
+    if (m.flujoNetoMensual >= 0) {
+      datosNegociacion = "El flujo ya es positivo — no necesita negociar por flujo. Cualquier descuento es ganancia directa.";
+    } else if (precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 10) {
+      datosNegociacion = `Para flujo neutro: comprar a ${fmtUF(precioFlujoNeutroUF)} (${descuentoParaNeutro.toFixed(1)}% menos). Para flujo positivo (+$50K): comprar a ${fmtUF(precioFlujoPositivoUF)}. Descuento ALCANZABLE (<10%). Sugiere negociar a ese precio.`;
+    } else if (precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 20) {
+      datosNegociacion = `Para flujo neutro: ${fmtUF(precioFlujoNeutroUF)} (${descuentoParaNeutro.toFixed(1)}% menos). Descuento alto pero no imposible. Sugiere negociar lo más posible pero advierte que probablemente no logrará flujo neutro — inversión funciona por plusvalía.`;
+    } else if (precioFlujoNeutroUF > 0) {
+      datosNegociacion = `Flujo neutro requiere ${fmtUF(precioFlujoNeutroUF)} (${descuentoParaNeutro.toFixed(1)}% menos) — NO realista. Ni con 10% de descuento (${fmtUF(Math.round(input.precio * 0.9))}) logra flujo neutro. Solo funciona por plusvalía.`;
+    } else {
+      datosNegociacion = "El arriendo no cubre ni los gastos fijos — no existe precio de compra que dé flujo neutro con este financiamiento.";
+    }
+
+    const plusvaliaFranco = m.plusvaliaInmediataFranco || 0;
+    const plusvaliaFrancoPct = m.plusvaliaInmediataFrancoPct || 0;
+    let datosPasada = "";
+    if (Math.abs(plusvaliaFrancoPct) > 2) {
+      if (plusvaliaFranco > 0) {
+        const mesesRecuperados = m.flujoNetoMensual < 0 ? Math.round(plusvaliaFranco / Math.abs(m.flujoNetoMensual)) : 0;
+        datosPasada = `VENTAJA DE COMPRA: Compra ${Math.abs(plusvaliaFrancoPct).toFixed(1)}% bajo mercado (${fmtCLP(plusvaliaFranco)} ganancia inmediata). ${mesesRecuperados > 0 ? `Equivale a ${mesesRecuperados} meses de flujo negativo cubiertos.` : ""} Destaca como punto muy positivo.`;
+      } else {
+        datosPasada = `SOBREPRECIO: Paga ${Math.abs(plusvaliaFrancoPct).toFixed(1)}% sobre mercado (${fmtCLP(Math.abs(plusvaliaFranco))} de pérdida inmediata). Advierte que está comprando caro según datos de la zona.`;
+      }
+    }
+
+    // Precio sugerido dinámico
+    const precioSugeridoUF = precioFlujoNeutroUF > 0 && descuentoParaNeutro <= 10
+      ? Math.round(precioFlujoNeutroUF)
+      : Math.round(input.precio * 0.9);
+
     const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con esta estructura exacta.
 
 IMPORTANTE: Para cada campo de texto, genera DOS versiones: una con valores en CLP (sufijo _clp) y otra con valores en UF (sufijo _uf).
@@ -203,6 +292,11 @@ DATOS DE MERCADO DE LA ZONA:
 - Precio/m² promedio zona: ${fmtUF(precioM2Zona)}
 - Arriendo promedio zona: ${fmtCLP(arriendoZona)}
 - Yield promedio zona: ${yieldZona.toFixed(1)}%
+${anomaliasTexto}${anomaliaValorTexto}
+
+DATOS DE NEGOCIACIÓN (calculados por el motor):
+${datosNegociacion}
+${datosPasada ? `\nPLUSVALÍA INMEDIATA:\n${datosPasada}` : ""}
 
 Responde SOLO con un JSON válido con esta estructura:
 {
@@ -227,12 +321,12 @@ Responde SOLO con un JSON válido con esta estructura:
     "titulo": "¿Vale la pena ajustar el precio?",
     "contenido_clp": "Análisis de negociación con montos en CLP. Ver REGLAS DE NEGOCIACIÓN abajo.",
     "contenido_uf": "Lo mismo pero con montos en UF.",
-    "precioSugerido": "${fmtUF(precioConDescuento10)}"
+    "precioSugerido": "${fmtUF(precioSugeridoUF)}"
   },
 
   "proyeccion": {
     "titulo": "¿Cuándo recuperas la inversión?",
-    "contenido_clp": "Da cifras CONCRETAS con plusvalía 4% anual. En 5 años: propiedad valdría ${fmtCLP(valorProp5)}, flujo negativo acumulado ${fmtCLP(Math.round(Math.abs(m.flujoNetoMensual) * 60))}. En 10 años: propiedad valdría ${fmtCLP(valorProp10)}, flujo negativo acumulado ${fmtCLP(flujoNegAcum10)}, ganancia neta si vende ${fmtCLP(exit.gananciaNeta)} (ROI ${exit.multiplicadorCapital.toFixed(2)}x). Punto de equilibrio: calcula en qué año la plusvalía acumulada supera el flujo negativo acumulado. Montos en CLP.",
+    "contenido_clp": "Da cifras CONCRETAS con plusvalía 4% anual. En 5 años: propiedad valdría ${fmtCLP(valorProp5)}, flujo negativo acumulado ${fmtCLP(flujoNegAcum5)}. En 10 años: propiedad valdría ${fmtCLP(valorProp10)}, flujo negativo acumulado ${fmtCLP(flujoNegAcum10)}, ganancia neta si vende ${fmtCLP(exit.gananciaNeta)} (ROI ${exit.multiplicadorCapital.toFixed(2)}x). Punto de equilibrio: calcula en qué año la plusvalía acumulada supera el flujo negativo acumulado. Montos en CLP.",
     "contenido_uf": "Lo mismo pero con montos en UF."
   },
 
@@ -259,12 +353,24 @@ Responde SOLO con un JSON válido con esta estructura:
 }
 
 REGLAS DE NEGOCIACIÓN (OBLIGATORIAS):
-- El descuento MÁXIMO realista en Chile es 10%. NUNCA sugieras más de 10% de descuento.
-- Precio sugerido siempre = precio actual × 0.90 (${fmtUF(precioConDescuento10)}) como MÁXIMO. NUNCA menos.
-- PROHIBIDO sugerir precios con más de 10% de descuento.
-- PROHIBIDO mencionar el precio de flujo neutro como objetivo de compra si requiere más de 10% de descuento.
-- Si el flujo con 10% de descuento sigue siendo muy negativo (más de -$200K/mes): di honestamente que esta inversión no funciona por flujo, funciona solo por plusvalía. Incluso con 10% de descuento, seguiría poniendo dinero de su bolsillo cada mes. Compra solo si confía en la plusvalía y tiene ingresos para sostener el flujo negativo.
-- Si el flujo con 10% de descuento se acerca a $0: sugiere ese precio y explica cuánto mejora el flujo.
+- USA los datos de negociación calculados arriba. NO inventes porcentajes de descuento genéricos.
+- Si el descuento para flujo neutro es ≤10%: sugiere ESE precio exacto. "Negociando a ${fmtUF(precioFlujoNeutroUF > 0 ? Math.round(precioFlujoNeutroUF) : input.precio)} logras flujo neutro — ese es tu objetivo."
+- Si el descuento para flujo neutro es >10% pero ≤20%: sugiere el máximo realista (10%) y advierte que aún tendrá flujo negativo.
+- Si el descuento es >20%: NO sugieras negociar por flujo. Di que solo funciona por plusvalía. Precio sugerido = máximo descuento realista (10%): ${fmtUF(Math.round(input.precio * 0.9))}.
+- NUNCA sugieras más de 10% de descuento como objetivo realista.
+- Si hay ventaja de compra (bajo mercado): destaca que YA está comprando bien.
+- CÓMO NEGOCIAR: da argumentos concretos:
+  * Mucha oferta en la zona: "hay deptos similares publicados, tienes poder de negociación"
+  * Flujo negativo: "el vendedor sabe que con las tasas actuales pocos pueden pagar precio lista"
+  * Depto publicado hace tiempo: "si lleva más de 3 meses, el vendedor está más flexible"
+  * Proyecto nuevo: "pide descuento directo o que bonifiquen gastos de cierre/estacionamiento"
+
+REGLAS DE "BUSCAR OTRA":
+- Si el veredicto es BUSCAR OTRA, incluye QUÉ buscar:
+  * Rango de precio: "busca en el rango UF X a UF Y"
+  * Zona: "en ${input.comuna} o comunas similares"
+  * Características: "un depto de X-Y m² con estacionamiento para mejorar el arriendo"
+  * Arriendo objetivo: "necesitas arriendo de al menos ${fmtCLP(Math.round(m.dividendo * 0.8))} para flujo manejable"
 
 REGLAS GENERALES:
 - En la versión _clp, todos los montos en CLP ($XXX.XXX). En la versión _uf, todos los montos en UF.
@@ -276,7 +382,8 @@ REGLAS GENERALES:
 - El veredicto debe ser UNA de las tres opciones: COMPRAR, AJUSTA EL PRECIO, o BUSCAR OTRA
 - Los campos "alerta_clp" y "alerta_uf" en tuBolsillo deben ser string vacío "" si no aplica
 - Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.
-- Si el estado es "En blanco" o "En verde" con fecha de entrega futura, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".`;
+- Si el estado es "En blanco" o "En verde" con fecha de entrega futura, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".
+- Si hay ANOMALÍAS DETECTADAS arriba, DEBES mencionarlas. Si el arriendo está inflado, advierte: "Ojo: tu arriendo de $X está Y% sobre mercado. Si no logras arrendar a ese precio, tu flujo empeora." Si el precio está bajo, reconoce la ventaja.`;
 
     const message = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
