@@ -277,12 +277,13 @@ function MetricRow({ label, value, color, tooltip }: { label: string; value: str
   );
 }
 
-function ScoreBarInline({ score }: { score: number }) {
-  const color = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
-  const label = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
-  const badgeColor = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
-  const badgeBg = score >= 70 ? "rgba(176,190,197,0.12)" : score >= 40 ? "rgba(251,191,36,0.12)" : "rgba(220,38,38,0.12)";
-  const badgeBorder = score >= 70 ? "rgba(176,190,197,0.3)" : score >= 40 ? "rgba(251,191,36,0.3)" : "rgba(220,38,38,0.3)";
+function ScoreBarInline({ score, veredicto }: { score: number; veredicto?: string }) {
+  // Use motor's veredicto if available (includes overrides), fallback to score-based
+  const label = veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+  const color = label === "COMPRAR" ? "#B0BEC5" : label === "BUSCAR OTRA" ? "#C8323C" : "#FBBF24";
+  const badgeColor = color;
+  const badgeBg = label === "COMPRAR" ? "rgba(176,190,197,0.12)" : label === "BUSCAR OTRA" ? "rgba(220,38,38,0.12)" : "rgba(251,191,36,0.12)";
+  const badgeBorder = label === "COMPRAR" ? "rgba(176,190,197,0.3)" : label === "BUSCAR OTRA" ? "rgba(220,38,38,0.3)" : "rgba(251,191,36,0.3)";
   return (
     <div className="w-full min-w-[220px] max-w-[280px]">
       <p className="font-mono text-[9px] text-[#FAFAF8]/35 uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
@@ -1929,7 +1930,7 @@ export function PremiumResults({
           {/* Left: Score Bar */}
           <div className="relative">
             <div className={currentAccess === "guest" ? "filter blur-[8px] pointer-events-none" : ""}>
-              <ScoreBarInline score={score} />
+              <ScoreBarInline score={score} veredicto={results?.veredicto} />
             </div>
             {currentAccess === "guest" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center">

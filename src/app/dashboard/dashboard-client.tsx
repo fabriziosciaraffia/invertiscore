@@ -13,7 +13,8 @@ import { User } from "lucide-react";
 
 type VerdictFilter = "todos" | "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
 
-function getVerdict(score: number): "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA" {
+function getVerdict(score: number, veredictoMotor?: string): "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA" {
+  if (veredictoMotor === "COMPRAR" || veredictoMotor === "AJUSTA EL PRECIO" || veredictoMotor === "BUSCAR OTRA") return veredictoMotor;
   if (score >= 75) return "COMPRAR";
   if (score >= 40) return "AJUSTA EL PRECIO";
   return "BUSCAR OTRA";
@@ -121,14 +122,14 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   // Verdict counts
   const verdictCounts = useMemo(() => {
     const counts: Record<string, number> = { COMPRAR: 0, "AJUSTA EL PRECIO": 0, "BUSCAR OTRA": 0 };
-    analisis.forEach((a) => { counts[getVerdict(a.score)]++; });
+    analisis.forEach((a) => { counts[getVerdict(a.score, a.results?.veredicto)]++; });
     return counts;
   }, [analisis]);
 
   // Filtered list
   const filtered = useMemo(() => {
     if (activeFilter === "todos") return analisis;
-    return analisis.filter((a) => getVerdict(a.score) === activeFilter);
+    return analisis.filter((a) => getVerdict(a.score, a.results?.veredicto) === activeFilter);
   }, [analisis, activeFilter]);
 
   const toggleSelect = (id: string) => {
@@ -299,7 +300,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
               <div className="flex flex-col gap-2.5">
                 {filtered.map((item) => {
                   const m = getMetrics(item);
-                  const verdict = getVerdict(item.score);
+                  const verdict = getVerdict(item.score, item.results?.veredicto);
                   const isDeleting = deletingId === item.id;
                   const isSelected = selected.has(item.id);
 
