@@ -9,6 +9,7 @@ import FrancoLogo from "@/components/franco-logo";
 import GoogleMapRadius from "@/components/GoogleMapRadius";
 import { COMUNAS } from "@/lib/comunas";
 import { createClient } from "@/lib/supabase/client";
+import { estimarContribuciones } from "@/lib/contribuciones";
 
 const UF_CLP_FALLBACK = 38800;
 
@@ -52,7 +53,7 @@ const TIPS: Record<string, string> = {
   precio: "Precio de venta publicado o acordado.",
   arriendo: "Arriendo esperado de mercado para este departamento.",
   gastos: "Gasto común mensual estimado.",
-  contribuciones: "Contribuciones de bienes raíces (pago trimestral).",
+  contribuciones: "Las contribuciones se pagan 4 veces al año. Este valor es una estimación basada en la normativa del SII. El avalúo fiscal real puede variar — consúltalo en sii.cl con el ROL de la propiedad.",
   tasaInteres: "Tasa de interés anual del crédito hipotecario.",
   plazoCredito: "Duración del crédito hipotecario en años.",
   piePct: "Porcentaje del precio que se paga al contado.",
@@ -854,9 +855,7 @@ export default function NuevoAnalisisPage() {
       ? (Number(form.precio) || 0)
       : (Number(form.precio) || 0) / UF_CLP) || precioSugeridoUF;
 
-    const avaluoFiscal = precioUFForCalc * UF_CLP * 0.65;
-    const contribAnual = Math.round(avaluoFiscal * 0.011);
-    const contribuciones = Math.round(contribAnual / 4);
+    const contribuciones = estimarContribuciones(precioUFForCalc * UF_CLP, form.tipoPropiedad === "nuevo");
 
     // Use API-based arriendo if available, otherwise fallback
     // Prefer precioM2 × superficie (scales with size) over raw median arriendo
@@ -932,7 +931,7 @@ export default function NuevoAnalisisPage() {
     const antigNum = form.estadoVenta !== "inmediata" ? 0 : antiguedadToNumber(form.antiguedad);
     const mantencionRate = getMantencionRate(antigNum);
     const provisionAuto = Math.round((precioCLP * mantencionRate) / 12);
-    const contribucionesAuto = Math.round(precioCLP * 0.65 * 0.011 / 4);
+    const contribucionesAuto = estimarContribuciones(precioCLP, form.tipoPropiedad === "nuevo");
     const gastosAuto = Math.round(supUtil * 1200);
 
     return { precioUF, precioCLP, precioM2, pieUF, pieCLP, financiamientoPct, dividendo, provisionAuto, contribucionesAuto, gastosAuto };
@@ -1845,8 +1844,10 @@ export default function NuevoAnalisisPage() {
             {!form.contribuciones && (
               <p className="mt-1 font-body text-[11px] text-[#71717A]">
                 {suggestions?.contribuciones
-                  ? `Ref estimada: ${fmtCLP(suggestions.contribuciones)} (basada en avalúo fiscal aprox.)`
-                  : "Consultar en sii.cl con el rol de la propiedad"
+                  ? suggestions.contribuciones === 0 && form.tipoPropiedad === "nuevo"
+                    ? <>Estimación: $0 (exento por DFL-2). Verifica con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
+                    : <>Estimación Franco: {fmtCLP(suggestions.contribuciones)} (normativa SII, tasas 0,93%-1,09%). Para dato exacto, consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
+                  : <>Consultar en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a> con el ROL de la propiedad</>
                 }
               </p>
             )}

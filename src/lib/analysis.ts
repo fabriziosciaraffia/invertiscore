@@ -9,6 +9,7 @@ import type {
   Desglose,
   FullAnalysisResult,
 } from "./types";
+import { estimarContribuciones } from "./contribuciones";
 
 // Dynamic UF value — set via setUFValue() before calling runAnalysis()
 let UF_CLP = 38800;
@@ -197,7 +198,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
 
   // Auto-calculate defaults for fields left at 0
   if (!input.provisionMantencion) input.provisionMantencion = Math.round((precioCLP * getMantencionRate(input.antiguedad)) / 12);
-  if (!input.contribuciones) input.contribuciones = Math.round((precioCLP * 0.0065 * 0.011) / 4 * 100) > 0 ? Math.round(precioCLP * 0.65 * 0.011 / 4) : 0;
+  if (!input.contribuciones) input.contribuciones = estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
   if (!input.gastos) input.gastos = Math.round(input.superficie * 1200);
 
   const piePct = input.piePct / 100;

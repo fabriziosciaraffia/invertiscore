@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
+import { estimarContribuciones } from "../contribuciones";
 
 function getSupabase() {
   return createClient(
@@ -188,7 +189,7 @@ async function getSugerenciasPorRadio(
     return {
       arriendo,
       ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
-      contribTrim: estimateContribuciones(superficie, medianaM2),
+      contribTrim: estimarContribuciones(Math.round(medianaM2 * superficie)),
       source: "radio",
       sampleSize: cleanGeneral.length,
       radiusMeters,
@@ -208,7 +209,7 @@ async function getSugerenciasPorRadio(
   return {
     arriendo: Math.round(median(precios) / 1000) * 1000,
     ggcc: ggccs.length >= 3 ? Math.round(median(ggccs) / 1000) * 1000 : null,
-    contribTrim: estimateContribuciones(superficie),
+    contribTrim: preciosM2.length > 0 ? estimarContribuciones(Math.round(median(preciosM2) * superficie)) : estimarContribuciones(superficie * 2_000_000),
     source: "radio",
     sampleSize: clean.length,
     radiusMeters,
@@ -236,7 +237,7 @@ async function getSugerenciasPorComuna(
     return {
       arriendo: Math.round(stats.precio_mediana / 1000) * 1000,
       ggcc: stats.ggcc_promedio ? Math.round(stats.ggcc_promedio / 1000) * 1000 : null,
-      contribTrim: estimateContribuciones(superficie),
+      contribTrim: stats.precio_m2_mediana ? estimarContribuciones(Math.round(stats.precio_m2_mediana * superficie)) : estimarContribuciones(superficie * 2_000_000),
       source: "comuna",
       sampleSize: stats.count,
       precioM2: stats.precio_m2_mediana ? Math.round(stats.precio_m2_mediana) : undefined,
@@ -278,17 +279,10 @@ function getFallbackEstimacion(
   return {
     arriendo: Math.round(data.arriendoM2 * superficie * ajusteDorm / 1000) * 1000,
     ggcc: Math.round(data.ggccM2 * superficie / 1000) * 1000,
-    contribTrim: estimateContribuciones(superficie, precioUF ? precioUF * ufCLP / superficie : undefined, ufCLP),
+    contribTrim: estimarContribuciones(precioUF ? precioUF * ufCLP : 3000 * ufCLP),
     source: "estimacion",
     sampleSize: 0,
   };
-}
-
-function estimateContribuciones(superficie: number, precioM2CLP?: number, ufCLP: number = 38800): number {
-  const precioEstimadoUF = precioM2CLP ? (precioM2CLP * superficie / ufCLP) : 3000;
-  const avaluoFiscal = precioEstimadoUF * 0.7;
-  const contribAnualUF = avaluoFiscal * 0.012;
-  return Math.round(contribAnualUF / 4 * ufCLP / 1000) * 1000;
 }
 
 function median(arr: number[]): number {
