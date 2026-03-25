@@ -1597,7 +1597,7 @@ export default function NuevoAnalisisPage() {
               const pc = calc.precioUF;
               if (vm <= 0 || pc <= 0) return null;
               const diff = vm - pc;
-              const pct = Math.abs(diff / pc * 100);
+              const pct = Math.abs(diff / vm * 100);
               if (pct < 2) return <p className="mt-1 text-xs text-[#71717A]">Precio alineado con el mercado</p>;
               if (diff > 0) return <p className="mt-1 text-xs text-[#B0BEC5]">Pasada: {fmtUF(diff)} bajo mercado ({pct.toFixed(1).replace(".",",")}% descuento)</p>;
               return <p className="mt-1 text-xs text-[#C8323C]">Sobreprecio: {fmtUF(Math.abs(diff))} sobre mercado ({pct.toFixed(1).replace(".",",")}% extra)</p>;
