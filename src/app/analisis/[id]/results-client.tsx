@@ -1790,8 +1790,51 @@ export function PremiumResults({
     // Fix #2: gastos de cierre (~2% del precio de compra)
     const gastosCierre = precioCLP * 0.02;
 
-    // Flujo acumulado from cashflowData (grows over time with arriendo/cost growth)
-    const getCashflowAcum = (mo: number) => cashflowData[mo]?.Acumulado ?? 0;
+    // Flujo acumulado: compute month-by-month with growing arriendo/costs (same logic as cashflowData)
+    const costGrowthDec = costGrowth / 100;
+    const flujoAcumByMonth: number[] = [0]; // index 0 = T0
+    {
+      let arriendoAct = inputData.arriendo;
+      let gastosAct = inputData.gastos ?? 0;
+      let contribucionesAct = inputData.contribuciones;
+      let acum = 0;
+      const esPreEntregaFlow = mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata";
+      for (let mo = 1; mo <= horizonYears * 12; mo++) {
+        if (esPreEntregaFlow) {
+          if (mo > mesesPreEntrega + 1 && (mo - 1) % 12 === 0) {
+            arriendoAct *= (1 + arriendoGrowth / 100);
+            gastosAct *= (1 + costGrowthDec);
+            contribucionesAct *= (1 + costGrowthDec);
+          }
+        } else {
+          if (mo > 1 && (mo - 1) % 12 === 0) {
+            arriendoAct *= (1 + arriendoGrowth / 100);
+            gastosAct *= (1 + costGrowthDec);
+            contribucionesAct *= (1 + costGrowthDec);
+          }
+        }
+        if (esPreEntregaFlow && mo <= mesesPreEntrega) {
+          flujoAcumByMonth.push(0);
+        } else {
+          const anioProyeccion = Math.ceil(mo / 12);
+          const antiguedadActual = inputData.antiguedad + anioProyeccion;
+          const mantencionBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+          const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
+          const fd = calcFlujoDesglose({
+            arriendo: arriendoAct,
+            dividendo: m.dividendo,
+            ggcc: gastosAct,
+            contribuciones: contribucionesAct,
+            mantencion,
+            vacanciaMeses: inputData.vacanciaMeses ?? 1,
+            usaAdministrador: inputData.usaAdministrador,
+            comisionAdministrador: inputData.comisionAdministrador,
+          });
+          acum += fd.flujoNeto;
+          flujoAcumByMonth.push(acum);
+        }
+      }
+    }
 
     const calcSaldo = (mesActual: number) => {
       if (creditoCLP <= 0) return 0;
@@ -1843,7 +1886,7 @@ export function PremiumResults({
             isEntrega: true,
           });
         } else {
-          const flujoAcum = getCashflowAcum(mo);
+          const flujoAcum = (flujoAcumByMonth[mo] ?? 0);
           const mesesCredito = mo - mesesPreEntrega;
           const saldo = calcSaldo(mesesCredito);
           const capitalAmort = creditoCLP - saldo;
@@ -1865,7 +1908,7 @@ export function PremiumResults({
       allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: Math.round(plusvaliaInmediata), flujoAcumulado: 0, saldoCredito: creditoCLP, patrimonioNeto: Math.round(valorBase - creditoCLP - gastosCierre + 0 - m.pieCLP), valorPropiedad: Math.round(valorBase) });
 
       for (let mo = 1; mo <= totalMonths; mo++) {
-        const flujoAcum = getCashflowAcum(mo);
+        const flujoAcum = (flujoAcumByMonth[mo] ?? 0);
         const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
         const saldo = calcSaldo(mo);
@@ -1910,7 +1953,7 @@ export function PremiumResults({
     return allData
       .filter((row) => sampleArr.includes(row._x))
       .map((row) => ({ ...row, name: annualPatrimonioLabel(row._x, mesesPreEntrega) }));
-  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView, cashflowData]);
+  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView, arriendoGrowth, costGrowth]);
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -2670,8 +2713,9 @@ export function PremiumResults({
                     const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
                     const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
                     const flujoAcum = flujoAcumuladoReal;
+                    const gastosCierreCLP = precioOriginal * 0.02;
                     const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
-                    const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
+                    const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum - gastosCierreCLP;
                     return (
                       <>
                       {/* Bloque 1: Desglose de patrimonio */}
@@ -2726,8 +2770,8 @@ export function PremiumResults({
                       {/* Bloque 3: Ganancia real */}
                       <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(250,250,248,0.1)", background: "rgba(250,250,248,0.03)" }}>
                         <div className="px-3 py-3 sm:px-4">
-                          <p className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Si vendieras hoy, tu ganancia real sería:</p>
-                          <p className="mt-0.5 font-mono text-xs" style={{ color: "rgba(250,250,248,0.3)" }}>patrimonio − pie − flujo de bolsillo</p>
+                          <p className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Si vendieras en {horizonYears === 1 ? "1 año" : `${horizonYears} años`}, tu ganancia real sería:</p>
+                          <p className="mt-0.5 font-mono text-xs" style={{ color: "rgba(250,250,248,0.3)" }}>patrimonio − pie + flujo − gastos cierre</p>
                           <div className={`mt-2 font-mono text-[22px] font-semibold ${gananciaReal >= 0 ? "" : ""}`} style={{ color: gananciaReal >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmt(gananciaReal)}</div>
                         </div>
                       </div>
