@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
+import { findNearestStation } from "@/lib/metro-stations";
+import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 
 const anthropic = new Anthropic();
 
@@ -258,6 +260,51 @@ export async function POST(request: Request) {
       }
     }
 
+    // --- Datos Score v2: metro + plusvalía histórica ---
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const inputAny = input as any;
+    const lat = inputAny.lat || inputAny.zonaRadio?.lat || null;
+    const lng = inputAny.lng || inputAny.zonaRadio?.lng || null;
+
+    let metroInfo = '';
+    if (lat && lng) {
+      const nearestActive = findNearestStation(lat, lng, 'active');
+      const nearestFuture = findNearestStation(lat, lng, 'future');
+      if (nearestActive) {
+        const distKm = (nearestActive.distance / 1000).toFixed(1);
+        metroInfo += `Estación de metro más cercana: ${nearestActive.station.name} (${nearestActive.station.line}) a ${distKm} km. `;
+        if (nearestActive.distance < 500) metroInfo += 'Excelente ubicación respecto a metro. ';
+        else if (nearestActive.distance < 1000) metroInfo += 'Buena cercanía a metro. ';
+        else if (nearestActive.distance > 2500) metroInfo += 'Lejos de metro, puede afectar demanda de arriendo y plusvalía. ';
+      }
+      if (nearestFuture && nearestFuture.distance < 2000) {
+        const distKm = (nearestFuture.distance / 1000).toFixed(1);
+        metroInfo += `Futura estación: ${nearestFuture.station.name} (${nearestFuture.station.line}) a ${distKm} km — potencial de plusvalía adicional cuando se construya.`;
+      }
+    } else {
+      metroInfo = 'Sin datos de ubicación exacta para evaluar cercanía a metro.';
+    }
+
+    const comunaNorm = (input.comuna || '').trim();
+    const historica = PLUSVALIA_HISTORICA[comunaNorm];
+    let plusvaliaHistoricaInfo = '';
+    if (historica) {
+      plusvaliaHistoricaInfo = `Plusvalía histórica de ${comunaNorm} (2014-2024): ${historica.plusvalia10a}% en 10 años (${historica.anualizada}% anual). Precio promedio depto pasó de UF ${historica.precio2014.toLocaleString()} a UF ${historica.precio2024.toLocaleString()}.`;
+      if (historica.anualizada >= 4.5) plusvaliaHistoricaInfo += ' Comuna con plusvalía ALTA.';
+      else if (historica.anualizada >= 3.0) plusvaliaHistoricaInfo += ' Comuna con plusvalía MODERADA.';
+      else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += ' Comuna con plusvalía BAJA.';
+      else plusvaliaHistoricaInfo += ' Comuna con plusvalía MUY BAJA o NEGATIVA — cuidado.';
+    } else {
+      plusvaliaHistoricaInfo = `Sin datos históricos de plusvalía para ${comunaNorm}. Se usa promedio Gran Santiago (${PLUSVALIA_DEFAULT.anualizada}% anual).`;
+    }
+
+    const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
+    const esFueraGranSantiago = comunaNorm ? !COMUNAS_GRAN_SANTIAGO.includes(comunaNorm) : false;
+
+    const scoreBreakdownInfo = results?.scoreBreakdown
+      ? `Desglose del Franco Score: Rentabilidad ${results.scoreBreakdown.rentabilidad}/100, Flujo Caja ${results.scoreBreakdown.flujoCaja}/100, Plusvalía ${results.scoreBreakdown.plusvalia}/100, Eficiencia ${results.scoreBreakdown.eficiencia}/100.`
+      : '';
+
     // Precio sugerido dinámico
     const precioSugeridoUF = plusvaliaFrancoPct > 15
       ? Math.round(input.precio) // ya compra muy bajo mercado, no sugerir más descuento
@@ -317,6 +364,19 @@ DATOS DE MERCADO DE LA ZONA:
 - Precio/m² promedio zona: ${fmtUF(precioM2Zona)}
 - Arriendo promedio zona: ${fmtCLP(arriendoZona)}
 - Yield promedio zona: ${yieldZona.toFixed(1)}%
+
+DATOS DE UBICACIÓN Y PLUSVALÍA (Score v2):
+${metroInfo}
+${plusvaliaHistoricaInfo}
+${scoreBreakdownInfo}
+${esFueraGranSantiago ? `\nADVERTENCIA: Esta propiedad está fuera del Gran Santiago. Los datos de metro, plusvalía histórica y comparación de mercado pueden no ser precisos. Menciona esta limitación al usuario.` : ''}
+
+Menciona estos datos en tu análisis cuando sean relevantes:
+- Si hay metro cerca (<500m), menciónalo como ventaja para arriendo y plusvalía
+- Si hay metro futuro cerca, menciónalo como potencial de plusvalía
+- Si no hay metro cerca (>2.5km), menciónalo como riesgo para demanda de arriendo
+- Menciona la plusvalía histórica real de la comuna (no inventes datos)
+- Si la eficiencia es baja (<40), menciona que está comprando caro o con bajo yield respecto a la zona
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}
 
 VEREDICTO OBLIGATORIO: El veredicto del motor es "${results.veredicto || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA")}". DEBES usar este mismo veredicto en tu respuesta. No lo cambies. Tu trabajo es explicar POR QUÉ el veredicto es ese, no decidir uno diferente. Si te parece contraintuitivo (ej: score 43 pero dice BUSCAR OTRA por flujo insostenible), explica qué señales negativas lo causan.

@@ -13,6 +13,8 @@ import { estimarContribuciones } from "@/lib/contribuciones";
 
 const UF_CLP_FALLBACK = 38800;
 
+const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
+
 // ─── Formatting helpers ──────────────────────────────
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
@@ -1302,6 +1304,15 @@ export default function NuevoAnalisisPage() {
             </div>
           </div>
 
+          {/* Banner: comuna fuera del Gran Santiago */}
+          {form.comuna && !COMUNAS_GRAN_SANTIAGO.includes(form.comuna) && (
+            <div className="rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-4 py-3">
+              <p className="font-body text-[12px] text-[#FBBF24]">
+                Franco está optimizado para el Gran Santiago. Los datos de mercado, plusvalía histórica y cercanía a metro pueden no estar disponibles para esta comuna. El análisis será menos preciso.
+              </p>
+            </div>
+          )}
+
           {/* Dirección */}
           <div>
             <FieldLabel htmlFor="direccion">Dirección</FieldLabel>
@@ -1834,15 +1845,15 @@ export default function NuevoAnalisisPage() {
                 <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
-              {suggestions?.contribuciones && !form.contribuciones && (
+              {(suggestions?.contribuciones ?? 0) > 0 && !form.contribuciones && (
                 <span
                   className="font-mono text-[11px] text-[#C8323C] cursor-pointer hover:underline"
                   onClick={() => {
                     setFieldCurrency((prev) => ({ ...prev, contribuciones: "CLP" }));
-                    setField("contribuciones", String(suggestions.contribuciones));
+                    setField("contribuciones", String(suggestions!.contribuciones));
                   }}
                 >
-                  Sugerencia: {fmtCLP(suggestions.contribuciones)} ↗
+                  Sugerencia: {fmtCLP(suggestions!.contribuciones)} ↗
                 </span>
               )}
             </div>
@@ -1856,10 +1867,10 @@ export default function NuevoAnalisisPage() {
             />
             {!form.contribuciones && (
               <p className="mt-1 font-body text-[11px] text-[#71717A]">
-                {suggestions?.contribuciones
+                {(suggestions?.contribuciones ?? 0) > 0
                   ? <>Estimación SII (tasas 0,93%-1,09%). Para dato exacto, consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
-                  : suggestions?.contribuciones === 0 && form.tipoPropiedad === "nuevo"
-                    ? <>Estimación: $0 (exento por DFL-2). Verifica con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
+                  : suggestions?.contribuciones === 0
+                    ? <>Estimación: $0 (posible exención DFL-2 por bajo avalúo fiscal). Consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
                     : <>Consultar en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a> con el ROL de la propiedad</>
                 }
               </p>

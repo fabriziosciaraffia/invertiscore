@@ -22,6 +22,8 @@ import FrancoLogo from "@/components/franco-logo";
 // Module-level UF value, updated from server prop on mount
 let UF_CLP = 38800;
 
+const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const METRIC_TOOLTIPS: Record<string, string> = {
   "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor.",
@@ -1900,21 +1902,24 @@ export function PremiumResults({
   const exit = dynamicExit;
   const refi = dynamicRefi;
 
-  // Automatic "Siendo franco:" text — crosses score WITH cashflow
+  // Automatic "Siendo franco:" text — based on veredicto (includes overrides)
   const siendoFrancoText = useMemo(() => {
     const flujoAbs = fmtCLP(Math.abs(flujoUnificado));
-    if (score >= 75) {
-      if (flujoUnificado >= 0) return "Este depto da los números. Rentabilidad sobre el promedio y flujo positivo.";
-      if (flujoUnificado > -50000) return "Este depto da los números. Rentabilidad sobre el promedio, flujo casi neutro.";
-      return `Buenas métricas, pero cada mes pones ${flujoAbs} de tu bolsillo por el financiamiento. La inversión depende de la plusvalía.`;
+    const veredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+
+    if (veredicto === "BUSCAR OTRA") {
+      if (flujoUnificado >= 0) return "Score bajo a pesar del flujo positivo — otras métricas no acompañan.";
+      return `Este depto no da los números. Flujo negativo de ${flujoAbs}/mes y las condiciones no mejoran con ajustes de precio.`;
     }
-    if (score >= 40) {
-      if (flujoUnificado >= 0) return "Flujo positivo pero métricas justas. Puede funcionar si el precio es correcto.";
+    if (veredicto === "AJUSTA EL PRECIO") {
+      if (flujoUnificado >= 0) return "Flujo positivo pero métricas justas. Puede funcionar si consigues mejor precio.";
       return `Este depto te cuesta ${flujoAbs}/mes de tu bolsillo. Negociable si consigues mejor precio.`;
     }
-    if (flujoUnificado >= 0) return "Score bajo a pesar del flujo positivo — otras métricas no acompañan.";
-    return `Los números no dan. Flujo negativo de ${flujoAbs}/mes sin perspectiva de mejora razonable.`;
-  }, [score, flujoUnificado]);
+    // COMPRAR
+    if (flujoUnificado >= 0) return "Este depto da los números. Rentabilidad sólida y flujo positivo.";
+    if (flujoUnificado > -50000) return "Este depto da los números. Rentabilidad sólida y flujo casi neutro.";
+    return `Buenas métricas, pero cada mes pones ${flujoAbs} de tu bolsillo por el financiamiento. La inversión depende de la plusvalía.`;
+  }, [score, flujoUnificado, results?.veredicto]);
 
   const mainContent = (
     <>
@@ -1939,6 +1944,21 @@ export function PremiumResults({
           </a>
         </div>
       )}
+
+      {/* Banner: comuna fuera del Gran Santiago */}
+      {(() => {
+        const comunaActual = (comuna || inputData?.comuna || '').trim();
+        if (comunaActual && !COMUNAS_GRAN_SANTIAGO.includes(comunaActual)) {
+          return (
+            <div className="rounded-xl border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-5 py-3.5 mb-4">
+              <p className="font-body text-[13px] text-[#FBBF24]">
+                Este análisis tiene precisión limitada. Franco está optimizado para el Gran Santiago — los datos de mercado, plusvalía y metro aplican a esa zona.
+              </p>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* ═══════ BLOCK 1 — EXECUTIVE SUMMARY (NO REGISTRATION) ═══════ */}
       <div className="bg-[#1A1A1A] rounded-2xl p-7 md:p-8 mb-5">
