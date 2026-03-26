@@ -1752,6 +1752,7 @@ export function PremiumResults({
     piePagado: number;
     capitalAmortizado: number;
     plusvalia: number;
+    flujoAcumulado: number; // accumulated cash flow (negative = out of pocket)
     saldoCredito: number | null;
     patrimonioNeto: number;
     valorPropiedad: number;
@@ -1789,8 +1790,8 @@ export function PremiumResults({
     // Fix #2: gastos de cierre (~2% del precio de compra)
     const gastosCierre = precioCLP * 0.02;
 
-    // Fix #3: flujo acumulado post-entrega
-    const flujoMensual = m.flujoNetoMensual || 0;
+    // Flujo acumulado from cashflowData (grows over time with arriendo/cost growth)
+    const getCashflowAcum = (mo: number) => cashflowData[mo]?.Acumulado ?? 0;
 
     const calcSaldo = (mesActual: number) => {
       if (creditoCLP <= 0) return 0;
@@ -1806,9 +1807,8 @@ export function PremiumResults({
     const allData: PatrimonioRow[] = [];
 
     if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
-      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, patrimonioNeto: 0, valorPropiedad: 0, isPreEntrega: true });
+      allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, flujoAcumulado: 0, saldoCredito: null, patrimonioNeto: 0, valorPropiedad: 0, isPreEntrega: true });
 
-      let flujoAcum = 0;
       for (let mo = 1; mo <= totalMonths; mo++) {
         const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
@@ -1823,6 +1823,7 @@ export function PremiumResults({
             piePagado: Math.round(piePagado),
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
+            flujoAcumulado: 0,
             saldoCredito: esAntesDentrega ? 0 : null,
             patrimonioNeto: Math.round(piePagado + plusvaliaAcum),
             valorPropiedad: 0,
@@ -1835,13 +1836,14 @@ export function PremiumResults({
             piePagado: m.pieCLP,
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
+            flujoAcumulado: 0,
             saldoCredito: Math.round(creditoCLP),
-            patrimonioNeto: Math.round(valorProp - creditoCLP - gastosCierre),
+            patrimonioNeto: Math.round(valorProp - creditoCLP - gastosCierre + 0 - m.pieCLP),
             valorPropiedad: Math.round(valorProp),
             isEntrega: true,
           });
         } else {
-          flujoAcum += flujoMensual;
+          const flujoAcum = getCashflowAcum(mo);
           const mesesCredito = mo - mesesPreEntrega;
           const saldo = calcSaldo(mesesCredito);
           const capitalAmort = creditoCLP - saldo;
@@ -1850,8 +1852,9 @@ export function PremiumResults({
             piePagado: m.pieCLP,
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
+            flujoAcumulado: Math.round(flujoAcum),
             saldoCredito: Math.round(saldo),
-            patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum),
+            patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum - m.pieCLP),
             valorPropiedad: Math.round(valorProp),
           });
         }
@@ -1859,11 +1862,10 @@ export function PremiumResults({
     } else {
       // Entrega inmediata: gastos cierre desde T0, flujo acumula desde mes 1
       const plusvaliaInmediata = valorBase - precioCLP;
-      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: Math.round(plusvaliaInmediata), saldoCredito: creditoCLP, patrimonioNeto: Math.round(valorBase - creditoCLP - gastosCierre), valorPropiedad: Math.round(valorBase) });
+      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: Math.round(plusvaliaInmediata), flujoAcumulado: 0, saldoCredito: creditoCLP, patrimonioNeto: Math.round(valorBase - creditoCLP - gastosCierre + 0 - m.pieCLP), valorPropiedad: Math.round(valorBase) });
 
-      let flujoAcum = 0;
       for (let mo = 1; mo <= totalMonths; mo++) {
-        flujoAcum += flujoMensual;
+        const flujoAcum = getCashflowAcum(mo);
         const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
         const saldo = calcSaldo(mo);
@@ -1873,8 +1875,9 @@ export function PremiumResults({
           piePagado: m.pieCLP,
           capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
           plusvalia: Math.round(plusvaliaAcum),
+          flujoAcumulado: Math.round(flujoAcum),
           saldoCredito: Math.round(saldo),
-          patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum),
+          patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum - m.pieCLP),
           valorPropiedad: Math.round(valorProp),
         });
       }
@@ -1907,7 +1910,7 @@ export function PremiumResults({
     return allData
       .filter((row) => sampleArr.includes(row._x))
       .map((row) => ({ ...row, name: annualPatrimonioLabel(row._x, mesesPreEntrega) }));
-  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView]);
+  }, [results, m, inputData, horizonYears, plusvaliaRate, isMonthlyView, cashflowData]);
 
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
@@ -2626,6 +2629,7 @@ export function PremiumResults({
                                     <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
                                     <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
                                     <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo: <span className="font-medium" style={{ color: "#C8323C" }}>{fmt(row.flujoAcumulado)}</span></div>
                                   </>
                                 )}
                                 <div className="mt-1 border-t border-white/[0.06] pt-1 font-semibold" style={{ color: "#FAFAF8" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
@@ -2638,8 +2642,9 @@ export function PremiumResults({
                         <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
                         <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
                         <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="flujoAcumulado" stackId="patrimonio" fill="rgba(200,50,60,0.25)" stroke="rgba(200,50,60,0.45)" strokeWidth={1} name="Flujo de bolsillo" radius={[0, 0, 0, 0]} />
                         <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
-                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#FAFAF8" strokeWidth={3} dot={{ r: 3, fill: "#FAFAF8" }} name="Patrimonio neto" />
+                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#FAFAF8" strokeWidth={2.5} dot={{ r: 4, fill: "#FAFAF8", stroke: "#0F0F0F", strokeWidth: 2 }} name="Patrimonio neto" />
                         {mesesPreEntregaTop > 0 && (
                           <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
                         )}
@@ -2647,9 +2652,10 @@ export function PremiumResults({
                     </ResponsiveContainer>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.3 }} />Pie pagado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.6 }} />Capital amortizado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.4 }} />Plusvalía</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.15)" }} />Pie pagado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.30)" }} />Capital amortizado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.08)", border: "1px solid rgba(250,250,248,0.20)" }} />Plusvalía</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.2 }} />Valor propiedad</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
@@ -2668,6 +2674,7 @@ export function PremiumResults({
                     const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum;
                     return (
                       <>
+                      {/* Bloque 1: Desglose de patrimonio */}
                       <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.03]">
                         <div className="space-y-0 divide-y divide-border/30 sm:hidden">
                           {[
@@ -2704,18 +2711,24 @@ export function PremiumResults({
                         </table>
                         <p className="px-3 pb-2 text-[10px] text-[#FAFAF8]/50 sm:px-4">= valor propiedad − deuda restante</p>
                       </div>
-                      <div className="mt-3 rounded-lg border border-white/[0.06] bg-white/[0.03]">
-                        <div className="px-3 py-2 sm:px-4">
-                          <div className="mb-1 text-[11px] font-semibold text-[#FAFAF8]/60">Lo que pusiste de tu bolsillo</div>
+
+                      {/* Bloque 2: Lo que pusiste de tu bolsillo */}
+                      <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(200,50,60,0.2)", background: "rgba(200,50,60,0.04)" }}>
+                        <div className="px-3 py-2.5 sm:px-4">
+                          <div className="mb-1 font-mono text-xs font-medium uppercase" style={{ color: "#C8323C" }}>Lo que pusiste de tu bolsillo</div>
                           <div className="flex justify-between text-sm">
                             <span className="text-[#FAFAF8]/60">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                            <span className={`font-medium ${flujoAcum >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{fmt(flujoAcum)}</span>
+                            <span className="font-mono font-medium" style={{ color: "#C8323C" }}>{fmt(flujoAcum)}</span>
                           </div>
-                          <div className="mt-1.5 border-t border-white/[0.04] pt-1.5">
-                            <p className="text-[11px] text-[#FAFAF8]/60">
-                              Si vendieras hoy, tu ganancia real sería: patrimonio − pie − flujo de bolsillo = <span className={`font-semibold ${gananciaReal >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{fmt(gananciaReal)}</span>
-                            </p>
-                          </div>
+                        </div>
+                      </div>
+
+                      {/* Bloque 3: Ganancia real */}
+                      <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(250,250,248,0.1)", background: "rgba(250,250,248,0.03)" }}>
+                        <div className="px-3 py-3 sm:px-4">
+                          <p className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Si vendieras hoy, tu ganancia real sería:</p>
+                          <p className="mt-0.5 font-mono text-xs" style={{ color: "rgba(250,250,248,0.3)" }}>patrimonio − pie − flujo de bolsillo</p>
+                          <div className={`mt-2 font-mono text-[22px] font-semibold ${gananciaReal >= 0 ? "" : ""}`} style={{ color: gananciaReal >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmt(gananciaReal)}</div>
                         </div>
                       </div>
                       </>
