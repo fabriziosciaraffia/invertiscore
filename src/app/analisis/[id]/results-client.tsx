@@ -2704,18 +2704,16 @@ export function PremiumResults({
                     <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
                   </div>
                   {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
-                  {/* Desglose de patrimonio */}
+                  {/* Desglose de patrimonio — reads from projData (same source as chart) */}
                   {(() => {
-                    const lastProj = dynamicProjections[horizonYears - 1];
-                    if (!lastProj || !m || !inputData) return null;
-                    const precioOriginal = inputData.precio * UF_CLP;
-                    const creditoOriginal = precioOriginal * (1 - inputData.piePct / 100);
-                    const plusvaliaGanancia = lastProj.valorPropiedad - precioOriginal;
-                    const capitalAmortizado = creditoOriginal - lastProj.saldoCredito;
-                    const flujoAcum = flujoAcumuladoReal;
-                    const gastosCierreCLP = precioOriginal * 0.02;
-                    const patrimonioTotal = m.pieCLP + plusvaliaGanancia + capitalAmortizado;
-                    const gananciaReal = patrimonioTotal - m.pieCLP + flujoAcum - gastosCierreCLP;
+                    const lastRow = projData.find(r => r._x === horizonYears * 12);
+                    if (!lastRow || !m || !inputData) return null;
+                    // All values from projData so table matches chart exactly
+                    const plusvaliaGanancia = lastRow.plusvalia;
+                    const capitalAmortizado = lastRow.capitalAmortizado;
+                    const flujoAcum = lastRow.flujoAcumulado;
+                    const patrimonioTotal = lastRow.piePagado + lastRow.capitalAmortizado + lastRow.plusvalia; // = valorProp - saldo
+                    const gananciaReal = lastRow.patrimonioNeto; // already = valorProp - saldo - gastosCierre + flujo - pie
                     return (
                       <>
                       {/* Bloque 1: Desglose de patrimonio */}
@@ -2723,7 +2721,7 @@ export function PremiumResults({
                         <div className="space-y-0 divide-y divide-border/30 sm:hidden">
                           {[
                             { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP), color: "text-[#FAFAF8]" },
-                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastProj.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#B0BEC5]" },
+                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastRow.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#B0BEC5]" },
                             { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#B0BEC5]" },
                             { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#FAFAF8]", bold: true },
                           ].map(({ label, value, color, bold }) => (
@@ -2740,7 +2738,7 @@ export function PremiumResults({
                               <td className="py-2 px-4 text-right font-medium text-[#FAFAF8]">{fmt(m.pieCLP)}</td>
                             </tr>
                             <tr className="border-b border-white/[0.04]">
-                              <td className="py-2 px-4 text-[#FAFAF8]/70">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastProj.valorPropiedad / UF_CLP)})</td>
+                              <td className="py-2 px-4 text-[#FAFAF8]/70">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastRow.valorPropiedad / UF_CLP)})</td>
                               <td className="py-2 px-4 text-right font-medium text-[#B0BEC5]">{fmt(plusvaliaGanancia)}</td>
                             </tr>
                             <tr className="border-b border-white/[0.04]">
