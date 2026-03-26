@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
 import { findNearestStation } from "@/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { estimarContribuciones } from "@/lib/contribuciones";
 
 const anthropic = new Anthropic();
 
@@ -195,7 +196,22 @@ export async function POST(request: Request) {
     }
     const ggccEstimado = input.superficie * 2000;
     if (input.gastos > 0 && input.gastos > ggccEstimado * 1.5) {
-      anomalias.push(`GGCC ALTOS: Gastos comunes de ${fmtCLP(input.gastos)} parecen altos para ${input.superficie}m² (estimado ~${fmtCLP(ggccEstimado)}). Verificar si incluyen calefacción central u otros servicios.`);
+      anomalias.push(`GGCC ALTOS: Gastos comunes de ${fmtCLP(input.gastos)} parecen altos para ${input.superficie}m² (referencia ~${fmtCLP(ggccEstimado)}). Verificar si incluyen calefacción central, agua caliente u otros servicios.`);
+    } else if (input.gastos > 0 && input.gastos < ggccEstimado * 0.3) {
+      anomalias.push(`GGCC MUY BAJOS: Para ${input.superficie}m², la referencia es ~${fmtCLP(ggccEstimado)}/mes pero ingresó ${fmtCLP(input.gastos)}. Puede ser correcto en edificios chicos o antiguos. Verificar que no falte incluir algún gasto.`);
+    }
+
+    // Contribuciones vs estimación SII
+    const precioCLPFull = m.precioCLP || input.precio * UF_CLP;
+    const esNuevo = input.tipo === "nuevo" || input.condicion === "nuevo" || input.tipoPropiedad === "nuevo";
+    const contribEstimada = estimarContribuciones(precioCLPFull, esNuevo);
+    const contribUsuario = input.contribuciones || 0;
+    if (contribEstimada === 0 && contribUsuario > 50000) {
+      anomalias.push(`CONTRIBUCIONES SOBREESTIMADAS: Franco estima $0 (posible exención DFL-2 por bajo avalúo fiscal) pero el usuario ingresó ${fmtCLP(contribUsuario)}/trimestre. Eso son ${fmtCLP(contribUsuario * 4)}/año de más si la propiedad está exenta. Sugiérele verificar en sii.cl/mapas.`);
+    } else if (contribEstimada > 0 && contribUsuario > contribEstimada * 2) {
+      anomalias.push(`CONTRIBUCIONES MUY ALTAS: Estimación Franco ~${fmtCLP(contribEstimada)}/trim pero usuario ingresó ${fmtCLP(contribUsuario)} (${Math.round(contribUsuario / contribEstimada * 100)}% más). Verificar en sii.cl/mapas.`);
+    } else if (contribEstimada > 0 && contribUsuario > 0 && contribUsuario < contribEstimada * 0.3) {
+      anomalias.push(`CONTRIBUCIONES MUY BAJAS: Estimación Franco ~${fmtCLP(contribEstimada)}/trim pero usuario ingresó ${fmtCLP(contribUsuario)}. Puede ser correcto si tiene exención parcial. Verificar en sii.cl/mapas.`);
     }
 
     const valorMercadoFrancoUF = m.valorMercadoFrancoUF || input.precio;

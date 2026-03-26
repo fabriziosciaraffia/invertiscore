@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate } from "@/lib/analysis";
+import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import FrancoLogo from "@/components/franco-logo";
 
@@ -2044,6 +2045,21 @@ export function PremiumResults({
                   <p className="font-body text-[13px] font-semibold" style={{ color: sfColor }}>Siendo franco:</p>
                   <p className="font-body text-[12px] mt-1" style={{ color: "#888888" }}>{siendoFrancoText}</p>
                 </div>
+              );
+            })()}
+
+            {/* Debug: metro distance (temporary) */}
+            {(() => {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const inp = inputData as any;
+              const dLat = inp?.lat || inp?.zonaRadio?.lat;
+              const dLng = inp?.lng || inp?.zonaRadio?.lng;
+              if (!dLat || !dLng) return <p className="mt-2 font-mono text-[9px] text-white/20">Debug: sin coordenadas en input_data (keys: {inp ? Object.keys(inp).filter(k => k.includes("lat") || k.includes("lng") || k.includes("zona") || k.includes("geo")).join(",") : "null"})</p>;
+              const nearest = findNearestStation(dLat, dLng, "active");
+              return (
+                <p className="mt-2 font-mono text-[9px] text-white/20">
+                  Debug: depto=({Number(dLat).toFixed(4)},{Number(dLng).toFixed(4)}) | Metro: {nearest ? `${nearest.station.name} (${nearest.station.line}) a ${nearest.distance.toFixed(0)}m — estación=({nearest.station.lat},{nearest.station.lng})` : "ninguno"}
+                </p>
               );
             })()}
           </div>
