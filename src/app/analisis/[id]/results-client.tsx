@@ -1377,29 +1377,7 @@ export function PremiumResults({
   }, [results, m, inputData, plusvaliaRate, arriendoGrowth, costGrowth]);
 
   // Dynamic refinance scenario based on horizon + refiPct
-  const dynamicRefi = useMemo(() => {
-    if (!results || !m || !inputData || dynamicProjections.length === 0) return null;
-    const proy = dynamicProjections[Math.min(horizonYears - 1, dynamicProjections.length - 1)];
-    const nuevoAvaluo = proy.valorPropiedad;
-    const nuevoCredito = Math.round(nuevoAvaluo * (refiPct / 100));
-    const capitalLiberado = nuevoCredito - proy.saldoCredito;
-    const tasaMensual = inputData.tasaInteres / 100 / 12;
-    const n = inputData.plazoCredito * 12;
-    const nuevoDividendo = tasaMensual === 0 ? Math.round(nuevoCredito / n) : Math.round((nuevoCredito * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n)));
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
-    const refiF = calcFlujoDesglose({
-      arriendo: proy.arriendoMensual,
-      dividendo: nuevoDividendo,
-      ggcc: inputData.gastos,
-      contribuciones: inputData.contribuciones,
-      mantencion,
-      vacanciaMeses: inputData.vacanciaMeses ?? 1,
-      usaAdministrador: inputData.usaAdministrador,
-      comisionAdministrador: inputData.comisionAdministrador,
-    });
-    const nuevoFlujoNeto = refiF.flujoNeto;
-    return { nuevoAvaluo: Math.round(nuevoAvaluo), nuevoCredito, capitalLiberado: Math.round(capitalLiberado), nuevoDividendo, nuevoFlujoNeto: Math.round(nuevoFlujoNeto) };
-  }, [results, m, inputData, dynamicProjections, horizonYears, refiPct]);
+  // dynamicRefi removed — refi section now calculates directly from projData
 
 
   // ─── Sensitivity scenarios with projections ───
@@ -1683,12 +1661,6 @@ export function PremiumResults({
     return annualData;
   }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth, costGrowth]);
 
-  // Single source of truth for flujo acumulado: last value from cashflowData (month-by-month)
-  const flujoAcumuladoReal = useMemo(() => {
-    if (cashflowData.length === 0) return 0;
-    return cashflowData[cashflowData.length - 1].Acumulado;
-  }, [cashflowData]);
-
   // Egreso bar series ordered by average absolute impact (descending), filtered to non-zero
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
@@ -1741,10 +1713,7 @@ export function PremiumResults({
     return calcExitForYear(10, flujoAcum10);
   }, [dynamicProjections, calcExitForYear]);
 
-  // Dynamic exit scenario based on horizon slider (for exit section)
-  const dynamicExit = useMemo(() => {
-    return calcExitForYear(horizonYears, flujoAcumuladoReal);
-  }, [calcExitForYear, horizonYears, flujoAcumuladoReal]);
+  // dynamicExit removed — exit section now reads directly from projData
 
   interface PatrimonioRow {
     name: string;
@@ -1960,8 +1929,7 @@ export function PremiumResults({
     : `${comuna || inputData?.comuna}, Santiago, Chile`;
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
 
-  const exit = dynamicExit;
-  const refi = dynamicRefi;
+  // (exit/refi section reads directly from projData inline)
 
   // Automatic "Siendo franco:" text — based on veredicto (includes overrides)
   const siendoFrancoText = useMemo(() => {
@@ -2966,85 +2934,231 @@ export function PremiumResults({
                   </div>
                 </div>
               </div>
-            ) : exit && refi ? (
+            ) : projData.length > 0 && m ? (
+              (() => {
+                const lastPoint = projData.find(r => r._x === horizonYears * 12);
+                if (!lastPoint || !inputData) return null;
+                const vp = lastPoint.valorPropiedad;
+                const sc = lastPoint.saldoCredito ?? 0;
+                const fa = lastPoint.flujoAcumulado;
+                const comision = Math.round(vp * 0.02);
+                const recibeNeto = vp - sc - comision;
+                const totalInvertido = m.pieCLP + Math.abs(fa);
+                const ganancia = recibeNeto - totalInvertido;
+                const multiplicador = m.pieCLP > 0 ? Math.round((recibeNeto / m.pieCLP) * 100) / 100 : 0;
+                // TIR: build yearly cash flows from projData
+                const tirFlujos = [-m.pieCLP];
+                for (let y = 1; y <= horizonYears; y++) {
+                  const moEnd = y * 12;
+                  const moStart = (y - 1) * 12;
+                  const rowEnd = projData.find(r => r._x === moEnd);
+                  const rowStart = projData.find(r => r._x === moStart);
+                  const flujoAnual = (rowEnd?.flujoAcumulado ?? 0) - (rowStart?.flujoAcumulado ?? 0);
+                  if (y === horizonYears) {
+                    const vpY = rowEnd?.valorPropiedad ?? 0;
+                    const scY = rowEnd?.saldoCredito ?? 0;
+                    tirFlujos.push(flujoAnual + vpY - scY - Math.round(vpY * 0.02));
+                  } else {
+                    tirFlujos.push(flujoAnual);
+                  }
+                }
+                const tir = calcTIR(tirFlujos);
+                // Abbreviated format for narrative
+                const fmtAbr = (n: number) => fmtM(Math.abs(n));
+                // Refi calculations from projData
+                const refiNuevoCredito = Math.round(vp * (refiPct / 100));
+                const refiCapitalLiberado = refiNuevoCredito - sc;
+                const refiTasaMensual = inputData.tasaInteres / 100 / 12;
+                const refiN = 20 * 12; // 20-year new term
+                const refiNuevoDividendo = refiTasaMensual === 0 ? Math.round(refiNuevoCredito / refiN) : Math.round((refiNuevoCredito * refiTasaMensual) / (1 - Math.pow(1 + refiTasaMensual, -refiN)));
+                // Projected arriendo/gastos at horizon year
+                const arriendoProyectado = Math.round(inputData.arriendo * Math.pow(1 + arriendoGrowth / 100, horizonYears));
+                const gastosProyectados = Math.round((inputData.gastos ?? 0) * Math.pow(1 + costGrowth / 100, horizonYears));
+                const contribProyectadas = Math.round(inputData.contribuciones * Math.pow(1 + costGrowth / 100, horizonYears));
+                const antiguedadFutura = inputData.antiguedad + horizonYears;
+                const mantProyectada = inputData.provisionMantencion || Math.round(((inputData.precio * UF_CLP) * getMantencionRate(antiguedadFutura)) / 12);
+                const refiFlujoDsg = calcFlujoDesglose({
+                  arriendo: arriendoProyectado,
+                  dividendo: refiNuevoDividendo,
+                  ggcc: gastosProyectados,
+                  contribuciones: contribProyectadas,
+                  mantencion: mantProyectada,
+                  vacanciaMeses: inputData.vacanciaMeses ?? 1,
+                  usaAdministrador: inputData.usaAdministrador,
+                  comisionAdministrador: inputData.comisionAdministrador,
+                });
+                const refiNuevoFlujoNeto = refiFlujoDsg.flujoNeto;
+                const nDeptos = Math.floor(refiCapitalLiberado / m.pieCLP);
+
+                return (
               <div>
-                <p className="mb-3 text-xs text-[#FAFAF8]/50">Toda inversión tiene un momento de salida. Simulamos dos opciones:</p>
                 <div className="mb-4 flex gap-2">
                   <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Venta</button>
                   <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Refinanciamiento</button>
                 </div>
 
                 {exitMode === "venta" ? (
-                  <div className="space-y-3 text-sm text-[#FAFAF8]">
+                  <div className="space-y-4 text-sm text-[#FAFAF8]">
+                    {/* Intro */}
                     <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
-                      Si vendieras {exit.anios === 1 ? "al año 1" : `a los ${exit.anios} años`} al valor proyectado (plusvalía {fmtPct(plusvaliaRate)}/año), ¿cuánto ganarías después de pagar el crédito y la comisión?
+                      Si vendieras {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} al valor proyectado (plusvalía {fmtPct(plusvaliaRate)}/año), ¿cuánto ganarías?
                     </p>
-                    {[
-                      { label: "Valor venta estimado", value: fmt(exit.valorVenta), color: "text-[#FAFAF8]" },
-                      { label: "Saldo crédito restante", value: `-${fmt(exit.saldoCredito)}`, color: "text-[#C8323C]" },
-                      { label: "Comisión venta (2%)", value: `-${fmt(exit.comisionVenta)}`, color: "text-[#C8323C]" },
-                      { label: "Ganancia neta venta", value: fmt(exit.gananciaNeta), color: exit.gananciaNeta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]" },
-                      { label: "Flujo acumulado período", value: fmt(exit.flujoAcumulado), color: exit.flujoAcumulado >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]" },
-                      { label: "Retorno total", value: fmt(exit.retornoTotal), color: exit.retornoTotal >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
-                      { label: "Multiplicador de capital", value: `${exit.multiplicadorCapital}x`, color: exit.multiplicadorCapital >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
-                      { label: "TIR", value: `${fmtPct(exit.tir)}`, color: exit.tir >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]", summary: true },
-                    ].map(({ label, value, color, summary }) => (
-                      <div key={label} className={`flex justify-between ${summary ? "border-t border-white/[0.06] pt-2" : ""}`}>
-                        <span className={`text-[#FAFAF8]/60 ${summary ? "font-medium" : ""}`}>{label}</span>
-                        <span className={`font-mono font-medium ${color} ${summary ? "font-semibold" : ""}`}>{value}</span>
+
+                    {/* Lo que pusiste */}
+                    <div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pie inicial</span>
+                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(m.pieCLP)}</span>
                       </div>
-                    ))}
-                    {(() => {
-                      const multState = exit.multiplicadorCapital >= 2.0 ? "positive" : exit.multiplicadorCapital >= 1.0 ? "neutral" : "negative";
-                      const multColor = multState === "positive" ? "#B0BEC5" : multState === "negative" ? "#C8323C" : "#71717A";
-                      return (
-                        <div className="mt-2" style={{ borderLeft: `3px solid ${multColor}`, background: `${multColor}08`, borderRadius: "0 8px 8px 0", padding: "10px 14px" }}>
-                          <p className="text-xs" style={{ color: multColor }}>
-                            {exit.multiplicadorCapital < 1
-                              ? <>Tu pie se reduciría a {exit.multiplicadorCapital}x — pierdes dinero en este plazo.</>
-                              : <>Tu pie se multiplicaría por {exit.multiplicadorCapital}x en {exit.anios === 1 ? "1 año" : `${exit.anios} años`}.</>
-                            }
-                          </p>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                        <span className="font-mono text-sm" style={{ color: "#C8323C" }}>{fmt(Math.abs(fa))}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Total invertido</span>
+                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(totalInvertido)}</span>
+                      </div>
+                    </div>
+
+                    {/* Lo que recuperas */}
+                    <div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Valor de venta estimado</span>
+                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(vp)}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Saldo crédito restante</span>
+                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Comisión venta (2%)</span>
+                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>-{fmt(comision)}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Recibes neto</span>
+                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(recibeNeto)}</span>
+                      </div>
+                    </div>
+
+                    {/* Resultado */}
+                    <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Resultado</div>
+                      <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
+                        <div className="flex-1 text-center">
+                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Tu ganancia</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: ganancia >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmt(ganancia)}</div>
                         </div>
-                      );
-                    })()}
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="flex-1 text-center">
+                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Multiplicador</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: multiplicador >= 1 ? "#FAFAF8" : "#C8323C" }}>{multiplicador}x</div>
+                        </div>
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="flex-1 text-center">
+                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>TIR</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: tir >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmtPct(tir)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Narrativa Franco */}
+                    <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
+                        Pusiste <span className="font-medium text-[#FAFAF8]">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-[#FAFAF8]">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
+                        {" "}Al vender, recibes <span className="font-medium text-[#FAFAF8]">{fmtAbr(recibeNeto)}</span> netos.
+                        {" "}Tu ganancia real es <span className="font-medium text-[#FAFAF8]">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-[#FAFAF8]">{multiplicador}x</span>.
+                      </p>
+                    </div>
                   </div>
                 ) : (
-                  <div className="space-y-3 text-sm text-[#FAFAF8]">
+                  <div className="space-y-4 text-sm text-[#FAFAF8]">
+                    {/* Intro */}
                     <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
                       Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
                     </p>
-                    <div className="flex items-center gap-3 rounded-lg border border-white/[0.06] bg-white/[0.03] p-3">
-                      <span className="text-xs text-[#FAFAF8]/50">% refinanciamiento:</span>
-                      <div className="flex flex-wrap gap-1">
+
+                    {/* Selector % refi */}
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs" style={{ color: "rgba(250,250,248,0.4)" }}>% refinanciamiento:</span>
+                      <div className="flex gap-1.5">
                         {[60, 70, 80, 90].map((pct) => (
                           <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                            className={`rounded px-2 py-1 text-[11px] font-medium transition-colors sm:px-3 sm:text-xs ${refiPct === pct ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-white/[0.08] text-[#FAFAF8]/50 hover:bg-white/[0.06]"}`}
+                            className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
+                            style={refiPct === pct
+                              ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
+                              : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
                           >{pct}%</button>
                         ))}
                       </div>
                     </div>
-                    <p className="text-[10px] text-[#FAFAF8]/40">Los bancos en Chile financian hasta 80% del valor de tasación. Algunos ofrecen hasta 90% para propiedades de inversión con buen historial.</p>
-                    {[
-                      { label: "Nuevo avalúo", value: fmt(refi.nuevoAvaluo) },
-                      { label: `Nuevo crédito (${refiPct}%)`, value: fmt(refi.nuevoCredito) },
-                      { label: "Capital liberado", value: fmt(refi.capitalLiberado), positive: true },
-                      { label: "Nuevo dividendo", value: fmt(refi.nuevoDividendo) },
-                      { label: "Nuevo flujo neto", value: fmt(refi.nuevoFlujoNeto), positive: refi.nuevoFlujoNeto > 0 },
-                    ].map(({ label, value, positive }) => (
-                      <div key={label} className="flex justify-between">
-                        <span className="text-[#FAFAF8]/60">{label}</span>
-                        <span className={positive ? "text-[#B0BEC5] font-medium" : "text-[#FAFAF8]"}>{value}</span>
+
+                    {/* Tu depto hoy */}
+                    <div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo avalúo (valor proyectado)</span>
+                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(vp)}</span>
                       </div>
-                    ))}
-                    {refi.capitalLiberado > 0 && (
-                      <p className="mt-2 rounded-lg bg-white/[0.05] p-3 text-xs text-[#FAFAF8]">
-                        Podrías usar {fmt(refi.capitalLiberado)} como pie para una segunda inversión.
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Deuda actual</span>
+                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(sc)}</span>
+                      </div>
+                    </div>
+
+                    {/* Nuevo crédito */}
+                    <div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
+                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(refiNuevoCredito)}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pago deuda anterior</span>
+                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
+                      </div>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Capital liberado</span>
+                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(refiCapitalLiberado)}</span>
+                      </div>
+                    </div>
+
+                    {/* Impacto en tu flujo */}
+                    <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Impacto en tu flujo</div>
+                      <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
+                        <div className="flex-1 text-center">
+                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Nuevo dividendo</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoDividendo)}</div>
+                        </div>
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="flex-1 text-center">
+                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Nuevo flujo neto</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoFlujoNeto)}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Narrativa Franco */}
+                    <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
+                        Sin vender tu depto, puedes liberar <span className="font-medium text-[#FAFAF8]">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
+                        {" "}{nDeptos >= 2
+                          ? <>Ese capital alcanza como pie para <span className="font-medium text-[#FAFAF8]">{nDeptos} departamentos</span> similares.</>
+                          : <>Ese capital equivale a <span className="font-medium text-[#FAFAF8]">{(Math.round(refiCapitalLiberado / m.pieCLP * 10) / 10)}x</span> tu pie original.</>
+                        }
+                        {" "}Tu nuevo dividendo sube a <span className="font-medium text-[#FAFAF8]">{fmt(refiNuevoDividendo)}</span>/mes y el flujo neto queda en <span className="font-medium text-[#FAFAF8]">{fmt(refiNuevoFlujoNeto)}</span>/mes.
                       </p>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>
+                );
+              })()
             ) : null}
           </CollapsibleSection>
           </div>
