@@ -2588,10 +2588,167 @@ export function PremiumResults({
             projectionsCTALabel={`Patrimonio en ${horizonYears} años`}
             projectionsCTAValue={dynamicProjections.length > 0 ? fmt(dynamicProjections[Math.min(horizonYears - 1, dynamicProjections.length - 1)].patrimonioNeto) : undefined}
             projectionsContent={(chartPhase, isFirstReveal) => (<>
-          {/* Patrimonio projection */}
+          {/* Waterfall chart */}
           <div id="premium-chart-anchor-1" />
           {(!isFirstReveal || chartPhase >= 1) && (
           <div id="premium-chart-1" style={isFirstReveal && chartPhase === 1 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
+          <CollapsibleSection
+            title="¿Cuáles son todos los costos?"
+            subtitle="Cascada de costos mensuales — cada peso que entra y sale"
+            locked={currentAccess !== "premium"}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
+            analysisId={analysisId}
+          >
+            <div className="h-72">
+              <ResponsiveContainer>
+                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
+                  <RechartsTooltip
+                    cursor={false}
+                    content={({ active, payload, label: wfLabel }) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const item = waterfallData.find((d) => d.name === wfLabel);
+                      if (!item) return null;
+                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
+                      const displayName = fullNames[item.name] || item.name;
+                      return (
+                        <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
+                          <div className="mb-1 font-semibold text-[#FAFAF8]">{item.isResult ? `→ ${displayName}` : displayName}</div>
+                          <div className={item.delta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}>
+                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
+                          </div>
+                          <div className="text-[#FAFAF8]/60">Acumulado: {fmt(item.running)}</div>
+                        </div>
+                      );
+                    }}
+                  />
+                  <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1.5} />
+                  <Bar dataKey="range" radius={[4, 4, 0, 0]} activeBar={false}>
+                    {waterfallData.map((entry, i) => (
+                      <Cell
+                        key={i}
+                        fill={entry.fill}
+                        stroke={entry.isResult ? entry.fill : "none"}
+                        strokeWidth={entry.isResult ? 3 : 0}
+                        fillOpacity={entry.isResult ? 1 : 0.85}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.6)" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />Resultado</span>
+            </div>
+            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
+            {m && (
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-[#B0BEC5]/10 text-[#B0BEC5]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
+                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
+              </div>
+            )}
+          </CollapsibleSection>
+          </div>
+          )}
+
+          {/* Cashflow year by year */}
+          <div id="premium-chart-anchor-2" />
+          {(!isFirstReveal || chartPhase >= 2) && (
+          <div id="premium-chart-2" style={isFirstReveal && chartPhase === 2 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
+          <CollapsibleSection
+            title="¿Cómo es el flujo año a año?"
+            subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
+            locked={currentAccess !== "premium"}
+            defaultOpen={isFirstReveal && chartPhase <= 4}
+            analysisId={analysisId}
+          >
+            <div>
+                  <h4 className="mb-1 text-sm font-semibold text-[#FAFAF8]">
+                    Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
+                  </h4>
+                  <p className="mb-3 text-xs text-[#FAFAF8]/50">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
+                  <div className="relative h-64">
+                    <ResponsiveContainer>
+                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
+                        {/* Eje categórico visible: barras uniformes */}
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
+                        {/* Eje numérico oculto: posiciona la línea de entrega */}
+                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
+                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
+                        <RechartsTooltip
+                          content={({ active, payload }) => {
+                            if (!active || !payload || payload.length === 0) return null;
+                            const row = payload[0]?.payload as CashflowRow | undefined;
+                            if (!row) return null;
+                            return (
+                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
+                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}</div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso: <span className="font-medium text-[#FAFAF8]">{fmt(row.Ingreso)}</span></div>
+                                {egresoBarSeries.map(s => (
+                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
+                                ))}
+                                <div className="my-1 border-t border-white/[0.06]" />
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className="font-bold text-[#FAFAF8]">Acumulado: {fmt(row.Acumulado)}</div>
+                              </div>
+                            );
+                          }}
+                        />
+                        <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1} />
+                        {/* Ingreso siempre primero */}
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#B0BEC5" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
+                        {/* Egresos ordenados por impacto promedio descendente */}
+                        {egresoBarSeries.map((s, i) => (
+                          <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
+                        ))}
+                        {/* Línea acumulado */}
+                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#FAFAF8" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        {/* Línea vertical de entrega */}
+                        {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
+                        )}
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                    {horizonBeforeDelivery && (
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#151515]/80 backdrop-blur-[1px]">
+                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/95 px-6 py-5 text-center shadow-lg">
+                          <Clock className="h-7 w-7 text-[#FAFAF8]" />
+                          <span className="text-sm font-semibold text-[#FAFAF8]">Tu inversión aún no genera flujo</span>
+                          <p className="text-xs text-[#FAFAF8]/50">
+                            La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
+                            Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
+                          </p>
+                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#FAFAF8] hover:underline">
+                            Ver desde la entrega →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Leyenda manual */}
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-[#FAFAF8]/60" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
+                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso</span>
+                      {egresoBarSeries.map(s => (
+                        <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
+                      ))}
+                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 2 }} />Acumulado</span>
+                    </div>
+                  </div>
+                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: 'rgba(250,250,248,0.4)' }}>Toca las barras para ver el detalle</div>}
+            </div>
+          </CollapsibleSection>
+          </div>
+          )}
+
+          {/* Patrimonio projection */}
+          <div id="premium-chart-anchor-3" />
+          {(!isFirstReveal || chartPhase >= 3) && (
+          <div id="premium-chart-3" style={isFirstReveal && chartPhase === 3 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
           <CollapsibleSection
             title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
             subtitle="Proyección de patrimonio con plusvalía y amortización"
@@ -2746,163 +2903,6 @@ export function PremiumResults({
                   })()}
                 </div>
               </>
-            )}
-          </CollapsibleSection>
-          </div>
-          )}
-
-          {/* Cashflow year by year */}
-          <div id="premium-chart-anchor-2" />
-          {(!isFirstReveal || chartPhase >= 2) && (
-          <div id="premium-chart-2" style={isFirstReveal && chartPhase === 2 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
-          <CollapsibleSection
-            title="¿Cómo es el flujo año a año?"
-            subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
-            locked={currentAccess !== "premium"}
-            defaultOpen={isFirstReveal && chartPhase <= 4}
-            analysisId={analysisId}
-          >
-            <div>
-                  <h4 className="mb-1 text-sm font-semibold text-[#FAFAF8]">
-                    Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
-                  </h4>
-                  <p className="mb-3 text-xs text-[#FAFAF8]/50">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
-                  <div className="relative h-64">
-                    <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
-                        {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
-                        {/* Eje numérico oculto: posiciona la línea de entrega */}
-                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
-                        <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload || payload.length === 0) return null;
-                            const row = payload[0]?.payload as CashflowRow | undefined;
-                            if (!row) return null;
-                            return (
-                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
-                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso: <span className="font-medium text-[#FAFAF8]">{fmt(row.Ingreso)}</span></div>
-                                {egresoBarSeries.map(s => (
-                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
-                                ))}
-                                <div className="my-1 border-t border-white/[0.06]" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="font-bold text-[#FAFAF8]">Acumulado: {fmt(row.Acumulado)}</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1} />
-                        {/* Ingreso siempre primero */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#B0BEC5" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
-                        {/* Egresos ordenados por impacto promedio descendente */}
-                        {egresoBarSeries.map((s, i) => (
-                          <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
-                        ))}
-                        {/* Línea acumulado */}
-                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#FAFAF8" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
-                        {/* Línea vertical de entrega */}
-                        {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                    {horizonBeforeDelivery && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#151515]/80 backdrop-blur-[1px]">
-                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/95 px-6 py-5 text-center shadow-lg">
-                          <Clock className="h-7 w-7 text-[#FAFAF8]" />
-                          <span className="text-sm font-semibold text-[#FAFAF8]">Tu inversión aún no genera flujo</span>
-                          <p className="text-xs text-[#FAFAF8]/50">
-                            La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
-                            Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
-                          </p>
-                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#FAFAF8] hover:underline">
-                            Ver desde la entrega →
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {/* Leyenda manual */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-[#FAFAF8]/60" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
-                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso</span>
-                      {egresoBarSeries.map(s => (
-                        <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
-                      ))}
-                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 2 }} />Acumulado</span>
-                    </div>
-                  </div>
-                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: 'rgba(250,250,248,0.4)' }}>Toca las barras para ver el detalle</div>}
-            </div>
-          </CollapsibleSection>
-          </div>
-          )}
-
-          {/* Waterfall chart */}
-          <div id="premium-chart-anchor-3" />
-          {(!isFirstReveal || chartPhase >= 3) && (
-          <div id="premium-chart-3" style={isFirstReveal && chartPhase === 3 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
-          <CollapsibleSection
-            title="¿Cuáles son todos los costos?"
-            subtitle="Cascada de costos mensuales — cada peso que entra y sale"
-            locked={currentAccess !== "premium"}
-            defaultOpen={isFirstReveal && chartPhase <= 4}
-            analysisId={analysisId}
-          >
-            <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
-                  <RechartsTooltip
-                    cursor={false}
-                    content={({ active, payload, label: wfLabel }) => {
-                      if (!active || !payload || payload.length === 0) return null;
-                      const item = waterfallData.find((d) => d.name === wfLabel);
-                      if (!item) return null;
-                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
-                      const displayName = fullNames[item.name] || item.name;
-                      return (
-                        <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
-                          <div className="mb-1 font-semibold text-[#FAFAF8]">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}>
-                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
-                          </div>
-                          <div className="text-[#FAFAF8]/60">Acumulado: {fmt(item.running)}</div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {waterfallData.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={entry.fill}
-                        stroke={entry.isResult ? entry.fill : "none"}
-                        strokeWidth={entry.isResult ? 3 : 0}
-                        fillOpacity={entry.isResult ? 1 : 0.85}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.6)" }} />Ingreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />Resultado</span>
-            </div>
-            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
-            {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-[#B0BEC5]/10 text-[#B0BEC5]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
-                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
-              </div>
             )}
           </CollapsibleSection>
           </div>
