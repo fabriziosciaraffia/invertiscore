@@ -1765,6 +1765,16 @@ export function PremiumResults({
     const plusvaliaDec = plusvaliaRate / 100;
     const plusvaliaMensual = Math.pow(1 + plusvaliaDec, 1 / 12) - 1;
 
+    // Fix #1: usar valor de mercado Franco como base de plusvalía
+    const valorMercadoFrancoCLP = m.valorMercadoFrancoUF ? m.valorMercadoFrancoUF * UF_CLP : null;
+    const valorBase = valorMercadoFrancoCLP || precioCLP;
+
+    // Fix #2: gastos de cierre (~2% del precio de compra)
+    const gastosCierre = precioCLP * 0.02;
+
+    // Fix #3: flujo acumulado post-entrega
+    const flujoMensual = m.flujoNetoMensual || 0;
+
     const calcSaldo = (mesActual: number) => {
       if (creditoCLP <= 0) return 0;
       const tasaMensual = inputData.tasaInteres / 100 / 12;
@@ -1781,12 +1791,13 @@ export function PremiumResults({
     if (mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata") {
       allData.push({ name: "T0", _x: 0, piePagado: 0, capitalAmortizado: 0, plusvalia: 0, saldoCredito: null, patrimonioNeto: 0, valorPropiedad: 0, isPreEntrega: true });
 
+      let flujoAcum = 0;
       for (let mo = 1; mo <= totalMonths; mo++) {
-        const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+        const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
 
         if (mo < mesesPreEntrega) {
-          // Pre-entrega: sin deuda ni valor propiedad
+          // Pre-entrega: sin deuda ni valor propiedad, sin flujo operativo, sin gastos cierre
           // El mes justo antes de entrega usa 0 (no null) para que la línea suba DESDE cero
           const piePagado = Math.min(montoCuotaPie * mo, m.pieCLP);
           const esAntesDentrega = mo === mesesPreEntrega - 1;
@@ -1801,18 +1812,19 @@ export function PremiumResults({
             isPreEntrega: true,
           });
         } else if (mo === mesesPreEntrega) {
-          // Mes de entrega: deuda y valor propiedad aparecen
+          // Mes de entrega: deuda y valor propiedad aparecen, gastos cierre se pagan
           allData.push({
             name: `M${mo}`, _x: mo,
             piePagado: m.pieCLP,
             capitalAmortizado: 0,
             plusvalia: Math.round(plusvaliaAcum),
             saldoCredito: Math.round(creditoCLP),
-            patrimonioNeto: Math.round(valorProp - creditoCLP),
+            patrimonioNeto: Math.round(valorProp - creditoCLP - gastosCierre),
             valorPropiedad: Math.round(valorProp),
             isEntrega: true,
           });
         } else {
+          flujoAcum += flujoMensual;
           const mesesCredito = mo - mesesPreEntrega;
           const saldo = calcSaldo(mesesCredito);
           const capitalAmort = creditoCLP - saldo;
@@ -1822,16 +1834,20 @@ export function PremiumResults({
             capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
             plusvalia: Math.round(plusvaliaAcum),
             saldoCredito: Math.round(saldo),
-            patrimonioNeto: Math.round(valorProp - saldo),
+            patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum),
             valorPropiedad: Math.round(valorProp),
           });
         }
       }
     } else {
-      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: 0, saldoCredito: creditoCLP, patrimonioNeto: m.pieCLP, valorPropiedad: precioCLP });
+      // Entrega inmediata: gastos cierre desde T0, flujo acumula desde mes 1
+      const plusvaliaInmediata = valorBase - precioCLP;
+      allData.push({ name: "T0", _x: 0, piePagado: m.pieCLP, capitalAmortizado: 0, plusvalia: Math.round(plusvaliaInmediata), saldoCredito: creditoCLP, patrimonioNeto: Math.round(valorBase - creditoCLP - gastosCierre), valorPropiedad: Math.round(valorBase) });
 
+      let flujoAcum = 0;
       for (let mo = 1; mo <= totalMonths; mo++) {
-        const valorProp = precioCLP * Math.pow(1 + plusvaliaMensual, mo);
+        flujoAcum += flujoMensual;
+        const valorProp = valorBase * Math.pow(1 + plusvaliaMensual, mo);
         const plusvaliaAcum = valorProp - precioCLP;
         const saldo = calcSaldo(mo);
         const capitalAmort = creditoCLP - saldo;
@@ -1841,7 +1857,7 @@ export function PremiumResults({
           capitalAmortizado: Math.round(Math.max(0, capitalAmort)),
           plusvalia: Math.round(plusvaliaAcum),
           saldoCredito: Math.round(saldo),
-          patrimonioNeto: Math.round(valorProp - saldo),
+          patrimonioNeto: Math.round(valorProp - saldo - gastosCierre + flujoAcum),
           valorPropiedad: Math.round(valorProp),
         });
       }
