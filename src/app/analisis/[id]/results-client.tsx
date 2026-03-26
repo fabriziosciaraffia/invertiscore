@@ -2023,7 +2023,8 @@ export function PremiumResults({
 
             {/* "Siendo franco:" box */}
             {(() => {
-              const sfColor = score >= 70 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+              const vd = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+              const sfColor = vd === "COMPRAR" ? "#B0BEC5" : vd === "BUSCAR OTRA" ? "#C8323C" : "#FBBF24";
               return (
                 <div className={`mt-3.5 ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`} style={{ borderLeft: `3px solid ${sfColor}`, background: `${sfColor}08`, borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
                   <p className="font-body text-[13px] font-semibold" style={{ color: sfColor }}>Siendo franco:</p>

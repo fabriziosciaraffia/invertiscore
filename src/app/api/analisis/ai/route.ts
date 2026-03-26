@@ -268,8 +268,10 @@ export async function POST(request: Request) {
 
     let metroInfo = '';
     if (lat && lng) {
+      console.log(`[AI Metro Debug] Depto lat=${lat}, lng=${lng}, comuna=${(input.comuna || '').trim()}`);
       const nearestActive = findNearestStation(lat, lng, 'active');
       const nearestFuture = findNearestStation(lat, lng, 'future');
+      if (nearestActive) console.log(`[AI Metro Debug] Nearest active: ${nearestActive.station.name} (${nearestActive.station.line}) at ${nearestActive.distance.toFixed(0)}m, station coords: ${nearestActive.station.lat},${nearestActive.station.lng}`);
       if (nearestActive) {
         const distKm = (nearestActive.distance / 1000).toFixed(1);
         metroInfo += `Estación de metro más cercana: ${nearestActive.station.name} (${nearestActive.station.line}) a ${distKm} km. `;
@@ -372,11 +374,13 @@ ${scoreBreakdownInfo}
 ${esFueraGranSantiago ? `\nADVERTENCIA: Esta propiedad está fuera del Gran Santiago. Los datos de metro, plusvalía histórica y comparación de mercado pueden no ser precisos. Menciona esta limitación al usuario.` : ''}
 
 Menciona estos datos en tu análisis cuando sean relevantes:
+- En tu resumen ejecutivo, menciona brevemente el desglose del score para que el usuario entienda qué dimensiones están bien y cuáles mal. Ejemplo: "Franco Score 42/100 (Rentabilidad 52, Flujo 7, Plusvalía 64, Eficiencia 45) — el flujo hunde el score."
 - Si hay metro cerca (<500m), menciónalo como ventaja para arriendo y plusvalía
 - Si hay metro futuro cerca, menciónalo como potencial de plusvalía
 - Si no hay metro cerca (>2.5km), menciónalo como riesgo para demanda de arriendo
 - Menciona la plusvalía histórica real de la comuna (no inventes datos)
-- Si la eficiencia es baja (<40), menciona que está comprando caro o con bajo yield respecto a la zona
+- Si la eficiencia es baja (<40), menciona que está pagando sobre el precio de mercado de la zona o que su yield es bajo comparado con propiedades similares cercanas
+- Si la eficiencia es alta (>70), destaca que está comprando a buen precio relativo al mercado del radio
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}
 
 VEREDICTO OBLIGATORIO: El veredicto del motor es "${results.veredicto || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA")}". DEBES usar este mismo veredicto en tu respuesta. No lo cambies. Tu trabajo es explicar POR QUÉ el veredicto es ese, no decidir uno diferente. Si te parece contraintuitivo (ej: score 43 pero dice BUSCAR OTRA por flujo insostenible), explica qué señales negativas lo causan.
