@@ -249,6 +249,7 @@ export default function NuevoAnalisisPage() {
   const [geoLoading, setGeoLoading] = useState(false);
   const [radius, setRadius] = useState(800);
   const geocodeTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const geoSourceRef = useRef<"autocomplete" | "manual" | null>(null);
 
   const [totalInRadius, setTotalInRadius] = useState(0);
   const [filteredInRadius, setFilteredInRadius] = useState(0);
@@ -653,6 +654,12 @@ export default function NuevoAnalisisPage() {
   // ─── Geocoding when address changes ────────────────
   useEffect(() => {
     if (form.direccion && form.comuna) {
+      // Skip API geocoding if coords came from Places Autocomplete (more precise)
+      if (geoSourceRef.current === "autocomplete") {
+        geoSourceRef.current = null; // reset so manual edits will re-geocode
+        setGeoLoading(false);
+        return;
+      }
       clearTimeout(geocodeTimeout.current);
       setGeoLoading(true);
       geocodeTimeout.current = setTimeout(async () => {
@@ -660,6 +667,7 @@ export default function NuevoAnalisisPage() {
           const res = await fetch(`/api/geocode?q=${encodeURIComponent(form.direccion)}&comuna=${encodeURIComponent(form.comuna)}`);
           const data = await res.json();
           if (data.lat && data.lng) {
+            geoSourceRef.current = "manual";
             setGeoLat(data.lat);
             setGeoLng(data.lng);
           } else {
@@ -697,6 +705,7 @@ export default function NuevoAnalisisPage() {
         const place = ac.getPlace();
         if (!place.geometry?.location) return;
 
+        geoSourceRef.current = "autocomplete";
         setGeoLat(place.geometry.location.lat());
         setGeoLng(place.geometry.location.lng());
         setGeoLoading(false);

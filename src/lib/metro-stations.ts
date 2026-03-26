@@ -124,7 +124,7 @@ export const METRO_STATIONS: MetroStation[] = [
   { name: "Pudahuel", line: "L5", lat: -33.4670, lng: -70.6978, status: "active" },
   { name: "Lo Prado", line: "L5", lat: -33.4430, lng: -70.7195, status: "active" },
   { name: "Blanqueado", line: "L5", lat: -33.4433, lng: -70.7072, status: "active" },
-  { name: "Gruta de Lourdes", line: "L5", lat: -33.4437, lng: -70.6956, status: "active" },
+  { name: "Gruta de Lourdes", line: "L5", lat: -33.4382, lng: -70.6910, status: "active" },
   { name: "Quinta Normal", line: "L5", lat: -33.4397, lng: -70.6807, status: "active" },
   { name: "Cumming", line: "L5", lat: -33.4391, lng: -70.6693, status: "active" },
   { name: "Bellas Artes", line: "L5", lat: -33.4359, lng: -70.6436, status: "active" },
