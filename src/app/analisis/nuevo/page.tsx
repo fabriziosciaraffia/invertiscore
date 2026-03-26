@@ -1034,6 +1034,8 @@ export default function NuevoAnalisisPage() {
             sampleSizeArriendo: apiSuggestions?.sampleSize || 0,
             sampleSizeVenta: ventaRef?.sampleSize || 0,
             radioMetros: radius,
+            lat: geoLat || null,
+            lng: geoLng || null,
           },
         }),
       });

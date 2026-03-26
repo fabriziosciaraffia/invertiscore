@@ -1,9 +1,9 @@
 export interface Desglose {
   rentabilidad: number;
   plusvalia: number;
-  riesgo: number;
   eficiencia: number;
   flujoCaja: number;
+  riesgo?: number; // legacy: kept for backward compatibility with old saved analyses
 }
 
 export interface AnalisisInput {

@@ -31,16 +31,15 @@ const METRIC_TOOLTIPS: Record<string, string> = {
   "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
   "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
   "Payback Pie": "Meses que toma recuperar el pie invertido solo con flujo de caja. N/A si el flujo es negativo.",
-  "Franco Score": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Eficiencia de compra (10%)",
+  "Franco Score": "Puntaje de 1-100 que evalúa 4 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (25%), Eficiencia de compra (20%)",
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const RADAR_TOOLTIPS: Record<string, string> = {
-  "Rentabilidad": "Evalúa rentabilidad bruta y neta. Peso: 30%",
-  "Flujo Caja": "Evalúa el flujo de caja mensual neto. Peso: 25%",
-  "Plusvalía": "Potencial de apreciación del valor. Peso: 20%",
-  "Bajo Riesgo": "Evalúa antigüedad, tipo, vacancia y gastos. Peso: 15%",
-  "Eficiencia": "Mide si estás comprando a buen precio respecto al mercado de la zona. Compara tu precio por m² y tu rentabilidad bruta contra el promedio de publicaciones activas en la comuna. Peso: 10%",
+  "Rentabilidad": "Rentabilidad bruta del arriendo sobre el precio de compra. Incluye bonus por rentabilidad neta alta. Peso: 30%",
+  "Flujo Caja": "Flujo mensual relativo al arriendo. Mide qué proporción del ingreso queda disponible después de todos los gastos. Peso: 25%",
+  "Plusvalía": "Potencial de valorización basado en cercanía a estaciones de metro (actuales y futuras), plusvalía histórica de la comuna (2014-2024) y antigüedad del inmueble. Peso: 25%",
+  "Eficiencia": "Comparación de tu precio por m² y yield bruto contra publicaciones reales en un radio de 1,5 km. Peso: 20%",
 };
 
 // Compatibilidad con análisis guardados con nombres viejos (yieldBruto, yieldNeto)
@@ -1483,7 +1482,6 @@ export function PremiumResults({
     { dimension: "Rentabilidad", value: results.desglose.rentabilidad, fullMark: 100 },
     { dimension: "Flujo Caja", value: results.desglose.flujoCaja, fullMark: 100 },
     { dimension: "Plusvalía", value: results.desglose.plusvalia, fullMark: 100 },
-    { dimension: "Bajo Riesgo", value: results.desglose.riesgo, fullMark: 100 },
     { dimension: "Eficiencia", value: results.desglose.eficiencia, fullMark: 100 },
   ] : [];
 

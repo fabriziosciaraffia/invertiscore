@@ -6,7 +6,7 @@ const tooltips: Record<string, string> = {
   "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número que te muestra el corredor.",
   "Flujo Mensual": "Flujo de caja mensual neto descontando dividendo, gastos comunes, contribuciones, mantención y vacancia.",
   "UF/m²": "Precio por metro cuadrado en UF. Permite comparar el valor relativo con otras propiedades de la zona.",
-  "Franco Score": "Puntaje de 1-100 que evalúa 5 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (20%), Riesgo (15%), Ubicación (10%)",
+  "Franco Score": "Puntaje de 1-100 que evalúa 4 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (25%), Eficiencia de compra (20%)",
 };
 
 export function MetricTooltips() {

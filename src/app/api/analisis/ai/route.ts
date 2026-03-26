@@ -309,7 +309,6 @@ Las siguientes son DIMENSIONES (sub-scores), NO el score total. Si mencionas alg
 - Rentabilidad: ${Math.round(d.rentabilidad)}/100
 - Flujo de Caja: ${Math.round(d.flujoCaja)}/100
 - Plusvalía: ${Math.round(d.plusvalia)}/100
-- Riesgo: ${Math.round(d.riesgo)}/100
 - Eficiencia de compra: ${Math.round(d.eficiencia)}/100
 NUNCA escribas dos scores diferentes. El score es UNO SOLO: ${results.score}/100.
 Nombres EXACTOS de dimensiones. NO uses "Price score", "Location score", etc.

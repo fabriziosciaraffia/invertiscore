@@ -10,6 +10,8 @@ import type {
   FullAnalysisResult,
 } from "./types";
 import { estimarContribuciones } from "./contribuciones";
+import { findNearestStation } from "./metro-stations";
+import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 
 // Dynamic UF value — set via setUFValue() before calling runAnalysis()
 let UF_CLP = 38800;
@@ -609,75 +611,111 @@ const COMUNAS_PREMIUM = [
   "la reina", "santiago centro", "viña del mar", "con con",
 ];
 
-// Granular plusvalía base scores by comuna
-const PLUSVALIA_COMUNA: Record<string, number> = {
-  "vitacura": 95, "lo barnechea": 95,
-  "las condes": 90, "providencia": 90,
-  "ñuñoa": 82, "la reina": 82,
-  "san miguel": 70, "macul": 70, "la florida": 70,
-  "santiago centro": 60,
-  "estación central": 55, "estacion central": 55, "independencia": 55, "recoleta": 55,
-  "quinta normal": 45, "pedro aguirre cerda": 45, "san joaquín": 45, "san joaquin": 45,
-};
-
-// Eficiencia de compra: mide si compras bien respecto al mercado
-import { SEED_MARKET_DATA } from "./market-seed";
-
-function calcEficienciaScore(input: AnalisisInput, metrics: AnalysisMetrics): number {
-  const tipo = input.dormitorios <= 1 ? "1D" : input.dormitorios === 2 ? "2D" : "3D";
-  const seed = SEED_MARKET_DATA.find((d) => d.comuna === input.comuna && d.tipo === tipo);
-  if (!seed) return 50; // Sin datos → neutro
-
-  // a) Precio/m² vs promedio zona (50%)
-  const precioM2Zona = seed.precio_m2_venta_promedio * UF_CLP; // convertir UF/m² a CLP/m²
-  const precioM2Prop = metrics.precioM2 * UF_CLP;
-  const ratioPrecio = precioM2Zona > 0 ? precioM2Prop / precioM2Zona : 1;
-  let scorePrecio: number;
-  if (ratioPrecio < 0.85) scorePrecio = lerp(ratioPrecio, 0.70, 0.85, 100, 90);
-  else if (ratioPrecio < 0.95) scorePrecio = lerp(ratioPrecio, 0.85, 0.95, 89, 70);
-  else if (ratioPrecio < 1.05) scorePrecio = lerp(ratioPrecio, 0.95, 1.05, 69, 50);
-  else if (ratioPrecio < 1.15) scorePrecio = lerp(ratioPrecio, 1.05, 1.15, 49, 30);
-  else scorePrecio = lerp(ratioPrecio, 1.15, 1.40, 29, 10);
-
-  // b) Rentabilidad bruta vs promedio zona (50%)
-  const supPromedio = tipo === "1D" ? 35 : tipo === "2D" ? 50 : 70;
-  const yieldZona = (precioM2Zona > 0 && supPromedio > 0)
-    ? (seed.arriendo_promedio * 12) / (precioM2Zona * supPromedio) * 100
-    : 4.0;
-  const ratioYield = yieldZona > 0 ? metrics.rentabilidadBruta / yieldZona : 1;
-  let scoreYield: number;
-  if (ratioYield > 1.20) scoreYield = lerp(ratioYield, 1.20, 1.50, 90, 100);
-  else if (ratioYield > 1.05) scoreYield = lerp(ratioYield, 1.05, 1.20, 70, 89);
-  else if (ratioYield > 0.95) scoreYield = lerp(ratioYield, 0.95, 1.05, 50, 69);
-  else if (ratioYield > 0.80) scoreYield = lerp(ratioYield, 0.80, 0.95, 30, 49);
-  else scoreYield = lerp(ratioYield, 0.50, 0.80, 10, 29);
-
-  return clamp(Math.round(scorePrecio * 0.5 + scoreYield * 0.5), 0, 100);
-}
-
-// Comunas with oversupply risk
-const COMUNAS_OVERSUPPLY = [
-  "santiago centro", "estación central", "estacion central", "independencia",
-];
-
 function lerp(value: number, inMin: number, inMax: number, outMin: number, outMax: number): number {
   const t = (value - inMin) / (inMax - inMin);
   return outMin + clamp(t, 0, 1) * (outMax - outMin);
 }
 
-function lookupComuna(comuna: string, table: Record<string, number>, defaultVal: number): number {
-  const c = comuna.toLowerCase().trim();
-  if (table[c] !== undefined) return table[c];
-  // Partial match for compound names
-  for (const key of Object.keys(table)) {
-    if (c.includes(key) || key.includes(c)) return table[key];
+// ── Plusvalía: metro + histórica + antigüedad ──
+
+function calcPlusvaliaScore(
+  lat: number | null | undefined, lng: number | null | undefined,
+  comuna: string,
+  antiguedad: number
+): number {
+  // Sub-componente 1: Metro actual (35%)
+  let metroActualScore = 50;
+  if (lat && lng) {
+    const nearest = findNearestStation(lat, lng, "active");
+    if (nearest) {
+      const d = nearest.distance;
+      if (d < 500) metroActualScore = lerp(d, 0, 500, 100, 90);
+      else if (d < 1000) metroActualScore = lerp(d, 500, 1000, 89, 70);
+      else if (d < 1500) metroActualScore = lerp(d, 1000, 1500, 69, 50);
+      else if (d < 2500) metroActualScore = lerp(d, 1500, 2500, 49, 30);
+      else metroActualScore = lerp(d, 2500, 5000, 29, 15);
+      metroActualScore = clamp(metroActualScore, 15, 100);
+    }
   }
-  return defaultVal;
+
+  // Sub-componente 2: Metro futuro (15%) — bonus
+  let metroFuturoScore = 0;
+  if (lat && lng) {
+    const nearestFuture = findNearestStation(lat, lng, "future");
+    if (nearestFuture && nearestFuture.distance < 1000) {
+      metroFuturoScore = lerp(nearestFuture.distance, 0, 1000, 100, 60);
+    } else if (nearestFuture && nearestFuture.distance < 2000) {
+      metroFuturoScore = lerp(nearestFuture.distance, 1000, 2000, 59, 20);
+    }
+  }
+
+  // Sub-componente 3: Plusvalía histórica comuna (30%)
+  const comunaNorm = comuna.trim();
+  const historica = PLUSVALIA_HISTORICA[comunaNorm] || null;
+  const anualizada = historica ? historica.anualizada : PLUSVALIA_DEFAULT.anualizada;
+  let historicaScore: number;
+  if (anualizada >= 5) historicaScore = lerp(anualizada, 5, 7, 90, 100);
+  else if (anualizada >= 4) historicaScore = lerp(anualizada, 4, 5, 75, 89);
+  else if (anualizada >= 3) historicaScore = lerp(anualizada, 3, 4, 55, 74);
+  else if (anualizada >= 2) historicaScore = lerp(anualizada, 2, 3, 35, 54);
+  else if (anualizada >= 1) historicaScore = lerp(anualizada, 1, 2, 20, 34);
+  else historicaScore = lerp(anualizada, -2, 1, 0, 19);
+  historicaScore = clamp(historicaScore, 0, 100);
+
+  // Sub-componente 4: Antigüedad (20%)
+  let antiguedadScore: number;
+  if (antiguedad <= 3) antiguedadScore = lerp(antiguedad, 0, 3, 100, 80);
+  else if (antiguedad <= 8) antiguedadScore = lerp(antiguedad, 3, 8, 79, 65);
+  else if (antiguedad <= 15) antiguedadScore = lerp(antiguedad, 8, 15, 64, 45);
+  else if (antiguedad <= 25) antiguedadScore = lerp(antiguedad, 15, 25, 44, 25);
+  else antiguedadScore = lerp(antiguedad, 25, 50, 24, 10);
+  antiguedadScore = clamp(antiguedadScore, 10, 100);
+
+  return Math.round(
+    metroActualScore * 0.35 +
+    metroFuturoScore * 0.15 +
+    historicaScore * 0.30 +
+    antiguedadScore * 0.20
+  );
+}
+
+// ── Eficiencia: datos del radio real ──
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function calcEficienciaScore(precioM2: number, yieldBruto: number, zonaRadio: any | null): number {
+  if (!zonaRadio || !zonaRadio.precioM2VentaUF || zonaRadio.precioM2VentaUF <= 0) {
+    return 50; // sin datos = neutro
+  }
+
+  // A) Precio/m² vs radio (50%)
+  const precioM2Radio = zonaRadio.precioM2VentaUF;
+  const ratioPrecio = precioM2 / precioM2Radio;
+  let preciScore: number;
+  if (ratioPrecio < 0.85) preciScore = lerp(ratioPrecio, 0.70, 0.85, 100, 90);
+  else if (ratioPrecio < 0.95) preciScore = lerp(ratioPrecio, 0.85, 0.95, 89, 70);
+  else if (ratioPrecio < 1.05) preciScore = lerp(ratioPrecio, 0.95, 1.05, 69, 50);
+  else if (ratioPrecio < 1.15) preciScore = lerp(ratioPrecio, 1.05, 1.15, 49, 30);
+  else preciScore = lerp(ratioPrecio, 1.15, 1.40, 29, 10);
+  preciScore = clamp(preciScore, 10, 100);
+
+  // B) Yield vs radio (50%)
+  const yieldRadio = zonaRadio.yieldPromedio || 0;
+  if (yieldRadio <= 0) return Math.round(preciScore * 0.5 + 50 * 0.5);
+
+  const ratioYield = yieldBruto / yieldRadio;
+  let yieldScore: number;
+  if (ratioYield > 1.20) yieldScore = lerp(ratioYield, 1.20, 1.50, 90, 100);
+  else if (ratioYield > 1.05) yieldScore = lerp(ratioYield, 1.05, 1.20, 70, 89);
+  else if (ratioYield > 0.95) yieldScore = lerp(ratioYield, 0.95, 1.05, 50, 69);
+  else if (ratioYield > 0.80) yieldScore = lerp(ratioYield, 0.80, 0.95, 30, 49);
+  else yieldScore = lerp(ratioYield, 0.50, 0.80, 10, 29);
+  yieldScore = clamp(yieldScore, 10, 100);
+
+  return Math.round(preciScore * 0.5 + yieldScore * 0.5);
 }
 
 function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
   // Rentabilidad (30%): based on rentabilidad bruta calibrated for Chilean market
-  // >6% = 90-100, 5-6% = 70-89, 4-5% = 45-65, 3-4% = 25-44, <3% = 0-24
   let rentabilidad: number;
   const yb = metrics.rentabilidadBruta;
   if (yb >= 6) rentabilidad = lerp(yb, 6, 8, 90, 100);
@@ -685,67 +723,51 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   else if (yb >= 4) rentabilidad = lerp(yb, 4, 5, 45, 65);
   else if (yb >= 3) rentabilidad = lerp(yb, 3, 4, 25, 44);
   else rentabilidad = lerp(yb, 0, 3, 0, 24);
-  // Rentabilidad neta bonus/penalty
   if (metrics.rentabilidadNeta >= 4) rentabilidad = Math.min(100, rentabilidad + 5);
   else if (metrics.rentabilidadNeta < 2) rentabilidad = Math.max(0, rentabilidad - 5);
   rentabilidad = clamp(rentabilidad, 0, 100);
 
-  // Flujo de caja (25%): calibrated for Chilean market with 80% financing at ~4.72%
-  // Positive = 80-100, -0 to -200K = 50-79, -200K to -400K = 25-49, -400K to -600K = 10-24, <-600K = 0-9
+  // Flujo de caja (25%): ratio relativo al arriendo
   let flujoCaja: number;
-  const flujo = metrics.flujoNetoMensual;
-  if (flujo >= 0) flujoCaja = lerp(flujo, 0, 200000, 80, 100);
-  else if (flujo >= -200000) flujoCaja = lerp(flujo, -200000, 0, 50, 79);
-  else if (flujo >= -400000) flujoCaja = lerp(flujo, -400000, -200000, 25, 49);
-  else if (flujo >= -600000) flujoCaja = lerp(flujo, -600000, -400000, 10, 24);
-  else flujoCaja = lerp(flujo, -1000000, -600000, 0, 9);
+  const arriendoTotal = metrics.ingresoMensual;
+  if (arriendoTotal <= 0) {
+    flujoCaja = 0;
+  } else {
+    const ratio = metrics.flujoNetoMensual / arriendoTotal;
+    if (ratio >= 0) flujoCaja = lerp(ratio, 0, 0.3, 80, 100);
+    else if (ratio >= -0.3) flujoCaja = lerp(ratio, -0.3, 0, 50, 79);
+    else if (ratio >= -0.6) flujoCaja = lerp(ratio, -0.6, -0.3, 25, 49);
+    else if (ratio >= -1.0) flujoCaja = lerp(ratio, -1.0, -0.6, 10, 24);
+    else flujoCaja = lerp(ratio, -2.0, -1.0, 0, 9);
+  }
   flujoCaja = clamp(flujoCaja, 0, 100);
 
-  // Plusvalía (20%): granular by comuna
-  const plusvaliaComuna = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
-  const precioM2 = metrics.precioM2;
-  // High price/m² in premium zones = overpaying premium → lower score
-  // In normal zones, wider swing allowed
-  const precioAdj = plusvaliaComuna >= 80
-    ? lerp(precioM2, 30, 120, 5, -15)
-    : lerp(precioM2, 30, 100, 12, -12);
-  let plusvalia = plusvaliaComuna + precioAdj;
-  if (input.enConstruccion || input.antiguedad <= 2) plusvalia += 10;
-  else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvalia += 5;
-  else if (input.antiguedad > 20) plusvalia -= 15;
-  if (input.piso >= 10) plusvalia += 5;
-  else if (input.piso <= 2 && input.piso > 0) plusvalia -= 3;
-  plusvalia = clamp(plusvalia, 0, 100);
+  // Plusvalía (25%): metro + histórica + antigüedad
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inputAnyScore = input as any;
+  const lat = inputAnyScore.zonaRadio?.lat || inputAnyScore.lat || null;
+  const lng = inputAnyScore.zonaRadio?.lng || inputAnyScore.lng || null;
+  const plusvalia = calcPlusvaliaScore(lat, lng, input.comuna, input.antiguedad);
 
-  // Riesgo (15%): granular with more factors
-  const isOversupply = COMUNAS_OVERSUPPLY.some((c) => input.comuna.toLowerCase().includes(c));
-  let riesgo = 50;
-  if (input.tipo.toLowerCase().includes("departamento")) riesgo += 10;
-  if (input.antiguedad < 10 || input.enConstruccion) riesgo += 10;
-  else if (input.antiguedad > 25) riesgo -= 15;
-  if (metrics.capRate > 3) riesgo += 8;
-  if (isOversupply) riesgo -= 5;
-  const ratioGastosIngreso = metrics.ingresoMensual > 0 ? metrics.egresosMensuales / metrics.ingresoMensual : 2;
-  if (ratioGastosIngreso > 1) riesgo -= 8;
-  else if (ratioGastosIngreso > 0.8) riesgo -= 5;
-  if (input.vacanciaMeses > 1) riesgo -= 3;
-  riesgo = clamp(riesgo, 10, 95);
-
-  // Eficiencia de compra (10%): precio y yield vs mercado
-  const eficiencia = calcEficienciaScore(input, metrics);
+  // Eficiencia (20%): datos del radio real
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const zonaRadio = (input as any)?.zonaRadio;
+  const zonaRadioForEficiencia = zonaRadio ? {
+    precioM2VentaUF: zonaRadio.precioM2VentaCLP ? zonaRadio.precioM2VentaCLP / UF_CLP : 0,
+    yieldPromedio: zonaRadio.yieldPromedio || 0,
+  } : null;
+  const eficiencia = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEficiencia);
 
   let score = Math.round(
     rentabilidad * 0.30 +
     flujoCaja * 0.25 +
-    plusvalia * 0.20 +
-    riesgo * 0.15 +
-    eficiencia * 0.10
+    plusvalia * 0.25 +
+    eficiencia * 0.20
   );
 
   // Penalize verde/blanco for months without return
   const mesesEspera = calcMesesHastaEntrega(input);
   if (mesesEspera > 0) {
-    // -1 point per 6 months of waiting, max -5
     const penalty = Math.min(5, Math.round(mesesEspera / 6));
     score -= penalty;
   }
@@ -880,41 +902,40 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   if (metrics.rentabilidadNeta >= 4) rentabilidadScore = Math.min(100, rentabilidadScore + 5);
   else if (metrics.rentabilidadNeta < 2) rentabilidadScore = Math.max(0, rentabilidadScore - 5);
 
-  const flujoVal = metrics.flujoNetoMensual;
+  // Flujo de caja: ratio relativo al arriendo
+  const arriendoTotalR = metrics.ingresoMensual;
   let flujoCajaScore: number;
-  if (flujoVal >= 0) flujoCajaScore = lerp(flujoVal, 0, 200000, 80, 100);
-  else if (flujoVal >= -200000) flujoCajaScore = lerp(flujoVal, -200000, 0, 50, 79);
-  else if (flujoVal >= -400000) flujoCajaScore = lerp(flujoVal, -400000, -200000, 25, 49);
-  else if (flujoVal >= -600000) flujoCajaScore = lerp(flujoVal, -600000, -400000, 10, 24);
-  else flujoCajaScore = lerp(flujoVal, -1000000, -600000, 0, 9);
+  if (arriendoTotalR <= 0) {
+    flujoCajaScore = 0;
+  } else {
+    const ratioR = metrics.flujoNetoMensual / arriendoTotalR;
+    if (ratioR >= 0) flujoCajaScore = lerp(ratioR, 0, 0.3, 80, 100);
+    else if (ratioR >= -0.3) flujoCajaScore = lerp(ratioR, -0.3, 0, 50, 79);
+    else if (ratioR >= -0.6) flujoCajaScore = lerp(ratioR, -0.6, -0.3, 25, 49);
+    else if (ratioR >= -1.0) flujoCajaScore = lerp(ratioR, -1.0, -0.6, 10, 24);
+    else flujoCajaScore = lerp(ratioR, -2.0, -1.0, 0, 9);
+  }
 
-  let plusvaliaScore = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
-  const plusvaliaBaseR = lookupComuna(input.comuna, PLUSVALIA_COMUNA, 50);
-  plusvaliaScore += plusvaliaBaseR >= 80 ? lerp(metrics.precioM2, 30, 120, 5, -15) : lerp(metrics.precioM2, 30, 100, 12, -12);
-  if (input.enConstruccion || input.antiguedad <= 2) plusvaliaScore += 10;
-  else if (input.antiguedad >= 3 && input.antiguedad <= 8) plusvaliaScore += 5;
-  else if (input.antiguedad > 20) plusvaliaScore -= 15;
-  if (input.piso >= 10) plusvaliaScore += 5;
-  else if (input.piso <= 2 && input.piso > 0) plusvaliaScore -= 3;
+  // Plusvalía: metro + histórica + antigüedad
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const inputAnyR = input as any;
+  const latR = inputAnyR.zonaRadio?.lat || inputAnyR.lat || null;
+  const lngR = inputAnyR.zonaRadio?.lng || inputAnyR.lng || null;
+  const plusvaliaScore = calcPlusvaliaScore(latR, lngR, input.comuna, input.antiguedad);
 
-  const isOversupplyR = COMUNAS_OVERSUPPLY.some((c) => input.comuna.toLowerCase().includes(c));
-  let riesgoScore = 50;
-  if (input.tipo.toLowerCase().includes("departamento")) riesgoScore += 10;
-  if (input.antiguedad < 10 || input.enConstruccion) riesgoScore += 10;
-  else if (input.antiguedad > 25) riesgoScore -= 15;
-  if (metrics.capRate > 3) riesgoScore += 8;
-  if (isOversupplyR) riesgoScore -= 5;
-  const ratioGastosIngresoR = metrics.ingresoMensual > 0 ? metrics.egresosMensuales / metrics.ingresoMensual : 2;
-  if (ratioGastosIngresoR > 1) riesgoScore -= 8;
-  else if (ratioGastosIngresoR > 0.8) riesgoScore -= 5;
-
-  const eficienciaScore = calcEficienciaScore(input, metrics);
+  // Eficiencia: datos del radio real
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const zonaRadioR = (input as any)?.zonaRadio;
+  const zonaRadioForEfR = zonaRadioR ? {
+    precioM2VentaUF: zonaRadioR.precioM2VentaCLP ? zonaRadioR.precioM2VentaCLP / UF_CLP : 0,
+    yieldPromedio: zonaRadioR.yieldPromedio || 0,
+  } : null;
+  const eficienciaScore = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEfR);
 
   const desglose: Desglose = {
     rentabilidad: clamp(rentabilidadScore, 0, 100),
     flujoCaja: clamp(flujoCajaScore, 0, 100),
     plusvalia: clamp(plusvaliaScore, 0, 100),
-    riesgo: clamp(riesgoScore, 10, 95),
     eficiencia: clamp(eficienciaScore, 0, 100),
   };
 

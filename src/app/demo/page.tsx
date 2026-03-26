@@ -106,7 +106,6 @@ const DEMO_RESULTS: FullAnalysisResult = {
     rentabilidad: 35,
     flujoCaja: 25,
     plusvalia: 78,
-    riesgo: 72,
     eficiencia: 65,
   },
   metrics: {

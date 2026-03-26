@@ -209,12 +209,6 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         higherIsBetter: true,
       },
       {
-        label: "Bajo Riesgo",
-        values: analisis.map((a) => a.desglose?.riesgo != null ? String(Math.round(a.desglose.riesgo)) : "—"),
-        raw: analisis.map((a) => a.desglose?.riesgo ?? 0),
-        higherIsBetter: true,
-      },
-      {
         label: "Eficiencia",
         values: analisis.map((a) => a.desglose?.eficiencia != null ? String(Math.round(a.desglose.eficiencia)) : "—"),
         raw: analisis.map((a) => a.desglose?.eficiencia ?? 0),
@@ -239,10 +233,10 @@ function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): st
 
 // Radar chart - pure SVG
 function RadarChart({ analisis }: { analisis: Analisis[] }) {
-  const dims: (keyof Desglose)[] = ["rentabilidad", "flujoCaja", "plusvalia", "riesgo", "eficiencia"];
-  const labels = ["Rentabilidad", "Flujo Caja", "Plusvalía", "Bajo Riesgo", "Eficiencia"];
+  const dims: (keyof Desglose)[] = ["rentabilidad", "flujoCaja", "plusvalia", "eficiencia"];
+  const labels = ["Rentabilidad", "Flujo Caja", "Plusvalía", "Eficiencia"];
   const cx = 150, cy = 150, R = 110;
-  const angleStep = (2 * Math.PI) / 5;
+  const angleStep = (2 * Math.PI) / 4;
   const startAngle = -Math.PI / 2;
 
   const getPoint = (dimIdx: number, pct: number) => {
@@ -344,7 +338,6 @@ function generateVerdict(analisis: Analisis[]) {
     { key: "rentabilidad", label: "rentabilidad" },
     { key: "flujoCaja", label: "flujo de caja" },
     { key: "plusvalia", label: "plusvalía" },
-    { key: "riesgo", label: "bajo riesgo" },
     { key: "eficiencia", label: "eficiencia de compra" },
   ];
 
