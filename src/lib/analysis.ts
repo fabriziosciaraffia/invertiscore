@@ -287,6 +287,12 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     precioFlujoPositivoCLP: Math.round(precioFlujoPositivoCLP),
     precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / UF_CLP * 100) / 100,
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
+    subsidioTasa: (() => {
+      const califica = (input.tipo === "Nuevo" || input.tipo === "nuevo") && input.precio <= 4000;
+      const tasaMercado = 4.1;
+      const tasaConSubsidio = Math.round((tasaMercado - 0.6) * 10) / 10;
+      return { califica, tasaConSubsidio, aplicado: califica && input.tasaInteres <= tasaConSubsidio + 0.2 };
+    })(),
   };
 }
 

@@ -398,7 +398,33 @@ Menciona estos datos en tu análisis cuando sean relevantes:
 - Si la eficiencia es baja (<40), menciona que está pagando sobre el precio de mercado de la zona o que su yield es bajo comparado con propiedades similares cercanas
 - Si la eficiencia es alta (>70), destaca que está comprando a buen precio relativo al mercado del radio
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}
-
+${(() => {
+  const calificaSubsidio = (input.tipo === "Nuevo" || input.tipo === "nuevo") && input.precio <= 4000;
+  if (!calificaSubsidio) return "";
+  const tasaConSubsidio = 3.5;
+  const usoTasaSubsidio = input.tasaInteres <= tasaConSubsidio + 0.2;
+  const dividendoActual = m.dividendo;
+  const creditoCLPSub = m.precioCLP * (1 - input.piePct / 100);
+  const tasaMesSub = tasaConSubsidio / 100 / 12;
+  const nMeses = input.plazoCredito * 12;
+  const dividendoConSubsidio = Math.round((creditoCLPSub * tasaMesSub) / (1 - Math.pow(1 + tasaMesSub, -nMeses)));
+  const ahorroDividendo = dividendoActual - dividendoConSubsidio;
+  return `
+SUBSIDIO A LA TASA (Ley 21.748):
+- Este depto CALIFICA al subsidio (tipo Nuevo y ≤ 4.000 UF)
+- Tasa ingresada por el usuario: ${input.tasaInteres}%
+- Tasa estimada con subsidio: ~${tasaConSubsidio}%
+- El usuario ${usoTasaSubsidio ? "YA usó" : "NO usó"} una tasa con subsidio
+${!usoTasaSubsidio ? `- Con subsidio el dividendo bajaría de ${fmtCLP(dividendoActual)} a ~${fmtCLP(dividendoConSubsidio)} (ahorro ~${fmtCLP(ahorroDividendo)}/mes)` : ""}
+INSTRUCCIONES SUBSIDIO:
+${usoTasaSubsidio
+  ? "- Menciona positivamente que está considerando la tasa con subsidio."
+  : "- ALERTA sobre la oportunidad: calcula cuánto bajaría el dividendo y el flujo. Usa lenguaje no imperativo: 'podrías considerar', 'existe la opción de', 'vale la pena evaluar'."
+}
+- Menciona requisitos: primera vivienda, promesa firmada desde 2025, vigente hasta mayo 2027 o hasta agotar 50.000 cupos.
+- NO uses lenguaje imperativo (por regulación).
+`;
+})()}
 VEREDICTO OBLIGATORIO: El veredicto del motor es "${results.veredicto || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA")}". DEBES usar este mismo veredicto en tu respuesta. No lo cambies. Tu trabajo es explicar POR QUÉ el veredicto es ese, no decidir uno diferente. Si te parece contraintuitivo (ej: score 43 pero dice BUSCAR OTRA por flujo insostenible), explica qué señales negativas lo causan.
 
 DATOS DE NEGOCIACIÓN (calculados por el motor):

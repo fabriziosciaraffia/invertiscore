@@ -1981,6 +1981,53 @@ export default function NuevoAnalisisPage() {
                 Mercado actual: ~{tasaRef.value.replace(".", ",")}%
                 {tasaRef.updated_at && ` (act. ${new Date(tasaRef.updated_at).toLocaleDateString("es-CL")})`}
               </p>
+              {/* Subsidio a la Tasa (Ley 21.748) */}
+              {(() => {
+                const tasaMercado = parseFloat(tasaRef.value) || 4.1;
+                const rebajaSubsidio = 0.6;
+                const tasaConSubsidio = Math.round((tasaMercado - rebajaSubsidio) * 10) / 10;
+                const califica = form.tipoPropiedad === "nuevo" && calc.precioUF > 0 && calc.precioUF <= 4000;
+                return (
+                  <div
+                    style={{
+                      maxHeight: califica ? 200 : 0,
+                      opacity: califica ? 1 : 0,
+                      overflow: "hidden",
+                      transition: "all 0.3s ease",
+                      marginTop: califica ? 8 : 0,
+                    }}
+                  >
+                    <div
+                      className="rounded-lg p-3"
+                      style={{ background: "rgba(200,50,60,0.06)", border: "1px solid rgba(200,50,60,0.2)" }}
+                    >
+                      <p className="text-[13px] font-semibold text-[#FAFAF8]">🏛️ Tu depto podría calificar al Subsidio a la Tasa</p>
+                      <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(250,250,248,0.5)" }}>
+                        La Ley 21.748 rebaja la tasa hipotecaria en ~0,6% para viviendas nuevas ≤ 4.000 UF.
+                      </p>
+                      <p className="mt-1.5 text-xs" style={{ color: "rgba(250,250,248,0.5)" }}>
+                        Tasa promedio: {tasaMercado.toFixed(1).replace(".", ",")}% <span style={{ color: "rgba(250,250,248,0.3)" }}>→</span> Con subsidio: <span style={{ color: "#C8323C", fontWeight: 600 }}>~{tasaConSubsidio.toFixed(1).replace(".", ",")}%</span>
+                      </p>
+                      <div className="mt-2 flex items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => { setField("tasaInteres", String(tasaConSubsidio)); tasaModificadaRef.current = true; }}
+                          className="text-xs font-medium text-[#FAFAF8] underline underline-offset-2 hover:text-[#FAFAF8]/80"
+                        >
+                          Usar {tasaConSubsidio.toFixed(1).replace(".", ",")}%
+                        </button>
+                        <span className="text-[11px]" style={{ color: "rgba(250,250,248,0.3)" }}>Vigente hasta mayo 2027</span>
+                      </div>
+                      <p className="mt-1.5 text-[11px]" style={{ color: "rgba(250,250,248,0.3)" }}>
+                        Requisitos: primera vivienda, promesa desde 2025.{" "}
+                        <a href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#FAFAF8]/50">
+                          Más info
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             {calc.dividendo > 0 && (

@@ -125,6 +125,12 @@ export interface AnalysisMetrics {
   precioFlujoPositivoCLP?: number;
   precioFlujoPositivoUF?: number;
   descuentoParaNeutro?: number;     // %
+  // Subsidio a la tasa (Ley 21.748)
+  subsidioTasa?: {
+    califica: boolean;        // tipo Nuevo && precio <= 4000 UF
+    tasaConSubsidio: number;  // tasa mercado - 0.6
+    aplicado: boolean;        // si la tasa ingresada <= tasaConSubsidio + 0.2
+  };
 }
 
 export interface FullAnalysisResult {
