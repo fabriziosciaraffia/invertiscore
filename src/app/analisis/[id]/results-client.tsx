@@ -1711,25 +1711,39 @@ export function PremiumResults({
       .sort((a, b) => b.avg - a.avg);
   }, [cashflowData]);
 
-  // Dynamic exit scenario based on horizon (must be after flujoAcumuladoReal)
-  const dynamicExit = useMemo(() => {
+  // Exit scenario helper — calculates exit metrics for a given year
+  const calcExitForYear = useCallback((years: number, flujoAcum: number) => {
     if (!results || !m || dynamicProjections.length === 0) return null;
-    const proy = dynamicProjections[horizonYears - 1];
+    const proy = dynamicProjections[years - 1];
     if (!proy) return null;
     const valorVenta = proy.valorPropiedad;
     const comisionVenta = Math.round(valorVenta * 0.02);
     const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
-    const retornoTotal = flujoAcumuladoReal + gananciaNeta;
+    const retornoTotal = flujoAcum + gananciaNeta;
     const multiplicadorCapital = m.pieCLP > 0 ? Math.round((retornoTotal / m.pieCLP) * 100) / 100 : 0;
     const flujos = [-m.pieCLP];
-    for (let i = 0; i < horizonYears; i++) {
+    for (let i = 0; i < years; i++) {
       let flujo = dynamicProjections[i].flujoAnual;
-      if (i === horizonYears - 1) flujo += valorVenta - proy.saldoCredito - comisionVenta;
+      if (i === years - 1) flujo += valorVenta - proy.saldoCredito - comisionVenta;
       flujos.push(flujo);
     }
     const tir = calcTIR(flujos);
-    return { anios: horizonYears, valorVenta: Math.round(valorVenta), saldoCredito: Math.round(proy.saldoCredito), comisionVenta, gananciaNeta: Math.round(gananciaNeta), flujoAcumulado: flujoAcumuladoReal, retornoTotal: Math.round(retornoTotal), multiplicadorCapital, tir };
-  }, [results, m, dynamicProjections, horizonYears, flujoAcumuladoReal]);
+    return { anios: years, valorVenta: Math.round(valorVenta), saldoCredito: Math.round(proy.saldoCredito), comisionVenta, gananciaNeta: Math.round(gananciaNeta), flujoAcumulado: flujoAcum, retornoTotal: Math.round(retornoTotal), multiplicadorCapital, tir };
+  }, [results, m, dynamicProjections]);
+
+  // Fixed 10-year exit for header metrics (independent of horizon slider)
+  const fixedExit10 = useMemo(() => {
+    if (dynamicProjections.length < 10) return null;
+    // Calculate 10-year flujo acumulado from dynamicProjections
+    let flujoAcum10 = 0;
+    for (let i = 0; i < 10; i++) flujoAcum10 += dynamicProjections[i].flujoAnual;
+    return calcExitForYear(10, flujoAcum10);
+  }, [dynamicProjections, calcExitForYear]);
+
+  // Dynamic exit scenario based on horizon slider (for exit section)
+  const dynamicExit = useMemo(() => {
+    return calcExitForYear(horizonYears, flujoAcumuladoReal);
+  }, [calcExitForYear, horizonYears, flujoAcumuladoReal]);
 
   interface PatrimonioRow {
     name: string;
@@ -2016,7 +2030,7 @@ export function PremiumResults({
               <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
                 <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Retorno 10a</p>
                 <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-[#FAFAF8]">
-                  {exit ? `${exit.multiplicadorCapital}x` : "—"}
+                  {fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—"}
                 </p>
               </div>
             </div>
@@ -2248,8 +2262,8 @@ export function PremiumResults({
                     { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento." },
                     { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto." },
                     { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra." },
-                    { label: "TIR 10a", value: exit ? `${fmtPct(exit.tir)}` : "—", hint: "Tasa interna", color: exit && exit.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización." },
-                    { label: "ROI 10a", value: exit ? `${exit.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: exit && exit.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años." },
+                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización." },
+                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años." },
                   ].map((metric, i) => (
                     <div
                       key={metric.label}
