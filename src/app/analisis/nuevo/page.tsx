@@ -1040,8 +1040,10 @@ export default function NuevoAnalisisPage() {
           comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
           zonaRadio: {
             precioM2VentaCLP: ventaRef?.precioM2 || null,
-            arriendoPromedio: apiSuggestions?.arriendo || null,
-            arriendoPrecioM2: apiSuggestions?.precioM2 || null,
+            // Use the scaled suggestion (precioM2 × superficie), same value the user sees,
+            // not the raw median which may include larger deptos if surface filter relaxed
+            arriendoPromedio: suggestions?.arriendoBase || apiSuggestions?.arriendo || null,
+            arriendoPrecioM2: suggestions?.precioM2Arriendo || apiSuggestions?.precioM2 || null,
             sampleSizeArriendo: apiSuggestions?.sampleSize || 0,
             sampleSizeVenta: ventaRef?.sampleSize || 0,
             radioMetros: radius,
