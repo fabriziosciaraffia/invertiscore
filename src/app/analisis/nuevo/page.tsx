@@ -1834,6 +1834,17 @@ export default function NuevoAnalisisPage() {
                 <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
+              {suggestions?.contribuciones != null && suggestions.contribuciones > 0 && !form.contribuciones && (
+                <span
+                  className="font-mono text-[11px] text-[#C8323C] cursor-pointer hover:underline"
+                  onClick={() => {
+                    setFieldCurrency((prev) => ({ ...prev, contribuciones: "CLP" }));
+                    setField("contribuciones", String(suggestions.contribuciones));
+                  }}
+                >
+                  Sugerencia: {fmtCLP(suggestions.contribuciones)} ↗
+                </span>
+              )}
             </div>
             <MoneyInput
               id="contribuciones"
@@ -1845,10 +1856,10 @@ export default function NuevoAnalisisPage() {
             />
             {!form.contribuciones && (
               <p className="mt-1 font-body text-[11px] text-[#71717A]">
-                {suggestions?.contribuciones
+                {suggestions?.contribuciones != null
                   ? suggestions.contribuciones === 0 && form.tipoPropiedad === "nuevo"
                     ? <>Estimación: $0 (exento por DFL-2). Verifica con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
-                    : <>Estimación Franco: {fmtCLP(suggestions.contribuciones)} (normativa SII, tasas 0,93%-1,09%). Para dato exacto, consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
+                    : <>Estimación SII (tasas 0,93%-1,09%). Para dato exacto, consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
                   : <>Consultar en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a> con el ROL de la propiedad</>
                 }
               </p>
