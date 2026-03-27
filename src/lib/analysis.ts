@@ -303,7 +303,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
 function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): MonthlyCashflow[] {
   const mantencion = input.provisionMantencion;
 
-  // Determine months until delivery (en blanco/verde)
+  // Determine months until delivery (entrega futura)
   const mesesPreEntrega = calcMesesHastaEntrega(input);
 
   const meses: MonthlyCashflow[] = [];
@@ -771,7 +771,7 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
     eficiencia * 0.20
   );
 
-  // Penalize verde/blanco for months without return
+  // Penalize entrega futura for months without return
   const mesesEspera = calcMesesHastaEntrega(input);
   if (mesesEspera > 0) {
     const penalty = Math.min(5, Math.round(mesesEspera / 6));
@@ -832,7 +832,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   if (input.estadoVenta !== "inmediata") {
     const mesesEspera = calcMesesHastaEntrega(input);
     if (mesesEspera > 0) {
-      pros.push(`Comprando en ${input.estadoVenta === "blanco" ? "blanco" : "verde"}, acumulas ${mesesEspera} meses de plusvalía (4%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1.04, mesesEspera / 12))} UF.`);
+      pros.push(`Comprando con entrega futura, acumulas ${mesesEspera} meses de plusvalía (4%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1.04, mesesEspera / 12))} UF.`);
     }
   }
   if (pros.length === 0)

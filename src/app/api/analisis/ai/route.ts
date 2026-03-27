@@ -516,7 +516,7 @@ REGLAS GENERALES:
 - El veredicto debe ser UNA de las tres opciones: COMPRAR, AJUSTA EL PRECIO, o BUSCAR OTRA
 - Los campos "alerta_clp" y "alerta_uf" en tuBolsillo deben ser string vacío "" si no aplica
 - Los arrays aFavor y puntosAtencion NO llevan bullet points (•, *, -) al inicio. Solo texto limpio.
-- Si el estado es "En blanco" o "En verde" con fecha de entrega futura, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".
+- Si el estado es "futura" con fecha de entrega, NO digas "departamento nuevo (0 años)". Di "departamento en construcción con entrega en [fecha]".
 - Si hay ANOMALÍAS DETECTADAS arriba, DEBES mencionarlas. Si el arriendo está inflado, advierte: "Ojo: tu arriendo de $X está Y% sobre mercado. Si no logras arrendar a ese precio, tu flujo empeora." Si el precio está bajo, reconoce la ventaja.`;
 
     const message = await anthropic.messages.create({

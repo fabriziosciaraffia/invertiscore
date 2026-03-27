@@ -22,7 +22,7 @@ export interface AnalisisInput {
   estacionamiento: string;
   precioEstacionamiento: number;
   bodega: boolean;
-  estadoVenta: "blanco" | "verde" | "inmediata";
+  estadoVenta: "inmediata" | "futura";
   fechaEntrega?: string;
   cuotasPie: number;
   montoCuota: number;

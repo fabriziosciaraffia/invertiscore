@@ -493,7 +493,7 @@ export default function NuevoAnalisisPage() {
         else updates.antiguedad = "20+";
       }
 
-      if (d.estado_venta === "futura") {
+      if (d.estado_venta === "futura" || d.estado_venta === "verde" || d.estado_venta === "blanco") {
         updates.estadoVenta = "futura";
         updates.tipoPropiedad = "nuevo";
         if (d.fecha_entrega) {
@@ -503,7 +503,9 @@ export default function NuevoAnalisisPage() {
         }
       } else {
         updates.estadoVenta = "inmediata";
-        updates.tipoPropiedad = "usado";
+        // Keep tipoPropiedad from input_data if available (could be nuevo with inmediata delivery)
+        if (d.tipo === "nuevo" || d.tipo === "Nuevo") updates.tipoPropiedad = "nuevo";
+        else updates.tipoPropiedad = "usado";
       }
 
       if (!updates.precio) missing.push("precio");
@@ -962,10 +964,10 @@ export default function NuevoAnalisisPage() {
 
   // ─── Sync tipoPropiedad → estadoVenta ──────────────
   useEffect(() => {
-    setForm((prev) => ({
-      ...prev,
-      estadoVenta: prev.tipoPropiedad === "nuevo" ? "futura" : "inmediata",
-    }));
+    if (form.tipoPropiedad === "usado") {
+      setForm((prev) => ({ ...prev, estadoVenta: "inmediata" }));
+    }
+    // When switching to "nuevo", keep current estadoVenta (default "inmediata", user can toggle to "futura")
   }, [form.tipoPropiedad]);
 
   // ─── Auto-suggest cuotas from delivery date ────────
@@ -1016,11 +1018,11 @@ export default function NuevoAnalisisPage() {
           precioEstacionamiento: 0,
           bodega: Number(form.bodega) > 0,
           cantidadBodegas: Number(form.bodega),
-          estadoVenta: form.tipoPropiedad === "nuevo" ? "futura" : "inmediata",
-          fechaEntrega: form.estadoVenta !== "inmediata"
+          estadoVenta: form.estadoVenta === "futura" ? "futura" : "inmediata",
+          fechaEntrega: form.estadoVenta === "futura"
             ? `${form.fechaEntregaAnio}-${form.fechaEntregaMes}`
             : undefined,
-          cuotasPie: Number(form.cuotasPie) || 0,
+          cuotasPie: Number(form.cuotasPie) || (form.tipoPropiedad === "nuevo" && form.estadoVenta === "inmediata" ? 1 : 0),
           montoCuota: Number(form.cuotasPie) > 0 ? Math.round((calc.pieUF / Number(form.cuotasPie)) * UF_CLP) : 0,
           precio: precioUF,
           valorMercadoFranco: suggestions?.precioSugeridoUF || undefined,
@@ -1304,7 +1306,7 @@ export default function NuevoAnalisisPage() {
                 >Usado</button>
                 <button
                   type="button"
-                  onClick={() => { setField("tipoPropiedad", "nuevo"); setField("estadoVenta", "futura"); setField("antiguedad", "0-2"); }}
+                  onClick={() => { setField("tipoPropiedad", "nuevo"); setField("estadoVenta", "inmediata"); setField("antiguedad", "0-2"); }}
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "nuevo"
                       ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
@@ -1627,68 +1629,85 @@ export default function NuevoAnalisisPage() {
             })()}
           </div>
 
-          {/* Entrega futura (solo si tipo=Nuevo) */}
-          {form.tipoPropiedad === "nuevo" && (
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] p-4 space-y-3">
-              <div className="font-mono text-[9px] text-[#71717A] uppercase tracking-[0.08em]">Detalle entrega futura</div>
+          {/* Entrega (solo si tipo=Nuevo) */}
+          <div
+            style={{
+              maxHeight: form.tipoPropiedad === "nuevo" ? 600 : 0,
+              opacity: form.tipoPropiedad === "nuevo" ? 1 : 0,
+              overflow: "hidden",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <div className="rounded-[10px] p-4 space-y-3" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.08)" }}>
               <div>
-                <FieldLabel>Estado de entrega</FieldLabel>
+                <FieldLabel>Entrega</FieldLabel>
                 <div className="flex gap-1.5">
                   <button
                     type="button"
-                    onClick={() => setField("estadoVenta", "verde")}
-                    className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
-                      form.estadoVenta === "verde"
-                        ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                        : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
-                    }`}
-                  >En verde</button>
+                    onClick={() => { setField("estadoVenta", "inmediata"); setField("cuotasPie", "1"); cuotasModificadaRef.current = false; }}
+                    className="flex-1 rounded-lg px-3 py-2 font-body text-[13px] text-center transition-all"
+                    style={form.estadoVenta === "inmediata"
+                      ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
+                      : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
+                  >Inmediata</button>
                   <button
                     type="button"
-                    onClick={() => setField("estadoVenta", "blanco")}
-                    className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
-                      form.estadoVenta === "blanco"
-                        ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                        : "bg-white/[0.05] border-white/[0.1] text-white/50 hover:border-white/25"
-                    }`}
-                  >En blanco</button>
+                    onClick={() => { setField("estadoVenta", "futura"); cuotasModificadaRef.current = false; }}
+                    className="flex-1 rounded-lg px-3 py-2 font-body text-[13px] text-center transition-all"
+                    style={form.estadoVenta === "futura"
+                      ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
+                      : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
+                  >Futura (verde/blanco)</button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="relative">
-                  <FieldLabel>Mes entrega</FieldLabel>
-                  <select
-                    value={form.fechaEntregaMes}
-                    onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
-                  >
-                    <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Mes...</option>
-                    {Array.from({ length: 12 }, (_, i) => (
-                      <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[#1A1A1A] text-[#FAFAF8]">
-                        {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
-                </div>
-                <div className="relative">
-                  <FieldLabel>Año entrega</FieldLabel>
-                  <select
-                    value={form.fechaEntregaAnio}
-                    onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
-                  >
-                    <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Año...</option>
-                    {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
-                      <option key={y} value={String(y)} className="bg-[#1A1A1A] text-[#FAFAF8]">{y}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
+
+              {/* Fecha entrega (solo futura) */}
+              <div
+                style={{
+                  maxHeight: form.estadoVenta === "futura" ? 100 : 0,
+                  opacity: form.estadoVenta === "futura" ? 1 : 0,
+                  overflow: "hidden",
+                  transition: "all 0.3s ease",
+                }}
+              >
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative">
+                    <FieldLabel>Mes entrega</FieldLabel>
+                    <select
+                      value={form.fechaEntregaMes}
+                      onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
+                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                    >
+                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Mes...</option>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[#1A1A1A] text-[#FAFAF8]">
+                          {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
+                  </div>
+                  <div className="relative">
+                    <FieldLabel>Año entrega</FieldLabel>
+                    <select
+                      value={form.fechaEntregaAnio}
+                      onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
+                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.05] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8]/70 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                    >
+                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Año...</option>
+                      {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
+                        <option key={y} value={String(y)} className="bg-[#1A1A1A] text-[#FAFAF8]">{y}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
+                  </div>
                 </div>
               </div>
+
+              {/* Pie + Cuotas */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <FieldLabel>Pie (%)</FieldLabel>
+                  <FieldLabel>Pie ({form.piePct}%)</FieldLabel>
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
@@ -1701,7 +1720,7 @@ export default function NuevoAnalisisPage() {
                     />
                     {calc.precioUF > 0 && parseFloat(form.piePct) > 0 && (
                       <span className="font-mono text-[11px] text-[#71717A]">
-                        Total: {fmtUF(calc.pieUF)}
+                        {fmtUF(calc.pieUF)}
                       </span>
                     )}
                   </div>
@@ -1714,21 +1733,36 @@ export default function NuevoAnalisisPage() {
                       type="number"
                       inputMode="numeric"
                       min="1"
-                      placeholder="24"
+                      placeholder={form.estadoVenta === "futura" ? "24" : "1"}
                       value={form.cuotasPie}
                       onChange={(e) => { setField("cuotasPie", e.target.value); cuotasModificadaRef.current = true; }}
                       className={inputClass + " w-20"}
                     />
                     {calc.pieUF > 0 && Number(form.cuotasPie) > 0 && (
                       <span className="font-mono text-[11px] text-[#71717A]">
-                        Cuota: {fmtUF(Math.round((calc.pieUF / Number(form.cuotasPie)) * 10) / 10)}
+                        {Number(form.cuotasPie) === 1 ? "1 cuota" : `${form.cuotasPie} cuotas`} de {fmtUF(Math.round((calc.pieUF / Number(form.cuotasPie)) * 10) / 10)}
                       </span>
                     )}
                   </div>
                 </div>
               </div>
+              {form.estadoVenta === "inmediata" && (
+                <p className="text-[11px]" style={{ color: "rgba(250,250,248,0.25)" }}>
+                  Default: 1 cuota (pago completo). Modifica si la inmobiliaria ofrece cuotas.
+                </p>
+              )}
+              {form.estadoVenta === "futura" && form.fechaEntregaMes && form.fechaEntregaAnio && (
+                <p className="text-[11px]" style={{ color: "rgba(250,250,248,0.25)" }}>
+                  {(() => {
+                    const now = new Date();
+                    const entrega = new Date(Number(form.fechaEntregaAnio), Number(form.fechaEntregaMes) - 1);
+                    const meses = Math.max(0, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+                    return `${meses} meses hasta entrega. Pie se divide en cuotas mensuales.`;
+                  })()}
+                </p>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Arriendo mensual ($) */}
           <div>
