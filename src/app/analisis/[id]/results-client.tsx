@@ -969,10 +969,12 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
     return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles para esta zona.</p>;
   }
 
-  // Yield zona: use radius arriendo and venta precio/m² if available
+  // Yield zona: derive from the same values shown in the ARRIENDO and PRECIO/M² cards
+  // so that if tuyo == zona for both, rent. bruta also matches exactly
   const superficie = inputData?.superficie || 50;
-  const yieldZona = avgM2Zona > 0 && avgArriendoZona > 0
-    ? (avgArriendoZona * 12) / (avgM2Zona * superficie * UF_CLP) * 100
+  const precioTotalZonaCLP = avgM2Zona * superficie * UF_CLP;
+  const yieldZona = precioTotalZonaCLP > 0 && avgArriendoZona > 0
+    ? (avgArriendoZona * 12) / precioTotalZonaCLP * 100
     : (m.rentabilidadBruta ?? 0) * 0.9;
 
   const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP;
@@ -996,7 +998,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
     {
       title: "RENT. BRUTA",
       tuyo: m.rentabilidadBruta,
-      zona: Math.round(yieldZona * 10) / 10,
+      zona: Math.round(yieldZona * 100) / 100,
       fmtVal: (v: number) => fmtPct(v),
       invertColor: false, // higher is better
     },
