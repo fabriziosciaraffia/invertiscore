@@ -85,6 +85,7 @@ export async function getComunaStats(comunaSlug: string): Promise<ComunaStats | 
   const rentBruta = venProm > 0 ? (arrProm * 12 / venProm) * 100 : 0;
 
   if (arrTotal === 0 || venTotal === 0) return null;
+  if (m2Prom === 0) return null;
 
   return {
     nombre: comunaNombre,
@@ -144,8 +145,9 @@ export async function getAllComunasStats(): Promise<ComunaStats[]> {
     const rentBruta = venProm > 0 ? (arrProm * 12 / venProm) * 100 : 0;
     const total = arrTotal + venTotal;
 
-    // Require both arriendo and venta data, minimum 5 total
+    // Require both arriendo and venta data, minimum 5 total, valid precio/m²
     if (arrTotal === 0 || venTotal === 0 || total < 5) continue;
+    if (m2Prom === 0) continue;
 
     results.push({
       nombre: comuna,

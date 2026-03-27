@@ -29,8 +29,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 }
 
 function rentColor(r: number) {
-  if (r >= 5) return "#22c55e";
-  if (r >= 3) return "#eab308";
+  if (r >= 5) return "#B0BEC5";
+  if (r >= 3) return "#FBBF24";
   return "#C8323C";
 }
 
@@ -59,7 +59,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 
   // Badge
   const badge = stats.rentabilidadBruta >= 5
-    ? { text: "Una de las comunas más rentables de Santiago", color: "#22c55e" }
+    ? { text: "Una de las comunas más rentables de Santiago", color: "#B0BEC5" }
     : stats.rentabilidadBruta < 3
     ? { text: "Rentabilidad por debajo del promedio de Santiago", color: "#C8323C" }
     : null;
@@ -138,8 +138,8 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         )}
 
         {lowData && (
-          <div className="mt-4 rounded-lg border border-[#eab308]/30 bg-[#eab308]/[0.06] px-4 py-3">
-            <p className="font-body text-xs text-[#eab308]">
+          <div className="mt-4 rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-4 py-3">
+            <p className="font-body text-xs text-[#FBBF24]">
               Datos limitados — menos de 10 propiedades analizadas en esta comuna.
             </p>
           </div>

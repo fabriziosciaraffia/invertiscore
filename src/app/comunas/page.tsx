@@ -20,8 +20,8 @@ export const metadata: Metadata = {
 };
 
 function rentColor(r: number) {
-  if (r >= 5) return "#22c55e";
-  if (r >= 3) return "#eab308";
+  if (r >= 5) return "#B0BEC5";
+  if (r >= 3) return "#FBBF24";
   return "#C8323C";
 }
 
