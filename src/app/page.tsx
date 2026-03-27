@@ -85,6 +85,9 @@ export default function LandingPage() {
             <a href="#como-funciona" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
               Cómo funciona
             </a>
+            <Link href="/comunas" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
+              Comunas
+            </Link>
             <a href="#pricing" className={`font-body text-sm transition-colors ${transparent ? "text-white/50 hover:text-white/80" : "text-[#71717A] hover:text-[#0F0F0F]"}`}>
               Precios
             </a>
@@ -117,6 +120,7 @@ export default function LandingPage() {
         {mobileMenu && (
           <div className="md:hidden bg-white border-b border-[#E6E6E2] px-6 py-4 flex flex-col gap-1">
             <a href="#como-funciona" className="font-body text-base text-[#71717A] py-2 min-h-[44px] flex items-center" onClick={() => setMobileMenu(false)}>Cómo funciona</a>
+            <Link href="/comunas" className="font-body text-base text-[#71717A] py-2 min-h-[44px] flex items-center" onClick={() => setMobileMenu(false)}>Comunas</Link>
             <a href="#pricing" className="font-body text-base text-[#71717A] py-2 min-h-[44px] flex items-center" onClick={() => setMobileMenu(false)}>Precios</a>
             {user && <Link href="/dashboard" className="font-body text-base text-[#71717A] py-2 min-h-[44px] flex items-center" onClick={() => setMobileMenu(false)}>Dashboard</Link>}
             <Link href={ctaHref} className="bg-[#C8323C] text-white font-body text-sm font-bold px-5 py-3 rounded-lg text-center min-h-[44px] mt-1" onClick={() => setMobileMenu(false)}>
