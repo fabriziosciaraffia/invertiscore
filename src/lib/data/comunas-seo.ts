@@ -11,17 +11,11 @@ function getSupabase() {
 // Normalize encoding variants from scraped data to canonical names
 const COMUNA_CANONICAL: Record<string, string> = {
   "Conchali": "Conchalí",
-  "Conchal\uFFFD": "Conchalí",
   "Estacion Central": "Estación Central",
-  "Estaci\uFFFDn Central": "Estación Central",
   "Penalolen": "Peñalolén",
-  "Pe\uFFFDalol\uFFFDn": "Peñalolén",
   "San Joaquin": "San Joaquín",
-  "San Joaqu\uFFFDn": "San Joaquín",
   "Maipu": "Maipú",
-  "Maip\uFFFD": "Maipú",
   "Nunoa": "Ñuñoa",
-  "\uFFFDu\uFFFDoa": "Ñuñoa",
 };
 
 function normalizeComunaName(raw: string): string {
