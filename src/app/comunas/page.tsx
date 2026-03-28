@@ -77,7 +77,7 @@ export default async function ComunasIndexPage() {
                 <div>
                   <span className="text-[#FAFAF8]/40">Arriendo prom.</span>
                   <div className="font-mono font-medium text-[#FAFAF8]">
-                    {fmtCLP(c.arriendoPromedio)}/mes
+                    {fmtCLP(c.arriendoRepresentativo)}/mes
                   </div>
                 </div>
                 <div>

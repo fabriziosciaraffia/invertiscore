@@ -79,7 +79,7 @@ export default async function ProximamentePage() {
                 </div>
                 <div className="mt-2 flex gap-4 text-[11px]">
                   <span style={{ color: "rgba(250,250,248,0.3)" }}>
-                    Arriendo <span className="font-mono text-[#FAFAF8]/60">{fmtCLP(c.arriendoPromedio)}/mes</span>
+                    Arriendo <span className="font-mono text-[#FAFAF8]/60">{fmtCLP(c.arriendoRepresentativo)}/mes</span>
                   </span>
                   <span style={{ color: "rgba(250,250,248,0.3)" }}>
                     <span className="font-mono text-[#FAFAF8]/60">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</span> UF/m²

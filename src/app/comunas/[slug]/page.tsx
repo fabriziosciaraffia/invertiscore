@@ -17,7 +17,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
 
   return {
     title: `Invertir en ${stats.nombre} — Rentabilidad y datos reales | Franco`,
-    description: `Rentabilidad bruta promedio ${stats.rentabilidadBruta}% en ${stats.nombre}. Arriendo promedio ${fmtCLP(stats.arriendoPromedio)}/mes. Basado en ${stats.totalPropiedades} propiedades reales.`,
+    description: `Rentabilidad bruta promedio ${stats.rentabilidadBruta}% en ${stats.nombre}. Arriendo promedio ${fmtCLP(stats.arriendoRepresentativo)}/mes. Basado en ${stats.totalPropiedades} propiedades reales.`,
     openGraph: {
       title: `Departamentos en ${stats.nombre} — ¿Vale la pena invertir?`,
       description: `Franco analiza ${stats.totalPropiedades} propiedades en ${stats.nombre}. Rentabilidad promedio: ${stats.rentabilidadBruta}%`,
@@ -149,7 +149,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { label: "Rentabilidad bruta", value: `${stats.rentabilidadBruta.toFixed(1).replace(".", ",")}%`, color: rentColor(stats.rentabilidadBruta) },
-            { label: "Arriendo promedio", value: `${fmtCLP(stats.arriendoPromedio)}/mes`, color: "#FAFAF8" },
+            { label: "Arriendo promedio", value: `${fmtCLP(stats.arriendoRepresentativo)}/mes`, color: "#FAFAF8" },
             { label: "Precio/m² promedio", value: fmtUF(stats.precioM2Promedio), color: "#FAFAF8" },
             { label: "Propiedades analizadas", value: stats.totalPropiedades.toLocaleString("es-CL"), sub: "actualizado esta semana", color: "#FAFAF8" },
           ].map((m) => (
@@ -167,7 +167,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
           <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.03] p-6">
             <p className="font-body text-sm leading-relaxed text-[#FAFAF8]/60">
               En {stats.nombre}, el precio promedio por m² es de {fmtUF(stats.precioM2Promedio)} ({fmtCLP(precioM2CLP)}).
-              El arriendo mensual promedio es de {fmtCLP(stats.arriendoPromedio)}/mes, lo que resulta en una
+              El arriendo mensual promedio es de {fmtCLP(stats.arriendoRepresentativo)}/mes, lo que resulta en una
               rentabilidad bruta de {stats.rentabilidadBruta.toFixed(1).replace(".", ",")}% — {evaluacion}.
             </p>
             <p className="mt-4 font-body text-[11px] italic text-[#FAFAF8]/25">
@@ -194,7 +194,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                   <tr className="border-b border-white/[0.06] bg-white/[0.05]">
                     <td className="px-4 py-3 font-body font-semibold text-[#FAFAF8]">{stats.nombre}</td>
                     <td className="px-4 py-3 font-mono font-medium" style={{ color: rentColor(stats.rentabilidadBruta) }}>{stats.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
-                    <td className="px-4 py-3 font-mono font-medium text-[#FAFAF8]">{fmtCLP(stats.arriendoPromedio)}</td>
+                    <td className="px-4 py-3 font-mono font-medium text-[#FAFAF8]">{fmtCLP(stats.arriendoRepresentativo)}</td>
                     <td className="px-4 py-3 font-mono font-medium text-[#FAFAF8]">{stats.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
                   </tr>
                   {similares.map((c) => (
@@ -203,7 +203,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
                         <Link href={`/comunas/${c.slug}`} className="font-body text-[#FAFAF8]/70 hover:text-[#FAFAF8]">{c.nombre}</Link>
                       </td>
                       <td className="px-4 py-3 font-mono text-[#FAFAF8]/60">{c.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
-                      <td className="px-4 py-3 font-mono text-[#FAFAF8]/60">{fmtCLP(c.arriendoPromedio)}</td>
+                      <td className="px-4 py-3 font-mono text-[#FAFAF8]/60">{fmtCLP(c.arriendoRepresentativo)}</td>
                       <td className="px-4 py-3 font-mono text-[#FAFAF8]/60">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
                     </tr>
                   ))}

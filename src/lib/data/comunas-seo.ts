@@ -8,8 +8,6 @@ function getSupabase() {
   );
 }
 
-const UF_CLP = 38800;
-
 // Normalize encoding variants from scraped data to canonical names
 const COMUNA_CANONICAL: Record<string, string> = {
   "Conchali": "Conchalí",
@@ -30,138 +28,213 @@ function normalizeComunaName(raw: string): string {
   return COMUNA_CANONICAL[raw] || raw;
 }
 
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
 export interface ComunaStats {
   nombre: string;
   slug: string;
   totalPropiedades: number;
-  arriendoPromedio: number;
-  ventaPromedio: number;
-  precioM2Promedio: number;
-  rentabilidadBruta: number;
+  arriendoRepresentativo: number; // CLP — promedio ponderado de medianas por segmento
+  rentabilidadBruta: number;      // % — promedio ponderado por segmento
+  precioM2Promedio: number;       // UF/m²
+  nSegmentos: number;             // cuántos segmentos (dormitorios) contribuyen
 }
 
-export async function getComunaStats(comunaSlug: string): Promise<ComunaStats | null> {
-  const supabase = getSupabase();
+const MIN_PER_TYPE = 20; // mínimo 20 arriendos Y 20 ventas por segmento
+const MIN_TOTAL = 50;    // mínimo 50 propiedades totales por comuna
 
-  // Fetch all rows and normalize in JS (can't normalize in SQL)
-  const { data: arriendoRows } = await supabase
-    .from("market_stats")
-    .select("*")
-    .eq("type", "arriendo");
-
-  const { data: ventaRows } = await supabase
-    .from("market_stats")
-    .select("*")
-    .eq("type", "venta");
-
-  if (!arriendoRows) return null;
-
-  // Normalize names
-  arriendoRows.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });
-  ventaRows?.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });
-
-  // Find canonical name matching slug
-  const uniqueComunas = Array.from(new Set(arriendoRows.map((r) => r.comuna)));
-  const comunaNombre = uniqueComunas.find((c) => slugify(c) === comunaSlug);
-  if (!comunaNombre) return null;
-
-  // Filter rows for this comuna (now normalized, may combine multiple DB rows)
-  const arrFiltered = arriendoRows.filter((r) => r.comuna === comunaNombre);
-  const venFiltered = ventaRows?.filter((r) => r.comuna === comunaNombre) ?? [];
-
-  const arrTotal = arrFiltered.reduce((s, r) => s + (r.count || 0), 0);
-  const arrProm = arrTotal > 0
-    ? arrFiltered.reduce((s, r) => s + (r.precio_mediana || 0) * (r.count || 0), 0) / arrTotal
-    : 0;
-
-  const venTotal = venFiltered.reduce((s, r) => s + (r.count || 0), 0);
-  const venProm = venTotal > 0
-    ? venFiltered.reduce((s, r) => s + (r.precio_mediana || 0) * (r.count || 0), 0) / venTotal
-    : 0;
-  const m2Prom = venTotal > 0
-    ? venFiltered.reduce((s, r) => s + (r.precio_m2_mediana || 0) * (r.count || 0), 0) / venTotal
-    : 0;
-
-  const rentBruta = venProm > 0 ? (arrProm * 12 / venProm) * 100 : 0;
-
-  if (arrTotal === 0 || venTotal === 0) return null;
-  if (m2Prom === 0) return null;
-
-  return {
-    nombre: comunaNombre,
-    slug: comunaSlug,
-    totalPropiedades: arrTotal + venTotal,
-    arriendoPromedio: Math.round(arrProm),
-    ventaPromedio: Math.round(venProm),
-    precioM2Promedio: Math.round((m2Prom / UF_CLP) * 10) / 10,
-    rentabilidadBruta: Math.round(rentBruta * 10) / 10,
-  };
+interface RawRow {
+  comuna: string;
+  dormitorios: number;
+  precio: number;
+  moneda?: string;
+  superficie_m2: number;
 }
 
-export async function getAllComunasStats(): Promise<ComunaStats[]> {
+async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
+  const allRows: RawRow[] = [];
+  const pageSize = 10000;
+  let offset = 0;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data } = await supabase
+      .from("scraped_properties")
+      .select("comuna, dormitorios, precio, moneda, superficie_m2")
+      .eq("type", type)
+      .eq("is_active", true)
+      .gt("precio", 0)
+      .gt("superficie_m2", 0)
+      .lte("superficie_m2", 300)
+      .gte("dormitorios", 1)
+      .lte("dormitorios", 4)
+      .range(offset, offset + pageSize - 1);
+
+    if (!data || data.length === 0) {
+      hasMore = false;
+    } else {
+      allRows.push(...data);
+      offset += pageSize;
+      if (data.length < pageSize) hasMore = false;
+    }
+  }
+  return allRows;
+}
+
+interface SegmentResult {
+  comuna: string;
+  dorms: number;
+  nArr: number;
+  nVen: number;
+  medianaArriendo: number;
+  medianaVenta: number;
+  rentBruta: number;
+  medianaM2UF: number;
+}
+
+async function computeAllSegments(): Promise<SegmentResult[]> {
   const supabase = getSupabase();
 
-  const { data: arriendoRows } = await supabase
-    .from("market_stats")
-    .select("*")
-    .eq("type", "arriendo");
+  // Get UF value
+  const { data: configData } = await supabase
+    .from("config")
+    .select("value")
+    .eq("key", "uf_value")
+    .single();
+  const ufValue = parseFloat(configData?.value || "38800");
 
-  const { data: ventaRows } = await supabase
-    .from("market_stats")
-    .select("*")
-    .eq("type", "venta");
+  // Fetch all active properties
+  const arriendoRows = await fetchAllRows(supabase, "arriendo");
+  const ventaRows = await fetchAllRows(supabase, "venta");
 
-  if (!arriendoRows?.length) return [];
-
-  // Normalize names
+  // Normalize comuna names
   arriendoRows.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });
-  ventaRows?.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });
+  ventaRows.forEach((r) => { r.comuna = normalizeComunaName(r.comuna); });
 
-  // Group by normalized comuna
-  const comunaSet = new Set<string>();
-  arriendoRows.forEach((r) => comunaSet.add(r.comuna));
-  ventaRows?.forEach((r) => comunaSet.add(r.comuna));
-  const comunaNames = Array.from(comunaSet);
+  // Group by comuna + dormitorios
+  type GroupKey = string; // "comuna|dorms"
+  const arrGroups = new Map<GroupKey, number[]>();
+  const venGroups = new Map<GroupKey, { precios: number[]; m2: number[] }>();
+
+  for (const r of arriendoRows) {
+    const key = `${r.comuna}|${r.dormitorios}`;
+    if (!arrGroups.has(key)) arrGroups.set(key, []);
+    arrGroups.get(key)!.push(r.precio);
+  }
+
+  for (const r of ventaRows) {
+    const key = `${r.comuna}|${r.dormitorios}`;
+    if (!venGroups.has(key)) venGroups.set(key, { precios: [], m2: [] });
+    const g = venGroups.get(key)!;
+    const precioCLP = r.moneda === "UF" ? r.precio * ufValue : r.precio;
+    g.precios.push(precioCLP);
+    if (r.superficie_m2 > 0) {
+      g.m2.push(precioCLP / r.superficie_m2 / ufValue); // UF/m²
+    }
+  }
+
+  // Calculate per-segment stats
+  const segments: SegmentResult[] = [];
+  const allKeys = new Set([...Array.from(arrGroups.keys()), ...Array.from(venGroups.keys())]);
+
+  for (const key of Array.from(allKeys)) {
+    const [comuna, dormsStr] = key.split("|");
+    const dorms = parseInt(dormsStr);
+    const arrPrecios = arrGroups.get(key) ?? [];
+    const venData = venGroups.get(key);
+    const venPrecios = venData?.precios ?? [];
+
+    if (arrPrecios.length < MIN_PER_TYPE || venPrecios.length < MIN_PER_TYPE) continue;
+
+    const medianaArriendo = median(arrPrecios);
+    const medianaVenta = median(venPrecios);
+    const medianaM2UF = venData?.m2.length ? median(venData.m2) : 0;
+
+    if (medianaVenta <= 0 || medianaM2UF <= 0) continue;
+
+    segments.push({
+      comuna,
+      dorms,
+      nArr: arrPrecios.length,
+      nVen: venPrecios.length,
+      medianaArriendo,
+      medianaVenta,
+      rentBruta: (medianaArriendo * 12 / medianaVenta) * 100,
+      medianaM2UF,
+    });
+  }
+
+  return segments;
+}
+
+function aggregateByComunas(segments: SegmentResult[]): ComunaStats[] {
+  // Group segments by comuna
+  const comunaMap = new Map<string, SegmentResult[]>();
+  for (const seg of segments) {
+    if (!comunaMap.has(seg.comuna)) comunaMap.set(seg.comuna, []);
+    comunaMap.get(seg.comuna)!.push(seg);
+  }
 
   const results: ComunaStats[] = [];
 
-  for (const comuna of comunaNames) {
-    const arrRows = arriendoRows.filter((r) => r.comuna === comuna);
-    const venRows = ventaRows?.filter((r) => r.comuna === comuna) ?? [];
+  for (const [comuna, segs] of Array.from(comunaMap.entries())) {
+    let totalWeight = 0;
+    let sumRent = 0;
+    let sumArriendo = 0;
+    let sumM2 = 0;
+    let totalProps = 0;
 
-    const arrTotal = arrRows.reduce((s, r) => s + (r.count || 0), 0);
-    const arrProm = arrTotal > 0
-      ? arrRows.reduce((s, r) => s + (r.precio_mediana || 0) * (r.count || 0), 0) / arrTotal
-      : 0;
+    for (const seg of segs) {
+      const weight = seg.nArr + seg.nVen;
+      totalWeight += weight;
+      sumRent += seg.rentBruta * weight;
+      sumArriendo += seg.medianaArriendo * weight;
+      sumM2 += seg.medianaM2UF * weight;
+      totalProps += weight;
+    }
 
-    const venTotal = venRows.reduce((s, r) => s + (r.count || 0), 0);
-    const venProm = venTotal > 0
-      ? venRows.reduce((s, r) => s + (r.precio_mediana || 0) * (r.count || 0), 0) / venTotal
-      : 0;
-    const m2Prom = venTotal > 0
-      ? venRows.reduce((s, r) => s + (r.precio_m2_mediana || 0) * (r.count || 0), 0) / venTotal
-      : 0;
-
-    const rentBruta = venProm > 0 ? (arrProm * 12 / venProm) * 100 : 0;
-    const total = arrTotal + venTotal;
-
-    // Require both arriendo and venta data, minimum 5 total, valid precio/m²
-    if (arrTotal === 0 || venTotal === 0 || total < 5) continue;
-    if (m2Prom === 0) continue;
+    if (totalWeight === 0 || totalProps < MIN_TOTAL) continue;
 
     results.push({
       nombre: comuna,
       slug: slugify(comuna),
-      totalPropiedades: total,
-      arriendoPromedio: Math.round(arrProm),
-      ventaPromedio: Math.round(venProm),
-      precioM2Promedio: Math.round((m2Prom / UF_CLP) * 10) / 10,
-      rentabilidadBruta: Math.round(rentBruta * 10) / 10,
+      totalPropiedades: totalProps,
+      arriendoRepresentativo: Math.round(sumArriendo / totalWeight),
+      rentabilidadBruta: Math.round((sumRent / totalWeight) * 10) / 10,
+      precioM2Promedio: Math.round((sumM2 / totalWeight) * 10) / 10,
+      nSegmentos: segs.length,
     });
   }
 
   results.sort((a, b) => b.rentabilidadBruta - a.rentabilidadBruta);
   return results;
+}
+
+// Cache segments in memory for the duration of a single build/request cycle
+let cachedSegments: SegmentResult[] | null = null;
+
+async function getSegments(): Promise<SegmentResult[]> {
+  if (!cachedSegments) {
+    cachedSegments = await computeAllSegments();
+  }
+  return cachedSegments;
+}
+
+export async function getAllComunasStats(): Promise<ComunaStats[]> {
+  const segments = await getSegments();
+  return aggregateByComunas(segments);
+}
+
+export async function getComunaStats(comunaSlug: string): Promise<ComunaStats | null> {
+  const all = await getAllComunasStats();
+  return all.find((c) => c.slug === comunaSlug) ?? null;
 }
 
 /** Format CLP with thousands separator */
@@ -176,4 +249,4 @@ export function fmtUF(n: number): string {
   return `UF ${n.toFixed(1).replace(".", ",")}`;
 }
 
-export { UF_CLP };
+export const UF_CLP = 38800;
