@@ -26,7 +26,7 @@ export default function FrancoLogo({
   const s = sizeConfig[size];
 
   const logo = (
-    <span className={`inline-flex flex-col items-stretch ${className}`}>
+    <span className={`inline-flex flex-col ${className}`} style={{ width: 'max-content' }}>
       <span className={`${s.text} leading-tight`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
@@ -49,7 +49,7 @@ export default function FrancoLogo({
       </span>
       {showTagline && (
         <span
-          className="font-mono uppercase"
+          className="font-mono uppercase block w-full"
           style={{
             fontSize: `${s.taglinePx}px`,
             marginTop: `${s.taglineMt}px`,
