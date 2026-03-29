@@ -106,7 +106,7 @@ export default async function ProximamentePage() {
       {/* Footer */}
       <footer className="border-t py-8 text-center" style={{ borderColor: "rgba(250,250,248,0.06)" }}>
         <div className="flex justify-center mb-4">
-          <FrancoLogo size="sm" inverted showTagline />
+          <FrancoLogo size="md" inverted showTagline />
         </div>
         <p className="font-body text-[11px]" style={{ color: "rgba(250,250,248,0.2)" }}>
           Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
