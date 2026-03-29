@@ -96,13 +96,14 @@ interface SegmentResult {
 async function computeAllSegments(): Promise<SegmentResult[]> {
   const supabase = getSupabase();
 
-  // Get UF value
+  // Get UF value — config stores CLP value, sanity check it's in expected range
   const { data: configData } = await supabase
     .from("config")
     .select("value")
     .eq("key", "uf_value")
     .single();
-  const ufValue = parseFloat(configData?.value || "38800");
+  const rawUF = parseFloat(configData?.value || "0");
+  const ufValue = rawUF > 30000 && rawUF < 50000 ? rawUF : 38800;
 
   // Fetch all active properties
   const arriendoRows = await fetchAllRows(supabase, "arriendo");
