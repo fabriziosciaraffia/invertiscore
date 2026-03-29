@@ -54,7 +54,7 @@ interface RawRow {
 
 async function fetchAllRows(supabase: ReturnType<typeof getSupabase>, type: "arriendo" | "venta"): Promise<RawRow[]> {
   const allRows: RawRow[] = [];
-  const pageSize = 10000;
+  const pageSize = 1000;
   let offset = 0;
   let hasMore = true;
 
