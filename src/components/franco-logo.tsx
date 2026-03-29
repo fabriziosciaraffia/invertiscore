@@ -9,11 +9,11 @@ interface FrancoLogoProps {
 }
 
 const sizeConfig = {
-  sm: { text: "text-[14px]", dot: "text-[11px]", tagline: "text-[7px]" },
-  header: { text: "text-[26px]", dot: "text-[18px]", tagline: "text-[8px]" },
-  md: { text: "text-[22px]", dot: "text-[17px]", tagline: "text-[9px]" },
-  lg: { text: "text-[36px]", dot: "text-[27px]", tagline: "text-[12px]" },
-  xl: { text: "text-[48px]", dot: "text-[36px]", tagline: "text-[14px]" },
+  sm: { text: "text-[14px]", dot: "text-[11px]", taglinePx: 7, taglineMt: 3 },
+  header: { text: "text-[26px]", dot: "text-[18px]", taglinePx: 8, taglineMt: 4 },
+  md: { text: "text-[22px]", dot: "text-[17px]", taglinePx: 9, taglineMt: 4 },
+  lg: { text: "text-[36px]", dot: "text-[27px]", taglinePx: 10, taglineMt: 6 },
+  xl: { text: "text-[48px]", dot: "text-[36px]", taglinePx: 12, taglineMt: 6 },
 };
 
 export default function FrancoLogo({
@@ -26,11 +26,11 @@ export default function FrancoLogo({
   const s = sizeConfig[size];
 
   const logo = (
-    <span className={`inline-flex flex-col ${className}`}>
+    <span className={`inline-flex flex-col items-stretch ${className}`}>
       <span className={`${s.text} leading-tight`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
-          style={{ color: inverted ? 'rgba(255,255,255,0.32)' : 'rgba(15,15,15,0.28)' }}
+          style={{ color: inverted ? 'rgba(255,255,255,0.32)' : 'rgba(15,15,15,0.28)', marginRight: '-0.08em' }}
         >
           re
         </span>
@@ -49,9 +49,18 @@ export default function FrancoLogo({
       </span>
       {showTagline && (
         <span
-          className={`font-mono uppercase tracking-widest text-franco-muted ${s.tagline} mt-1`}
+          className="font-mono uppercase"
+          style={{
+            fontSize: `${s.taglinePx}px`,
+            marginTop: `${s.taglineMt}px`,
+            letterSpacing: '0.15em',
+            color: inverted ? 'rgba(250,250,248,0.22)' : 'rgba(15,15,15,0.22)',
+            textAlign: 'justify',
+            textAlignLast: 'justify',
+            lineHeight: '1',
+          }}
         >
-          RE FRANCO CON TU INVERSIÓN
+          Real estate en su estado más franco
         </span>
       )}
     </span>

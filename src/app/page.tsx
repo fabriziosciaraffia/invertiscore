@@ -27,8 +27,13 @@ export default async function ProximamentePage() {
       <main className="mx-auto max-w-[700px] px-6">
         {/* Hero */}
         <section className="pb-16 pt-12 text-center sm:pt-20">
+          {/* Wordmark lockup */}
+          <div className="flex justify-center">
+            <FrancoLogo size="xl" inverted showTagline />
+          </div>
+
           {/* Badge */}
-          <span className="inline-block rounded-full border border-[#C8323C]/30 bg-[#C8323C]/[0.08] px-4 py-1.5 font-mono text-xs font-medium text-[#C8323C]">
+          <span className="mt-6 inline-block rounded-full border border-[#C8323C]/30 bg-[#C8323C]/[0.08] px-4 py-1.5 font-mono text-xs font-medium text-[#C8323C]">
             Próximamente
           </span>
 
@@ -100,6 +105,9 @@ export default async function ProximamentePage() {
 
       {/* Footer */}
       <footer className="border-t py-8 text-center" style={{ borderColor: "rgba(250,250,248,0.06)" }}>
+        <div className="flex justify-center mb-4">
+          <FrancoLogo size="sm" inverted showTagline />
+        </div>
         <p className="font-body text-[11px]" style={{ color: "rgba(250,250,248,0.2)" }}>
           Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
         </p>
