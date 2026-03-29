@@ -9,11 +9,11 @@ interface FrancoLogoProps {
 }
 
 const sizeConfig = {
-  sm: { text: "text-[14px]", dot: "text-[11px]", taglineMt: 3 },
-  header: { text: "text-[26px]", dot: "text-[18px]", taglineMt: 4 },
-  md: { text: "text-[22px]", dot: "text-[17px]", taglineMt: 4 },
-  lg: { text: "text-[36px]", dot: "text-[27px]", taglineMt: 6 },
-  xl: { text: "text-[48px]", dot: "text-[36px]", taglineMt: 6 },
+  sm: { text: "text-[14px]", dot: "text-[11px]", taglineMt: 2, taglineFontSize: '0.18em', taglineLetterSpacing: '0.12em' },
+  header: { text: "text-[26px]", dot: "text-[18px]", taglineMt: 4, taglineFontSize: '0.19em', taglineLetterSpacing: '0.18em' },
+  md: { text: "text-[22px]", dot: "text-[17px]", taglineMt: 4, taglineFontSize: '0.19em', taglineLetterSpacing: '0.16em' },
+  lg: { text: "text-[36px]", dot: "text-[27px]", taglineMt: 5, taglineFontSize: '0.19em', taglineLetterSpacing: '0.20em' },
+  xl: { text: "text-[56px]", dot: "text-[36px]", taglineMt: 6, taglineFontSize: '0.19em', taglineLetterSpacing: '0.22em' },
 };
 
 export default function FrancoLogo({
@@ -51,9 +51,9 @@ export default function FrancoLogo({
         <span
           className="font-mono uppercase block"
           style={{
-            fontSize: '0.19em',
+            fontSize: s.taglineFontSize,
             marginTop: `${s.taglineMt}px`,
-            letterSpacing: '0.22em',
+            letterSpacing: s.taglineLetterSpacing,
             color: inverted ? 'rgba(250,250,248,0.22)' : 'rgba(15,15,15,0.22)',
             textAlign: 'center',
             lineHeight: '1',
