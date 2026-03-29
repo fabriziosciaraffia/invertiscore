@@ -9,11 +9,11 @@ interface FrancoLogoProps {
 }
 
 const sizeConfig = {
-  sm: { text: "text-[14px]", dot: "text-[11px]", taglineEm: 0.45, taglineMt: 3 },
-  header: { text: "text-[26px]", dot: "text-[18px]", taglineEm: 0.45, taglineMt: 4 },
-  md: { text: "text-[22px]", dot: "text-[17px]", taglineEm: 0.45, taglineMt: 4 },
-  lg: { text: "text-[36px]", dot: "text-[27px]", taglineEm: 0.45, taglineMt: 6 },
-  xl: { text: "text-[48px]", dot: "text-[36px]", taglineEm: 0.45, taglineMt: 6 },
+  sm: { text: "text-[14px]", dot: "text-[11px]", taglineMt: 3 },
+  header: { text: "text-[26px]", dot: "text-[18px]", taglineMt: 4 },
+  md: { text: "text-[22px]", dot: "text-[17px]", taglineMt: 4 },
+  lg: { text: "text-[36px]", dot: "text-[27px]", taglineMt: 6 },
+  xl: { text: "text-[48px]", dot: "text-[36px]", taglineMt: 6 },
 };
 
 export default function FrancoLogo({
@@ -51,16 +51,13 @@ export default function FrancoLogo({
         <span
           className="font-mono uppercase block"
           style={{
-            fontSize: `${s.taglineEm}em`,
+            fontSize: '0.19em',
             marginTop: `${s.taglineMt}px`,
-            letterSpacing: '0.05em',
-            wordSpacing: '-0.05em',
+            letterSpacing: '0.22em',
             color: inverted ? 'rgba(250,250,248,0.22)' : 'rgba(15,15,15,0.22)',
-            textAlign: 'justify',
-            textAlignLast: 'justify',
+            textAlign: 'center',
             lineHeight: '1',
             width: '100%',
-            overflow: 'hidden',
           }}
         >
           Real estate en su estado más franco
