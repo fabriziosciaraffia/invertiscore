@@ -13,7 +13,7 @@ const sizeConfig = {
   header: { text: "text-[26px]", dot: "text-[18px]", taglineMt: 4, taglineFontSize: '0.19em', taglineLetterSpacing: '0.18em' },
   md: { text: "text-[28px]", dot: "text-[17px]", taglineMt: 4, taglineFontSize: '10px', taglineLetterSpacing: '0.08em' },
   lg: { text: "text-[36px]", dot: "text-[27px]", taglineMt: 5, taglineFontSize: '0.19em', taglineLetterSpacing: '0.20em' },
-  xl: { text: "text-[56px]", dot: "text-[36px]", taglineMt: 6, taglineFontSize: '0.19em', taglineLetterSpacing: '0.22em' },
+  xl: { text: "text-[56px]", dot: "text-[36px]", taglineMt: 6, taglineFontSize: '13px', taglineLetterSpacing: '0.18em' },
 };
 
 export default function FrancoLogo({
