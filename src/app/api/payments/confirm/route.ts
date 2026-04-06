@@ -23,7 +23,8 @@ export async function POST(request: Request) {
 
     // Get payment status from Flow (GET endpoint)
     const flowData = await flowGet("payment/getStatus", { token });
-    console.log("Flow getStatus response:", JSON.stringify({ status: flowData.status, commerceOrder: flowData.commerceOrder }));
+    // Flow status logged without sensitive data
+
 
     const supabase = createAdminClient();
 

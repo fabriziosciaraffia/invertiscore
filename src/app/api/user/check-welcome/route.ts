@@ -55,7 +55,7 @@ export async function POST() {
 
       const name = user.user_metadata?.full_name || user.user_metadata?.name || "";
       await sendWelcomeEmail(user.email, name);
-      console.log("Welcome email sent to:", user.email);
+      // Welcome email sent
 
       return NextResponse.json({ sent: true, isNew: true });
     }

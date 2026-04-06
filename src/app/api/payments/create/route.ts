@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     });
 
     if (!flowResponse.url || !flowResponse.token) {
-      console.error("Flow create error — full response:", JSON.stringify(flowResponse));
+      console.error("Flow create error — invalid response");
       return NextResponse.json({
         error: "Error al crear orden de pago",
         details: flowResponse?.message || JSON.stringify(flowResponse),
@@ -104,11 +104,10 @@ export async function POST(request: Request) {
     const redirectUrl = `${flowResponse.url}?token=${flowResponse.token}`;
     return NextResponse.json({ url: redirectUrl });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("Payment create error:", message, err);
+    console.error("Payment create error:", err instanceof Error ? err.message : "Unknown error");
     return NextResponse.json({
       error: "Error al procesar pago",
-      details: message,
+      details: err instanceof Error ? err.message : "Unknown error",
     }, { status: 500 });
   }
 }

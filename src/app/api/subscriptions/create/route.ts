@@ -20,7 +20,7 @@ export async function POST() {
 
   try {
     // Check if user already has a Flow customer
-    console.log("[subscriptions/create] Checking user_credits for user:", user.id);
+    // Check if user already has a Flow customer
     const { data: credits, error: creditsError } = await admin
       .from("user_credits")
       .select("flow_customer_id, subscription_status")
@@ -39,18 +39,18 @@ export async function POST() {
 
     // Create Flow customer if needed
     if (!customerId) {
-      console.log("[subscriptions/create] Creating Flow customer for:", user.email);
+      // Create Flow customer
       const customerData = await flowPost("customer/create", {
         name: user.user_metadata?.nombre || user.email!.split("@")[0],
         email: user.email!,
         externalId: user.id,
       });
-      console.log("[subscriptions/create] Flow customer response:", JSON.stringify(customerData));
+      // Customer created
 
       customerId = customerData.customerId;
 
       if (!customerId) {
-        console.error("[subscriptions/create] No customerId in Flow response:", customerData);
+        console.error("[subscriptions/create] No customerId in Flow response");
         return NextResponse.json({
           error: "Error al crear cliente en Flow",
           details: "Flow no retornó customerId",
@@ -72,15 +72,15 @@ export async function POST() {
     }
 
     // Send customer to register their card
-    console.log("[subscriptions/create] Registering card for customerId:", customerId);
+    // Register card
     const registerData = await flowPost("customer/register", {
       customerId,
       url_return: `${SITE_URL}/api/subscriptions/register-callback`,
     });
-    console.log("[subscriptions/create] Flow register response:", JSON.stringify(registerData));
+    // Register response received
 
     if (!registerData.url || !registerData.token) {
-      console.error("[subscriptions/create] Missing url/token in register response:", registerData);
+      console.error("[subscriptions/create] Missing url/token in register response");
       return NextResponse.json({
         error: "Error al registrar tarjeta",
         details: registerData?.message || "Flow no retornó URL de registro",
