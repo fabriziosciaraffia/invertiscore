@@ -58,7 +58,7 @@ export async function POST(request: Request) {
     }
 
     // Allow admin or owner
-    const isAdmin = user.email === "fabriziosciaraffia@gmail.com";
+    const isAdmin = user.email === process.env.ADMIN_EMAIL;
     if (existing.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }

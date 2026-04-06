@@ -72,7 +72,7 @@ export default async function AnalisisDetallePage({
 
   // Access level: "guest" | "free" | "premium"
   const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
-  const isAdmin = user?.email === "fabriziosciaraffia@gmail.com";
+  const isAdmin = user?.email === process.env.ADMIN_EMAIL;
   const isLoggedIn = !!user;
   const isDemo = analisis.id === DEMO_ANALYSIS_ID;
   const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;

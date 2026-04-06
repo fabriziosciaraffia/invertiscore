@@ -22,7 +22,8 @@ export default async function CompararPage({
   const { data } = await supabase
     .from("analisis")
     .select("*")
-    .in("id", ids);
+    .in("id", ids)
+    .eq("user_id", user.id);
 
   const analisis = (data || []) as Analisis[];
   if (analisis.length < 2) redirect("/dashboard");

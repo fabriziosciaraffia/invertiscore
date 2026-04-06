@@ -33,6 +33,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
   }
 
+  // Ownership check: if payment is for an analysis, verify the user owns it
+  if (analysisId) {
+    const admin = createAdminClient();
+    const { data: analysis } = await admin
+      .from("analisis")
+      .select("user_id")
+      .eq("id", analysisId)
+      .single();
+
+    if (analysis && analysis.user_id && analysis.user_id !== user.id) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
+  }
+
   const { amount, subject } = PRODUCTS[product];
   const commerceOrder = `franco-${randomUUID()}`;
 

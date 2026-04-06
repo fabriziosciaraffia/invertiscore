@@ -98,7 +98,12 @@ export async function POST(request: Request) {
     }
 
     // Allow admin email full access
-    const isAdmin = user.email === "fabriziosciaraffia@gmail.com";
+    const isAdmin = user.email === process.env.ADMIN_EMAIL;
+
+    // Ownership check: only owner or admin can generate AI analysis
+    if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
+      return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
+    }
 
     // If not premium, try to consume a credit
     if (!analysis.is_premium && !isAdmin) {
