@@ -46,6 +46,7 @@ export default function RegisterPage() {
       return;
     }
 
+    try { const ph = (await import('posthog-js')).default; ph.capture('signup_completed', { method: 'email' }); } catch {}
     router.push("/dashboard");
     router.refresh();
   };

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis, setUFValue } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
+import { sendAnalysisReadyEmail } from "@/lib/email";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -89,6 +90,18 @@ export async function POST(request: Request) {
         { error: "Error al guardar el análisis" },
         { status: 500 }
       );
+    }
+
+    // Send analysis ready email (non-blocking, only for logged-in users)
+    if (user?.email && data?.id) {
+      sendAnalysisReadyEmail(
+        user.email,
+        user.user_metadata?.nombre || user.user_metadata?.full_name || '',
+        body.nombre || `${body.comuna} - ${body.superficie}m²`,
+        result.score,
+        result.veredicto || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
+        data.id
+      ).catch(e => console.error("Analysis email error:", e));
     }
 
     return NextResponse.json(data);

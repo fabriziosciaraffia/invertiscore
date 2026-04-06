@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Source_Serif_4, IBM_Plex_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { PHProvider } from "./providers";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin", "latin-ext"],
@@ -31,27 +32,43 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Franco — ¿Ese depto es buena inversión?",
+  title: {
+    default: "Franco — ¿Ese depto es buena inversión? Análisis con datos reales",
+    template: "%s | Franco",
+  },
   description:
-    "Tu corredor gana si compras. Franco te muestra los números reales. Análisis de inversión inmobiliaria con IA. Gratis, en 30 segundos.",
+    "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja, comparación con la zona y análisis con IA. Datos reales de 20.000+ propiedades.",
+  keywords: [
+    "inversión inmobiliaria",
+    "departamentos Santiago",
+    "análisis inversión",
+    "rentabilidad arriendo",
+    "Franco Score",
+    "invertir en departamentos Chile",
+  ],
   openGraph: {
     title: "Franco — Re franco con tu inversión",
     description:
-      "Tu corredor gana si compras. Franco gana si decides bien. Análisis objetivo de departamentos para inversión en Chile.",
+      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con IA. Gratis, en 30 segundos.",
     type: "website",
     url: "https://refranco.ai",
     siteName: "Franco",
     locale: "es_CL",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Franco — Análisis de inversión inmobiliaria" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Franco — ¿Ese depto es buena inversión?",
     description:
-      "Tu corredor gana si compras. Franco te muestra los números reales. Análisis de inversión inmobiliaria con IA.",
+      "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad y análisis con IA. Gratis.",
+    images: ["/og-image.png"],
   },
   robots: {
     index: true,
     follow: true,
+  },
+  alternates: {
+    canonical: "https://refranco.ai",
   },
 };
 
@@ -63,7 +80,28 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
-        {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebApplication",
+              name: "Franco",
+              url: "https://refranco.ai",
+              applicationCategory: "FinanceApplication",
+              operatingSystem: "Web",
+              description: "Analiza departamentos como inversión en Santiago con datos reales. Franco Score, rentabilidad, flujo de caja y análisis con IA.",
+              offers: {
+                "@type": "Offer",
+                price: "0",
+                priceCurrency: "CLP",
+              },
+            }),
+          }}
+        />
+        <PHProvider>
+          {children}
+        </PHProvider>
       </body>
     </html>
   );

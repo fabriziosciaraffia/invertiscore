@@ -26,6 +26,7 @@ function PaymentReturnContent() {
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
           if (data.payment.status === "paid") {
+            try { const ph = (await import('posthog-js')).default; ph.capture('payment_completed', { product: data.payment.product, amount: data.payment.amount }); } catch {}
             setPaymentStatus("paid");
           } else if (data.payment.status === "rejected" || data.payment.status === "cancelled") {
             setPaymentStatus("error");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Trash2, ArrowRight } from "lucide-react";
@@ -107,6 +107,11 @@ function ScoreCircle({ score }: { score: number }) {
 export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<VerdictFilter>("todos");
+
+  // Check welcome email for new users (fire and forget)
+  useEffect(() => {
+    fetch("/api/user/check-welcome", { method: "POST" }).catch(() => {});
+  }, []);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
 

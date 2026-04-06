@@ -125,6 +125,13 @@ async function incrementCredits(supabase: ReturnType<typeof createClient>, curre
 
 export async function POST(req: NextRequest) {
   try {
+    // Auth check
+    const supabaseAuth = createClient();
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+    }
+
     const body = await req.json();
     const rawUrl = body.url as string;
 

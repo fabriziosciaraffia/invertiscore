@@ -28,6 +28,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# PowerShell scripts (contienen secrets locales)
+*.ps1
+
 # vercel
 .vercel
 

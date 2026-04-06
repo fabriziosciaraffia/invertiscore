@@ -20,9 +20,11 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.577.0",
     "next": "14.2.35",
+    "posthog-js": "^1.364.7",
     "react": "^18",
     "react-dom": "^18",
     "recharts": "^3.7.0",
+    "resend": "^6.10.0",
     "tailwind-merge": "^3.5.0",
     "tailwindcss-animate": "^1.0.7",
     "undici": "^7.22.0"

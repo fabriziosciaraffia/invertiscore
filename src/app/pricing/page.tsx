@@ -73,6 +73,7 @@ function Feature({ children, bold }: { children: React.ReactNode; bold?: boolean
 export default function PricingPage() {
   const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
+    try { import('posthog-js').then(m => m.default.capture('pricing_viewed')); } catch {}
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);

@@ -1066,6 +1066,7 @@ export default function NuevoAnalisisPage() {
       if (!isLoggedIn) {
         localStorage.setItem(GUEST_LS_KEY, JSON.stringify({ id: data.id, timestamp: Date.now() }));
       }
+      try { const ph = (await import('posthog-js')).default; ph.capture('analysis_created', { comuna: form.comuna, tipo: form.tipoPropiedad, dormitorios: form.dormitorios, precio_uf: form.precio }); } catch {}
       router.push(`/analisis/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado");

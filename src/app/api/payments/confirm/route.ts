@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowGet } from "@/lib/flow";
+import { sendPaymentConfirmationEmail } from "@/lib/email";
 
 function createAdminClient() {
   return createClient(
@@ -118,6 +119,25 @@ export async function POST(request: Request) {
           if (creditError) {
             console.error("Credit insert error:", creditError);
           }
+        }
+      }
+
+      // Send payment confirmation email
+      if (userId) {
+        try {
+          const { data: userData } = await supabase.auth.admin.getUserById(userId);
+          if (userData?.user?.email) {
+            const amount = flowData.amount || 0;
+            await sendPaymentConfirmationEmail(
+              userData.user.email,
+              userData.user.user_metadata?.nombre || userData.user.user_metadata?.full_name || '',
+              product,
+              amount,
+              analysisId || undefined
+            );
+          }
+        } catch (e) {
+          console.error("Payment email error:", e);
         }
       }
     }

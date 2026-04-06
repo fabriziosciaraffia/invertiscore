@@ -321,6 +321,7 @@ function AIAnalysisSection({
   aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
   projectionsContent, aiAnalysisInitiallyLoaded = false, isSharedView = false,
   projectionsExpanded = false, onExpandProjections, projectionsCTALabel, projectionsCTAValue,
+  viewLevel = 'sinfiltro' as 'simple' | 'importante' | 'sinfiltro',
 }: {
   aiAnalysis: AIAnalysis | null;
   aiLoading: boolean;
@@ -338,6 +339,7 @@ function AIAnalysisSection({
   onExpandProjections?: () => void;
   projectionsCTALabel?: string;
   projectionsCTAValue?: string;
+  viewLevel?: 'simple' | 'importante' | 'sinfiltro';
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
@@ -391,6 +393,23 @@ function AIAnalysisSection({
     }
   }, [phaseIndex, isFirstReveal]);
 
+  // Get simplified text version based on viewLevel (backwards compatible)
+  const getSimplifiedText = (): string | null => {
+    if (!aiAnalysis) return null;
+    const ai = aiAnalysis as unknown as Record<string, unknown>;
+    if (viewLevel === 'simple') {
+      const txt = ct(ai, 'textoSimple');
+      return txt || null;
+    }
+    if (viewLevel === 'importante') {
+      const txt = ct(ai, 'textoImportante');
+      return txt || null;
+    }
+    return null;
+  };
+  const simplifiedText = getSimplifiedText();
+  const useSimplifiedView = (viewLevel === 'simple' || viewLevel === 'importante') && !!simplifiedText;
+
   // If already animated, show everything
   const content = aiAnalysis ? (
     <div className="space-y-5">
@@ -407,8 +426,84 @@ function AIAnalysisSection({
         </div>
       )}
 
+      {/* Simplified text view (simple/importante with versioned text) */}
+      {useSimplifiedView && phaseIndex >= 1 && (() => {
+        // Check if texto has structured markers (RESUMEN:/A FAVOR:/EN CONTRA:/RECOMENDACIÓN:)
+        const hasStructure = /^RESUMEN:/m.test(simplifiedText) && /^A FAVOR:/m.test(simplifiedText);
+        if (hasStructure) {
+          // Parse structured sections
+          const getSection = (marker: string, nextMarkers: string[]): string => {
+            const regex = new RegExp(`^${marker}:?\\s*\\n([\\s\\S]*?)(?=^(?:${nextMarkers.join('|')}):?\\s*$|$)`, 'm');
+            const match = simplifiedText.match(regex);
+            return match ? match[1].trim() : '';
+          };
+          const resumen = getSection('RESUMEN', ['A FAVOR', 'EN CONTRA', 'RECOMENDACIÓN']);
+          const aFavor = getSection('A FAVOR', ['EN CONTRA', 'RECOMENDACIÓN']);
+          const enContra = getSection('EN CONTRA', ['RECOMENDACIÓN']);
+          const recomendacion = getSection('RECOMENDACIÓN', []);
+          const parseBullets = (text: string) => text.split('\n').map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+
+          return (
+            <div className="space-y-4">
+              {/* Resumen */}
+              {resumen && (
+                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#FBBF24]/30 bg-[#FBBF24]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+                  <p className="text-sm font-medium leading-relaxed text-[#FAFAF8] font-body">{resumen}</p>
+                </div>
+              )}
+              {/* A favor / En contra — side by side */}
+              {(aFavor || enContra) && (
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {aFavor && (
+                    <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
+                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#B0BEC5]">
+                        <CheckCircle2 className="h-4 w-4" /> A favor
+                      </h4>
+                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-[#FAFAF8]/60 font-body">
+                        {parseBullets(aFavor).map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {enContra && (
+                    <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
+                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#FBBF24]">
+                        <AlertTriangle className="h-4 w-4" /> Atención
+                      </h4>
+                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-[#FAFAF8]/60 font-body">
+                        {parseBullets(enContra).map((p, i) => <li key={i}>{p}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Recomendación */}
+              {recomendacion && (
+                <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Handshake className="h-4 w-4 text-[#FAFAF8]" />
+                    <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">Recomendación</h4>
+                  </div>
+                  <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75] font-body">{recomendacion}</p>
+                </div>
+              )}
+            </div>
+          );
+        }
+        // Fallback: plain paragraphs (for simple view or old analyses without structure)
+        return (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-5 shadow-sm">
+            {simplifiedText.split('\n\n').map((paragraph, i) => (
+              <p key={i} className="text-sm leading-relaxed text-[#FAFAF8]/[0.75] font-body mb-3 last:mb-0">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* Structured sections — only when NOT using simplified view */}
       {/* 1. Resumen Ejecutivo */}
-      {phaseIndex >= 1 && (
+      {!useSimplifiedView && phaseIndex >= 1 && (
         <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#FBBF24]/30 bg-[#FBBF24]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
           <p className="text-sm font-medium leading-relaxed text-[#FAFAF8]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
@@ -419,7 +514,7 @@ function AIAnalysisSection({
       )}
 
       {/* 2. Tu Bolsillo */}
-      <FadeIn show={phaseIndex >= 2}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 2}>
         <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Wallet className="h-4 w-4 text-[#FAFAF8]" />
@@ -439,10 +534,10 @@ function AIAnalysisSection({
             </div>
           )}
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 3. Vs Alternativas */}
-      <FadeIn show={phaseIndex >= 3}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 3}>
         <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Scale className="h-4 w-4 text-[#FAFAF8]" />
@@ -454,10 +549,10 @@ function AIAnalysisSection({
             ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 4. Negociación */}
-      <FadeIn show={phaseIndex >= 4}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 4}>
         <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Handshake className="h-4 w-4 text-[#FAFAF8]" />
@@ -475,10 +570,10 @@ function AIAnalysisSection({
             </div>
           )}
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 5. Proyección */}
-      <FadeIn show={phaseIndex >= 5}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 5}>
         <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-[#FAFAF8]" />
@@ -490,11 +585,11 @@ function AIAnalysisSection({
             ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
           </p>
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 6. Riesgos */}
       <div id="ai-anchor-riesgos" />
-      <FadeIn show={phaseIndex >= 6}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 6}>
         <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
             <Shield className="h-4 w-4 text-[#FAFAF8]" />
@@ -511,11 +606,11 @@ function AIAnalysisSection({
           </ul>
           {phaseIndex === 6 && <DelayedCallback delay={ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").length * 150 + 500} onComplete={() => setPhaseIndex(7)} />}
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 7. Veredicto — inline during typewriter */}
       <div id="ai-anchor-veredicto" />
-      <FadeIn show={phaseIndex >= 7}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 7}>
         <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-4">
           <p className="text-sm leading-relaxed text-[#FAFAF8]">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
@@ -523,11 +618,11 @@ function AIAnalysisSection({
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
           </p>
         </div>
-      </FadeIn>
+      </FadeIn>}
 
       {/* 8. A Favor / Puntos de Atención */}
       <div id="ai-anchor-afavor" />
-      <FadeIn show={phaseIndex >= 8}>
+      {!useSimplifiedView && <FadeIn show={phaseIndex >= 8}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#B0BEC5]">
@@ -555,7 +650,12 @@ function AIAnalysisSection({
           </div>
         </div>
         {phaseIndex === 8 && <DelayedCallback delay={(aiAnalysis.aFavor.length + aiAnalysis.puntosAtencion.length) * 100 + 500} onComplete={() => setPhaseIndex(9)} />}
-      </FadeIn>
+      </FadeIn>}
+
+      {/* For simplified view, auto-advance to done when phase 1+ */}
+      {useSimplifiedView && phaseIndex >= 1 && phaseIndex < 9 && (
+        <DelayedCallback delay={500} onComplete={() => setPhaseIndex(9)} />
+      )}
 
       {showAll && (
         <p className="text-center text-[10px] text-[#FAFAF8]/30">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
@@ -1146,6 +1246,8 @@ export function PremiumResults({
   const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
   const [projectionsExpanded, setProjectionsExpanded] = useState(false);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
+  const [viewLevel, setViewLevel] = useState<'simple' | 'importante' | 'sinfiltro'>('importante');
+  const showSection = (levels: string[]) => levels.includes(viewLevel);
 
   useEffect(() => {
     const mq = window.matchMedia("(hover: none)");
@@ -1153,6 +1255,12 @@ export function PremiumResults({
     const handler = (e: MediaQueryListEvent) => setIsTouchDevice(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  // PostHog: track analysis view
+  useEffect(() => {
+    try { import('posthog-js').then(m => m.default.capture('analysis_viewed', { score, veredicto: results?.veredicto, view_level: viewLevel, access_level: accessLevel })); } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRecalculate = useCallback(async () => {
@@ -2136,6 +2244,53 @@ export function PremiumResults({
       </div>
       {/* end Block 1 */}
 
+      {/* ═══════ VIEW LEVEL TOGGLE ═══════ */}
+      {currentAccess !== "guest" && (
+        <div className="sticky top-[60px] z-50 bg-[#0F0F0F]/95 backdrop-blur-sm py-3 mb-4">
+          <p className="text-center text-xs sm:text-sm text-[#71717A] mb-2 sm:mb-3 font-body">
+            Elige cómo quieres ver el análisis. Mismos datos, diferente profundidad.
+          </p>
+          <div className="flex gap-1 bg-[#1A1A1A] rounded-xl p-1 sm:p-1.5 border border-[#2A2A2A]">
+            <button
+              type="button"
+              onClick={() => { setViewLevel('simple'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'simple' })); } catch {} }}
+              className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                viewLevel === 'simple'
+                  ? 'bg-[#C8323C] text-white'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+              }`}
+            >
+              En Simple
+              <span className="hidden sm:block text-[10px] font-normal opacity-70 mt-0.5">La versión rápida</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewLevel('importante'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'importante' })); } catch {} }}
+              className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                viewLevel === 'importante'
+                  ? 'bg-[#C8323C] text-white'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+              }`}
+            >
+              Lo Importante
+              <span className="hidden sm:block text-[10px] font-normal opacity-70 mt-0.5">Los números clave</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewLevel('sinfiltro'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'sinfiltro' })); } catch {} }}
+              className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                viewLevel === 'sinfiltro'
+                  ? 'bg-[#C8323C] text-white'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+              }`}
+            >
+              Sin Filtro
+              <span className="hidden sm:block text-[10px] font-normal opacity-70 mt-0.5">Todo el detalle</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ═══════ BLOCK 2 — DETAIL (REGISTERED FREE) ═══════ */}
       {results && m && (
         <>
@@ -2252,7 +2407,8 @@ export function PremiumResults({
           ) : (
             /* ─── LOGGED IN LAYOUT: original order ─── */
             <>
-              {/* Section 1: Flujo desglose */}
+              {/* Section 1: Flujo desglose — grid (importante/sinfiltro) */}
+              {showSection(['importante', 'sinfiltro']) && (
               <CollapsibleSection
                 title={flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
                 subtitle="Desglose real: arriendo vs todos los costos"
@@ -2282,21 +2438,58 @@ export function PremiumResults({
                   </div>
                 )}
               </CollapsibleSection>
+              )}
+
+              {/* Section 1 Simple: Bolsillo — un solo número grande (simple) */}
+              {showSection(['simple']) && flujoBreakdown && (
+                <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
+                  <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-4">
+                    {flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
+                  </h3>
+                  <div className="text-center">
+                    <div className={`font-mono text-4xl font-bold ${flujoUnificado >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                      {flujoUnificado >= 0 ? "+" : ""}{fmtCLP(flujoUnificado)}
+                    </div>
+                    <div className="text-[#71717A] text-sm mt-1 font-body">Flujo mensual neto</div>
+                    <div className={`mt-4 text-left p-3 rounded-r-lg text-sm text-[#FAFAF8]/60 leading-relaxed font-body ${
+                      flujoUnificado >= 0
+                        ? "bg-[#B0BEC5]/5 border-l-[3px] border-[#B0BEC5]"
+                        : "bg-[#C8323C]/5 border-l-[3px] border-[#C8323C]"
+                    }`}>
+                      {flujoUnificado >= 0 ? (
+                        <>
+                          El arriendo ({fmtCLP(flujoBreakdown.arriendo)}) cubre el dividendo ({fmtCLP(flujoBreakdown.dividendo)})
+                          y todos los gastos operacionales. Te quedan{" "}
+                          <strong className="text-[#FAFAF8]">{fmtCLP(flujoUnificado)} de ganancia cada mes</strong>.
+                        </>
+                      ) : (
+                        <>
+                          El arriendo ({fmtCLP(flujoBreakdown.arriendo)}) no alcanza a cubrir el dividendo ({fmtCLP(flujoBreakdown.dividendo)})
+                          más los gastos operacionales ({fmtCLP(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}). Tendrías que poner{" "}
+                          <strong className="text-[#FAFAF8]">{fmtCLP(Math.abs(flujoUnificado))} de tu bolsillo cada mes</strong>.
+                          {" "}Esto es normal en el mercado actual — el negocio está en la plusvalía y amortización a largo plazo.
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Section 2: Rentabilidad */}
+              {showSection(['importante', 'sinfiltro']) && (
               <CollapsibleSection
                 title="¿Qué tan buena es la rentabilidad?"
                 subtitle="Tu corredor solo te muestra la primera"
               >
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-[2px]">
                   {[
-                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto." },
-                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento." },
-                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto." },
-                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra." },
-                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización." },
-                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años." },
-                  ].map((metric, i) => (
+                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto.", levels: ['importante', 'sinfiltro'] },
+                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
+                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
+                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra.", levels: ['importante', 'sinfiltro'] },
+                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización.", levels: ['sinfiltro'] },
+                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años.", levels: ['importante', 'sinfiltro'] },
+                  ].filter(metric => metric.levels.includes(viewLevel)).map((metric, i) => (
                     <div
                       key={metric.label}
                       className="bg-[#1A1A1A] px-4 py-3.5 flex flex-col gap-1"
@@ -2334,9 +2527,10 @@ export function PremiumResults({
                   }
                 </div>
               </CollapsibleSection>
+              )}
 
-              {/* Section 2b: Plusvalía inmediata + Precios de equilibrio */}
-              {m && ((m.plusvaliaInmediataFranco ?? 0) !== 0 || (m.plusvaliaInmediataUsuario ?? 0) !== 0 || (m.precioFlujoNeutroUF ?? 0) > 0) && (
+              {/* Section 2b: Plusvalía inmediata + Precios de equilibrio — sinfiltro only */}
+              {showSection(['sinfiltro']) && m && ((m.plusvaliaInmediataFranco ?? 0) !== 0 || (m.plusvaliaInmediataUsuario ?? 0) !== 0 || (m.precioFlujoNeutroUF ?? 0) > 0) && (
                 <CollapsibleSection
                   title="¿A qué precio conviene?"
                   subtitle="Plusvalía inmediata y precios de equilibrio"
@@ -2418,15 +2612,58 @@ export function PremiumResults({
                 </CollapsibleSection>
               )}
 
-              {/* Section 3: Zone comparison */}
+              {/* Section 3: Zone comparison — cards (importante/sinfiltro) */}
+              {showSection(['importante', 'sinfiltro']) && (
               <CollapsibleSection
                 title="¿Cómo se compara con la zona?"
                 subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
               >
                 <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} inputData={inputData} />
               </CollapsibleSection>
+              )}
 
-              {/* Section 4: Risks */}
+              {/* Section 3 Simple: Zona en prosa (simple) */}
+              {showSection(['simple']) && (() => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const zonaRadio = (inputData as any)?.zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number } | undefined;
+                const hasRadio = zonaRadio && (zonaRadio.precioM2VentaCLP || zonaRadio.arriendoPromedio);
+                let avgArriendoZona = 0;
+                let avgM2Zona = 0;
+                if (hasRadio) {
+                  avgArriendoZona = zonaRadio.arriendoPromedio || 0;
+                  avgM2Zona = zonaRadio.precioM2VentaCLP ? Math.round(zonaRadio.precioM2VentaCLP / UF_CLP * 10) / 10 : 0;
+                } else if (zoneData && zoneData.length > 0) {
+                  avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
+                  avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
+                }
+                if (!avgArriendoZona && !avgM2Zona) return null;
+                const tuyoPrecioM2CLP = m.precioM2 * UF_CLP;
+                const zonaPrecioM2CLP = avgM2Zona * UF_CLP;
+                const deltaPrecio = zonaPrecioM2CLP > 0 ? Math.round(((tuyoPrecioM2CLP - zonaPrecioM2CLP) / zonaPrecioM2CLP) * 100) : 0;
+                const deltaArriendo = avgArriendoZona > 0 ? Math.round(((m.ingresoMensual - avgArriendoZona) / avgArriendoZona) * 100) : 0;
+                return (
+                  <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
+                    <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-3">¿Cómo se compara con la zona?</h3>
+                    <p className="text-[#FAFAF8]/60 text-sm leading-relaxed font-body">
+                      Este depto está{" "}
+                      <span className={`font-mono font-semibold ${deltaPrecio <= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                        {Math.abs(deltaPrecio)}% {deltaPrecio <= 0 ? "más barato" : "más caro"}
+                      </span>{" "}
+                      que el promedio de {comuna} para departamentos similares. El arriendo esperado está{" "}
+                      <span className={`font-mono font-semibold ${deltaArriendo >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                        {Math.abs(deltaArriendo)}% {deltaArriendo >= 0 ? "sobre" : "bajo"} el promedio
+                      </span>{" "}
+                      de la zona{deltaArriendo >= 0
+                        ? ", lo que significa que genera más renta que sus vecinos comparables."
+                        : ", lo que podría afectar la rentabilidad esperada."
+                      }
+                    </p>
+                  </div>
+                );
+              })()}
+
+              {/* Section 4: Risks — sinfiltro only */}
+              {showSection(['sinfiltro']) && (
               <CollapsibleSection
                 title="¿Cuáles son los riesgos?"
                 subtitle="Qué puede salir mal y cuánto te afecta"
@@ -2511,8 +2748,10 @@ export function PremiumResults({
                   })()}
                 </div>
               </CollapsibleSection>
+              )}
 
-              {/* Section 5: Sensitivity */}
+              {/* Section 5: Sensitivity — importante/sinfiltro */}
+              {showSection(['importante', 'sinfiltro']) && (
               <CollapsibleSection
                 title="¿Qué pasa si cambian las condiciones?"
                 subtitle="3 escenarios: pesimista, base y optimista"
@@ -2560,11 +2799,34 @@ export function PremiumResults({
                   </>
                 )}
               </CollapsibleSection>
+              )}
+
+              {/* Section Simple: Resumen 10 años (simple only) */}
+              {showSection(['simple']) && fixedExit10 && m && (
+                <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
+                  <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-4">¿Qué pasa en 10 años?</h3>
+                  <div className="text-center">
+                    <div className={`font-mono text-4xl font-bold ${fixedExit10.multiplicadorCapital >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                      {fixedExit10.multiplicadorCapital}x
+                    </div>
+                    <div className="text-[#71717A] text-sm mt-1 font-body">Retorno sobre tu inversión inicial</div>
+                    <div className="font-mono text-xs text-[#FAFAF8]/30 mt-2">
+                      Pusiste {fmtCLP(m.pieCLP)} → Tu patrimonio neto: {dynamicProjections.length >= 10 ? fmtCLP(dynamicProjections[9].patrimonioNeto) : "—"}
+                    </div>
+                    <p className="text-[#71717A] text-xs mt-4 font-body leading-relaxed">
+                      {flujoUnificado < 0
+                        ? `Aunque pierdes ${fmtCLP(Math.abs(flujoUnificado))}/mes, en 10 años la plusvalía y amortización del crédito multiplican tu capital inicial.`
+                        : `Con flujo positivo de ${fmtCLP(flujoUnificado)}/mes, en 10 años la plusvalía y amortización potencian aún más tu inversión.`
+                      }
+                    </p>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
-          {/* Paywall CTA between Block 2 and Block 3 */}
-          {currentAccess === "free" && analysisId && (
+          {/* Paywall CTA between Block 2 and Block 3 — hide in simple */}
+          {showSection(['importante', 'sinfiltro']) && currentAccess === "free" && analysisId && (
             <div className="text-center py-8 mt-4 border-t border-white/[0.08] mb-5">
               <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">¿Quieres el análisis completo?</h3>
               <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
@@ -2585,12 +2847,14 @@ export function PremiumResults({
             analysisId={analysisId}
             aiAnalysisInitiallyLoaded={!!(aiAnalysisInitial && typeof aiAnalysisInitial === "object" && "veredicto" in aiAnalysisInitial)}
             isSharedView={isSharedView}
-            projectionsExpanded={projectionsExpanded}
-            onExpandProjections={() => setProjectionsExpanded(true)}
+            projectionsExpanded={viewLevel !== 'simple' && projectionsExpanded}
+            onExpandProjections={viewLevel !== 'simple' ? () => setProjectionsExpanded(true) : undefined}
             projectionsCTALabel={`Patrimonio en ${horizonYears} años`}
             projectionsCTAValue={dynamicProjections.length > 0 ? fmt(dynamicProjections[Math.min(horizonYears - 1, dynamicProjections.length - 1)].patrimonioNeto) : undefined}
-            projectionsContent={(chartPhase, isFirstReveal) => (<>
-          {/* Waterfall chart */}
+            viewLevel={viewLevel}
+            projectionsContent={viewLevel === 'simple' ? undefined : (chartPhase, isFirstReveal) => (<>
+          {/* Waterfall chart — sinfiltro only */}
+          {viewLevel === 'sinfiltro' && (<>
           <div id="premium-chart-anchor-1" />
           {(!isFirstReveal || chartPhase >= 1) && (
           <div id="premium-chart-1" style={isFirstReveal && chartPhase === 1 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
@@ -2655,8 +2919,10 @@ export function PremiumResults({
           </CollapsibleSection>
           </div>
           )}
+          </>)}
 
-          {/* Cashflow year by year */}
+          {/* Cashflow year by year — sinfiltro only */}
+          {viewLevel === 'sinfiltro' && (<>
           <div id="premium-chart-anchor-2" />
           {(!isFirstReveal || chartPhase >= 2) && (
           <div id="premium-chart-2" style={isFirstReveal && chartPhase === 2 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
@@ -2746,8 +3012,10 @@ export function PremiumResults({
           </CollapsibleSection>
           </div>
           )}
+          </>)}
 
-          {/* Patrimonio projection */}
+          {/* Patrimonio projection — importante/sinfiltro */}
+          {(viewLevel === 'importante' || viewLevel === 'sinfiltro') && (<>
           <div id="premium-chart-anchor-3" />
           {(!isFirstReveal || chartPhase >= 3) && (
           <div id="premium-chart-3" style={isFirstReveal && chartPhase === 3 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
@@ -2831,8 +3099,8 @@ export function PremiumResults({
                     <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
                   </div>
                   {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
-                  {/* Desglose de patrimonio — reads from projData (same source as chart) */}
-                  {(() => {
+                  {/* Desglose de patrimonio — sinfiltro only */}
+                  {viewLevel === 'sinfiltro' && (() => {
                     const lastRow = projData.find(r => r._x === horizonYears * 12);
                     if (!lastRow || !m || !inputData) return null;
                     // All values from projData so table matches chart exactly
@@ -2909,8 +3177,10 @@ export function PremiumResults({
           </CollapsibleSection>
           </div>
           )}
+          </>)}
 
-          {/* Exit scenarios */}
+          {/* Exit scenarios — sinfiltro only */}
+          {viewLevel === 'sinfiltro' && (<>
           <div id="premium-chart-anchor-4" />
           {(!isFirstReveal || chartPhase >= 4) && (
           <div id="premium-chart-4" style={isFirstReveal && chartPhase === 4 ? { animation: "slideUp 600ms ease-out forwards" } : undefined}>
@@ -3165,6 +3435,7 @@ export function PremiumResults({
           </CollapsibleSection>
           </div>
           )}
+          </>)}
 
             </>)}
           />
@@ -3189,7 +3460,7 @@ export function PremiumResults({
   );
 
   // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
-  const hasPanelContent = !hidePanel && !isSharedView && currentAccess !== "guest" && !!inputData;
+  const hasPanelContent = !hidePanel && !isSharedView && currentAccess !== "guest" && !!inputData && viewLevel === 'sinfiltro';
 
   // Mobile FAB: 3-state based on scroll (inputs → hidden → projections)
   useEffect(() => {

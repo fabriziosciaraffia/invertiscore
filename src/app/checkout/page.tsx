@@ -110,6 +110,7 @@ function CheckoutContent() {
       });
       const data = await res.json();
       if (data.url) {
+        try { const ph = (await import('posthog-js')).default; ph.capture('payment_initiated', { product: productKey, amount: product.price }); } catch {}
         window.location.href = data.url;
       } else {
         setError(data?.details || data?.error || "Error al procesar el pago");
