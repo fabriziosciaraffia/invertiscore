@@ -50,6 +50,7 @@ export function ChangePasswordForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            className="bg-[#1A1A1A] border-white/[0.08] text-[#FAFAF8] placeholder:text-[#FAFAF8]/50 focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
           />
         </div>
         <div className="space-y-2">
@@ -60,6 +61,7 @@ export function ChangePasswordForm() {
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required
+            className="bg-[#1A1A1A] border-white/[0.08] text-[#FAFAF8] placeholder:text-[#FAFAF8]/50 focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
           />
         </div>
       </div>

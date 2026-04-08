@@ -127,7 +127,11 @@ export default async function PerfilPage() {
           <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
-              <Button variant="ghost" size="sm" className="gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-2 text-[#FAFAF8]/80 font-body hover:text-[#FAFAF8] hover:bg-[#1A1A1A]"
+              >
                 <ArrowLeft className="h-4 w-4" /> Dashboard
               </Button>
             </Link>

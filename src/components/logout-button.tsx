@@ -15,7 +15,12 @@ export function LogoutButton() {
   };
 
   return (
-    <Button variant="ghost" size="sm" onClick={handleLogout}>
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={handleLogout}
+      className="text-[#FAFAF8]/80 font-body hover:text-[#FAFAF8] hover:bg-[#1A1A1A]"
+    >
       Cerrar Sesión
     </Button>
   );
