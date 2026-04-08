@@ -105,7 +105,7 @@ export default async function AdminPage() {
     sb.from("analisis").select("*", { count: "exact", head: true }).gte("created_at", thirtyDaysAgo),
     sb.from("analisis").select("*", { count: "exact", head: true }).eq("is_premium", true).gte("created_at", thirtyDaysAgo),
     sb.from("payments").select("amount").eq("status", "paid").gte("created_at", thirtyDaysAgo),
-    sb.from("analisis").select("*", { count: "exact", head: true }).not("ai_analysis", "is", null).gte("created_at", thirtyDaysAgo),
+    sb.from("analisis").select("*", { count: "exact", head: true }).eq("is_premium", true).gte("created_at", thirtyDaysAgo),
   ]);
 
   const newUsers = newUsersRow.count ?? 0;
@@ -208,7 +208,7 @@ export default async function AdminPage() {
     },
     {
       label: "Pagos",
-      value: lastPaidPayment.data ? fmtRelative(lastPaidPayment.data.created_at as string) : "sin pagos",
+      value: lastPaidPayment.data ? `Último: ${fmtRelative(lastPaidPayment.data.created_at as string)}` : "sin pagos",
       ok: lastPaidPayment.data != null,
     },
     {
@@ -285,7 +285,7 @@ export default async function AdminPage() {
               { label: "Análisis totales", value: fmtNumber(newAnalisis) },
               { label: "Análisis Pro", value: fmtNumber(newPremium) },
               { label: "Ingresos", value: fmtCLP(ingresos) },
-              { label: "Costo IA estimado", value: `~${fmtCLP(aiCost)}`, sub: `${fmtNumber(aiCount)} análisis IA` },
+              { label: "Costo IA estimado", value: `~${fmtCLP(aiCost)}`, sub: `${fmtNumber(aiCount)} análisis Pro` },
             ].map((kpi) => (
               <div
                 key={kpi.label}
