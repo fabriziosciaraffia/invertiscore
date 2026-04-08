@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis } from "@/lib/types";
 import { DashboardClient } from "./dashboard-client";
+import { OnboardingClient } from "./onboarding-client";
 
 export default async function DashboardPage() {
   const supabase = createClient();
@@ -12,6 +13,19 @@ export default async function DashboardPage() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Check if user needs onboarding
+  const { data: creditsRow } = await supabase
+    .from("user_credits")
+    .select("onboarding_completed")
+    .eq("user_id", user.id)
+    .single();
+
+  const needsOnboarding = !creditsRow?.onboarding_completed;
+
+  if (needsOnboarding) {
+    return <OnboardingClient />;
   }
 
   const { data: analisisList } = await supabase
