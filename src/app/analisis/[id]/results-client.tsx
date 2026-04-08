@@ -670,7 +670,7 @@ function AIAnalysisSection({
   const showCTA = !aiAnalysis && !aiLoading && !aiError;
 
   // Gate: if not premium, show locked CTA
-  if (currentAccess !== "premium") {
+  if (currentAccess !== "premium" && currentAccess !== "subscriber") {
     return (
       <div ref={sectionRef} className="mb-8">
         <div className="rounded-2xl overflow-hidden mt-5">
@@ -2943,7 +2943,7 @@ export function PremiumResults({
           <CollapsibleSection
             title="¿Cuáles son todos los costos?"
             subtitle="Cascada de costos mensuales — cada peso que entra y sale"
-            locked={currentAccess !== "premium"}
+            locked={currentAccess !== "premium" && currentAccess !== "subscriber"}
             defaultOpen={isFirstReveal && chartPhase <= 4}
             analysisId={analysisId}
           >
@@ -3011,7 +3011,7 @@ export function PremiumResults({
           <CollapsibleSection
             title="¿Cómo es el flujo año a año?"
             subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
-            locked={currentAccess !== "premium"}
+            locked={currentAccess !== "premium" && currentAccess !== "subscriber"}
             defaultOpen={isFirstReveal && chartPhase <= 4}
             analysisId={analysisId}
           >
@@ -3104,7 +3104,7 @@ export function PremiumResults({
           <CollapsibleSection
             title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
             subtitle="Proyección de patrimonio con plusvalía y amortización"
-            locked={currentAccess !== "premium"}
+            locked={currentAccess !== "premium" && currentAccess !== "subscriber"}
             analysisId={analysisId}
             defaultOpen={isFirstReveal && chartPhase <= 4}
           >
@@ -3269,7 +3269,7 @@ export function PremiumResults({
           <CollapsibleSection
             title="¿Qué pasa si vendes o refinancias?"
             subtitle="Escenarios de salida: venta y refinanciamiento"
-            locked={currentAccess !== "premium"}
+            locked={currentAccess !== "premium" && currentAccess !== "subscriber"}
             analysisId={analysisId}
             defaultOpen={isFirstReveal && chartPhase <= 4}
           >
