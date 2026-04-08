@@ -955,12 +955,20 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   // NOTE: These overrides can make the veredicto badge contradict the score bar visually.
   // This is intentional: structural signals (extreme flujo, zero break-even) override the composite score.
 
-  // Override a BUSCAR OTRA si hay señales estructurales negativas
+  // Override a BUSCAR OTRA si hay señales estructurales negativas.
+  // Los umbrales de flujo negativo son RELATIVOS al dividendo mensual para evitar
+  // penalizar deptos caros donde un flujo negativo alto puede ser proporcional al financiamiento.
+  // - cashOnCash < -30%: pierdes >30% de tu pie cada año (ya es relativo)
+  // - breakEvenTasa === -1: no existe tasa que dé break-even (estructural)
+  // - sobreprecio >8% + flujo negativo > 30% del dividendo: combinación letal
+  // - flujo negativo > 50% del dividendo: el aporte de bolsillo supera la mitad del dividendo
+  const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
+  const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
   if (
     metrics.cashOnCash < -30 ||
     breakEvenTasa === -1 ||
-    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < -300000) ||
-    metrics.flujoNetoMensual < -400000
+    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
+    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
   ) {
     veredicto = "BUSCAR OTRA";
   }
