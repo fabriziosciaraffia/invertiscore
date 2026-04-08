@@ -43,7 +43,7 @@ export function ChangePasswordForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="new-password">Nueva contraseña</Label>
+          <Label htmlFor="new-password" className="text-[#FAFAF8]/80 font-body text-sm font-medium">Nueva contraseña</Label>
           <Input
             id="new-password"
             type="password"
@@ -53,7 +53,7 @@ export function ChangePasswordForm() {
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm-password">Confirmar contraseña</Label>
+          <Label htmlFor="confirm-password" className="text-[#FAFAF8]/80 font-body text-sm font-medium">Confirmar contraseña</Label>
           <Input
             id="confirm-password"
             type="password"

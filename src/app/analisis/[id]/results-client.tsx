@@ -322,6 +322,7 @@ function AIAnalysisSection({
   projectionsContent, aiAnalysisInitiallyLoaded = false, isSharedView = false,
   projectionsExpanded = false, onExpandProjections, projectionsCTALabel, projectionsCTAValue,
   viewLevel = 'sinfiltro' as 'simple' | 'importante' | 'sinfiltro',
+  userCredits = 0,
 }: {
   aiAnalysis: AIAnalysis | null;
   aiLoading: boolean;
@@ -330,7 +331,7 @@ function AIAnalysisSection({
   score: number;
   ct: (obj: Record<string, unknown>, field: string) => string;
   ci: (obj: Record<string, unknown>, field: string) => string[];
-  currentAccess: "guest" | "free" | "premium";
+  currentAccess: "guest" | "free" | "premium" | "subscriber";
   analysisId?: string;
   projectionsContent?: React.ReactNode | ((chartPhase: number, isFirstReveal: boolean) => React.ReactNode);
   aiAnalysisInitiallyLoaded?: boolean;
@@ -340,6 +341,7 @@ function AIAnalysisSection({
   projectionsCTALabel?: string;
   projectionsCTAValue?: string;
   viewLevel?: 'simple' | 'importante' | 'sinfiltro';
+  userCredits?: number;
 }) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
@@ -691,7 +693,7 @@ function AIAnalysisSection({
                 <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
                 <div className="font-body text-[15px] font-semibold text-[#FAFAF8] mb-1">Análisis IA + proyecciones a 20 años</div>
                 <div className="font-body text-[13px] text-[#FAFAF8]/50 mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
-                <BottomPaywallCTA analysisId={analysisId ?? ""} />
+                <BottomPaywallCTA analysisId={analysisId ?? ""} userCredits={userCredits} />
               </div>
             </div>
           </div>
@@ -963,7 +965,38 @@ function RegisterOverlay() {
   );
 }
 
-function PaywallOverlay({ analysisId }: { analysisId: string }) {
+async function consumeAnalysisCredit(analysisId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const res = await fetch("/api/analisis/use-credit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ analysisId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      return { ok: false, error: data?.error || "Error al usar crédito" };
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Error de conexión" };
+  }
+}
+
+function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; userCredits?: number }) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleUseCredit() {
+    if (loading) return;
+    setLoading(true);
+    const r = await consumeAnalysisCredit(analysisId);
+    if (r.ok) {
+      window.location.reload();
+    } else {
+      alert(r.error || "Error al usar crédito");
+      setLoading(false);
+    }
+  }
+
   function handleUnlock() {
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
@@ -973,19 +1006,65 @@ function PaywallOverlay({ analysisId }: { analysisId: string }) {
       <div className="flex flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/90 px-6 py-5 shadow-lg">
         <Sparkles className="h-6 w-6 text-[#C8323C]" />
         <span className="font-body text-sm font-medium text-[#FAFAF8]">Sección exclusiva del Informe Pro</span>
-        <Button size="sm" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock}>
-          <Sparkles className="h-4 w-4" />
-          Desbloquear la verdad — $4.990
-        </Button>
-        <span className="font-body text-xs text-[#FAFAF8]/50">$4.990 por análisis</span>
+        {userCredits > 0 ? (
+          <>
+            <Button size="sm" disabled={loading} className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUseCredit}>
+              <Sparkles className="h-4 w-4" />
+              {loading ? "Procesando..." : "Usar tu crédito Pro →"}
+            </Button>
+            <span className="font-body text-xs text-[#FAFAF8]/50">
+              Tienes {userCredits} {userCredits === 1 ? "crédito disponible" : "créditos disponibles"}
+            </span>
+          </>
+        ) : (
+          <>
+            <Button size="sm" className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUnlock}>
+              <Sparkles className="h-4 w-4" />
+              Desbloquear la verdad — $4.990
+            </Button>
+            <span className="font-body text-xs text-[#FAFAF8]/50">$4.990 por análisis</span>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
-function BottomPaywallCTA({ analysisId }: { analysisId: string }) {
+function BottomPaywallCTA({ analysisId, userCredits = 0 }: { analysisId: string; userCredits?: number }) {
+  const [loading, setLoading] = useState(false);
+
+  async function handleUseCredit() {
+    if (loading) return;
+    setLoading(true);
+    const r = await consumeAnalysisCredit(analysisId);
+    if (r.ok) {
+      window.location.reload();
+    } else {
+      alert(r.error || "Error al usar crédito");
+      setLoading(false);
+    }
+  }
+
   function handleUnlock() {
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
+  }
+
+  if (userCredits > 0) {
+    return (
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={handleUseCredit}
+          disabled={loading}
+          className="bg-[#C8323C] text-white font-body text-sm font-bold px-6 py-3 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.25)] hover:shadow-[0_4px_24px_rgba(200,50,60,0.35)] transition-shadow disabled:opacity-60"
+        >
+          {loading ? "Generando análisis..." : "Usar tu crédito Pro →"}
+        </button>
+        <p className="text-zinc-500 text-xs mt-2 font-body">
+          Tienes {userCredits} {userCredits === 1 ? "crédito disponible" : "créditos disponibles"}
+        </p>
+      </div>
+    );
   }
 
   return (
@@ -1008,7 +1087,7 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   icon: React.ElementType;
   children: React.ReactNode;
   gate?: "none" | "login" | "premium";
-  accessLevel?: "guest" | "free" | "premium";
+  accessLevel?: "guest" | "free" | "premium" | "subscriber";
   analysisId?: string;
 }) {
   const showRegister = (gate === "login" && accessLevel === "guest") || (gate === "premium" && accessLevel === "guest");
@@ -1192,9 +1271,10 @@ export function PremiumResults({
   creatorName,
   isSharedView = false,
   isSharedLink = false,
+  userCredits = 0,
 }: {
   results?: FullAnalysisResult | null;
-  accessLevel?: "guest" | "free" | "premium";
+  accessLevel?: "guest" | "free" | "premium" | "subscriber";
   analysisId?: string;
   inputData?: AnalisisInput;
   comuna?: string;
@@ -1216,6 +1296,7 @@ export function PremiumResults({
   creatorName?: string;
   isSharedView?: boolean;
   isSharedLink?: boolean;
+  userCredits?: number;
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
@@ -2830,7 +2911,7 @@ export function PremiumResults({
             <div className="text-center py-8 mt-4 border-t border-white/[0.08] mb-5">
               <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">¿Quieres el análisis completo?</h3>
               <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
-              <BottomPaywallCTA analysisId={analysisId} />
+              <BottomPaywallCTA analysisId={analysisId} userCredits={userCredits} />
             </div>
           )}
 
@@ -2852,6 +2933,7 @@ export function PremiumResults({
             projectionsCTALabel={`Patrimonio en ${horizonYears} años`}
             projectionsCTAValue={dynamicProjections.length > 0 ? fmt(dynamicProjections[Math.min(horizonYears - 1, dynamicProjections.length - 1)].patrimonioNeto) : undefined}
             viewLevel={viewLevel}
+            userCredits={userCredits}
             projectionsContent={viewLevel === 'simple' ? undefined : (chartPhase, isFirstReveal) => (<>
           {/* Waterfall chart — sinfiltro only */}
           {viewLevel === 'sinfiltro' && (<>
@@ -3460,7 +3542,7 @@ export function PremiumResults({
   );
 
   // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
-  const hasPanelContent = !hidePanel && !isSharedView && currentAccess !== "guest" && !!inputData && viewLevel === 'sinfiltro';
+  const hasPanelContent = !hidePanel && !isSharedView && (currentAccess === "premium" || currentAccess === "subscriber") && !!inputData && (viewLevel === 'sinfiltro' || viewLevel === 'importante');
 
   // Mobile FAB: 3-state based on scroll (inputs → hidden → projections)
   useEffect(() => {
@@ -3525,48 +3607,59 @@ export function PremiumResults({
           </div>
         </div>
       </div>
-      <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto genera</h4>
-        <div className="space-y-1">
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Arriendo</label>
-              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+      {currentAccess === 'subscriber' ? (
+        <div>
+          <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto genera</h4>
+          <div className="space-y-1">
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Arriendo</label>
+                <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+              </div>
+              <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
-            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">GGCC</label>
-              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">GGCC</label>
+                <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+              </div>
+              <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
-            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Contrib. /trim</label>
-              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Contrib. /trim</label>
+                <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+              </div>
+              <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
-            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Vacancia</label>
-              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjVacanciaPct}%</span>
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Vacancia</label>
+                <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjVacanciaPct}%</span>
+              </div>
+              <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
+              <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
             </div>
-            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-            <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Administración</label>
-              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjAdminPct}%</span>
+            <div>
+              <div className="flex items-center justify-between">
+                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Administración</label>
+                <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjAdminPct}%</span>
+              </div>
+              <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
+              <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
             </div>
-            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-            <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="mt-4 p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 text-center">
+          <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
+            Desbloquea arriendo, vacancia y más variables con la suscripción mensual
+          </p>
+          <a href="/pricing" className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+            Ver planes →
+          </a>
+        </div>
+      )}
     </div>
   ) : null;
 
@@ -3581,6 +3674,16 @@ export function PremiumResults({
   ) : null;
 
   const projectionFields = hasPanelContent ? (
+    currentAccess !== 'subscriber' ? (
+      <div className="p-3 rounded-lg border border-zinc-800 bg-zinc-900/50 text-center">
+        <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
+          Las proyecciones dinámicas (plusvalía, crecimiento) están disponibles con la suscripción mensual
+        </p>
+        <a href="/pricing" className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+          Ver planes →
+        </a>
+      </div>
+    ) : (
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between">
@@ -3615,6 +3718,7 @@ export function PremiumResults({
         <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Aplica a GGCC, contribuciones y mantención</p>
       </div>
     </div>
+    )
   ) : null;
 
   return (

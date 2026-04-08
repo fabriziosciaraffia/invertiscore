@@ -12,7 +12,6 @@ function rentColor(r: number) {
 
 export default async function ProximamentePage() {
   const comunas = await getAllComunasStats();
-  const totalProps = comunas.reduce((s, c) => s + c.totalPropiedades, 0);
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -61,7 +60,7 @@ export default async function ProximamentePage() {
             ¿En qué comuna conviene más invertir?
           </h2>
           <p className="mt-3 text-center font-body text-sm" style={{ color: "rgba(250,250,248,0.4)" }}>
-            Datos reales de {totalProps.toLocaleString("es-CL")} propiedades en {comunas.length} comunas de Santiago.
+            Datos reales de 20.000+ propiedades en 24 comunas de Santiago.
           </p>
 
           <div className="mt-10 grid gap-3 sm:grid-cols-2">
@@ -89,9 +88,11 @@ export default async function ProximamentePage() {
                   <span style={{ color: "rgba(250,250,248,0.3)" }}>
                     <span className="font-mono text-[#FAFAF8]/60">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</span> UF/m²
                   </span>
-                  <span style={{ color: "rgba(250,250,248,0.3)" }}>
-                    <span className="font-mono text-[#FAFAF8]/60">{c.totalPropiedades.toLocaleString("es-CL")}</span> props
-                  </span>
+                  {c.arriendoUFm2Mes > 0 && (
+                    <span style={{ color: "rgba(250,250,248,0.3)" }}>
+                      <span className="font-mono text-[#FAFAF8]/60">{c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}</span> UF/m²/mes
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

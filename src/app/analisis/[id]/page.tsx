@@ -6,6 +6,7 @@ import { AnalysisNav } from "./analysis-nav";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
+import { getUserAccessLevel } from "@/lib/access";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -70,7 +71,7 @@ export default async function AnalisisDetallePage({
   const analisis = data as Analisis;
   const results: FullAnalysisResult | null = analisis.results || null;
 
-  // Access level: "guest" | "free" | "premium"
+  // Access level: "guest" | "free" | "premium" | "subscriber"
   const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
   const isAdmin = user?.email === process.env.ADMIN_EMAIL;
   const isLoggedIn = !!user;
@@ -80,11 +81,29 @@ export default async function AnalisisDetallePage({
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
-  let accessLevel: "guest" | "free" | "premium";
-  if (isDemo || isAdmin) {
+  // Check user-level subscription/credits status
+  const userTier = user ? await getUserAccessLevel(user.id) : "guest";
+
+  // Fetch user credits for "use credit" CTA
+  let userCredits = 0;
+  if (user) {
+    const { data: credits } = await supabase
+      .from("user_credits")
+      .select("credits")
+      .eq("user_id", user.id)
+      .single();
+    userCredits = credits?.credits ?? 0;
+  }
+
+  let accessLevel: "guest" | "free" | "premium" | "subscriber";
+  if (isAdmin) {
+    accessLevel = "subscriber";
+  } else if (isDemo) {
     accessLevel = "premium";
   } else if (!isLoggedIn) {
     accessLevel = "guest";
+  } else if (userTier === "subscriber") {
+    accessLevel = "subscriber";
   } else if (isSharedView) {
     accessLevel = analisis.is_premium ? "premium" : "free";
   } else {
@@ -140,6 +159,7 @@ export default async function AnalisisDetallePage({
           creatorName={(data as Record<string, unknown>).creator_name as string | undefined}
           isSharedView={isSharedView}
           isSharedLink={isSharedLink}
+          userCredits={userCredits}
         />
 
         {/* Fallback for old analyses without full results */}

@@ -38,6 +38,7 @@ export interface ComunaStats {
   arriendoRepresentativo: number; // CLP — promedio ponderado de medianas por segmento
   rentabilidadBruta: number;      // % — promedio ponderado por segmento
   precioM2Promedio: number;       // UF/m²
+  arriendoUFm2Mes: number;        // UF/m²/mes — arriendo unitario
   nSegmentos: number;             // cuántos segmentos (dormitorios) contribuyen
 }
 
@@ -91,6 +92,7 @@ interface SegmentResult {
   medianaVenta: number;
   rentBruta: number;
   medianaM2UF: number;
+  medianaArriendoUFm2: number; // UF/m²/mes
 }
 
 async function computeAllSegments(): Promise<SegmentResult[]> {
@@ -115,13 +117,17 @@ async function computeAllSegments(): Promise<SegmentResult[]> {
 
   // Group by comuna + dormitorios
   type GroupKey = string; // "comuna|dorms"
-  const arrGroups = new Map<GroupKey, number[]>();
+  const arrGroups = new Map<GroupKey, { precios: number[]; ufm2: number[] }>();
   const venGroups = new Map<GroupKey, { precios: number[]; m2: number[] }>();
 
   for (const r of arriendoRows) {
     const key = `${r.comuna}|${r.dormitorios}`;
-    if (!arrGroups.has(key)) arrGroups.set(key, []);
-    arrGroups.get(key)!.push(r.precio);
+    if (!arrGroups.has(key)) arrGroups.set(key, { precios: [], ufm2: [] });
+    const g = arrGroups.get(key)!;
+    g.precios.push(r.precio);
+    if (r.superficie_m2 > 0) {
+      g.ufm2.push(r.precio / r.superficie_m2 / ufValue); // UF/m²/mes
+    }
   }
 
   for (const r of ventaRows) {
@@ -142,7 +148,8 @@ async function computeAllSegments(): Promise<SegmentResult[]> {
   for (const key of Array.from(allKeys)) {
     const [comuna, dormsStr] = key.split("|");
     const dorms = parseInt(dormsStr);
-    const arrPrecios = arrGroups.get(key) ?? [];
+    const arrData = arrGroups.get(key);
+    const arrPrecios = arrData?.precios ?? [];
     const venData = venGroups.get(key);
     const venPrecios = venData?.precios ?? [];
 
@@ -151,6 +158,7 @@ async function computeAllSegments(): Promise<SegmentResult[]> {
     const medianaArriendo = median(arrPrecios);
     const medianaVenta = median(venPrecios);
     const medianaM2UF = venData?.m2.length ? median(venData.m2) : 0;
+    const medianaArriendoUFm2 = arrData?.ufm2.length ? median(arrData.ufm2) : 0;
 
     if (medianaVenta <= 0 || medianaM2UF <= 0) continue;
 
@@ -163,6 +171,7 @@ async function computeAllSegments(): Promise<SegmentResult[]> {
       medianaVenta,
       rentBruta: (medianaArriendo * 12 / medianaVenta) * 100,
       medianaM2UF,
+      medianaArriendoUFm2,
     });
   }
 
@@ -184,6 +193,8 @@ function aggregateByComunas(segments: SegmentResult[]): ComunaStats[] {
     let sumRent = 0;
     let sumArriendo = 0;
     let sumM2 = 0;
+    let sumArrUFm2 = 0;
+    let arrUFm2Weight = 0;
     let totalProps = 0;
 
     for (const seg of segs) {
@@ -193,6 +204,10 @@ function aggregateByComunas(segments: SegmentResult[]): ComunaStats[] {
       sumArriendo += seg.medianaArriendo * weight;
       sumM2 += seg.medianaM2UF * weight;
       totalProps += weight;
+      if (seg.medianaArriendoUFm2 > 0) {
+        sumArrUFm2 += seg.medianaArriendoUFm2 * seg.nArr;
+        arrUFm2Weight += seg.nArr;
+      }
     }
 
     if (totalWeight === 0 || totalProps < MIN_TOTAL) continue;
@@ -204,6 +219,7 @@ function aggregateByComunas(segments: SegmentResult[]): ComunaStats[] {
       arriendoRepresentativo: Math.round(sumArriendo / totalWeight),
       rentabilidadBruta: Math.round((sumRent / totalWeight) * 10) / 10,
       precioM2Promedio: Math.round((sumM2 / totalWeight) * 10) / 10,
+      arriendoUFm2Mes: arrUFm2Weight > 0 ? Math.round((sumArrUFm2 / arrUFm2Weight) * 1000) / 1000 : 0,
       nSegmentos: segs.length,
     });
   }

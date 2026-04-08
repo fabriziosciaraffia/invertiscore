@@ -27,7 +27,6 @@ function rentColor(r: number) {
 
 export default async function ComunasIndexPage() {
   const comunas = await getAllComunasStats();
-  const totalProps = comunas.reduce((s, c) => s + c.totalPropiedades, 0);
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -51,7 +50,7 @@ export default async function ComunasIndexPage() {
           ¿En qué comuna conviene más invertir en un departamento?
         </h1>
         <p className="mt-3 font-body text-base text-[#FAFAF8]/50">
-          Datos reales de {totalProps.toLocaleString("es-CL")} propiedades analizadas en {comunas.length} comunas de Santiago.
+          Datos reales de 20.000+ propiedades en 24 comunas de Santiago.
         </p>
 
         {/* Grid */}
@@ -86,10 +85,14 @@ export default async function ComunasIndexPage() {
                     {c.precioM2Promedio.toFixed(1).replace(".", ",")}
                   </div>
                 </div>
-                <div>
-                  <span className="text-[#FAFAF8]/40">Propiedades</span>
-                  <div className="font-mono font-medium text-[#FAFAF8]">{c.totalPropiedades.toLocaleString("es-CL")}</div>
-                </div>
+                {c.arriendoUFm2Mes > 0 && (
+                  <div>
+                    <span className="text-[#FAFAF8]/40">UF/m²/mes</span>
+                    <div className="font-mono font-medium text-[#FAFAF8]">
+                      {c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}
+                    </div>
+                  </div>
+                )}
               </div>
             </Link>
           ))}

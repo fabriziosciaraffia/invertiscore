@@ -1,0 +1,13 @@
+﻿post1-slide1-hook: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/9bd01ff1-0696-4be2-a778-b31503246136.png
+post1-slide2-datos: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/436d000a-2c93-4509-9249-4fd591d716fa.png
+post1-slide3-insight: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/20e6ad4a-5995-4ae0-90dc-09c5756da618.png
+post1-slide4-cierre: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/91fe9aca-29b3-4263-9b89-a76f94cd0a84.png
+post2-reel-culpable: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/9f090588-5b66-4feb-8606-3ebb96a8330d.mp4
+post3-slide1-hook: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/195d9f69-a0f2-466a-9ec5-efd928472117.png
+post3-slide2-comparacion: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/815609c3-57a8-46c7-a10d-52a4f702488a.png
+post3-slide3-insight: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/c09e6416-a05f-4536-99c8-bb48cb847cd0.png
+post3-slide4-cierre: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/64446958-97c0-4bd9-8ec8-6fdc53803a06.png
+post4-reel-declaracion: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/9164d84f-00ef-433c-9dd4-d8a964a52214.mp4
+post5-slide1-hook: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/208c5d19-267a-4f2c-9b7c-2b3bd747d32d.png
+post5-slide2-contraste: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/45a596b3-6cd4-46e1-b884-6e83906c7eba.png
+post5-slide3-cierre: https://f002.backblazeb2.com/file/creatomate-c8xg3hsxdu/b3b7bbd2-9706-4e5f-9b41-367b65d78b26.png

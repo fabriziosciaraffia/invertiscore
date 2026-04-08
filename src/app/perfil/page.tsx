@@ -8,10 +8,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User, CreditCard, Clock, ArrowLeft } from "lucide-react";
+import { User, CreditCard, Clock, ArrowLeft, Sparkles } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { ChangePasswordForm } from "./change-password-form";
+
+interface PaymentRow {
+  id: string;
+  amount: number;
+  status: string;
+  product: string;
+  created_at: string;
+  analysis_id: string | null;
+  commerce_order: string | null;
+}
+
+interface AnalysisInfo {
+  id: string;
+  nombre: string;
+  score: number | null;
+}
 
 export default async function PerfilPage() {
   const supabase = createClient();
@@ -26,18 +42,82 @@ export default async function PerfilPage() {
 
   const nombre = user.user_metadata?.nombre || user.user_metadata?.full_name || "Usuario";
   const email = user.email || "";
+  const isAdmin = email === process.env.ADMIN_EMAIL;
   const createdAt = user.created_at
     ? new Date(user.created_at).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })
     : "—";
 
-  // Fetch premium analyses (payment history)
-  const { data: premiumAnalyses } = await supabase
-    .from("analisis")
-    .select("id, nombre, created_at, is_premium")
-    .eq("is_premium", true)
+  // Fetch user credits + subscription status
+  const { data: creditsRow } = await supabase
+    .from("user_credits")
+    .select("credits, subscription_status")
+    .eq("user_id", user.id)
+    .single();
+
+  const credits: number = creditsRow?.credits ?? 0;
+  const isSubscriber = creditsRow?.subscription_status === "active";
+
+  // Fetch payment history (filtered by user_id)
+  const { data: paymentsData } = await supabase
+    .from("payments")
+    .select("id, amount, status, product, created_at, analysis_id, commerce_order")
+    .eq("user_id", user.id)
+    .eq("status", "paid")
     .order("created_at", { ascending: false });
 
-  const payments = premiumAnalyses || [];
+  const payments: PaymentRow[] = paymentsData || [];
+
+  // Fetch analysis info for the payments
+  const analysisIds = Array.from(new Set(payments.map((p) => p.analysis_id).filter((id): id is string => !!id)));
+  const analysisMap = new Map<string, AnalysisInfo>();
+  if (analysisIds.length > 0) {
+    const { data: analyses } = await supabase
+      .from("analisis")
+      .select("id, nombre, score")
+      .in("id", analysisIds);
+    for (const a of (analyses ?? []) as AnalysisInfo[]) {
+      analysisMap.set(a.id, a);
+    }
+  }
+
+  // Plan label + description
+  let planLabel: string;
+  let planDescription: string;
+  let planCtaText: string | null = "Ver planes";
+  let planCtaHref = "/pricing";
+
+  if (isAdmin) {
+    planLabel = "Admin";
+    planDescription = "Acceso completo a todas las funciones.";
+    planCtaText = null;
+  } else if (isSubscriber) {
+    planLabel = "Suscripción Mensual";
+    planDescription = "Análisis ilimitados + todas las variables del panel de ajustes.";
+    planCtaText = "Gestionar";
+    planCtaHref = "/pricing";
+  } else if (credits > 0) {
+    planLabel = "Gratuito";
+    planDescription = `Tienes ${credits} ${credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}.`;
+    planCtaText = "Comprar más";
+    planCtaHref = "/pricing";
+  } else {
+    planLabel = "Gratuito";
+    planDescription = "Acceso a análisis básicos. Compra informes Pro por $4.990 o suscríbete para análisis ilimitados.";
+    planCtaText = "Ver planes";
+    planCtaHref = "/pricing";
+  }
+
+  function fmtAmount(amount: number, commerceOrder: string | null): string {
+    if (amount === 0 || (commerceOrder && commerceOrder.startsWith("credit-"))) return "Crédito";
+    return "$" + amount.toLocaleString("es-CL");
+  }
+
+  function fmtProductName(product: string): string {
+    if (product === "pro") return "Franco Pro";
+    if (product === "pack3") return "Pack 3×";
+    if (product === "subscription") return "Suscripción";
+    return product;
+  }
 
   return (
     <div className="min-h-screen bg-[#0F0F0F]">
@@ -94,19 +174,39 @@ export default async function PerfilPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-lg font-semibold text-[#FAFAF8]">Gratuito</div>
-                <p className="text-sm text-[#FAFAF8]/50">
-                  Acceso a análisis básicos. Compra informes Pro individuales por $4.990.
-                </p>
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0 flex-1">
+                <div className="text-lg font-semibold text-[#FAFAF8]">{planLabel}</div>
+                <p className="text-sm text-[#FAFAF8]/50">{planDescription}</p>
               </div>
-              <Link href="/pricing">
-                <Button variant="outline" size="sm" className="border-white/[0.08] text-[#FAFAF8] hover:bg-[#1A1A1A]">Ver planes</Button>
-              </Link>
+              {planCtaText && (
+                <Link href={planCtaHref} className="shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border border-[#FAFAF8]/30 bg-[#1A1A1A] text-[#FAFAF8] font-body font-medium hover:bg-[#222] hover:border-[#FAFAF8]/50"
+                  >
+                    {planCtaText}
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Créditos disponibles */}
+        {credits > 0 && !isSubscriber && (
+          <div className="mb-6 rounded-xl border border-[#C8323C]/30 bg-[#1A1A1A] p-5 text-center">
+            <Sparkles className="mx-auto mb-2 h-5 w-5 text-[#C8323C]" />
+            <div className="font-mono text-3xl font-bold text-[#C8323C]">{credits}</div>
+            <div className="mt-1 text-sm text-zinc-400">
+              {credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}
+            </div>
+            <p className="mt-3 text-xs text-zinc-500">
+              Úsalo en cualquier análisis tuyo desde la página de resultados.
+            </p>
+          </div>
+        )}
 
         {/* Historial de pagos */}
         <Card className="mb-6 border-white/[0.08] bg-[#151515]">
@@ -123,19 +223,36 @@ export default async function PerfilPage() {
               </p>
             ) : (
               <div className="space-y-3">
-                {payments.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between rounded-lg border border-white/[0.08] p-3">
-                    <div>
-                      <Link href={`/analisis/${p.id}`} className="text-sm font-medium text-[#FAFAF8] hover:underline">
-                        {p.nombre}
-                      </Link>
-                      <div className="text-xs text-[#FAFAF8]/50">
-                        {new Date(p.created_at).toLocaleDateString("es-CL")}
+                {payments.map((p) => {
+                  const analysis = p.analysis_id ? analysisMap.get(p.analysis_id) : null;
+                  return (
+                    <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] p-3">
+                      <div className="min-w-0 flex-1">
+                        {analysis ? (
+                          <Link href={`/analisis/${analysis.id}`} className="block truncate text-sm font-medium text-[#FAFAF8] hover:underline">
+                            {analysis.nombre}
+                          </Link>
+                        ) : (
+                          <div className="text-sm font-medium text-[#FAFAF8]">{fmtProductName(p.product)}</div>
+                        )}
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#FAFAF8]/50">
+                          <span>{new Date(p.created_at).toLocaleDateString("es-CL")}</span>
+                          {analysis && analysis.score != null && (
+                            <>
+                              <span className="text-[#FAFAF8]/20">·</span>
+                              <span className="font-mono">Score {analysis.score}</span>
+                            </>
+                          )}
+                          <span className="text-[#FAFAF8]/20">·</span>
+                          <span>{fmtProductName(p.product)}</span>
+                        </div>
+                      </div>
+                      <div className="shrink-0 font-mono text-sm font-medium text-[#C8323C]">
+                        {fmtAmount(p.amount, p.commerce_order)}
                       </div>
                     </div>
-                    <div className="text-sm font-medium text-[#C8323C]">$4.990</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis, setUFValue } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
+import { getUserAccessLevel } from "@/lib/access";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -46,10 +47,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
     }
 
-    // Verify the analysis belongs to this user
+    // Verify the analysis belongs to this user (also fetch input_data for tier merge)
     const { data: existing } = await supabase
       .from("analisis")
-      .select("id, user_id")
+      .select("id, user_id, input_data")
       .eq("id", analysisId)
       .single();
 
@@ -63,34 +64,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
+    // Tier-based field restrictions
+    const tier = isAdmin ? "subscriber" : await getUserAccessLevel(user.id);
+    if (tier === "guest" || tier === "free") {
+      return NextResponse.json({ error: "Recálculo no disponible en tu plan" }, { status: 403 });
+    }
+
+    // Premium tier (pro/pack): only allow financiamiento fields. Merge with original input_data
+    // for any field outside the allowed set.
+    let safeInput: AnalisisInput = inputData;
+    if (tier === "premium") {
+      const original = (existing.input_data ?? {}) as AnalisisInput;
+      safeInput = {
+        ...original,
+        precio: inputData.precio,
+        piePct: inputData.piePct,
+        plazoCredito: inputData.plazoCredito,
+        tasaInteres: inputData.tasaInteres,
+      };
+    }
+
     // Set dynamic UF value before analysis
     const ufValue = await getUFValue();
     setUFValue(ufValue);
 
-    const result = runAnalysis(inputData);
-
-    // DEBUG: verificar que administración se procesa
-    console.log("[RECALC SERVER]", {
-      usaAdmin: inputData.usaAdministrador,
-      comision: inputData.comisionAdministrador,
-      flujoNeto: result.metrics?.flujoNetoMensual,
-      egresosMensuales: result.metrics?.egresosMensuales,
-      rentNeta: result.metrics?.rentabilidadNeta,
-      cashflow0Admin: result.cashflowYear1?.[1]?.administracion,
-    });
+    const result = runAnalysis(safeInput);
 
     const { error } = await supabase
       .from("analisis")
       .update({
-        precio: inputData.precio,
-        arriendo: inputData.arriendo,
-        gastos: inputData.gastos,
-        contribuciones: inputData.contribuciones,
+        precio: safeInput.precio,
+        arriendo: safeInput.arriendo,
+        gastos: safeInput.gastos,
+        contribuciones: safeInput.contribuciones,
         score: result.score,
         desglose: result.desglose,
         resumen: result.resumen,
         results: result,
-        input_data: inputData,
+        input_data: safeInput,
       })
       .eq("id", analysisId);
 
