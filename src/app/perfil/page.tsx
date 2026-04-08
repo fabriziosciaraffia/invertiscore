@@ -96,8 +96,8 @@ export default async function PerfilPage() {
     planCtaText = "Gestionar";
     planCtaHref = "/pricing";
   } else if (credits > 0) {
-    planLabel = "Gratuito";
-    planDescription = `Tienes ${credits} ${credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}.`;
+    planLabel = "Créditos Pro";
+    planDescription = `Tienes ${credits} ${credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}. Úsalos en cualquier análisis.`;
     planCtaText = "Comprar más";
     planCtaHref = "/pricing";
   } else {
