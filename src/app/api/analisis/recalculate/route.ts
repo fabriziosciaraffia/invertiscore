@@ -5,6 +5,7 @@ import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis, setUFValue } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Allow admin or owner
-    const isAdmin = user.email === process.env.ADMIN_EMAIL;
+    const isAdmin = isAdminUser(user.email);
     if (existing.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }

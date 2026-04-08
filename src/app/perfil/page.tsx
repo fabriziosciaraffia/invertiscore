@@ -12,6 +12,7 @@ import { User, CreditCard, Clock, ArrowLeft, Sparkles } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { ChangePasswordForm } from "./change-password-form";
+import { isAdminUser } from "@/lib/admin";
 
 interface PaymentRow {
   id: string;
@@ -42,7 +43,7 @@ export default async function PerfilPage() {
 
   const nombre = user.user_metadata?.nombre || user.user_metadata?.full_name || "Usuario";
   const email = user.email || "";
-  const isAdmin = email === process.env.ADMIN_EMAIL;
+  const isAdmin = isAdminUser(email);
   const createdAt = user.created_at
     ? new Date(user.created_at).toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" })
     : "—";

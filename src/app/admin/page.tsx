@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
+import { isAdminUser } from "@/lib/admin";
 import { AdminActions } from "./admin-actions";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,7 @@ export default async function AdminPage() {
   const { data: { user } } = await supabaseAuth.auth.getUser();
 
   if (!user) redirect("/login");
-  if (user.email !== process.env.ADMIN_EMAIL) redirect("/dashboard");
+  if (!isAdminUser(user.email)) redirect("/dashboard");
 
   const sb = admin();
   const now = new Date();

@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
 import { randomUUID } from "crypto";
 
 function createSupabaseServer() {
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
     }
 
-    const isAdmin = user.email === process.env.ADMIN_EMAIL;
+    const isAdmin = isAdminUser(user.email);
     if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }

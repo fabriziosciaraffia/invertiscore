@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { isAdminUser } from "@/lib/admin";
 
 const ACTIONS = {
   "update-market": "/api/data/update-market",
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
     const supabase = createSupabaseServer();
     const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user || user.email !== process.env.ADMIN_EMAIL) {
+    if (!user || !isAdminUser(user.email)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 

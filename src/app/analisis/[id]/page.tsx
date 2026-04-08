@@ -7,6 +7,7 @@ import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -73,7 +74,7 @@ export default async function AnalisisDetallePage({
 
   // Access level: "guest" | "free" | "premium" | "subscriber"
   const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";
-  const isAdmin = user?.email === process.env.ADMIN_EMAIL;
+  const isAdmin = isAdminUser(user?.email);
   const isLoggedIn = !!user;
   const isDemo = analisis.id === DEMO_ANALYSIS_ID;
   const isOwner = user?.id === analisis.user_id && analisis.user_id !== null;

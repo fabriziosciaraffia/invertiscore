@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
 import { findNearestStation } from "@/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     }
 
     // Allow admin email full access
-    const isAdmin = user.email === process.env.ADMIN_EMAIL;
+    const isAdmin = isAdminUser(user.email);
 
     // Ownership check: only owner or admin can generate AI analysis
     if (analysis.user_id && analysis.user_id !== user.id && !isAdmin) {
