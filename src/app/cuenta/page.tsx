@@ -20,6 +20,9 @@ export default async function CuentaPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  const firstName = fullName.split(' ')[0] || '';
+
   // Fetch credits + subscription
   const { data: creditsRow } = await supabase
     .from("user_credits")
@@ -67,7 +70,7 @@ export default async function CuentaPage() {
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">Mi cuenta</h1>
+          <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">{firstName ? `${firstName}, esta es tu cuenta` : "Tu cuenta"}</h1>
           <p className="font-mono text-sm text-[#71717A] mt-1">{user.email}</p>
         </div>
 

@@ -104,7 +104,7 @@ function ScoreCircle({ score }: { score: number }) {
   );
 }
 
-export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
+export function DashboardClient({ analisis, firstName = "" }: { analisis: Analisis[]; firstName?: string }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<VerdictFilter>("todos");
 
@@ -220,7 +220,7 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
             {/* ─── Header ─── */}
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">Mis Análisis</h1>
+                <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
                 <p className="mt-0.5 font-body text-[13px] text-[#FAFAF8]/50">
                   {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
                 </p>

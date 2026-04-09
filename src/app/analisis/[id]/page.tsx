@@ -82,6 +82,10 @@ export default async function AnalisisDetallePage({
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
+  // Owner first name for personalization
+  const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
+  const ownerFirstName = isOwner ? (ownerFullName.split(' ')[0] || '') : '';
+
   // Check user-level subscription/credits status
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
 
@@ -161,6 +165,7 @@ export default async function AnalisisDetallePage({
           isSharedView={isSharedView}
           isSharedLink={isSharedLink}
           userCredits={userCredits}
+          ownerFirstName={ownerFirstName}
         />
 
         {/* Fallback for old analyses without full results */}

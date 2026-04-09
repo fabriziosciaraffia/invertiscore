@@ -1272,6 +1272,7 @@ export function PremiumResults({
   isSharedView = false,
   isSharedLink = false,
   userCredits = 0,
+  ownerFirstName = "",
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -1297,6 +1298,7 @@ export function PremiumResults({
   isSharedView?: boolean;
   isSharedLink?: boolean;
   userCredits?: number;
+  ownerFirstName?: string;
 }) {
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
@@ -2203,6 +2205,9 @@ export function PremiumResults({
           <div>
             {currentAccess === "guest" && creatorName && (
               <p className="font-body text-xs font-semibold text-[#C8323C] mb-1">Análisis de {creatorName}</p>
+            )}
+            {ownerFirstName && !isSharedView && (
+              <p className="font-body text-sm text-[#71717A] mb-1">{ownerFirstName}, este es el análisis de tu departamento en {comuna || ciudad || "tu zona"}</p>
             )}
             <h1 className="font-heading font-bold text-xl md:text-2xl text-[#FAFAF8]">{nombre}</h1>
             <p className="font-body text-xs text-[#FAFAF8]/50 mt-1">

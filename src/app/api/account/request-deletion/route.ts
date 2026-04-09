@@ -79,8 +79,9 @@ export async function POST() {
     });
 
     // Confirmation email to user
-    const userName = user.user_metadata?.full_name || user.user_metadata?.name || '';
-    const greeting = userName ? `Hola ${userName},` : 'Hola,';
+    const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+    const firstName = fullName.split(' ')[0] || '';
+    const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
     await resend.emails.send({
       from: "Franco <hola@refranco.ai>",

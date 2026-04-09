@@ -36,5 +36,8 @@ export default async function DashboardPage() {
 
   const analisis = (analisisList || []) as Analisis[];
 
-  return <DashboardClient analisis={analisis} />;
+  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  const firstName = fullName.split(' ')[0] || '';
+
+  return <DashboardClient analisis={analisis} firstName={firstName} />;
 }

@@ -47,7 +47,8 @@ function ctaButton(text: string, url: string): string {
 }
 
 export async function sendWelcomeEmail(to: string, name: string) {
-  const greeting = name ? `Hola ${name},` : 'Hola,';
+  const firstName = name.split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
   try {
     await getResend()?.emails.send({
@@ -95,7 +96,8 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     ? `https://refranco.ai/analisis/${analysisId}`
     : 'https://refranco.ai/dashboard';
   const ctaText = analysisId ? 'Ver mi análisis →' : 'Ir al dashboard →';
-  const greeting = name ? `Hola ${name},` : '';
+  const firstName = name.split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
   try {
     await getResend()?.emails.send({
@@ -144,6 +146,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 }
 
 export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
+  const firstName = name.split(' ')[0] || '';
   const verdictColor = veredicto === 'COMPRAR' ? '#B0BEC5' : veredicto === 'BUSCAR OTRA' ? '#C8323C' : '#FBBF24';
   const verdictBg = veredicto === 'COMPRAR' ? 'rgba(176,190,197,0.12)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.12)' : 'rgba(251,191,36,0.12)';
   const verdictBorder = veredicto === 'COMPRAR' ? 'rgba(176,190,197,0.3)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.3)' : 'rgba(251,191,36,0.3)';
@@ -154,7 +157,7 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
       to,
       subject: `Tu análisis está listo — ${analysisTitle} (Score: ${score})`,
       html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">Tu análisis está listo</h1>
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">${firstName ? `${firstName}, tu` : 'Tu'} análisis está listo</h1>
 
         <div style="background: #1A1A1A; border-radius: 12px; padding: 32px 24px; margin: 0 0 24px 0; text-align: center;">
           <div style="color: #71717A; font-size: 10px; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; font-family: 'Courier New', monospace;">Franco Score</div>
