@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import FrancoLogo from "@/components/franco-logo";
 import { LogoutButton } from "@/components/logout-button";
 import { CancelSubscriptionButton } from "./cancel-dialog";
+import { DeleteAccountButton } from "./delete-account-button";
 
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
@@ -204,15 +205,7 @@ export default async function CuentaPage() {
 
         {/* ─── Sección 3: Eliminar Cuenta ─── */}
         <section className="mt-16 border-t border-[#1A1A1A] pt-8">
-          <p className="font-body text-sm text-[#71717A]">
-            ¿Quieres eliminar tu cuenta?{" "}
-            <a
-              href="mailto:fabrizio@refranco.ai?subject=Solicitud%20eliminación%20de%20cuenta"
-              className="text-[#C8323C] hover:underline"
-            >
-              Contactar soporte →
-            </a>
-          </p>
+          <DeleteAccountButton />
         </section>
       </div>
     </div>

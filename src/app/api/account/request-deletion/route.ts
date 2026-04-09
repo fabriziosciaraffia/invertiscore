@@ -1,0 +1,94 @@
+import { NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
+import { Resend } from "resend";
+
+export async function POST() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  // Count user analyses
+  const { count: analysisCount } = await supabase
+    .from("analisis")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  // Get credits
+  const { data: creditsRow } = await supabase
+    .from("user_credits")
+    .select("credits")
+    .eq("user_id", user.id)
+    .single();
+
+  const credits = creditsRow?.credits ?? 0;
+  const now = new Date().toLocaleDateString("es-CL", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const resend = new Resend(process.env.RESEND_API_KEY);
+
+  try {
+    await resend.emails.send({
+      from: "Franco <hola@refranco.ai>",
+      to: "hola@refranco.ai",
+      subject: "Solicitud de eliminación de cuenta",
+      html: `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0F0F0F;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="background:#151515;border-radius:16px;border:1px solid #222;padding:40px 32px;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#C8323C;margin:0 0 24px 0;">
+        Solicitud de eliminación de cuenta
+      </h1>
+
+      <div style="background:#1A1A1A;border-radius:12px;padding:20px 24px;margin:0 0 24px 0;">
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Email</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${user.email}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">User ID</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${user.id}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Fecha solicitud</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${now}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Análisis creados</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${analysisCount ?? 0}</span>
+        </div>
+        <div style="padding:8px 0;">
+          <span style="color:#71717A;font-size:13px;">Créditos restantes</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${credits}</span>
+        </div>
+      </div>
+
+      <div style="background:rgba(200,50,60,0.08);border:1px solid rgba(200,50,60,0.2);border-radius:8px;padding:16px;">
+        <p style="color:#C8323C;font-size:13px;margin:0;font-weight:600;">
+          Tienes 30 días para procesar esta solicitud.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error sending deletion request email:", error);
+    return NextResponse.json(
+      { error: "No se pudo enviar la solicitud" },
+      { status: 500 }
+    );
+  }
+}
