@@ -47,7 +47,7 @@ export function DeleteAccountButton() {
     return (
       <div>
         <p className="font-body text-sm text-[#FAFAF8]/70 mb-3">
-          ¿Estás seguro? Se enviará una solicitud para eliminar tu cuenta y todos tus datos. Este proceso puede tomar hasta 30 días.
+          ¿Estás seguro? Se enviará una solicitud para eliminar tu cuenta y todos tus datos.
         </p>
         <div className="flex items-center gap-3">
           <button

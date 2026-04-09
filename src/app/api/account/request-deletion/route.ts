@@ -72,11 +72,6 @@ export async function POST() {
         </div>
       </div>
 
-      <div style="background:rgba(200,50,60,0.08);border:1px solid rgba(200,50,60,0.2);border-radius:8px;padding:16px;">
-        <p style="color:#C8323C;font-size:13px;margin:0;font-weight:600;">
-          Tienes 30 días para procesar esta solicitud.
-        </p>
-      </div>
     </div>
   </div>
 </body>
@@ -106,15 +101,11 @@ export async function POST() {
       </h1>
 
       <p style="color:#A1A1AA;line-height:1.7;font-size:15px;margin:0 0 24px 0;">
-        Recibimos tu solicitud para eliminar tu cuenta. La procesaremos dentro de los próximos 30 días.
-      </p>
-
-      <p style="color:#A1A1AA;line-height:1.7;font-size:15px;margin:0 0 24px 0;">
-        Si cambiaste de opinión, simplemente ignorá este mensaje y seguí usando Franco con normalidad.
+        Recibimos tu solicitud para eliminar tu cuenta. Tu cuenta y datos serán eliminados.
       </p>
 
       <p style="color:#A1A1AA;line-height:1.7;font-size:15px;margin:0 0 0 0;">
-        Si tenés alguna duda, escribinos a <a href="mailto:hola@refranco.ai" style="color:#C8323C;text-decoration:none;">hola@refranco.ai</a>
+        Si tienes alguna consulta, escríbenos a <a href="mailto:hola@refranco.ai" style="color:#C8323C;text-decoration:none;">hola@refranco.ai</a>
       </p>
 
       <div style="margin-top:40px;padding-top:20px;border-top:1px solid #222;">
