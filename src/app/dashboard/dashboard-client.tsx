@@ -179,9 +179,9 @@ export function DashboardClient({ analisis }: { analisis: Analisis[] }) {
             <Link href="/pricing">
               <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
             </Link>
-            <Link href="/perfil">
+            <Link href="/cuenta">
               <Button variant="ghost" size="sm" className="gap-1.5 text-[#FAFAF8]/50 hover:text-[#FAFAF8]">
-                <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Perfil</span>
+                <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Cuenta</span>
               </Button>
             </Link>
             <LogoutButton />
