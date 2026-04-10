@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 
@@ -140,6 +141,134 @@ export async function POST(request: Request) {
         } catch (e) {
           console.error("Payment email error:", e);
         }
+      }
+
+      // Admin alert: successful payment
+      try {
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        const userEmail = userData?.user?.email || "desconocido";
+        const amount = flowData.amount || 0;
+        const productLabel = product === "pro" ? "Análisis Pro" : product === "pack3" ? "Pack x3" : product === "subscription" ? "Suscripción Mensual" : product;
+        const amountFormatted = "$" + Math.round(amount).toLocaleString("es-CL");
+        const now = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+        const analysisLink = analysisId ? `<div style="padding:8px 0;"><span style="color:#71717A;font-size:13px;">Análisis</span><a href="https://refranco.ai/analisis/${analysisId}" style="color:#C8323C;font-size:14px;float:right;text-decoration:none;">Ver análisis →</a></div>` : "";
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: "Franco <hola@refranco.ai>",
+          to: "hola@refranco.ai",
+          subject: `💰 Nuevo pago: ${productLabel} — ${amountFormatted}`,
+          html: `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0F0F0F;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="background:#151515;border-radius:16px;border:1px solid #222;padding:40px 32px;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#16A34A;margin:0 0 24px 0;">
+        Nuevo pago confirmado
+      </h1>
+      <div style="background:#1A1A1A;border-radius:12px;padding:20px 24px;margin:0 0 16px 0;">
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Producto</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-weight:600;">${productLabel}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Monto</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${amountFormatted}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Email</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${userEmail}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Fecha</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${now}</span>
+        </div>
+        <div style="padding:8px 0;${analysisLink ? "border-bottom:1px solid #2A2A2A;" : ""}">
+          <span style="color:#71717A;font-size:13px;">Order ID</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${flowData.commerceOrder}</span>
+        </div>
+        ${analysisLink}
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+        });
+      } catch (emailError) {
+        console.error("Failed to send admin payment alert:", emailError);
+      }
+    }
+
+    // Handle rejected/failed payments — admin alert
+    if (flowData.status === 3 || flowData.status === 4) {
+      try {
+        const { data: payment } = await supabase
+          .from("payments")
+          .select("user_id, product, analysis_id")
+          .eq("commerce_order", flowData.commerceOrder)
+          .single();
+
+        const statusLabel = flowData.status === 3 ? "Rechazado" : "Anulado";
+        const product = payment?.product || "desconocido";
+        const productLabel = product === "pro" ? "Análisis Pro" : product === "pack3" ? "Pack x3" : product === "subscription" ? "Suscripción Mensual" : product;
+        const amount = flowData.amount || 0;
+        const amountFormatted = "$" + Math.round(amount).toLocaleString("es-CL");
+        const now = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+        let userEmail = "desconocido";
+        if (payment?.user_id) {
+          const { data: userData } = await supabase.auth.admin.getUserById(payment.user_id);
+          userEmail = userData?.user?.email || "desconocido";
+        }
+
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: "Franco <hola@refranco.ai>",
+          to: "hola@refranco.ai",
+          subject: `⚠️ Pago fallido: ${productLabel} — ${amountFormatted}`,
+          html: `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0F0F0F;font-family:'Helvetica Neue',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
+    <div style="background:#151515;border-radius:16px;border:1px solid #222;padding:40px 32px;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#C8323C;margin:0 0 24px 0;">
+        Pago fallido
+      </h1>
+      <div style="background:#1A1A1A;border-radius:12px;padding:20px 24px;margin:0 0 16px 0;">
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Estado</span>
+          <span style="color:#C8323C;font-size:14px;float:right;font-weight:600;">${statusLabel}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Producto</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${productLabel}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Monto</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${amountFormatted}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Email</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${userEmail}</span>
+        </div>
+        <div style="padding:8px 0;border-bottom:1px solid #2A2A2A;">
+          <span style="color:#71717A;font-size:13px;">Fecha</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;">${now}</span>
+        </div>
+        <div style="padding:8px 0;">
+          <span style="color:#71717A;font-size:13px;">Order ID</span>
+          <span style="color:#FAFAF8;font-size:14px;float:right;font-family:'Courier New',monospace;">${flowData.commerceOrder}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`,
+        });
+      } catch (emailError) {
+        console.error("Failed to send admin payment failure alert:", emailError);
       }
     }
 
