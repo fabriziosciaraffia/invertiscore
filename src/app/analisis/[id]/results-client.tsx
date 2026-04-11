@@ -2965,7 +2965,7 @@ export function PremiumResults({
                       const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
                       const displayName = fullNames[item.name] || item.name;
                       return (
-                        <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                        <div className="rounded-lg border border-th-border-hover bg-th-card px-3 py-3 text-xs text-th-text shadow-lg">
                           <div className="mb-1 font-semibold text-th-text">{item.isResult ? `→ ${displayName}` : displayName}</div>
                           <div className={item.delta >= 0 ? "text-th-positive" : "text-[#C8323C]"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
@@ -3038,7 +3038,7 @@ export function PremiumResults({
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
-                              <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                              <div className="rounded-lg border border-th-border-hover bg-th-card px-3 py-3 text-xs text-th-text shadow-lg">
                                 <div className="mb-1.5 font-semibold text-th-text">{row.name}</div>
                                 <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-positive)" }} />Ingreso: <span className="font-medium text-th-text">{fmt(row.Ingreso)}</span></div>
                                 {egresoBarSeries.map(s => (
@@ -3138,7 +3138,7 @@ export function PremiumResults({
                             if (!row) return null;
                             const pre = row.isPreEntrega;
                             return (
-                              <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                              <div className="rounded-lg border border-th-border-hover bg-th-card px-3 py-3 text-xs text-th-text shadow-lg">
                                 <div className="mb-1.5 font-semibold text-th-text">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                 {pre ? (
                                   <>
