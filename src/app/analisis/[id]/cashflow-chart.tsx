@@ -68,7 +68,7 @@ export function CashflowChart({
         {/* Legend */}
         <div className="mb-4 flex flex-wrap gap-4 text-xs text-th-text-secondary">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#FAFAF8]/70" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-th-bar-fill" />
             Ingreso
           </span>
           <span className="flex items-center gap-1.5">
@@ -76,7 +76,7 @@ export function CashflowChart({
             Egreso
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-0.5 w-4 bg-[#FAFAF8]" />
+            <span className="inline-block h-0.5 w-4 bg-th-text" />
             Acumulado
           </span>
         </div>
@@ -104,7 +104,7 @@ export function CashflowChart({
                   className="group relative flex flex-col items-center"
                 >
                   {/* Tooltip */}
-                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-white/[0.15] bg-[#1E1E1E] px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
+                  <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-th-border-hover bg-th-elevated px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
                     <div className="text-th-text">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
@@ -128,7 +128,7 @@ export function CashflowChart({
                   {/* Bar pair */}
                   <div className="flex items-end gap-0.5">
                     <div
-                      className="w-3 rounded-t-sm bg-[#FAFAF8]/60 transition-all group-hover:bg-[#FAFAF8]/80"
+                      className="w-3 rounded-t-sm bg-th-text/60 transition-all group-hover:bg-th-text/80"
                       style={{ height: ingresoH }}
                     />
                     <div
@@ -150,7 +150,7 @@ export function CashflowChart({
           >
             <polyline
               fill="none"
-              stroke="#FAFAF8"
+              stroke="var(--franco-text-primary)"
               strokeWidth="2.5"
               strokeLinejoin="round"
               points={mesConAcumulado
@@ -176,7 +176,7 @@ export function CashflowChart({
                   cx={x}
                   cy={y}
                   r="3"
-                  fill="#FAFAF8"
+                  fill="var(--franco-text-primary)"
                 />
               );
             })}

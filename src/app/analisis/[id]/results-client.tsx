@@ -776,14 +776,15 @@ function AIAnalysisSection({
               {/* Veredicto final — shown after all phases complete */}
               <div id="ai-anchor-veredicto-final" />
               {isComplete && aiAnalysis.veredicto && (() => {
-                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-positive)"
-                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-verdict-adjust-text)"
+                // Veredicto section is ALWAYS dark — use hardcoded dark-mode verdict colors
+                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "#B0BEC5"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "#FBBF24"
                   : "#C8323C";
                 return (
                   <div className="mt-6 pt-6 border-t border-th-border animate-fadeIn">
                     <div
                       className="relative overflow-hidden rounded-xl text-center"
-                      style={{ background: "#151515", border: `1px solid ${vc}15`, padding: "40px 24px" }}
+                      style={{ background: "#0F0F0F", border: `1px solid ${vc}15`, padding: "40px 24px" }}
                     >
                       {/* Radial gradient glow from top */}
                       <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at center top, ${vc}12 0%, transparent 55%)` }} />
@@ -792,7 +793,7 @@ function AIAnalysisSection({
 
                       <div className="relative">
                         <div className="flex items-baseline justify-center gap-2 mb-4">
-                          <span className="font-mono text-[10px] uppercase tracking-[3px] text-th-text-muted">VEREDICTO</span>
+                          <span className="font-mono text-[10px] uppercase tracking-[3px]" style={{ color: "rgba(250,250,248,0.35)" }}>VEREDICTO</span>
                           <FrancoLogo size="sm" inverted />
                         </div>
                         <div
@@ -808,11 +809,11 @@ function AIAnalysisSection({
                           {aiAnalysis.veredicto.decision}
                         </div>
                         {aiAnalysis.negociacion?.precioSugerido && (
-                          <div className="font-mono text-[13px] text-th-text-secondary mt-4">
+                          <div className="font-mono text-[13px] mt-4" style={{ color: "rgba(250,250,248,0.5)" }}>
                             Precio sugerido: {aiAnalysis.negociacion.precioSugerido}
                           </div>
                         )}
-                        <p className="text-[11px] text-zinc-500 text-center mt-4 max-w-md mx-auto leading-relaxed">
+                        <p className="text-[11px] text-center mt-4 max-w-md mx-auto leading-relaxed" style={{ color: "#71717A" }}>
                           Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión. Consulta con un profesional antes de decidir.
                         </p>
                       </div>
@@ -1240,7 +1241,7 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
           className="relative flex h-8 w-20 items-center rounded-full bg-white/[0.08] p-1 transition-colors"
         >
           <div
-            className={`absolute h-6 w-9 rounded-full bg-[#FAFAF8] transition-transform ${
+            className={`absolute h-6 w-9 rounded-full bg-th-btn-primary transition-transform ${
               currency === "UF" ? "translate-x-[40px]" : "translate-x-0"
             }`}
           />
@@ -1583,9 +1584,9 @@ export function PremiumResults({
     const nMeses = inputData.plazoCredito * 12;
 
     const configs = [
-      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-[#C8323C]/60", bgClass: "", labelClass: "text-[#C8323C]" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30 ring-0", bgClass: "bg-th-surface", labelClass: "text-th-text" },
-      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30", bgClass: "", labelClass: "text-th-positive" },
+      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-th-scenario-bad-border", bgClass: "bg-th-scenario-bad-bg", labelClass: "text-[#C8323C]" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "var(--franco-text-primary)", borderClass: "border-th-border-strong", bgClass: "bg-th-card", labelClass: "text-th-text" },
+      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "var(--franco-text-primary)", borderClass: "border-th-scenario-good-border", bgClass: "bg-th-scenario-good-bg", labelClass: "text-th-positive" },
     ];
 
     return configs.map(cfg => {
@@ -1698,7 +1699,7 @@ export function PremiumResults({
       items.push({
         name: s.name,
         range: [bottom, top],
-        fill: s.delta >= 0 ? "rgba(250,250,248,0.6)" : "rgba(200,50,60,0.8)",
+        fill: s.delta >= 0 ? "var(--franco-bar-fill)" : "rgba(200,50,60,0.8)",
         isResult: false,
         delta: s.delta,
         running: newRunning,
@@ -1710,7 +1711,7 @@ export function PremiumResults({
     items.push({
       name: "Neto",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
-      fill: flujo >= 0 ? "rgba(250,250,248,0.5)" : "#C8323C",
+      fill: flujo >= 0 ? "var(--franco-text-secondary)" : "#C8323C",
       isResult: true,
       delta: flujo,
       running: flujo,
@@ -1859,12 +1860,12 @@ export function PremiumResults({
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
       { key: "Dividendo", label: "Dividendo", color: "rgba(200,50,60,0.85)" },
       { key: "GGCC", label: "GGCC", color: "rgba(200,50,60,0.7)" },
-      { key: "Contribuciones", label: "Contribuciones", color: "rgba(250,250,248,0.35)" },
+      { key: "Contribuciones", label: "Contribuciones", color: "var(--franco-text-muted)" },
       { key: "Mantencion", label: "Mantención", color: "rgba(200,50,60,0.6)" },
-      { key: "Vacancia", label: "Vacancia", color: "rgba(250,250,248,0.25)" },
-      { key: "Corretaje", label: "Corretaje", color: "rgba(250,250,248,0.35)" },
-      { key: "Recambio", label: "Recambio", color: "rgba(250,250,248,0.25)" },
-      { key: "Administracion", label: "Administración", color: "rgba(250,250,248,0.35)" },
+      { key: "Vacancia", label: "Vacancia", color: "var(--franco-bar-track)" },
+      { key: "Corretaje", label: "Corretaje", color: "var(--franco-text-muted)" },
+      { key: "Recambio", label: "Recambio", color: "var(--franco-bar-track)" },
+      { key: "Administracion", label: "Administración", color: "var(--franco-text-muted)" },
     ];
     const dataRows = cashflowData.filter(r => r._x > 0);
     if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
@@ -2147,7 +2148,7 @@ export function PremiumResults({
     <>
       {/* Shared view banner (logged in user viewing someone else's analysis) */}
       {isSharedView && (
-        <div className="bg-th-page text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
+        <div className="bg-th-surface text-th-text rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
           <a href="/analisis/nuevo" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
             Analizar mi propio depto →
@@ -2156,7 +2157,7 @@ export function PremiumResults({
       )}
       {/* Shared link banner (guest arriving via shared link) */}
       {isSharedLink && (
-        <div className="bg-th-page text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
+        <div className="bg-th-surface text-th-text rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
           <p className="font-body text-sm">
             {creatorName ? `${creatorName} te compartió este análisis.` : "Te compartieron un análisis."}
             {" "}Regístrate para verlo completo.
@@ -2569,9 +2570,9 @@ export function PremiumResults({
               >
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-[2px]">
                   {[
-                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto.", levels: ['importante', 'sinfiltro'] },
-                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "var(--franco-positive)" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
-                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "var(--franco-positive)" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
+                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "var(--franco-text-primary)", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto.", levels: ['importante', 'sinfiltro'] },
+                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "var(--franco-positive)" : (m.capRate ?? 0) >= 2 ? "var(--franco-text-primary)" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
+                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "var(--franco-positive)" : (m.rentabilidadNeta ?? 0) >= 1 ? "var(--franco-text-primary)" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
                     { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra.", levels: ['importante', 'sinfiltro'] },
                     { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización.", levels: ['sinfiltro'] },
                     { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "var(--franco-positive)" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años.", levels: ['importante', 'sinfiltro'] },
@@ -2854,10 +2855,9 @@ export function PremiumResults({
                     </div>
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                       {sensScenarios.map((s) => {
-                        const scColor = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "#333333";
-                        const scBg = s.key === "base" ? "#0F0F0F" : `${scColor}15`;
-                        const scBorder = s.key === "base" ? "#33333366" : `${scColor}35`;
-                        const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "#999999";
+                        const scBg = s.key === "pesimista" ? "var(--franco-scenario-bad-bg)" : s.key === "optimista" ? "var(--franco-scenario-good-bg)" : "var(--franco-bg-card)";
+                        const scBorder = s.key === "pesimista" ? "var(--franco-scenario-bad-border)" : s.key === "optimista" ? "var(--franco-scenario-good-border)" : "var(--franco-border-strong)";
+                        const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "var(--franco-text-secondary)";
                         return (
                         <div key={s.key} className="rounded-lg" style={{ border: `1px solid ${scBorder}`, background: scBg, padding: "12px 16px" }}>
                           <div className="flex items-center gap-2 mb-3">
@@ -2956,8 +2956,8 @@ export function PremiumResults({
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
                     cursor={false}
                     content={({ active, payload, label: wfLabel }) => {
@@ -2977,7 +2977,7 @@ export function PremiumResults({
                       );
                     }}
                   />
-                  <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1.5} />
+                  <ReferenceLine y={0} stroke="var(--franco-text-muted)" strokeDasharray="6 3" strokeWidth={1.5} />
                   <Bar dataKey="range" radius={[4, 4, 0, 0]} activeBar={false}>
                     {waterfallData.map((entry, i) => (
                       <Cell
@@ -2993,9 +2993,9 @@ export function PremiumResults({
               </ResponsiveContainer>
             </div>
             <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-th-text-secondary">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.6)" }} />Ingreso</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-bar-fill)" }} />Ingreso</span>
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />Resultado</span>
+              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-secondary)" }} />Resultado</span>
             </div>
             {isTouchDevice && <p className="mt-4 text-center text-[10px] text-th-text-secondary">Toca las barras para ver el detalle</p>}
             {m && (
@@ -3030,10 +3030,10 @@ export function PremiumResults({
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
+                        <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
@@ -3053,7 +3053,7 @@ export function PremiumResults({
                             );
                           }}
                         />
-                        <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1} />
+                        <ReferenceLine y={0} stroke="var(--franco-text-muted)" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Ingreso siempre primero */}
                         <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="var(--franco-positive)" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
                         {/* Egresos ordenados por impacto promedio descendente */}
@@ -3061,10 +3061,10 @@ export function PremiumResults({
                           <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
                         ))}
                         {/* Línea acumulado */}
-                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="#FAFAF8" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
+                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="var(--franco-text-primary)" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
                         {/* Línea vertical de entrega */}
                         {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="var(--franco-text-muted)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -3091,10 +3091,10 @@ export function PremiumResults({
                       {egresoBarSeries.map(s => (
                         <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
                       ))}
-                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 2 }} />Acumulado</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "var(--franco-text-primary)", height: 2 }} />Acumulado</span>
                     </div>
                   </div>
-                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: 'rgba(250,250,248,0.4)' }}>Toca las barras para ver el detalle</div>}
+                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: 'var(--franco-text-secondary)' }}>Toca las barras para ver el detalle</div>}
             </div>
           </CollapsibleSection>
           </div>
@@ -3130,9 +3130,9 @@ export function PremiumResults({
                     <ResponsiveContainer>
                       <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "rgba(250,250,248,0.5)" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
+                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "rgba(250,250,248,0.5)" }} tickFormatter={fmtAxis} />
+                        <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
                         <RechartsTooltip
                           content={({ active, payload }) => {
                             if (!active || !payload || payload.length === 0) return null;
@@ -3144,34 +3144,34 @@ export function PremiumResults({
                                 <div className="mb-1.5 font-semibold text-th-text">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                 {pre ? (
                                   <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.plusvalia)}</span></div>
-                                    <div style={{ color: "rgba(250,250,248,0.5)" }}>Deuda: <span style={{ color: "rgba(250,250,248,0.5)" }}>$0 (crédito aún no comienza)</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "var(--franco-text-primary)" }}>{fmt(row.piePagado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "var(--franco-text-primary)" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div style={{ color: "var(--franco-text-secondary)" }}>Deuda: <span style={{ color: "var(--franco-text-secondary)" }}>$0 (crédito aún no comienza)</span></div>
                                   </>
                                 ) : (
                                   <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.valorPropiedad)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.plusvalia)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo: <span className="font-medium" style={{ color: "#C8323C" }}>{fmt(row.flujoAcumulado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "var(--franco-text-primary)" }}>{fmt(row.valorPropiedad)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "var(--franco-text-primary)" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "var(--franco-text-primary)" }}>{fmt(row.plusvalia)}</span></div>
+                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo: <span className="font-medium" style={{ color: "#C8323C" }}>{fmt(row.flujoAcumulado)}</span></div>
                                   </>
                                 )}
-                                <div className="mt-1 border-t border-th-border pt-1 font-semibold" style={{ color: "#FAFAF8" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                <div className="mt-1 border-t border-th-border pt-1 font-semibold" style={{ color: "var(--franco-text-primary)" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                               </div>
                             );
                           }}
                         />
-                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="#FAFAF8" fillOpacity={0.06} stroke="#FAFAF8" strokeWidth={2} />
+                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="var(--franco-text-primary)" fillOpacity={0.06} stroke="var(--franco-text-primary)" strokeWidth={2} />
                         <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.06} stroke="none" />
-                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="#FAFAF8" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="var(--franco-text-primary)" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="var(--franco-text-primary)" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="var(--franco-text-primary)" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
                         <Bar xAxisId="cat" dataKey="flujoAcumulado" stackId="patrimonio" fill="rgba(200,50,60,0.25)" stroke="rgba(200,50,60,0.45)" strokeWidth={1} name="Flujo de bolsillo" radius={[0, 0, 0, 0]} />
                         <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
-                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="#FAFAF8" strokeWidth={2.5} dot={{ r: 4, fill: "#FAFAF8", stroke: "#0F0F0F", strokeWidth: 2 }} name="Patrimonio neto" />
+                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="var(--franco-text-primary)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--franco-text-primary)", stroke: "var(--franco-bg-page)", strokeWidth: 2 }} name="Patrimonio neto" />
                         {mesesPreEntregaTop > 0 && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="rgba(250,250,248,0.3)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "rgba(250,250,248,0.5)" }} />
+                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="var(--franco-text-muted)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }} />
                         )}
                       </ComposedChart>
                     </ResponsiveContainer>
@@ -3181,9 +3181,9 @@ export function PremiumResults({
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.30)" }} />Capital amortizado</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.08)", border: "1px solid rgba(250,250,248,0.20)" }} />Plusvalía</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.2 }} />Valor propiedad</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.2 }} />Valor propiedad</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "var(--franco-text-primary)", height: 3 }} />Patrimonio neto</span>
                   </div>
                   {isTouchDevice && <p className="mt-4 text-center text-[10px] text-th-text-secondary">Toca las barras para ver el detalle</p>}
                   {/* Desglose de patrimonio — sinfiltro only */}
@@ -3250,9 +3250,9 @@ export function PremiumResults({
                       {/* Bloque 3: Ganancia real */}
                       <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(250,250,248,0.1)", background: "rgba(250,250,248,0.03)" }}>
                         <div className="px-3 py-3 sm:px-4">
-                          <p className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Si vendieras en {horizonYears === 1 ? "1 año" : `${horizonYears} años`}, tu ganancia real sería:</p>
-                          <p className="mt-0.5 font-mono text-xs" style={{ color: "rgba(250,250,248,0.3)" }}>patrimonio − pie + flujo − gastos cierre</p>
-                          <div className={`mt-2 font-mono text-[22px] font-semibold ${gananciaReal >= 0 ? "" : ""}`} style={{ color: gananciaReal >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmt(gananciaReal)}</div>
+                          <p className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Si vendieras en {horizonYears === 1 ? "1 año" : `${horizonYears} años`}, tu ganancia real sería:</p>
+                          <p className="mt-0.5 font-mono text-xs" style={{ color: "var(--franco-text-muted)" }}>patrimonio − pie + flujo − gastos cierre</p>
+                          <div className={`mt-2 font-mono text-[22px] font-semibold ${gananciaReal >= 0 ? "" : ""}`} style={{ color: gananciaReal >= 0 ? "var(--franco-text-primary)" : "#C8323C" }}>{fmt(gananciaReal)}</div>
                         </div>
                       </div>
                       </>
@@ -3365,13 +3365,13 @@ export function PremiumResults({
 
                     {/* Lo que pusiste */}
                     <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pie inicial</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pie inicial</span>
                         <span className="font-mono text-sm text-th-text">{fmt(m.pieCLP)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
                         <span className="font-mono text-sm" style={{ color: "#C8323C" }}>{fmt(Math.abs(fa))}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
@@ -3382,18 +3382,18 @@ export function PremiumResults({
 
                     {/* Lo que recuperas */}
                     <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Valor de venta estimado</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Valor de venta estimado</span>
                         <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Saldo crédito restante</span>
-                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Saldo crédito restante</span>
+                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Comisión venta (2%)</span>
-                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>-{fmt(comision)}</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Comisión venta (2%)</span>
+                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>-{fmt(comision)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
                         <span className="text-[13px] font-semibold text-th-text">Recibes neto</span>
@@ -3403,30 +3403,30 @@ export function PremiumResults({
 
                     {/* Resultado */}
                     <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Resultado</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Resultado</div>
                       <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
                         <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Tu ganancia</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: ganancia >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmt(ganancia)}</div>
+                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Tu ganancia</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: ganancia >= 0 ? "var(--franco-text-primary)" : "#C8323C" }}>{fmt(ganancia)}</div>
                         </div>
                         <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Multiplicador</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: multiplicador >= 1 ? "#FAFAF8" : "#C8323C" }}>{multiplicador}x</div>
+                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Multiplicador</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: multiplicador >= 1 ? "var(--franco-text-primary)" : "#C8323C" }}>{multiplicador}x</div>
                         </div>
                         <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>TIR</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: tir >= 0 ? "#FAFAF8" : "#C8323C" }}>{fmtPct(tir)}</div>
+                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>TIR</div>
+                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: tir >= 0 ? "var(--franco-text-primary)" : "#C8323C" }}>{fmtPct(tir)}</div>
                         </div>
                       </div>
                     </div>
 
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-bar-fill)" }}>
                         Pusiste <span className="font-medium text-th-text">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-th-text">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
                         {" "}Al vender, recibes <span className="font-medium text-th-text">{fmtAbr(recibeNeto)}</span> netos.
                         {" "}Tu ganancia real es <span className="font-medium text-th-text">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-th-text">{multiplicador}x</span>.
@@ -3442,14 +3442,14 @@ export function PremiumResults({
 
                     {/* Selector % refi */}
                     <div className="flex items-center gap-3">
-                      <span className="text-xs" style={{ color: "rgba(250,250,248,0.4)" }}>% refinanciamiento:</span>
+                      <span className="text-xs" style={{ color: "var(--franco-text-secondary)" }}>% refinanciamiento:</span>
                       <div className="flex gap-1.5">
                         {[60, 70, 80, 90].map((pct) => (
                           <button key={pct} type="button" onClick={() => setRefiPct(pct)}
                             className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
                             style={refiPct === pct
-                              ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
-                              : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
+                              ? { border: "1px solid var(--franco-text-primary)", color: "var(--franco-text-primary)", fontWeight: 500 }
+                              : { border: "1px solid rgba(250,250,248,0.1)", color: "var(--franco-text-secondary)" }}
                           >{pct}%</button>
                         ))}
                       </div>
@@ -3457,27 +3457,27 @@ export function PremiumResults({
 
                     {/* Tu depto hoy */}
                     <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo avalúo (valor proyectado)</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo avalúo (valor proyectado)</span>
                         <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Deuda actual</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Deuda actual</span>
                         <span className="font-mono text-sm text-th-text">{fmt(sc)}</span>
                       </div>
                     </div>
 
                     {/* Nuevo crédito */}
                     <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
                         <span className="font-mono text-sm text-th-text">{fmt(refiNuevoCredito)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
-                        <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pago deuda anterior</span>
-                        <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
+                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pago deuda anterior</span>
+                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
                         <span className="text-[13px] font-semibold text-th-text">Capital liberado</span>
@@ -3487,16 +3487,16 @@ export function PremiumResults({
 
                     {/* Impacto en tu flujo */}
                     <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Impacto en tu flujo</div>
+                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Impacto en tu flujo</div>
                       <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
                         <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Nuevo dividendo</div>
+                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo dividendo</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoDividendo)}</div>
                         </div>
                         <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
                         <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "rgba(250,250,248,0.4)" }}>Nuevo flujo neto</div>
+                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo flujo neto</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoFlujoNeto)}</div>
                         </div>
                       </div>
@@ -3504,7 +3504,7 @@ export function PremiumResults({
 
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-bar-fill)" }}>
                         Sin vender tu depto, puedes liberar <span className="font-medium text-th-text">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
                         {" "}{nDeptos >= 2
                           ? <>Ese capital alcanza como pie para <span className="font-medium text-th-text">{nDeptos} departamentos</span> similares.</>
