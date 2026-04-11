@@ -66,7 +66,7 @@ export function CashflowChart({
     <div className="w-full overflow-x-auto">
       <div className="min-w-[600px]">
         {/* Legend */}
-        <div className="mb-4 flex flex-wrap gap-4 text-xs text-[#FAFAF8]/60">
+        <div className="mb-4 flex flex-wrap gap-4 text-xs text-th-text-secondary">
           <span className="flex items-center gap-1.5">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#FAFAF8]/70" />
             Ingreso
@@ -87,7 +87,7 @@ export function CashflowChart({
           {[0, 0.25, 0.5, 0.75, 1].map((pct) => (
             <div
               key={pct}
-              className="absolute left-0 right-0 border-t border-white/[0.06]"
+              className="absolute left-0 right-0 border-t border-th-border"
               style={{ top: (1 - pct) * chartH }}
             />
           ))}
@@ -105,7 +105,7 @@ export function CashflowChart({
                 >
                   {/* Tooltip */}
                   <div className="pointer-events-none absolute -top-20 z-10 hidden rounded-md border border-white/[0.15] bg-[#1E1E1E] px-2 py-1.5 text-[10px] shadow-lg group-hover:block">
-                    <div className="text-[#FAFAF8]">
+                    <div className="text-th-text">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
                     <div className="text-[#C8323C]">
@@ -113,7 +113,7 @@ export function CashflowChart({
                     </div>
                     <div
                       className={
-                        m.flujo >= 0 ? "text-[#FAFAF8]" : "text-[#C8323C]"
+                        m.flujo >= 0 ? "text-th-text" : "text-[#C8323C]"
                       }
                     >
                       Flujo: {fmt(m.flujo)}
@@ -183,7 +183,7 @@ export function CashflowChart({
           </svg>
 
           {/* Month labels */}
-          <div className="mt-2 flex justify-around text-[10px] text-[#FAFAF8]/50">
+          <div className="mt-2 flex justify-around text-[10px] text-th-text-secondary">
             {mesConAcumulado.map((m) => (
               <span key={m.mes} className="w-7 text-center">
                 M{m.mes}

@@ -78,7 +78,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t=localStorage.getItem('franco-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();` }} />
+      </head>
       <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         <script
           type="application/ld+json"

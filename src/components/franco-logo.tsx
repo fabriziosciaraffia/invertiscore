@@ -18,6 +18,7 @@ const sizeConfig = {
 
 export default function FrancoLogo({
   size = "md",
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   inverted = false,
   showTagline = false,
   className = "",
@@ -30,13 +31,13 @@ export default function FrancoLogo({
       <span className={`${s.text} leading-tight flex items-baseline`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
-          style={{ color: inverted ? 'rgba(255,255,255,0.32)' : 'rgba(15,15,15,0.28)', marginRight: '-0.08em' }}
+          style={{ color: 'var(--franco-wordmark-re)', marginRight: '-0.08em' }}
         >
           re
         </span>
         <span
           className="font-heading font-bold transition-colors duration-300"
-          style={{ color: inverted ? '#FFFFFF' : '#0F0F0F' }}
+          style={{ color: 'var(--franco-wordmark-franco)' }}
         >
           franco
         </span>
@@ -53,7 +54,7 @@ export default function FrancoLogo({
           style={{
             fontSize: `${s.taglinePx}px`,
             letterSpacing: '0.2em',
-            color: inverted ? 'rgba(250,250,248,0.22)' : 'rgba(15,15,15,0.22)',
+            color: 'var(--franco-text-muted)',
             marginTop: `${s.taglineMt}px`,
             textAlign: 'center',
             lineHeight: 1,

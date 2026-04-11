@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ForceDark } from "@/components/force-dark";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -35,17 +36,18 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-th-page px-4">
+      <ForceDark />
       <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-card shadow-sm">
           <form onSubmit={handleLogin}>
             {/* Header */}
             <div className="px-6 pt-8 pb-2 text-center">
               <div className="mx-auto mb-4">
                 <FrancoLogo size="xl" href="/" inverted />
               </div>
-              <h1 className="font-heading text-xl font-bold text-[#FAFAF8]">Bienvenido de vuelta</h1>
-              <p className="mt-1.5 font-body text-sm text-[#FAFAF8]/50">
+              <h1 className="font-heading text-xl font-bold text-th-text">Bienvenido de vuelta</h1>
+              <p className="mt-1.5 font-body text-sm text-th-text-secondary">
                 Ingresa tu email para continuar analizando
               </p>
             </div>
@@ -58,7 +60,7 @@ export default function LoginPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <label htmlFor="email" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="email" className="font-body text-sm font-semibold text-th-text">
                   Email
                 </label>
                 <input
@@ -68,11 +70,11 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-th-border-strong bg-th-surface px-3 py-2.5 font-body text-sm text-th-text placeholder:text-th-text-muted focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="password" className="font-body text-sm font-semibold text-th-text">
                   Contraseña
                 </label>
                 <input
@@ -81,7 +83,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-[#FAFAF8]/30 focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-th-border-strong bg-th-surface px-3 py-2.5 font-body text-sm text-th-text placeholder:text-th-text-muted focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
                 />
               </div>
             </div>
@@ -99,14 +101,14 @@ export default function LoginPage() {
               {/* Separator */}
               <div className="flex items-center gap-2">
                 <div className="h-px flex-1 bg-white/[0.08]" />
-                <span className="font-body text-xs text-[#FAFAF8]/50">o</span>
+                <span className="font-body text-xs text-th-text-secondary">o</span>
                 <div className="h-px flex-1 bg-white/[0.08]" />
               </div>
 
               {/* Google button */}
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-[#1A1A1A] py-3 font-body text-sm font-semibold text-[#FAFAF8] transition-colors hover:border-white/20 hover:bg-[#222]"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-th-border-strong bg-th-surface py-3 font-body text-sm font-semibold text-th-text transition-colors hover:border-white/20 hover:bg-th-elevated"
                 onClick={async () => {
                   const supabase = createClient();
                   await supabase.auth.signInWithOAuth({
@@ -124,9 +126,9 @@ export default function LoginPage() {
                 Continuar con Google
               </button>
 
-              <p className="text-center font-body text-sm text-[#FAFAF8]/50">
+              <p className="text-center font-body text-sm text-th-text-secondary">
                 ¿No tienes cuenta?{" "}
-                <Link href="/register" className="font-semibold text-[#FAFAF8] underline hover:text-[#C8323C]">
+                <Link href="/register" className="font-semibold text-th-text underline hover:text-[#C8323C]">
                   Regístrate
                 </Link>
               </p>
@@ -135,7 +137,7 @@ export default function LoginPage() {
         </div>
 
         {/* Franco tagline */}
-        <div className="mt-6 text-center font-body text-[11px] text-[#FAFAF8]/50">
+        <div className="mt-6 text-center font-body text-[11px] text-th-text-secondary">
           Tu corredor gana si compras. Franco gana si decides bien.
         </div>
       </div>

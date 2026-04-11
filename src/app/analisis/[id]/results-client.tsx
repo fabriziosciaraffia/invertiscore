@@ -199,7 +199,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
   }
 
   return (
-    <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 overflow-hidden">
+    <div className="bg-th-card rounded-xl border border-th-border-strong mb-3 overflow-hidden">
       <button
         type="button"
         onClick={() => !locked && !guestLocked && setOpen(!open)}
@@ -207,17 +207,17 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-body text-[15px] font-semibold text-[#FAFAF8]">{title}</span>
+            <span className="font-body text-[15px] font-semibold text-th-text">{title}</span>
             {locked && <span className="font-mono text-[8px] font-bold text-[#C8323C] bg-[#C8323C]/10 px-1.5 py-0.5 rounded">PRO</span>}
           </div>
-          {subtitle && <p className="font-body text-xs text-[#FAFAF8]/50 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="font-body text-xs text-th-text-secondary mt-0.5">{subtitle}</p>}
         </div>
         {locked ? (
-          <Lock className="h-4 w-4 text-[#FAFAF8]/50 shrink-0" />
+          <Lock className="h-4 w-4 text-th-text-secondary shrink-0" />
         ) : guestLocked ? (
-          <Lock className="h-4 w-4 text-[#FAFAF8]/50 shrink-0" />
+          <Lock className="h-4 w-4 text-th-text-secondary shrink-0" />
         ) : (
-          <span className={`font-body text-lg text-[#FAFAF8]/50 transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
+          <span className={`font-body text-lg text-th-text-secondary transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
         )}
       </button>
 
@@ -228,10 +228,10 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
             {children}
           </div>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <Lock className="h-5 w-5 text-[#FAFAF8] mb-2" />
-            <p className="font-body text-sm font-medium text-[#FAFAF8] mb-1">Regístrate gratis para ver esta sección</p>
+            <Lock className="h-5 w-5 text-th-text mb-2" />
+            <p className="font-body text-sm font-medium text-th-text mb-1">Regístrate gratis para ver esta sección</p>
             <a href="/register">
-              <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-xs font-semibold px-5 py-2 rounded-lg mt-1">
+              <button type="button" className="bg-th-btn-primary text-th-btn-primary-text font-body text-xs font-semibold px-5 py-2 rounded-lg mt-1">
                 Crear cuenta gratis →
               </button>
             </a>
@@ -242,7 +242,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
       {open && !locked && !guestLocked && (
         <div className="px-5 pb-5">
           {helpText && (
-            <p className="font-body text-[13px] text-[#FAFAF8]/60 leading-snug p-2.5 px-3.5 bg-[#1A1A1A] rounded-lg mb-3.5">{helpText}</p>
+            <p className="font-body text-[13px] text-th-text-secondary leading-snug p-2.5 px-3.5 bg-th-surface rounded-lg mb-3.5">{helpText}</p>
           )}
           {children}
         </div>
@@ -269,12 +269,12 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MetricRow({ label, value, color, tooltip }: { label: string; value: string; color?: string; tooltip?: string }) {
   return (
-    <div className="flex justify-between items-center py-2.5 border-b border-white/[0.08]">
-      <span className="font-body text-[13px] text-[#FAFAF8]/70 flex items-center gap-1">
+    <div className="flex justify-between items-center py-2.5 border-b border-th-border-strong">
+      <span className="font-body text-[13px] text-th-text flex items-center gap-1">
         {label}
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
-      <span className={`font-mono text-sm font-medium ${color || "text-[#FAFAF8]"}`}>{value}</span>
+      <span className={`font-mono text-sm font-medium ${color || "text-th-text"}`}>{value}</span>
     </div>
   );
 }
@@ -282,27 +282,27 @@ function MetricRow({ label, value, color, tooltip }: { label: string; value: str
 function ScoreBarInline({ score, veredicto }: { score: number; veredicto?: string }) {
   // Use motor's veredicto if available (includes overrides), fallback to score-based
   const label = veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
-  const color = label === "COMPRAR" ? "#B0BEC5" : label === "BUSCAR OTRA" ? "#C8323C" : "#FBBF24";
+  const color = label === "COMPRAR" ? "var(--franco-positive)" : label === "BUSCAR OTRA" ? "#C8323C" : "var(--franco-verdict-adjust-text)";
   const badgeColor = color;
-  const badgeBg = label === "COMPRAR" ? "rgba(176,190,197,0.12)" : label === "BUSCAR OTRA" ? "rgba(220,38,38,0.12)" : "rgba(251,191,36,0.12)";
-  const badgeBorder = label === "COMPRAR" ? "rgba(176,190,197,0.3)" : label === "BUSCAR OTRA" ? "rgba(220,38,38,0.3)" : "rgba(251,191,36,0.3)";
+  const badgeBg = label === "COMPRAR" ? "var(--franco-verdict-buy-bg)" : label === "BUSCAR OTRA" ? "var(--franco-verdict-avoid-bg)" : "var(--franco-verdict-adjust-bg)";
+  const badgeBorder = label === "COMPRAR" ? "var(--franco-scenario-good-border)" : label === "BUSCAR OTRA" ? "var(--franco-scenario-bad-border)" : "var(--franco-verdict-adjust-bg)";
   return (
     <div className="w-full min-w-[220px] max-w-[280px]">
-      <p className="font-mono text-[9px] text-[#FAFAF8]/35 uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
-      <p className="font-mono text-[52px] font-bold text-[#FAFAF8] leading-none">{score}</p>
+      <p className="font-mono text-[9px] text-th-text-muted uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
+      <p className="font-mono text-[52px] font-bold text-th-text leading-none">{score}</p>
       {/* Bar with zones */}
       <div className="relative mt-3 h-2 rounded-full overflow-hidden flex">
         <div className="w-[40%] bg-[#C8323C]/15" />
-        <div className="w-[30%] bg-white/[0.06]" />
-        <div className="w-[30%] bg-[#B0BEC5]/15" />
+        <div className="w-[30%] bg-th-border" />
+        <div className="w-[30%] bg-th-positive/15" />
         <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700" style={{ width: `${score}%`, backgroundColor: color }} />
         <div className="absolute rounded-full border-2 border-[#1A1A1A]" style={{ width: 14, height: 14, top: -3, left: `calc(${score}% - 7px)`, backgroundColor: color, transition: "left 0.7s" }} />
       </div>
       {/* Zone labels — aligned under each zone */}
       <div className="flex mt-2">
-        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[40%] text-left tracking-wide">BUSCAR OTRA</span>
-        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-center tracking-wide">AJUSTA EL PRECIO</span>
-        <span className="font-mono text-[8px] text-[#FAFAF8]/30 w-[30%] text-right tracking-wide">COMPRAR</span>
+        <span className="font-mono text-[8px] text-th-text-muted w-[40%] text-left tracking-wide">BUSCAR OTRA</span>
+        <span className="font-mono text-[8px] text-th-text-muted w-[30%] text-center tracking-wide">AJUSTA EL PRECIO</span>
+        <span className="font-mono text-[8px] text-th-text-muted w-[30%] text-right tracking-wide">COMPRAR</span>
       </div>
       {/* Verdict badge */}
       <div className="mt-3">
@@ -419,7 +419,7 @@ function AIAnalysisSection({
       {phaseIndex === 0 && (
         <div className="flex flex-col items-center gap-3 py-8">
           <Sparkles className="h-8 w-8 animate-pulse text-[#C8323C]" />
-          <p className="font-body text-sm text-[#FAFAF8]/50">Analizando tu inversión con IA...</p>
+          <p className="font-body text-sm text-th-text-secondary">Analizando tu inversión con IA...</p>
           <div className="flex gap-1">
             <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "0ms" }} />
             <span className="h-2 w-2 animate-bounce rounded-full bg-[#C8323C]" style={{ animationDelay: "150ms" }} />
@@ -449,29 +449,29 @@ function AIAnalysisSection({
             <div className="space-y-4">
               {/* Resumen */}
               {resumen && (
-                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#FBBF24]/30 bg-[#FBBF24]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
-                  <p className="text-sm font-medium leading-relaxed text-[#FAFAF8] font-body">{resumen}</p>
+                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-th-positive/30 bg-th-positive/5" : score >= 40 ? "border-th-verdict-adjust/30 bg-th-verdict-adjust/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+                  <p className="text-sm font-medium leading-relaxed text-th-text font-body">{resumen}</p>
                 </div>
               )}
               {/* A favor / En contra — side by side */}
               {(aFavor || enContra) && (
                 <div className="grid gap-4 sm:grid-cols-2">
                   {aFavor && (
-                    <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
-                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#B0BEC5]">
+                    <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4">
+                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-th-positive">
                         <CheckCircle2 className="h-4 w-4" /> A favor
                       </h4>
-                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-[#FAFAF8]/60 font-body">
+                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-th-text-secondary font-body">
                         {parseBullets(aFavor).map((p, i) => <li key={i}>{p}</li>)}
                       </ul>
                     </div>
                   )}
                   {enContra && (
-                    <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
-                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#FBBF24]">
+                    <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4">
+                      <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-th-verdict-adjust">
                         <AlertTriangle className="h-4 w-4" /> Atención
                       </h4>
-                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-[#FAFAF8]/60 font-body">
+                      <ul className="list-disc space-y-1.5 pl-4 text-sm text-th-text-secondary font-body">
                         {parseBullets(enContra).map((p, i) => <li key={i}>{p}</li>)}
                       </ul>
                     </div>
@@ -480,12 +480,12 @@ function AIAnalysisSection({
               )}
               {/* Recomendación */}
               {recomendacion && (
-                <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4">
+                <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4">
                   <div className="mb-2 flex items-center gap-2">
-                    <Handshake className="h-4 w-4 text-[#FAFAF8]" />
-                    <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">Recomendación</h4>
+                    <Handshake className="h-4 w-4 text-th-text" />
+                    <h4 className="font-body text-sm font-semibold text-th-text">Recomendación</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75] font-body">{recomendacion}</p>
+                  <p className="text-sm leading-relaxed text-th-text font-body">{recomendacion}</p>
                 </div>
               )}
             </div>
@@ -493,9 +493,9 @@ function AIAnalysisSection({
         }
         // Fallback: plain paragraphs (for simple view or old analyses without structure)
         return (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-5 shadow-sm">
+          <div className="rounded-2xl border border-th-border-strong bg-th-surface p-5 shadow-sm">
             {simplifiedText.split('\n\n').map((paragraph, i) => (
-              <p key={i} className="text-sm leading-relaxed text-[#FAFAF8]/[0.75] font-body mb-3 last:mb-0">
+              <p key={i} className="text-sm leading-relaxed text-th-text font-body mb-3 last:mb-0">
                 {paragraph}
               </p>
             ))}
@@ -506,8 +506,8 @@ function AIAnalysisSection({
       {/* Structured sections — only when NOT using simplified view */}
       {/* 1. Resumen Ejecutivo */}
       {!useSimplifiedView && phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[#B0BEC5]/30 bg-[#B0BEC5]/5" : score >= 40 ? "border-[#FBBF24]/30 bg-[#FBBF24]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
-          <p className="text-sm font-medium leading-relaxed text-[#FAFAF8]">
+        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-th-positive/30 bg-th-positive/5" : score >= 40 ? "border-th-verdict-adjust/30 bg-th-verdict-adjust/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+          <p className="text-sm font-medium leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
             ) : ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}
@@ -517,12 +517,12 @@ function AIAnalysisSection({
 
       {/* 2. Tu Bolsillo */}
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 2}>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-[#FAFAF8]" />
-            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.tuBolsillo.titulo}</h4>
+            <Wallet className="h-4 w-4 text-th-text" />
+            <h4 className="font-body text-sm font-semibold text-th-text">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
+          <p className="text-sm leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
               <TypewriterText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} onComplete={next(3)} />
             ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
@@ -540,12 +540,12 @@ function AIAnalysisSection({
 
       {/* 3. Vs Alternativas */}
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 3}>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Scale className="h-4 w-4 text-[#FAFAF8]" />
-            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.vsAlternativas.titulo}</h4>
+            <Scale className="h-4 w-4 text-th-text" />
+            <h4 className="font-body text-sm font-semibold text-th-text">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
+          <p className="text-sm leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
               <TypewriterText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} onComplete={next(4)} />
             ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
@@ -555,20 +555,20 @@ function AIAnalysisSection({
 
       {/* 4. Negociación */}
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 4}>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Handshake className="h-4 w-4 text-[#FAFAF8]" />
-            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.negociacion.titulo}</h4>
+            <Handshake className="h-4 w-4 text-th-text" />
+            <h4 className="font-body text-sm font-semibold text-th-text">{aiAnalysis.negociacion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
+          <p className="text-sm leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
               <TypewriterText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} onComplete={next(5)} />
             ) : ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}
           </p>
           {aiAnalysis.negociacion.precioSugerido && (
             <div className="mt-3 flex items-center gap-2">
-              <span className="text-xs text-[#FAFAF8]/50">Precio sugerido:</span>
-              <span className="rounded-md bg-[#B0BEC5]/10 px-3 py-1 text-sm font-bold text-[#B0BEC5]">{aiAnalysis.negociacion.precioSugerido}</span>
+              <span className="text-xs text-th-text-secondary">Precio sugerido:</span>
+              <span className="rounded-md bg-th-positive/10 px-3 py-1 text-sm font-bold text-th-positive">{aiAnalysis.negociacion.precioSugerido}</span>
             </div>
           )}
         </div>
@@ -576,12 +576,12 @@ function AIAnalysisSection({
 
       {/* 5. Proyección */}
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 5}>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-[#FAFAF8]" />
-            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.proyeccion.titulo}</h4>
+            <TrendingUp className="h-4 w-4 text-th-text" />
+            <h4 className="font-body text-sm font-semibold text-th-text">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
+          <p className="text-sm leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
               <TypewriterText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} onComplete={next(6)} />
             ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
@@ -592,15 +592,15 @@ function AIAnalysisSection({
       {/* 6. Riesgos */}
       <div id="ai-anchor-riesgos" />
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 6}>
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-4 shadow-sm">
+        <div className="rounded-2xl border border-th-border-strong bg-th-surface p-4 shadow-sm">
           <div className="mb-2 flex items-center gap-2">
-            <Shield className="h-4 w-4 text-[#FAFAF8]" />
-            <h4 className="font-body text-sm font-semibold text-[#FAFAF8]">{aiAnalysis.riesgos.titulo}</h4>
+            <Shield className="h-4 w-4 text-th-text" />
+            <h4 className="font-body text-sm font-semibold text-th-text">{aiAnalysis.riesgos.titulo}</h4>
           </div>
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
               <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 150}>
-                <li className="text-sm leading-relaxed text-[#FAFAF8]/[0.75]">
+                <li className="text-sm leading-relaxed text-th-text">
                   <span className="mr-1 font-medium text-[#C8323C]">⚠</span> {stripBullet(r)}
                 </li>
               </FadeIn>
@@ -613,8 +613,8 @@ function AIAnalysisSection({
       {/* 7. Veredicto — inline during typewriter */}
       <div id="ai-anchor-veredicto" />
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 7}>
-        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-4">
-          <p className="text-sm leading-relaxed text-[#FAFAF8]">
+        <div className="rounded-xl border border-th-border-strong bg-th-surface p-4">
+          <p className="text-sm leading-relaxed text-th-text">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
               <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} onComplete={next(8)} />
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
@@ -627,10 +627,10 @@ function AIAnalysisSection({
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 8}>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#B0BEC5]">
+            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-th-positive">
               <CheckCircle2 className="h-4 w-4" /> A favor
             </h4>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-[#FAFAF8]/60">
+            <ul className="list-disc space-y-1 pl-4 text-sm text-th-text-secondary">
               {aiAnalysis.aFavor.map((p, i) => (
                 <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : i * 100}>
                   <li>{p.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
@@ -639,10 +639,10 @@ function AIAnalysisSection({
             </ul>
           </div>
           <div>
-            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-[#FBBF24]">
+            <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium text-th-verdict-adjust">
               <AlertTriangle className="h-4 w-4" /> Atención
             </h4>
-            <ul className="list-disc space-y-1 pl-4 text-sm text-[#FAFAF8]/60">
+            <ul className="list-disc space-y-1 pl-4 text-sm text-th-text-secondary">
               {aiAnalysis.puntosAtencion.map((c, i) => (
                 <FadeIn key={i} show={showAll || phaseIndex >= 8} delay={showAll ? 0 : (aiAnalysis.aFavor.length + i) * 100}>
                   <li>{c.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim()}</li>
@@ -660,7 +660,7 @@ function AIAnalysisSection({
       )}
 
       {showAll && (
-        <p className="text-center text-[10px] text-[#FAFAF8]/30">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+        <p className="text-center text-[10px] text-th-text-muted">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
       )}
     </div>
   ) : null;
@@ -685,14 +685,14 @@ function AIAnalysisSection({
             </div>
           </div>
           {/* Locked body */}
-          <div className="bg-[#151515] border border-white/[0.08] border-t-0 rounded-b-2xl">
+          <div className="bg-th-card border border-th-border-strong border-t-0 rounded-b-2xl">
             <div className="py-11 px-6 flex flex-col items-center relative overflow-hidden">
               <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(#FAFAF8 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full animate-pulse" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
               <div className="relative z-10 text-center">
                 <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[#FAFAF8] mb-1">Análisis IA + proyecciones a 20 años</div>
-                <div className="font-body text-[13px] text-[#FAFAF8]/50 mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
+                <div className="font-body text-[15px] font-semibold text-th-text mb-1">Análisis IA + proyecciones a 20 años</div>
+                <div className="font-body text-[13px] text-th-text-secondary mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
                 <BottomPaywallCTA analysisId={analysisId ?? ""} userCredits={userCredits} />
               </div>
             </div>
@@ -725,7 +725,7 @@ function AIAnalysisSection({
         </div>
 
         {/* Body */}
-        <div className="bg-[#151515] border border-white/[0.08] border-t-0 rounded-b-2xl relative overflow-hidden">
+        <div className="bg-th-card border border-th-border-strong border-t-0 rounded-b-2xl relative overflow-hidden">
           {/* STATE A: CTA to generate */}
           {showCTA && (
             <div className="py-12 px-8 flex flex-col items-center relative">
@@ -733,8 +733,8 @@ function AIAnalysisSection({
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.08) 0%, transparent 70%)", animation: "glow-pulse 3s ease-in-out infinite" }} />
               <div className="relative z-10 text-center">
                 <div className="text-5xl mb-4 text-[#C8323C]/70">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[#FAFAF8] mb-1.5">Genera el análisis completo con IA</div>
-                <div className="font-body text-[13px] text-[#FAFAF8]/50 mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
+                <div className="font-body text-[15px] font-semibold text-th-text mb-1.5">Genera el análisis completo con IA</div>
+                <div className="font-body text-[13px] text-th-text-secondary mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
                 <button
                   type="button"
                   onClick={loadAiAnalysis}
@@ -751,7 +751,7 @@ function AIAnalysisSection({
           {aiLoading && (
             <div className="py-12 px-8 flex flex-col items-center gap-4">
               <Loader2 className="h-8 w-8 animate-spin text-[#C8323C]" />
-              <p className="font-body text-sm text-[#FAFAF8]/50">Analizando tu inversión con IA... (15-30 segundos)</p>
+              <p className="font-body text-sm text-th-text-secondary">Analizando tu inversión con IA... (15-30 segundos)</p>
             </div>
           )}
 
@@ -761,7 +761,7 @@ function AIAnalysisSection({
               <div className="rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4 text-sm text-[#C8323C]">
                 Error: {aiError}
               </div>
-              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-[#FAFAF8] hover:underline">
+              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-th-text hover:underline">
                 Reintentar
               </button>
             </div>
@@ -770,17 +770,17 @@ function AIAnalysisSection({
           {/* STATE B/C: AI content with typewriter */}
           {aiAnalysis && (
             <div className="p-6 md:p-8">
-              <div className="font-body text-[15px] font-bold text-[#FAFAF8] mb-3">Siendo franco:</div>
+              <div className="font-body text-[15px] font-bold text-th-text mb-3">Siendo franco:</div>
               {content}
 
               {/* Veredicto final — shown after all phases complete */}
               <div id="ai-anchor-veredicto-final" />
               {isComplete && aiAnalysis.veredicto && (() => {
-                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "#B0BEC5"
-                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "#FBBF24"
+                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-positive)"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-verdict-adjust-text)"
                   : "#C8323C";
                 return (
-                  <div className="mt-6 pt-6 border-t border-white/[0.06] animate-fadeIn">
+                  <div className="mt-6 pt-6 border-t border-th-border animate-fadeIn">
                     <div
                       className="relative overflow-hidden rounded-xl text-center"
                       style={{ background: "#151515", border: `1px solid ${vc}15`, padding: "40px 24px" }}
@@ -792,7 +792,7 @@ function AIAnalysisSection({
 
                       <div className="relative">
                         <div className="flex items-baseline justify-center gap-2 mb-4">
-                          <span className="font-mono text-[10px] uppercase tracking-[3px] text-[#FAFAF8]/20">VEREDICTO</span>
+                          <span className="font-mono text-[10px] uppercase tracking-[3px] text-th-text-muted">VEREDICTO</span>
                           <FrancoLogo size="sm" inverted />
                         </div>
                         <div
@@ -808,7 +808,7 @@ function AIAnalysisSection({
                           {aiAnalysis.veredicto.decision}
                         </div>
                         {aiAnalysis.negociacion?.precioSugerido && (
-                          <div className="font-mono text-[13px] text-[#FAFAF8]/40 mt-4">
+                          <div className="font-mono text-[13px] text-th-text-secondary mt-4">
                             Precio sugerido: {aiAnalysis.negociacion.precioSugerido}
                           </div>
                         )}
@@ -831,34 +831,34 @@ function AIAnalysisSection({
             <>
               {!projectionsExpanded && isComplete && onExpandProjections && (
                 <div className="px-6 md:px-8 pb-8">
-                  <div className="border-t border-white/[0.06] pt-6" />
+                  <div className="border-t border-th-border pt-6" />
                   <div
                     onClick={onExpandProjections}
-                    className="flex cursor-pointer items-center justify-between rounded-xl border border-white/[0.06] bg-[#151515] px-6 py-5 transition-all hover:border-white/[0.1] hover:bg-[#1A1A1A]"
+                    className="flex cursor-pointer items-center justify-between rounded-xl border border-th-border bg-th-card px-6 py-5 transition-all hover:border-th-border-hover hover:bg-th-surface"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#222222]">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="#B0BEC5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-th-elevated">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--franco-positive)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
                           <rect x="4" y="14" width="3" height="6" rx="0.5" />
                           <rect x="10.5" y="10" width="3" height="10" rx="0.5" />
                           <rect x="17" y="5" width="3" height="15" rx="0.5" />
                         </svg>
                       </div>
                       <div>
-                        <div className="font-mono text-[10px] uppercase tracking-[2px] text-[#FAFAF8]/20">
+                        <div className="font-mono text-[10px] uppercase tracking-[2px] text-th-text-muted">
                           {projectionsCTALabel || "Patrimonio en 10 años"}
                         </div>
-                        <div className="text-sm font-medium text-[#FAFAF8]">
+                        <div className="text-sm font-medium text-th-text">
                           ¿Cuánto vale tu inversión a futuro?
                         </div>
                         {projectionsCTAValue && (
-                          <div className="font-mono text-[13px] font-medium text-[#B0BEC5]">
+                          <div className="font-mono text-[13px] font-medium text-th-positive">
                             {projectionsCTAValue}
                           </div>
                         )}
                       </div>
                     </div>
-                    <span className="text-lg text-[#FAFAF8]/20">↓</span>
+                    <span className="text-lg text-th-text-muted">↓</span>
                   </div>
                 </div>
               )}
@@ -868,7 +868,7 @@ function AIAnalysisSection({
                   <div id="projections-start" className="mx-6 md:mx-8">
                     <div className="flex items-center gap-2">
                       <div className="h-px flex-1 bg-white/[0.08]" />
-                      <span className="font-mono text-[9px] text-[#FAFAF8]/50 uppercase tracking-[0.1em]">PROYECCIONES</span>
+                      <span className="font-mono text-[9px] text-th-text-secondary uppercase tracking-[0.1em]">PROYECCIONES</span>
                       <div className="h-px flex-1 bg-white/[0.08]" />
                     </div>
                   </div>
@@ -884,12 +884,12 @@ function AIAnalysisSection({
           {(aiAnalysis || aiLoading) && (
             <>
               <div className="px-6 md:px-8 pb-6 flex flex-col sm:flex-row gap-2.5">
-                <a href="/analisis/nuevo" className="bg-[#FAFAF8] text-[#0F0F0F] font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
+                <a href="/analisis/nuevo" className="bg-th-btn-primary text-th-btn-primary-text font-body font-semibold px-6 py-3 rounded-lg text-sm text-center">
                   Analizar otra propiedad →
                 </a>
               </div>
               {isComplete && (
-                <p className="px-6 md:px-8 pb-6 text-center text-[10px] text-[#FAFAF8]/30">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
+                <p className="px-6 md:px-8 pb-6 text-center text-[10px] text-th-text-muted">Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.</p>
               )}
             </>
           )}
@@ -951,10 +951,10 @@ function calcTIR(flujos: number[]): number {
 
 function RegisterOverlay() {
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-[#151515]/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/90 px-6 py-5 shadow-lg">
-        <Lock className="h-6 w-6 text-[#FAFAF8]" />
-        <span className="text-sm font-medium text-[#FAFAF8]">Regístrate gratis para ver esta sección</span>
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-th-card/60 backdrop-blur-[2px]">
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-th-border-strong bg-th-card/90 px-6 py-5 shadow-lg">
+        <Lock className="h-6 w-6 text-th-text" />
+        <span className="text-sm font-medium text-th-text">Regístrate gratis para ver esta sección</span>
         <a href="/register">
           <Button size="sm" className="gap-2">
             Regístrate gratis
@@ -1002,17 +1002,17 @@ function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; u
   }
 
   return (
-    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-[#151515]/60 backdrop-blur-[2px]">
-      <div className="flex flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/90 px-6 py-5 shadow-lg">
+    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center rounded-lg bg-th-card/60 backdrop-blur-[2px]">
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-th-border-strong bg-th-card/90 px-6 py-5 shadow-lg">
         <Sparkles className="h-6 w-6 text-[#C8323C]" />
-        <span className="font-body text-sm font-medium text-[#FAFAF8]">Sección exclusiva del Informe Pro</span>
+        <span className="font-body text-sm font-medium text-th-text">Sección exclusiva del Informe Pro</span>
         {userCredits > 0 ? (
           <>
             <Button size="sm" disabled={loading} className="gap-2 bg-[#C8323C] text-white font-bold hover:bg-[#C8323C]/90" onClick={handleUseCredit}>
               <Sparkles className="h-4 w-4" />
               {loading ? "Procesando..." : "Usar tu crédito Pro →"}
             </Button>
-            <span className="font-body text-xs text-[#FAFAF8]/50">
+            <span className="font-body text-xs text-th-text-secondary">
               Tienes {userCredits} {userCredits === 1 ? "crédito disponible" : "créditos disponibles"}
             </span>
           </>
@@ -1022,7 +1022,7 @@ function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; u
               <Sparkles className="h-4 w-4" />
               Desbloquear la verdad — $4.990
             </Button>
-            <span className="font-body text-xs text-[#FAFAF8]/50">$4.990 por análisis</span>
+            <span className="font-body text-xs text-th-text-secondary">$4.990 por análisis</span>
           </>
         )}
       </div>
@@ -1094,13 +1094,13 @@ function SectionCard({ title, description, icon: Icon, children, gate = "none", 
   const showPaywall = gate === "premium" && accessLevel === "free";
   return (
     <div className="relative mb-8">
-      <Card className="border border-white/[0.08] rounded-2xl shadow-sm bg-[#151515]">
+      <Card className="border border-th-border-strong rounded-2xl shadow-sm bg-th-card">
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-[#FAFAF8]" />
-            <CardTitle className="font-body font-bold text-lg text-[#FAFAF8]">{title}</CardTitle>
+            <Icon className="h-5 w-5 text-th-text" />
+            <CardTitle className="font-body font-bold text-lg text-th-text">{title}</CardTitle>
           </div>
-          {description && <p className="text-sm text-[#FAFAF8]/50">{description}</p>}
+          {description && <p className="text-sm text-th-text-secondary">{description}</p>}
         </CardHeader>
         <CardContent>{children}</CardContent>
       </Card>
@@ -1125,7 +1125,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
   const hasRadioData = zonaRadio && (zonaRadio.precioM2VentaCLP || zonaRadio.arriendoPromedio);
 
   if (!m) {
-    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles.</p>;
+    return <p className="text-sm text-th-text-secondary">Datos de mercado no disponibles.</p>;
   }
 
   // Prefer radius-based data; fallback to comuna-level market_data
@@ -1145,7 +1145,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
     totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
     sourceLabel = `Basado en ${totalPubs} publicaciones activas en ${comuna}.`;
   } else {
-    return <p className="text-sm text-[#FAFAF8]/50">Datos de mercado no disponibles para esta zona.</p>;
+    return <p className="text-sm text-th-text-secondary">Datos de mercado no disponibles para esta zona.</p>;
   }
 
   // Yield zona: derive from the same values shown in the ARRIENDO and PRECIO/M² cards
@@ -1185,7 +1185,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
 
   return (
     <div>
-      <p className="text-xs text-[#FAFAF8]/50 mb-3">
+      <p className="text-xs text-th-text-secondary mb-3">
         {sourceLabel}
         {hasRadioData && avgArriendoZona > 0 && m.ingresoMensual > 0 && (() => {
           const diff = ((m.ingresoMensual - avgArriendoZona) / avgArriendoZona) * 100;
@@ -1198,19 +1198,19 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
         {cards.map((c) => {
           const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;
           const isFavorable = c.invertColor ? delta < 0 : delta > 0;
-          const deltaColor = isFavorable ? "text-[#B0BEC5]" : "text-[#C8323C]";
+          const deltaColor = isFavorable ? "text-th-positive" : "text-[#C8323C]";
           const deltaSign = delta > 0 ? "+" : "";
           const contextText = c.invertColor
             ? (delta < 0 ? "bajo el promedio" : "sobre el promedio")
             : (delta > 0 ? "sobre el promedio" : "bajo el promedio");
           return (
-            <div key={c.title} className="bg-[#1A1A1A] rounded-[10px] p-4 text-center">
-              <p className="font-body text-[10px] text-[#FAFAF8]/40 uppercase tracking-wide">{c.title}</p>
+            <div key={c.title} className="bg-th-surface rounded-[10px] p-4 text-center">
+              <p className="font-body text-[10px] text-th-text-secondary uppercase tracking-wide">{c.title}</p>
               <p className={`font-mono text-[32px] font-bold leading-none mt-1.5 ${deltaColor}`}>{deltaSign}{Math.round(delta)}%</p>
-              <p className="font-body text-[10px] text-[#FAFAF8]/35 mt-2">{contextText}</p>
-              <div className="border-t border-white/[0.06] mt-3 pt-2.5 space-y-1">
-                <p className="text-[11px]"><span className="font-body text-[#FAFAF8]/40">Tú: </span><span className="font-mono text-[#FAFAF8]">{c.fmtVal(c.tuyo)}</span></p>
-                <p className="text-[11px]"><span className="font-body text-[#FAFAF8]/30">Zona: </span><span className="font-mono text-[#FAFAF8]/50">{c.fmtVal(c.zona)}</span></p>
+              <p className="font-body text-[10px] text-th-text-muted mt-2">{contextText}</p>
+              <div className="border-t border-th-border mt-3 pt-2.5 space-y-1">
+                <p className="text-[11px]"><span className="font-body text-th-text-secondary">Tú: </span><span className="font-mono text-th-text">{c.fmtVal(c.tuyo)}</span></p>
+                <p className="text-[11px]"><span className="font-body text-th-text-muted">Zona: </span><span className="font-mono text-th-text-secondary">{c.fmtVal(c.zona)}</span></p>
               </div>
             </div>
           );
@@ -1218,11 +1218,11 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
       </div>
       {/* Map */}
       <div className="mt-4">
-        <div className="mb-2 flex items-center gap-2 text-sm text-[#FAFAF8]/50">
+        <div className="mb-2 flex items-center gap-2 text-sm text-th-text-secondary">
           <MapPin className="h-4 w-4" />
           <span>Ubicación: {mapQuery}</span>
         </div>
-        <div className="overflow-hidden rounded-xl border border-white/[0.08]">
+        <div className="overflow-hidden rounded-xl border border-th-border-strong">
           <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
         </div>
       </div>
@@ -1232,7 +1232,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
 
 function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onToggle: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between border border-white/[0.08] bg-[#151515] rounded-2xl px-4 py-3">
+    <div className="mb-6 flex items-center justify-between border border-th-border-strong bg-th-card rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -1244,15 +1244,15 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
               currency === "UF" ? "translate-x-[40px]" : "translate-x-0"
             }`}
           />
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-[#0F0F0F]" : "text-[#FAFAF8]/50"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-th-btn-primary-text" : "text-th-text-secondary"}`}>
             CLP
           </span>
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-[#0F0F0F]" : "text-[#FAFAF8]/50"}`}>
+          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-th-btn-primary-text" : "text-th-text-secondary"}`}>
             UF
           </span>
         </button>
         {currency === "CLP" && (
-          <span className="text-xs text-[#FAFAF8]/40">Valores en CLP calculados con UF = ${UF_CLP.toLocaleString("es-CL")}</span>
+          <span className="text-xs text-th-text-secondary">Valores en CLP calculados con UF = ${UF_CLP.toLocaleString("es-CL")}</span>
         )}
       </div>
     </div>
@@ -1584,8 +1584,8 @@ export function PremiumResults({
 
     const configs = [
       { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-[#C8323C]/60", bgClass: "", labelClass: "text-[#C8323C]" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30 ring-0", bgClass: "bg-[#1A1A1A]", labelClass: "text-[#FAFAF8]" },
-      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30", bgClass: "", labelClass: "text-[#B0BEC5]" },
+      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30 ring-0", bgClass: "bg-th-surface", labelClass: "text-th-text" },
+      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "#FAFAF8", borderClass: "border-[#FAFAF8]/30", bgClass: "", labelClass: "text-th-positive" },
     ];
 
     return configs.map(cfg => {
@@ -2147,7 +2147,7 @@ export function PremiumResults({
     <>
       {/* Shared view banner (logged in user viewing someone else's analysis) */}
       {isSharedView && (
-        <div className="bg-[#0F0F0F] text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-white/[0.08]">
+        <div className="bg-th-page text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
           <a href="/analisis/nuevo" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
             Analizar mi propio depto →
@@ -2156,7 +2156,7 @@ export function PremiumResults({
       )}
       {/* Shared link banner (guest arriving via shared link) */}
       {isSharedLink && (
-        <div className="bg-[#0F0F0F] text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-white/[0.08]">
+        <div className="bg-th-page text-white rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-th-border-strong">
           <p className="font-body text-sm">
             {creatorName ? `${creatorName} te compartió este análisis.` : "Te compartieron un análisis."}
             {" "}Regístrate para verlo completo.
@@ -2172,8 +2172,8 @@ export function PremiumResults({
         const comunaActual = (comuna || inputData?.comuna || '').trim();
         if (comunaActual && !COMUNAS_GRAN_SANTIAGO.includes(comunaActual)) {
           return (
-            <div className="rounded-xl border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-5 py-3.5 mb-4">
-              <p className="font-body text-[13px] text-[#FBBF24]">
+            <div className="rounded-xl border border-th-verdict-adjust/30 bg-th-verdict-adjust/[0.06] px-5 py-3.5 mb-4">
+              <p className="font-body text-[13px] text-th-verdict-adjust">
                 Este análisis tiene precisión limitada. Franco está optimizado para el Gran Santiago — los datos de mercado, plusvalía y metro aplican a esa zona.
               </p>
             </div>
@@ -2183,7 +2183,7 @@ export function PremiumResults({
       })()}
 
       {/* ═══════ BLOCK 1 — EXECUTIVE SUMMARY (NO REGISTRATION) ═══════ */}
-      <div className="bg-[#1A1A1A] rounded-2xl p-7 md:p-8 mb-5">
+      <div className="bg-th-surface rounded-2xl p-7 md:p-8 mb-5">
         <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-start">
           {/* Left: Score Bar */}
           <div className="relative">
@@ -2192,8 +2192,8 @@ export function PremiumResults({
             </div>
             {currentAccess === "guest" && (
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <Lock className="h-4 w-4 text-[#FAFAF8] mb-1.5" />
-                <p className="font-body text-[11px] font-medium text-[#FAFAF8] text-center leading-tight">Regístrate gratis<br />para ver tu Score</p>
+                <Lock className="h-4 w-4 text-th-text mb-1.5" />
+                <p className="font-body text-[11px] font-medium text-th-text text-center leading-tight">Regístrate gratis<br />para ver tu Score</p>
                 <a href="/register" className="mt-2">
                   <span className="font-body text-[10px] font-semibold text-[#C8323C] hover:underline">Crear cuenta →</span>
                 </a>
@@ -2209,12 +2209,12 @@ export function PremiumResults({
             {ownerFirstName && !isSharedView && (
               <p className="font-body text-sm text-[#71717A] mb-1">{ownerFirstName}, este es el análisis de tu departamento en {comuna || ciudad || "tu zona"}</p>
             )}
-            <h1 className="font-heading font-bold text-xl md:text-2xl text-[#FAFAF8]">{nombre}</h1>
-            <p className="font-body text-xs text-[#FAFAF8]/50 mt-1">
+            <h1 className="font-heading font-bold text-xl md:text-2xl text-th-text">{nombre}</h1>
+            <p className="font-body text-xs text-th-text-secondary mt-1">
               {ciudad && <>{ciudad} · </>}{superficie}m² · {fmtUF(precioUF)} ({currency === "UF" ? fmtUF(freePrecioM2) : fmtCLP(freePrecioM2 * UF_CLP)}/m²) · Pie {inputData?.piePct ?? 20}%
             </p>
             {createdAt && (
-              <p className="font-body text-[10px] text-[#FAFAF8]/30 mt-0.5">
+              <p className="font-body text-[10px] text-th-text-muted mt-0.5">
                 Analizado el {new Date(createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}
               </p>
             )}
@@ -2226,21 +2226,21 @@ export function PremiumResults({
 
             {/* 3 metrics grid */}
             <div className="grid grid-cols-3 gap-2 mt-4">
-              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Flujo mensual</p>
-                <p className={`font-mono text-sm sm:text-lg font-semibold mt-1 truncate ${flujoUnificado >= 0 ? "text-[#FAFAF8]" : "text-[#C8323C]"}`}>
+              <div className="bg-th-input-bg rounded-[10px] p-2.5 border border-th-border-strong text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-th-text-secondary uppercase tracking-wide truncate">Flujo mensual</p>
+                <p className={`font-mono text-sm sm:text-lg font-semibold mt-1 truncate ${flujoUnificado >= 0 ? "text-th-text" : "text-[#C8323C]"}`}>
                   {flujoUnificado >= 0 ? "+" : ""}{fmtM(flujoUnificado)}
                 </p>
               </div>
-              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Rent. neta</p>
-                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-[#FAFAF8]">
+              <div className="bg-th-input-bg rounded-[10px] p-2.5 border border-th-border-strong text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-th-text-secondary uppercase tracking-wide truncate">Rent. neta</p>
+                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-th-text">
                   {m ? `${fmtPct(m.rentabilidadNeta ?? 0)}` : `${fmtPct(freeYieldBruto)}`}
                 </p>
               </div>
-              <div className="bg-white/[0.03] rounded-[10px] p-2.5 border border-white/[0.08] text-center overflow-hidden">
-                <p className="font-body text-[8px] sm:text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide truncate">Retorno 10a</p>
-                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-[#FAFAF8]">
+              <div className="bg-th-input-bg rounded-[10px] p-2.5 border border-th-border-strong text-center overflow-hidden">
+                <p className="font-body text-[8px] sm:text-[9px] text-th-text-secondary uppercase tracking-wide truncate">Retorno 10a</p>
+                <p className="font-mono text-sm sm:text-lg font-semibold mt-1 truncate text-th-text">
                   {fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—"}
                 </p>
               </div>
@@ -2249,7 +2249,7 @@ export function PremiumResults({
             {/* "Siendo franco:" box */}
             {(() => {
               const vd = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
-              const sfColor = vd === "COMPRAR" ? "#B0BEC5" : vd === "BUSCAR OTRA" ? "#C8323C" : "#FBBF24";
+              const sfColor = vd === "COMPRAR" ? "var(--franco-positive)" : vd === "BUSCAR OTRA" ? "#C8323C" : "var(--franco-verdict-adjust-text)";
               return (
                 <div className={`mt-3.5 ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`} style={{ borderLeft: `3px solid ${sfColor}`, background: `${sfColor}08`, borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
                   <p className="font-body text-[13px] font-semibold" style={{ color: sfColor }}>Siendo franco:</p>
@@ -2277,18 +2277,18 @@ export function PremiumResults({
 
         {/* Dimension bars */}
         {results && (
-          <div className={`flex flex-col gap-2.5 mt-4 pt-4 border-t border-white/[0.08] ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`}>
+          <div className={`flex flex-col gap-2.5 mt-4 pt-4 border-t border-th-border-strong ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`}>
             {radarData.map((d) => {
               const val = Math.round(d.value);
-              const fillColor = val < 40 ? "#C8323C" : val < 70 ? "#FBBF24" : "rgba(176,190,197,0.8)";
-              const numColor = val < 40 ? "text-[#C8323C]" : val < 70 ? "text-[#FBBF24]" : "text-[#B0BEC5]";
+              const fillColor = val < 40 ? "#C8323C" : val < 70 ? "var(--franco-verdict-adjust-text)" : "var(--franco-positive)";
+              const numColor = val < 40 ? "text-[#C8323C]" : val < 70 ? "text-th-verdict-adjust" : "text-th-positive";
               return (
                 <div key={d.dimension} className="flex items-center gap-3">
-                  <span className="font-body text-[11px] text-[#FAFAF8]/50 w-[75px] shrink-0">{d.dimension}</span>
+                  <span className="font-body text-[11px] text-th-text-secondary w-[75px] shrink-0">{d.dimension}</span>
                   <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex">
                     <div className="w-[40%] bg-[#C8323C]/15" />
-                    <div className="w-[30%] bg-white/[0.06]" />
-                    <div className="w-[30%] bg-[#B0BEC5]/15" />
+                    <div className="w-[30%] bg-th-border" />
+                    <div className="w-[30%] bg-th-positive/15" />
                     <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${val}%`, backgroundColor: fillColor }} />
                   </div>
                   <span className={`font-mono text-[11px] font-medium w-[28px] text-right shrink-0 ${numColor}`}>{val}</span>
@@ -2302,28 +2302,28 @@ export function PremiumResults({
         <button
           type="button"
           onClick={() => document.getElementById("bloque-detalle")?.scrollIntoView({ behavior: "smooth" })}
-          className="block mx-auto mt-4 font-body text-[11px] text-[#FAFAF8]/60 cursor-pointer hover:text-[#FAFAF8] transition-colors"
+          className="block mx-auto mt-4 font-body text-[11px] text-th-text-secondary cursor-pointer hover:text-th-text transition-colors"
         >
           Profundizar en el análisis ↓
         </button>
 
         {/* Guest CTA — does not reveal score */}
         {currentAccess === "guest" && (
-          <div className="mt-6 p-6 bg-[#151515] rounded-xl border border-white/[0.08] text-center md:text-left md:flex md:items-center md:gap-4">
+          <div className="mt-6 p-6 bg-th-card rounded-xl border border-th-border-strong text-center md:text-left md:flex md:items-center md:gap-4">
             <div className="flex-1">
-              <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">
+              <h3 className="font-heading font-bold text-lg text-th-text">
                 {isSharedLink
                   ? (creatorName ? `${creatorName} te compartió este análisis` : "Te compartieron este análisis")
                   : "Tu Franco Score está listo. ¿Quieres verlo?"}
               </h3>
-              <p className="font-body text-sm text-[#FAFAF8]/50 mt-1">
+              <p className="font-body text-sm text-th-text-secondary mt-1">
                 {isSharedLink
                   ? "Regístrate para ver el análisis completo."
                   : "Regístrate gratis para ver tu score, 8 métricas, riesgos y más."}
               </p>
             </div>
             <a href="/register" className="mt-4 md:mt-0 inline-block">
-              <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-sm font-semibold px-6 py-2.5 rounded-lg">Regístrate gratis</button>
+              <button type="button" className="bg-th-btn-primary text-th-btn-primary-text font-body text-sm font-semibold px-6 py-2.5 rounded-lg">Regístrate gratis</button>
             </a>
           </div>
         )}
@@ -2332,18 +2332,18 @@ export function PremiumResults({
 
       {/* ═══════ VIEW LEVEL TOGGLE ═══════ */}
       {currentAccess !== "guest" && (
-        <div className="sticky top-[60px] z-50 bg-[#0F0F0F]/95 backdrop-blur-sm py-3 mb-4">
+        <div className="sticky top-[60px] z-50 bg-th-page/95 backdrop-blur-sm py-3 mb-4">
           <p className="text-center text-xs sm:text-sm text-[#71717A] mb-2 sm:mb-3 font-body">
             Elige cómo quieres ver el análisis. Mismos datos, diferente profundidad.
           </p>
-          <div className="flex gap-1 bg-[#1A1A1A] rounded-xl p-1 sm:p-1.5 border border-[#2A2A2A]">
+          <div className="flex gap-1 bg-th-surface rounded-xl p-1 sm:p-1.5 border border-[#2A2A2A]">
             <button
               type="button"
               onClick={() => { setViewLevel('simple'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'simple' })); } catch {} }}
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'simple'
                   ? 'bg-[#C8323C] text-white'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-th-elevated'
               }`}
             >
               En Simple
@@ -2355,7 +2355,7 @@ export function PremiumResults({
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'importante'
                   ? 'bg-[#C8323C] text-white'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-th-elevated'
               }`}
             >
               Lo Importante
@@ -2367,7 +2367,7 @@ export function PremiumResults({
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'sinfiltro'
                   ? 'bg-[#C8323C] text-white'
-                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#222]'
+                  : 'text-zinc-500 hover:text-zinc-300 hover:bg-th-elevated'
               }`}
             >
               Sin Filtro
@@ -2383,7 +2383,7 @@ export function PremiumResults({
           {/* Separator */}
           <div id="bloque-detalle" className="flex items-center gap-3 mb-4 mt-2">
             <div className="h-px flex-1 bg-white/[0.08]" />
-            <span className="font-mono text-[9px] text-[#FAFAF8]/50 uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
+            <span className="font-mono text-[9px] text-th-text-secondary uppercase tracking-[0.1em]">DETALLE DEL ANÁLISIS</span>
             <div className="h-px flex-1 bg-white/[0.08]" />
           </div>
 
@@ -2398,21 +2398,21 @@ export function PremiumResults({
               >
                 {flujoBreakdown && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Arriendo</p>
-                      <p className="font-mono text-lg font-semibold text-[#FAFAF8] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Arriendo</p>
+                      <p className="font-mono text-lg font-semibold text-th-text mt-1">{fmt(flujoBreakdown.arriendo)}</p>
                     </div>
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Dividendo</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Dividendo</p>
                       <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Gastos</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Gastos</p>
                       <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className={`bg-[#151515] rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-[#B0BEC5]" : "border-[#C8323C]"}`}>
-                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto</p>
-                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                    <div className={`bg-th-card rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-th-positive" : "border-[#C8323C]"}`}>
+                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>Flujo neto</p>
+                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
                         {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
                       </p>
                     </div>
@@ -2431,10 +2431,10 @@ export function PremiumResults({
 
               {/* CTA de registro */}
               <div className="rounded-xl border-2 border-[#C8323C]/30 bg-[#C8323C]/[0.03] text-center py-8 px-5 mb-5 mt-2">
-                <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">
+                <h3 className="font-heading font-bold text-lg text-th-text">
                   {isSharedLink ? "Regístrate para ver el análisis completo" : "Regístrate gratis para ver tu Franco Score y el análisis completo"}
                 </h3>
-                <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1.5 mb-4">
+                <p className="font-body text-[13px] text-th-text-secondary mt-1.5 mb-4">
                   {isSharedLink
                     ? "Te compartieron un análisis de inversión. Crea tu cuenta gratis para ver el Score, rentabilidad, riesgos y más."
                     : "Crea tu cuenta en 10 segundos. Sin tarjeta."}
@@ -2442,13 +2442,13 @@ export function PremiumResults({
                 <a href="/register">
                   <button type="button" className="bg-[#C8323C] text-white font-body text-[13px] font-bold px-6 py-2.5 rounded-lg shadow-[0_2px_10px_rgba(200,50,60,0.15)]">Crear cuenta gratis →</button>
                 </a>
-                <p className="font-body text-xs text-[#FAFAF8]/50 mt-3">
+                <p className="font-body text-xs text-th-text-secondary mt-3">
                   <a href="/login" className="hover:underline">Ya tengo cuenta →</a>
                 </p>
               </div>
 
               {/* Grouped locked sections block */}
-              <div className="relative rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-6 mb-5 overflow-hidden">
+              <div className="relative rounded-xl border border-th-border-strong bg-th-surface p-6 mb-5 overflow-hidden">
                 {/* Decorative blur behind */}
                 <div className="absolute inset-0 top-[140px] filter blur-[8px] opacity-20 pointer-events-none overflow-hidden px-5">
                   <div className="h-4 bg-white/[0.08] rounded mb-2 w-3/4" />
@@ -2460,8 +2460,8 @@ export function PremiumResults({
                 </div>
 
                 <div className="relative z-10 text-center">
-                  <Lock className="h-6 w-6 text-[#FAFAF8]/50 mx-auto mb-3" />
-                  <h3 className="font-heading font-bold text-lg text-[#FAFAF8] mb-4">Regístrate gratis para ver:</h3>
+                  <Lock className="h-6 w-6 text-th-text-secondary mx-auto mb-3" />
+                  <h3 className="font-heading font-bold text-lg text-th-text mb-4">Regístrate gratis para ver:</h3>
 
                   <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-4 mb-6">
                     {[
@@ -2471,20 +2471,20 @@ export function PremiumResults({
                       "Tu Franco Score completo",
                     ].map((feat) => (
                       <div key={feat} className="flex items-center gap-1.5 justify-center">
-                        <Check className="w-3.5 h-3.5 text-[#B0BEC5] shrink-0" />
-                        <span className="font-body text-sm text-[#FAFAF8]/70">{feat}</span>
+                        <Check className="w-3.5 h-3.5 text-th-positive shrink-0" />
+                        <span className="font-body text-sm text-th-text">{feat}</span>
                       </div>
                     ))}
                   </div>
 
                   {isSharedLink && creatorName && (
-                    <p className="font-body text-xs text-[#FAFAF8]/50 mb-4">Este análisis fue creado por {creatorName}</p>
+                    <p className="font-body text-xs text-th-text-secondary mb-4">Este análisis fue creado por {creatorName}</p>
                   )}
 
                   <a href="/register">
-                    <button type="button" className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-[13px] font-bold px-6 py-2.5 rounded-lg">Crear cuenta gratis →</button>
+                    <button type="button" className="bg-th-btn-primary text-th-btn-primary-text font-body text-[13px] font-bold px-6 py-2.5 rounded-lg">Crear cuenta gratis →</button>
                   </a>
-                  <p className="font-body text-xs text-[#FAFAF8]/50 mt-3">
+                  <p className="font-body text-xs text-th-text-secondary mt-3">
                     <a href="/login" className="hover:underline">Ya tengo cuenta →</a>
                   </p>
                 </div>
@@ -2503,21 +2503,21 @@ export function PremiumResults({
               >
                 {flujoBreakdown && (
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Arriendo</p>
-                      <p className="font-mono text-lg font-semibold text-[#FAFAF8] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Arriendo</p>
+                      <p className="font-mono text-lg font-semibold text-th-text mt-1">{fmt(flujoBreakdown.arriendo)}</p>
                     </div>
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Dividendo</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Dividendo</p>
                       <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className="bg-white/[0.03] rounded-[10px] p-3 text-center border border-white/[0.08]">
-                      <p className="font-body text-[9px] text-[#FAFAF8]/40 uppercase tracking-wide">Gastos</p>
+                    <div className="bg-th-input-bg rounded-[10px] p-3 text-center border border-th-border-strong">
+                      <p className="font-body text-[9px] text-th-text-secondary uppercase tracking-wide">Gastos</p>
                       <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
                     </div>
-                    <div className={`bg-[#151515] rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-[#B0BEC5]" : "border-[#C8323C]"}`}>
-                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto</p>
-                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                    <div className={`bg-th-card rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-th-positive" : "border-[#C8323C]"}`}>
+                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>Flujo neto</p>
+                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
                         {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
                       </p>
                     </div>
@@ -2528,31 +2528,31 @@ export function PremiumResults({
 
               {/* Section 1 Simple: Bolsillo — un solo número grande (simple) */}
               {showSection(['simple']) && flujoBreakdown && (
-                <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
-                  <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-4">
+                <div className="bg-th-card rounded-xl border border-th-border-strong mb-3 p-5">
+                  <h3 className="font-heading font-bold text-base text-th-text mb-4">
                     {flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
                   </h3>
                   <div className="text-center">
-                    <div className={`font-mono text-4xl font-bold ${flujoUnificado >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                    <div className={`font-mono text-4xl font-bold ${flujoUnificado >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
                       {flujoUnificado >= 0 ? "+" : ""}{fmtCLP(flujoUnificado)}
                     </div>
                     <div className="text-[#71717A] text-sm mt-1 font-body">Flujo mensual neto</div>
-                    <div className={`mt-4 text-left p-3 rounded-r-lg text-sm text-[#FAFAF8]/60 leading-relaxed font-body ${
+                    <div className={`mt-4 text-left p-3 rounded-r-lg text-sm text-th-text-secondary leading-relaxed font-body ${
                       flujoUnificado >= 0
-                        ? "bg-[#B0BEC5]/5 border-l-[3px] border-[#B0BEC5]"
+                        ? "bg-th-positive/5 border-l-[3px] border-th-positive"
                         : "bg-[#C8323C]/5 border-l-[3px] border-[#C8323C]"
                     }`}>
                       {flujoUnificado >= 0 ? (
                         <>
                           El arriendo ({fmtCLP(flujoBreakdown.arriendo)}) cubre el dividendo ({fmtCLP(flujoBreakdown.dividendo)})
                           y todos los gastos operacionales. Te quedan{" "}
-                          <strong className="text-[#FAFAF8]">{fmtCLP(flujoUnificado)} de ganancia cada mes</strong>.
+                          <strong className="text-th-text">{fmtCLP(flujoUnificado)} de ganancia cada mes</strong>.
                         </>
                       ) : (
                         <>
                           El arriendo ({fmtCLP(flujoBreakdown.arriendo)}) no alcanza a cubrir el dividendo ({fmtCLP(flujoBreakdown.dividendo)})
                           más los gastos operacionales ({fmtCLP(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}). Tendrías que poner{" "}
-                          <strong className="text-[#FAFAF8]">{fmtCLP(Math.abs(flujoUnificado))} de tu bolsillo cada mes</strong>.
+                          <strong className="text-th-text">{fmtCLP(Math.abs(flujoUnificado))} de tu bolsillo cada mes</strong>.
                           {" "}Esto es normal en el mercado actual — el negocio está en la plusvalía y amortización a largo plazo.
                         </>
                       )}
@@ -2570,25 +2570,25 @@ export function PremiumResults({
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-[2px]">
                   {[
                     { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "#FAFAF8", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto.", levels: ['importante', 'sinfiltro'] },
-                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "#B0BEC5" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
-                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "#B0BEC5" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
-                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "#B0BEC5" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra.", levels: ['importante', 'sinfiltro'] },
-                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "#B0BEC5" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización.", levels: ['sinfiltro'] },
-                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "#B0BEC5" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años.", levels: ['importante', 'sinfiltro'] },
+                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "var(--franco-positive)" : (m.capRate ?? 0) >= 2 ? "#FAFAF8" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
+                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "var(--franco-positive)" : (m.rentabilidadNeta ?? 0) >= 1 ? "#FAFAF8" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
+                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra.", levels: ['importante', 'sinfiltro'] },
+                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización.", levels: ['sinfiltro'] },
+                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "var(--franco-positive)" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años.", levels: ['importante', 'sinfiltro'] },
                   ].filter(metric => metric.levels.includes(viewLevel)).map((metric, i) => (
                     <div
                       key={metric.label}
-                      className="bg-[#1A1A1A] px-4 py-3.5 flex flex-col gap-1"
+                      className="bg-th-surface px-4 py-3.5 flex flex-col gap-1"
                       style={{
                         borderRadius: i === 0 ? '8px 0 0 0' : i === 2 ? '0 8px 0 0' : i === 3 ? '0 0 0 8px' : i === 5 ? '0 0 8px 0' : '0',
                       }}
                     >
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40 flex items-center gap-1">
+                      <span className="font-mono text-[10px] uppercase tracking-wider text-th-text-secondary flex items-center gap-1">
                         {metric.label}
                         <InfoTooltip content={metric.tip} />
                       </span>
                       <span className="font-mono font-semibold text-lg" style={{ color: metric.color }}>{metric.value}</span>
-                      <span className="text-[10px] text-[#FAFAF8]/20">{metric.hint}</span>
+                      <span className="text-[10px] text-th-text-muted">{metric.hint}</span>
                     </div>
                   ))}
                 </div>
@@ -2596,12 +2596,12 @@ export function PremiumResults({
                 <div
                   className="mt-3.5 rounded-r-lg py-3 px-4 text-[13px] leading-relaxed"
                   style={{
-                    borderLeft: `3px solid ${(m.rentabilidadNeta ?? 0) >= 3 ? '#B0BEC5' : '#C8323C'}`,
-                    background: (m.rentabilidadNeta ?? 0) >= 3 ? 'rgba(176,190,197,0.04)' : 'rgba(200,50,60,0.04)',
-                    color: 'rgba(250,250,248,0.6)',
+                    borderLeft: `3px solid ${(m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-positive)' : '#C8323C'}`,
+                    background: (m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-scenario-good-bg)' : 'var(--franco-scenario-bad-bg)',
+                    color: 'var(--franco-text-secondary)',
                   }}
                 >
-                  <span style={{ color: (m.rentabilidadNeta ?? 0) >= 3 ? '#B0BEC5' : '#C8323C', fontWeight: 600 }}>Siendo franco:</span>{' '}
+                  <span style={{ color: (m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-positive)' : '#C8323C', fontWeight: 600 }}>Siendo franco:</span>{' '}
                   {(() => {
                     const neta = m.rentabilidadNeta ?? 0;
                     const flujo = m.flujoNetoMensual ?? 0;
@@ -2635,14 +2635,14 @@ export function PremiumResults({
                       return (
                         <div
                           className="rounded-r-lg py-2.5 px-4 text-[13px] leading-relaxed"
-                          style={{ borderLeft: `3px solid ${positive ? '#B0BEC5' : '#C8323C'}`, background: positive ? 'rgba(176,190,197,0.04)' : 'rgba(200,50,60,0.04)', color: 'rgba(250,250,248,0.6)' }}
+                          style={{ borderLeft: `3px solid ${positive ? 'var(--franco-positive)' : '#C8323C'}`, background: positive ? 'var(--franco-scenario-good-bg)' : 'var(--franco-scenario-bad-bg)', color: 'var(--franco-text-secondary)' }}
                         >
-                          <span style={{ color: positive ? '#B0BEC5' : '#C8323C', fontWeight: 600 }}>{positive ? 'Ventaja de compra' : 'Sobreprecio'}{label ? ` (${label})` : ''}:</span>{' '}
+                          <span style={{ color: positive ? 'var(--franco-positive)' : '#C8323C', fontWeight: 600 }}>{positive ? 'Ventaja de compra' : 'Sobreprecio'}{label ? ` (${label})` : ''}:</span>{' '}
                           {positive
                             ? <>compraste {fmtUF(Math.abs(clp / UF_CLP))} bajo mercado ({fmtPct(Math.abs(pct))}).{m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs(clp / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}{m.flujoNetoMensual === 0 && <> Flujo neutro — la plusvalía es ganancia pura.</>}</>
                             : <>pagaste {fmtUF(Math.abs(clp / UF_CLP))} sobre mercado ({fmtPct(Math.abs(pct))}). Necesitas ~{Math.ceil(Math.abs(pct) / 4)} años extra de plusvalía para recuperar.</>
                           }
-                          {extra && <span className="block text-[11px] text-[#FAFAF8]/30 mt-1">{extra}</span>}
+                          {extra && <span className="block text-[11px] text-th-text-muted mt-1">{extra}</span>}
                         </div>
                       );
                     };
@@ -2667,30 +2667,30 @@ export function PremiumResults({
 
                   {/* Precios de equilibrio */}
                   {m.flujoNetoMensual >= 0 ? (
-                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #B0BEC5', background: 'rgba(176,190,197,0.04)', color: 'rgba(250,250,248,0.6)' }}>
-                      <span style={{ color: '#B0BEC5', fontWeight: 600 }}>Flujo positivo.</span> Buen precio para este financiamiento.
+                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #B0BEC5', background: 'var(--franco-scenario-good-bg)', color: 'var(--franco-text-secondary)' }}>
+                      <span style={{ color: 'var(--franco-positive)', fontWeight: 600 }}>Flujo positivo.</span> Buen precio para este financiamiento.
                     </div>
                   ) : (m.precioFlujoNeutroUF ?? 0) > 0 ? (
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-[2px]">
-                        <div className="bg-[#1A1A1A] rounded-l-lg px-4 py-3">
-                          <p className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Flujo neutro</p>
-                          <p className="font-mono font-semibold text-lg text-[#FBBF24]">{fmtUF(m.precioFlujoNeutroUF ?? 0)}</p>
-                          <p className="text-[10px] text-[#FAFAF8]/20">{fmtPct(m.descuentoParaNeutro ?? 0)} menos</p>
+                        <div className="bg-th-surface rounded-l-lg px-4 py-3">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-th-text-secondary">Flujo neutro</p>
+                          <p className="font-mono font-semibold text-lg text-th-verdict-adjust">{fmtUF(m.precioFlujoNeutroUF ?? 0)}</p>
+                          <p className="text-[10px] text-th-text-muted">{fmtPct(m.descuentoParaNeutro ?? 0)} menos</p>
                         </div>
-                        <div className="bg-[#1A1A1A] rounded-r-lg px-4 py-3">
-                          <p className="font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Flujo +$50K</p>
-                          <p className="font-mono font-semibold text-lg text-[#B0BEC5]">{fmtUF(m.precioFlujoPositivoUF ?? 0)}</p>
-                          <p className="text-[10px] text-[#FAFAF8]/20">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
+                        <div className="bg-th-surface rounded-r-lg px-4 py-3">
+                          <p className="font-mono text-[10px] uppercase tracking-wider text-th-text-secondary">Flujo +$50K</p>
+                          <p className="font-mono font-semibold text-lg text-th-positive">{fmtUF(m.precioFlujoPositivoUF ?? 0)}</p>
+                          <p className="text-[10px] text-th-text-muted">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
                         </div>
                       </div>
-                      <p className="text-[11px] text-[#FAFAF8]/30">
+                      <p className="text-[11px] text-th-text-muted">
                         Precios máximos de compra para lograr cada nivel de flujo con tu financiamiento actual.
                         {(m.descuentoParaNeutro ?? 0) > 15 && " El margen de negociación necesario es alto — considera más pie, menor tasa, o buscar otra propiedad."}
                       </p>
                     </div>
                   ) : (
-                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #C8323C', background: 'rgba(200,50,60,0.04)', color: 'rgba(250,250,248,0.6)' }}>
+                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #C8323C', background: 'var(--franco-scenario-bad-bg)', color: 'var(--franco-text-secondary)' }}>
                       <span style={{ color: '#C8323C', fontWeight: 600 }}>Sin precio de equilibrio.</span>{' '}
                       El arriendo no alcanza a cubrir los gastos fijos (sin dividendo). Considera más pie, menor tasa, o buscar otra propiedad.
                     </div>
@@ -2728,15 +2728,15 @@ export function PremiumResults({
                 const deltaPrecio = zonaPrecioM2CLP > 0 ? Math.round(((tuyoPrecioM2CLP - zonaPrecioM2CLP) / zonaPrecioM2CLP) * 100) : 0;
                 const deltaArriendo = avgArriendoZona > 0 ? Math.round(((m.ingresoMensual - avgArriendoZona) / avgArriendoZona) * 100) : 0;
                 return (
-                  <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
-                    <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-3">¿Cómo se compara con la zona?</h3>
-                    <p className="text-[#FAFAF8]/60 text-sm leading-relaxed font-body">
+                  <div className="bg-th-card rounded-xl border border-th-border-strong mb-3 p-5">
+                    <h3 className="font-heading font-bold text-base text-th-text mb-3">¿Cómo se compara con la zona?</h3>
+                    <p className="text-th-text-secondary text-sm leading-relaxed font-body">
                       Este depto está{" "}
-                      <span className={`font-mono font-semibold ${deltaPrecio <= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                      <span className={`font-mono font-semibold ${deltaPrecio <= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
                         {Math.abs(deltaPrecio)}% {deltaPrecio <= 0 ? "más barato" : "más caro"}
                       </span>{" "}
                       que el promedio de {comuna} para departamentos similares. El arriendo esperado está{" "}
-                      <span className={`font-mono font-semibold ${deltaArriendo >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                      <span className={`font-mono font-semibold ${deltaArriendo >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
                         {Math.abs(deltaArriendo)}% {deltaArriendo >= 0 ? "sobre" : "bajo"} el promedio
                       </span>{" "}
                       de la zona{deltaArriendo >= 0
@@ -2816,17 +2816,17 @@ export function PremiumResults({
                     return (
                       <>
                         {risks.map((risk) => {
-                          const color = risk.severity === "critical" ? "#C8323C" : "#FBBF24";
+                          const color = risk.severity === "critical" ? "#C8323C" : "var(--franco-verdict-adjust-text)";
                           return (
                             <div key={risk.id} style={{ borderLeft: `3px solid ${color}`, background: `${color}08`, borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
                               <div className="font-body text-sm font-semibold" style={{ color }}>{risk.titulo}</div>
-                              <div className="font-body text-[13px] text-[#FAFAF8]/50 leading-relaxed mt-1">{risk.detalle}</div>
+                              <div className="font-body text-[13px] text-th-text-secondary leading-relaxed mt-1">{risk.detalle}</div>
                             </div>
                           );
                         })}
                         {extraContras.map((contra, i) => (
                           <div key={`extra-${i}`} style={{ borderLeft: "3px solid #FBBF24", background: "#FBBF2408", borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
-                            <div className="font-body text-[13px] text-[#FAFAF8]/50 leading-relaxed">{contra}</div>
+                            <div className="font-body text-[13px] text-th-text-secondary leading-relaxed">{contra}</div>
                           </div>
                         ))}
                       </>
@@ -2846,18 +2846,18 @@ export function PremiumResults({
                   <>
                     <div className="mb-5">
                       <div className="flex items-center justify-between mb-1">
-                        <h4 className="text-sm font-medium text-[#FAFAF8]">Horizonte de venta</h4>
-                        <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{sensHorizon} años</span>
+                        <h4 className="text-sm font-medium text-th-text">Horizonte de venta</h4>
+                        <span className="font-mono text-sm font-semibold text-th-text">{sensHorizon} años</span>
                       </div>
                       <input type="range" min={3} max={20} step={1} value={sensHorizon} onChange={(e) => setSensHorizon(Number(e.target.value))} className="w-full accent-[#71717A] h-2" />
-                      <div className="flex justify-between text-[10px] text-[#FAFAF8]/50 mt-0.5"><span>3 años</span><span>20 años</span></div>
+                      <div className="flex justify-between text-[10px] text-th-text-secondary mt-0.5"><span>3 años</span><span>20 años</span></div>
                     </div>
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                       {sensScenarios.map((s) => {
-                        const scColor = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "#B0BEC5" : "#333333";
+                        const scColor = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "#333333";
                         const scBg = s.key === "base" ? "#0F0F0F" : `${scColor}15`;
                         const scBorder = s.key === "base" ? "#33333366" : `${scColor}35`;
-                        const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "#B0BEC5" : "#999999";
+                        const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "#999999";
                         return (
                         <div key={s.key} className="rounded-lg" style={{ border: `1px solid ${scBorder}`, background: scBg, padding: "12px 16px" }}>
                           <div className="flex items-center gap-2 mb-3">
@@ -2865,16 +2865,16 @@ export function PremiumResults({
                             <div className="text-sm font-medium" style={{ color: scText }}>{s.sub}</div>
                           </div>
                           <div className="mb-2">
-                            <div className="text-[10px] text-[#FAFAF8]/40">Flujo mensual (año 1)</div>
-                            <div className={`font-mono text-lg font-semibold ${s.flujoMensual >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
-                              {fmt(s.flujoMensual)}<span className="text-xs font-normal text-[#FAFAF8]/50">/mes</span>
+                            <div className="text-[10px] text-th-text-secondary">Flujo mensual (año 1)</div>
+                            <div className={`font-mono text-lg font-semibold ${s.flujoMensual >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>
+                              {fmt(s.flujoMensual)}<span className="text-xs font-normal text-th-text-secondary">/mes</span>
                             </div>
                           </div>
                           <div className="mb-3">
-                            <div className="text-[10px] text-[#FAFAF8]/40">Retorno ({sensHorizon} años)</div>
-                            <div className={`font-mono text-base font-semibold ${s.retorno >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>{s.retorno}x</div>
+                            <div className="text-[10px] text-th-text-secondary">Retorno ({sensHorizon} años)</div>
+                            <div className={`font-mono text-base font-semibold ${s.retorno >= 1 ? "text-th-positive" : "text-[#C8323C]"}`}>{s.retorno}x</div>
                           </div>
-                          <div className="border-t border-dashed border-white/[0.06] pt-2 text-[11px] leading-relaxed text-[#FAFAF8]/40">
+                          <div className="border-t border-dashed border-th-border pt-2 text-[11px] leading-relaxed text-th-text-secondary">
                             <div>Tasa {fmtPct(s.scenTasa, 2)} · Arr. {fmtM(s.scenArriendo)}</div>
                             <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
                           </div>
@@ -2889,14 +2889,14 @@ export function PremiumResults({
 
               {/* Section Simple: Resumen 10 años (simple only) */}
               {showSection(['simple']) && fixedExit10 && m && (
-                <div className="bg-[#151515] rounded-xl border border-white/[0.08] mb-3 p-5">
-                  <h3 className="font-heading font-bold text-base text-[#FAFAF8] mb-4">¿Qué pasa en 10 años?</h3>
+                <div className="bg-th-card rounded-xl border border-th-border-strong mb-3 p-5">
+                  <h3 className="font-heading font-bold text-base text-th-text mb-4">¿Qué pasa en 10 años?</h3>
                   <div className="text-center">
-                    <div className={`font-mono text-4xl font-bold ${fixedExit10.multiplicadorCapital >= 1 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>
+                    <div className={`font-mono text-4xl font-bold ${fixedExit10.multiplicadorCapital >= 1 ? "text-th-positive" : "text-[#C8323C]"}`}>
                       {fixedExit10.multiplicadorCapital}x
                     </div>
                     <div className="text-[#71717A] text-sm mt-1 font-body">Retorno sobre tu inversión inicial</div>
-                    <div className="font-mono text-xs text-[#FAFAF8]/30 mt-2">
+                    <div className="font-mono text-xs text-th-text-muted mt-2">
                       Pusiste {fmtCLP(m.pieCLP)} → Tu patrimonio neto: {dynamicProjections.length >= 10 ? fmtCLP(dynamicProjections[9].patrimonioNeto) : "—"}
                     </div>
                     <p className="text-[#71717A] text-xs mt-4 font-body leading-relaxed">
@@ -2913,9 +2913,9 @@ export function PremiumResults({
 
           {/* Paywall CTA between Block 2 and Block 3 — hide in simple */}
           {showSection(['importante', 'sinfiltro']) && currentAccess === "free" && analysisId && (
-            <div className="text-center py-8 mt-4 border-t border-white/[0.08] mb-5">
-              <h3 className="font-heading font-bold text-lg text-[#FAFAF8]">¿Quieres el análisis completo?</h3>
-              <p className="font-body text-[13px] text-[#FAFAF8]/50 mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
+            <div className="text-center py-8 mt-4 border-t border-th-border-strong mb-5">
+              <h3 className="font-heading font-bold text-lg text-th-text">¿Quieres el análisis completo?</h3>
+              <p className="font-body text-[13px] text-th-text-secondary mt-1 mb-4 max-w-[400px] mx-auto">Proyecciones a 20 años, flujo dinámico, escenarios de salida y análisis IA personalizado.</p>
               <BottomPaywallCTA analysisId={analysisId} userCredits={userCredits} />
             </div>
           )}
@@ -2967,12 +2967,12 @@ export function PremiumResults({
                       const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
                       const displayName = fullNames[item.name] || item.name;
                       return (
-                        <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
-                          <div className="mb-1 font-semibold text-[#FAFAF8]">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}>
+                        <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                          <div className="mb-1 font-semibold text-th-text">{item.isResult ? `→ ${displayName}` : displayName}</div>
+                          <div className={item.delta >= 0 ? "text-th-positive" : "text-[#C8323C]"}>
                             {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
                           </div>
-                          <div className="text-[#FAFAF8]/60">Acumulado: {fmt(item.running)}</div>
+                          <div className="text-th-text-secondary">Acumulado: {fmt(item.running)}</div>
                         </div>
                       );
                     }}
@@ -2992,14 +2992,14 @@ export function PremiumResults({
                 </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-th-text-secondary">
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.6)" }} />Ingreso</span>
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
               <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />Resultado</span>
             </div>
-            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
+            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-th-text-secondary">Toca las barras para ver el detalle</p>}
             {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-[#B0BEC5]/10 text-[#B0BEC5]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
+              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-th-positive/10 text-th-positive" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
                 Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
               </div>
             )}
@@ -3021,10 +3021,10 @@ export function PremiumResults({
             analysisId={analysisId}
           >
             <div>
-                  <h4 className="mb-1 text-sm font-semibold text-[#FAFAF8]">
+                  <h4 className="mb-1 text-sm font-semibold text-th-text">
                     Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
                   </h4>
-                  <p className="mb-3 text-xs text-[#FAFAF8]/50">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
+                  <p className="mb-3 text-xs text-th-text-secondary">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
                   <div className="relative h-64">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
@@ -3040,22 +3040,22 @@ export function PremiumResults({
                             const row = payload[0]?.payload as CashflowRow | undefined;
                             if (!row) return null;
                             return (
-                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
-                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso: <span className="font-medium text-[#FAFAF8]">{fmt(row.Ingreso)}</span></div>
+                              <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                                <div className="mb-1.5 font-semibold text-th-text">{row.name}</div>
+                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-positive)" }} />Ingreso: <span className="font-medium text-th-text">{fmt(row.Ingreso)}</span></div>
                                 {egresoBarSeries.map(s => (
                                   <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
                                 ))}
-                                <div className="my-1 border-t border-white/[0.06]" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[#B0BEC5]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="font-bold text-[#FAFAF8]">Acumulado: {fmt(row.Acumulado)}</div>
+                                <div className="my-1 border-t border-th-border" />
+                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-th-positive" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
+                                <div className="font-bold text-th-text">Acumulado: {fmt(row.Acumulado)}</div>
                               </div>
                             );
                           }}
                         />
                         <ReferenceLine y={0} stroke="rgba(250,250,248,0.3)" strokeDasharray="6 3" strokeWidth={1} />
                         {/* Ingreso siempre primero */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="#B0BEC5" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
+                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="var(--franco-positive)" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
                         {/* Egresos ordenados por impacto promedio descendente */}
                         {egresoBarSeries.map((s, i) => (
                           <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
@@ -3069,15 +3069,15 @@ export function PremiumResults({
                       </ComposedChart>
                     </ResponsiveContainer>
                     {horizonBeforeDelivery && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[#151515]/80 backdrop-blur-[1px]">
-                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-white/[0.08] bg-[#151515]/95 px-6 py-5 text-center shadow-lg">
-                          <Clock className="h-7 w-7 text-[#FAFAF8]" />
-                          <span className="text-sm font-semibold text-[#FAFAF8]">Tu inversión aún no genera flujo</span>
-                          <p className="text-xs text-[#FAFAF8]/50">
+                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-th-card/80 backdrop-blur-[1px]">
+                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-th-border-strong bg-th-card/95 px-6 py-5 text-center shadow-lg">
+                          <Clock className="h-7 w-7 text-th-text" />
+                          <span className="text-sm font-semibold text-th-text">Tu inversión aún no genera flujo</span>
+                          <p className="text-xs text-th-text-secondary">
                             La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
                             Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
                           </p>
-                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[#FAFAF8] hover:underline">
+                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-th-text hover:underline">
                             Ver desde la entrega →
                           </button>
                         </div>
@@ -3085,9 +3085,9 @@ export function PremiumResults({
                     )}
                   </div>
                   {/* Leyenda manual */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-[#FAFAF8]/60" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
+                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-th-text-secondary" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
                     <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(176,190,197,0.7)" }} />Ingreso</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-positive)" }} />Ingreso</span>
                       {egresoBarSeries.map(s => (
                         <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
                       ))}
@@ -3118,14 +3118,14 @@ export function PremiumResults({
               <>
                 <div>
                   <div className="mb-1 flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-[#FAFAF8]">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
+                    <h4 className="text-sm font-semibold text-th-text">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
                     {horizonBeforeDelivery && (
                       <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
                         Período pre-entrega: tu patrimonio crece con los pagos del pie
                       </span>
                     )}
                   </div>
-                  <p className="mb-3 text-xs text-[#FAFAF8]/50">De dónde viene tu patrimonio. Plusvalía {fmtPct(plusvaliaRate)}/año y arriendos +{fmtPct(arriendoGrowth)}/año.</p>
+                  <p className="mb-3 text-xs text-th-text-secondary">De dónde viene tu patrimonio. Plusvalía {fmtPct(plusvaliaRate)}/año y arriendos +{fmtPct(arriendoGrowth)}/año.</p>
                   <div className="h-72">
                     <ResponsiveContainer>
                       <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
@@ -3140,8 +3140,8 @@ export function PremiumResults({
                             if (!row) return null;
                             const pre = row.isPreEntrega;
                             return (
-                              <div className="rounded-lg border border-white/[0.15] bg-[#1E1E1E] px-3 py-3 text-xs text-[#FAFAF8] shadow-lg">
-                                <div className="mb-1.5 font-semibold text-[#FAFAF8]">{row.name}{pre ? " (pre-entrega)" : ""}</div>
+                              <div className="rounded-lg border border-th-border-hover bg-[#1E1E1E] px-3 py-3 text-xs text-th-text shadow-lg">
+                                <div className="mb-1.5 font-semibold text-th-text">{row.name}{pre ? " (pre-entrega)" : ""}</div>
                                 {pre ? (
                                   <>
                                     <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FAFAF8", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "#FAFAF8" }}>{fmt(row.piePagado)}</span></div>
@@ -3157,7 +3157,7 @@ export function PremiumResults({
                                     <div className="flex items-center gap-1.5" style={{ color: "rgba(250,250,248,0.5)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo: <span className="font-medium" style={{ color: "#C8323C" }}>{fmt(row.flujoAcumulado)}</span></div>
                                   </>
                                 )}
-                                <div className="mt-1 border-t border-white/[0.06] pt-1 font-semibold" style={{ color: "#FAFAF8" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
+                                <div className="mt-1 border-t border-th-border pt-1 font-semibold" style={{ color: "#FAFAF8" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
                               </div>
                             );
                           }}
@@ -3176,7 +3176,7 @@ export function PremiumResults({
                       </ComposedChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[#FAFAF8]/60">
+                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-th-text-secondary">
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.15)" }} />Pie pagado</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.30)" }} />Capital amortizado</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.08)", border: "1px solid rgba(250,250,248,0.20)" }} />Plusvalía</span>
@@ -3185,7 +3185,7 @@ export function PremiumResults({
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "#FAFAF8", height: 3 }} />Patrimonio neto</span>
                   </div>
-                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[#FAFAF8]/50">Toca las barras para ver el detalle</p>}
+                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-th-text-secondary">Toca las barras para ver el detalle</p>}
                   {/* Desglose de patrimonio — sinfiltro only */}
                   {viewLevel === 'sinfiltro' && (() => {
                     const lastRow = projData.find(r => r._x === horizonYears * 12);
@@ -3199,41 +3199,41 @@ export function PremiumResults({
                     return (
                       <>
                       {/* Bloque 1: Desglose de patrimonio */}
-                      <div className="mt-4 rounded-lg border border-white/[0.06] bg-white/[0.03]">
+                      <div className="mt-4 rounded-lg border border-th-border bg-th-input-bg">
                         <div className="space-y-0 divide-y divide-border/30 sm:hidden">
                           {[
-                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP), color: "text-[#FAFAF8]" },
-                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastRow.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[#B0BEC5]" },
-                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[#B0BEC5]" },
-                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[#FAFAF8]", bold: true },
+                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP), color: "text-th-text" },
+                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastRow.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-th-positive" },
+                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-th-positive" },
+                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-th-text", bold: true },
                           ].map(({ label, value, color, bold }) => (
                             <div key={label} className={`px-3 py-2 ${bold ? "bg-white/[0.05]" : ""}`}>
-                              <div className="text-[11px] text-[#FAFAF8]/60">{label}</div>
+                              <div className="text-[11px] text-th-text-secondary">{label}</div>
                               <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
                             </div>
                           ))}
                         </div>
                         <table className="hidden w-full text-sm sm:table">
                           <tbody>
-                            <tr className="border-b border-white/[0.04]">
-                              <td className="py-2 px-4 text-[#FAFAF8]/70">Tu inversión inicial (pie)</td>
-                              <td className="py-2 px-4 text-right font-medium text-[#FAFAF8]">{fmt(m.pieCLP)}</td>
+                            <tr className="border-b border-th-border">
+                              <td className="py-2 px-4 text-th-text">Tu inversión inicial (pie)</td>
+                              <td className="py-2 px-4 text-right font-medium text-th-text">{fmt(m.pieCLP)}</td>
                             </tr>
-                            <tr className="border-b border-white/[0.04]">
-                              <td className="py-2 px-4 text-[#FAFAF8]/70">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastRow.valorPropiedad / UF_CLP)})</td>
-                              <td className="py-2 px-4 text-right font-medium text-[#B0BEC5]">{fmt(plusvaliaGanancia)}</td>
+                            <tr className="border-b border-th-border">
+                              <td className="py-2 px-4 text-th-text">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastRow.valorPropiedad / UF_CLP)})</td>
+                              <td className="py-2 px-4 text-right font-medium text-th-positive">{fmt(plusvaliaGanancia)}</td>
                             </tr>
-                            <tr className="border-b border-white/[0.04]">
-                              <td className="py-2 px-4 text-[#FAFAF8]/70">Capital amortizado (pagado del crédito)</td>
-                              <td className="py-2 px-4 text-right font-medium text-[#B0BEC5]">{fmt(capitalAmortizado)}</td>
+                            <tr className="border-b border-th-border">
+                              <td className="py-2 px-4 text-th-text">Capital amortizado (pagado del crédito)</td>
+                              <td className="py-2 px-4 text-right font-medium text-th-positive">{fmt(capitalAmortizado)}</td>
                             </tr>
-                            <tr className="border-t border-white/[0.06]">
-                              <td className="py-2 px-4 font-semibold text-[#FAFAF8]">Patrimonio neto total</td>
-                              <td className="py-2 px-4 text-right font-bold text-[#FAFAF8]">{fmt(patrimonioTotal)}</td>
+                            <tr className="border-t border-th-border">
+                              <td className="py-2 px-4 font-semibold text-th-text">Patrimonio neto total</td>
+                              <td className="py-2 px-4 text-right font-bold text-th-text">{fmt(patrimonioTotal)}</td>
                             </tr>
                           </tbody>
                         </table>
-                        <p className="px-3 pb-2 text-[10px] text-[#FAFAF8]/50 sm:px-4">= valor propiedad − deuda restante</p>
+                        <p className="px-3 pb-2 text-[10px] text-th-text-secondary sm:px-4">= valor propiedad − deuda restante</p>
                       </div>
 
                       {/* Bloque 2: Lo que pusiste de tu bolsillo */}
@@ -3241,7 +3241,7 @@ export function PremiumResults({
                         <div className="px-3 py-2.5 sm:px-4">
                           <div className="mb-1 font-mono text-xs font-medium uppercase" style={{ color: "#C8323C" }}>Lo que pusiste de tu bolsillo</div>
                           <div className="flex justify-between text-sm">
-                            <span className="text-[#FAFAF8]/60">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
+                            <span className="text-th-text-secondary">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
                             <span className="font-mono font-medium" style={{ color: "#C8323C" }}>{fmt(flujoAcum)}</span>
                           </div>
                         </div>
@@ -3283,11 +3283,11 @@ export function PremiumResults({
                 <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
                   <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
                   <div>
-                    <p className="text-sm font-medium text-[#FAFAF8]">No puedes vender ni refinanciar antes de la entrega</p>
-                    <p className="mt-1 text-xs text-[#FAFAF8]/50">
+                    <p className="text-sm font-medium text-th-text">No puedes vender ni refinanciar antes de la entrega</p>
+                    <p className="mt-1 text-xs text-th-text-secondary">
                       La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
                     </p>
-                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[#FAFAF8] hover:underline">
+                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-th-text hover:underline">
                       Ver desde la entrega →
                     </button>
                   </div>
@@ -3352,14 +3352,14 @@ export function PremiumResults({
                 return (
               <div>
                 <div className="mb-4 flex gap-2">
-                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Venta</button>
-                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#FAFAF8] text-[#0F0F0F]" : "bg-transparent border border-white/[0.08] text-[#FAFAF8]/50 hover:text-[#FAFAF8] hover:border-white/[0.16]"}`}>Refinanciamiento</button>
+                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-th-btn-primary text-th-btn-primary-text" : "bg-transparent border border-th-border-strong text-th-text-secondary hover:text-th-text hover:border-th-border-hover"}`}>Venta</button>
+                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-th-btn-primary text-th-btn-primary-text" : "bg-transparent border border-th-border-strong text-th-text-secondary hover:text-th-text hover:border-th-border-hover"}`}>Refinanciamiento</button>
                 </div>
 
                 {exitMode === "venta" ? (
-                  <div className="space-y-4 text-sm text-[#FAFAF8]">
+                  <div className="space-y-4 text-sm text-th-text">
                     {/* Intro */}
-                    <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
+                    <p className="rounded-lg bg-th-input-bg p-3 text-xs text-th-text-secondary">
                       Si vendieras {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} al valor proyectado (plusvalía {fmtPct(plusvaliaRate)}/año), ¿cuánto ganarías?
                     </p>
 
@@ -3368,15 +3368,15 @@ export function PremiumResults({
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pie inicial</span>
-                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(m.pieCLP)}</span>
+                        <span className="font-mono text-sm text-th-text">{fmt(m.pieCLP)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
                         <span className="font-mono text-sm" style={{ color: "#C8323C" }}>{fmt(Math.abs(fa))}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
-                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Total invertido</span>
-                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(totalInvertido)}</span>
+                        <span className="text-[13px] font-semibold text-th-text">Total invertido</span>
+                        <span className="font-mono text-[15px] font-bold text-th-text">{fmt(totalInvertido)}</span>
                       </div>
                     </div>
 
@@ -3385,7 +3385,7 @@ export function PremiumResults({
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Valor de venta estimado</span>
-                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(vp)}</span>
+                        <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Saldo crédito restante</span>
@@ -3396,8 +3396,8 @@ export function PremiumResults({
                         <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>-{fmt(comision)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
-                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Recibes neto</span>
-                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(recibeNeto)}</span>
+                        <span className="text-[13px] font-semibold text-th-text">Recibes neto</span>
+                        <span className="font-mono text-[15px] font-bold text-th-text">{fmt(recibeNeto)}</span>
                       </div>
                     </div>
 
@@ -3427,16 +3427,16 @@ export function PremiumResults({
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
                       <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
-                        Pusiste <span className="font-medium text-[#FAFAF8]">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-[#FAFAF8]">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
-                        {" "}Al vender, recibes <span className="font-medium text-[#FAFAF8]">{fmtAbr(recibeNeto)}</span> netos.
-                        {" "}Tu ganancia real es <span className="font-medium text-[#FAFAF8]">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-[#FAFAF8]">{multiplicador}x</span>.
+                        Pusiste <span className="font-medium text-th-text">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-th-text">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
+                        {" "}Al vender, recibes <span className="font-medium text-th-text">{fmtAbr(recibeNeto)}</span> netos.
+                        {" "}Tu ganancia real es <span className="font-medium text-th-text">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-th-text">{multiplicador}x</span>.
                       </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-4 text-sm text-[#FAFAF8]">
+                  <div className="space-y-4 text-sm text-th-text">
                     {/* Intro */}
-                    <p className="rounded-lg bg-white/[0.03] p-3 text-xs text-[#FAFAF8]/60">
+                    <p className="rounded-lg bg-th-input-bg p-3 text-xs text-th-text-secondary">
                       Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
                     </p>
 
@@ -3460,11 +3460,11 @@ export function PremiumResults({
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo avalúo (valor proyectado)</span>
-                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(vp)}</span>
+                        <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Deuda actual</span>
-                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(sc)}</span>
+                        <span className="font-mono text-sm text-th-text">{fmt(sc)}</span>
                       </div>
                     </div>
 
@@ -3473,15 +3473,15 @@ export function PremiumResults({
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(250,250,248,0.3)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
-                        <span className="font-mono text-sm text-[#FAFAF8]">{fmt(refiNuevoCredito)}</span>
+                        <span className="font-mono text-sm text-th-text">{fmt(refiNuevoCredito)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
                         <span className="text-[13px]" style={{ color: "rgba(250,250,248,0.5)" }}>Pago deuda anterior</span>
                         <span className="font-mono text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
                       </div>
                       <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
-                        <span className="text-[13px] font-semibold text-[#FAFAF8]">Capital liberado</span>
-                        <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmt(refiCapitalLiberado)}</span>
+                        <span className="text-[13px] font-semibold text-th-text">Capital liberado</span>
+                        <span className="font-mono text-[15px] font-bold text-th-text">{fmt(refiCapitalLiberado)}</span>
                       </div>
                     </div>
 
@@ -3505,12 +3505,12 @@ export function PremiumResults({
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
                       <p className="text-[13px] leading-relaxed" style={{ color: "rgba(250,250,248,0.6)" }}>
-                        Sin vender tu depto, puedes liberar <span className="font-medium text-[#FAFAF8]">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
+                        Sin vender tu depto, puedes liberar <span className="font-medium text-th-text">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
                         {" "}{nDeptos >= 2
-                          ? <>Ese capital alcanza como pie para <span className="font-medium text-[#FAFAF8]">{nDeptos} departamentos</span> similares.</>
-                          : <>Ese capital equivale a <span className="font-medium text-[#FAFAF8]">{(Math.round(refiCapitalLiberado / m.pieCLP * 10) / 10)}x</span> tu pie original.</>
+                          ? <>Ese capital alcanza como pie para <span className="font-medium text-th-text">{nDeptos} departamentos</span> similares.</>
+                          : <>Ese capital equivale a <span className="font-medium text-th-text">{(Math.round(refiCapitalLiberado / m.pieCLP * 10) / 10)}x</span> tu pie original.</>
                         }
-                        {" "}Tu nuevo dividendo sube a <span className="font-medium text-[#FAFAF8]">{fmt(refiNuevoDividendo)}</span>/mes y el flujo neto queda en <span className="font-medium text-[#FAFAF8]">{fmt(refiNuevoFlujoNeto)}</span>/mes.
+                        {" "}Tu nuevo dividendo sube a <span className="font-medium text-th-text">{fmt(refiNuevoDividendo)}</span>/mes y el flujo neto queda en <span className="font-medium text-th-text">{fmt(refiNuevoFlujoNeto)}</span>/mes.
                       </p>
                     </div>
                   </div>
@@ -3529,14 +3529,14 @@ export function PremiumResults({
 
           {/* ===== Bottom CTAs ===== */}
           {currentAccess === "guest" && (
-            <div className="mb-8 p-8 bg-[#151515] rounded-2xl border border-white/[0.08] text-center">
-              <Lock className="h-8 w-8 text-[#FAFAF8] mx-auto mb-3" />
-              <h3 className="font-heading text-xl font-bold text-[#FAFAF8]">Regístrate para ver el análisis completo</h3>
-              <p className="max-w-md mx-auto font-body text-sm text-[#FAFAF8]/50 mt-2">
+            <div className="mb-8 p-8 bg-th-card rounded-2xl border border-th-border-strong text-center">
+              <Lock className="h-8 w-8 text-th-text mx-auto mb-3" />
+              <h3 className="font-heading text-xl font-bold text-th-text">Regístrate para ver el análisis completo</h3>
+              <p className="max-w-md mx-auto font-body text-sm text-th-text-secondary mt-2">
                 Accede gratis a 8 métricas, sensibilidad, puntos críticos, comparación con zona y más.
               </p>
               <a href="/register" className="mt-4 inline-block">
-                <Button size="lg" className="gap-2 bg-[#FAFAF8] text-[#0F0F0F] hover:bg-[#FAFAF8]/90">Regístrate gratis</Button>
+                <Button size="lg" className="gap-2 bg-th-btn-primary text-th-btn-primary-text hover:bg-th-btn-primary-hover">Regístrate gratis</Button>
               </a>
             </div>
           )}
@@ -3575,38 +3575,38 @@ export function PremiumResults({
   const panelFields = hasPanelContent ? (
     <div className="space-y-2">
       <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto cuesta</h4>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-th-text-secondary">Cuánto cuesta</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Precio (UF)</label>
-              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+              <label className="font-body text-sm font-medium text-th-text">Precio (UF)</label>
+              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-th-border-strong bg-th-surface px-2 py-0.5 text-right text-[11px] font-mono text-th-text" />
             </div>
             <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Pie</label>
-              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjPiePct}%</span>
+              <label className="font-body text-sm font-medium text-th-text">Pie</label>
+              <span className="text-[11px] font-medium text-th-text">{adjPiePct}%</span>
             </div>
             <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
         </div>
       </div>
       <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Financiamiento</h4>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-th-text-secondary">Financiamiento</h4>
         <div className="space-y-1">
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Plazo</label>
-              <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjPlazo} años</span>
+              <label className="font-body text-sm font-medium text-th-text">Plazo</label>
+              <span className="text-[11px] font-medium text-th-text">{adjPlazo} años</span>
             </div>
             <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Tasa (%)</label>
-              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+              <label className="font-body text-sm font-medium text-th-text">Tasa (%)</label>
+              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-th-border-strong bg-th-surface px-2 py-0.5 text-right text-[11px] font-mono text-th-text" />
             </div>
             <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
           </div>
@@ -3614,44 +3614,44 @@ export function PremiumResults({
       </div>
       {currentAccess === 'subscriber' ? (
         <div>
-          <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[#FAFAF8]/40">Cuánto genera</h4>
+          <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-th-text-secondary">Cuánto genera</h4>
           <div className="space-y-1">
             <div>
               <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Arriendo</label>
-                <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+                <label className="font-body text-sm font-medium text-th-text">Arriendo</label>
+                <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-th-border-strong bg-th-surface px-2 py-0.5 text-right text-[11px] font-mono text-th-text" />
               </div>
               <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">GGCC</label>
-                <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+                <label className="font-body text-sm font-medium text-th-text">GGCC</label>
+                <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-th-border-strong bg-th-surface px-2 py-0.5 text-right text-[11px] font-mono text-th-text" />
               </div>
               <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Contrib. /trim</label>
-                <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-white/[0.08] bg-[#1A1A1A] px-2 py-0.5 text-right text-[11px] font-mono text-[#FAFAF8]" />
+                <label className="font-body text-sm font-medium text-th-text">Contrib. /trim</label>
+                <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-th-border-strong bg-th-surface px-2 py-0.5 text-right text-[11px] font-mono text-th-text" />
               </div>
               <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Vacancia</label>
-                <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjVacanciaPct}%</span>
+                <label className="font-body text-sm font-medium text-th-text">Vacancia</label>
+                <span className="text-[11px] font-medium text-th-text">{adjVacanciaPct}%</span>
               </div>
               <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-              <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+              <p className="text-[10px] text-th-text-secondary leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
             </div>
             <div>
               <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Administración</label>
-                <span className="text-[11px] font-medium text-[#FAFAF8]/70">{adjAdminPct}%</span>
+                <label className="font-body text-sm font-medium text-th-text">Administración</label>
+                <span className="text-[11px] font-medium text-th-text">{adjAdminPct}%</span>
               </div>
               <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[#71717A] h-1.5" />
-              <p className="text-[10px] text-[#FAFAF8]/50 leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
+              <p className="text-[10px] text-th-text-secondary leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
             </div>
           </div>
         </div>
@@ -3670,11 +3670,11 @@ export function PremiumResults({
 
   const panelButton = hasPanelContent ? (
     <div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-[#FAFAF8] text-[#0F0F0F] hover:bg-[#FAFAF8]/90">
+      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-th-btn-primary text-th-btn-primary-text hover:bg-th-btn-primary-hover">
         {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
-      {recalcSuccess && <p className="mt-1 text-center text-xs text-[#B0BEC5]">Actualizado</p>}
+      {recalcSuccess && <p className="mt-1 text-center text-xs text-th-positive">Actualizado</p>}
     </div>
   ) : null;
 
@@ -3692,35 +3692,35 @@ export function PremiumResults({
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Horizonte</label>
-          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
+          <label className="font-body text-sm font-medium text-th-text">Horizonte</label>
+          <span className="font-mono text-sm font-semibold text-th-text">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
         </div>
         <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
+        <p className="mt-0.5 text-[10px] text-th-text-secondary">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
       </div>
       <div>
         <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Plusvalía anual</label>
-          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(plusvaliaRate)}</span>
+          <label className="font-body text-sm font-medium text-th-text">Plusvalía anual</label>
+          <span className="font-mono text-sm font-semibold text-th-text">{fmtPct(plusvaliaRate)}</span>
         </div>
         <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Promedio histórico: 3-5% anual</p>
+        <p className="mt-0.5 text-[10px] text-th-text-secondary">Promedio histórico: 3-5% anual</p>
       </div>
       <div>
         <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Crecimiento arriendo</label>
-          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(arriendoGrowth)}/año</span>
+          <label className="font-body text-sm font-medium text-th-text">Crecimiento arriendo</label>
+          <span className="font-mono text-sm font-semibold text-th-text">{fmtPct(arriendoGrowth)}/año</span>
         </div>
         <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Promedio histórico: 3-4% anual</p>
+        <p className="mt-0.5 text-[10px] text-th-text-secondary">Promedio histórico: 3-4% anual</p>
       </div>
       <div>
         <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[#FAFAF8]/70">Crecimiento gastos</label>
-          <span className="font-mono text-sm font-semibold text-[#FAFAF8]">{fmtPct(costGrowth)}/año</span>
+          <label className="font-body text-sm font-medium text-th-text">Crecimiento gastos</label>
+          <span className="font-mono text-sm font-semibold text-th-text">{fmtPct(costGrowth)}/año</span>
         </div>
         <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[#71717A] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[#FAFAF8]/40">Aplica a GGCC, contribuciones y mantención</p>
+        <p className="mt-0.5 text-[10px] text-th-text-secondary">Aplica a GGCC, contribuciones y mantención</p>
       </div>
     </div>
     )
@@ -3738,19 +3738,19 @@ export function PremiumResults({
         <aside className="hidden lg:block">
           {/* Panel 1: Normal position, stays at top */}
           <div
-            className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm"
+            className="flex flex-col rounded-2xl border border-th-border-strong bg-th-card shadow-sm"
             style={{ maxHeight: "calc(100vh - 2rem)" }}
           >
             <div className="shrink-0 px-3 pt-3 pb-1">
               <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
-                <h3 className="font-body text-xs font-semibold text-[#FAFAF8]">Ajusta los números</h3>
+                <SlidersHorizontal className="h-4 w-4 text-th-text" />
+                <h3 className="font-body text-xs font-semibold text-th-text">Ajusta los números</h3>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
               {panelFields}
             </div>
-            <div className="shrink-0 border-t border-white/[0.08] px-3 py-2">
+            <div className="shrink-0 border-t border-th-border-strong px-3 py-2">
               {panelButton}
             </div>
           </div>
@@ -3758,13 +3758,13 @@ export function PremiumResults({
           {/* Panel 2: sticky, only visible when projections expanded */}
           {projectionsExpanded && (
             <div
-              className="sticky top-20 mt-8 flex flex-col rounded-2xl border border-white/[0.08] bg-[#151515] shadow-sm animate-fadeIn"
+              className="sticky top-20 mt-8 flex flex-col rounded-2xl border border-th-border-strong bg-th-card shadow-sm animate-fadeIn"
               style={{ maxHeight: "calc(100vh - 2rem)" }}
             >
               <div className="shrink-0 px-3 pt-3 pb-1">
                 <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
-                  <h3 className="font-body text-xs font-semibold text-[#FAFAF8]">Proyecciones</h3>
+                  <SlidersHorizontal className="h-4 w-4 text-th-text" />
+                  <h3 className="font-body text-xs font-semibold text-th-text">Proyecciones</h3>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
@@ -3782,7 +3782,7 @@ export function PremiumResults({
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[#1E1E1E] border border-white/[0.10] text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] px-4 py-3 lg:hidden transition-opacity duration-200"
+              className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[#1E1E1E] border border-th-border-strong text-white shadow-[0_4px_20px_rgba(0,0,0,0.5)] px-4 py-3 lg:hidden transition-opacity duration-200"
             >
               <SlidersHorizontal className="h-4 w-4" />
               <span className="font-body text-[13px] font-medium">{fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}</span>
@@ -3792,18 +3792,18 @@ export function PremiumResults({
           {drawerOpen && (
             <div className="fixed inset-0 z-50 lg:hidden">
               <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
-              <div className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-[#1A1A1A] shadow-2xl" style={{ maxHeight: "80vh" }}>
-                <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[#FAFAF8]/20" />
+              <div className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-th-surface shadow-2xl" style={{ maxHeight: "80vh" }}>
+                <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-th-border-strong" />
                 <div className="shrink-0 px-5 pt-3 pb-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4 text-[#FAFAF8]" />
-                      <h3 className="font-body text-base font-medium text-[#FAFAF8]">
+                      <SlidersHorizontal className="h-4 w-4 text-th-text" />
+                      <h3 className="font-body text-base font-medium text-th-text">
                         {fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}
                       </h3>
                     </div>
                     <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-white/[0.08]">
-                      <X className="h-5 w-5 text-[#FAFAF8]/50" />
+                      <X className="h-5 w-5 text-th-text-secondary" />
                     </button>
                   </div>
                 </div>
@@ -3811,7 +3811,7 @@ export function PremiumResults({
                   {fabState === 'projections' ? projectionFields : panelFields}
                 </div>
                 {fabState !== 'projections' && (
-                  <div className="shrink-0 border-t border-white/[0.08] px-5 py-3">
+                  <div className="shrink-0 border-t border-th-border-strong px-5 py-3">
                     {panelButton}
                   </div>
                 )}

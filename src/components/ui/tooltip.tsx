@@ -106,10 +106,10 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
     <div
       ref={bubbleRef}
       style={style}
-      className="z-[9999] bg-[#0F0F0F] text-white font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto"
+      className="z-[9999] bg-th-page text-white font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto"
     >
       {content}
-      <div className="w-2 h-2 bg-[#0F0F0F]" style={arrowStyle} />
+      <div className="w-2 h-2 bg-th-page" style={arrowStyle} />
     </div>,
     document.body,
   );
@@ -124,7 +124,7 @@ export function InfoTooltip({ content }: { content: string }) {
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-white/[0.06] font-mono text-[9px] text-[#FAFAF8]/25 cursor-help shrink-0 hover:bg-white/[0.12] hover:text-[#FAFAF8]/50 transition-colors"
+        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-white/[0.06] font-mono text-[9px] text-th-text/25 cursor-help shrink-0 hover:bg-white/[0.12] hover:text-th-text-secondary transition-colors"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onClick={() => setOpen((v) => !v)}

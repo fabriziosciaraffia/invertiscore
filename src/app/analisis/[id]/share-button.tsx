@@ -87,21 +87,21 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
       </Button>
 
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-white/[0.08] bg-[#151515] p-2 shadow-lg">
-          <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
+        <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-xl border border-th-border-strong bg-th-card p-2 shadow-lg">
+          <button onClick={shareWhatsApp} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-th-text transition-colors hover:bg-white/[0.08]">
             <WhatsAppIcon className="h-4 w-4 text-[#25D366]" />
             WhatsApp
           </button>
-          <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
-            {copied ? <Check className="h-4 w-4 text-[#B0BEC5]" /> : <Link2 className="h-4 w-4 text-[#FAFAF8]/50" />}
+          <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-th-text transition-colors hover:bg-white/[0.08]">
+            {copied ? <Check className="h-4 w-4 text-[#B0BEC5]" /> : <Link2 className="h-4 w-4 text-th-text-secondary" />}
             {copied ? "Link copiado" : "Copiar link"}
           </button>
-          <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
-            <Mail className="h-4 w-4 text-[#FAFAF8]/50" />
+          <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-th-text transition-colors hover:bg-white/[0.08]">
+            <Mail className="h-4 w-4 text-th-text-secondary" />
             Email
           </button>
-          <button onClick={shareX} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[#FAFAF8] transition-colors hover:bg-white/[0.08]">
-            <XIcon className="h-4 w-4 text-[#FAFAF8]" />
+          <button onClick={shareX} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-th-text transition-colors hover:bg-white/[0.08]">
+            <XIcon className="h-4 w-4 text-th-text" />
             X (Twitter)
           </button>
         </div>

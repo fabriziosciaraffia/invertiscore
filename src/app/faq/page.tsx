@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ForceDark } from "@/components/force-dark";
 import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
 
@@ -16,19 +17,19 @@ interface FAQSection {
 
 function Accordion({ item, isOpen, onClick }: { item: FAQItem; isOpen: boolean; onClick: () => void }) {
   return (
-    <div className="border-b border-white/[0.06]">
+    <div className="border-b border-th-border">
       <button
         onClick={onClick}
         className="w-full flex items-center justify-between py-4 text-left group"
       >
-        <span className="font-body text-sm font-medium text-[#FAFAF8] pr-4">{item.q}</span>
-        <span className="font-mono text-lg text-[#71717A] group-hover:text-[#FAFAF8] transition-colors shrink-0">
+        <span className="font-body text-sm font-medium text-th-text pr-4">{item.q}</span>
+        <span className="font-mono text-lg text-[#71717A] group-hover:text-th-text transition-colors shrink-0">
           {isOpen ? "−" : "+"}
         </span>
       </button>
       {isOpen && (
         <div className="pb-4 pr-8">
-          <p className="font-body text-sm text-[#FAFAF8]/60 leading-relaxed">{item.a}</p>
+          <p className="font-body text-sm text-th-text-secondary leading-relaxed">{item.a}</p>
         </div>
       )}
     </div>
@@ -114,9 +115,10 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-th-page">
+      <ForceDark />
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/95 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page/95 backdrop-blur-md">
         <div className="max-w-[780px] mx-auto flex items-center justify-between h-14 px-6">
           <FrancoLogo size="sm" href="/" inverted />
           <div className="flex items-center gap-4">
@@ -129,7 +131,7 @@ export default function FAQPage() {
       {/* Header */}
       <section className="py-16 px-6">
         <div className="max-w-[600px] mx-auto text-center">
-          <h1 className="font-heading font-bold text-3xl md:text-4xl text-[#FAFAF8]">Preguntas frecuentes</h1>
+          <h1 className="font-heading font-bold text-3xl md:text-4xl text-th-text">Preguntas frecuentes</h1>
           <p className="font-body text-sm text-[#71717A] mt-3">Todo lo que necesitas saber sobre Franco y la inversión inmobiliaria en Chile.</p>
         </div>
       </section>
@@ -139,7 +141,7 @@ export default function FAQPage() {
         <div className="max-w-[600px] mx-auto space-y-12">
           {FAQ_SECTIONS.map((section, si) => (
             <div key={si}>
-              <h2 className="font-heading font-bold text-lg text-[#FAFAF8] mb-4">{section.title}</h2>
+              <h2 className="font-heading font-bold text-lg text-th-text mb-4">{section.title}</h2>
               <div>
                 {section.items.map((item, ii) => {
                   const id = `${si}-${ii}`;
@@ -159,14 +161,14 @@ export default function FAQPage() {
       </section>
 
       {/* Disclaimer */}
-      <section className="border-t border-white/[0.06] py-8 px-6">
+      <section className="border-t border-th-border py-8 px-6">
         <p className="text-[11px] text-[#71717A] text-center max-w-md mx-auto leading-relaxed font-body">
           Franco es una herramienta informativa. Los resultados son estimaciones basadas en datos de mercado y no constituyen asesoría financiera, tributaria ni legal.
         </p>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/[0.06] bg-[#0F0F0F] py-6 px-6">
+      <footer className="border-t border-th-border bg-th-page py-6 px-6">
         <div className="max-w-[600px] mx-auto flex items-center justify-between">
           <FrancoLogo size="sm" href="/" inverted />
           <div className="flex gap-4">

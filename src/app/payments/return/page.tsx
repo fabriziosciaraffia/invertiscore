@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { ForceDark } from "@/components/force-dark";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import FrancoLogo from "@/components/franco-logo";
@@ -48,35 +49,36 @@ function PaymentReturnContent() {
   }, [type, statusParam]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-th-page px-4">
+      <ForceDark />
       <div className="w-full max-w-md text-center">
         <div className="mx-auto mb-6">
           <FrancoLogo size="xl" href="/" inverted />
         </div>
 
         {paymentStatus === "loading" && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151515] p-8">
+          <div className="rounded-2xl border border-th-border-strong bg-th-card p-8">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[#FAFAF8]/20 border-t-[#C8323C]" />
-            <h2 className="font-heading text-lg font-bold text-[#FAFAF8]">Procesando tu pago...</h2>
-            <p className="mt-2 font-body text-sm text-[#FAFAF8]/50">Esto toma unos segundos.</p>
+            <h2 className="font-heading text-lg font-bold text-th-text">Procesando tu pago...</h2>
+            <p className="mt-2 font-body text-sm text-th-text-secondary">Esto toma unos segundos.</p>
           </div>
         )}
 
         {paymentStatus === "pending" && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151515] p-8">
+          <div className="rounded-2xl border border-th-border-strong bg-th-card p-8">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[#FAFAF8]/20 border-t-[#FBBF24]" />
-            <h2 className="font-heading text-lg font-bold text-[#FAFAF8]">Confirmando pago...</h2>
-            <p className="mt-2 font-body text-sm text-[#FAFAF8]/50">Estamos esperando la confirmación. No cierres esta página.</p>
+            <h2 className="font-heading text-lg font-bold text-th-text">Confirmando pago...</h2>
+            <p className="mt-2 font-body text-sm text-th-text-secondary">Estamos esperando la confirmación. No cierres esta página.</p>
           </div>
         )}
 
         {paymentStatus === "paid" && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151515] p-8">
+          <div className="rounded-2xl border border-th-border-strong bg-th-card p-8">
             <div className="mx-auto mb-4 text-4xl">✓</div>
-            <h2 className="font-heading text-lg font-bold text-[#FAFAF8]">
+            <h2 className="font-heading text-lg font-bold text-th-text">
               {type === "subscription" ? "Suscripción activada" : "Pago exitoso"}
             </h2>
-            <p className="mt-2 font-body text-sm text-[#FAFAF8]/50">
+            <p className="mt-2 font-body text-sm text-th-text-secondary">
               {type === "subscription"
                 ? "Tu suscripción Franco está activa. Análisis ilimitados."
                 : "Tu análisis premium está desbloqueado."
@@ -93,7 +95,7 @@ function PaymentReturnContent() {
               )}
               <Link
                 href="/dashboard"
-                className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] py-3 font-body text-sm font-medium text-[#FAFAF8] transition-colors hover:bg-[#222]"
+                className="w-full rounded-lg border border-th-border-strong bg-th-surface py-3 font-body text-sm font-medium text-th-text transition-colors hover:bg-th-elevated"
               >
                 Ir al dashboard
               </Link>
@@ -102,10 +104,10 @@ function PaymentReturnContent() {
         )}
 
         {paymentStatus === "error" && (
-          <div className="rounded-2xl border border-white/[0.08] bg-[#151515] p-8">
+          <div className="rounded-2xl border border-th-border-strong bg-th-card p-8">
             <div className="mx-auto mb-4 text-4xl">✕</div>
-            <h2 className="font-heading text-lg font-bold text-[#FAFAF8]">Pago no procesado</h2>
-            <p className="mt-2 font-body text-sm text-[#FAFAF8]/50">
+            <h2 className="font-heading text-lg font-bold text-th-text">Pago no procesado</h2>
+            <p className="mt-2 font-body text-sm text-th-text-secondary">
               El pago fue rechazado o cancelado. No se realizó ningún cargo.
             </p>
             <div className="mt-6 flex flex-col gap-2">
@@ -119,7 +121,7 @@ function PaymentReturnContent() {
           </div>
         )}
 
-        <p className="mt-6 font-body text-[11px] text-[#FAFAF8]/30">
+        <p className="mt-6 font-body text-[11px] text-th-text-muted">
           Pagos procesados de forma segura por Flow.cl
         </p>
       </div>
@@ -130,7 +132,7 @@ function PaymentReturnContent() {
 export default function PaymentReturnPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F]">
+      <div className="flex min-h-screen items-center justify-center bg-th-page">
         <div className="h-10 w-10 animate-spin rounded-full border-2 border-[#FAFAF8]/20 border-t-[#C8323C]" />
       </div>
     }>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ForceDark } from "@/components/force-dark";
 import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
@@ -252,9 +253,10 @@ const DEMO_ZONE_DATA = [
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-th-page">
+      <ForceDark />
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
+      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
           <Link
@@ -267,7 +269,7 @@ export default function DemoPage() {
       </nav>
 
       {/* Demo banner */}
-      <div className="bg-[#151515] text-white border-b border-white/[0.08]">
+      <div className="bg-th-card text-white border-b border-th-border-strong">
         <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center justify-center gap-3 flex-wrap">
           <p className="font-body text-[13px] text-white/80 text-center">
             Esto es un análisis de ejemplo.
@@ -306,7 +308,7 @@ export default function DemoPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div className="bg-[#0F0F0F] py-12 text-center">
+      <div className="bg-th-page py-12 text-center">
         <p className="font-heading font-bold text-xl text-white mb-2">¿Tienes un depto en la mira?</p>
         <p className="font-body text-sm text-white/50 mb-6">Resultado en 30 segundos. Registro gratis.</p>
         <Link

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
 import { LogoutButton } from "@/components/logout-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { Analisis } from "@/lib/types";
 import { User } from "lucide-react";
 
@@ -66,9 +67,9 @@ function getSiendoFranco(score: number, flujo: number) {
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
-    COMPRAR: { color: "#B0BEC5", bg: "rgba(176,190,197,0.07)", border: "rgba(176,190,197,0.2)" },
-    "AJUSTA EL PRECIO": { color: "#FBBF24", bg: "rgba(251,191,36,0.07)", border: "rgba(251,191,36,0.2)" },
-    "BUSCAR OTRA": { color: "#C8323C", bg: "rgba(220,38,38,0.07)", border: "rgba(220,38,38,0.2)" },
+    COMPRAR: { color: "var(--franco-verdict-buy-text)", bg: "var(--franco-verdict-buy-bg)", border: "var(--franco-scenario-good-border)" },
+    "AJUSTA EL PRECIO": { color: "var(--franco-verdict-adjust-text)", bg: "var(--franco-verdict-adjust-bg)", border: "var(--franco-verdict-adjust-bg)" },
+    "BUSCAR OTRA": { color: "var(--franco-verdict-avoid-text)", bg: "var(--franco-verdict-avoid-bg)", border: "var(--franco-scenario-bad-border)" },
   };
   const s = styles[verdict] || styles["AJUSTA EL PRECIO"];
   return (
@@ -82,12 +83,12 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 }
 
 function ScoreCircle({ score }: { score: number }) {
-  const color = score >= 75 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+  const color = score >= 75 ? "var(--franco-verdict-buy-text)" : score >= 40 ? "var(--franco-verdict-adjust-text)" : "#C8323C";
   const dashLen = (score / 100) * 126;
   return (
     <div className="relative h-12 w-12 shrink-0">
       <svg width="48" height="48" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="3" />
+        <circle cx="24" cy="24" r="20" fill="none" stroke="var(--franco-border-strong)" strokeWidth="3" />
         <circle
           cx="24" cy="24" r="20" fill="none"
           stroke={color}
@@ -98,7 +99,7 @@ function ScoreCircle({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-heading text-base font-bold text-[#FAFAF8]">{score}</span>
+        <span className="font-heading text-base font-bold text-th-text">{score}</span>
       </div>
     </div>
   );
@@ -164,15 +165,15 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
   const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
     { key: "todos", label: "Todos", count: analisis.length, color: null },
-    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#B0BEC5" },
-    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", count: verdictCounts["AJUSTA EL PRECIO"], color: "#FBBF24" },
+    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "var(--franco-verdict-buy-text)" },
+    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", count: verdictCounts["AJUSTA EL PRECIO"], color: "var(--franco-verdict-adjust-text)" },
     { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#C8323C" },
   ];
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-th-page">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
+      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page">
         <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
           <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-3">
@@ -180,10 +181,11 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
             </Link>
             <Link href="/cuenta">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-[#FAFAF8]/50 hover:text-[#FAFAF8]">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-th-text-secondary hover:text-th-text">
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Cuenta</span>
               </Button>
             </Link>
+            <ThemeToggle />
             <LogoutButton />
           </div>
         </div>
@@ -194,14 +196,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
           /* ─── Empty State ─── */
           <div className="px-6 py-16 text-center">
             <div className="mb-6 flex select-none items-baseline justify-center opacity-[0.08]">
-              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[#FAFAF8]">re</span>
-              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[#FAFAF8]">franco</span>
+              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-th-text">re</span>
+              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-th-text">franco</span>
               <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
             </div>
-            <div className="mb-1.5 font-heading text-xl font-bold text-[#FAFAF8]">
+            <div className="mb-1.5 font-heading text-xl font-bold text-th-text">
               Todavía no has analizado ningún departamento
             </div>
-            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[#FAFAF8]/50">
+            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-th-text-secondary">
               Ingresa los datos de cualquier propiedad y Franco te dice si vale la pena en 30 segundos.
             </div>
             <Link href="/analisis/nuevo">
@@ -210,7 +212,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               </button>
             </Link>
             <div className="mt-3">
-              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[#FAFAF8]/50 no-underline hover:text-[#FAFAF8]">
+              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-th-text-secondary no-underline hover:text-th-text">
                 O mira un ejemplo primero →
               </a>
             </div>
@@ -220,8 +222,8 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             {/* ─── Header ─── */}
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
-                <p className="mt-0.5 font-body text-[13px] text-[#FAFAF8]/50">
+                <h1 className="font-heading text-2xl font-bold text-th-text">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
+                <p className="mt-0.5 font-body text-[13px] text-th-text-secondary">
                   {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -236,26 +238,26 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             {summaryData && (
               <div className="mb-5 grid grid-cols-1 gap-2.5 md:grid-cols-3">
                 {/* Best analysis */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">MEJOR ANÁLISIS</div>
-                  <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">
+                <div className="rounded-[10px] border border-th-border-strong bg-th-card p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-th-text-secondary">MEJOR ANÁLISIS</div>
+                  <div className="font-body text-[13px] font-semibold text-th-text">
                     {summaryData.best.nombre} · {summaryData.best.comuna}
                   </div>
-                  <div className="mt-0.5 font-mono text-[11px] text-[#FAFAF8]/50">Score {summaryData.best.score}</div>
+                  <div className="mt-0.5 font-mono text-[11px] text-th-text-secondary">Score {summaryData.best.score}</div>
                 </div>
                 {/* Average */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">PROMEDIO</div>
-                  <div className="font-heading text-[22px] font-bold text-[#FAFAF8]">{summaryData.avgScore}</div>
-                  <div className="mt-0.5 font-body text-[10px] text-[#FAFAF8]/50">score promedio</div>
+                <div className="rounded-[10px] border border-th-border-strong bg-th-card p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-th-text-secondary">PROMEDIO</div>
+                  <div className="font-heading text-[22px] font-bold text-th-text">{summaryData.avgScore}</div>
+                  <div className="mt-0.5 font-body text-[10px] text-th-text-secondary">score promedio</div>
                 </div>
                 {/* Positive flow */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#151515] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">FLUJO POSITIVO</div>
-                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
+                <div className="rounded-[10px] border border-th-border-strong bg-th-card p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-th-text-secondary">FLUJO POSITIVO</div>
+                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-th-text"}`}>
                     {summaryData.positiveFlowCount}/{summaryData.total}
                   </div>
-                  <div className="mt-0.5 font-body text-[10px] text-[#FAFAF8]/50">propiedades</div>
+                  <div className="mt-0.5 font-body text-[10px] text-th-text-secondary">propiedades</div>
                 </div>
               </div>
             )}
@@ -272,10 +274,10 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                     // Colored active filter - use inline styles for dynamic colors
                     className += "font-semibold";
                   } else {
-                    className += "font-semibold bg-white/[0.05] border-white/40 text-[#FAFAF8]";
+                    className += "font-semibold bg-th-input-bg border-th-border-hover text-th-text";
                   }
                 } else {
-                  className += "bg-[#151515] border-white/[0.08] text-[#FAFAF8]/50";
+                  className += "bg-th-card border-th-border-strong text-th-text-secondary";
                 }
 
                 return (
@@ -298,7 +300,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
             {/* ─── Analysis Cards ─── */}
             {filtered.length === 0 ? (
-              <div className="py-10 text-center font-body text-[13px] text-[#FAFAF8]/50">
+              <div className="py-10 text-center font-body text-[13px] text-th-text-secondary">
                 No hay análisis con este filtro.
               </div>
             ) : (
@@ -313,8 +315,8 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                     <div
                       key={item.id}
                       onClick={() => router.push(`/analisis/${item.id}`)}
-                      className={`cursor-pointer rounded-xl border bg-[#151515] p-4 px-5 transition-all hover:border-white/20 hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
-                        isSelected ? "border-white/30" : "border-white/[0.08]"
+                      className={`cursor-pointer rounded-xl border bg-th-card p-4 px-5 transition-all hover:border-th-border-hover hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
+                        isSelected ? "border-th-border-hover" : "border-th-border-strong"
                       } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
                     >
                       {/* Row 1: Score + Name + Verdict + Metrics */}
@@ -324,13 +326,13 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                           onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                             isSelected
-                              ? "border-[#FAFAF8] bg-[#FAFAF8]"
-                              : "border-white/[0.08] hover:border-white/40"
+                              ? "border-th-text bg-th-btn-primary"
+                              : "border-th-border-strong hover:border-th-border-hover"
                           }`}
                           title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
                         >
                           {isSelected && (
-                            <svg className="h-2.5 w-2.5 text-[#0F0F0F]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="h-2.5 w-2.5 text-th-btn-primary-text" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
@@ -341,37 +343,37 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-body text-sm font-bold text-[#FAFAF8]">{item.nombre}</span>
-                            <span className="text-[#FAFAF8]/50">·</span>
-                            <span className="font-body text-xs text-[#FAFAF8]/50">{item.comuna}</span>
+                            <span className="font-body text-sm font-bold text-th-text">{item.nombre}</span>
+                            <span className="text-th-text-secondary">·</span>
+                            <span className="font-body text-xs text-th-text-secondary">{item.comuna}</span>
                             {item.is_premium && (
                               <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1.5">
                             <VerdictBadge verdict={verdict} />
-                            <span className="text-[#FAFAF8]/50">·</span>
-                            <span className="font-body text-[11px] text-[#FAFAF8]/50">{formatDate(item.created_at)}</span>
+                            <span className="text-th-text-secondary">·</span>
+                            <span className="font-body text-[11px] text-th-text-secondary">{formatDate(item.created_at)}</span>
                           </div>
                         </div>
 
                         {/* Metrics (hidden on mobile) */}
                         <div className="hidden items-center gap-4 sm:flex">
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">FLUJO</div>
-                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
+                            <div className="font-body text-[9px] uppercase tracking-wide text-th-text-secondary">FLUJO</div>
+                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-th-text"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">RENT.</div>
-                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-th-text-secondary">RENT.</div>
+                            <div className="font-mono text-sm font-semibold text-th-text">
                               {m.rentabilidadBruta.toFixed(1)}%
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[#FAFAF8]/50">RETORNO</div>
-                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-th-text-secondary">RETORNO</div>
+                            <div className="font-mono text-sm font-semibold text-th-text">
                               {m.multiplicador > 0 ? `${m.multiplicador.toFixed(1)}x` : "—"}
                             </div>
                           </div>
@@ -381,7 +383,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
                           <button
                             onClick={(e) => handleDelete(e, item.id)}
-                            className="shrink-0 rounded-lg p-2 text-white/20 transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
+                            className="shrink-0 rounded-lg p-2 text-th-text-muted transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
                             title="Eliminar análisis"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -390,9 +392,9 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                       </div>
 
                       {/* Row 2: "Siendo franco:" summary */}
-                      <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
-                        <p className="font-body text-xs leading-snug text-[#FAFAF8]/50">
-                          <span className="font-semibold text-[#FAFAF8]">Siendo franco:</span>{" "}
+                      <div className="mt-2.5 border-t border-th-border-strong pt-2.5">
+                        <p className="font-body text-xs leading-snug text-th-text-secondary">
+                          <span className="font-semibold text-th-text">Siendo franco:</span>{" "}
                           {item.results?.resumen
                             ? item.results.resumen.split(".")[0] + "."
                             : getSiendoFranco(item.score, m.flujoMensual)}
@@ -409,13 +411,13 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
       {/* ─── Floating Compare Bar ─── */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#151515] shadow-2xl shadow-black/20">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-th-border-strong bg-th-card shadow-2xl shadow-black/20">
           <div className="mx-auto flex max-w-[820px] items-center justify-between px-5 py-3">
             <span className="font-body text-sm font-medium text-white">
               {selected.size} análisis seleccionados
             </span>
             <Link href={`/comparar?ids=${Array.from(selected).join(",")}`}>
-              <Button className="gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-[#0F0F0F] hover:bg-[#FAFAF8]">
+              <Button className="gap-2 rounded-xl bg-th-btn-primary px-6 text-sm font-semibold text-th-btn-primary-text hover:bg-th-btn-primary-hover">
                 Comparar {selected.size} análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { ForceDark } from "@/components/force-dark";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
@@ -63,6 +64,7 @@ export default function CheckoutPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
+      <ForceDark />
         <p className="font-body text-sm text-white/50">Cargando...</p>
       </div>
     }>
@@ -133,7 +135,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/80 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" inverted href="/" />
         </div>
@@ -147,23 +149,23 @@ function CheckoutContent() {
         </Link>
 
         {/* Title */}
-        <h1 className="font-heading font-bold text-2xl text-[#FAFAF8] mb-8">
+        <h1 className="font-heading font-bold text-2xl text-th-text mb-8">
           Confirma tu compra
         </h1>
 
         {/* Product card */}
-        <div className="rounded-2xl border border-white/[0.08] bg-[#151515] p-6 md:p-8">
+        <div className="rounded-2xl border border-th-border-strong bg-th-card p-6 md:p-8">
           <div className="mb-6">
-            <p className="font-body text-sm font-semibold text-[#FAFAF8]">{product.title}</p>
+            <p className="font-body text-sm font-semibold text-th-text">{product.title}</p>
             <p className="font-body text-xs text-white/40 mt-0.5">{product.subtitle}</p>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-mono text-3xl font-bold text-[#FAFAF8]">{product.price}</span>
+            <span className="font-mono text-3xl font-bold text-th-text">{product.price}</span>
           </div>
           <p className="font-body text-xs text-white/40 mb-6">{product.period}</p>
 
-          <div className="border-t border-white/[0.06] pt-5 mb-6">
+          <div className="border-t border-th-border pt-5 mb-6">
             <p className="font-body text-[11px] text-white/30 uppercase tracking-wide font-semibold mb-3">Incluye</p>
             <div className="space-y-2.5">
               {product.features.map((f) => (
