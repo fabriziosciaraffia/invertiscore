@@ -776,44 +776,42 @@ function AIAnalysisSection({
               {/* Veredicto final — shown after all phases complete */}
               <div id="ai-anchor-veredicto-final" />
               {isComplete && aiAnalysis.veredicto && (() => {
-                // Veredicto section is ALWAYS dark — use hardcoded dark-mode verdict colors
-                const vc = aiAnalysis.veredicto.decision === "COMPRAR" ? "#B0BEC5"
-                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "#FBBF24"
-                  : "#C8323C";
+                // Verdict colors adapt to theme via CSS variables
+                const vcColor = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-verdict-buy-text)"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-verdict-adjust-text)"
+                  : "var(--franco-verdict-avoid-text)";
+                const vcBg = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-verdict-buy-bg)"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-verdict-adjust-bg)"
+                  : "var(--franco-verdict-avoid-bg)";
                 return (
                   <div className="mt-6 pt-6 border-t border-th-border animate-fadeIn">
                     <div
-                      className="relative overflow-hidden rounded-xl text-center"
-                      style={{ background: "#0F0F0F", border: `1px solid ${vc}15`, padding: "40px 24px" }}
+                      className="relative overflow-hidden rounded-xl text-center bg-th-card"
+                      style={{ border: `1px solid ${vcBg}`, padding: "40px 24px" }}
                     >
-                      {/* Radial gradient glow from top */}
-                      <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(ellipse at center top, ${vc}12 0%, transparent 55%)` }} />
-                      {/* Top accent line */}
-                      <div className="absolute top-0 left-0 right-0 h-px pointer-events-none" style={{ background: `linear-gradient(90deg, transparent 0%, ${vc}55 50%, transparent 100%)` }} />
-
                       <div className="relative">
                         <div className="flex items-baseline justify-center gap-2 mb-4">
-                          <span className="font-mono text-[10px] uppercase tracking-[3px]" style={{ color: "rgba(250,250,248,0.35)" }}>VEREDICTO</span>
+                          <span className="font-mono text-[10px] uppercase tracking-[3px] text-th-text-muted">VEREDICTO</span>
                           <FrancoLogo size="sm" inverted />
                         </div>
                         <div
                           className="inline-block font-mono font-semibold text-2xl tracking-[5px] uppercase rounded-lg"
                           style={{
-                            color: vc,
-                            background: `${vc}12`,
-                            border: `1px solid ${vc}35`,
+                            color: vcColor,
+                            background: vcBg,
+                            border: `1px solid ${vcColor}`,
+                            borderColor: vcBg,
                             padding: "14px 36px",
-                            boxShadow: `0 0 40px ${vc}15, 0 0 15px ${vc}08, 0 4px 16px rgba(0,0,0,0.4)`,
                           }}
                         >
                           {aiAnalysis.veredicto.decision}
                         </div>
                         {aiAnalysis.negociacion?.precioSugerido && (
-                          <div className="font-mono text-[13px] mt-4" style={{ color: "rgba(250,250,248,0.5)" }}>
+                          <div className="font-mono text-[13px] text-th-text-secondary mt-4">
                             Precio sugerido: {aiAnalysis.negociacion.precioSugerido}
                           </div>
                         )}
-                        <p className="text-[11px] text-center mt-4 max-w-md mx-auto leading-relaxed" style={{ color: "#71717A" }}>
+                        <p className="text-[11px] text-th-text-muted text-center mt-4 max-w-md mx-auto leading-relaxed">
                           Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión. Consulta con un profesional antes de decidir.
                         </p>
                       </div>
@@ -2955,7 +2953,7 @@ export function PremiumResults({
             <div className="h-72">
               <ResponsiveContainer>
                 <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
                   <RechartsTooltip
@@ -3028,7 +3026,7 @@ export function PremiumResults({
                   <div className="relative h-64">
                     <ResponsiveContainer>
                       <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" horizontal vertical={false} />
                         {/* Eje categórico visible: barras uniformes */}
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
                         {/* Eje numérico oculto: posiciona la línea de entrega */}
@@ -3129,7 +3127,7 @@ export function PremiumResults({
                   <div className="h-72">
                     <ResponsiveContainer>
                       <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" horizontal vertical={false} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" horizontal vertical={false} />
                         <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
                         <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
                         <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
@@ -3177,9 +3175,9 @@ export function PremiumResults({
                     </ResponsiveContainer>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-th-text-secondary">
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.15)" }} />Pie pagado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.30)" }} />Capital amortizado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.08)", border: "1px solid rgba(250,250,248,0.20)" }} />Plusvalía</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.15 }} />Pie pagado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.3 }} />Capital amortizado</span>
+                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.08, border: "1px solid var(--franco-border-strong)" }} />Plusvalía</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-primary)", opacity: 0.2 }} />Valor propiedad</span>
                     <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
@@ -3248,7 +3246,7 @@ export function PremiumResults({
                       </div>
 
                       {/* Bloque 3: Ganancia real */}
-                      <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(250,250,248,0.1)", background: "rgba(250,250,248,0.03)" }}>
+                      <div className="mt-3 rounded-lg" style={{ border: "1px solid var(--franco-border-strong)", background: "var(--franco-input-bg)" }}>
                         <div className="px-3 py-3 sm:px-4">
                           <p className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Si vendieras en {horizonYears === 1 ? "1 año" : `${horizonYears} años`}, tu ganancia real sería:</p>
                           <p className="mt-0.5 font-mono text-xs" style={{ color: "var(--franco-text-muted)" }}>patrimonio − pie + flujo − gastos cierre</p>
@@ -3366,15 +3364,15 @@ export function PremiumResults({
                     {/* Lo que pusiste */}
                     <div>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pie inicial</span>
                         <span className="font-mono text-sm text-th-text">{fmt(m.pieCLP)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
                         <span className="font-mono text-sm" style={{ color: "#C8323C" }}>{fmt(Math.abs(fa))}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border-strong)" }}>
                         <span className="text-[13px] font-semibold text-th-text">Total invertido</span>
                         <span className="font-mono text-[15px] font-bold text-th-text">{fmt(totalInvertido)}</span>
                       </div>
@@ -3383,40 +3381,40 @@ export function PremiumResults({
                     {/* Lo que recuperas */}
                     <div>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Valor de venta estimado</span>
                         <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Saldo crédito restante</span>
                         <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Comisión venta (2%)</span>
                         <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>-{fmt(comision)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border-strong)" }}>
                         <span className="text-[13px] font-semibold text-th-text">Recibes neto</span>
                         <span className="font-mono text-[15px] font-bold text-th-text">{fmt(recibeNeto)}</span>
                       </div>
                     </div>
 
                     {/* Resultado */}
-                    <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
+                    <div className="rounded-[10px] p-5" style={{ background: "var(--franco-input-bg)", border: "1px solid var(--franco-border-strong)" }}>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Resultado</div>
                       <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
                         <div className="flex-1 text-center">
                           <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Tu ganancia</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: ganancia >= 0 ? "var(--franco-text-primary)" : "#C8323C" }}>{fmt(ganancia)}</div>
                         </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border-strong)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border-strong)" }} />
                         <div className="flex-1 text-center">
                           <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Multiplicador</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: multiplicador >= 1 ? "var(--franco-text-primary)" : "#C8323C" }}>{multiplicador}x</div>
                         </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border-strong)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border-strong)" }} />
                         <div className="flex-1 text-center">
                           <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>TIR</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: tir >= 0 ? "var(--franco-text-primary)" : "#C8323C" }}>{fmtPct(tir)}</div>
@@ -3449,7 +3447,7 @@ export function PremiumResults({
                             className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
                             style={refiPct === pct
                               ? { border: "1px solid var(--franco-text-primary)", color: "var(--franco-text-primary)", fontWeight: 500 }
-                              : { border: "1px solid rgba(250,250,248,0.1)", color: "var(--franco-text-secondary)" }}
+                              : { border: "1px solid var(--franco-border-strong)", color: "var(--franco-text-secondary)" }}
                           >{pct}%</button>
                         ))}
                       </div>
@@ -3458,11 +3456,11 @@ export function PremiumResults({
                     {/* Tu depto hoy */}
                     <div>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo avalúo (valor proyectado)</span>
                         <span className="font-mono text-sm text-th-text">{fmt(vp)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Deuda actual</span>
                         <span className="font-mono text-sm text-th-text">{fmt(sc)}</span>
                       </div>
@@ -3471,30 +3469,30 @@ export function PremiumResults({
                     {/* Nuevo crédito */}
                     <div>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
                         <span className="font-mono text-sm text-th-text">{fmt(refiNuevoCredito)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.06)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
                         <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pago deuda anterior</span>
                         <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
                       </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid rgba(250,250,248,0.1)" }}>
+                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border-strong)" }}>
                         <span className="text-[13px] font-semibold text-th-text">Capital liberado</span>
                         <span className="font-mono text-[15px] font-bold text-th-text">{fmt(refiCapitalLiberado)}</span>
                       </div>
                     </div>
 
                     {/* Impacto en tu flujo */}
-                    <div className="rounded-[10px] p-5" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.1)" }}>
+                    <div className="rounded-[10px] p-5" style={{ background: "var(--franco-input-bg)", border: "1px solid var(--franco-border-strong)" }}>
                       <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Impacto en tu flujo</div>
                       <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
                         <div className="flex-1 text-center">
                           <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo dividendo</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoDividendo)}</div>
                         </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "rgba(250,250,248,0.1)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "rgba(250,250,248,0.1)" }} />
+                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border-strong)" }} />
+                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border-strong)" }} />
                         <div className="flex-1 text-center">
                           <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo flujo neto</div>
                           <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoFlujoNeto)}</div>

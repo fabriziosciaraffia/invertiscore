@@ -80,9 +80,9 @@
     --franco-text-primary: #1A1A1A;
     --franco-text-secondary: rgba(15, 15, 15, 0.45);
     --franco-text-muted: rgba(15, 15, 15, 0.3);
-    --franco-border: rgba(15, 15, 15, 0.06);
-    --franco-border-strong: rgba(15, 15, 15, 0.1);
-    --franco-border-hover: rgba(15, 15, 15, 0.12);
+    --franco-border: rgba(15, 15, 15, 0.1);
+    --franco-border-strong: rgba(15, 15, 15, 0.15);
+    --franco-border-hover: rgba(15, 15, 15, 0.18);
     --franco-bar-fill: rgba(15, 15, 15, 0.22);
     --franco-bar-track: rgba(15, 15, 15, 0.08);
     --franco-signal-red: #C8323C;
