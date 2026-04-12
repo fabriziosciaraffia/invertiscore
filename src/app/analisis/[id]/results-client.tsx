@@ -676,26 +676,22 @@ function AIAnalysisSection({
   if (currentAccess !== "premium" && currentAccess !== "subscriber") {
     return (
       <div ref={sectionRef} className="mb-8">
-        <div className="rounded-2xl overflow-hidden mt-5">
-          {/* Dark header */}
-          <div style={{ background: "var(--franco-card)", borderTop: "2px solid #C8323C", borderBottom: "1px solid var(--franco-border)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
-            <div className="relative z-10">
-              <div className="font-mono text-[10px] text-[#C8323C] uppercase tracking-[0.15em] mb-1.5">INFORME PRO</div>
-              <div className="font-heading font-bold text-xl md:text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
-              <div className="font-body text-xs text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
-            </div>
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] overflow-hidden mt-5">
+          {/* Accent bar */}
+          <div className="h-[3px] bg-[#C8323C]" />
+          {/* Header */}
+          <div className="px-6 md:px-8 pt-6 pb-5">
+            <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
+            <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
+            <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
           </div>
           {/* Locked body */}
-          <div className="bg-[var(--franco-card)] border border-[var(--franco-border)] border-t-0 rounded-b-2xl">
-            <div className="py-11 px-6 flex flex-col items-center relative overflow-hidden">
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(var(--franco-text) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full animate-pulse" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
-              <div className="relative z-10 text-center">
-                <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1">Análisis IA + proyecciones a 20 años</div>
-                <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
-                <BottomPaywallCTA analysisId={analysisId ?? ""} userCredits={userCredits} />
-              </div>
+          <div className="border-t border-[var(--franco-border)]">
+            <div className="py-11 px-6 flex flex-col items-center text-center">
+              <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
+              <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1">Análisis IA + proyecciones a 20 años</div>
+              <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-5 max-w-xs mx-auto">Veredicto personalizado, precio sugerido, flujo dinámico, patrimonio y escenarios de salida.</div>
+              <BottomPaywallCTA analysisId={analysisId ?? ""} userCredits={userCredits} />
             </div>
           </div>
         </div>
@@ -705,46 +701,40 @@ function AIAnalysisSection({
 
   return (
     <div ref={sectionRef} id="informe-pro-section" className="mb-8">
-      <div className="rounded-2xl overflow-hidden mt-5">
-        {/* Dark header */}
-        <div style={{ background: "linear-gradient(135deg, var(--franco-card) 0%, rgba(200,50,60,0.08) 50%, var(--franco-card) 100%)", borderBottom: "1px solid rgba(200,50,60,0.2)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.12) 0%, transparent 70%)" }} />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
-          <div className="relative z-10 flex justify-between items-center">
-            <div>
-              <div className="font-mono text-[10px] text-[#C8323C] uppercase tracking-[0.15em] mb-1.5">INFORME PRO</div>
-              <div className="font-heading font-bold text-xl md:text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
-              <div className="font-body text-xs text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
-            </div>
-            {isAnalyzing && (
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#C8323C] animate-pulse" />
-                <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">Analizando...</span>
-              </div>
-            )}
+      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] overflow-hidden mt-5">
+        {/* Accent bar */}
+        <div className="h-[3px] bg-[#C8323C]" />
+        {/* Header */}
+        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center">
+          <div>
+            <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
+            <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
+            <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
           </div>
+          {isAnalyzing && (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#C8323C] animate-pulse" />
+              <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">Analizando...</span>
+            </div>
+          )}
         </div>
 
         {/* Body */}
-        <div className="bg-[var(--franco-card)] border border-[var(--franco-border)] border-t-0 rounded-b-2xl relative overflow-hidden">
+        <div className="border-t border-[var(--franco-border)]">
           {/* STATE A: CTA to generate */}
           {showCTA && (
-            <div className="py-12 px-8 flex flex-col items-center relative">
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: "radial-gradient(var(--franco-text) 1px, transparent 1px)", backgroundSize: "20px 20px" }} />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-52 h-52 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.08) 0%, transparent 70%)", animation: "glow-pulse 3s ease-in-out infinite" }} />
-              <div className="relative z-10 text-center">
-                <div className="text-5xl mb-4 text-[#C8323C]/70">✦</div>
-                <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1.5">Genera el análisis completo con IA</div>
-                <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
-                <button
-                  type="button"
-                  onClick={loadAiAnalysis}
-                  className="bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] flex items-center gap-2 mx-auto hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"
-                >
-                  <span className="text-base">✦</span>
-                  Generar análisis IA →
-                </button>
-              </div>
+            <div className="py-12 px-8 flex flex-col items-center text-center">
+              <div className="text-5xl mb-4 text-[#C8323C]/70">✦</div>
+              <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1.5">Genera el análisis completo con IA</div>
+              <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-6 max-w-sm">Franco analiza tu inversión y te dice la verdad — con datos, sin filtro.</div>
+              <button
+                type="button"
+                onClick={loadAiAnalysis}
+                className="bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] flex items-center gap-2 mx-auto hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"
+              >
+                <span className="text-base">✦</span>
+                Generar análisis IA →
+              </button>
             </div>
           )}
 
