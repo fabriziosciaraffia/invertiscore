@@ -774,14 +774,14 @@ function AIAnalysisSection({
                 const vcBg = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-v-buy-bg)"
                   : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-v-adjust-bg)"
                   : "var(--franco-v-avoid-bg)";
-                const glowColor = aiAnalysis.veredicto.decision === "COMPRAR" ? "rgba(176,190,197,0.20)"
-                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "rgba(251,191,36,0.18)"
-                  : "rgba(200,50,60,0.18)";
+                const glowRaw = aiAnalysis.veredicto.decision === "COMPRAR" ? "176,190,197"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "251,191,36"
+                  : "200,50,60";
                 return (
                   <div className="mt-6 pt-6 border-t border-[var(--franco-border)] animate-fadeIn">
                     <div
                       className="relative overflow-hidden rounded-xl text-center bg-[var(--franco-card)]"
-                      style={{ border: `1px solid ${vcBg}`, padding: "40px 24px", backgroundImage: `radial-gradient(ellipse at center, ${glowColor} 0%, transparent 70%)` }}
+                      style={{ border: `1px solid ${vcBg}`, padding: "40px 24px" }}
                     >
                       <div className="relative">
                         <div className="flex items-baseline justify-center gap-2 mb-4">
@@ -793,9 +793,9 @@ function AIAnalysisSection({
                           style={{
                             color: vcColor,
                             background: vcBg,
-                            border: `1px solid ${vcColor}`,
-                            borderColor: vcBg,
+                            border: `1px solid ${vcBg}`,
                             padding: "14px 36px",
+                            boxShadow: `0 0 25px rgba(${glowRaw},0.25), 0 0 50px rgba(${glowRaw},0.10)`,
                           }}
                         >
                           {aiAnalysis.veredicto.decision}
