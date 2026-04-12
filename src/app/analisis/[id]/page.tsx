@@ -130,7 +130,7 @@ export default async function AnalisisDetallePage({
   const zoneData = await getZoneComparison(analisis.comuna);
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
       <AnalysisNav
         userId={user?.id ?? null}
@@ -170,9 +170,9 @@ export default async function AnalisisDetallePage({
 
         {/* Fallback for old analyses without full results */}
         {!results && (
-          <div className="mb-8 rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-6">
-            <h3 className="mb-2 text-sm font-semibold text-[#FAFAF8]">Resumen</h3>
-            <p className="text-sm leading-relaxed text-white/50">
+          <div className="mb-8 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
+            <h3 className="mb-2 text-sm font-semibold text-[var(--franco-text)]">Resumen</h3>
+            <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
               {analisis.resumen}
             </p>
           </div>
