@@ -119,21 +119,21 @@ export function OnboardingClient() {
   const currentPlan = PLANS.find((p) => p.key === selected);
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] text-[#FAFAF8]">
+    <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <div className="mx-auto max-w-[820px] px-5 py-12 sm:py-16">
         {/* Header */}
         <div className="text-center">
-          <p className="font-body text-[13px] uppercase text-white/50" style={{ letterSpacing: "0.05em" }}>
+          <p className="font-body text-[13px] uppercase text-[var(--franco-text-secondary)]" style={{ letterSpacing: "0.05em" }}>
             BIENVENIDO A
           </p>
           <div className="mt-3 flex items-baseline justify-center" style={{ fontSize: "28px" }}>
             <span
               className="font-heading"
-              style={{ color: "rgba(255,255,255,0.32)", fontStyle: "italic", marginRight: "-0.08em", fontWeight: 400 }}
+              style={{ color: "var(--franco-wm-re)", fontStyle: "italic", marginRight: "-0.08em", fontWeight: 400 }}
             >
               re
             </span>
-            <span className="font-heading font-bold" style={{ color: "#FAFAF8" }}>
+            <span className="font-heading font-bold" style={{ color: "var(--franco-wm-franco)" }}>
               franco
             </span>
             <span
@@ -143,7 +143,7 @@ export function OnboardingClient() {
               .ai
             </span>
           </div>
-          <p className="mx-auto mt-5 max-w-[480px] font-body text-[15px] leading-[1.5] text-[#FAFAF8]">
+          <p className="mx-auto mt-5 max-w-[480px] font-body text-[15px] leading-[1.5] text-[var(--franco-text)]">
             Analiza cualquier departamento en Santiago y descubre si es buena inversión — con datos reales, no intuición.
           </p>
         </div>
@@ -172,8 +172,8 @@ export function OnboardingClient() {
                 </span>
               </div>
               <div className="min-w-0">
-                <div className="font-body text-[14px] font-medium text-[#FAFAF8]">{step.title}</div>
-                <div className="font-body text-[12px] text-white/50">{step.sub}</div>
+                <div className="font-body text-[14px] font-medium text-[var(--franco-text)]">{step.title}</div>
+                <div className="font-body text-[12px] text-[var(--franco-text-secondary)]">{step.sub}</div>
               </div>
             </div>
           ))}
@@ -185,8 +185,8 @@ export function OnboardingClient() {
             className="font-mono font-semibold uppercase"
             style={{
               fontSize: 11,
-              background: "rgba(34,197,94,0.15)",
-              color: "#22c55e",
+              background: "var(--franco-v-buy-bg)",
+              color: "var(--franco-v-buy)",
               padding: "4px 12px",
               borderRadius: 20,
             }}
@@ -197,8 +197,8 @@ export function OnboardingClient() {
             className="font-mono font-semibold uppercase"
             style={{
               fontSize: 11,
-              background: "rgba(250,204,21,0.15)",
-              color: "#facc15",
+              background: "var(--franco-v-adjust-bg)",
+              color: "var(--franco-v-adjust)",
               padding: "4px 12px",
               borderRadius: 20,
             }}
@@ -209,8 +209,8 @@ export function OnboardingClient() {
             className="font-mono font-semibold uppercase"
             style={{
               fontSize: 11,
-              background: "rgba(239,68,68,0.15)",
-              color: "#ef4444",
+              background: "var(--franco-v-avoid-bg)",
+              color: "var(--franco-v-avoid)",
               padding: "4px 12px",
               borderRadius: 20,
             }}
@@ -220,10 +220,10 @@ export function OnboardingClient() {
         </div>
 
         {/* Separador */}
-        <div className="mt-10" style={{ borderTop: "0.5px solid rgba(250,250,248,0.08)" }} />
+        <div className="mt-10" style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
         {/* Pricing */}
-        <p className="mt-8 text-center font-body text-[13px] text-white/50">
+        <p className="mt-8 text-center font-body text-[13px] text-[var(--franco-text-secondary)]">
           Elige cómo analizar
         </p>
 
@@ -239,7 +239,7 @@ export function OnboardingClient() {
             } else if (isPro) {
               border = "1px solid rgba(200,50,60,0.4)";
             } else {
-              border = "0.5px solid rgba(250,250,248,0.08)";
+              border = "0.5px solid var(--franco-border)";
             }
 
             return (
@@ -247,9 +247,9 @@ export function OnboardingClient() {
                 type="button"
                 key={plan.key}
                 onClick={() => setSelected(plan.key)}
-                className="relative text-center transition-all hover:border-[rgba(250,250,248,0.2)]"
+                className="relative text-center transition-all hover:border-[var(--franco-border-hover)]"
                 style={{
-                  background: isSelected ? "#1F1F1F" : "#1A1A1A",
+                  background: isSelected ? "var(--franco-elevated)" : "var(--franco-card)",
                   borderRadius: 10,
                   padding: "14px 12px",
                   border,
@@ -258,7 +258,7 @@ export function OnboardingClient() {
               >
                 {isPro && (
                   <span
-                    className="absolute font-mono font-semibold text-[#FAFAF8]"
+                    className="absolute font-mono font-semibold text-white"
                     style={{
                       top: -8,
                       left: "50%",
@@ -274,19 +274,19 @@ export function OnboardingClient() {
                 )}
                 <div
                   className="font-mono uppercase"
-                  style={{ fontSize: 11, color: isPro ? "#C8323C" : "rgba(250,250,248,0.5)" }}
+                  style={{ fontSize: 11, color: isPro ? "#C8323C" : "var(--franco-text-secondary)" }}
                 >
                   {plan.label}
                 </div>
                 <div
-                  className="font-heading font-bold text-[#FAFAF8]"
+                  className="font-heading font-bold text-[var(--franco-text)]"
                   style={{ fontSize: 20, marginTop: 4 }}
                 >
                   {plan.price}
                   {plan.priceSuffix && (
                     <span
                       className="font-body"
-                      style={{ fontSize: 12, color: "rgba(250,250,248,0.4)", fontWeight: 400 }}
+                      style={{ fontSize: 12, color: "var(--franco-text-muted)", fontWeight: 400 }}
                     >
                       {plan.priceSuffix}
                     </span>
@@ -298,7 +298,7 @@ export function OnboardingClient() {
                     fontSize: 11,
                     marginTop: 6,
                     lineHeight: 1.4,
-                    color: "rgba(250,250,248,0.4)",
+                    color: "var(--franco-text-muted)",
                   }}
                 >
                   {plan.desc[0]}
@@ -321,7 +321,7 @@ export function OnboardingClient() {
                 type="button"
                 onClick={handlePrimaryCta}
                 disabled={loading}
-                className="font-body text-[#FAFAF8] disabled:opacity-60"
+                className="font-body text-white disabled:opacity-60"
                 style={{
                   background: "#C8323C",
                   borderRadius: 8,
@@ -341,7 +341,7 @@ export function OnboardingClient() {
             type="button"
             onClick={handleSecondary}
             disabled={secondaryLoading}
-            className="font-body text-white/50 hover:text-[#FAFAF8] disabled:opacity-60"
+            className="font-body text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] disabled:opacity-60"
             style={{ fontSize: 13 }}
           >
             {secondaryLoading ? "Cargando..." : "Ver todos los planes en detalle →"}

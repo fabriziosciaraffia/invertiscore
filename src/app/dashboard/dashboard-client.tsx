@@ -67,9 +67,9 @@ function getSiendoFranco(score: number, flujo: number) {
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
-    COMPRAR: { color: "#B0BEC5", bg: "rgba(176,190,197,0.15)", border: "rgba(176,190,197,0.15)" },
-    "AJUSTA EL PRECIO": { color: "#FBBF24", bg: "rgba(251,191,36,0.15)", border: "rgba(251,191,36,0.15)" },
-    "BUSCAR OTRA": { color: "#C8323C", bg: "rgba(200,50,60,0.15)", border: "rgba(200,50,60,0.15)" },
+    COMPRAR: { color: "var(--franco-v-buy)", bg: "var(--franco-v-buy-bg)", border: "var(--franco-v-buy-bg)" },
+    "AJUSTA EL PRECIO": { color: "var(--franco-v-adjust)", bg: "var(--franco-v-adjust-bg)", border: "var(--franco-v-adjust-bg)" },
+    "BUSCAR OTRA": { color: "var(--franco-v-avoid)", bg: "var(--franco-v-avoid-bg)", border: "var(--franco-v-avoid-bg)" },
   };
   const s = styles[verdict] || styles["AJUSTA EL PRECIO"];
   return (
@@ -83,12 +83,12 @@ function VerdictBadge({ verdict }: { verdict: string }) {
 }
 
 function ScoreCircle({ score }: { score: number }) {
-  const color = score >= 75 ? "#B0BEC5" : score >= 40 ? "#FBBF24" : "#C8323C";
+  const color = score >= 75 ? "var(--franco-v-buy)" : score >= 40 ? "var(--franco-v-adjust)" : "#C8323C";
   const dashLen = (score / 100) * 126;
   return (
     <div className="relative h-12 w-12 shrink-0">
       <svg width="48" height="48" viewBox="0 0 48 48">
-        <circle cx="24" cy="24" r="20" fill="none" stroke="rgba(250,250,248,0.08)" strokeWidth="3" />
+        <circle cx="24" cy="24" r="20" fill="none" stroke="var(--franco-border)" strokeWidth="3" />
         <circle
           cx="24" cy="24" r="20" fill="none"
           stroke={color}
@@ -99,7 +99,7 @@ function ScoreCircle({ score }: { score: number }) {
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="font-heading text-base font-bold text-[#FAFAF8]">{score}</span>
+        <span className="font-heading text-base font-bold text-[var(--franco-text)]">{score}</span>
       </div>
     </div>
   );
@@ -171,9 +171,9 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
   ];
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
+      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
         <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
           <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-3">
@@ -181,7 +181,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
             </Link>
             <Link href="/cuenta">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-white/50 hover:text-[#FAFAF8]">
+              <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Cuenta</span>
               </Button>
             </Link>
@@ -196,14 +196,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
           /* ─── Empty State ─── */
           <div className="px-6 py-16 text-center">
             <div className="mb-6 flex select-none items-baseline justify-center opacity-[0.08]">
-              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[#FAFAF8]">re</span>
-              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[#FAFAF8]">franco</span>
+              <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[var(--franco-text)]">re</span>
+              <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[var(--franco-text)]">franco</span>
               <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
             </div>
-            <div className="mb-1.5 font-heading text-xl font-bold text-[#FAFAF8]">
+            <div className="mb-1.5 font-heading text-xl font-bold text-[var(--franco-text)]">
               Todavía no has analizado ningún departamento
             </div>
-            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-white/50">
+            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[var(--franco-text-secondary)]">
               Ingresa los datos de cualquier propiedad y Franco te dice si vale la pena en 30 segundos.
             </div>
             <Link href="/analisis/nuevo">
@@ -212,7 +212,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               </button>
             </Link>
             <div className="mt-3">
-              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-white/50 no-underline hover:text-[#FAFAF8]">
+              <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
                 O mira un ejemplo primero →
               </a>
             </div>
@@ -222,8 +222,8 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             {/* ─── Header ─── */}
             <div className="mb-5 flex items-start justify-between">
               <div>
-                <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
-                <p className="mt-0.5 font-body text-[13px] text-white/50">
+                <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
+                <p className="mt-0.5 font-body text-[13px] text-[var(--franco-text-secondary)]">
                   {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
                 </p>
               </div>
@@ -238,26 +238,26 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             {summaryData && (
               <div className="mb-5 grid grid-cols-1 gap-2.5 md:grid-cols-3">
                 {/* Best analysis */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#1A1A1A] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-white/50">MEJOR ANÁLISIS</div>
-                  <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">
+                <div className="rounded-[10px] border border-[var(--franco-border)] bg-[var(--franco-card)] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">MEJOR ANÁLISIS</div>
+                  <div className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
                     {summaryData.best.nombre} · {summaryData.best.comuna}
                   </div>
-                  <div className="mt-0.5 font-mono text-[11px] text-white/50">Score {summaryData.best.score}</div>
+                  <div className="mt-0.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">Score {summaryData.best.score}</div>
                 </div>
                 {/* Average */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#1A1A1A] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-white/50">PROMEDIO</div>
-                  <div className="font-heading text-[22px] font-bold text-[#FAFAF8]">{summaryData.avgScore}</div>
-                  <div className="mt-0.5 font-body text-[10px] text-white/50">score promedio</div>
+                <div className="rounded-[10px] border border-[var(--franco-border)] bg-[var(--franco-card)] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">PROMEDIO</div>
+                  <div className="font-heading text-[22px] font-bold text-[var(--franco-text)]">{summaryData.avgScore}</div>
+                  <div className="mt-0.5 font-body text-[10px] text-[var(--franco-text-secondary)]">score promedio</div>
                 </div>
                 {/* Positive flow */}
-                <div className="rounded-[10px] border border-white/[0.08] bg-[#1A1A1A] p-3.5 px-4">
-                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-white/50">FLUJO POSITIVO</div>
-                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
+                <div className="rounded-[10px] border border-[var(--franco-border)] bg-[var(--franco-card)] p-3.5 px-4">
+                  <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO POSITIVO</div>
+                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[var(--franco-text)]"}`}>
                     {summaryData.positiveFlowCount}/{summaryData.total}
                   </div>
-                  <div className="mt-0.5 font-body text-[10px] text-white/50">propiedades</div>
+                  <div className="mt-0.5 font-body text-[10px] text-[var(--franco-text-secondary)]">propiedades</div>
                 </div>
               </div>
             )}
@@ -274,10 +274,10 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                     // Colored active filter - use inline styles for dynamic colors
                     className += "font-semibold";
                   } else {
-                    className += "font-semibold bg-white/[0.04] border-white/[0.12] text-[#FAFAF8]";
+                    className += "font-semibold bg-[var(--franco-card)] border-[var(--franco-border-hover)] text-[var(--franco-text)]";
                   }
                 } else {
-                  className += "bg-[#1A1A1A] border-white/[0.08] text-white/50";
+                  className += "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)]";
                 }
 
                 return (
@@ -300,7 +300,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
             {/* ─── Analysis Cards ─── */}
             {filtered.length === 0 ? (
-              <div className="py-10 text-center font-body text-[13px] text-white/50">
+              <div className="py-10 text-center font-body text-[13px] text-[var(--franco-text-secondary)]">
                 No hay análisis con este filtro.
               </div>
             ) : (
@@ -315,8 +315,8 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                     <div
                       key={item.id}
                       onClick={() => router.push(`/analisis/${item.id}`)}
-                      className={`cursor-pointer rounded-xl border bg-[#1A1A1A] p-4 px-5 transition-all hover:border-white/[0.12] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
-                        isSelected ? "border-white/[0.12]" : "border-white/[0.08]"
+                      className={`cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 transition-all hover:border-[var(--franco-border-hover)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
+                        isSelected ? "border-[var(--franco-border-hover)]" : "border-[var(--franco-border)]"
                       } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
                     >
                       {/* Row 1: Score + Name + Verdict + Metrics */}
@@ -326,13 +326,13 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                           onClick={(e) => { e.stopPropagation(); toggleSelect(item.id); }}
                           className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
                             isSelected
-                              ? "border-[#FAFAF8] bg-[#FAFAF8]"
-                              : "border-white/[0.08] hover:border-white/[0.12]"
+                              ? "border-[var(--franco-text)] bg-[var(--franco-text)]"
+                              : "border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
                           }`}
                           title={isSelected ? "Deseleccionar" : "Seleccionar para comparar"}
                         >
                           {isSelected && (
-                            <svg className="h-2.5 w-2.5 text-[#0F0F0F]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg className="h-2.5 w-2.5 text-[var(--franco-bg)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           )}
@@ -343,37 +343,37 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-body text-sm font-bold text-[#FAFAF8]">{item.nombre}</span>
-                            <span className="text-white/50">·</span>
-                            <span className="font-body text-xs text-white/50">{item.comuna}</span>
+                            <span className="font-body text-sm font-bold text-[var(--franco-text)]">{item.nombre}</span>
+                            <span className="text-[var(--franco-text-secondary)]">·</span>
+                            <span className="font-body text-xs text-[var(--franco-text-secondary)]">{item.comuna}</span>
                             {item.is_premium && (
                               <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1.5">
                             <VerdictBadge verdict={verdict} />
-                            <span className="text-white/50">·</span>
-                            <span className="font-body text-[11px] text-white/50">{formatDate(item.created_at)}</span>
+                            <span className="text-[var(--franco-text-secondary)]">·</span>
+                            <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{formatDate(item.created_at)}</span>
                           </div>
                         </div>
 
                         {/* Metrics (hidden on mobile) */}
                         <div className="hidden items-center gap-4 sm:flex">
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-white/50">FLUJO</div>
-                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[#FAFAF8]"}`}>
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO</div>
+                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[var(--franco-text)]"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-white/50">RENT.</div>
-                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RENT.</div>
+                            <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
                               {m.rentabilidadBruta.toFixed(1)}%
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-white/50">RETORNO</div>
-                            <div className="font-mono text-sm font-semibold text-[#FAFAF8]">
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RETORNO</div>
+                            <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
                               {m.multiplicador > 0 ? `${m.multiplicador.toFixed(1)}x` : "—"}
                             </div>
                           </div>
@@ -383,7 +383,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
                           <button
                             onClick={(e) => handleDelete(e, item.id)}
-                            className="shrink-0 rounded-lg p-2 text-white/[0.35] transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
+                            className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
                             title="Eliminar análisis"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -392,9 +392,9 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                       </div>
 
                       {/* Row 2: "Siendo franco:" summary */}
-                      <div className="mt-2.5 border-t border-white/[0.08] pt-2.5">
-                        <p className="font-body text-xs leading-snug text-white/50">
-                          <span className="font-semibold text-[#FAFAF8]">Siendo franco:</span>{" "}
+                      <div className="mt-2.5 border-t border-[var(--franco-border)] pt-2.5">
+                        <p className="font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
+                          <span className="font-semibold text-[var(--franco-text)]">Siendo franco:</span>{" "}
                           {item.results?.resumen
                             ? item.results.resumen.split(".")[0] + "."
                             : getSiendoFranco(item.score, m.flujoMensual)}
@@ -411,13 +411,13 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
       {/* ─── Floating Compare Bar ─── */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.08] bg-[#1A1A1A] shadow-2xl shadow-black/20">
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--franco-border)] bg-[var(--franco-card)] shadow-2xl shadow-black/20">
           <div className="mx-auto flex max-w-[820px] items-center justify-between px-5 py-3">
-            <span className="font-body text-sm font-medium text-white">
+            <span className="font-body text-sm font-medium text-[var(--franco-text)]">
               {selected.size} análisis seleccionados
             </span>
             <Link href={`/comparar?ids=${Array.from(selected).join(",")}`}>
-              <Button className="gap-2 rounded-xl bg-[#FAFAF8] px-6 text-sm font-semibold text-[#0F0F0F] hover:bg-[#FAFAF8]/90">
+              <Button className="gap-2 rounded-xl bg-[#C8323C] px-6 text-sm font-semibold text-white hover:bg-[#C8323C]/90">
                 Comparar {selected.size} análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
