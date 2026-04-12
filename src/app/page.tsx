@@ -1,4 +1,3 @@
-import { ForceDark } from "@/components/force-dark";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
 import WaitlistForm from "@/components/waitlist-form";
@@ -15,9 +14,8 @@ export default async function ProximamentePage() {
   const comunas = await getAllComunasStats();
 
   return (
-    <div className="min-h-screen bg-th-page">
-      <ForceDark />
-      {/* Top accent line */}
+    <div className="min-h-screen bg-[#0F0F0F]">
+{/* Top accent line */}
       <div className="h-[2px] bg-[#C8323C]" />
 
       {/* Header — logo only */}
@@ -38,30 +36,30 @@ export default async function ProximamentePage() {
             Próximamente
           </span>
 
-          <h1 className="mt-6 font-heading text-3xl font-bold leading-tight text-th-text sm:text-[42px] sm:leading-[1.15]">
+          <h1 className="mt-6 font-heading text-3xl font-bold leading-tight text-[#FAFAF8] sm:text-[42px] sm:leading-[1.15]">
             El mercado inmobiliario necesitaba honestidad.
           </h1>
 
-          <p className="mx-auto mt-4 max-w-[480px] font-body text-base leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
+          <p className="mx-auto mt-4 max-w-[480px] font-body text-base leading-relaxed" style={{ color: "rgba(250,250,248,0.5)" }}>
             Franco analiza inversiones con datos reales. Si conviene, te lo dice. Si no conviene, también.
           </p>
 
           {/* Email capture */}
           <div className="mx-auto mt-10 max-w-[460px]">
-            <p className="mb-3 font-body text-sm font-medium text-th-text">Sé el primero en acceder.</p>
+            <p className="mb-3 font-body text-sm font-medium text-[#FAFAF8]">Sé el primero en acceder.</p>
             <WaitlistForm />
           </div>
         </section>
 
         {/* Divider */}
-        <div className="mx-auto h-px w-16" style={{ background: "var(--franco-border-strong)" }} />
+        <div className="mx-auto h-px w-16" style={{ background: "rgba(250,250,248,0.08)" }} />
 
         {/* Ranking de comunas */}
         <section className="py-16">
-          <h2 className="text-center font-heading text-2xl font-bold text-th-text sm:text-3xl">
+          <h2 className="text-center font-heading text-2xl font-bold text-[#FAFAF8] sm:text-3xl">
             ¿En qué comuna conviene más invertir?
           </h2>
-          <p className="mt-3 text-center font-body text-sm" style={{ color: "var(--franco-text-secondary)" }}>
+          <p className="mt-3 text-center font-body text-sm" style={{ color: "rgba(250,250,248,0.5)" }}>
             Datos reales de 20.000+ propiedades en 24 comunas de Santiago.
           </p>
 
@@ -70,14 +68,14 @@ export default async function ProximamentePage() {
               <div
                 key={c.slug}
                 className="rounded-xl border p-4 transition-colors"
-                style={{ borderColor: "var(--franco-border)", background: "var(--franco-input-bg)" }}
+                style={{ borderColor: "rgba(250,250,248,0.06)", background: "#1A1A1A" }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-xs font-medium" style={{ color: "var(--franco-text-muted)" }}>
+                    <span className="font-mono text-xs font-medium" style={{ color: "rgba(250,250,248,0.35)" }}>
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span className="font-body text-sm font-semibold text-th-text">{c.nombre}</span>
+                    <span className="font-body text-sm font-semibold text-[#FAFAF8]">{c.nombre}</span>
                   </div>
                   <span className="font-mono text-base font-bold" style={{ color: rentColor(c.rentabilidadBruta) }}>
                     {c.rentabilidadBruta.toFixed(1).replace(".", ",")}%
@@ -85,14 +83,14 @@ export default async function ProximamentePage() {
                 </div>
                 <div className="mt-2 flex gap-4 text-[11px]">
                   <span style={{ color: "rgba(250,250,248,0.3)" }}>
-                    Arriendo <span className="font-mono text-th-text-secondary">{fmtCLP(c.arriendoRepresentativo)}/mes</span>
+                    Arriendo <span className="font-mono text-white/50">{fmtCLP(c.arriendoRepresentativo)}/mes</span>
                   </span>
                   <span style={{ color: "rgba(250,250,248,0.3)" }}>
-                    <span className="font-mono text-th-text-secondary">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</span> UF/m²
+                    <span className="font-mono text-white/50">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</span> UF/m²
                   </span>
                   {c.arriendoUFm2Mes > 0 && (
                     <span style={{ color: "rgba(250,250,248,0.3)" }}>
-                      <span className="font-mono text-th-text-secondary">{c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}</span> UF/m²/mes
+                      <span className="font-mono text-white/50">{c.arriendoUFm2Mes.toFixed(2).replace(".", ",")}</span> UF/m²/mes
                     </span>
                   )}
                 </div>
@@ -111,7 +109,7 @@ export default async function ProximamentePage() {
         <div className="flex justify-center mb-4">
           <FrancoLogo size="md" inverted showTagline />
         </div>
-        <p className="font-body text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
+        <p className="font-body text-[11px]" style={{ color: "rgba(250,250,248,0.35)" }}>
           Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
         </p>
       </footer>

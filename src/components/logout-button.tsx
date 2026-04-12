@@ -19,7 +19,7 @@ export function LogoutButton() {
       variant="ghost"
       size="sm"
       onClick={handleLogout}
-      className="text-th-text font-body hover:text-th-text hover:bg-th-surface"
+      className="text-[#FAFAF8] font-body hover:text-[#FAFAF8] hover:bg-[#1A1A1A]"
     >
       Cerrar Sesión
     </Button>

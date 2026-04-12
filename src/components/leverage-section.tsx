@@ -109,7 +109,7 @@ function FadeIn({
 // ============================================================
 function StepNumber({ n }: { n: number }) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-th-page">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0F0F0F]">
       <span className="font-mono text-[13px] font-bold text-white">{n}</span>
     </div>
   );
@@ -458,7 +458,7 @@ export default function LeverageSection() {
             {/* Legend */}
             <div className="mb-4 flex justify-center gap-4">
               <div className="flex items-center gap-1.5">
-                <div className="h-3 w-3 rounded-sm bg-th-page" />
+                <div className="h-3 w-3 rounded-sm bg-[#0F0F0F]" />
                 <span className="font-body text-[10px] text-[#71717A]">
                   Tu patrimonio (sube)
                 </span>
@@ -652,7 +652,7 @@ export default function LeverageSection() {
                 </div>
                 <div className="flex gap-3">
                   <div className="flex items-center gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-sm bg-th-page" />
+                    <div className="h-2.5 w-2.5 rounded-sm bg-[#0F0F0F]" />
                     <span className="font-body text-[9px] text-[#71717A]">Patrimonio</span>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -847,7 +847,7 @@ export default function LeverageSection() {
                 ¿Quieres ver estos números con tu propiedad real?
               </p>
               <Link href="/analisis/nuevo">
-                <button className="rounded-lg bg-th-page px-7 py-3 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90">
+                <button className="rounded-lg bg-[#0F0F0F] px-7 py-3 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90">
                   Analizar mi propiedad gratis →
                 </button>
               </Link>

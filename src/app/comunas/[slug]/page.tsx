@@ -1,4 +1,3 @@
-import { ForceDark } from "@/components/force-dark";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -98,17 +97,16 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
   };
 
   return (
-    <div className="min-h-screen bg-th-page">
-      <ForceDark />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+    <div className="min-h-screen bg-[#0F0F0F]">
+<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* Navbar */}
-      <header className="border-b border-th-border bg-th-page">
+      <header className="border-b border-white/[0.06] bg-[#0F0F0F]">
         <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
           <FrancoLogo size="header" inverted href="/" />
           <nav className="hidden items-center gap-6 md:flex">
-            <Link href="/comunas" className="font-body text-sm text-th-text-secondary hover:text-th-text">Comunas</Link>
-            <Link href="/pricing" className="font-body text-sm text-th-text-secondary hover:text-th-text">Precios</Link>
+            <Link href="/comunas" className="font-body text-sm text-white/50 hover:text-[#FAFAF8]">Comunas</Link>
+            <Link href="/pricing" className="font-body text-sm text-white/50 hover:text-[#FAFAF8]">Precios</Link>
             <Link href="/analisis/nuevo" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
               Analizar gratis
             </Link>
@@ -118,16 +116,16 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 
       <main className="mx-auto max-w-[1100px] px-6 py-12">
         {/* Breadcrumb */}
-        <nav className="mb-6 font-body text-xs text-th-text-muted">
-          <Link href="/" className="hover:text-th-text-secondary">Inicio</Link>
+        <nav className="mb-6 font-body text-xs text-white/[0.35]">
+          <Link href="/" className="hover:text-white/50">Inicio</Link>
           {" → "}
-          <Link href="/comunas" className="hover:text-th-text-secondary">Comunas</Link>
+          <Link href="/comunas" className="hover:text-white/50">Comunas</Link>
           {" → "}
-          <span className="text-th-text-secondary">{stats.nombre}</span>
+          <span className="text-white/50">{stats.nombre}</span>
         </nav>
 
         {/* Hero */}
-        <h1 className="font-heading text-3xl font-bold text-th-text sm:text-4xl">
+        <h1 className="font-heading text-3xl font-bold text-[#FAFAF8] sm:text-4xl">
           Invertir en {stats.nombre} — ¿Vale la pena en {year}?
         </h1>
 
@@ -155,24 +153,24 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             { label: "Precio/m² promedio", value: fmtUF(stats.precioM2Promedio), color: "#FAFAF8" },
             { label: "Propiedades analizadas", value: stats.totalPropiedades.toLocaleString("es-CL"), sub: "actualizado esta semana", color: "#FAFAF8" },
           ].map((m) => (
-            <div key={m.label} className="rounded-xl border border-th-border bg-th-input-bg p-5">
-              <p className="font-body text-xs text-th-text-secondary">{m.label}</p>
+            <div key={m.label} className="rounded-xl border border-white/[0.06] bg-white/[0.04] p-5">
+              <p className="font-body text-xs text-white/50">{m.label}</p>
               <p className="mt-1 font-mono text-xl font-bold" style={{ color: m.color }}>{m.value}</p>
-              {"sub" in m && m.sub && <p className="mt-0.5 font-body text-[10px] text-th-text/25">{m.sub}</p>}
+              {"sub" in m && m.sub && <p className="mt-0.5 font-body text-[10px] text-[#FAFAF8]/25">{m.sub}</p>}
             </div>
           ))}
         </div>
 
         {/* Análisis de Franco */}
         <section className="mt-14">
-          <h2 className="font-heading text-2xl font-bold text-th-text">Qué dicen los datos</h2>
-          <div className="mt-4 rounded-xl border border-th-border bg-th-input-bg p-6">
-            <p className="font-body text-sm leading-relaxed text-th-text-secondary">
+          <h2 className="font-heading text-2xl font-bold text-[#FAFAF8]">Qué dicen los datos</h2>
+          <div className="mt-4 rounded-xl border border-white/[0.06] bg-white/[0.04] p-6">
+            <p className="font-body text-sm leading-relaxed text-white/50">
               En {stats.nombre}, el precio promedio por m² es de {fmtUF(stats.precioM2Promedio)} ({fmtCLP(precioM2CLP)}).
               El arriendo mensual promedio es de {fmtCLP(stats.arriendoRepresentativo)}/mes, lo que resulta en una
               rentabilidad bruta de {stats.rentabilidadBruta.toFixed(1).replace(".", ",")}% — {evaluacion}.
             </p>
-            <p className="mt-4 font-body text-[11px] italic text-th-text/25">
+            <p className="mt-4 font-body text-[11px] italic text-[#FAFAF8]/25">
               Este análisis es informativo y no constituye asesoría de inversión. Los datos se actualizan semanalmente desde fuentes públicas.
             </p>
           </div>
@@ -181,32 +179,32 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         {/* Comparativa */}
         {similares.length > 0 && (
           <section className="mt-14">
-            <h2 className="font-heading text-2xl font-bold text-th-text">Comparativa con comunas similares</h2>
-            <div className="mt-4 overflow-x-auto rounded-xl border border-th-border">
+            <h2 className="font-heading text-2xl font-bold text-[#FAFAF8]">Comparativa con comunas similares</h2>
+            <div className="mt-4 overflow-x-auto rounded-xl border border-white/[0.06]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-th-border text-left">
-                    <th className="px-4 py-3 font-body font-medium text-th-text-secondary">Comuna</th>
-                    <th className="px-4 py-3 font-body font-medium text-th-text-secondary">Rentabilidad</th>
-                    <th className="px-4 py-3 font-body font-medium text-th-text-secondary">Arriendo prom.</th>
-                    <th className="px-4 py-3 font-body font-medium text-th-text-secondary">UF/m²</th>
+                  <tr className="border-b border-white/[0.06] text-left">
+                    <th className="px-4 py-3 font-body font-medium text-white/50">Comuna</th>
+                    <th className="px-4 py-3 font-body font-medium text-white/50">Rentabilidad</th>
+                    <th className="px-4 py-3 font-body font-medium text-white/50">Arriendo prom.</th>
+                    <th className="px-4 py-3 font-body font-medium text-white/50">UF/m²</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-b border-th-border bg-th-input-bg">
-                    <td className="px-4 py-3 font-body font-semibold text-th-text">{stats.nombre}</td>
+                  <tr className="border-b border-white/[0.06] bg-white/[0.04]">
+                    <td className="px-4 py-3 font-body font-semibold text-[#FAFAF8]">{stats.nombre}</td>
                     <td className="px-4 py-3 font-mono font-medium" style={{ color: rentColor(stats.rentabilidadBruta) }}>{stats.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
-                    <td className="px-4 py-3 font-mono font-medium text-th-text">{fmtCLP(stats.arriendoRepresentativo)}</td>
-                    <td className="px-4 py-3 font-mono font-medium text-th-text">{stats.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
+                    <td className="px-4 py-3 font-mono font-medium text-[#FAFAF8]">{fmtCLP(stats.arriendoRepresentativo)}</td>
+                    <td className="px-4 py-3 font-mono font-medium text-[#FAFAF8]">{stats.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
                   </tr>
                   {similares.map((c) => (
-                    <tr key={c.slug} className="border-b border-th-border">
+                    <tr key={c.slug} className="border-b border-white/[0.06]">
                       <td className="px-4 py-3">
-                        <Link href={`/comunas/${c.slug}`} className="font-body text-th-text hover:text-th-text">{c.nombre}</Link>
+                        <Link href={`/comunas/${c.slug}`} className="font-body text-[#FAFAF8] hover:text-[#FAFAF8]">{c.nombre}</Link>
                       </td>
-                      <td className="px-4 py-3 font-mono text-th-text-secondary">{c.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
-                      <td className="px-4 py-3 font-mono text-th-text-secondary">{fmtCLP(c.arriendoRepresentativo)}</td>
-                      <td className="px-4 py-3 font-mono text-th-text-secondary">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
+                      <td className="px-4 py-3 font-mono text-white/50">{c.rentabilidadBruta.toFixed(1).replace(".", ",")}%</td>
+                      <td className="px-4 py-3 font-mono text-white/50">{fmtCLP(c.arriendoRepresentativo)}</td>
+                      <td className="px-4 py-3 font-mono text-white/50">{c.precioM2Promedio.toFixed(1).replace(".", ",")}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -218,8 +216,8 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
         {/* CTA */}
         <section className="mt-14">
           <div className="rounded-2xl border border-[#C8323C]/20 bg-[#C8323C]/[0.06] p-10 text-center">
-            <h2 className="font-heading text-2xl font-bold text-th-text">¿Tienes un departamento en {stats.nombre}?</h2>
-            <p className="mt-2 font-body text-sm text-th-text-secondary">
+            <h2 className="font-heading text-2xl font-bold text-[#FAFAF8]">¿Tienes un departamento en {stats.nombre}?</h2>
+            <p className="mt-2 font-body text-sm text-white/50">
               Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
             </p>
             <Link
@@ -233,12 +231,12 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 
         {/* FAQ */}
         <section className="mt-14">
-          <h2 className="font-heading text-2xl font-bold text-th-text">Preguntas frecuentes</h2>
+          <h2 className="font-heading text-2xl font-bold text-[#FAFAF8]">Preguntas frecuentes</h2>
           <div className="mt-4 space-y-4">
             {(faqSchema.mainEntity as Array<{ name: string; acceptedAnswer: { text: string } }>).map((q, i) => (
-              <div key={i} className="rounded-xl border border-th-border bg-th-input-bg p-5">
-                <h3 className="font-body text-sm font-semibold text-th-text">{q.name}</h3>
-                <p className="mt-2 font-body text-sm text-th-text-secondary">{q.acceptedAnswer.text}</p>
+              <div key={i} className="rounded-xl border border-white/[0.06] bg-white/[0.04] p-5">
+                <h3 className="font-body text-sm font-semibold text-[#FAFAF8]">{q.name}</h3>
+                <p className="mt-2 font-body text-sm text-white/50">{q.acceptedAnswer.text}</p>
               </div>
             ))}
           </div>
@@ -246,8 +244,8 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-th-border py-8 text-center">
-        <p className="font-body text-xs text-th-text-muted">
+      <footer className="mt-16 border-t border-white/[0.06] py-8 text-center">
+        <p className="font-body text-xs text-white/[0.35]">
           Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
         </p>
       </footer>

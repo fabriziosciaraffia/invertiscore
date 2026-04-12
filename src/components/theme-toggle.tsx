@@ -27,7 +27,7 @@ export function ThemeToggle() {
       type="button"
       onClick={toggle}
       aria-label={isLight ? "Cambiar a modo oscuro" : "Cambiar a modo claro"}
-      className="flex items-center justify-center w-8 h-8 rounded-full transition-colors bg-th-surface text-th-text-secondary hover:text-th-text hover:bg-th-elevated"
+      className="flex items-center justify-center w-8 h-8 rounded-full transition-colors bg-[#1A1A1A] text-white/50 hover:text-[#FAFAF8] hover:bg-[#222222]"
     >
       {isLight ? <Moon size={15} /> : <Sun size={15} />}
     </button>

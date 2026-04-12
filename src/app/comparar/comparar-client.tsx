@@ -221,14 +221,14 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
 }
 
 function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): string {
-  if (raw.every((v) => v === 0)) return "text-th-text";
+  if (raw.every((v) => v === 0)) return "text-[#FAFAF8]";
   const val = raw[index];
   const best = higherIsBetter ? Math.max(...raw) : Math.min(...raw);
   const worst = higherIsBetter ? Math.min(...raw) : Math.max(...raw);
-  if (raw.every((v) => v === val)) return "text-th-text";
-  if (val === best) return "font-bold text-th-text";
+  if (raw.every((v) => v === val)) return "text-[#FAFAF8]";
+  if (val === best) return "font-bold text-[#FAFAF8]";
   if (val === worst) return "text-[#ef4444]";
-  return "text-th-text";
+  return "text-[#FAFAF8]";
 }
 
 // Radar chart - pure SVG
@@ -250,7 +250,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
 
   return (
     <div className="mt-10">
-      <h3 className="text-center font-heading text-xl font-bold tracking-tight text-th-text sm:text-2xl">Radar de dimensiones</h3>
+      <h3 className="text-center font-heading text-xl font-bold tracking-tight text-[#FAFAF8] sm:text-2xl">Radar de dimensiones</h3>
       <div className="mt-6 flex justify-center">
         <svg viewBox="0 0 300 300" className="h-64 w-64 sm:h-80 sm:w-80">
           {/* Grid */}
@@ -321,7 +321,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
         {analisis.map((a, i) => (
           <div key={a.id} className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full" style={{ background: CHART_COLORS[i] }} />
-            <span className="text-xs text-th-text-secondary">{a.nombre}</span>
+            <span className="text-xs text-white/50">{a.nombre}</span>
           </div>
         ))}
       </div>
@@ -382,9 +382,9 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
   const colCount = analisis.length;
 
   return (
-    <div className="min-h-screen bg-th-page">
+    <div className="min-h-screen bg-[#0F0F0F]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page">
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
         <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
           <FrancoLogo size="header" href="/" inverted />
         </div>
@@ -394,10 +394,10 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <Link href="/dashboard" className="mb-3 inline-flex items-center gap-1.5 text-sm text-th-text-secondary transition-colors hover:text-th-text">
+            <Link href="/dashboard" className="mb-3 inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-[#FAFAF8]">
               <ArrowLeft className="h-4 w-4" /> Volver al Dashboard
             </Link>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-th-text sm:text-3xl">
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-[#FAFAF8] sm:text-3xl">
               Comparación de {analisis.length} propiedades
             </h1>
           </div>
@@ -408,7 +408,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
           <button
             type="button"
             onClick={() => setCurrency(currency === "CLP" ? "UF" : "CLP")}
-            className="flex items-center gap-1.5 rounded-lg border border-th-border-strong bg-th-card px-3 py-1.5 text-sm font-medium text-th-text-secondary transition-colors hover:bg-th-surface hover:text-th-text"
+            className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-1.5 text-sm font-medium text-white/50 transition-colors hover:bg-[#1A1A1A] hover:text-[#FAFAF8]"
           >
             <DollarSign className="h-3.5 w-3.5" />
             {currency === "CLP" ? "Ver en UF" : "Ver en CLP"}
@@ -423,12 +423,12 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
             {analisis.map((a, i) => {
               const color = getScoreColor(a.score);
               return (
-                <div key={a.id} className="rounded-xl border bg-th-card p-4 text-center" style={{ borderColor: CHART_COLORS[i], borderWidth: "2px" }}>
+                <div key={a.id} className="rounded-xl border bg-[#1A1A1A] p-4 text-center" style={{ borderColor: CHART_COLORS[i], borderWidth: "2px" }}>
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border-[3px]" style={{ borderColor: color }}>
                     <span className="font-mono text-lg font-bold" style={{ color }}>{a.score}</span>
                   </div>
-                  <div className="mt-2 text-sm font-semibold text-th-text">{a.nombre}</div>
-                  <div className="text-xs text-th-text-secondary">{a.comuna}</div>
+                  <div className="mt-2 text-sm font-semibold text-[#FAFAF8]">{a.nombre}</div>
+                  <div className="text-xs text-white/50">{a.comuna}</div>
                 </div>
               );
             })}
@@ -438,18 +438,18 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
           {sections.map((section) => (
             <div key={section.section} className="mb-2">
               <div
-                className="grid items-center gap-4 rounded-t-lg bg-th-surface px-4 py-2"
+                className="grid items-center gap-4 rounded-t-lg bg-[#1A1A1A] px-4 py-2"
                 style={{ gridTemplateColumns: `180px repeat(${colCount}, 1fr)` }}
               >
-                <span className="text-xs font-semibold uppercase tracking-wider text-th-text-secondary">{section.section}</span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-white/50">{section.section}</span>
               </div>
               {section.rows.map((row, ri) => (
                 <div
                   key={row.label}
-                  className={`grid items-center gap-4 border-b border-th-border px-4 py-2.5 ${ri % 2 === 0 ? "bg-th-card" : "bg-th-page"}`}
+                  className={`grid items-center gap-4 border-b border-white/[0.06] px-4 py-2.5 ${ri % 2 === 0 ? "bg-[#1A1A1A]" : "bg-[#0F0F0F]"}`}
                   style={{ gridTemplateColumns: `180px repeat(${colCount}, 1fr)` }}
                 >
-                  <span className="text-sm text-th-text-secondary">{row.label}</span>
+                  <span className="text-sm text-white/50">{row.label}</span>
                   {row.values.map((val, vi) => (
                     <span key={vi} className={`text-center text-sm ${getCellStyle(row.raw, vi, row.higherIsBetter)}`}>
                       {val}
@@ -466,25 +466,25 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
           {analisis.map((a, ai) => {
             const color = getScoreColor(a.score);
             return (
-              <div key={a.id} className="rounded-xl border-2 bg-th-card p-4" style={{ borderColor: CHART_COLORS[ai] }}>
+              <div key={a.id} className="rounded-xl border-2 bg-[#1A1A1A] p-4" style={{ borderColor: CHART_COLORS[ai] }}>
                 {/* Card header */}
                 <div className="flex items-center gap-3">
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-[3px]" style={{ borderColor: color }}>
                     <span className="font-mono text-sm font-bold" style={{ color }}>{a.score}</span>
                   </div>
                   <div>
-                    <div className="text-sm font-semibold text-th-text">{a.nombre}</div>
-                    <div className="text-xs text-th-text-secondary">{a.comuna} · {getScoreLabel(a.score)}</div>
+                    <div className="text-sm font-semibold text-[#FAFAF8]">{a.nombre}</div>
+                    <div className="text-xs text-white/50">{a.comuna} · {getScoreLabel(a.score)}</div>
                   </div>
                 </div>
                 {/* Metrics */}
                 {sections.map((section) => (
                   <div key={section.section} className="mt-4">
-                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-th-text-secondary">{section.section}</div>
+                    <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/50">{section.section}</div>
                     <div className="space-y-1">
                       {section.rows.map((row) => (
                         <div key={row.label} className="flex items-center justify-between py-1">
-                          <span className="text-xs text-th-text-secondary">{row.label}</span>
+                          <span className="text-xs text-white/50">{row.label}</span>
                           <span className={`text-xs ${getCellStyle(row.raw, ai, row.higherIsBetter)}`}>
                             {row.values[ai]}
                           </span>
@@ -502,19 +502,19 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
         <RadarChart analisis={analisis} />
 
         {/* Verdict */}
-        <div className="mt-10 rounded-2xl border-2 border-th-border-strong bg-th-card p-6 sm:p-8">
+        <div className="mt-10 rounded-2xl border-2 border-white/[0.08] bg-[#1A1A1A] p-6 sm:p-8">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-[3px]" style={{ borderColor: verdict.bestColor }}>
               <span className="text-xl font-bold" style={{ color: verdict.bestColor }}>{verdict.bestScore}</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-th-text">
+              <h3 className="text-lg font-bold text-[#FAFAF8]">
                 Mejor inversión: {verdict.bestName}
                 <span className="ml-2 rounded-full px-2.5 py-0.5 text-xs font-medium" style={{ background: `${verdict.bestColor}15`, color: verdict.bestColor }}>
                   {verdict.bestLabel}
                 </span>
               </h3>
-              <p className="mt-2 text-sm leading-relaxed text-th-text-secondary">{verdict.explanation}</p>
+              <p className="mt-2 text-sm leading-relaxed text-white/50">{verdict.explanation}</p>
             </div>
           </div>
         </div>
@@ -522,7 +522,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
         {/* Back button */}
         <div className="mt-8 text-center">
           <Link href="/dashboard">
-            <Button variant="outline" className="gap-2 rounded-xl border-th-border-strong text-th-text-secondary hover:text-th-text">
+            <Button variant="outline" className="gap-2 rounded-xl border-white/[0.08] text-white/50 hover:text-[#FAFAF8]">
               <ArrowLeft className="h-4 w-4" /> Volver al Dashboard
             </Button>
           </Link>

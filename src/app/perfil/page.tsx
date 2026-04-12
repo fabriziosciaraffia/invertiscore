@@ -122,9 +122,9 @@ export default async function PerfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-th-page">
+    <div className="min-h-screen bg-[#0F0F0F]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page">
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-2">
@@ -132,7 +132,7 @@ export default async function PerfilPage() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="gap-2 text-th-text-secondary font-body hover:text-th-text hover:bg-th-surface"
+                className="gap-2 text-white/50 font-body hover:text-[#FAFAF8] hover:bg-[#1A1A1A]"
               >
                 <ArrowLeft className="h-4 w-4" /> Dashboard
               </Button>
@@ -144,54 +144,54 @@ export default async function PerfilPage() {
       </nav>
 
       <div className="container mx-auto max-w-2xl px-4 py-8">
-        <h1 className="mb-8 text-3xl font-bold text-th-text">Mi Perfil</h1>
+        <h1 className="mb-8 text-3xl font-bold text-[#FAFAF8]">Mi Perfil</h1>
 
         {/* Datos personales */}
-        <Card className="mb-6 border-th-border-strong bg-th-card">
+        <Card className="mb-6 border-white/[0.08] bg-[#1A1A1A]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-[#C8323C]" />
-              <CardTitle className="text-th-text">Datos Personales</CardTitle>
+              <CardTitle className="text-[#FAFAF8]">Datos Personales</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <div className="text-xs text-th-text-secondary">Nombre</div>
-                <div className="font-medium text-th-text">{nombre}</div>
+                <div className="text-xs text-white/50">Nombre</div>
+                <div className="font-medium text-[#FAFAF8]">{nombre}</div>
               </div>
               <div>
-                <div className="text-xs text-th-text-secondary">Email</div>
-                <div className="font-medium text-th-text">{email}</div>
+                <div className="text-xs text-white/50">Email</div>
+                <div className="font-medium text-[#FAFAF8]">{email}</div>
               </div>
               <div>
-                <div className="text-xs text-th-text-secondary">Fecha de registro</div>
-                <div className="font-medium text-th-text">{createdAt}</div>
+                <div className="text-xs text-white/50">Fecha de registro</div>
+                <div className="font-medium text-[#FAFAF8]">{createdAt}</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Plan actual */}
-        <Card className="mb-6 border-th-border-strong bg-th-card">
+        <Card className="mb-6 border-white/[0.08] bg-[#1A1A1A]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-[#C8323C]" />
-              <CardTitle className="text-th-text">Plan Actual</CardTitle>
+              <CardTitle className="text-[#FAFAF8]">Plan Actual</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <div className="text-lg font-semibold text-th-text">{planLabel}</div>
-                <p className="text-sm text-th-text-secondary">{planDescription}</p>
+                <div className="text-lg font-semibold text-[#FAFAF8]">{planLabel}</div>
+                <p className="text-sm text-white/50">{planDescription}</p>
               </div>
               {planCtaText && (
                 <Link href={planCtaHref} className="shrink-0">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border border-th-border-strong bg-th-surface text-th-text font-body font-medium hover:bg-th-elevated hover:border-th-border-hover"
+                    className="border border-white/[0.08] bg-[#1A1A1A] text-[#FAFAF8] font-body font-medium hover:bg-[#222222] hover:border-white/[0.12]"
                   >
                     {planCtaText}
                   </Button>
@@ -203,7 +203,7 @@ export default async function PerfilPage() {
 
         {/* Créditos disponibles */}
         {credits > 0 && !isSubscriber && (
-          <div className="mb-6 rounded-xl border border-[#C8323C]/30 bg-th-surface p-5 text-center">
+          <div className="mb-6 rounded-xl border border-[#C8323C]/30 bg-[#1A1A1A] p-5 text-center">
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-[#C8323C]" />
             <div className="font-mono text-3xl font-bold text-[#C8323C]">{credits}</div>
             <div className="mt-1 text-sm text-zinc-400">
@@ -216,16 +216,16 @@ export default async function PerfilPage() {
         )}
 
         {/* Historial de pagos */}
-        <Card className="mb-6 border-th-border-strong bg-th-card">
+        <Card className="mb-6 border-white/[0.08] bg-[#1A1A1A]">
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-[#C8323C]" />
-              <CardTitle className="text-th-text">Historial de Informes Pro</CardTitle>
+              <CardTitle className="text-[#FAFAF8]">Historial de Informes Pro</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? (
-              <p className="text-sm text-th-text-secondary">
+              <p className="text-sm text-white/50">
                 Aún no has comprado informes Pro.
               </p>
             ) : (
@@ -233,24 +233,24 @@ export default async function PerfilPage() {
                 {payments.map((p) => {
                   const analysis = p.analysis_id ? analysisMap.get(p.analysis_id) : null;
                   return (
-                    <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-th-border-strong p-3">
+                    <div key={p.id} className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.08] p-3">
                       <div className="min-w-0 flex-1">
                         {analysis ? (
-                          <Link href={`/analisis/${analysis.id}`} className="block truncate text-sm font-medium text-th-text hover:underline">
+                          <Link href={`/analisis/${analysis.id}`} className="block truncate text-sm font-medium text-[#FAFAF8] hover:underline">
                             {analysis.nombre}
                           </Link>
                         ) : (
-                          <div className="text-sm font-medium text-th-text">{fmtProductName(p.product)}</div>
+                          <div className="text-sm font-medium text-[#FAFAF8]">{fmtProductName(p.product)}</div>
                         )}
-                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-th-text-secondary">
+                        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-white/50">
                           <span>{new Date(p.created_at).toLocaleDateString("es-CL")}</span>
                           {analysis && analysis.score != null && (
                             <>
-                              <span className="text-th-text-muted">·</span>
+                              <span className="text-white/[0.35]">·</span>
                               <span className="font-mono">Score {analysis.score}</span>
                             </>
                           )}
-                          <span className="text-th-text-muted">·</span>
+                          <span className="text-white/[0.35]">·</span>
                           <span>{fmtProductName(p.product)}</span>
                         </div>
                       </div>
@@ -266,9 +266,9 @@ export default async function PerfilPage() {
         </Card>
 
         {/* Cambiar contraseña */}
-        <Card className="border-th-border-strong bg-th-card">
+        <Card className="border-white/[0.08] bg-[#1A1A1A]">
           <CardHeader>
-            <CardTitle className="text-th-text">Cambiar Contraseña</CardTitle>
+            <CardTitle className="text-[#FAFAF8]">Cambiar Contraseña</CardTitle>
           </CardHeader>
           <CardContent>
             <ChangePasswordForm />

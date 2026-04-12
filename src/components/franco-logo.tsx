@@ -31,13 +31,13 @@ export default function FrancoLogo({
       <span className={`${s.text} leading-tight flex items-baseline`}>
         <span
           className="font-heading italic font-normal transition-colors duration-300"
-          style={{ color: 'var(--franco-wordmark-re)', marginRight: '-0.08em' }}
+          style={{ color: 'rgba(255,255,255,0.32)', marginRight: '-0.08em' }}
         >
           re
         </span>
         <span
           className="font-heading font-bold transition-colors duration-300"
-          style={{ color: 'var(--franco-wordmark-franco)' }}
+          style={{ color: '#FAFAF8' }}
         >
           franco
         </span>
@@ -54,7 +54,7 @@ export default function FrancoLogo({
           style={{
             fontSize: `${s.taglinePx}px`,
             letterSpacing: '0.2em',
-            color: 'var(--franco-text-muted)',
+            color: 'rgba(250,250,248,0.35)',
             marginTop: `${s.taglineMt}px`,
             textAlign: 'center',
             lineHeight: 1,

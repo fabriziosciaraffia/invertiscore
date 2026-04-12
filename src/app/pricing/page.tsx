@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
-import { ForceDark } from "@/components/force-dark";
 import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -40,13 +39,13 @@ function FAQGroup({ items }: { items: { q: string; a: string }[] }) {
   return (
     <div>
       {items.map((item, i) => (
-        <div key={i} className="border-b border-th-border-strong">
+        <div key={i} className="border-b border-white/[0.08]">
           <button
             type="button"
             onClick={() => setOpenIndex(openIndex === i ? null : i)}
             className="flex w-full items-center justify-between py-4 text-left"
           >
-            <span className="font-body text-[15px] font-semibold text-th-text pr-4">{item.q}</span>
+            <span className="font-body text-[15px] font-semibold text-[#FAFAF8] pr-4">{item.q}</span>
             <ChevronDown className={`h-4 w-4 text-[#71717A] shrink-0 transition-transform duration-200 ${openIndex === i ? "rotate-180" : ""}`} />
           </button>
           <div
@@ -66,7 +65,7 @@ function Feature({ children, bold }: { children: React.ReactNode; bold?: boolean
   return (
     <div className="flex items-start gap-2.5">
       <Check className="w-4 h-4 text-[#B0BEC5] mt-0.5 shrink-0" />
-      <span className={`font-body text-sm ${bold ? "font-semibold text-th-text" : "text-white/60"}`}>{children}</span>
+      <span className={`font-body text-sm ${bold ? "font-semibold text-[#FAFAF8]" : "text-white/60"}`}>{children}</span>
     </div>
   );
 }
@@ -85,9 +84,8 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
-      <ForceDark />
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page/80 backdrop-blur-xl">
+{/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" inverted href="/" />
           <div className="flex items-center gap-2">
@@ -113,7 +111,7 @@ export default function PricingPage() {
       <section className="py-16 md:py-20 px-6">
         <div className="max-w-[900px] mx-auto text-center">
           <FadeIn>
-            <h1 className="font-heading font-bold text-2xl md:text-4xl text-th-text tracking-tight leading-tight">
+            <h1 className="font-heading font-bold text-2xl md:text-4xl text-[#FAFAF8] tracking-tight leading-tight">
               Transparencia tiene precio.<br className="hidden md:block" /> Menos del que piensas.
             </h1>
             <p className="font-body text-base md:text-lg text-white/50 mt-4 max-w-[520px] mx-auto">
@@ -129,12 +127,12 @@ export default function PricingPage() {
 
           {/* ── GRATIS ── */}
           <FadeIn delay={0} className="flex">
-            <div className="rounded-2xl border border-th-border-strong bg-th-card p-6 md:p-7 flex flex-col w-full">
+            <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-6 md:p-7 flex flex-col w-full">
               <p className="font-body text-sm font-semibold text-white/50">Gratis</p>
               <p className="font-body text-xs text-white/30 mt-0.5">Evalúa sin límites</p>
 
               <div className="mt-5 mb-6">
-                <span className="font-mono text-4xl md:text-5xl font-bold text-th-text">$0</span>
+                <span className="font-mono text-4xl md:text-5xl font-bold text-[#FAFAF8]">$0</span>
                 <p className="font-body text-xs text-white/30 mt-1">para siempre</p>
               </div>
 
@@ -148,7 +146,7 @@ export default function PricingPage() {
 
               <Link
                 href={ctaHref}
-                className="block w-full text-center font-body text-sm font-semibold py-3 rounded-lg mt-6 border border-white/20 text-th-text hover:bg-white/[0.06] transition-colors min-h-[44px]"
+                className="block w-full text-center font-body text-sm font-semibold py-3 rounded-lg mt-6 border border-white/20 text-[#FAFAF8] hover:bg-white/[0.06] transition-colors min-h-[44px]"
               >
                 Empezar gratis →
               </Link>
@@ -158,16 +156,16 @@ export default function PricingPage() {
 
           {/* ── PRO ── (elevated) */}
           <FadeIn delay={100} className="flex">
-            <div className="relative rounded-2xl border-2 border-[#C8323C] bg-th-surface p-6 md:p-7 md:-mt-4 md:pb-[calc(1.75rem+16px)] flex flex-col w-full" style={{ boxShadow: "0 8px 40px rgba(200,50,60,0.12)" }}>
+            <div className="relative rounded-2xl border-2 border-[#C8323C] bg-[#1A1A1A] p-6 md:p-7 md:-mt-4 md:pb-[calc(1.75rem+16px)] flex flex-col w-full" style={{ boxShadow: "0 8px 40px rgba(200,50,60,0.12)" }}>
               <span className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-[#C8323C] text-white font-mono text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
                 Más elegido
               </span>
 
-              <p className="font-body text-sm font-semibold text-th-text">Informe Pro</p>
+              <p className="font-body text-sm font-semibold text-[#FAFAF8]">Informe Pro</p>
               <p className="font-body text-xs text-white/30 mt-0.5">La verdad completa</p>
 
               <div className="mt-5 mb-1">
-                <span className="font-mono text-4xl md:text-5xl font-bold text-th-text">$4.990</span>
+                <span className="font-mono text-4xl md:text-5xl font-bold text-[#FAFAF8]">$4.990</span>
                 <p className="font-body text-xs text-white/30 mt-1">por análisis</p>
               </div>
               <Link
@@ -199,16 +197,16 @@ export default function PricingPage() {
 
           {/* ── SUSCRIPCIÓN ── */}
           <FadeIn delay={200} className="flex">
-            <div className="relative rounded-2xl border border-th-border-strong bg-th-card p-6 md:p-7 flex flex-col w-full">
+            <div className="relative rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-6 md:p-7 flex flex-col w-full">
               <span className="absolute top-[-12px] left-1/2 -translate-x-1/2 bg-[#FAFAF8] text-[#0F0F0F] font-mono text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wide">
                 Mejor valor
               </span>
 
-              <p className="font-body text-sm font-semibold text-th-text">Suscripción</p>
+              <p className="font-body text-sm font-semibold text-[#FAFAF8]">Suscripción</p>
               <p className="font-body text-xs text-white/30 mt-0.5">Tu herramienta de inversión</p>
 
               <div className="mt-5 mb-6">
-                <span className="font-mono text-4xl md:text-5xl font-bold text-th-text">$19.990</span>
+                <span className="font-mono text-4xl md:text-5xl font-bold text-[#FAFAF8]">$19.990</span>
                 <p className="font-body text-xs text-white/30 mt-1">/mes</p>
               </div>
 
@@ -237,17 +235,17 @@ export default function PricingPage() {
       </section>
 
       {/* ¿Para quién? */}
-      <section className="bg-white/[0.02] border-t border-th-border py-16 px-6">
+      <section className="bg-white/[0.02] border-t border-white/[0.06] py-16 px-6">
         <div className="max-w-[820px] mx-auto">
           <FadeIn>
-            <h2 className="font-heading font-bold text-2xl md:text-[28px] text-th-text text-center mb-10">
+            <h2 className="font-heading font-bold text-2xl md:text-[28px] text-[#FAFAF8] text-center mb-10">
               ¿Para quién es cada plan?
             </h2>
           </FadeIn>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:items-stretch">
             <FadeIn delay={0} className="flex">
-              <div className="rounded-xl bg-th-input-bg border border-white/[0.1] p-6 flex flex-col w-full">
+              <div className="rounded-xl bg-white/[0.04] border border-white/[0.1] p-6 flex flex-col w-full">
                 <p className="font-mono text-xs font-bold text-white/50 uppercase tracking-wide mb-2">Gratis</p>
                 <p className="font-body text-[15px] text-white/60 leading-relaxed">
                   Estás empezando a evaluar inversiones y quieres entender los números antes de hablar con cualquier corredor.
@@ -263,8 +261,8 @@ export default function PricingPage() {
               </div>
             </FadeIn>
             <FadeIn delay={160} className="flex">
-              <div className="rounded-xl bg-th-input-bg border border-white/[0.1] p-6 flex flex-col w-full">
-                <p className="font-mono text-xs font-bold text-th-text uppercase tracking-wide mb-2">Suscripción</p>
+              <div className="rounded-xl bg-white/[0.04] border border-white/[0.1] p-6 flex flex-col w-full">
+                <p className="font-mono text-xs font-bold text-[#FAFAF8] uppercase tracking-wide mb-2">Suscripción</p>
                 <p className="font-body text-[15px] text-white/60 leading-relaxed">
                   Inviertes activamente y necesitas una herramienta profesional para evaluar múltiples propiedades.
                 </p>
@@ -278,10 +276,10 @@ export default function PricingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-th-border bg-black/20 py-16 px-6">
+      <section className="border-t border-white/[0.06] bg-black/20 py-16 px-6">
         <div className="max-w-[600px] mx-auto">
           <FadeIn>
-            <h2 className="font-heading font-bold text-2xl md:text-[28px] text-th-text text-center mb-10">
+            <h2 className="font-heading font-bold text-2xl md:text-[28px] text-[#FAFAF8] text-center mb-10">
               Preguntas frecuentes
             </h2>
           </FadeIn>
@@ -305,7 +303,7 @@ export default function PricingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-th-border bg-th-page py-9 px-6">
+      <footer className="border-t border-white/[0.06] bg-[#0F0F0F] py-9 px-6">
         <div className="max-w-[780px] mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start gap-8">
             <div>

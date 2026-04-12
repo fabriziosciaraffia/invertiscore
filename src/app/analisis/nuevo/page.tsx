@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
-import { ForceDark } from "@/components/force-dark";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
@@ -90,7 +89,7 @@ function SectionCard({
     prevForce.current = forceOpen;
   }, [forceOpen]);
   return (
-    <div className="rounded-xl border border-th-border-strong bg-th-card mb-3 overflow-hidden">
+    <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] mb-3 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -113,7 +112,7 @@ function SectionCard({
 function FieldLabel({ htmlFor, children, tip }: { htmlFor?: string; children: React.ReactNode; tip?: string }) {
   return (
     <div className="mb-1 flex items-center gap-1">
-      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-th-text">{children}</label>
+      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[#FAFAF8]">{children}</label>
       {tip && <InfoTooltip content={tip} />}
     </div>
   );
@@ -202,7 +201,7 @@ function MoneyInput({
         placeholder={placeholder}
         required={required}
         min={min}
-        className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-th-input-bg py-2 pl-10 pr-14 font-body text-[13px] text-th-text placeholder:text-white/30 transition-colors focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-white/[0.04] py-2 pl-10 pr-14 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 transition-colors focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         style={{ fontSize: "13px" }}
       />
       {onCurrencyToggle && (
@@ -1078,13 +1077,12 @@ export default function NuevoAnalisisPage() {
   };
 
   // ─── Shared input class ────────────────────────────
-  const inputClass = "flex h-9 w-full rounded-lg border border-white/[0.1] bg-th-input-bg px-3 py-2 font-body text-[13px] text-th-text placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  const inputClass = "flex h-9 w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   return (
-    <div className="min-h-screen bg-th-page">
-      <ForceDark />
-      {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-th-border-strong bg-th-page/95 backdrop-blur-md">
+    <div className="min-h-screen bg-[#0F0F0F]">
+{/* Nav */}
+      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
           <Link href="/dashboard" className="font-body text-sm text-white/50 hover:text-white/80 transition-colors">
@@ -1097,10 +1095,10 @@ export default function NuevoAnalisisPage() {
         {/* Guest blocked — already used their free analysis */}
         {guestBlocked && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-full bg-th-input-bg flex items-center justify-center mb-4">
+            <div className="w-14 h-14 rounded-full bg-white/[0.04] flex items-center justify-center mb-4">
               <CheckCircle2 className="h-7 w-7 text-[#B0BEC5]" />
             </div>
-            <h2 className="font-heading font-bold text-xl text-th-text">Ya hiciste tu primer análisis gratis</h2>
+            <h2 className="font-heading font-bold text-xl text-[#FAFAF8]">Ya hiciste tu primer análisis gratis</h2>
             <p className="font-body text-base text-[#71717A] mt-2 max-w-[360px]">
               Crea tu cuenta para análisis ilimitados — gratis, sin tarjeta.
             </p>
@@ -1123,7 +1121,7 @@ export default function NuevoAnalisisPage() {
 
         {!guestBlocked && (<>
         <div className="mb-5">
-          <h1 className="font-heading font-bold text-2xl text-th-text">Nuevo Análisis</h1>
+          <h1 className="font-heading font-bold text-2xl text-[#FAFAF8]">Nuevo Análisis</h1>
           <p className="font-body text-[13px] text-[#71717A] mt-1">
             Los números que tu corredor no te va a mostrar. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
           </p>
@@ -1148,7 +1146,7 @@ export default function NuevoAnalisisPage() {
         )}
 
         {/* Link paste / file upload section — compact */}
-        <div className="mb-3 rounded-xl border border-th-border-strong bg-th-card px-4 py-3 space-y-2.5">
+        <div className="mb-3 rounded-xl border border-white/[0.08] bg-[#1A1A1A] px-4 py-3 space-y-2.5">
           <p className="font-body text-[11px] text-[#71717A]">¿Tienes el link o cotización? Pégalo y Franco extrae los datos.</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
@@ -1156,7 +1154,7 @@ export default function NuevoAnalisisPage() {
               placeholder="Pega aquí el link de la publicación"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex-1 border border-white/[0.1] rounded-lg bg-th-input-bg px-3 py-2.5 font-body text-xs text-th-text placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+              className="flex-1 border border-white/[0.1] rounded-lg bg-white/[0.04] px-3 py-2.5 font-body text-xs text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
             />
             <button
               type="button"
@@ -1229,7 +1227,7 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 1: ¿Qué depto estás evaluando?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-th-border-strong bg-th-card p-5 space-y-4">
+        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-5 space-y-4">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Qué depto estás evaluando?</div>
 
           {/* Nombre del análisis */}
@@ -1273,14 +1271,14 @@ export default function NuevoAnalisisPage() {
                 >✕</button>
               )}
               {comunaOpen && !form.comuna && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-white/[0.1] bg-th-surface shadow-lg">
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-white/[0.1] bg-[#1A1A1A] shadow-lg">
                   {filteredComunas.length === 0 ? (
                     <div className="p-3 text-sm text-white/50">No encontrada</div>
                   ) : (
                     filteredComunas.map((c) => (
                       <button
                         key={c.comuna} type="button"
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-th-text hover:bg-white/[0.08]"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#FAFAF8] hover:bg-white/[0.08]"
                         onClick={() => {
                           setField("comuna", c.comuna);
                           setComunaSearch("");
@@ -1306,7 +1304,7 @@ export default function NuevoAnalisisPage() {
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "usado"
                       ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                      : "bg-th-input-bg border-white/[0.1] text-white/50 hover:border-white/25"
+                      : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:border-white/25"
                   }`}
                 >Usado</button>
                 <button
@@ -1315,7 +1313,7 @@ export default function NuevoAnalisisPage() {
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "nuevo"
                       ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                      : "bg-th-input-bg border-white/[0.1] text-white/50 hover:border-white/25"
+                      : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:border-white/25"
                   }`}
                 >Nuevo</button>
               </div>
@@ -1375,9 +1373,9 @@ export default function NuevoAnalisisPage() {
                     {/* Indicador de datos + slider de radio */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-lg font-bold text-th-text">{totalComparables}</span>
+                        <span className="font-mono text-lg font-bold text-[#FAFAF8]">{totalComparables}</span>
                         <div>
-                          <div className="font-body text-[13px] font-semibold text-th-text">comparables en {radius}m</div>
+                          <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">comparables en {radius}m</div>
                           <div className="font-body text-[11px] text-[#71717A]">
                             {arriendosCount} arriendos · {ventasCount} {condicionLabel}{dormLabel}
                           </div>
@@ -1385,7 +1383,7 @@ export default function NuevoAnalisisPage() {
                       </div>
                       <div className={`shrink-0 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wide ${
                         minCount >= 20 ? 'bg-[#B0BEC5]/10 text-[#B0BEC5]' :
-                        minCount >= 10 ? 'bg-[#FAFAF8]/10 text-th-text' :
+                        minCount >= 10 ? 'bg-[#FAFAF8]/10 text-[#FAFAF8]' :
                         minCount >= 5 ? 'bg-[#C8323C]/10 text-[#C8323C]' :
                         'bg-[#71717A]/10 text-[#71717A]'
                       }`}>
@@ -1418,7 +1416,7 @@ export default function NuevoAnalisisPage() {
                     <span className="font-body text-[12px] text-[#71717A]">Radio</span>
                     <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado." />
                   </div>
-                  <span className="font-mono text-[12px] font-semibold text-th-text">{radius}m</span>
+                  <span className="font-mono text-[12px] font-semibold text-[#FAFAF8]">{radius}m</span>
                 </div>
                 <input
                   type="range" min={300} max={2000} step={100}
@@ -1529,13 +1527,13 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.antiguedad}
                     onChange={(e) => setField("antiguedad", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-th-input-bg px-3 py-2.5 font-body text-[13px] text-th-text focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
-                    <option value="0-2" className="bg-th-surface text-th-text">0-2 años (nuevo)</option>
-                    <option value="3-5" className="bg-th-surface text-th-text">3-5 años</option>
-                    <option value="6-10" className="bg-th-surface text-th-text">6-10 años</option>
-                    <option value="11-20" className="bg-th-surface text-th-text">11-20 años</option>
-                    <option value="20+" className="bg-th-surface text-th-text">20+ años</option>
+                    <option value="0-2" className="bg-[#1A1A1A] text-[#FAFAF8]">0-2 años (nuevo)</option>
+                    <option value="3-5" className="bg-[#1A1A1A] text-[#FAFAF8]">3-5 años</option>
+                    <option value="6-10" className="bg-[#1A1A1A] text-[#FAFAF8]">6-10 años</option>
+                    <option value="11-20" className="bg-[#1A1A1A] text-[#FAFAF8]">11-20 años</option>
+                    <option value="20+" className="bg-[#1A1A1A] text-[#FAFAF8]">20+ años</option>
                   </select>
                   <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
                 </div>
@@ -1547,14 +1545,14 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 2: ¿Cuánto cuesta y genera?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-th-border-strong bg-th-card p-5 space-y-4 mt-3">
+        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-5 space-y-4 mt-3">
           <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Cuánto cuesta y genera?</div>
 
           {/* Valor de mercado estimado */}
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-th-text">Valor de mercado ({fieldCurrency.valorMercado === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Valor de mercado ({fieldCurrency.valorMercado === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content="Precio al que se venden deptos similares en la zona. Se pre-rellena con datos del mercado. Si crees que vale más o menos, ajústalo." />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.valorMercado && (
@@ -1586,7 +1584,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-th-text">Precio de compra ({fieldCurrency.precio === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Precio de compra ({fieldCurrency.precio === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.precio} />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
@@ -1681,11 +1679,11 @@ export default function NuevoAnalisisPage() {
                     <select
                       value={form.fechaEntregaMes}
                       onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
-                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-th-input-bg px-3 py-2.5 font-body text-[13px] text-th-text focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                     >
-                      <option value="" className="bg-th-surface text-th-text">Mes...</option>
+                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Mes...</option>
                       {Array.from({ length: 12 }, (_, i) => (
-                        <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-th-surface text-th-text">
+                        <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[#1A1A1A] text-[#FAFAF8]">
                           {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
                         </option>
                       ))}
@@ -1697,11 +1695,11 @@ export default function NuevoAnalisisPage() {
                     <select
                       value={form.fechaEntregaAnio}
                       onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
-                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-th-input-bg px-3 py-2.5 font-body text-[13px] text-th-text focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                     >
-                      <option value="" className="bg-th-surface text-th-text">Año...</option>
+                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Año...</option>
                       {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
-                        <option key={y} value={String(y)} className="bg-th-surface text-th-text">{y}</option>
+                        <option key={y} value={String(y)} className="bg-[#1A1A1A] text-[#FAFAF8]">{y}</option>
                       ))}
                     </select>
                     <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
@@ -1773,7 +1771,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-th-text">Arriendo mensual ({fieldCurrency.arriendo === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Arriendo mensual ({fieldCurrency.arriendo === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.arriendo} />
               </div>
               {suggestions?.arriendo && !form.arriendo && (
@@ -1858,7 +1856,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-th-text">Gastos comunes ({fieldCurrency.gastos === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Gastos comunes ({fieldCurrency.gastos === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.gastos} />
               </div>
               {suggestions?.gastos && !form.gastos && (
@@ -1892,7 +1890,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-th-text">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
               {(suggestions?.contribuciones ?? 0) > 0 && !form.contribuciones && (
@@ -2042,7 +2040,7 @@ export default function NuevoAnalisisPage() {
                       className="rounded-lg p-3"
                       style={{ background: "rgba(200,50,60,0.06)", border: "1px solid rgba(200,50,60,0.2)" }}
                     >
-                      <p className="text-[13px] font-semibold text-th-text">🏛️ Tu depto podría calificar al Subsidio a la Tasa</p>
+                      <p className="text-[13px] font-semibold text-[#FAFAF8]">🏛️ Tu depto podría calificar al Subsidio a la Tasa</p>
                       <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(250,250,248,0.5)" }}>
                         La Ley 21.748 rebaja la tasa hipotecaria en ~0,6% para viviendas nuevas ≤ 4.000 UF.
                       </p>
@@ -2053,7 +2051,7 @@ export default function NuevoAnalisisPage() {
                         <button
                           type="button"
                           onClick={() => { setField("tasaInteres", String(tasaConSubsidio)); tasaModificadaRef.current = true; }}
-                          className="text-xs font-medium text-th-text underline underline-offset-2 hover:text-th-text"
+                          className="text-xs font-medium text-[#FAFAF8] underline underline-offset-2 hover:text-[#FAFAF8]"
                         >
                           Usar {tasaConSubsidio.toFixed(1).replace(".", ",")}%
                         </button>
@@ -2061,7 +2059,7 @@ export default function NuevoAnalisisPage() {
                       </div>
                       <p className="mt-1.5 text-[11px]" style={{ color: "rgba(250,250,248,0.3)" }}>
                         Requisitos: primera vivienda, promesa desde 2025.{" "}
-                        <a href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/" target="_blank" rel="noopener noreferrer" className="underline hover:text-th-text-secondary">
+                        <a href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50">
                           Más info
                         </a>
                       </p>
@@ -2072,10 +2070,10 @@ export default function NuevoAnalisisPage() {
             </div>
 
             {calc.dividendo > 0 && (
-              <div className="rounded-lg border border-th-border-strong bg-th-input-bg p-3">
+              <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-body text-[13px] font-medium text-th-text">Dividendo estimado</span>
-                  <span className="font-mono text-[15px] font-bold text-th-text">{fmtCLP(calc.dividendo)}/mes</span>
+                  <span className="font-body text-[13px] font-medium text-[#FAFAF8]">Dividendo estimado</span>
+                  <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmtCLP(calc.dividendo)}/mes</span>
                 </div>
               </div>
             )}

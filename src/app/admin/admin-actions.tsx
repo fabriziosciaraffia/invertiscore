@@ -62,8 +62,8 @@ export function AdminActions() {
     if (state.status === "ok") return `${base} border-[#16A34A] text-[#16A34A] bg-[#16A34A]/5`;
     if (state.status === "error") return `${base} border-[#C8323C] text-[#C8323C] bg-[#C8323C]/5`;
     if (state.status === "running")
-      return `${base} border-th-border-strong text-th-text-secondary cursor-wait`;
-    return `${base} border-th-border-strong text-th-text hover:border-[#C8323C]`;
+      return `${base} border-white/[0.08] text-white/50 cursor-wait`;
+    return `${base} border-white/[0.08] text-[#FAFAF8] hover:border-[#C8323C]`;
   }
 
   return (

@@ -180,12 +180,12 @@ export default function LandingPage() {
               {/* Stats bar */}
               <FadeIn delay={300}>
                 <p className="font-body text-xs text-white/30 mt-9 mb-3 uppercase tracking-wide">Con las condiciones actuales del mercado</p>
-                <div className="grid grid-cols-3 border-t border-th-border-strong pt-5 gap-4">
-                  <div className="md:border-r md:border-th-border-strong md:pr-5">
+                <div className="grid grid-cols-3 border-t border-white/[0.08] pt-5 gap-4">
+                  <div className="md:border-r md:border-white/[0.08] md:pr-5">
                     <p className="font-mono text-2xl md:text-3xl font-bold text-[#C8323C]">95%</p>
                     <p className="font-body text-xs md:text-sm text-white/50 mt-1">de los deptos en Santiago tienen flujo negativo</p>
                   </div>
-                  <div className="md:border-r md:border-th-border-strong md:px-5">
+                  <div className="md:border-r md:border-white/[0.08] md:px-5">
                     <p className="font-mono text-2xl md:text-3xl font-bold text-[#C8323C]">-$200K</p>
                     <p className="font-body text-xs md:text-sm text-white/50 mt-1">flujo mensual promedio en Santiago</p>
                   </div>
@@ -206,7 +206,7 @@ export default function LandingPage() {
 
                 {/* ── Card izquierda: Patrimonio ── */}
                 <div
-                  className="absolute top-4 -left-2 w-[220px] rounded-[14px] border border-th-border-strong p-4"
+                  className="absolute top-4 -left-2 w-[220px] rounded-[14px] border border-white/[0.08] p-4"
                   style={{ background: "#141414", opacity: 0.6, transform: "rotateY(7deg) translateZ(-50px)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
                 >
                   <p className="font-heading text-[9px] text-white/50 font-semibold mb-3">Proyección patrimonio — 10 años</p>
@@ -235,8 +235,8 @@ export default function LandingPage() {
                   {/* Score + info */}
                   <div className="flex items-start gap-3.5 mb-4">
                     <div className="shrink-0 w-[72px]">
-                      <p className="font-mono text-[6px] text-th-text/35 uppercase tracking-[1.5px]">FRANCO SCORE</p>
-                      <p className="font-mono text-[32px] font-bold text-th-text leading-none">61</p>
+                      <p className="font-mono text-[6px] text-[#FAFAF8]/35 uppercase tracking-[1.5px]">FRANCO SCORE</p>
+                      <p className="font-mono text-[32px] font-bold text-[#FAFAF8] leading-none">61</p>
                       <div className="relative mt-1 h-[4px] rounded-full overflow-hidden flex">
                         <div className="w-[40%] bg-[#C8323C]/15" />
                         <div className="w-[30%] bg-white/[0.06]" />
@@ -257,10 +257,10 @@ export default function LandingPage() {
                   <div className="flex gap-2 mb-3.5">
                     {[
                       { label: "FLUJO", value: "-$382K", color: "text-[#C8323C]" },
-                      { label: "RENT.", value: "5.1%", color: "text-th-text" },
-                      { label: "RETORNO", value: "3.98x", color: "text-th-text" },
+                      { label: "RENT.", value: "5.1%", color: "text-[#FAFAF8]" },
+                      { label: "RETORNO", value: "3.98x", color: "text-[#FAFAF8]" },
                     ].map((m) => (
-                      <div key={m.label} className="flex-1 bg-th-input-bg rounded-lg p-2 text-center">
+                      <div key={m.label} className="flex-1 bg-white/[0.04] rounded-lg p-2 text-center">
                         <p className="font-body text-[7px] text-white/30 uppercase tracking-wider">{m.label}</p>
                         <p className={`font-mono text-[13px] font-bold ${m.color}`}>{m.value}</p>
                       </div>
@@ -284,7 +284,7 @@ export default function LandingPage() {
                       { label: "Efic.", v: 34 },
                     ].map((d) => (
                       <div key={d.label} className="flex-1 text-center">
-                        <div className="h-[32px] bg-th-input-bg rounded-sm overflow-hidden flex flex-col justify-end">
+                        <div className="h-[32px] bg-white/[0.04] rounded-sm overflow-hidden flex flex-col justify-end">
                           <div
                             className="rounded-t-sm"
                             style={{ height: `${d.v * 0.32}px`, background: d.v < 40 ? "#C8323C" : d.v < 70 ? "#FBBF24" : "#B0BEC5" }}
@@ -297,7 +297,7 @@ export default function LandingPage() {
                   </div>
 
                   {/* Desglose bolsillo */}
-                  <div className="border-t border-th-border pt-3">
+                  <div className="border-t border-white/[0.06] pt-3">
                     <p className="font-body text-[8px] text-white/30 uppercase tracking-wider mb-2">¿Cuánto sale de tu bolsillo?</p>
                     <div className="grid grid-cols-4 gap-1.5">
                       {[
@@ -306,7 +306,7 @@ export default function LandingPage() {
                         { label: "Gastos", value: "-$289K", neg: true },
                         { label: "Flujo", value: "-$257K", neg: true, highlight: true },
                       ].map((item) => (
-                        <div key={item.label} className={`rounded-md p-1.5 text-center ${item.highlight ? "bg-[#C8323C]/10 border border-[#C8323C]/20" : "bg-th-input-bg"}`}>
+                        <div key={item.label} className={`rounded-md p-1.5 text-center ${item.highlight ? "bg-[#C8323C]/10 border border-[#C8323C]/20" : "bg-white/[0.04]"}`}>
                           <p className="font-body text-[6px] text-white/30">{item.label}</p>
                           <p className={`font-mono text-[9px] font-bold ${item.neg ? "text-[#C8323C]" : "text-white/80"}`}>{item.value}</p>
                         </div>
@@ -317,7 +317,7 @@ export default function LandingPage() {
 
                 {/* ── Card derecha: IA + Escenarios ── */}
                 <div
-                  className="absolute top-8 right-[-30px] w-[210px] rounded-[14px] border border-th-border-strong p-4"
+                  className="absolute top-8 right-[-30px] w-[210px] rounded-[14px] border border-white/[0.08] p-4"
                   style={{ background: "#141414", opacity: 0.65, transform: "rotateY(-7deg) translateZ(-40px)", boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }}
                 >
                   <div className="flex items-center gap-1.5 mb-2">
@@ -327,12 +327,12 @@ export default function LandingPage() {
                   <p className="font-body text-[8px] text-white/50 leading-relaxed mb-3">
                     <span className="text-white/70 font-semibold">Siendo franco:</span> Excelente oportunidad. Negocia hasta UF 4.418 para mejorar el flujo...
                   </p>
-                  <div className="border-t border-th-border pt-2.5 mb-2">
+                  <div className="border-t border-white/[0.06] pt-2.5 mb-2">
                     <p className="font-body text-[7px] text-white/30 uppercase tracking-wider mb-2">3 escenarios</p>
                     <div className="space-y-1.5">
                       {[
                         { label: "Pesimista", flujo: "-$445K", ret: "1.6x", bg: "bg-[#C8323C]/8" },
-                        { label: "Base", flujo: "-$86K", ret: "4.5x", bg: "bg-th-input-bg" },
+                        { label: "Base", flujo: "-$86K", ret: "4.5x", bg: "bg-white/[0.04]" },
                         { label: "Optimista", flujo: "+$144K", ret: "7.3x", bg: "bg-[#B0BEC5]/8" },
                       ].map((s) => (
                         <div key={s.label} className={`flex justify-between items-center ${s.bg} rounded-md px-2 py-1`}>
@@ -352,7 +352,7 @@ export default function LandingPage() {
 
                 {/* ── Card inferior: Comparación zona ── */}
                 <div
-                  className="absolute bottom-0 left-[80px] w-[300px] rounded-[14px] border border-th-border-strong p-4"
+                  className="absolute bottom-0 left-[80px] w-[300px] rounded-[14px] border border-white/[0.08] p-4"
                   style={{ background: "#141414", opacity: 0.5, transform: "rotateX(5deg) translateZ(-25px)", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" }}
                 >
                   <p className="font-body text-[8px] text-white/40 uppercase tracking-wider mb-2.5">Comparación con la zona</p>
@@ -394,8 +394,8 @@ export default function LandingPage() {
                 {/* Score + info */}
                 <div className="flex items-start gap-3.5 mb-4">
                   <div className="shrink-0 w-[80px]">
-                    <p className="font-mono text-[6px] text-th-text/35 uppercase tracking-[1.5px]">FRANCO SCORE</p>
-                    <p className="font-mono text-[36px] font-bold text-th-text leading-none">61</p>
+                    <p className="font-mono text-[6px] text-[#FAFAF8]/35 uppercase tracking-[1.5px]">FRANCO SCORE</p>
+                    <p className="font-mono text-[36px] font-bold text-[#FAFAF8] leading-none">61</p>
                     <div className="relative mt-1 h-[4px] rounded-full overflow-hidden flex">
                       <div className="w-[40%] bg-[#C8323C]/15" />
                       <div className="w-[30%] bg-white/[0.06]" />
@@ -414,10 +414,10 @@ export default function LandingPage() {
                 <div className="flex gap-2 mb-4">
                   {[
                     { label: "FLUJO", value: "-$382K", color: "text-[#C8323C]" },
-                    { label: "RENT.", value: "5.1%", color: "text-th-text" },
-                    { label: "RETORNO", value: "3.98x", color: "text-th-text" },
+                    { label: "RENT.", value: "5.1%", color: "text-[#FAFAF8]" },
+                    { label: "RETORNO", value: "3.98x", color: "text-[#FAFAF8]" },
                   ].map((m) => (
-                    <div key={m.label} className="flex-1 bg-th-input-bg rounded-lg p-2.5 text-center">
+                    <div key={m.label} className="flex-1 bg-white/[0.04] rounded-lg p-2.5 text-center">
                       <p className="font-body text-[9px] text-white/30 uppercase tracking-wider">{m.label}</p>
                       <p className={`font-mono text-base font-bold ${m.color}`}>{m.value}</p>
                     </div>
@@ -441,7 +441,7 @@ export default function LandingPage() {
                     { label: "Efic.", v: 34 },
                   ].map((d) => (
                     <div key={d.label} className="flex-1 text-center">
-                      <div className="h-[36px] bg-th-input-bg rounded-sm overflow-hidden flex flex-col justify-end">
+                      <div className="h-[36px] bg-white/[0.04] rounded-sm overflow-hidden flex flex-col justify-end">
                         <div className="rounded-t-sm" style={{ height: `${d.v * 0.36}px`, background: d.v < 40 ? "#C8323C" : d.v < 70 ? "#FBBF24" : "#B0BEC5" }} />
                       </div>
                       <p className="font-body text-[7px] text-white/30 mt-1">{d.label}</p>
@@ -451,7 +451,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Desglose bolsillo */}
-                <div className="border-t border-th-border pt-3">
+                <div className="border-t border-white/[0.06] pt-3">
                   <p className="font-body text-[9px] text-white/30 uppercase tracking-wider mb-2">¿Cuánto sale de tu bolsillo?</p>
                   <div className="grid grid-cols-4 gap-1.5">
                     {[
@@ -460,7 +460,7 @@ export default function LandingPage() {
                       { label: "Gastos", value: "-$289K", neg: true },
                       { label: "Flujo", value: "-$257K", neg: true, highlight: true },
                     ].map((item) => (
-                      <div key={item.label} className={`rounded-md p-1.5 text-center ${item.highlight ? "bg-[#C8323C]/10 border border-[#C8323C]/20" : "bg-th-input-bg"}`}>
+                      <div key={item.label} className={`rounded-md p-1.5 text-center ${item.highlight ? "bg-[#C8323C]/10 border border-[#C8323C]/20" : "bg-white/[0.04]"}`}>
                         <p className="font-body text-[7px] text-white/30">{item.label}</p>
                         <p className={`font-mono text-[10px] font-bold ${item.neg ? "text-[#C8323C]" : "text-white/80"}`}>{item.value}</p>
                       </div>
@@ -470,7 +470,7 @@ export default function LandingPage() {
               </div>
 
               {/* IA + Scenarios card */}
-              <div className="rounded-[14px] border border-th-border-strong p-4 w-[92%] max-w-[400px]" style={{ background: "#141414", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}>
+              <div className="rounded-[14px] border border-white/[0.08] p-4 w-[92%] max-w-[400px]" style={{ background: "#141414", boxShadow: "0 12px 40px rgba(0,0,0,0.4)" }}>
                 <div className="flex items-center gap-1.5 mb-2">
                   <span className="font-mono text-[8px] font-bold text-[#C8323C] bg-[#C8323C]/15 px-1.5 py-0.5 rounded">IA</span>
                   <span className="font-body text-[10px] text-white/50 font-semibold">Análisis IA</span>
@@ -478,12 +478,12 @@ export default function LandingPage() {
                 <p className="font-body text-[10px] text-white/50 leading-relaxed mb-3">
                   <span className="text-white/70 font-semibold">Siendo franco:</span> Excelente oportunidad. Negocia hasta UF 4.418 para mejorar el flujo...
                 </p>
-                <div className="border-t border-th-border pt-2.5">
+                <div className="border-t border-white/[0.06] pt-2.5">
                   <p className="font-body text-[8px] text-white/30 uppercase tracking-wider mb-2">3 escenarios</p>
                   <div className="space-y-1.5">
                     {[
                       { label: "Pesimista", flujo: "-$445K", ret: "1.6x", bg: "bg-[#C8323C]/8" },
-                      { label: "Base", flujo: "-$86K", ret: "4.5x", bg: "bg-th-input-bg" },
+                      { label: "Base", flujo: "-$86K", ret: "4.5x", bg: "bg-white/[0.04]" },
                       { label: "Optimista", flujo: "+$144K", ret: "7.3x", bg: "bg-[#B0BEC5]/8" },
                     ].map((s) => (
                       <div key={s.label} className={`flex justify-between items-center ${s.bg} rounded-md px-3 py-1.5`}>
@@ -530,7 +530,7 @@ export default function LandingPage() {
             ].map((step, i) => (
               <FadeIn key={step.num} delay={i * 100} className="text-center">
                 <p className="text-[28px] mb-3">{step.emoji}</p>
-                <div className="w-8 h-8 rounded-full bg-th-page flex items-center justify-center mx-auto mb-2.5">
+                <div className="w-8 h-8 rounded-full bg-[#0F0F0F] flex items-center justify-center mx-auto mb-2.5">
                   <span className="font-mono text-sm font-bold text-white">{step.num}</span>
                 </div>
                 <p className="font-body text-lg font-semibold text-[#0F0F0F] mb-1.5">{step.title}</p>
@@ -543,7 +543,7 @@ export default function LandingPage() {
             <div className="text-center mt-8">
               <Link
                 href={ctaHref}
-                className="inline-block bg-th-page text-white font-body text-sm font-semibold px-7 py-3.5 rounded-lg hover:bg-[#2A2A2A] transition-colors min-h-[44px]"
+                className="inline-block bg-[#0F0F0F] text-white font-body text-sm font-semibold px-7 py-3.5 rounded-lg hover:bg-[#2A2A2A] transition-colors min-h-[44px]"
               >
                 Probar con un depto real →
               </Link>
@@ -645,7 +645,7 @@ export default function LandingPage() {
           <FadeIn delay={100}>
             <div className="flex flex-col md:flex-row gap-4 md:gap-5 mt-9 mb-8">
               {/* Card corredor */}
-              <div className="flex-1 bg-th-input-bg border border-th-border-strong rounded-xl p-6 md:p-8">
+              <div className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl p-6 md:p-8">
                 <p className="font-mono text-[10px] text-white/60 uppercase tracking-[0.1em] mb-3">TU CORREDOR TE MUESTRA</p>
                 <p className="font-heading font-bold text-3xl md:text-5xl text-white/70">5.2%</p>
                 <p className="font-body text-sm text-white/50 mt-1">Rentabilidad bruta</p>
@@ -653,7 +653,7 @@ export default function LandingPage() {
               </div>
 
               {/* Card Franco */}
-              <div className="flex-1 relative bg-th-input-bg border-2 border-[#C8323C] rounded-xl p-6 md:p-8" style={{ boxShadow: "0 0 30px rgba(200,50,60,0.06)" }}>
+              <div className="flex-1 relative bg-white/[0.04] border-2 border-[#C8323C] rounded-xl p-6 md:p-8" style={{ boxShadow: "0 0 30px rgba(200,50,60,0.06)" }}>
                 <span className="absolute top-[-10px] right-3.5 bg-[#C8323C] text-white font-mono text-[9px] font-bold px-2.5 py-1 rounded">
                   LA VERDAD
                 </span>
@@ -689,7 +689,7 @@ export default function LandingPage() {
               },
             ].map((card, i) => (
               <FadeIn key={i} delay={250 + i * 80}>
-                <div className="bg-th-input-bg border border-th-border rounded-[10px] p-4 md:p-5">
+                <div className="bg-white/[0.04] border border-white/[0.06] rounded-[10px] p-4 md:p-5">
                   <p className="font-body text-base font-bold text-white mb-2">{card.title}</p>
                   <p className="font-body text-sm text-white/50 leading-relaxed">{card.text}</p>
                 </div>
@@ -778,7 +778,7 @@ export default function LandingPage() {
                 <p className="font-body text-sm text-[#71717A] mt-1 mb-4">Score + métricas + comparación zona</p>
                 <Link
                   href={ctaHref}
-                  className="block w-full bg-th-page text-white font-body text-sm font-semibold py-3 rounded-lg text-center hover:bg-[#2A2A2A] transition-colors min-h-[44px] mt-auto"
+                  className="block w-full bg-[#0F0F0F] text-white font-body text-sm font-semibold py-3 rounded-lg text-center hover:bg-[#2A2A2A] transition-colors min-h-[44px] mt-auto"
                 >
                   Empezar gratis →
                 </Link>
@@ -808,7 +808,7 @@ export default function LandingPage() {
             {/* Suscripción */}
             <FadeIn delay={160}>
               <div className="relative rounded-xl border border-[#E6E6E2] bg-white p-5 h-full flex flex-col">
-                <span className="absolute top-[-10px] left-1/2 -translate-x-1/2 bg-th-page text-white font-mono text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                <span className="absolute top-[-10px] left-1/2 -translate-x-1/2 bg-[#0F0F0F] text-white font-mono text-[8px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                   Mejor valor
                 </span>
                 <p className="font-body text-sm font-bold text-[#0F0F0F]">Suscripción</p>
@@ -816,7 +816,7 @@ export default function LandingPage() {
                 <p className="font-body text-sm text-[#71717A] mt-1 mb-4">Todo ilimitado + monitoreo + alertas</p>
                 <Link
                   href="/pricing"
-                  className="block w-full border-2 border-[#0F0F0F] text-[#0F0F0F] font-body text-sm font-bold py-3 rounded-lg text-center hover:bg-th-page hover:text-white transition-colors min-h-[44px] mt-auto"
+                  className="block w-full border-2 border-[#0F0F0F] text-[#0F0F0F] font-body text-sm font-bold py-3 rounded-lg text-center hover:bg-[#0F0F0F] hover:text-white transition-colors min-h-[44px] mt-auto"
                 >
                   Ver qué incluye →
                 </Link>
@@ -875,7 +875,7 @@ export default function LandingPage() {
       {/* ============================================================ */}
       {/* FOOTER */}
       {/* ============================================================ */}
-      <footer className="bg-th-page py-9 px-6">
+      <footer className="bg-[#0F0F0F] py-9 px-6">
         <div className="max-w-[780px] mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-start gap-8">
             {/* Left */}

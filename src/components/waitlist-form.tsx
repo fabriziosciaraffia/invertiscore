@@ -46,7 +46,7 @@ export default function WaitlistForm() {
         value={email}
         onChange={(e) => { setEmail(e.target.value); if (state === "error") setState("idle"); }}
         required
-        className="flex-1 rounded-lg border bg-transparent px-4 py-3 font-body text-sm text-th-text placeholder:text-th-text-muted focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
+        className="flex-1 rounded-lg border bg-transparent px-4 py-3 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
         style={{ borderColor: state === "error" ? "#C8323C" : "rgba(250,250,248,0.1)" }}
       />
       <button

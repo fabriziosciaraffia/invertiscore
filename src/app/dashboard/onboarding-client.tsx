@@ -119,11 +119,11 @@ export function OnboardingClient() {
   const currentPlan = PLANS.find((p) => p.key === selected);
 
   return (
-    <div className="min-h-screen bg-th-page text-th-text">
+    <div className="min-h-screen bg-[#0F0F0F] text-[#FAFAF8]">
       <div className="mx-auto max-w-[820px] px-5 py-12 sm:py-16">
         {/* Header */}
         <div className="text-center">
-          <p className="font-body text-[13px] uppercase text-th-text-secondary" style={{ letterSpacing: "0.05em" }}>
+          <p className="font-body text-[13px] uppercase text-white/50" style={{ letterSpacing: "0.05em" }}>
             BIENVENIDO A
           </p>
           <div className="mt-3 flex items-baseline justify-center" style={{ fontSize: "28px" }}>
@@ -143,7 +143,7 @@ export function OnboardingClient() {
               .ai
             </span>
           </div>
-          <p className="mx-auto mt-5 max-w-[480px] font-body text-[15px] leading-[1.5] text-th-text">
+          <p className="mx-auto mt-5 max-w-[480px] font-body text-[15px] leading-[1.5] text-[#FAFAF8]">
             Analiza cualquier departamento en Santiago y descubre si es buena inversión — con datos reales, no intuición.
           </p>
         </div>
@@ -172,8 +172,8 @@ export function OnboardingClient() {
                 </span>
               </div>
               <div className="min-w-0">
-                <div className="font-body text-[14px] font-medium text-th-text">{step.title}</div>
-                <div className="font-body text-[12px] text-th-text-secondary">{step.sub}</div>
+                <div className="font-body text-[14px] font-medium text-[#FAFAF8]">{step.title}</div>
+                <div className="font-body text-[12px] text-white/50">{step.sub}</div>
               </div>
             </div>
           ))}
@@ -223,7 +223,7 @@ export function OnboardingClient() {
         <div className="mt-10" style={{ borderTop: "0.5px solid rgba(250,250,248,0.08)" }} />
 
         {/* Pricing */}
-        <p className="mt-8 text-center font-body text-[13px] text-th-text-secondary">
+        <p className="mt-8 text-center font-body text-[13px] text-white/50">
           Elige cómo analizar
         </p>
 
@@ -258,7 +258,7 @@ export function OnboardingClient() {
               >
                 {isPro && (
                   <span
-                    className="absolute font-mono font-semibold text-th-text"
+                    className="absolute font-mono font-semibold text-[#FAFAF8]"
                     style={{
                       top: -8,
                       left: "50%",
@@ -279,7 +279,7 @@ export function OnboardingClient() {
                   {plan.label}
                 </div>
                 <div
-                  className="font-heading font-bold text-th-text"
+                  className="font-heading font-bold text-[#FAFAF8]"
                   style={{ fontSize: 20, marginTop: 4 }}
                 >
                   {plan.price}
@@ -321,7 +321,7 @@ export function OnboardingClient() {
                 type="button"
                 onClick={handlePrimaryCta}
                 disabled={loading}
-                className="font-body text-th-text disabled:opacity-60"
+                className="font-body text-[#FAFAF8] disabled:opacity-60"
                 style={{
                   background: "#C8323C",
                   borderRadius: 8,
@@ -341,7 +341,7 @@ export function OnboardingClient() {
             type="button"
             onClick={handleSecondary}
             disabled={secondaryLoading}
-            className="font-body text-th-text-secondary hover:text-th-text disabled:opacity-60"
+            className="font-body text-white/50 hover:text-[#FAFAF8] disabled:opacity-60"
             style={{ fontSize: 13 }}
           >
             {secondaryLoading ? "Cargando..." : "Ver todos los planes en detalle →"}
