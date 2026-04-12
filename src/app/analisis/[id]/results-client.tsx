@@ -680,7 +680,7 @@ function AIAnalysisSection({
           {/* Accent bar */}
           <div className="h-[3px] bg-[#C8323C]" />
           {/* Header */}
-          <div className="px-6 md:px-8 pt-6 pb-5" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.08) 0%, rgba(200,50,60,0.02) 40%, transparent 70%)" }}>
+          <div className="px-6 md:px-8 pt-6 pb-5" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.08) 50%, transparent 80%)" }}>
             <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
             <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
             <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
@@ -705,7 +705,7 @@ function AIAnalysisSection({
         {/* Accent bar */}
         <div className="h-[3px] bg-[#C8323C]" />
         {/* Header */}
-        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.08) 0%, rgba(200,50,60,0.02) 40%, transparent 70%)" }}>
+        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.08) 50%, transparent 80%)" }}>
           <div>
             <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
             <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
@@ -774,14 +774,14 @@ function AIAnalysisSection({
                 const vcBg = aiAnalysis.veredicto.decision === "COMPRAR" ? "var(--franco-v-buy-bg)"
                   : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "var(--franco-v-adjust-bg)"
                   : "var(--franco-v-avoid-bg)";
-                const glowColor = aiAnalysis.veredicto.decision === "COMPRAR" ? "rgba(176,190,197,0.10)"
-                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "rgba(251,191,36,0.08)"
-                  : "rgba(200,50,60,0.08)";
+                const glowColor = aiAnalysis.veredicto.decision === "COMPRAR" ? "rgba(176,190,197,0.20)"
+                  : aiAnalysis.veredicto.decision === "AJUSTA EL PRECIO" || aiAnalysis.veredicto.decision === ("NEGOCIAR" as string) ? "rgba(251,191,36,0.18)"
+                  : "rgba(200,50,60,0.18)";
                 return (
                   <div className="mt-6 pt-6 border-t border-[var(--franco-border)] animate-fadeIn">
                     <div
                       className="relative overflow-hidden rounded-xl text-center bg-[var(--franco-card)]"
-                      style={{ border: `1px solid ${vcBg}`, padding: "40px 24px", backgroundImage: `radial-gradient(ellipse at center, ${glowColor} 0%, transparent 65%)` }}
+                      style={{ border: `1px solid ${vcBg}`, padding: "40px 24px", backgroundImage: `radial-gradient(ellipse at center, ${glowColor} 0%, transparent 70%)` }}
                     >
                       <div className="relative">
                         <div className="flex items-baseline justify-center gap-2 mb-4">
