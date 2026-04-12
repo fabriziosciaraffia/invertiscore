@@ -195,6 +195,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
 
   function handleUnlock() {
     if (!analysisId) return;
+    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -997,6 +998,7 @@ function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; u
   }
 
   function handleUnlock() {
+    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -1045,6 +1047,7 @@ function BottomPaywallCTA({ analysisId, userCredits = 0 }: { analysisId: string;
   }
 
   function handleUnlock() {
+    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -1341,7 +1344,7 @@ export function PremiumResults({
 
   // PostHog: track analysis view
   useEffect(() => {
-    try { import('posthog-js').then(m => m.default.capture('analysis_viewed', { score, veredicto: results?.veredicto, view_level: viewLevel, access_level: accessLevel })); } catch {}
+    try { import('posthog-js').then(m => m.default.capture('analysis_viewed', { analysis_id: analysisId, comuna, score, veredicto: results?.veredicto, is_owner: !isSharedView && !isSharedLink, is_shared_view: isSharedView || isSharedLink, access_level: accessLevel })); } catch {}
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1371,6 +1374,7 @@ export function PremiumResults({
       const resData = await res.json().catch(() => null);
       if (res.ok) {
         setRecalcSuccess(true);
+        try { import('posthog-js').then(m => m.default.capture('recalculate_used', { analysis_id: analysisId, comuna })); } catch {}
         setTimeout(() => window.location.reload(), 500);
       } else {
         alert(resData?.error || "Error al recalcular");
@@ -3658,7 +3662,7 @@ export function PremiumResults({
           <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
             Desbloquea arriendo, vacancia y más variables con la suscripción mensual
           </p>
-          <a href="/pricing" className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+          <a href="/pricing" onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {} }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
             Ver planes →
           </a>
         </div>
@@ -3682,7 +3686,7 @@ export function PremiumResults({
         <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
           Las proyecciones dinámicas (plusvalía, crecimiento) están disponibles con la suscripción mensual
         </p>
-        <a href="/pricing" className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+        <a href="/pricing" onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {} }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
           Ver planes →
         </a>
       </div>

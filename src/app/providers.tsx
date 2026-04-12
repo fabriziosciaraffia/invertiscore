@@ -2,6 +2,7 @@
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
 import { useEffect } from 'react'
+import { useUTMCapture } from '@/hooks/useUTMCapture'
 
 export function PHProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -13,6 +14,8 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
       })
     }
   }, [])
+
+  useUTMCapture();
 
   return <PostHogProvider client={posthog}>{children}</PostHogProvider>
 }

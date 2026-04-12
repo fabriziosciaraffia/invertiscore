@@ -186,6 +186,7 @@ export default function PricingPage() {
 
               <Link
                 href="/checkout?product=pro"
+                onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'pricing' })); } catch {} }}
                 className="block w-full text-center font-body text-sm font-bold py-3.5 rounded-lg mt-6 bg-[#C8323C] text-white hover:bg-[#b02a33] transition-colors min-h-[44px]"
                 style={{ boxShadow: "0 4px 16px rgba(200,50,60,0.3)" }}
               >
@@ -222,6 +223,7 @@ export default function PricingPage() {
 
               <Link
                 href="/checkout?product=subscription"
+                onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'pricing' })); } catch {} }}
                 className="block w-full text-center font-body text-sm font-bold py-3 rounded-lg mt-6 border-2 border-[#C8323C] text-[#C8323C] hover:bg-[#C8323C] hover:text-white transition-colors min-h-[44px]"
               >
                 Suscribirme →

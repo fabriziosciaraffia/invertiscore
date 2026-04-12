@@ -37,7 +37,7 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
   const url = typeof window !== "undefined" ? `${window.location.origin}/analisis/${id}` : "";
 
   const handleClick = async () => {
-    try { const ph = (await import('posthog-js')).default; ph.capture('share_clicked', { method: 'native_or_dropdown' }); } catch {}
+    try { const ph = (await import('posthog-js')).default; ph.capture('analysis_shared', { analysis_id: id, comuna, score }); } catch {}
     // Mobile: use native share
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
