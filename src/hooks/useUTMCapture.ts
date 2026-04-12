@@ -1,13 +1,15 @@
 'use client';
 import { useEffect } from 'react';
-import posthog from 'posthog-js';
+import { usePostHog } from 'posthog-js/react';
 
 const UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'] as const;
 const LS_KEY = 'franco_utm';
 
 export function useUTMCapture() {
+  const posthog = usePostHog();
+
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !posthog) return;
 
     const params = new URLSearchParams(window.location.search);
     const utmParams: Record<string, string> = {};
@@ -28,5 +30,5 @@ export function useUTMCapture() {
         } catch { /* ignore corrupt data */ }
       }
     }
-  }, []);
+  }, [posthog]);
 }

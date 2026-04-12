@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import { ForceDark } from "@/components/force-dark";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -226,6 +227,7 @@ const GUEST_LS_KEY = "franco_guest_analysis";
 
 export default function NuevoAnalisisPage() {
   const router = useRouter();
+  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
@@ -1067,7 +1069,7 @@ export default function NuevoAnalisisPage() {
       if (!isLoggedIn) {
         localStorage.setItem(GUEST_LS_KEY, JSON.stringify({ id: data.id, timestamp: Date.now() }));
       }
-      try { const ph = (await import('posthog-js')).default; ph.capture('analysis_created', { comuna: form.comuna, tipo: form.tipoPropiedad, dormitorios: form.dormitorios, score: data.score, veredicto: data.results?.veredicto, is_premium: false }); } catch {}
+      posthog?.capture('analysis_created', { comuna: form.comuna, tipo: form.tipoPropiedad, dormitorios: form.dormitorios, score: data.score, veredicto: data.results?.veredicto, is_premium: false });
       router.push(`/analisis/${data.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado");

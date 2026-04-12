@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { usePostHog } from "posthog-js/react";
 import { ForceDark } from "@/components/force-dark";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -8,6 +9,7 @@ import FrancoLogo from "@/components/franco-logo";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
+  const posthog = usePostHog();
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
@@ -27,7 +29,7 @@ function PaymentReturnContent() {
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
           if (data.payment.status === "paid") {
-            try { const ph = (await import('posthog-js')).default; ph.capture('pro_purchased', { product: data.payment.product, amount: data.payment.amount }); } catch {}
+            posthog?.capture('pro_purchased', { product: data.payment.product, amount: data.payment.amount });
             setPaymentStatus("paid");
           } else if (data.payment.status === "rejected" || data.payment.status === "cancelled") {
             setPaymentStatus("error");

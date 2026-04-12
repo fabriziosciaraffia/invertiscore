@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import {
   BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, Cell, ReferenceLine,
@@ -192,10 +193,11 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen || guestLocked);
+  const posthog = usePostHog();
 
   function handleUnlock() {
     if (!analysisId) return;
-    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
+    posthog?.capture('pro_cta_clicked', { source: 'results' });
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -984,6 +986,7 @@ async function consumeAnalysisCredit(analysisId: string): Promise<{ ok: boolean;
 
 function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; userCredits?: number }) {
   const [loading, setLoading] = useState(false);
+  const posthog = usePostHog();
 
   async function handleUseCredit() {
     if (loading) return;
@@ -998,7 +1001,7 @@ function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; u
   }
 
   function handleUnlock() {
-    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
+    posthog?.capture('pro_cta_clicked', { source: 'results' });
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -1033,6 +1036,7 @@ function PaywallOverlay({ analysisId, userCredits = 0 }: { analysisId: string; u
 
 function BottomPaywallCTA({ analysisId, userCredits = 0 }: { analysisId: string; userCredits?: number }) {
   const [loading, setLoading] = useState(false);
+  const posthog = usePostHog();
 
   async function handleUseCredit() {
     if (loading) return;
@@ -1047,7 +1051,7 @@ function BottomPaywallCTA({ analysisId, userCredits = 0 }: { analysisId: string;
   }
 
   function handleUnlock() {
-    try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {}
+    posthog?.capture('pro_cta_clicked', { source: 'results' });
     window.location.href = `/checkout?product=pro&analysisId=${analysisId}`;
   }
 
@@ -1302,6 +1306,7 @@ export function PremiumResults({
   userCredits?: number;
   ownerFirstName?: string;
 }) {
+  const posthog = usePostHog();
   // Update module-level UF value from server
   if (ufValue) UF_CLP = ufValue;
   const currentAccess = accessLevel;
@@ -1344,7 +1349,7 @@ export function PremiumResults({
 
   // PostHog: track analysis view
   useEffect(() => {
-    try { import('posthog-js').then(m => m.default.capture('analysis_viewed', { analysis_id: analysisId, comuna, score, veredicto: results?.veredicto, is_owner: !isSharedView && !isSharedLink, is_shared_view: isSharedView || isSharedLink, access_level: accessLevel })); } catch {}
+    posthog?.capture('analysis_viewed', { analysis_id: analysisId, comuna, score, veredicto: results?.veredicto, is_owner: !isSharedView && !isSharedLink, is_shared_view: isSharedView || isSharedLink, access_level: accessLevel });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1374,7 +1379,7 @@ export function PremiumResults({
       const resData = await res.json().catch(() => null);
       if (res.ok) {
         setRecalcSuccess(true);
-        try { import('posthog-js').then(m => m.default.capture('recalculate_used', { analysis_id: analysisId, comuna })); } catch {}
+        posthog?.capture('recalculate_used', { analysis_id: analysisId, comuna });
         setTimeout(() => window.location.reload(), 500);
       } else {
         alert(resData?.error || "Error al recalcular");
@@ -2342,7 +2347,7 @@ export function PremiumResults({
           <div className="flex gap-1 bg-th-surface rounded-xl p-1 sm:p-1.5 border border-[#2A2A2A]">
             <button
               type="button"
-              onClick={() => { setViewLevel('simple'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'simple' })); } catch {} }}
+              onClick={() => { setViewLevel('simple'); posthog?.capture('view_level_changed', { level: 'simple' }); }}
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'simple'
                   ? 'bg-[#C8323C] text-white'
@@ -2354,7 +2359,7 @@ export function PremiumResults({
             </button>
             <button
               type="button"
-              onClick={() => { setViewLevel('importante'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'importante' })); } catch {} }}
+              onClick={() => { setViewLevel('importante'); posthog?.capture('view_level_changed', { level: 'importante' }); }}
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'importante'
                   ? 'bg-[#C8323C] text-white'
@@ -2366,7 +2371,7 @@ export function PremiumResults({
             </button>
             <button
               type="button"
-              onClick={() => { setViewLevel('sinfiltro'); try { import('posthog-js').then(m => m.default.capture('view_level_changed', { level: 'sinfiltro' })); } catch {} }}
+              onClick={() => { setViewLevel('sinfiltro'); posthog?.capture('view_level_changed', { level: 'sinfiltro' }); }}
               className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 viewLevel === 'sinfiltro'
                   ? 'bg-[#C8323C] text-white'
@@ -3662,7 +3667,7 @@ export function PremiumResults({
           <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
             Desbloquea arriendo, vacancia y más variables con la suscripción mensual
           </p>
-          <a href="/pricing" onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {} }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+          <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
             Ver planes →
           </a>
         </div>
@@ -3686,7 +3691,7 @@ export function PremiumResults({
         <p className="text-zinc-500 text-xs mb-2 font-body leading-relaxed">
           Las proyecciones dinámicas (plusvalía, crecimiento) están disponibles con la suscripción mensual
         </p>
-        <a href="/pricing" onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'results' })); } catch {} }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+        <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
           Ver planes →
         </a>
       </div>

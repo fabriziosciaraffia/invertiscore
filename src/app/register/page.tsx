@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
 import { ForceDark } from "@/components/force-dark";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -9,6 +10,7 @@ import FrancoLogo from "@/components/franco-logo";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const posthog = usePostHog();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -47,7 +49,7 @@ export default function RegisterPage() {
       return;
     }
 
-    try { const ph = (await import('posthog-js')).default; ph.capture('signup_completed', { method: 'email' }); } catch {}
+    posthog?.capture('signup_completed', { method: 'email' });
     router.push("/dashboard");
     router.refresh();
   };

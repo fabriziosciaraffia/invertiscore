@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import { Button } from "@/components/ui/button";
 import { Share2, Check, Link2, Mail } from "lucide-react";
 
@@ -24,6 +25,7 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const posthog = usePostHog();
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +39,7 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
   const url = typeof window !== "undefined" ? `${window.location.origin}/analisis/${id}` : "";
 
   const handleClick = async () => {
-    try { const ph = (await import('posthog-js')).default; ph.capture('analysis_shared', { analysis_id: id, comuna, score }); } catch {}
+    posthog?.capture('analysis_shared', { analysis_id: id, comuna, score });
     // Mobile: use native share
     if (typeof navigator !== "undefined" && navigator.share) {
       try {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { usePostHog } from "posthog-js/react";
 import { ForceDark } from "@/components/force-dark";
 import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
@@ -72,9 +73,10 @@ function Feature({ children, bold }: { children: React.ReactNode; bold?: boolean
 
 // ─── Page ───────────────────────────────────────────
 export default function PricingPage() {
+  const posthog = usePostHog();
   const [user, setUser] = useState<User | null>(null);
   useEffect(() => {
-    try { import('posthog-js').then(m => m.default.capture('pricing_viewed')); } catch {}
+    posthog?.capture('pricing_viewed');
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);
@@ -186,7 +188,7 @@ export default function PricingPage() {
 
               <Link
                 href="/checkout?product=pro"
-                onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'pricing' })); } catch {} }}
+                onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'pricing' }); }}
                 className="block w-full text-center font-body text-sm font-bold py-3.5 rounded-lg mt-6 bg-[#C8323C] text-white hover:bg-[#b02a33] transition-colors min-h-[44px]"
                 style={{ boxShadow: "0 4px 16px rgba(200,50,60,0.3)" }}
               >
@@ -223,7 +225,7 @@ export default function PricingPage() {
 
               <Link
                 href="/checkout?product=subscription"
-                onClick={() => { try { import('posthog-js').then(m => m.default.capture('pro_cta_clicked', { source: 'pricing' })); } catch {} }}
+                onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'pricing' }); }}
                 className="block w-full text-center font-body text-sm font-bold py-3 rounded-lg mt-6 border-2 border-[#C8323C] text-[#C8323C] hover:bg-[#C8323C] hover:text-white transition-colors min-h-[44px]"
               >
                 Suscribirme →

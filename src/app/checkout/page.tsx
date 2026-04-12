@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
+import { usePostHog } from "posthog-js/react";
 import { ForceDark } from "@/components/force-dark";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -75,6 +76,7 @@ export default function CheckoutPage() {
 
 function CheckoutContent() {
   const searchParams = useSearchParams();
+  const posthog = usePostHog();
   const productKey = (searchParams.get("product") || "pro") as ProductKey;
   const analysisId = searchParams.get("analysisId");
 
@@ -112,7 +114,7 @@ function CheckoutContent() {
       });
       const data = await res.json();
       if (data.url) {
-        try { const ph = (await import('posthog-js')).default; ph.capture('payment_initiated', { product: productKey, amount: product.price }); } catch {}
+        posthog?.capture('payment_initiated', { product: productKey, amount: product.price });
         window.location.href = data.url;
       } else {
         setError(data?.details || data?.error || "Error al procesar el pago");
