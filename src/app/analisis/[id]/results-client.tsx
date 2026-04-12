@@ -680,7 +680,7 @@ function AIAnalysisSection({
           {/* Accent bar */}
           <div className="h-[3px] bg-[#C8323C]" />
           {/* Header */}
-          <div className="px-6 md:px-8 pt-6 pb-5" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.08) 50%, transparent 80%)" }}>
+          <div className="px-6 md:px-8 pt-6 pb-5" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.16) 15%, rgba(200,50,60,0.11) 30%, rgba(200,50,60,0.07) 45%, rgba(200,50,60,0.04) 60%, rgba(200,50,60,0.01) 75%, transparent 90%)" }}>
             <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
             <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
             <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado + proyecciones a 20 años</div>
@@ -705,7 +705,7 @@ function AIAnalysisSection({
         {/* Accent bar */}
         <div className="h-[3px] bg-[#C8323C]" />
         {/* Header */}
-        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.08) 50%, transparent 80%)" }}>
+        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.16) 15%, rgba(200,50,60,0.11) 30%, rgba(200,50,60,0.07) 45%, rgba(200,50,60,0.04) 60%, rgba(200,50,60,0.01) 75%, transparent 90%)" }}>
           <div>
             <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
             <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
