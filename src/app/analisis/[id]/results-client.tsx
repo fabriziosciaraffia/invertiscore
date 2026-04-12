@@ -678,9 +678,7 @@ function AIAnalysisSection({
       <div ref={sectionRef} className="mb-8">
         <div className="rounded-2xl overflow-hidden mt-5">
           {/* Dark header */}
-          <div style={{ background: "linear-gradient(135deg, var(--franco-card) 0%, rgba(200,50,60,0.08) 50%, var(--franco-card) 100%)", borderBottom: "1px solid rgba(200,50,60,0.2)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
-            <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.12) 0%, transparent 70%)" }} />
-            <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full" style={{ background: "radial-gradient(circle, rgba(200,50,60,0.06) 0%, transparent 70%)" }} />
+          <div style={{ background: "var(--franco-card)", borderTop: "2px solid #C8323C", borderBottom: "1px solid var(--franco-border)" }} className="px-6 md:px-8 py-6 relative overflow-hidden">
             <div className="relative z-10">
               <div className="font-mono text-[10px] text-[#C8323C] uppercase tracking-[0.15em] mb-1.5">INFORME PRO</div>
               <div className="font-heading font-bold text-xl md:text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
@@ -1210,7 +1208,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
             ? (delta < 0 ? "bajo el promedio" : "sobre el promedio")
             : (delta > 0 ? "sobre el promedio" : "bajo el promedio");
           return (
-            <div key={c.title} className="bg-[var(--franco-card)] rounded-[10px] p-4 text-center">
+            <div key={c.title} className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-[10px] p-4 text-center">
               <p className="font-body text-[10px] text-[var(--franco-text-secondary)] uppercase tracking-wide">{c.title}</p>
               <p className={`font-mono text-[32px] font-bold leading-none mt-1.5 ${deltaColor}`}>{deltaSign}{Math.round(delta)}%</p>
               <p className="font-body text-[10px] text-[var(--franco-text-muted)] mt-2">{contextText}</p>
@@ -2677,13 +2675,13 @@ export function PremiumResults({
                     </div>
                   ) : (m.precioFlujoNeutroUF ?? 0) > 0 ? (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-[2px]">
-                        <div className="bg-[var(--franco-card)] rounded-l-lg px-4 py-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-lg px-4 py-3">
                           <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Flujo neutro</p>
                           <p className="font-mono font-semibold text-lg text-[var(--franco-warning)]">{fmtUF(m.precioFlujoNeutroUF ?? 0)}</p>
                           <p className="text-[10px] text-[var(--franco-text-muted)]">{fmtPct(m.descuentoParaNeutro ?? 0)} menos</p>
                         </div>
-                        <div className="bg-[var(--franco-card)] rounded-r-lg px-4 py-3">
+                        <div className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-lg px-4 py-3">
                           <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Flujo +$50K</p>
                           <p className="font-mono font-semibold text-lg text-[var(--franco-positive)]">{fmtUF(m.precioFlujoPositivoUF ?? 0)}</p>
                           <p className="text-[10px] text-[var(--franco-text-muted)]">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
@@ -2821,10 +2819,12 @@ export function PremiumResults({
                     return (
                       <>
                         {risks.map((risk) => {
-                          const color = risk.severity === "critical" ? "#C8323C" : "var(--franco-warning)";
+                          const isCritical = risk.severity === "critical";
+                          const borderColor = isCritical ? "#C8323C" : "var(--franco-warning)";
+                          const bg = isCritical ? "var(--franco-sc-bad-bg)" : "var(--franco-v-adjust-bg)";
                           return (
-                            <div key={risk.id} style={{ borderLeft: `3px solid ${color}`, background: `${color}08`, borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
-                              <div className="font-body text-sm font-semibold" style={{ color }}>{risk.titulo}</div>
+                            <div key={risk.id} style={{ borderLeft: `3px solid ${borderColor}`, background: bg, borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
+                              <div className="font-body text-sm font-semibold" style={{ color: borderColor }}>{risk.titulo}</div>
                               <div className="font-body text-[13px] text-[var(--franco-text-secondary)] leading-relaxed mt-1">{risk.detalle}</div>
                             </div>
                           );
@@ -3430,7 +3430,7 @@ export function PremiumResults({
 
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-bar-fill)" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
                         Pusiste <span className="font-medium text-[var(--franco-text)]">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-[var(--franco-text)]">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
                         {" "}Al vender, recibes <span className="font-medium text-[var(--franco-text)]">{fmtAbr(recibeNeto)}</span> netos.
                         {" "}Tu ganancia real es <span className="font-medium text-[var(--franco-text)]">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-[var(--franco-text)]">{multiplicador}x</span>.
@@ -3508,7 +3508,7 @@ export function PremiumResults({
 
                     {/* Narrativa Franco */}
                     <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-bar-fill)" }}>
+                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
                         Sin vender tu depto, puedes liberar <span className="font-medium text-[var(--franco-text)]">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
                         {" "}{nDeptos >= 2
                           ? <>Ese capital alcanza como pie para <span className="font-medium text-[var(--franco-text)]">{nDeptos} departamentos</span> similares.</>
