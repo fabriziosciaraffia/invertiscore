@@ -43,25 +43,25 @@ export function ChangePasswordForm() {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label htmlFor="new-password" className="text-[#FAFAF8] font-body text-sm font-medium">Nueva contraseña</Label>
+          <Label htmlFor="new-password" className="text-[var(--franco-text)] font-body text-sm font-medium">Nueva contraseña</Label>
           <Input
             id="new-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="bg-[#1A1A1A] border-white/[0.08] text-[#FAFAF8] placeholder:text-white/50 focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
+            className="bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text)] placeholder:text-[var(--franco-text-secondary)] focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="confirm-password" className="text-[#FAFAF8] font-body text-sm font-medium">Confirmar contraseña</Label>
+          <Label htmlFor="confirm-password" className="text-[var(--franco-text)] font-body text-sm font-medium">Confirmar contraseña</Label>
           <Input
             id="confirm-password"
             type="password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
             required
-            className="bg-[#1A1A1A] border-white/[0.08] text-[#FAFAF8] placeholder:text-white/50 focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
+            className="bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text)] placeholder:text-[var(--franco-text-secondary)] focus-visible:ring-[#C8323C] focus-visible:border-[#C8323C]"
           />
         </div>
       </div>

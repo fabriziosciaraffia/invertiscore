@@ -39,9 +39,9 @@ export function CancelSubscriptionButton() {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-6">
-            <h3 className="font-heading text-lg font-bold text-[#FAFAF8]">¿Seguro que quieres cancelar?</h3>
-            <p className="mt-2 font-body text-sm text-[#71717A] leading-relaxed">
+          <div className="w-full max-w-sm rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
+            <h3 className="font-heading text-lg font-bold text-[var(--franco-text)]">¿Seguro que quieres cancelar?</h3>
+            <p className="mt-2 font-body text-sm text-[var(--franco-text-muted)] leading-relaxed">
               Mantendrás acceso Pro hasta el fin de tu período actual. Después volverás al plan Free.
             </p>
             <div className="mt-5 flex gap-3">
@@ -57,7 +57,7 @@ export function CancelSubscriptionButton() {
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={loading}
-                className="flex-1 rounded-md bg-[#FAFAF8] px-4 py-2 font-body text-sm font-medium text-[#0F0F0F] transition-colors hover:bg-[#FAFAF8]/90"
+                className="flex-1 rounded-md bg-[var(--franco-text)] px-4 py-2 font-body text-sm font-medium text-[var(--franco-bg)] transition-colors hover:opacity-90"
               >
                 No, mantener
               </button>

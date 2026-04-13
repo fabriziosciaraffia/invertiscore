@@ -54,17 +54,17 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0F0F0F] px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--franco-bg)] px-4">
 <div className="w-full max-w-md">
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] shadow-sm">
+        <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
           <form onSubmit={handleRegister}>
             {/* Header */}
             <div className="px-6 pt-8 pb-2 text-center">
               <div className="mx-auto mb-4">
                 <FrancoLogo size="xl" href="/" inverted />
               </div>
-              <h1 className="font-heading text-xl font-bold text-[#FAFAF8]">Crea tu cuenta gratis</h1>
-              <p className="mt-1.5 font-body text-sm text-white/50">
+              <h1 className="font-heading text-xl font-bold text-[var(--franco-text)]">Crea tu cuenta gratis</h1>
+              <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
                 Análisis completo de cualquier departamento en 30 segundos.
               </p>
             </div>
@@ -77,7 +77,7 @@ export default function RegisterPage() {
                 </div>
               )}
               <div className="space-y-2">
-                <label htmlFor="name" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="name" className="font-body text-sm font-semibold text-[var(--franco-text)]">
                   Nombre completo
                 </label>
                 <input
@@ -87,11 +87,11 @@ export default function RegisterPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="email" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="email" className="font-body text-sm font-semibold text-[var(--franco-text)]">
                   Email
                 </label>
                 <input
@@ -101,11 +101,11 @@ export default function RegisterPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="password" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="password" className="font-body text-sm font-semibold text-[var(--franco-text)]">
                   Contraseña
                 </label>
                 <input
@@ -114,11 +114,11 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="confirm-password" className="font-body text-sm font-semibold text-[#FAFAF8]">
+                <label htmlFor="confirm-password" className="font-body text-sm font-semibold text-[var(--franco-text)]">
                   Confirmar contraseña
                 </label>
                 <input
@@ -127,7 +127,7 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
-                  className="w-full rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2.5 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#FAFAF8]/30 focus:outline-none focus:ring-1 focus:ring-[#FAFAF8]/10"
+                  className="w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
                 />
               </div>
             </div>
@@ -144,15 +144,15 @@ export default function RegisterPage() {
 
               {/* Separator */}
               <div className="flex items-center gap-2">
-                <div className="h-px flex-1 bg-white/[0.08]" />
-                <span className="font-body text-xs text-white/50">o</span>
-                <div className="h-px flex-1 bg-white/[0.08]" />
+                <div className="h-px flex-1 bg-[var(--franco-border)]" />
+                <span className="font-body text-xs text-[var(--franco-text-secondary)]">o</span>
+                <div className="h-px flex-1 bg-[var(--franco-border)]" />
               </div>
 
               {/* Google button */}
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-white/[0.08] bg-[#1A1A1A] py-3 font-body text-sm font-semibold text-[#FAFAF8] transition-colors hover:border-white/20 hover:bg-[#222222]"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] py-3 font-body text-sm font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-border-hover)] hover:bg-[var(--franco-elevated)]"
                 onClick={async () => {
                   const supabase = createClient();
                   await supabase.auth.signInWithOAuth({
@@ -170,9 +170,9 @@ export default function RegisterPage() {
                 Continuar con Google
               </button>
 
-              <p className="text-center font-body text-sm text-white/50">
+              <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
                 ¿Ya tienes cuenta?{" "}
-                <Link href="/login" className="font-semibold text-[#FAFAF8] underline hover:text-[#C8323C]">
+                <Link href="/login" className="font-semibold text-[var(--franco-text)] underline hover:text-[#C8323C]">
                   Inicia sesión
                 </Link>
               </p>
@@ -181,7 +181,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Franco tagline */}
-        <div className="mt-6 text-center font-body text-[11px] text-white/50">
+        <div className="mt-6 text-center font-body text-[11px] text-[var(--franco-text-secondary)]">
           Sin compromisos. Sin tarjeta. Solo datos.
         </div>
       </div>
