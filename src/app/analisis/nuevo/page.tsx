@@ -7,6 +7,7 @@ import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import GoogleMapRadius from "@/components/GoogleMapRadius";
 import { COMUNAS } from "@/lib/comunas";
 import { createClient } from "@/lib/supabase/client";
@@ -1085,9 +1086,12 @@ export default function NuevoAnalisisPage() {
       <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
-          <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-            ← Dashboard
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+              ← Dashboard
+            </Link>
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 

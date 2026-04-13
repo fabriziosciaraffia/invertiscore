@@ -1,5 +1,6 @@
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import WaitlistForm from "@/components/waitlist-form";
 
 export const revalidate = 86400;
@@ -19,8 +20,9 @@ export default async function ProximamentePage() {
       <div className="h-[2px] bg-[#C8323C]" />
 
       {/* Header — logo only */}
-      <header className="mx-auto flex h-16 max-w-[1100px] items-center px-6">
+      <header className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6">
         <FrancoLogo size="header" inverted href="/" />
+        <ThemeToggle />
       </header>
 
       <main className="mx-auto max-w-[700px] px-6">

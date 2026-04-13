@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 import type { User } from "@supabase/supabase-js";
 
 // ─── FadeIn ─────────────────────────────────────────
@@ -103,6 +104,7 @@ export default function PricingPage() {
                 </Link>
               </>
             )}
+            <ThemeToggle />
           </div>
         </div>
       </nav>

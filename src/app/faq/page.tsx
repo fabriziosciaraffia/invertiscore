@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface FAQItem {
   q: string;
@@ -122,6 +123,7 @@ export default function FAQPage() {
           <div className="flex items-center gap-4">
             <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Precios</Link>
             <Link href="/analisis/nuevo" className="font-body text-[11px] font-semibold text-[var(--franco-bg)] bg-[var(--franco-text)] hover:bg-[var(--franco-text)] px-3 py-1.5 rounded-md transition-colors">Analizar</Link>
+            <ThemeToggle />
           </div>
         </div>
       </nav>

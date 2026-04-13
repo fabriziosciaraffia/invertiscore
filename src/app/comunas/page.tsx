@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export const revalidate = 86400; // ISR: 24 hours
 
@@ -34,13 +35,16 @@ export default async function ComunasIndexPage() {
       <header className="border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
         <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
           <FrancoLogo size="header" inverted href="/" />
-          <nav className="hidden items-center gap-6 md:flex">
-            <Link href="/comunas" className="font-body text-sm font-medium text-[var(--franco-text)]">Comunas</Link>
-            <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
-            <Link href="/analisis/nuevo" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
-              Analizar gratis
-            </Link>
-          </nav>
+          <div className="flex items-center gap-4">
+            <nav className="hidden items-center gap-6 md:flex">
+              <Link href="/comunas" className="font-body text-sm font-medium text-[var(--franco-text)]">Comunas</Link>
+              <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
+              <Link href="/analisis/nuevo" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
+                Analizar gratis
+              </Link>
+            </nav>
+            <ThemeToggle />
+          </div>
         </div>
       </header>
 

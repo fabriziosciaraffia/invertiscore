@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const PRODUCTS = {
   pro: {
@@ -138,6 +139,7 @@ function CheckoutContent() {
       <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" inverted href="/" />
+          <ThemeToggle />
         </div>
       </nav>
 
