@@ -290,8 +290,8 @@ function ScoreBarInline({ score, veredicto }: { score: number; veredicto?: strin
   const badgeBg = label === "COMPRAR" ? "var(--franco-sc-good-border)" : label === "BUSCAR OTRA" ? "rgba(200,50,60,0.15)" : "rgba(251,191,36,0.15)";
   const badgeBorder = label === "COMPRAR" ? "var(--franco-sc-good-border)" : label === "BUSCAR OTRA" ? "rgba(200,50,60,0.15)" : "rgba(251,191,36,0.15)";
   return (
-    <div className="w-full min-w-[220px] max-w-[280px]">
-      <p className="font-mono text-[9px] text-[var(--franco-text-muted)] uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
+    <div className="w-full min-w-[220px] max-w-[320px]">
+      <p className="font-mono text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
       <p className="font-mono text-[52px] font-bold text-[var(--franco-text)] leading-none">{score}</p>
       {/* Bar with zones */}
       <div className="relative mt-3 h-2 rounded-full overflow-hidden flex">
@@ -452,7 +452,7 @@ function AIAnalysisSection({
             <div className="space-y-4">
               {/* Resumen */}
               {resumen && (
-                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-positive)]/30 bg-[var(--franco-positive)]/5" : score >= 40 ? "border-[var(--franco-warning)]/30 bg-[var(--franco-warning)]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-sc-good-border)] bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "border-[var(--franco-v-adjust-bg)] bg-[var(--franco-v-adjust-bg)]" : "border-[var(--franco-sc-bad-border)] bg-[var(--franco-sc-bad-bg)]"}`}>
                   <p className="text-sm font-medium leading-relaxed text-[var(--franco-text)] font-body">{resumen}</p>
                 </div>
               )}
@@ -509,7 +509,7 @@ function AIAnalysisSection({
       {/* Structured sections — only when NOT using simplified view */}
       {/* 1. Resumen Ejecutivo */}
       {!useSimplifiedView && phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-positive)]/30 bg-[var(--franco-positive)]/5" : score >= 40 ? "border-[var(--franco-warning)]/30 bg-[var(--franco-warning)]/5" : "border-[#C8323C]/30 bg-[#C8323C]/5"}`}>
+        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-sc-good-border)] bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "border-[var(--franco-v-adjust-bg)] bg-[var(--franco-v-adjust-bg)]" : "border-[var(--franco-sc-bad-border)] bg-[var(--franco-sc-bad-bg)]"}`}>
           <p className="text-sm font-medium leading-relaxed text-[var(--franco-text)]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
@@ -2206,7 +2206,7 @@ export function PremiumResults({
               <p className="font-body text-xs font-semibold text-[#C8323C] mb-1">Análisis de {creatorName}</p>
             )}
             {ownerFirstName && !isSharedView && (
-              <p className="font-body text-sm text-[var(--franco-text-muted)] mb-1">{ownerFirstName}, este es el análisis de tu departamento en {comuna || ciudad || "tu zona"}</p>
+              <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-1">{ownerFirstName}, este es el análisis de tu departamento en {comuna || ciudad || "tu zona"}</p>
             )}
             <h1 className="font-heading font-bold text-xl md:text-2xl text-[var(--franco-text)]">{nombre}</h1>
             <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-1">
@@ -2249,10 +2249,11 @@ export function PremiumResults({
             {(() => {
               const vd = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
               const sfColor = vd === "COMPRAR" ? "var(--franco-positive)" : vd === "BUSCAR OTRA" ? "#C8323C" : "var(--franco-warning)";
+              const sfBg = vd === "COMPRAR" ? "var(--franco-sc-good-bg)" : vd === "BUSCAR OTRA" ? "var(--franco-sc-bad-bg)" : "var(--franco-v-adjust-bg)";
               return (
-                <div className={`mt-3.5 ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`} style={{ borderLeft: `3px solid ${sfColor}`, background: `${sfColor}08`, borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
+                <div className={`mt-3.5 ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`} style={{ borderLeft: `3px solid ${sfColor}`, background: sfBg, borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
                   <p className="font-body text-[13px] font-semibold" style={{ color: sfColor }}>Siendo franco:</p>
-                  <p className="font-body text-[12px] mt-1" style={{ color: "#888888" }}>{siendoFrancoText}</p>
+                  <p className="font-body text-[12px] mt-1" style={{ color: "var(--franco-text-secondary)" }}>{siendoFrancoText}</p>
                 </div>
               );
             })()}
