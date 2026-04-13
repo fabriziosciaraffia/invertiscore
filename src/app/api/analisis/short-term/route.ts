@@ -248,20 +248,20 @@ export async function POST(request: Request) {
         dormitorios: body.dormitorios,
         banos: body.banos,
         superficie: body.superficieUtil,
-        antiguedad: null,
+        antiguedad: body.tipoPropiedad === 'nuevo' ? 0 : 5,
         precio: body.precioCompraUF,
         arriendo: body.arriendoLargoMensual,
         gastos: body.gastosComunes,
         contribuciones: body.contribuciones || 0,
-        score: null,
-        desglose: null,
-        resumen: result.veredicto,
+        score: 0,
+        desglose: {},
+        resumen: result.veredicto || 'Sin veredicto',
         results: { ...result, tipoAnalisis: "short-term", airbnbRaw: airbnbResult.data },
         input_data: { ...body, tipoAnalisis: "short-term" },
         creator_name:
           user?.user_metadata?.nombre ||
           user?.user_metadata?.full_name ||
-          null,
+          'Anónimo',
         is_premium: false,
       })
       .select()
