@@ -452,8 +452,11 @@ function AIAnalysisSection({
             <div className="space-y-4">
               {/* Resumen */}
               {resumen && (
-                <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-sc-good-border)] bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "border-[var(--franco-v-adjust-bg)] bg-[var(--franco-v-adjust-bg)]" : "border-[var(--franco-sc-bad-border)] bg-[var(--franco-sc-bad-bg)]"}`}>
-                  <p className="text-sm font-medium leading-relaxed text-[var(--franco-text)] font-body">{resumen}</p>
+                <div
+                  className={`rounded-lg p-4 ${score >= 70 ? "bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "bg-[var(--franco-v-adjust-bg)]" : "bg-[var(--franco-sc-bad-bg)]"}`}
+                  style={{ borderLeft: `3px solid ${score >= 70 ? "var(--franco-positive)" : score >= 40 ? "var(--franco-warning)" : "#C8323C"}`, borderRadius: "0 8px 8px 0" }}
+                >
+                  <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)] font-body">{resumen}</p>
                 </div>
               )}
               {/* A favor / En contra — side by side */}
@@ -488,7 +491,7 @@ function AIAnalysisSection({
                     <Handshake className="h-4 w-4 text-[var(--franco-text)]" />
                     <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">Recomendación</h4>
                   </div>
-                  <p className="text-sm leading-relaxed text-[var(--franco-text)] font-body">{recomendacion}</p>
+                  <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)] font-body">{recomendacion}</p>
                 </div>
               )}
             </div>
@@ -498,7 +501,7 @@ function AIAnalysisSection({
         return (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 shadow-sm">
             {simplifiedText.split('\n\n').map((paragraph, i) => (
-              <p key={i} className="text-sm leading-relaxed text-[var(--franco-text)] font-body mb-3 last:mb-0">
+              <p key={i} className="text-sm leading-relaxed text-[var(--franco-text-secondary)] font-body mb-3 last:mb-0">
                 {paragraph}
               </p>
             ))}
@@ -509,8 +512,11 @@ function AIAnalysisSection({
       {/* Structured sections — only when NOT using simplified view */}
       {/* 1. Resumen Ejecutivo */}
       {!useSimplifiedView && phaseIndex >= 1 && (
-        <div className={`rounded-lg border p-4 ${score >= 70 ? "border-[var(--franco-sc-good-border)] bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "border-[var(--franco-v-adjust-bg)] bg-[var(--franco-v-adjust-bg)]" : "border-[var(--franco-sc-bad-border)] bg-[var(--franco-sc-bad-bg)]"}`}>
-          <p className="text-sm font-medium leading-relaxed text-[var(--franco-text)]">
+        <div
+          className={`rounded-lg p-4 ${score >= 70 ? "bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "bg-[var(--franco-v-adjust-bg)]" : "bg-[var(--franco-sc-bad-bg)]"}`}
+          style={{ borderLeft: `3px solid ${score >= 70 ? "var(--franco-positive)" : score >= 40 ? "var(--franco-warning)" : "#C8323C"}`, borderRadius: "0 8px 8px 0" }}
+        >
+          <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
               <TypewriterText text={ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")} onComplete={next(2)} />
             ) : ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo")}
@@ -525,7 +531,7 @@ function AIAnalysisSection({
             <Wallet className="h-4 w-4 text-[var(--franco-text)]" />
             <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.tuBolsillo.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[var(--franco-text)]">
+          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido") : phaseIndex === 2 ? (
               <TypewriterText text={ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")} onComplete={next(3)} />
             ) : ct(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido")}
@@ -548,7 +554,7 @@ function AIAnalysisSection({
             <Scale className="h-4 w-4 text-[var(--franco-text)]" />
             <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.vsAlternativas.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[var(--franco-text)]">
+          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido") : phaseIndex === 3 ? (
               <TypewriterText text={ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")} onComplete={next(4)} />
             ) : ct(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido")}
@@ -563,7 +569,7 @@ function AIAnalysisSection({
             <Handshake className="h-4 w-4 text-[var(--franco-text)]" />
             <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.negociacion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[var(--franco-text)]">
+          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 4 ? (
               <TypewriterText text={ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")} onComplete={next(5)} />
             ) : ct(aiAnalysis.negociacion as unknown as Record<string, unknown>, "contenido")}
@@ -584,7 +590,7 @@ function AIAnalysisSection({
             <TrendingUp className="h-4 w-4 text-[var(--franco-text)]" />
             <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.proyeccion.titulo}</h4>
           </div>
-          <p className="text-sm leading-relaxed text-[var(--franco-text)]">
+          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido") : phaseIndex === 5 ? (
               <TypewriterText text={ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")} onComplete={next(6)} />
             ) : ct(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido")}
@@ -603,7 +609,7 @@ function AIAnalysisSection({
           <ul className="space-y-2">
             {ci(aiAnalysis.riesgos as unknown as Record<string, unknown>, "items").map((r, i) => (
               <FadeIn key={i} show={showAll || phaseIndex >= 6} delay={showAll ? 0 : i * 150}>
-                <li className="text-sm leading-relaxed text-[var(--franco-text)]">
+                <li className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
                   <span className="mr-1 font-medium text-[#C8323C]">⚠</span> {stripBullet(r)}
                 </li>
               </FadeIn>
@@ -617,7 +623,7 @@ function AIAnalysisSection({
       <div id="ai-anchor-veredicto" />
       {!useSimplifiedView && <FadeIn show={phaseIndex >= 7}>
         <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
-          <p className="text-sm leading-relaxed text-[var(--franco-text)]">
+          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion") : phaseIndex === 7 ? (
               <TypewriterText text={ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")} onComplete={next(8)} />
             ) : ct(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion")}
