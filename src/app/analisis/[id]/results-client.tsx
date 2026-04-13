@@ -290,15 +290,12 @@ function ScoreBarInline({ score, veredicto }: { score: number; veredicto?: strin
   const badgeBg = label === "COMPRAR" ? "var(--franco-sc-good-border)" : label === "BUSCAR OTRA" ? "rgba(200,50,60,0.15)" : "rgba(251,191,36,0.15)";
   const badgeBorder = label === "COMPRAR" ? "var(--franco-sc-good-border)" : label === "BUSCAR OTRA" ? "rgba(200,50,60,0.15)" : "rgba(251,191,36,0.15)";
   return (
-    <div className="w-full min-w-[220px] max-w-[320px]">
+    <div className="w-full min-w-[220px]">
       <p className="font-mono text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-[3px] mb-1">FRANCO SCORE</p>
       <p className="font-mono text-[52px] font-bold text-[var(--franco-text)] leading-none">{score}</p>
-      {/* Bar with zones */}
-      <div className="relative mt-3 h-2 rounded-full overflow-hidden flex">
-        <div className="w-[40%] bg-[#C8323C]/15" />
-        <div className="w-[30%] bg-[var(--franco-border)]" />
-        <div className="w-[30%] bg-[var(--franco-positive)]/15" />
-        <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-700" style={{ width: `${score}%`, backgroundColor: color }} />
+      {/* Bar with gradient track + dot */}
+      <div className="relative mt-3 h-2 rounded-full overflow-hidden">
+        <div className="absolute inset-0 rounded-full opacity-20" style={{ background: "var(--franco-score-gradient)" }} />
         <div className="absolute rounded-full border-2 border-[var(--franco-bg)]" style={{ width: 14, height: 14, top: -3, left: `calc(${score}% - 7px)`, backgroundColor: color, transition: "left 0.7s" }} />
       </div>
       {/* Zone labels — aligned under each zone */}
@@ -321,7 +318,7 @@ function ScoreBarInline({ score, veredicto }: { score: number; veredicto?: strin
 
 // ─── AI Analysis Section with typewriter ────────────
 function AIAnalysisSection({
-  aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, ct, ci, currentAccess, analysisId,
+  aiAnalysis, aiLoading, aiError, loadAiAnalysis, score, veredicto: verdictoProp, ct, ci, currentAccess, analysisId,
   projectionsContent, aiAnalysisInitiallyLoaded = false, isSharedView = false,
   projectionsExpanded = false, onExpandProjections, projectionsCTALabel, projectionsCTAValue,
   viewLevel = 'sinfiltro' as 'simple' | 'importante' | 'sinfiltro',
@@ -332,6 +329,7 @@ function AIAnalysisSection({
   aiError: string | null;
   loadAiAnalysis: () => void;
   score: number;
+  veredicto?: string;
   ct: (obj: Record<string, unknown>, field: string) => string;
   ci: (obj: Record<string, unknown>, field: string) => string[];
   currentAccess: "guest" | "free" | "premium" | "subscriber";
@@ -346,6 +344,11 @@ function AIAnalysisSection({
   viewLevel?: 'simple' | 'importante' | 'sinfiltro';
   userCredits?: number;
 }) {
+  // Resolve verdict: motor override > AI verdict > score-based fallback
+  const resolvedVerdict = verdictoProp || aiAnalysis?.veredicto?.decision || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+  const isBuy = resolvedVerdict === "COMPRAR";
+  const isAvoid = resolvedVerdict === "BUSCAR OTRA";
+
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasAnimated = useRef(false);
   const isFirstReveal = !aiAnalysisInitiallyLoaded && !isSharedView;
@@ -453,8 +456,8 @@ function AIAnalysisSection({
               {/* Resumen */}
               {resumen && (
                 <div
-                  className={`rounded-lg p-4 ${score >= 70 ? "bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "bg-[var(--franco-v-adjust-bg)]" : "bg-[var(--franco-sc-bad-bg)]"}`}
-                  style={{ borderLeft: `3px solid ${score >= 70 ? "var(--franco-positive)" : score >= 40 ? "var(--franco-warning)" : "#C8323C"}`, borderRadius: "0 8px 8px 0" }}
+                  className={`rounded-lg p-4 ${isBuy ? "bg-[var(--franco-sc-good-bg)]" : isAvoid ? "bg-[var(--franco-sc-bad-bg)]" : "bg-[var(--franco-v-adjust-bg)]"}`}
+                  style={{ borderLeft: `3px solid ${isBuy ? "var(--franco-positive)" : isAvoid ? "#C8323C" : "var(--franco-warning)"}`, borderRadius: "0 8px 8px 0" }}
                 >
                   <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)] font-body">{resumen}</p>
                 </div>
@@ -513,8 +516,8 @@ function AIAnalysisSection({
       {/* 1. Resumen Ejecutivo */}
       {!useSimplifiedView && phaseIndex >= 1 && (
         <div
-          className={`rounded-lg p-4 ${score >= 70 ? "bg-[var(--franco-sc-good-bg)]" : score >= 40 ? "bg-[var(--franco-v-adjust-bg)]" : "bg-[var(--franco-sc-bad-bg)]"}`}
-          style={{ borderLeft: `3px solid ${score >= 70 ? "var(--franco-positive)" : score >= 40 ? "var(--franco-warning)" : "#C8323C"}`, borderRadius: "0 8px 8px 0" }}
+          className={`rounded-lg p-4 ${isBuy ? "bg-[var(--franco-sc-good-bg)]" : isAvoid ? "bg-[var(--franco-sc-bad-bg)]" : "bg-[var(--franco-v-adjust-bg)]"}`}
+          style={{ borderLeft: `3px solid ${isBuy ? "var(--franco-positive)" : isAvoid ? "#C8323C" : "var(--franco-warning)"}`, borderRadius: "0 8px 8px 0" }}
         >
           <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)]">
             {showAll ? ct(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo") : phaseIndex === 1 ? (
@@ -2286,16 +2289,13 @@ export function PremiumResults({
           <div className={`flex flex-col gap-2.5 mt-4 pt-4 border-t border-[var(--franco-border)] ${currentAccess === "guest" ? "filter blur-[6px] pointer-events-none" : ""}`}>
             {radarData.map((d) => {
               const val = Math.round(d.value);
-              const fillColor = val < 40 ? "#C8323C" : val < 70 ? "var(--franco-warning)" : "var(--franco-positive)";
-              const numColor = val < 40 ? "text-[#C8323C]" : val < 70 ? "text-[var(--franco-warning)]" : "text-[var(--franco-positive)]";
+              const dimColor = val >= 70 ? "var(--franco-v-buy)" : val >= 40 ? "var(--franco-v-adjust)" : "#C8323C";
+              const numColor = val >= 70 ? "text-[var(--franco-positive)]" : val >= 40 ? "text-[var(--franco-warning)]" : "text-[#C8323C]";
               return (
                 <div key={d.dimension} className="flex items-center gap-3">
                   <span className="font-body text-[11px] text-[var(--franco-text-secondary)] w-[75px] shrink-0">{d.dimension}</span>
-                  <div className="relative flex-1 h-1.5 rounded-full overflow-hidden flex">
-                    <div className="w-[40%] bg-[#C8323C]/15" />
-                    <div className="w-[30%] bg-[var(--franco-border)]" />
-                    <div className="w-[30%] bg-[var(--franco-positive)]/15" />
-                    <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${val}%`, backgroundColor: fillColor }} />
+                  <div className="relative flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--franco-bar-track)]">
+                    <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${val}%`, backgroundColor: dimColor }} />
                   </div>
                   <span className={`font-mono text-[11px] font-medium w-[28px] text-right shrink-0 ${numColor}`}>{val}</span>
                 </div>
@@ -2931,6 +2931,7 @@ export function PremiumResults({
             aiError={aiError}
             loadAiAnalysis={loadAiAnalysis}
             score={score}
+            veredicto={results?.veredicto}
             ct={ct}
             ci={ci}
             currentAccess={currentAccess}
