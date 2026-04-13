@@ -89,19 +89,19 @@ function SectionCard({
     prevForce.current = forceOpen;
   }, [forceOpen]);
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] mb-3 overflow-hidden">
+    <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] mb-3 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between px-4 py-3.5 text-left"
       >
         <div>
-          <h3 className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.08em]">{title}</h3>
-          {subtitle && <p className="font-body text-[11px] text-[#71717A]">{subtitle}</p>}
+          <h3 className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.08em]">{title}</h3>
+          {subtitle && <p className="font-body text-[11px] text-[var(--franco-text-muted)]">{subtitle}</p>}
         </div>
         <div className="flex items-center gap-2">
-          {!open && summary && <span className="font-body text-[11px] text-[#71717A]">{summary}</span>}
-          <span className={`text-[#71717A] text-sm transition-transform ${open ? "rotate-180" : ""}`}>↓</span>
+          {!open && summary && <span className="font-body text-[11px] text-[var(--franco-text-muted)]">{summary}</span>}
+          <span className={`text-[var(--franco-text-muted)] text-sm transition-transform ${open ? "rotate-180" : ""}`}>↓</span>
         </div>
       </button>
       {open && <div className="space-y-4 px-4 pb-4">{children}</div>}
@@ -112,7 +112,7 @@ function SectionCard({
 function FieldLabel({ htmlFor, children, tip }: { htmlFor?: string; children: React.ReactNode; tip?: string }) {
   return (
     <div className="mb-1 flex items-center gap-1">
-      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[#FAFAF8]">{children}</label>
+      <label htmlFor={htmlFor} className="font-body text-[13px] font-semibold text-[var(--franco-text)]">{children}</label>
       {tip && <InfoTooltip content={tip} />}
     </div>
   );
@@ -186,7 +186,7 @@ function MoneyInput({
 
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[#71717A]">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 font-mono text-xs text-[var(--franco-text-muted)]">
         {isUF ? "UF" : "$"}
       </span>
       <input
@@ -201,14 +201,14 @@ function MoneyInput({
         placeholder={placeholder}
         required={required}
         min={min}
-        className="flex h-10 w-full rounded-lg border border-white/[0.1] bg-white/[0.04] py-2 pl-10 pr-14 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 transition-colors focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="flex h-10 w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] py-2 pl-10 pr-14 font-body text-[13px] text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] transition-colors focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         style={{ fontSize: "13px" }}
       />
       {onCurrencyToggle && (
         <button
           type="button"
           onClick={onCurrencyToggle}
-          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-white/40 cursor-pointer hover:text-white/70"
+          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--franco-text-muted)] cursor-pointer hover:text-white/70"
           title={`Cambiar a ${isUF ? "CLP" : "UF"}`}
         >
           {isUF ? "→CLP" : "→UF"}
@@ -1077,15 +1077,15 @@ export default function NuevoAnalisisPage() {
   };
 
   // ─── Shared input class ────────────────────────────
-  const inputClass = "flex h-9 w-full rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2 font-body text-[13px] text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+  const inputClass = "flex h-9 w-full rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2 font-body text-[13px] text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/95 backdrop-blur-md">
+      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
-          <Link href="/dashboard" className="font-body text-sm text-white/50 hover:text-white/80 transition-colors">
+          <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
             ← Dashboard
           </Link>
         </div>
@@ -1095,11 +1095,11 @@ export default function NuevoAnalisisPage() {
         {/* Guest blocked — already used their free analysis */}
         {guestBlocked && (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <div className="w-14 h-14 rounded-full bg-white/[0.04] flex items-center justify-center mb-4">
-              <CheckCircle2 className="h-7 w-7 text-[#B0BEC5]" />
+            <div className="w-14 h-14 rounded-full bg-[var(--franco-card)] flex items-center justify-center mb-4">
+              <CheckCircle2 className="h-7 w-7 text-[var(--franco-positive)]" />
             </div>
-            <h2 className="font-heading font-bold text-xl text-[#FAFAF8]">Ya hiciste tu primer análisis gratis</h2>
-            <p className="font-body text-base text-[#71717A] mt-2 max-w-[360px]">
+            <h2 className="font-heading font-bold text-xl text-[var(--franco-text)]">Ya hiciste tu primer análisis gratis</h2>
+            <p className="font-body text-base text-[var(--franco-text-muted)] mt-2 max-w-[360px]">
               Crea tu cuenta para análisis ilimitados — gratis, sin tarjeta.
             </p>
             <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
@@ -1111,7 +1111,7 @@ export default function NuevoAnalisisPage() {
               </Link>
               <Link
                 href="/login"
-                className="font-body text-sm text-white/50 hover:text-white/80 transition-colors py-2"
+                className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors py-2"
               >
                 Ya tengo cuenta →
               </Link>
@@ -1121,8 +1121,8 @@ export default function NuevoAnalisisPage() {
 
         {!guestBlocked && (<>
         <div className="mb-5">
-          <h1 className="font-heading font-bold text-2xl text-[#FAFAF8]">Nuevo Análisis</h1>
-          <p className="font-body text-[13px] text-[#71717A] mt-1">
+          <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)]">Nuevo Análisis</h1>
+          <p className="font-body text-[13px] text-[var(--franco-text-muted)] mt-1">
             Los números que tu corredor no te va a mostrar. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
           </p>
         </div>
@@ -1146,21 +1146,21 @@ export default function NuevoAnalisisPage() {
         )}
 
         {/* Link paste / file upload section — compact */}
-        <div className="mb-3 rounded-xl border border-white/[0.08] bg-[#1A1A1A] px-4 py-3 space-y-2.5">
-          <p className="font-body text-[11px] text-[#71717A]">¿Tienes el link o cotización? Pégalo y Franco extrae los datos.</p>
+        <div className="mb-3 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3 space-y-2.5">
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)]">¿Tienes el link o cotización? Pégalo y Franco extrae los datos.</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="url"
               placeholder="Pega aquí el link de la publicación"
               value={linkUrl}
               onChange={(e) => setLinkUrl(e.target.value)}
-              className="flex-1 border border-white/[0.1] rounded-lg bg-white/[0.04] px-3 py-2.5 font-body text-xs text-[#FAFAF8] placeholder:text-white/30 focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+              className="flex-1 border border-[var(--franco-border)] rounded-lg bg-[var(--franco-card)] px-3 py-2.5 font-body text-xs text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
             />
             <button
               type="button"
               disabled={linkLoading || !linkUrl.trim()}
               onClick={handleLinkExtract}
-              className="bg-[#FAFAF8] text-[#0F0F0F] font-body text-xs font-bold px-4 py-2.5 rounded-lg shrink-0 disabled:opacity-50 hover:bg-white transition-colors flex items-center justify-center gap-1.5"
+              className="bg-[var(--franco-text)] text-[var(--franco-bg)] font-body text-xs font-bold px-4 py-2.5 rounded-lg shrink-0 disabled:opacity-50 hover:bg-white transition-colors flex items-center justify-center gap-1.5"
             >
               {linkLoading ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Leyendo...</>
@@ -1169,10 +1169,10 @@ export default function NuevoAnalisisPage() {
               )}
             </button>
           </div>
-          <div className="flex items-center gap-3 font-body text-xs text-[#71717A]">
-            <div className="h-px flex-1 bg-white/[0.08]" />
+          <div className="flex items-center gap-3 font-body text-xs text-[var(--franco-text-muted)]">
+            <div className="h-px flex-1 bg-[var(--franco-border)]" />
             <span>o sube cotización</span>
-            <div className="h-px flex-1 bg-white/[0.08]" />
+            <div className="h-px flex-1 bg-[var(--franco-border)]" />
           </div>
           <div className="space-y-2">
             <input
@@ -1190,7 +1190,7 @@ export default function NuevoAnalisisPage() {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={quotationLoading || linkLoading}
-              className="border border-white/[0.1] rounded-lg px-4 py-2 font-body text-xs text-[#71717A] transition-colors hover:border-white/25 disabled:opacity-50"
+              className="border border-[var(--franco-border)] rounded-lg px-4 py-2 font-body text-xs text-[var(--franco-text-muted)] transition-colors hover:border-[var(--franco-border-hover)] disabled:opacity-50"
             >
               {quotationLoading ? (
                 <><Loader2 className="inline h-3.5 w-3.5 animate-spin mr-1.5" /> Analizando cotización con IA...</>
@@ -1199,13 +1199,13 @@ export default function NuevoAnalisisPage() {
               )}
             </button>
             {quotationFile && !quotationLoading && (
-              <p className="font-body text-[11px] text-[#71717A]">{quotationFile.name}</p>
+              <p className="font-body text-[11px] text-[var(--franco-text-muted)]">{quotationFile.name}</p>
             )}
           </div>
           {extractMsg && (
             <div className={`flex items-center gap-2 rounded-lg px-3 py-2 font-body text-xs ${
               extractMsg.type === "success"
-                ? "border border-[#B0BEC5]/30 bg-[#B0BEC5]/10 text-[#B0BEC5]"
+                ? "border border-[#B0BEC5]/30 bg-[#B0BEC5]/10 text-[var(--franco-positive)]"
                 : "border border-[#C8323C]/30 bg-[#C8323C]/10 text-[#C8323C]"
             }`}>
               {extractMsg.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0" /> : <AlertCircle className="h-4 w-4 shrink-0" />}
@@ -1217,7 +1217,7 @@ export default function NuevoAnalisisPage() {
               No se encontró: {extractMissing.join(", ")}
             </p>
           )}
-          <p className="font-body text-[11px] text-[#71717A]">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)]">¿Prefieres hacerlo manual? Completa el formulario abajo ↓</p>
         </div>
 
         {error && (
@@ -1227,8 +1227,8 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 1: ¿Qué depto estás evaluando?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-5 space-y-4">
-          <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Qué depto estás evaluando?</div>
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em] mb-4">¿Qué depto estás evaluando?</div>
 
           {/* Nombre del análisis */}
           <div>
@@ -1267,18 +1267,18 @@ export default function NuevoAnalisisPage() {
                 <button
                   type="button"
                   onClick={() => { setField("comuna", ""); setComunaSearch(""); setComunaOpen(true); }}
-                  className="absolute right-3 top-[34px] text-xs text-white/40 hover:text-white/70"
+                  className="absolute right-3 top-[34px] text-xs text-[var(--franco-text-muted)] hover:text-white/70"
                 >✕</button>
               )}
               {comunaOpen && !form.comuna && (
-                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-white/[0.1] bg-[#1A1A1A] shadow-lg">
+                <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-lg">
                   {filteredComunas.length === 0 ? (
-                    <div className="p-3 text-sm text-white/50">No encontrada</div>
+                    <div className="p-3 text-sm text-[var(--franco-text-secondary)]">No encontrada</div>
                   ) : (
                     filteredComunas.map((c) => (
                       <button
                         key={c.comuna} type="button"
-                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[#FAFAF8] hover:bg-white/[0.08]"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left text-sm text-[var(--franco-text)] hover:bg-[var(--franco-border)]"
                         onClick={() => {
                           setField("comuna", c.comuna);
                           setComunaSearch("");
@@ -1286,7 +1286,7 @@ export default function NuevoAnalisisPage() {
                         }}
                       >
                         <span>{c.comuna}</span>
-                        <span className="text-xs text-[#71717A]">{c.ciudad}, {c.region}</span>
+                        <span className="text-xs text-[var(--franco-text-muted)]">{c.ciudad}, {c.region}</span>
                       </button>
                     ))
                   )}
@@ -1303,8 +1303,8 @@ export default function NuevoAnalisisPage() {
                   onClick={() => { setField("tipoPropiedad", "usado"); setField("estadoVenta", "inmediata"); }}
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "usado"
-                      ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                      : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:border-white/25"
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] font-semibold border-[var(--franco-text)]"
+                      : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:border-[var(--franco-border-hover)]"
                   }`}
                 >Usado</button>
                 <button
@@ -1312,8 +1312,8 @@ export default function NuevoAnalisisPage() {
                   onClick={() => { setField("tipoPropiedad", "nuevo"); setField("estadoVenta", "inmediata"); setField("antiguedad", "0-2"); }}
                   className={`flex-1 rounded-lg border px-3 py-2 font-body text-[13px] text-center transition-all ${
                     form.tipoPropiedad === "nuevo"
-                      ? "bg-[#FAFAF8] text-[#0F0F0F] font-semibold border-[#FAFAF8]"
-                      : "bg-white/[0.04] border-white/[0.1] text-white/50 hover:border-white/25"
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] font-semibold border-[var(--franco-text)]"
+                      : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:border-[var(--franco-border-hover)]"
                   }`}
                 >Nuevo</button>
               </div>
@@ -1342,10 +1342,10 @@ export default function NuevoAnalisisPage() {
               className={inputClass}
             />
             {geoLoading && (
-              <p className="mt-1 font-body text-[10px] text-[#71717A]">Geocodificando...</p>
+              <p className="mt-1 font-body text-[10px] text-[var(--franco-text-muted)]">Geocodificando...</p>
             )}
             {geoLat && geoLng && !geoLoading && (
-              <p className="mt-1 font-body text-[10px] text-[#B0BEC5]">Dirección georeferenciada</p>
+              <p className="mt-1 font-body text-[10px] text-[var(--franco-positive)]">Dirección georeferenciada</p>
             )}
           </div>
 
@@ -1373,19 +1373,19 @@ export default function NuevoAnalisisPage() {
                     {/* Indicador de datos + slider de radio */}
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5">
-                        <span className="font-mono text-lg font-bold text-[#FAFAF8]">{totalComparables}</span>
+                        <span className="font-mono text-lg font-bold text-[var(--franco-text)]">{totalComparables}</span>
                         <div>
-                          <div className="font-body text-[13px] font-semibold text-[#FAFAF8]">comparables en {radius}m</div>
-                          <div className="font-body text-[11px] text-[#71717A]">
+                          <div className="font-body text-[13px] font-semibold text-[var(--franco-text)]">comparables en {radius}m</div>
+                          <div className="font-body text-[11px] text-[var(--franco-text-muted)]">
                             {arriendosCount} arriendos · {ventasCount} {condicionLabel}{dormLabel}
                           </div>
                         </div>
                       </div>
                       <div className={`shrink-0 px-2.5 py-1 rounded-full font-mono text-[9px] font-bold uppercase tracking-wide ${
-                        minCount >= 20 ? 'bg-[#B0BEC5]/10 text-[#B0BEC5]' :
-                        minCount >= 10 ? 'bg-[#FAFAF8]/10 text-[#FAFAF8]' :
+                        minCount >= 20 ? 'bg-[#B0BEC5]/10 text-[var(--franco-positive)]' :
+                        minCount >= 10 ? 'bg-[var(--franco-text)]/10 text-[var(--franco-text)]' :
                         minCount >= 5 ? 'bg-[#C8323C]/10 text-[#C8323C]' :
-                        'bg-[#71717A]/10 text-[#71717A]'
+                        'bg-[var(--franco-text-muted)]/10 text-[var(--franco-text-muted)]'
                       }`}>
                         {minCount >= 20 ? 'Robustos' :
                          minCount >= 10 ? 'Suficientes' :
@@ -1395,13 +1395,13 @@ export default function NuevoAnalisisPage() {
                     </div>
 
                     {/* Progress bar under indicator */}
-                    <div className="mt-2 h-1 bg-white/[0.08] rounded-full overflow-hidden">
+                    <div className="mt-2 h-1 bg-[var(--franco-border)] rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${
                           minCount >= 20 ? 'bg-[#B0BEC5]' :
-                          minCount >= 10 ? 'bg-[#FAFAF8]' :
+                          minCount >= 10 ? 'bg-[var(--franco-text)]' :
                           minCount >= 5 ? 'bg-[#C8323C]' :
-                          'bg-[#71717A]'
+                          'bg-[var(--franco-text-muted)]'
                         }`}
                         style={{ width: `${Math.min(minCount / 20 * 100, 100)}%` }}
                       />
@@ -1413,10 +1413,10 @@ export default function NuevoAnalisisPage() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <div className="flex items-center gap-1">
-                    <span className="font-body text-[12px] text-[#71717A]">Radio</span>
+                    <span className="font-body text-[12px] text-[var(--franco-text-muted)]">Radio</span>
                     <InfoTooltip content="Franco busca propiedades similares dentro de este radio para sugerir precios de mercado." />
                   </div>
-                  <span className="font-mono text-[12px] font-semibold text-[#FAFAF8]">{radius}m</span>
+                  <span className="font-mono text-[12px] font-semibold text-[var(--franco-text)]">{radius}m</span>
                 </div>
                 <input
                   type="range" min={300} max={2000} step={100}
@@ -1434,7 +1434,7 @@ export default function NuevoAnalisisPage() {
               {/* m² */}
               <div>
                 <div className="flex items-center gap-0.5 mb-1">
-                  <label className="font-mono text-[11px] text-[#71717A] uppercase">m²</label>
+                  <label className="font-mono text-[11px] text-[var(--franco-text-muted)] uppercase">m²</label>
                   <InfoTooltip content={TIPS.superficie} />
                 </div>
                 <input
@@ -1452,7 +1452,7 @@ export default function NuevoAnalisisPage() {
               {/* Dorm. */}
               <div>
                 <div className="flex items-center gap-0.5 mb-1">
-                  <label className="font-mono text-[11px] text-[#71717A] uppercase">Dorm.</label>
+                  <label className="font-mono text-[11px] text-[var(--franco-text-muted)] uppercase">Dorm.</label>
                   <InfoTooltip content={TIPS.dormitorios} />
                 </div>
                 <input
@@ -1469,7 +1469,7 @@ export default function NuevoAnalisisPage() {
               {/* Baños */}
               <div>
                 <div className="flex items-center gap-0.5 mb-1">
-                  <label className="font-mono text-[11px] text-[#71717A] uppercase">Baños</label>
+                  <label className="font-mono text-[11px] text-[var(--franco-text-muted)] uppercase">Baños</label>
                   <InfoTooltip content={TIPS.banos} />
                 </div>
                 <input
@@ -1486,7 +1486,7 @@ export default function NuevoAnalisisPage() {
               {/* Estac. */}
               <div className="max-sm:col-span-1">
                 <div className="flex items-center gap-0.5 mb-1">
-                  <label className="font-mono text-[11px] text-[#71717A] uppercase">Estac.</label>
+                  <label className="font-mono text-[11px] text-[var(--franco-text-muted)] uppercase">Estac.</label>
                   <InfoTooltip content={TIPS.estacionamiento} />
                 </div>
                 <input
@@ -1503,7 +1503,7 @@ export default function NuevoAnalisisPage() {
               {/* Bodega */}
               <div className="max-sm:col-span-1">
                 <div className="flex items-center gap-0.5 mb-1">
-                  <label className="font-mono text-[11px] text-[#71717A] uppercase">Bodega</label>
+                  <label className="font-mono text-[11px] text-[var(--franco-text-muted)] uppercase">Bodega</label>
                   <InfoTooltip content={TIPS.bodega} />
                 </div>
                 <input
@@ -1527,15 +1527,15 @@ export default function NuevoAnalisisPage() {
                   <select
                     value={form.antiguedad}
                     onChange={(e) => setField("antiguedad", e.target.value)}
-                    className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                    className="flex h-10 w-full appearance-none rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-[13px] text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                   >
-                    <option value="0-2" className="bg-[#1A1A1A] text-[#FAFAF8]">0-2 años (nuevo)</option>
-                    <option value="3-5" className="bg-[#1A1A1A] text-[#FAFAF8]">3-5 años</option>
-                    <option value="6-10" className="bg-[#1A1A1A] text-[#FAFAF8]">6-10 años</option>
-                    <option value="11-20" className="bg-[#1A1A1A] text-[#FAFAF8]">11-20 años</option>
-                    <option value="20+" className="bg-[#1A1A1A] text-[#FAFAF8]">20+ años</option>
+                    <option value="0-2" className="bg-[var(--franco-card)] text-[var(--franco-text)]">0-2 años (nuevo)</option>
+                    <option value="3-5" className="bg-[var(--franco-card)] text-[var(--franco-text)]">3-5 años</option>
+                    <option value="6-10" className="bg-[var(--franco-card)] text-[var(--franco-text)]">6-10 años</option>
+                    <option value="11-20" className="bg-[var(--franco-card)] text-[var(--franco-text)]">11-20 años</option>
+                    <option value="20+" className="bg-[var(--franco-card)] text-[var(--franco-text)]">20+ años</option>
                   </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#71717A]" />
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--franco-text-muted)]" />
                 </div>
               </div>
             )}
@@ -1545,14 +1545,14 @@ export default function NuevoAnalisisPage() {
         {/* ════════════════════════════════════════════════════════
             BLOCK 2: ¿Cuánto cuesta y genera?
             ════════════════════════════════════════════════════════ */}
-        <div className="rounded-xl border border-white/[0.08] bg-[#1A1A1A] p-5 space-y-4 mt-3">
-          <div className="font-mono text-[10px] text-[#71717A] uppercase tracking-[0.1em] mb-4">¿Cuánto cuesta y genera?</div>
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4 mt-3">
+          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em] mb-4">¿Cuánto cuesta y genera?</div>
 
           {/* Valor de mercado estimado */}
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Valor de mercado ({fieldCurrency.valorMercado === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Valor de mercado ({fieldCurrency.valorMercado === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content="Precio al que se venden deptos similares en la zona. Se pre-rellena con datos del mercado. Si crees que vale más o menos, ajústalo." />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.valorMercado && (
@@ -1563,7 +1563,7 @@ export default function NuevoAnalisisPage() {
                     setField("valorMercado", String(suggestions.precioSugeridoUF));
                   }}
                 >
-                  Usar sugerencia: {fmtUF(suggestions.precioSugeridoUF)}{ventaRef && ventaRef.sampleSize > 0 ? <span className="text-[#71717A]"> · sobre {ventaRef.sampleSize} deptos {form.tipoPropiedad === "nuevo" ? "nuevos" : "usados"}</span> : null} ↗
+                  Usar sugerencia: {fmtUF(suggestions.precioSugeridoUF)}{ventaRef && ventaRef.sampleSize > 0 ? <span className="text-[var(--franco-text-muted)]"> · sobre {ventaRef.sampleSize} deptos {form.tipoPropiedad === "nuevo" ? "nuevos" : "usados"}</span> : null} ↗
                 </span>
               )}
             </div>
@@ -1576,7 +1576,7 @@ export default function NuevoAnalisisPage() {
               onCurrencyToggle={() => toggleFieldCurrency("valorMercado")}
             />
             {!form.valorMercado && (
-              <p className="mt-1 font-body text-[11px] text-[#71717A]">Si lo dejas vacío, se asume igual al precio de compra.</p>
+              <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">Si lo dejas vacío, se asume igual al precio de compra.</p>
             )}
           </div>
 
@@ -1584,7 +1584,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Precio de compra ({fieldCurrency.precio === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Precio de compra ({fieldCurrency.precio === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.precio} />
               </div>
               {suggestions && suggestions.precioSugeridoUF > 0 && !form.precio && (
@@ -1595,7 +1595,7 @@ export default function NuevoAnalisisPage() {
                     setField("precio", String(suggestions.precioSugeridoUF));
                   }}
                 >
-                  Sugerencia: {fmtUF(suggestions.precioSugeridoUF)}{ventaRef && ventaRef.sampleSize > 0 ? <span className="text-[#71717A]"> · sobre {ventaRef.sampleSize} deptos {form.tipoPropiedad === "nuevo" ? "nuevos" : "usados"}</span> : null} ↗
+                  Sugerencia: {fmtUF(suggestions.precioSugeridoUF)}{ventaRef && ventaRef.sampleSize > 0 ? <span className="text-[var(--franco-text-muted)]"> · sobre {ventaRef.sampleSize} deptos {form.tipoPropiedad === "nuevo" ? "nuevos" : "usados"}</span> : null} ↗
                 </span>
               )}
             </div>
@@ -1610,12 +1610,12 @@ export default function NuevoAnalisisPage() {
             />
             {/* Ref text (muted, not clickable) */}
             {suggestions && suggestions.precioM2VentaUF > 0 && (
-              <p className="mt-1 font-body text-[11px] text-[#71717A]">
+              <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">
                 Ref: {fmtUF(suggestions.precioM2VentaUF)}/m² en la zona
               </p>
             )}
             {calc.precioUF > 0 && (
-              <p className="mt-1 text-xs text-[#71717A]">
+              <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
                 {fieldCurrency.precio === "UF" ? fmtCLP(calc.precioCLP) : fmtUF(calc.precioUF)}
                 {calc.precioM2 > 0 && <> · {fmtUF(calc.precioM2)}/m²</>}
               </p>
@@ -1626,8 +1626,8 @@ export default function NuevoAnalisisPage() {
               if (vm <= 0 || pc <= 0) return null;
               const diff = vm - pc;
               const pct = Math.abs(diff / vm * 100);
-              if (pct < 2) return <p className="mt-1 text-xs text-[#71717A]">Precio alineado con el mercado</p>;
-              if (diff > 0) return <p className="mt-1 text-xs text-[#B0BEC5]">Pasada: {fmtUF(diff)} bajo mercado ({pct.toFixed(1).replace(".",",")}% descuento)</p>;
+              if (pct < 2) return <p className="mt-1 text-xs text-[var(--franco-text-muted)]">Precio alineado con el mercado</p>;
+              if (diff > 0) return <p className="mt-1 text-xs text-[var(--franco-positive)]">Pasada: {fmtUF(diff)} bajo mercado ({pct.toFixed(1).replace(".",",")}% descuento)</p>;
               return <p className="mt-1 text-xs text-[#C8323C]">Sobreprecio: {fmtUF(Math.abs(diff))} sobre mercado ({pct.toFixed(1).replace(".",",")}% extra)</p>;
             })()}
           </div>
@@ -1641,7 +1641,7 @@ export default function NuevoAnalisisPage() {
               transition: "all 0.3s ease",
             }}
           >
-            <div className="rounded-[10px] p-4 space-y-3" style={{ background: "rgba(250,250,248,0.03)", border: "1px solid rgba(250,250,248,0.08)" }}>
+            <div className="rounded-[10px] p-4 space-y-3" style={{ background: "var(--franco-card)", border: "1px solid var(--franco-border)" }}>
               <div>
                 <FieldLabel>Entrega</FieldLabel>
                 <div className="flex gap-1.5">
@@ -1650,16 +1650,16 @@ export default function NuevoAnalisisPage() {
                     onClick={() => { setField("estadoVenta", "inmediata"); setField("cuotasPie", "1"); cuotasModificadaRef.current = false; }}
                     className="flex-1 rounded-lg px-3 py-2 font-body text-[13px] text-center transition-all"
                     style={form.estadoVenta === "inmediata"
-                      ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
-                      : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
+                      ? { border: "1px solid var(--franco-text)", color: "var(--franco-text)", fontWeight: 500 }
+                      : { border: "1px solid var(--franco-border)", color: "var(--franco-text-muted)" }}
                   >Inmediata</button>
                   <button
                     type="button"
                     onClick={() => { setField("estadoVenta", "futura"); cuotasModificadaRef.current = false; }}
                     className="flex-1 rounded-lg px-3 py-2 font-body text-[13px] text-center transition-all"
                     style={form.estadoVenta === "futura"
-                      ? { border: "1px solid #FAFAF8", color: "#FAFAF8", fontWeight: 500 }
-                      : { border: "1px solid rgba(250,250,248,0.1)", color: "rgba(250,250,248,0.4)" }}
+                      ? { border: "1px solid var(--franco-text)", color: "var(--franco-text)", fontWeight: 500 }
+                      : { border: "1px solid var(--franco-border)", color: "var(--franco-text-muted)" }}
                   >Futura (verde/blanco)</button>
                 </div>
               </div>
@@ -1679,30 +1679,30 @@ export default function NuevoAnalisisPage() {
                     <select
                       value={form.fechaEntregaMes}
                       onChange={(e) => { setField("fechaEntregaMes", e.target.value); cuotasModificadaRef.current = false; }}
-                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-[13px] text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                     >
-                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Mes...</option>
+                      <option value="" className="bg-[var(--franco-card)] text-[var(--franco-text)]">Mes...</option>
                       {Array.from({ length: 12 }, (_, i) => (
-                        <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[#1A1A1A] text-[#FAFAF8]">
+                        <option key={i + 1} value={String(i + 1).padStart(2, "0")} className="bg-[var(--franco-card)] text-[var(--franco-text)]">
                           {new Date(2000, i).toLocaleString("es-CL", { month: "long" })}
                         </option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[var(--franco-text-muted)]" />
                   </div>
                   <div className="relative">
                     <FieldLabel>Año entrega</FieldLabel>
                     <select
                       value={form.fechaEntregaAnio}
                       onChange={(e) => { setField("fechaEntregaAnio", e.target.value); cuotasModificadaRef.current = false; }}
-                      className="flex h-10 w-full appearance-none rounded-lg border border-white/[0.1] bg-white/[0.04] px-3 py-2.5 font-body text-[13px] text-[#FAFAF8] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
+                      className="flex h-10 w-full appearance-none rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2.5 font-body text-[13px] text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none"
                     >
-                      <option value="" className="bg-[#1A1A1A] text-[#FAFAF8]">Año...</option>
+                      <option value="" className="bg-[var(--franco-card)] text-[var(--franco-text)]">Año...</option>
                       {[2025, 2026, 2027, 2028, 2029, 2030, 2031, 2032].map((y) => (
-                        <option key={y} value={String(y)} className="bg-[#1A1A1A] text-[#FAFAF8]">{y}</option>
+                        <option key={y} value={String(y)} className="bg-[var(--franco-card)] text-[var(--franco-text)]">{y}</option>
                       ))}
                     </select>
-                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[#71717A]" />
+                    <ChevronDown className="pointer-events-none absolute right-3 top-[38px] h-4 w-4 text-[var(--franco-text-muted)]" />
                   </div>
                 </div>
               </div>
@@ -1722,7 +1722,7 @@ export default function NuevoAnalisisPage() {
                       className={inputClass + " w-20"}
                     />
                     {calc.precioUF > 0 && parseFloat(form.piePct) > 0 && (
-                      <span className="font-mono text-[11px] text-[#71717A]">
+                      <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">
                         {fmtUF(calc.pieUF)}
                       </span>
                     )}
@@ -1742,7 +1742,7 @@ export default function NuevoAnalisisPage() {
                       className={inputClass + " w-20"}
                     />
                     {calc.pieUF > 0 && Number(form.cuotasPie) > 0 && (
-                      <span className="font-mono text-[11px] text-[#71717A]">
+                      <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">
                         {Number(form.cuotasPie) === 1 ? "1 cuota" : `${form.cuotasPie} cuotas`} de {fmtUF(Math.round((calc.pieUF / Number(form.cuotasPie)) * 10) / 10)}
                       </span>
                     )}
@@ -1750,12 +1750,12 @@ export default function NuevoAnalisisPage() {
                 </div>
               </div>
               {form.estadoVenta === "inmediata" && (
-                <p className="text-[11px]" style={{ color: "rgba(250,250,248,0.25)" }}>
+                <p className="text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
                   Default: 1 cuota (pago completo). Modifica si la inmobiliaria ofrece cuotas.
                 </p>
               )}
               {form.estadoVenta === "futura" && form.fechaEntregaMes && form.fechaEntregaAnio && (
-                <p className="text-[11px]" style={{ color: "rgba(250,250,248,0.25)" }}>
+                <p className="text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
                   {(() => {
                     const now = new Date();
                     const entrega = new Date(Number(form.fechaEntregaAnio), Number(form.fechaEntregaMes) - 1);
@@ -1771,7 +1771,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Arriendo mensual ({fieldCurrency.arriendo === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Arriendo mensual ({fieldCurrency.arriendo === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.arriendo} />
               </div>
               {suggestions?.arriendo && !form.arriendo && (
@@ -1782,7 +1782,7 @@ export default function NuevoAnalisisPage() {
                     setField("arriendo", String(suggestions.arriendo));
                   }}
                 >
-                  Sugerencia: {fmtCLP(suggestions.arriendo)}{suggestionSampleSize > 0 && <span className="text-[#71717A]"> · sobre {suggestionSampleSize} deptos</span>} ↗
+                  Sugerencia: {fmtCLP(suggestions.arriendo)}{suggestionSampleSize > 0 && <span className="text-[var(--franco-text-muted)]"> · sobre {suggestionSampleSize} deptos</span>} ↗
                 </span>
               )}
             </div>
@@ -1800,12 +1800,12 @@ export default function NuevoAnalisisPage() {
               required
             />
             {suggestions && suggestions.precioM2Arriendo > 0 && (
-              <p className="mt-1 font-body text-[11px] text-[#71717A]">
+              <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">
                 Ref: {fmtCLP(suggestions.precioM2Arriendo)}/m² mes en la zona
               </p>
             )}
             {form.arriendo && Number(form.arriendo) > 0 && (
-              <p className="mt-1 text-xs text-[#71717A]">
+              <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
                 {fieldCurrency.arriendo === "UF"
                   ? fmtCLP(Number(form.arriendo) * UF_CLP)
                   : fmtUF(Number(form.arriendo) / UF_CLP)
@@ -1829,7 +1829,7 @@ export default function NuevoAnalisisPage() {
                     onCurrencyToggle={() => toggleFieldCurrency("arriendoEstac")}
                   />
                   {!form.arriendoEstac && (
-                    <p className="mt-1 font-body text-[11px] text-[#71717A]">Ref: ~$40.000/mes por estacionamiento</p>
+                    <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">Ref: ~$40.000/mes por estacionamiento</p>
                   )}
                 </div>
               )}
@@ -1845,7 +1845,7 @@ export default function NuevoAnalisisPage() {
                     onCurrencyToggle={() => toggleFieldCurrency("arriendoBodega")}
                   />
                   {!form.arriendoBodega && (
-                    <p className="mt-1 font-body text-[11px] text-[#71717A]">Ref: ~$15.000/mes por bodega</p>
+                    <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">Ref: ~$15.000/mes por bodega</p>
                   )}
                 </div>
               )}
@@ -1856,7 +1856,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Gastos comunes ({fieldCurrency.gastos === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Gastos comunes ({fieldCurrency.gastos === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.gastos} />
               </div>
               {suggestions?.gastos && !form.gastos && (
@@ -1867,7 +1867,7 @@ export default function NuevoAnalisisPage() {
                     setField("gastos", String(suggestions.gastos));
                   }}
                 >
-                  Sugerencia: {fmtCLP(suggestions.gastos)}{suggestionSampleSize > 0 && <span className="text-[#71717A]"> · sobre {suggestionSampleSize} deptos</span>} ↗
+                  Sugerencia: {fmtCLP(suggestions.gastos)}{suggestionSampleSize > 0 && <span className="text-[var(--franco-text-muted)]"> · sobre {suggestionSampleSize} deptos</span>} ↗
                 </span>
               )}
             </div>
@@ -1880,7 +1880,7 @@ export default function NuevoAnalisisPage() {
               onCurrencyToggle={() => toggleFieldCurrency("gastos")}
             />
             {!form.gastos && !suggestions?.gastos && parseNum(form.superficieUtil) > 0 && (
-              <p className="mt-1 font-body text-[11px] text-[#71717A]">
+              <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">
                 Referencia: $1.500-2.500 por m² mensual. Un depto de {form.superficieUtil}m² paga aprox {fmtCLP(parseNum(form.superficieUtil) * 1500)}-{fmtCLP(parseNum(form.superficieUtil) * 2500)}
               </p>
             )}
@@ -1890,7 +1890,7 @@ export default function NuevoAnalisisPage() {
           <div>
             <div className="flex items-baseline justify-between mb-1">
               <div className="flex items-center gap-1">
-                <label className="font-body text-[13px] font-semibold text-[#FAFAF8]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
+                <label className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Contribuciones trimestrales ({fieldCurrency.contribuciones === "UF" ? "UF" : "$"})</label>
                 <InfoTooltip content={TIPS.contribuciones} />
               </div>
               {(suggestions?.contribuciones ?? 0) > 0 && !form.contribuciones && (
@@ -1914,7 +1914,7 @@ export default function NuevoAnalisisPage() {
               onCurrencyToggle={() => toggleFieldCurrency("contribuciones")}
             />
             {!form.contribuciones && (
-              <p className="mt-1 font-body text-[11px] text-[#71717A]">
+              <p className="mt-1 font-body text-[11px] text-[var(--franco-text-muted)]">
                 {(suggestions?.contribuciones ?? 0) > 0
                   ? <>Estimación SII (tasas 0,93%-1,09%). Para dato exacto, consulta con tu ROL en <a href="https://www4.sii.cl/mapasui/internet/" target="_blank" rel="noopener noreferrer" className="text-[#C8323C] hover:underline">sii.cl/mapas</a></>
                   : suggestions?.contribuciones === 0
@@ -1935,7 +1935,7 @@ export default function NuevoAnalisisPage() {
                 onChange={(e) => setField("vacanciaPct", e.target.value)}
                 className="w-full accent-[#C8323C]"
               />
-              <p className="mt-1 font-body text-[10px] text-[#71717A]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
+              <p className="mt-1 font-body text-[10px] text-[var(--franco-text-muted)]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
             </div>
             <div>
               <FieldLabel tip="Comisión si contratas administrador de arriendo. En 0% se desactiva.">Administración: {form.adminPct}%</FieldLabel>
@@ -1945,7 +1945,7 @@ export default function NuevoAnalisisPage() {
                 onChange={(e) => setField("adminPct", e.target.value)}
                 className="w-full accent-[#C8323C]"
               />
-              <p className="mt-1 text-xs text-[#71717A]">
+              <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
                 {parseFloat(form.adminPct) > 0
                   ? (Number(form.arriendo) || 0) > 0
                     ? `${fmtCLP(Math.round(toCLP("arriendo", Number(form.arriendo) || 0) * parseFloat(form.adminPct) / 100))}/mes`
@@ -1977,7 +1977,7 @@ export default function NuevoAnalisisPage() {
                 className="mt-1 w-full accent-[#C8323C]"
                 style={{ height: "44px" }}
               />
-              <div className="flex justify-between font-mono text-xs text-[#71717A]">
+              <div className="flex justify-between font-mono text-xs text-[var(--franco-text-muted)]">
                 <span>{fmtUF(calc.pieUF)} ({fmtCLP(calc.pieCLP)})</span>
                 <span>Financiamiento: {calc.financiamientoPct}%</span>
               </div>
@@ -1993,7 +1993,7 @@ export default function NuevoAnalisisPage() {
                 className="mt-1 w-full accent-[#C8323C]"
                 style={{ height: "44px" }}
               />
-              <div className="flex justify-between font-mono text-xs text-[#71717A]">
+              <div className="flex justify-between font-mono text-xs text-[var(--franco-text-muted)]">
                 <span>10 años</span><span>30 años</span>
               </div>
             </div>
@@ -2016,7 +2016,7 @@ export default function NuevoAnalisisPage() {
                 required
                 className={inputClass}
               />
-              <p className="mt-1 text-xs text-[#71717A]">
+              <p className="mt-1 text-xs text-[var(--franco-text-muted)]">
                 Mercado actual: ~{tasaRef.value.replace(".", ",")}%
                 {tasaRef.updated_at && ` (act. ${new Date(tasaRef.updated_at).toLocaleDateString("es-CL")})`}
               </p>
@@ -2040,26 +2040,26 @@ export default function NuevoAnalisisPage() {
                       className="rounded-lg p-3"
                       style={{ background: "rgba(200,50,60,0.06)", border: "1px solid rgba(200,50,60,0.2)" }}
                     >
-                      <p className="text-[13px] font-semibold text-[#FAFAF8]">🏛️ Tu depto podría calificar al Subsidio a la Tasa</p>
-                      <p className="mt-1 text-xs leading-relaxed" style={{ color: "rgba(250,250,248,0.5)" }}>
+                      <p className="text-[13px] font-semibold text-[var(--franco-text)]">🏛️ Tu depto podría calificar al Subsidio a la Tasa</p>
+                      <p className="mt-1 text-xs leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
                         La Ley 21.748 rebaja la tasa hipotecaria en ~0,6% para viviendas nuevas ≤ 4.000 UF.
                       </p>
-                      <p className="mt-1.5 text-xs" style={{ color: "rgba(250,250,248,0.5)" }}>
-                        Tasa promedio: {tasaMercado.toFixed(1).replace(".", ",")}% <span style={{ color: "rgba(250,250,248,0.3)" }}>→</span> Con subsidio: <span style={{ color: "#C8323C", fontWeight: 600 }}>~{tasaConSubsidio.toFixed(1).replace(".", ",")}%</span>
+                      <p className="mt-1.5 text-xs" style={{ color: "var(--franco-text-secondary)" }}>
+                        Tasa promedio: {tasaMercado.toFixed(1).replace(".", ",")}% <span style={{ color: "var(--franco-text-muted)" }}>→</span> Con subsidio: <span style={{ color: "#C8323C", fontWeight: 600 }}>~{tasaConSubsidio.toFixed(1).replace(".", ",")}%</span>
                       </p>
                       <div className="mt-2 flex items-center gap-3">
                         <button
                           type="button"
                           onClick={() => { setField("tasaInteres", String(tasaConSubsidio)); tasaModificadaRef.current = true; }}
-                          className="text-xs font-medium text-[#FAFAF8] underline underline-offset-2 hover:text-[#FAFAF8]"
+                          className="text-xs font-medium text-[var(--franco-text)] underline underline-offset-2 hover:text-[var(--franco-text)]"
                         >
                           Usar {tasaConSubsidio.toFixed(1).replace(".", ",")}%
                         </button>
-                        <span className="text-[11px]" style={{ color: "rgba(250,250,248,0.3)" }}>Vigente hasta mayo 2027</span>
+                        <span className="text-[11px]" style={{ color: "var(--franco-text-muted)" }}>Vigente hasta mayo 2027</span>
                       </div>
-                      <p className="mt-1.5 text-[11px]" style={{ color: "rgba(250,250,248,0.3)" }}>
+                      <p className="mt-1.5 text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
                         Requisitos: primera vivienda, promesa desde 2025.{" "}
-                        <a href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/" target="_blank" rel="noopener noreferrer" className="underline hover:text-white/50">
+                        <a href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/" target="_blank" rel="noopener noreferrer" className="underline hover:text-[var(--franco-text-secondary)]">
                           Más info
                         </a>
                       </p>
@@ -2070,10 +2070,10 @@ export default function NuevoAnalisisPage() {
             </div>
 
             {calc.dividendo > 0 && (
-              <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] p-3">
+              <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-body text-[13px] font-medium text-[#FAFAF8]">Dividendo estimado</span>
-                  <span className="font-mono text-[15px] font-bold text-[#FAFAF8]">{fmtCLP(calc.dividendo)}/mes</span>
+                  <span className="font-body text-[13px] font-medium text-[var(--franco-text)]">Dividendo estimado</span>
+                  <span className="font-mono text-[15px] font-bold text-[var(--franco-text)]">{fmtCLP(calc.dividendo)}/mes</span>
                 </div>
               </div>
             )}
@@ -2096,7 +2096,7 @@ export default function NuevoAnalisisPage() {
               <>✦ Generar Franco Score</>
             )}
           </button>
-          <p className="text-center font-body text-[11px] text-[#71717A] mt-2">
+          <p className="text-center font-body text-[11px] text-[var(--franco-text-muted)] mt-2">
             {!canSubmit ? `Faltan: ${progress.missing.join(", ")}` : "Análisis gratuito · 30 segundos"}
           </p>
         </div>

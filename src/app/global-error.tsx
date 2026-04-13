@@ -17,8 +17,8 @@ export default function GlobalError({
   return (
     <html>
       <body style={{
-        backgroundColor: "#0F0F0F",
-        color: "#FAFAF8",
+        backgroundColor: "var(--franco-bg)",
+        color: "var(--franco-text)",
         fontFamily: "IBM Plex Sans, sans-serif",
         display: "flex",
         alignItems: "center",
@@ -35,14 +35,14 @@ export default function GlobalError({
           }}>
             Algo salió mal
           </h2>
-          <p style={{ color: "#71717A", marginBottom: "20px" }}>
+          <p style={{ color: "var(--franco-text-muted)", marginBottom: "20px" }}>
             El error fue registrado automáticamente. Intenta de nuevo.
           </p>
           <button
             onClick={reset}
             style={{
               backgroundColor: "#C8323C",
-              color: "#FAFAF8",
+              color: "var(--franco-text)",
               border: "none",
               padding: "10px 24px",
               borderRadius: "6px",

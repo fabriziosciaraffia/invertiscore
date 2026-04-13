@@ -170,12 +170,12 @@ export default function GoogleMapRadius({
       <div className="absolute top-2.5 right-2.5 flex flex-col gap-0.5 rounded-md bg-white/95 backdrop-blur-sm px-2 py-1 shadow-sm">
         <div className="flex items-center gap-1">
           <div className="w-1.5 h-1.5 rounded-full bg-[#C8323C]" />
-          <span className="font-body text-[9px] text-[#71717A]">Tu propiedad</span>
+          <span className="font-body text-[9px] text-[var(--franco-text-muted)]">Tu propiedad</span>
         </div>
         {nearbyProperties && nearbyProperties.length > 0 && (
           <div className="flex items-center gap-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#71717A] opacity-60" />
-            <span className="font-body text-[9px] text-[#71717A]">Arriendos cercanos</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--franco-text-muted)] opacity-60" />
+            <span className="font-body text-[9px] text-[var(--franco-text-muted)]">Arriendos cercanos</span>
           </div>
         )}
       </div>

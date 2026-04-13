@@ -31,7 +31,7 @@ export default function WaitlistForm() {
   if (state === "success") {
     return (
       <div className="rounded-xl border border-[#B0BEC5]/20 bg-[#B0BEC5]/[0.06] px-6 py-4 text-center">
-        <p className="font-body text-sm font-medium text-[#B0BEC5]">
+        <p className="font-body text-sm font-medium text-[var(--franco-positive)]">
           ¡Listo! Te avisaremos cuando Franco esté disponible.
         </p>
       </div>
@@ -46,8 +46,8 @@ export default function WaitlistForm() {
         value={email}
         onChange={(e) => { setEmail(e.target.value); if (state === "error") setState("idle"); }}
         required
-        className="flex-1 rounded-lg border bg-transparent px-4 py-3 font-body text-sm text-[#FAFAF8] placeholder:text-white/[0.35] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
-        style={{ borderColor: state === "error" ? "#C8323C" : "rgba(250,250,248,0.1)" }}
+        className="flex-1 rounded-lg border bg-transparent px-4 py-3 font-body text-sm text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:border-[#C8323C] focus:outline-none focus:ring-1 focus:ring-[#C8323C]/20"
+        style={{ borderColor: state === "error" ? "#C8323C" : "var(--franco-border)" }}
       />
       <button
         type="submit"

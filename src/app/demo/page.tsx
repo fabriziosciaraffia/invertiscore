@@ -252,9 +252,9 @@ const DEMO_ZONE_DATA = [
 
 export default function DemoPage() {
   return (
-    <div className="min-h-screen bg-[#0F0F0F]">
+    <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]">
+      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" href="/" inverted />
           <Link
@@ -267,9 +267,9 @@ export default function DemoPage() {
       </nav>
 
       {/* Demo banner */}
-      <div className="bg-[#1A1A1A] text-white border-b border-white/[0.08]">
+      <div className="bg-[var(--franco-card)] text-white border-b border-[var(--franco-border)]">
         <div className="container mx-auto max-w-6xl px-4 py-3 flex items-center justify-center gap-3 flex-wrap">
-          <p className="font-body text-[13px] text-white/80 text-center">
+          <p className="font-body text-[13px] text-[var(--franco-text)] text-center">
             Esto es un análisis de ejemplo.
           </p>
           <Link
@@ -306,9 +306,9 @@ export default function DemoPage() {
       </div>
 
       {/* Bottom CTA */}
-      <div className="bg-[#0F0F0F] py-12 text-center">
+      <div className="bg-[var(--franco-bg)] py-12 text-center">
         <p className="font-heading font-bold text-xl text-white mb-2">¿Tienes un depto en la mira?</p>
-        <p className="font-body text-sm text-white/50 mb-6">Resultado en 30 segundos. Registro gratis.</p>
+        <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-6">Resultado en 30 segundos. Registro gratis.</p>
         <Link
           href="/register"
           className="inline-block bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"

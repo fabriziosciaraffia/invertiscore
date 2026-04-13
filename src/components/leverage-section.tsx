@@ -109,7 +109,7 @@ function FadeIn({
 // ============================================================
 function StepNumber({ n }: { n: number }) {
   return (
-    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#0F0F0F]">
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--franco-bg)]">
       <span className="font-mono text-[13px] font-bold text-white">{n}</span>
     </div>
   );
@@ -140,7 +140,7 @@ function BarColumn({
   const deudaH = Math.max(14, (saldo / maxVal) * barH);
   return (
     <div className="flex flex-1 flex-col items-center">
-      <p className="mb-1 font-mono text-[8px] text-[#71717A] md:text-[9px]">
+      <p className="mb-1 font-mono text-[8px] text-[var(--franco-text-muted)] md:text-[9px]">
         Año {year}
       </p>
       <div
@@ -151,7 +151,7 @@ function BarColumn({
           className="flex min-h-[18px] items-center justify-center rounded-t-md"
           style={{
             height: `${patrimonioH}px`,
-            background: "linear-gradient(180deg, #0F0F0F, #2A2A2A)",
+            background: "linear-gradient(180deg, var(--franco-bg), var(--franco-elevated))",
           }}
         >
           {showLabel && (
@@ -218,7 +218,7 @@ export default function LeverageSection() {
         className="relative overflow-hidden px-6 py-16 pb-12"
         style={{
           background:
-            "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 50%, #2A2A2A 100%)",
+            "var(--franco-bg)",
         }}
       >
         <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-[#C8323C]/[0.03] blur-3xl" />
@@ -245,10 +245,10 @@ export default function LeverageSection() {
             <div className="mb-6 flex items-center gap-3">
               <StepNumber n={1} />
               <div>
-                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[#0F0F0F]">
+                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[var(--franco-bg)]">
                   Pones 20%, controlas 100%
                 </h3>
-                <p className="mt-1 font-body text-[13px] text-[#71717A]">
+                <p className="mt-1 font-body text-[13px] text-[var(--franco-text-muted)]">
                   Así funciona el apalancamiento hipotecario
                 </p>
               </div>
@@ -260,7 +260,7 @@ export default function LeverageSection() {
               <div className="flex items-end justify-center gap-4">
                 {/* 20% block */}
                 <div className="z-10 -mr-1.5 text-center">
-                  <p className="mb-1.5 font-mono text-xs font-semibold text-[#0F0F0F]">
+                  <p className="mb-1.5 font-mono text-xs font-semibold text-[var(--franco-bg)]">
                     $24.0M
                   </p>
                   <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[10px] border-2 border-white/90 bg-[#C8323C] shadow-[0_2px_12px_rgba(200,50,60,0.2)] md:h-20 md:w-20">
@@ -268,28 +268,28 @@ export default function LeverageSection() {
                       20%
                     </span>
                   </div>
-                  <p className="mt-1.5 font-body text-[10px] text-[#71717A]">
+                  <p className="mt-1.5 font-body text-[10px] text-[var(--franco-text-muted)]">
                     Tu pie
                   </p>
                 </div>
 
                 {/* Arrow */}
-                <span className="mb-6 px-2 font-body text-xl text-[#71717A]">
+                <span className="mb-6 px-2 font-body text-xl text-[var(--franco-text-muted)]">
                   →
                 </span>
 
                 {/* 100% block */}
                 <div className="text-center">
-                  <p className="mb-1.5 font-mono text-xs font-semibold text-[#0F0F0F]">
+                  <p className="mb-1.5 font-mono text-xs font-semibold text-[var(--franco-bg)]">
                     $120.0M
                   </p>
                   <div
                     className="flex h-[140px] w-[140px] flex-col justify-between rounded-xl p-2.5 md:h-[170px] md:w-[170px] md:p-3"
                     style={{
-                      background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)",
+                      background: "linear-gradient(135deg, var(--franco-bg), var(--franco-elevated))",
                     }}
                   >
-                    <p className="text-right font-mono text-[10px] text-white/30">
+                    <p className="text-right font-mono text-[10px] text-[var(--franco-text-muted)]">
                       100%
                     </p>
                     <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-[#C8323C] opacity-85 md:h-16 md:w-16">
@@ -298,29 +298,29 @@ export default function LeverageSection() {
                       </span>
                     </div>
                   </div>
-                  <p className="mt-1.5 font-body text-[10px] text-[#71717A]">
+                  <p className="mt-1.5 font-body text-[10px] text-[var(--franco-text-muted)]">
                     Lo que controlas
                   </p>
                 </div>
               </div>
 
               {/* Right: multiplier */}
-              <div className="min-w-[160px] rounded-xl bg-[#FAFAF8] p-6 text-center md:min-w-[180px]">
-                <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-[#71717A]">
+              <div className="min-w-[160px] rounded-xl bg-[var(--franco-text)] p-6 text-center md:min-w-[180px]">
+                <p className="mb-2 font-mono text-[9px] uppercase tracking-wider text-[var(--franco-text-muted)]">
                   MULTIPLICADOR
                 </p>
-                <p className="font-heading text-[52px] font-bold leading-none text-[#0F0F0F]">
+                <p className="font-heading text-[52px] font-bold leading-none text-[var(--franco-bg)]">
                   5x
                 </p>
-                <p className="mt-2.5 font-body text-[11px] leading-snug text-[#71717A]">
+                <p className="mt-2.5 font-body text-[11px] leading-snug text-[var(--franco-text-muted)]">
                   Cada 1% de plusvalía te renta 5% sobre tu pie
                 </p>
               </div>
             </div>
 
             {/* Explanation */}
-            <div className="mt-5 rounded-[10px] bg-[#FAFAF8] p-4 px-5">
-              <p className="font-body text-sm leading-relaxed text-[#0F0F0F]">
+            <div className="mt-5 rounded-[10px] bg-[var(--franco-text)] p-4 px-5">
+              <p className="font-body text-sm leading-relaxed text-[var(--franco-bg)]">
                 Con <strong>$24.0M</strong> de pie controlas un activo de{" "}
                 <strong>$120.0M</strong>. Si la propiedad sube 4% en un año, eso
                 son <strong>$4.8M</strong> de plusvalía — un 20% sobre tu pie.
@@ -343,10 +343,10 @@ export default function LeverageSection() {
             <div className="mb-6 flex items-center gap-3">
               <StepNumber n={2} />
               <div>
-                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[#0F0F0F]">
+                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[var(--franco-bg)]">
                   Sí, pierdes plata cada mes
                 </h3>
-                <p className="mt-1 font-body text-[13px] text-[#71717A]">
+                <p className="mt-1 font-body text-[13px] text-[var(--franco-text-muted)]">
                   El flujo negativo es el costo del apalancamiento
                 </p>
               </div>
@@ -354,19 +354,19 @@ export default function LeverageSection() {
 
             {/* Cards row */}
             <div className="mb-5 flex flex-col items-center gap-3 md:flex-row">
-              <div className="w-full flex-1 rounded-xl bg-[#FAFAF8] p-4 text-center">
-                <p className="mb-1.5 font-body text-[10px] uppercase tracking-wide text-[#71717A]">
+              <div className="w-full flex-1 rounded-xl bg-[var(--franco-text)] p-4 text-center">
+                <p className="mb-1.5 font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
                   ARRIENDO
                 </p>
-                <p className="font-mono text-[22px] font-semibold text-[#0F0F0F]">
+                <p className="font-mono text-[22px] font-semibold text-[var(--franco-bg)]">
                   +$420K
                 </p>
               </div>
 
               <span className="font-mono text-lg text-[#E6E6E2]">−</span>
 
-              <div className="w-full flex-1 rounded-xl bg-[#FAFAF8] p-4 text-center">
-                <p className="mb-1.5 font-body text-[10px] uppercase tracking-wide text-[#71717A]">
+              <div className="w-full flex-1 rounded-xl bg-[var(--franco-text)] p-4 text-center">
+                <p className="mb-1.5 font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
                   DIVIDENDO + GASTOS
                 </p>
                 <p className="font-mono text-[22px] font-semibold text-[#C8323C]">
@@ -383,7 +383,7 @@ export default function LeverageSection() {
                 <p className="font-mono text-[22px] font-bold text-[#C8323C]">
                   −{fmtMonto(flujoNetoAbs)}
                 </p>
-                <p className="mt-0.5 font-body text-[9px] text-[#71717A]">
+                <p className="mt-0.5 font-body text-[9px] text-[var(--franco-text-muted)]">
                   por mes
                 </p>
               </div>
@@ -391,7 +391,7 @@ export default function LeverageSection() {
 
             {/* Insight */}
             <div className="rounded-[10px] border-l-[3px] border-[#C8323C] bg-[#C8323C]/[0.04] p-4 px-5">
-              <p className="font-body text-sm leading-relaxed text-[#0F0F0F]">
+              <p className="font-body text-sm leading-relaxed text-[var(--franco-bg)]">
                 Este depto te cuesta{" "}
                 <strong className="text-[#C8323C]">
                   {fmtMonto(flujoNetoAbs)}/mes
@@ -416,10 +416,10 @@ export default function LeverageSection() {
             <div className="mb-6 flex items-center gap-3">
               <StepNumber n={3} />
               <div>
-                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[#0F0F0F]">
+                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[var(--franco-bg)]">
                   Mientras tanto, dos cosas pasan
                 </h3>
-                <p className="mt-1 font-body text-[13px] text-[#71717A]">
+                <p className="mt-1 font-body text-[13px] text-[var(--franco-text-muted)]">
                   La propiedad sube y la deuda baja — la brecha es tu patrimonio
                 </p>
               </div>
@@ -458,22 +458,22 @@ export default function LeverageSection() {
             {/* Legend */}
             <div className="mb-4 flex justify-center gap-4">
               <div className="flex items-center gap-1.5">
-                <div className="h-3 w-3 rounded-sm bg-[#0F0F0F]" />
-                <span className="font-body text-[10px] text-[#71717A]">
+                <div className="h-3 w-3 rounded-sm bg-[var(--franco-bg)]" />
+                <span className="font-body text-[10px] text-[var(--franco-text-muted)]">
                   Tu patrimonio (sube)
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
                 <div className="h-3 w-3 rounded-sm border border-[#C8323C]/20 bg-[#C8323C]/[0.12]" />
-                <span className="font-body text-[10px] text-[#71717A]">
+                <span className="font-body text-[10px] text-[var(--franco-text-muted)]">
                   Deuda hipotecaria (baja)
                 </span>
               </div>
             </div>
 
             {/* Explanation */}
-            <div className="rounded-[10px] bg-[#FAFAF8] p-4 px-5">
-              <p className="font-body text-sm leading-relaxed text-[#0F0F0F]">
+            <div className="rounded-[10px] bg-[var(--franco-text)] p-4 px-5">
+              <p className="font-body text-sm leading-relaxed text-[var(--franco-bg)]">
                 Cada mes, la propiedad vale más (plusvalía) y tu deuda baja
                 (amortización).{" "}
                 <strong>
@@ -499,10 +499,10 @@ export default function LeverageSection() {
             <div className="mb-6 flex items-center gap-3">
               <StepNumber n={4} />
               <div>
-                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[#0F0F0F]">
+                <h3 className="font-heading text-[22px] font-bold tracking-tight text-[var(--franco-bg)]">
                   El balance final
                 </h3>
-                <p className="mt-1 font-body text-[13px] text-[#71717A]">
+                <p className="mt-1 font-body text-[13px] text-[var(--franco-text-muted)]">
                   Lo que perdiste mensual vs lo que ganaste en patrimonio
                 </p>
               </div>
@@ -515,37 +515,37 @@ export default function LeverageSection() {
                   LO QUE PUSISTE (10 AÑOS)
                 </p>
                 <div className="mb-2 flex justify-between">
-                  <span className="font-body text-sm text-[#71717A]">Pie inicial</span>
-                  <span className="font-mono text-sm text-[#0F0F0F]">{fmtMonto(PIE)}</span>
+                  <span className="font-body text-sm text-[var(--franco-text-muted)]">Pie inicial</span>
+                  <span className="font-mono text-sm text-[var(--franco-bg)]">{fmtMonto(PIE)}</span>
                 </div>
                 <div className="mb-2.5 flex justify-between">
-                  <span className="font-body text-sm text-[#71717A]">Bolsillo acumulado</span>
+                  <span className="font-body text-sm text-[var(--franco-text-muted)]">Bolsillo acumulado</span>
                   <span className="font-mono text-sm text-[#C8323C]">{fmtMonto(Math.abs(last10.bolsillo))}</span>
                 </div>
                 <div className="border-t border-[#E6E6E2] pt-2.5">
                   <div className="flex justify-between">
                     <span className="font-body text-sm font-semibold">Total invertido</span>
-                    <span className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtMonto(last10.totalInv)}</span>
+                    <span className="font-mono text-sm font-bold text-[var(--franco-bg)]">{fmtMonto(last10.totalInv)}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex-1 rounded-xl border-2 border-[#0F0F0F] bg-white p-5">
-                <p className="mb-3.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-[#0F0F0F]">
+              <div className="flex-1 rounded-xl border-2 border-[var(--franco-bg)] bg-white p-5">
+                <p className="mb-3.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-[var(--franco-bg)]">
                   LO QUE TIENES (AÑO 10)
                 </p>
                 <div className="mb-2 flex justify-between">
-                  <span className="font-body text-sm text-[#71717A]">Valor propiedad</span>
-                  <span className="font-mono text-sm text-[#0F0F0F]">{fmtMonto(last10.valorProp)}</span>
+                  <span className="font-body text-sm text-[var(--franco-text-muted)]">Valor propiedad</span>
+                  <span className="font-mono text-sm text-[var(--franco-bg)]">{fmtMonto(last10.valorProp)}</span>
                 </div>
                 <div className="mb-2.5 flex justify-between">
-                  <span className="font-body text-sm text-[#71717A]">Deuda restante</span>
+                  <span className="font-body text-sm text-[var(--franco-text-muted)]">Deuda restante</span>
                   <span className="font-mono text-sm text-[#C8323C]">−{fmtMonto(last10.saldo)}</span>
                 </div>
                 <div className="border-t border-[#E6E6E2] pt-2.5">
                   <div className="flex justify-between">
                     <span className="font-body text-sm font-semibold">Patrimonio neto</span>
-                    <span className="font-mono text-sm font-bold text-[#0F0F0F]">{fmtMonto(last10.patrimonio)}</span>
+                    <span className="font-mono text-sm font-bold text-[var(--franco-bg)]">{fmtMonto(last10.patrimonio)}</span>
                   </div>
                 </div>
               </div>
@@ -554,7 +554,7 @@ export default function LeverageSection() {
             {/* Return bar */}
             <div
               className="flex flex-col items-center justify-between gap-4 rounded-xl p-6 md:flex-row"
-              style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }}
+              style={{ background: "linear-gradient(135deg, var(--franco-bg), var(--franco-elevated))" }}
             >
               <div className="font-body text-[13px] leading-relaxed text-white/55">
                 <p>Invertiste {fmtMonto(last10.totalInv)} en 10 años (pie + flujo negativo).</p>
@@ -577,14 +577,14 @@ export default function LeverageSection() {
       </section>
 
       {/* ============ INTERACTIVO — Juega con los números ============ */}
-      <section className="border-t border-[#E6E6E2] bg-[#FAFAF8] px-5 py-14 md:px-6">
+      <section className="border-t border-[#E6E6E2] bg-[var(--franco-text)] px-5 py-14 md:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <div className="mb-7 text-center">
-              <h3 className="font-heading text-[22px] font-bold tracking-tight text-[#0F0F0F]">
+              <h3 className="font-heading text-[22px] font-bold tracking-tight text-[var(--franco-bg)]">
                 Juega con los números
               </h3>
-              <p className="mt-1.5 font-body text-[13px] text-[#71717A]">
+              <p className="mt-1.5 font-body text-[13px] text-[var(--franco-text-muted)]">
                 Mueve los sliders y ve cómo cambia el retorno de esta inversión.
               </p>
             </div>
@@ -594,10 +594,10 @@ export default function LeverageSection() {
               <div className="flex flex-col gap-6 md:flex-row">
                 <div className="flex-1">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="font-body text-xs font-semibold text-[#0F0F0F]">
+                    <span className="font-body text-xs font-semibold text-[var(--franco-bg)]">
                       Horizonte de venta
                     </span>
-                    <span className="font-mono text-[13px] font-bold text-[#0F0F0F]">
+                    <span className="font-mono text-[13px] font-bold text-[var(--franco-bg)]">
                       {horizon} años
                     </span>
                   </div>
@@ -608,17 +608,17 @@ export default function LeverageSection() {
                     value={horizon}
                     onChange={(e) => setHorizon(Number(e.target.value))}
                     className="w-full"
-                    style={{ accentColor: "#0F0F0F" }}
+                    style={{ accentColor: "var(--franco-bg)" }}
                   />
                   <div className="flex justify-between">
-                    <span className="font-mono text-[9px] text-[#71717A]">1</span>
-                    <span className="font-mono text-[9px] text-[#71717A]">20</span>
+                    <span className="font-mono text-[9px] text-[var(--franco-text-muted)]">1</span>
+                    <span className="font-mono text-[9px] text-[var(--franco-text-muted)]">20</span>
                   </div>
                 </div>
 
                 <div className="flex-1">
                   <div className="mb-2 flex items-center justify-between">
-                    <span className="font-body text-xs font-semibold text-[#0F0F0F]">
+                    <span className="font-body text-xs font-semibold text-[var(--franco-bg)]">
                       Plusvalía anual
                     </span>
                     <span className="font-mono text-[13px] font-bold text-[#C8323C]">
@@ -636,8 +636,8 @@ export default function LeverageSection() {
                     style={{ accentColor: "#C8323C" }}
                   />
                   <div className="flex justify-between">
-                    <span className="font-mono text-[9px] text-[#71717A]">0%</span>
-                    <span className="font-mono text-[9px] text-[#71717A]">8%</span>
+                    <span className="font-mono text-[9px] text-[var(--franco-text-muted)]">0%</span>
+                    <span className="font-mono text-[9px] text-[var(--franco-text-muted)]">8%</span>
                   </div>
                 </div>
               </div>
@@ -647,17 +647,17 @@ export default function LeverageSection() {
             <div className="mb-4 rounded-xl border border-[#E6E6E2] bg-white p-4 md:p-6">
               {/* Title + legend */}
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
-                <div className="font-body text-sm font-semibold text-[#0F0F0F]">
+                <div className="font-body text-sm font-semibold text-[var(--franco-bg)]">
                   Evolución de tu patrimonio
                 </div>
                 <div className="flex gap-3">
                   <div className="flex items-center gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-sm bg-[#0F0F0F]" />
-                    <span className="font-body text-[9px] text-[#71717A]">Patrimonio</span>
+                    <div className="h-2.5 w-2.5 rounded-sm bg-[var(--franco-bg)]" />
+                    <span className="font-body text-[9px] text-[var(--franco-text-muted)]">Patrimonio</span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="h-2.5 w-2.5 rounded-sm border border-[#C8323C]/30 bg-[#C8323C]/20" />
-                    <span className="font-body text-[9px] text-[#71717A]">Deuda</span>
+                    <span className="font-body text-[9px] text-[var(--franco-text-muted)]">Deuda</span>
                   </div>
                 </div>
               </div>
@@ -675,7 +675,7 @@ export default function LeverageSection() {
                             className="flex min-h-[14px] items-center justify-center rounded-t-sm"
                             style={{
                               height: `${patrimonioH}px`,
-                              background: "linear-gradient(180deg, #0F0F0F, #2A2A2A)",
+                              background: "linear-gradient(180deg, var(--franco-bg), var(--franco-elevated))",
                               transition: "height 0.3s",
                             }}
                           >
@@ -707,7 +707,7 @@ export default function LeverageSection() {
                 <div className="mt-1.5 flex">
                   {dynamicData.map((d) => (
                     <div key={d.y} className="flex-1 text-center">
-                      <span className="font-mono text-[8px] text-[#71717A]">
+                      <span className="font-mono text-[8px] text-[var(--franco-text-muted)]">
                         {d.y}
                       </span>
                     </div>
@@ -728,7 +728,7 @@ export default function LeverageSection() {
                             className="flex min-h-[12px] items-center justify-center rounded-t-sm"
                             style={{
                               height: `${patrimonioH}px`,
-                              background: "linear-gradient(180deg, #0F0F0F, #2A2A2A)",
+                              background: "linear-gradient(180deg, var(--franco-bg), var(--franco-elevated))",
                               transition: "height 0.3s",
                             }}
                           >
@@ -760,7 +760,7 @@ export default function LeverageSection() {
                 <div className="mt-1.5 flex">
                   {mobileData.map((d) => (
                     <div key={d.y} className="flex-1 text-center">
-                      <span className="font-mono text-[7px] text-[#71717A]">{d.y}</span>
+                      <span className="font-mono text-[7px] text-[var(--franco-text-muted)]">{d.y}</span>
                     </div>
                   ))}
                 </div>
@@ -770,7 +770,7 @@ export default function LeverageSection() {
             {/* 3 result cards */}
             <div className="mb-4 grid grid-cols-1 gap-2.5 md:grid-cols-3">
               <div className="rounded-xl border border-[#E6E6E2] bg-white p-4 text-center">
-                <p className="mb-1 font-body text-[9px] uppercase text-[#71717A]">
+                <p className="mb-1 font-body text-[9px] uppercase text-[var(--franco-text-muted)]">
                   BOLSILLO ({horizon}A)
                 </p>
                 <p
@@ -779,26 +779,26 @@ export default function LeverageSection() {
                 >
                   −{fmtMonto(Math.abs(last.bolsillo))}
                 </p>
-                <p className="mt-0.5 font-body text-[9px] text-[#71717A]">
+                <p className="mt-0.5 font-body text-[9px] text-[var(--franco-text-muted)]">
                   flujo negativo acumulado
                 </p>
               </div>
 
               <div className="rounded-xl border border-[#E6E6E2] bg-white p-4 text-center">
-                <p className="mb-1 font-body text-[9px] uppercase text-[#71717A]">
+                <p className="mb-1 font-body text-[9px] uppercase text-[var(--franco-text-muted)]">
                   PATRIMONIO ({horizon}A)
                 </p>
-                <p className="font-mono text-lg font-bold text-[#0F0F0F] md:text-xl">
+                <p className="font-mono text-lg font-bold text-[var(--franco-bg)] md:text-xl">
                   {fmtMonto(last.patrimonio)}
                 </p>
-                <p className="mt-0.5 font-body text-[9px] text-[#71717A]">
+                <p className="mt-0.5 font-body text-[9px] text-[var(--franco-text-muted)]">
                   patrimonio neto
                 </p>
               </div>
 
               <div
                 className="rounded-xl p-4 text-center"
-                style={{ background: "linear-gradient(135deg, #0F0F0F, #2A2A2A)" }}
+                style={{ background: "linear-gradient(135deg, var(--franco-bg), var(--franco-elevated))" }}
               >
                 <p className="mb-1 font-body text-[9px] uppercase text-white/35">RETORNO</p>
                 <p className="font-heading text-[24px] font-bold text-white md:text-[28px]">
@@ -810,7 +810,7 @@ export default function LeverageSection() {
 
             {/* Dynamic insight */}
             <div className="mt-4 rounded-[10px] border-l-[3px] border-[#C8323C] bg-[#C8323C]/[0.03] p-3.5 px-4">
-              <p className="font-body text-[13px] leading-relaxed text-[#0F0F0F]">
+              <p className="font-body text-[13px] leading-relaxed text-[var(--franco-bg)]">
                 <span className="font-semibold">Siendo franco:</span>{" "}
                 {last.retorno >= 2.5 ? (
                   <>
@@ -843,11 +843,11 @@ export default function LeverageSection() {
 
             {/* CTA */}
             <div className="mt-7 text-center">
-              <p className="mb-3 font-body text-[13px] text-[#71717A]">
+              <p className="mb-3 font-body text-[13px] text-[var(--franco-text-muted)]">
                 ¿Quieres ver estos números con tu propiedad real?
               </p>
               <Link href="/analisis/nuevo">
-                <button className="rounded-lg bg-[#0F0F0F] px-7 py-3 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90">
+                <button className="rounded-lg bg-[var(--franco-bg)] px-7 py-3 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90">
                   Analizar mi propiedad gratis →
                 </button>
               </Link>

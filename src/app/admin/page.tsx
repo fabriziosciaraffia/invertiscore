@@ -234,22 +234,22 @@ export default async function AdminPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0F0F0F] text-[#FAFAF8]">
+    <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 sm:py-10">
         {/* Header */}
         <div className="mb-8 flex flex-wrap items-end justify-between gap-2">
           <div>
-            <h1 className="font-heading text-2xl font-bold text-[#FAFAF8]">Panel de Administración</h1>
-            <p className="font-mono text-sm text-[#71717A] mt-1">{fmtToday()}</p>
+            <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">Panel de Administración</h1>
+            <p className="font-mono text-sm text-[var(--franco-text-muted)] mt-1">{fmtToday()}</p>
           </div>
-          <Link href="/dashboard" className="text-sm text-[#71717A] hover:text-[#FAFAF8] font-body">
+          <Link href="/dashboard" className="text-sm text-[var(--franco-text-muted)] hover:text-[var(--franco-text)] font-body">
             ← Volver al sitio
           </Link>
         </div>
 
         {/* ─── SECCIÓN 1: HEALTH CHECK ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Health Check</h2>
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Health Check</h2>
           <div className="flex gap-2 overflow-x-auto pb-2">
             {pills.map((p) => {
               const dotColor =
@@ -261,14 +261,14 @@ export default async function AdminPage() {
               return (
                 <div
                   key={p.label}
-                  className="shrink-0 flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#1A1A1A] px-3 py-2"
+                  className="shrink-0 flex items-center gap-2 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 py-2"
                 >
                   <span style={{ color: dotColor }}>●</span>
                   <div className="flex flex-col">
-                    <span className="font-body text-[10px] uppercase tracking-wide text-[#71717A]">
+                    <span className="font-body text-[10px] uppercase tracking-wide text-[var(--franco-text-muted)]">
                       {p.label}
                     </span>
-                    <span className="font-mono text-xs text-[#FAFAF8]">{p.value}</span>
+                    <span className="font-mono text-xs text-[var(--franco-text)]">{p.value}</span>
                   </div>
                 </div>
               );
@@ -278,7 +278,7 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 2: KPIs ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">KPIs · Últimos 30 días</h2>
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">KPIs · Últimos 30 días</h2>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             {[
               { label: "Usuarios nuevos", value: fmtNumber(newUsers) },
@@ -289,14 +289,14 @@ export default async function AdminPage() {
             ].map((kpi) => (
               <div
                 key={kpi.label}
-                className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4"
+                className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4"
               >
-                <div className="font-mono text-xl font-bold text-[#FAFAF8] truncate" title={kpi.value}>
+                <div className="font-mono text-xl font-bold text-[var(--franco-text)] truncate" title={kpi.value}>
                   {kpi.value}
                 </div>
-                <div className="font-body text-xs text-[#71717A] mt-1">{kpi.label}</div>
+                <div className="font-body text-xs text-[var(--franco-text-muted)] mt-1">{kpi.label}</div>
                 {kpi.sub && (
-                  <div className="font-mono text-[10px] text-[#71717A]/70 mt-0.5">{kpi.sub}</div>
+                  <div className="font-mono text-[10px] text-[var(--franco-text-muted)]/70 mt-0.5">{kpi.sub}</div>
                 )}
               </div>
             ))}
@@ -305,10 +305,10 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 3: ACCIONES RÁPIDAS ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Acciones rápidas</h2>
-          <div className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Acciones rápidas</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
             <AdminActions />
-            <p className="font-body text-[11px] text-[#71717A] mt-3">
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-3">
               Ejecutan los endpoints CRON con el secret server-side. Los resultados se aplican inmediatamente a la base de datos.
             </p>
           </div>
@@ -316,22 +316,22 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 4: ÚLTIMOS PAGOS ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Últimos pagos</h2>
-          <div className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4 overflow-x-auto">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Últimos pagos</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left">
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Fecha</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Email</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Producto</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Monto</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2">Estado</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Fecha</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Email</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Producto</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Monto</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2">Estado</th>
                 </tr>
               </thead>
               <tbody>
                 {(paymentsData ?? []).length === 0 && (
                   <tr>
-                    <td colSpan={5} className="font-body text-sm text-[#71717A] py-3">
+                    <td colSpan={5} className="font-body text-sm text-[var(--franco-text-muted)] py-3">
                       Sin pagos registrados.
                     </td>
                   </tr>
@@ -345,15 +345,15 @@ export default async function AdminPage() {
                   const statusColor =
                     p.status === "paid" ? "#16A34A" : p.status === "rejected" ? "#C8323C" : "#D97706";
                   return (
-                    <tr key={p.id} className="border-b border-white/[0.08] last:border-b-0">
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4">
+                    <tr key={p.id} className="border-b border-[var(--franco-border)] last:border-b-0">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
                         {fmtDateShort(p.created_at as string)}
                       </td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4 truncate max-w-[200px]">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4 truncate max-w-[200px]">
                         {emailById.get(p.user_id) ?? "—"}
                       </td>
-                      <td className="font-body text-xs text-[#FAFAF8] py-2 pr-4">{productLabel}</td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4">
+                      <td className="font-body text-xs text-[var(--franco-text)] py-2 pr-4">{productLabel}</td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
                         {isCredit ? "Crédito" : fmtCLP(p.amount as number)}
                       </td>
                       <td className="py-2">
@@ -374,16 +374,16 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 5: ÚLTIMOS USUARIOS ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Últimos usuarios</h2>
-          <div className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4 overflow-x-auto">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Últimos usuarios</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left">
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Fecha</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Email</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Créditos</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Plan</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2">Último análisis</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Fecha</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Email</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Créditos</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Plan</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2">Último análisis</th>
                 </tr>
               </thead>
               <tbody>
@@ -392,17 +392,17 @@ export default async function AdminPage() {
                   const credits = c?.credits ?? 0;
                   const isSubscriber = c?.subscription_status === "active";
                   const planLabel = isSubscriber ? "Suscriptor" : credits > 0 ? "Pro" : "Free";
-                  const planColor = isSubscriber ? "#16A34A" : credits > 0 ? "#C8323C" : "#71717A";
+                  const planColor = isSubscriber ? "#16A34A" : credits > 0 ? "#C8323C" : "var(--franco-text-muted)";
                   const lastAnalysis = lastAnalisisMap.get(u.id);
                   return (
-                    <tr key={u.id} className="border-b border-white/[0.08] last:border-b-0">
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4">
+                    <tr key={u.id} className="border-b border-[var(--franco-border)] last:border-b-0">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
                         {fmtDateShort(u.created_at)}
                       </td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4 truncate max-w-[200px]">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4 truncate max-w-[200px]">
                         {u.email ?? "—"}
                       </td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2 pr-4">{credits}</td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">{credits}</td>
                       <td className="py-2 pr-4">
                         <span
                           className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase"
@@ -411,7 +411,7 @@ export default async function AdminPage() {
                           {planLabel}
                         </span>
                       </td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-2">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2">
                         {lastAnalysis ? fmtRelative(lastAnalysis) : "—"}
                       </td>
                     </tr>
@@ -424,31 +424,31 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 6: ANÁLISIS COMPARTIDOS ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Análisis compartidos</h2>
-          <div className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Análisis compartidos</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
             <div className="mb-3">
-              <div className="font-mono text-2xl font-bold text-[#FAFAF8]">{fmtNumber(sharedCount ?? 0)}</div>
-              <div className="font-body text-xs text-[#71717A]">análisis con dueño (URL pública accesible)</div>
+              <div className="font-mono text-2xl font-bold text-[var(--franco-text)]">{fmtNumber(sharedCount ?? 0)}</div>
+              <div className="font-body text-xs text-[var(--franco-text-muted)]">análisis con dueño (URL pública accesible)</div>
             </div>
-            <div className="border-t border-white/[0.08] pt-3">
-              <div className="font-body text-xs text-[#71717A] mb-2">Últimos análisis Pro generados</div>
+            <div className="border-t border-[var(--franco-border)] pt-3">
+              <div className="font-body text-xs text-[var(--franco-text-muted)] mb-2">Últimos análisis Pro generados</div>
               <ul className="space-y-1.5">
                 {(lastPro ?? []).map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-3">
                     <Link
                       href={`/analisis/${a.id}`}
-                      className="font-body text-sm text-[#FAFAF8] hover:text-[#C8323C] truncate"
+                      className="font-body text-sm text-[var(--franco-text)] hover:text-[#C8323C] truncate"
                     >
                       {a.comuna ?? "—"}
                     </Link>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="font-mono text-xs text-[#FAFAF8]">Score {a.score}</span>
-                      <span className="font-mono text-[10px] text-[#71717A]">{fmtRelative(a.created_at as string)}</span>
+                      <span className="font-mono text-xs text-[var(--franco-text)]">Score {a.score}</span>
+                      <span className="font-mono text-[10px] text-[var(--franco-text-muted)]">{fmtRelative(a.created_at as string)}</span>
                     </div>
                   </li>
                 ))}
                 {(lastPro ?? []).length === 0 && (
-                  <li className="font-body text-xs text-[#71717A]">Sin análisis Pro aún.</li>
+                  <li className="font-body text-xs text-[var(--franco-text-muted)]">Sin análisis Pro aún.</li>
                 )}
               </ul>
             </div>
@@ -457,38 +457,38 @@ export default async function AdminPage() {
 
         {/* ─── SECCIÓN 7: COBERTURA ─── */}
         <section className="mb-8">
-          <h2 className="font-heading text-lg font-bold mb-3 text-[#FAFAF8]">Cobertura de datos</h2>
-          <div className="rounded-lg border border-white/[0.08] bg-[#1A1A1A] p-4 overflow-x-auto">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Cobertura de datos</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left">
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Comuna</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Arriendos</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2 pr-4">Ventas</th>
-                  <th className="font-body text-xs font-medium text-[#71717A] pb-2">Último scraping</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Comuna</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Arriendos</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Ventas</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2">Último scraping</th>
                 </tr>
               </thead>
               <tbody>
                 {covRows.map((r) => {
                   const stale = isStale(r.ultimo, 7 * 24);
                   return (
-                    <tr key={r.comuna} className="border-b border-white/[0.08] last:border-b-0">
-                      <td className="font-body text-xs text-[#FAFAF8] py-1.5 pr-4">{r.comuna}</td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-1.5 pr-4">{fmtNumber(r.arriendo)}</td>
-                      <td className="font-mono text-xs text-[#FAFAF8] py-1.5 pr-4">{fmtNumber(r.venta)}</td>
+                    <tr key={r.comuna} className="border-b border-[var(--franco-border)] last:border-b-0">
+                      <td className="font-body text-xs text-[var(--franco-text)] py-1.5 pr-4">{r.comuna}</td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-1.5 pr-4">{fmtNumber(r.arriendo)}</td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-1.5 pr-4">{fmtNumber(r.venta)}</td>
                       <td
                         className="font-mono text-xs py-1.5"
-                        style={{ color: stale ? "#C8323C" : "#FAFAF8" }}
+                        style={{ color: stale ? "#C8323C" : "var(--franco-text)" }}
                       >
                         {fmtRelative(r.ultimo)}
                       </td>
                     </tr>
                   );
                 })}
-                <tr className="border-t-2 border-white/[0.08]">
-                  <td className="font-body text-xs font-bold text-[#FAFAF8] py-2 pr-4">TOTAL</td>
-                  <td className="font-mono text-xs font-bold text-[#FAFAF8] py-2 pr-4">{fmtNumber(covTotal.arriendo)}</td>
-                  <td className="font-mono text-xs font-bold text-[#FAFAF8] py-2 pr-4">{fmtNumber(covTotal.venta)}</td>
+                <tr className="border-t-2 border-[var(--franco-border)]">
+                  <td className="font-body text-xs font-bold text-[var(--franco-text)] py-2 pr-4">TOTAL</td>
+                  <td className="font-mono text-xs font-bold text-[var(--franco-text)] py-2 pr-4">{fmtNumber(covTotal.arriendo)}</td>
+                  <td className="font-mono text-xs font-bold text-[var(--franco-text)] py-2 pr-4">{fmtNumber(covTotal.venta)}</td>
                   <td></td>
                 </tr>
               </tbody>

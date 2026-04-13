@@ -63,8 +63,8 @@ type ProductKey = keyof typeof PRODUCTS;
 export default function CheckoutPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
-<p className="font-body text-sm text-white/50">Cargando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--franco-bg)]">
+        <p className="font-body text-sm text-[var(--franco-text-secondary)]">Cargando...</p>
       </div>
     }>
       <CheckoutContent />
@@ -126,16 +126,16 @@ function CheckoutContent() {
 
   if (authenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
-        <p className="font-body text-sm text-white/50">Cargando...</p>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--franco-bg)]">
+        <p className="font-body text-sm text-[var(--franco-text-secondary)]">Cargando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #0F0F0F 0%, #1A1A2E 40%, #0F0F0F 70%, #2A2A2A 100%)" }}>
+    <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-white/[0.08] bg-[#0F0F0F]/80 backdrop-blur-xl">
+      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/80 backdrop-blur-xl">
         <div className="container mx-auto flex h-14 items-center justify-between px-4">
           <FrancoLogo size="header" inverted href="/" />
         </div>
@@ -143,35 +143,35 @@ function CheckoutContent() {
 
       <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
         {/* Back link */}
-        <Link href="/pricing" className="inline-flex items-center gap-1.5 font-body text-sm text-white/40 hover:text-white/70 transition-colors mb-8">
+        <Link href="/pricing" className="inline-flex items-center gap-1.5 font-body text-sm text-[var(--franco-text-muted)] hover:text-white/70 transition-colors mb-8">
           <ArrowLeft className="h-4 w-4" />
           Volver a planes
         </Link>
 
         {/* Title */}
-        <h1 className="font-heading font-bold text-2xl text-[#FAFAF8] mb-8">
+        <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-8">
           Confirma tu compra
         </h1>
 
         {/* Product card */}
-        <div className="rounded-2xl border border-white/[0.08] bg-[#1A1A1A] p-6 md:p-8">
+        <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
           <div className="mb-6">
-            <p className="font-body text-sm font-semibold text-[#FAFAF8]">{product.title}</p>
-            <p className="font-body text-xs text-white/40 mt-0.5">{product.subtitle}</p>
+            <p className="font-body text-sm font-semibold text-[var(--franco-text)]">{product.title}</p>
+            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">{product.subtitle}</p>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-mono text-3xl font-bold text-[#FAFAF8]">{product.price}</span>
+            <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{product.price}</span>
           </div>
-          <p className="font-body text-xs text-white/40 mb-6">{product.period}</p>
+          <p className="font-body text-xs text-[var(--franco-text-muted)] mb-6">{product.period}</p>
 
-          <div className="border-t border-white/[0.06] pt-5 mb-6">
-            <p className="font-body text-[11px] text-white/30 uppercase tracking-wide font-semibold mb-3">Incluye</p>
+          <div className="border-t border-[var(--franco-border)] pt-5 mb-6">
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] uppercase tracking-wide font-semibold mb-3">Incluye</p>
             <div className="space-y-2.5">
               {product.features.map((f) => (
                 <div key={f} className="flex items-start gap-2.5">
-                  <Check className="w-4 h-4 text-[#B0BEC5] mt-0.5 shrink-0" />
-                  <span className="font-body text-sm text-white/60">{f}</span>
+                  <Check className="w-4 h-4 text-[var(--franco-positive)] mt-0.5 shrink-0" />
+                  <span className="font-body text-sm text-[var(--franco-text-secondary)]">{f}</span>
                 </div>
               ))}
             </div>
@@ -192,8 +192,8 @@ function CheckoutContent() {
           </button>
 
           <div className="flex items-center justify-center gap-1.5 mt-4">
-            <Shield className="h-3.5 w-3.5 text-white/25" />
-            <p className="font-body text-[11px] text-white/25">
+            <Shield className="h-3.5 w-3.5 text-[var(--franco-text-muted)]" />
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)]">
               Serás redirigido a Flow.cl para completar el pago de forma segura.
             </p>
           </div>
