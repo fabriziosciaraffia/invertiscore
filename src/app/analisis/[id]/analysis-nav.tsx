@@ -49,7 +49,7 @@ export function AnalysisNav({
           {isGuest ? (
             <>
               <Link href="/register" title="Regístrate para compartir este análisis">
-                <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground">
+                <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)]">
                   <Share2 className="h-4 w-4" /> Compartir
                 </Button>
               </Link>
@@ -73,10 +73,12 @@ export function AnalysisNav({
           <ThemeToggle />
         </div>
 
-        {/* Mobile hamburger */}
-        <div className="relative md:hidden" ref={menuRef}>
+        {/* Mobile: toggle + hamburger */}
+        <div className="flex items-center gap-1 md:hidden">
+          <ThemeToggle />
+          <div className="relative" ref={menuRef}>
           <button
-            className="p-2 text-muted-foreground"
+            className="p-2 text-[var(--franco-text-secondary)]"
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menú"
           >
@@ -89,7 +91,7 @@ export function AnalysisNav({
                 {isGuest ? (
                   <>
                     <Link href="/register" onClick={() => setMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground">
+                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-[var(--franco-text-secondary)]">
                         <Share2 className="h-4 w-4" /> Compartir
                       </Button>
                     </Link>
@@ -119,6 +121,7 @@ export function AnalysisNav({
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </nav>

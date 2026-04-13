@@ -84,8 +84,8 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
 
   return (
     <div className="relative" ref={ref}>
-      <Button variant="outline" size="sm" className="gap-2" onClick={handleClick}>
-        <Share2 className="h-4 w-4" /> Compartir
+      <Button variant="outline" size="sm" className="gap-2 border-[var(--franco-border)] bg-[var(--franco-card)] text-[var(--franco-text)] hover:bg-[var(--franco-elevated)] hover:text-[var(--franco-text)]" onClick={handleClick}>
+        <Share2 className="h-4 w-4 text-[var(--franco-text-secondary)]" /> Compartir
       </Button>
 
       {open && (
