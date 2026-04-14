@@ -1054,8 +1054,7 @@ export default function NuevoAnalisisV2Page() {
       });
 
       if (mod === "both" && ltrResult && strResult) {
-        // Fallback: go to LTR result (comparativa page doesn't exist yet)
-        router.push(`/analisis/${ltrResult.id}`);
+        router.push(`/analisis/comparativa?ltr=${ltrResult.id}&str=${strResult.id}`);
       } else if (mod === "ltr" && ltrResult) {
         router.push(`/analisis/${ltrResult.id}`);
       } else if (mod === "str" && strResult) {
