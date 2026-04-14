@@ -131,34 +131,38 @@ export function ComparativaClient(p: Props) {
     ? Math.abs(deltaFlujo / p.ltrFlujoMensual) * 100
     : 0;
 
-  // Veredicto comparativo (texto principal)
+  // Veredicto comparativo — basado en FLUJO DE CAJA (lo que el inversionista siente)
   const ambasNegativas = p.ltrFlujoMensual < 0 && p.strFlujoMensual < 0;
-  const sobreRentaSignificativa = Math.abs(p.strSobreRentaPct) >= 0.05;
-  const strMejorNOI = p.strNOI > p.ltrNOI;
+  const strMejorFlujo = p.strFlujoMensual > p.ltrFlujoMensual;
+  const sobreRentaClaraPositiva = p.strSobreRentaPct >= 0.05;
+  const sobreRentaClaraNegativa = p.strSobreRentaPct <= -0.05;
 
   let veredictoTitulo: string;
   let veredictoSubtitulo: string;
-  if (!sobreRentaSignificativa) {
-    veredictoTitulo = "Ambas modalidades rinden parecido para este departamento.";
-    veredictoSubtitulo = ambasNegativas
-      ? "Ninguna cubre el dividendo. La diferencia entre rentar largo o corto es marginal."
-      : "La diferencia es chica. Decide según cuánto tiempo quieras dedicarle.";
-  } else if (strMejorNOI) {
+  if (strMejorFlujo && sobreRentaClaraPositiva) {
     veredictoTitulo = "La renta corta genera más, pero requiere más gestión.";
     veredictoSubtitulo = ambasNegativas
       ? `STR genera ${fmtCompact(deltaFlujo, currency, uf)}/mes más que LTR (+${fmtPctRaw(deltaPctFlujo)}). Aun así, ambas modalidades tienen flujo negativo.`
       : `STR genera ${fmtCompact(deltaFlujo, currency, uf)}/mes más que LTR (+${fmtPctRaw(deltaPctFlujo)}).`;
-  } else {
+  } else if (strMejorFlujo) {
+    veredictoTitulo = "Ambas generan parecido, pero STR tiene mejor flujo.";
+    veredictoSubtitulo = `STR genera ${fmtCompact(deltaFlujo, currency, uf)}/mes más que LTR, pero la diferencia de ingresos netos es marginal.`;
+  } else if (sobreRentaClaraNegativa || !strMejorFlujo) {
     veredictoTitulo = "Para este departamento, el arriendo tradicional rinde más.";
     veredictoSubtitulo = `LTR genera ${fmtCompact(-deltaFlujo, currency, uf)}/mes más que STR. Los costos operativos de la renta corta no se justifican aquí.`;
+  } else {
+    veredictoTitulo = "Ambas modalidades rinden parecido para este departamento.";
+    veredictoSubtitulo = ambasNegativas
+      ? "Ninguna cubre el dividendo. La diferencia entre rentar largo o corto es marginal."
+      : "La diferencia es chica. Decide según cuánto tiempo quieras dedicarle.";
   }
 
   // Texto "Siendo franco:"
   let siendoFranco: string;
-  if (!sobreRentaSignificativa) {
-    siendoFranco = "Ambas modalidades generan resultados similares. La decisión depende de cuánto tiempo quieras dedicarle: la renta larga es casi pasiva, la renta corta exige operación constante (o pagar a un administrador).";
-  } else if (strMejorNOI) {
+  if (strMejorFlujo && sobreRentaClaraPositiva) {
     siendoFranco = "La renta corta genera más, pero asegúrate de que el reglamento del edificio lo permita y de que estés dispuesto a gestionar huéspedes (o pagar a un administrador). Si no, el arriendo tradicional es la opción tranquila.";
+  } else if (strMejorFlujo) {
+    siendoFranco = "STR tiene mejor flujo por un margen chico. El esfuerzo extra de gestionar huéspedes solo se justifica si estás cómodo con la operación.";
   } else {
     siendoFranco = "Para esta propiedad, el arriendo tradicional es la opción más eficiente. Los costos operativos de la renta corta (insumos, servicios, comisiones) se comen el ingreso adicional.";
   }
@@ -199,7 +203,7 @@ export function ComparativaClient(p: Props) {
         <div
           className="mb-8 rounded-2xl border p-6 sm:p-8"
           style={{
-            background: strMejorNOI && sobreRentaSignificativa ? "rgba(176,190,197,0.06)" : "var(--franco-card)",
+            background: strMejorFlujo && sobreRentaClaraPositiva ? "rgba(176,190,197,0.06)" : "var(--franco-card)",
             borderColor: "var(--franco-border)",
           }}
         >

@@ -47,6 +47,7 @@ export interface ShortTermInputs {
   costoInsumos: number;
   gastosComunes: number;
   mantencion: number;
+  contribuciones: number; // CLP trimestrales
 
   // Amoblamiento
   costoAmoblamiento: number;
@@ -251,9 +252,10 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   // Comisión según modo de gestión
   const comisionRate = modoGestion === 'auto' ? COMISION_AIRBNB : comisionAdministrador;
 
-  // Costos operativos fijos mensuales
+  // Costos operativos fijos mensuales (contribuciones trimestrales → mensualizadas)
+  const contribucionesMensuales = Math.round((input.contribuciones || 0) / 3);
   const costosDirectos = input.costoElectricidad + input.costoAgua + input.costoWifi + input.costoInsumos;
-  const costosOperativosTotales = costosDirectos + input.gastosComunes + input.mantencion;
+  const costosOperativosTotales = costosDirectos + input.gastosComunes + input.mantencion + contribucionesMensuales;
 
   // Helper parcial
   const buildEscenario = (label: string, revenueAnual: number, adr: number, ocu: number) =>
@@ -279,7 +281,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   const ltr_ingresoBruto = input.arriendoLargoMensual;
   const ltr_comisionAdmin = Math.round(ltr_ingresoBruto * COMISION_LTR);
   const ltr_ingresoNeto = ltr_ingresoBruto - ltr_comisionAdmin;
-  const ltr_noiMensual = ltr_ingresoNeto - input.gastosComunes - input.mantencion;
+  const ltr_noiMensual = ltr_ingresoNeto - input.gastosComunes - input.mantencion - contribucionesMensuales;
   const ltr_flujoCaja = ltr_noiMensual - dividendoMensual;
 
   // STR auto y admin para la comparativa (siempre calcular ambos, escenario base)

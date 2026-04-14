@@ -359,22 +359,34 @@ export function STRResultsClient({
 
   const fechaAnalisis = createdAt ? new Date(createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" }) : "";
 
-  // "Siendo franco" copy
+  // "Siendo franco" copy — basado en flujo real y sobre-renta
   const siendoFrancoText = useMemo(() => {
+    const flujo = base.flujoCajaMensual;
+    const sobreRentaPct = comp.sobreRentaPct; // fracción (0.20 = 20%)
+    const paybackTxt = comp.paybackMeses > 0 && comp.paybackMeses < 999
+      ? ` El amoblamiento se recupera en ${comp.paybackMeses} meses.`
+      : costoAmoblamiento > 0 && comp.paybackMeses < 0
+      ? ` Con estos números, la inversión en amoblamiento no se recupera.`
+      : "";
+
+    let texto: string;
     if (effectiveVeredicto === "VIABLE") {
-      const extra = costoAmoblamiento > 0 && comp.paybackMeses > 0 ? ` Recuperas el amoblamiento en ${comp.paybackMeses} meses.` : "";
-      return `En Airbnb este depto genera ${fmtMoney(comp.sobreRenta, currency)}/mes más que en arriendo tradicional.${extra}`;
+      if (flujo >= 0) {
+        texto = `Este depto se paga solo en Airbnb. Genera ${fmtMoney(flujo, currency)}/mes de flujo positivo y ${fmtPctRaw(sobreRentaPct * 100, 0)} más que arriendo largo.`;
+      } else {
+        texto = `Airbnb genera ${fmtPctRaw(sobreRentaPct * 100, 0)} más que arriendo largo, pero el flujo sigue negativo (${fmtMoney(flujo, currency)}/mes). Negocia mejor precio o aumenta el pie.`;
+      }
+    } else if (effectiveVeredicto === "AJUSTA ESTRATEGIA") {
+      if (sobreRentaPct > 0) {
+        texto = `Airbnb genera ${fmtPctRaw(sobreRentaPct * 100, 0)} más que arriendo largo, pero el margen es ajustado. Considera negociar el precio de compra o mejorar la gestión para subir la ocupación.`;
+      } else {
+        texto = `La renta corta y el arriendo largo generan similar para esta propiedad. El esfuerzo extra de Airbnb no se justifica claramente.`;
+      }
+    } else {
+      texto = `El arriendo tradicional es más rentable para esta propiedad. Los costos operativos de la renta corta (electricidad, insumos, limpieza, comisiones) se comen el ingreso adicional.`;
     }
-    if (effectiveVeredicto === "AJUSTA ESTRATEGIA") {
-      const extra = costoAmoblamiento > 0 && comp.paybackMeses > 0
-        ? ` El amoblamiento se paga en ${comp.paybackMeses} meses.`
-        : costoAmoblamiento > 0 && comp.paybackMeses < 0
-        ? ` Con estos números, la inversión en amoblamiento no se recupera.`
-        : "";
-      return `La renta corta puede funcionar pero necesitas alcanzar al menos el ${fmtPctRaw(r.breakEvenPctDelMercado * 100, 0)} del revenue promedio del mercado (P50) para no perder plata.${extra}`;
-    }
-    return `Los costos operativos de la renta corta (electricidad, insumos, limpieza) hacen que el arriendo tradicional sea más rentable para esta propiedad. Flujo con Airbnb: ${fmtMoney(base.flujoCajaMensual, currency)}/mes vs ${fmtMoney(comp.ltr.flujoCaja, currency)}/mes con arriendo largo.`;
-  }, [effectiveVeredicto, costoAmoblamiento, comp, currency, r.breakEvenPctDelMercado, base.flujoCajaMensual]);
+    return texto + paybackTxt;
+  }, [effectiveVeredicto, costoAmoblamiento, comp, currency, base.flujoCajaMensual]);
 
   // KPIs (4 cards)
   const kpis = useMemo(() => [

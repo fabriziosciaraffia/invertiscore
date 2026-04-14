@@ -242,6 +242,7 @@ export async function POST(request: Request) {
       costoInsumos: body.costoInsumos,
       gastosComunes: body.gastosComunes,
       mantencion: body.mantencion,
+      contribuciones: body.contribuciones || 0,
       costoAmoblamiento: body.estaAmoblado ? 0 : (body.costoAmoblamiento || 0),
       arriendoLargoMensual: body.arriendoLargoMensual,
       valorUF: ufValue,
