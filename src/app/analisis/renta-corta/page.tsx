@@ -456,8 +456,8 @@ export default function RentaCortaFormPage() {
     const checks = [
       { label: "Dirección", done: !!form.direccion },
       { label: "Superficie", done: !!form.superficieUtil && parseNum(form.superficieUtil) > 0 },
-      { label: "Precio", done: !!form.precio && Number(form.precio) > 0 },
-      { label: "Arriendo largo plazo", done: !!form.arriendoLargo && Number(form.arriendoLargo) > 0 },
+      { label: "Precio", done: !!form.precio && parseNum(form.precio) > 0 },
+      { label: "Arriendo largo plazo", done: !!form.arriendoLargo && parseNum(form.arriendoLargo) > 0 },
     ];
     const done = checks.filter((c) => c.done).length;
     const missing = checks.filter((c) => !c.done).map((c) => c.label);

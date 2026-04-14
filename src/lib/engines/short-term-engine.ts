@@ -348,9 +348,9 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
 
   // --- 7. Veredicto ---
   let veredicto: ShortTermResult['veredicto'];
-  if (base.capRate >= 0.06 && base.cashOnCash >= 0.08 && sobreRentaPct >= 0.20) {
+  if (sobreRentaPct >= 0.10) {
     veredicto = 'VIABLE';
-  } else if (base.capRate >= 0.04 && base.cashOnCash >= 0.04 && sobreRentaPct >= 0) {
+  } else if (sobreRentaPct >= 0 && base.noiMensual > 0) {
     veredicto = 'AJUSTA ESTRATEGIA';
   } else {
     veredicto = 'NO RECOMENDADO';

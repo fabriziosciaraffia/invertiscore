@@ -323,19 +323,28 @@ export function STRResultsClient({
 
   // ─── Comparativa table data ───────────────────────
   const comparativaRows = useMemo(() => {
-    const ltr = comp.ltr;
-    const str = modoGestion === "administrador" ? comp.str_admin : comp.str_auto;
-    const rows = [
-      { label: "Ingreso bruto", ltr: ltr.ingresoBruto, str: str.ingresoBrutoMensual, tooltip: "Ingreso mensual antes de cualquier descuento." },
-      { label: "(-) Comisión", ltr: -Math.round(ltr.ingresoBruto * 0.05), str: -str.comisionMensual, tooltip: "Comisión de corredor (LTR 5%) o plataforma/administrador (STR)." },
-      { label: "(-) Costos operativos", ltr: 0, str: -str.costosOperativos, tooltip: "Electricidad, agua, WiFi, insumos, mantención. En LTR los paga el arrendatario." },
-      { label: "(-) Gastos comunes", ltr: -((inp?.gastosComunes as number) ?? 0), str: -((inp?.gastosComunes as number) ?? 0), tooltip: "Gastos comunes del edificio. Iguales en ambos modelos." },
-      { label: "= NOI", ltr: ltr.noiMensual, str: str.noiMensual, isTotal: true, tooltip: "Net Operating Income: lo que queda después de todos los costos operativos, antes del dividendo." },
-      { label: "(-) Dividendo", ltr: -r.dividendoMensual, str: -r.dividendoMensual, tooltip: "Cuota mensual del crédito hipotecario." },
-      { label: "= Flujo de caja", ltr: ltr.flujoCaja, str: str.flujoCajaMensual, isResult: true, tooltip: "Lo que entra (o sale) de tu bolsillo cada mes." },
+    const gastosComunes = (inp?.gastosComunes as number) ?? 0;
+    const ltrIngresoBruto = comp.ltr.ingresoBruto ?? 0;
+    const strIngresoBruto = base.ingresoBrutoMensual ?? 0;
+    const ltrComision = Math.round(ltrIngresoBruto * 0.05);
+    const strComision = base.comisionMensual ?? 0;
+    const strCostosOp = (base.costosOperativos ?? 0) - gastosComunes;
+    const ltrNoi = comp.ltr.noiMensual ?? 0;
+    const strNoi = base.noiMensual ?? 0;
+    const dividendo = r.dividendoMensual ?? 0;
+    const ltrFlujo = comp.ltr.flujoCaja ?? 0;
+    const strFlujo = base.flujoCajaMensual ?? 0;
+
+    return [
+      { label: "Ingreso bruto", ltr: ltrIngresoBruto, str: strIngresoBruto, tooltip: "Ingreso mensual antes de cualquier descuento." },
+      { label: "(-) Comisión", ltr: -ltrComision, str: -strComision, tooltip: "Comisión de corredor (LTR 5%) o plataforma/administrador (STR)." },
+      { label: "(-) Costos operativos", ltr: 0, str: -strCostosOp, tooltip: "Electricidad, agua, WiFi, insumos, mantención. En LTR los paga el arrendatario." },
+      { label: "(-) Gastos comunes", ltr: -gastosComunes, str: -gastosComunes, tooltip: "Gastos comunes del edificio. Iguales en ambos modelos." },
+      { label: "= NOI", ltr: ltrNoi, str: strNoi, isTotal: true, tooltip: "Net Operating Income: lo que queda después de todos los costos operativos, antes del dividendo." },
+      { label: "(-) Dividendo", ltr: -dividendo, str: -dividendo, tooltip: "Cuota mensual del crédito hipotecario." },
+      { label: "= Flujo de caja", ltr: ltrFlujo, str: strFlujo, isResult: true, tooltip: "Lo que entra (o sale) de tu bolsillo cada mes." },
     ];
-    return rows;
-  }, [comp, r.dividendoMensual, modoGestion, inp]);
+  }, [comp, base, r.dividendoMensual, inp]);
 
   // ─── Estacionalidad chart data ────────────────────
   const seasonalData = useMemo(() => {

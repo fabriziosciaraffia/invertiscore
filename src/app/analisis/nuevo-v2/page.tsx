@@ -834,7 +834,7 @@ export default function NuevoAnalisisV2Page() {
         if (mod === "ltr" || mod === "both") {
           if (!form.arriendo || Number(form.arriendo) <= 0) return false;
         }
-        if (mod === "str" || mod === "both") {
+        if (mod === "str") {
           if (!form.arriendoLargo || Number(form.arriendoLargo) <= 0) return false;
         }
         return true;
@@ -980,7 +980,10 @@ export default function NuevoAnalisisV2Page() {
 
       // STR submit
       if (mod === "str" || mod === "both") {
-        const arriendoLargoCLP = Math.round(toCLP("arriendoLargo", Number(form.arriendoLargo) || 0));
+        // In "both" mode, use the LTR arriendo field as the long-term rent reference
+        const arriendoLargoRaw = mod === "both" ? Number(form.arriendo) || 0 : Number(form.arriendoLargo) || 0;
+        const arriendoLargoCurrency = mod === "both" ? "arriendo" as const : "arriendoLargo" as const;
+        const arriendoLargoCLP = Math.round(toCLP(arriendoLargoCurrency, arriendoLargoRaw));
 
         const strPromise = fetch("/api/analisis/short-term", {
           method: "POST",
@@ -2251,7 +2254,8 @@ export default function NuevoAnalisisV2Page() {
                       </div>
                     )}
 
-                    {/* Arriendo largo (comparativa) */}
+                    {/* Arriendo largo (comparativa) — solo si modo STR puro, en "both" se toma del campo LTR */}
+                    {form.modalidad === "str" && (
                     <div>
                       <div className="flex items-baseline justify-between mb-1">
                         <div className="flex items-center gap-1">
@@ -2283,6 +2287,7 @@ export default function NuevoAnalisisV2Page() {
                         Franco compara la renta corta contra este arriendo tradicional.
                       </p>
                     </div>
+                    )}
                   </div>
                 )}
 
