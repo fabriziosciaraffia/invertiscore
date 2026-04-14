@@ -115,6 +115,7 @@ export default async function STRResultPage({
       userId={user?.id ?? null}
       isSharedView={isSharedView}
       userCredits={userCredits}
+      aiAnalysisInitial={data.ai_analysis ?? null}
     />
   );
 }

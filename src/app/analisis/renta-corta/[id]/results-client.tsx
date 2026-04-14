@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Cell,
@@ -8,11 +8,64 @@ import {
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
-  Lock, CheckCircle2, AlertTriangle, XCircle,
+  Lock, CheckCircle2, AlertTriangle, XCircle, Sparkles, Loader2,
   Building2, Zap, Droplets, Wifi, Package, Wrench, Receipt,
+  Wallet, Scale, Settings, TrendingUp, Shield,
 } from "lucide-react";
 import type { ShortTermResult, EscenarioSTR, FlujoEstacionalMes, SensibilidadRow } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+
+// ─── AI Analysis types (STR) ───────────────────────
+interface AIAnalysisSTR {
+  resumenEjecutivo_clp: string;
+  resumenEjecutivo_uf: string;
+  tuBolsillo: { titulo: string; contenido_clp: string; contenido_uf: string; alerta_clp: string; alerta_uf: string };
+  vsAlternativas: { titulo: string; contenido_clp: string; contenido_uf: string };
+  operacion: { titulo: string; contenido_clp: string; contenido_uf: string };
+  proyeccion: { titulo: string; contenido_clp: string; contenido_uf: string };
+  riesgos: { titulo: string; items_clp: string[]; items_uf: string[] };
+  veredicto: { titulo: string; decision: "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO"; explicacion_clp: string; explicacion_uf: string };
+  aFavor: string[];
+  puntosAtencion: string[];
+  textoSimple_clp: string;
+  textoSimple_uf: string;
+  textoImportante_clp: string;
+  textoImportante_uf: string;
+}
+
+function aiText(obj: Record<string, unknown>, field: string, currency: "CLP" | "UF"): string {
+  const key = field + (currency === "UF" ? "_uf" : "_clp");
+  const v = obj[key];
+  return typeof v === "string" ? v : "";
+}
+
+function stripBullet(text: string): string {
+  return text.replace(/^[^a-zA-Z0-9áéíóúñÁÉÍÓÚÑ¿¡]+/, "").trim();
+}
+
+function TypewriterText({ text, onComplete, speed = 40 }: { text: string; onComplete?: () => void; speed?: number }) {
+  const [wordIndex, setWordIndex] = useState(0);
+  const words = useMemo(() => text.split(/(\s+)/), [text]);
+  useEffect(() => {
+    if (wordIndex >= words.length) { onComplete?.(); return; }
+    const t = setTimeout(() => setWordIndex(i => i + 1), speed);
+    return () => clearTimeout(t);
+  }, [wordIndex, words.length, speed, onComplete]);
+  return (
+    <span>
+      {words.slice(0, wordIndex).join("")}
+      {wordIndex < words.length && <span className="animate-pulse text-[#C8323C]">|</span>}
+    </span>
+  );
+}
+
+function DelayedCallback({ delay, onComplete }: { delay: number; onComplete: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onComplete, delay);
+    return () => clearTimeout(t);
+  }, [delay, onComplete]);
+  return null;
+}
 
 // ─── Module-level UF ───────────────────────────────
 let UF_CLP = 38800;
@@ -307,19 +360,53 @@ interface STRResultsProps {
   userId: string | null;
   isSharedView: boolean;
   userCredits: number;
+  aiAnalysisInitial?: unknown;
 }
 
 export function STRResultsClient({
   analysisId, results, inputData, accessLevel, ufValue,
   nombre, comuna, ciudad, superficie, createdAt,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  userId, isSharedView, userCredits,
+  userId, isSharedView, userCredits, aiAnalysisInitial,
 }: STRResultsProps) {
   if (ufValue) UF_CLP = ufValue;
 
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [viewLevel, setViewLevel] = useState<ViewLevel>("importante");
   const toggleCurrency = useCallback(() => setCurrency(c => c === "CLP" ? "UF" : "CLP"), []);
+
+  // AI Analysis state
+  const initialAi: AIAnalysisSTR | null =
+    aiAnalysisInitial && typeof aiAnalysisInitial === "object" && "veredicto" in (aiAnalysisInitial as Record<string, unknown>)
+      ? (aiAnalysisInitial as AIAnalysisSTR)
+      : null;
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisSTR | null>(initialAi);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const aiInitiallyLoaded = !!initialAi;
+
+  const loadAiAnalysis = useCallback(async () => {
+    if (aiLoading || !analysisId) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/analisis/short-term/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysisId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Error al generar análisis");
+      }
+      const data = await res.json();
+      setAiAnalysis(data);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "Error desconocido");
+    } finally {
+      setAiLoading(false);
+    }
+  }, [analysisId, aiLoading]);
 
   const isGuest = accessLevel === "guest";
   const isFree = accessLevel === "free";
@@ -1104,6 +1191,25 @@ export function STRResultsClient({
           </CollapsibleSection>
         )}
 
+        {/* ═══════════════════════════════════════════ */}
+        {/* BLOQUE — ANÁLISIS IA                        */}
+        {/* ═══════════════════════════════════════════ */}
+        {!isGuest && (
+          <AIAnalysisSTRSection
+            analysisId={analysisId}
+            accessLevel={accessLevel}
+            aiAnalysis={aiAnalysis}
+            aiLoading={aiLoading}
+            aiError={aiError}
+            loadAiAnalysis={loadAiAnalysis}
+            aiInitiallyLoaded={aiInitiallyLoaded}
+            currency={currency}
+            viewLevel={viewLevel}
+            veredicto={effectiveVeredicto}
+            userCredits={userCredits}
+          />
+        )}
+
         {/* ─── Bottom CTA ──────────────────────────── */}
         <div className="mt-8 text-center pb-12">
           <a href="/analisis/nuevo">
@@ -1114,6 +1220,411 @@ export function STRResultsClient({
               ← Analizar otra propiedad
             </Button>
           </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════
+// AI ANALYSIS STR SECTION
+// ═══════════════════════════════════════════════════
+
+function AIAnalysisSTRSection({
+  analysisId, accessLevel, aiAnalysis, aiLoading, aiError, loadAiAnalysis,
+  aiInitiallyLoaded, currency, viewLevel, veredicto, userCredits,
+}: {
+  analysisId: string;
+  accessLevel: "guest" | "free" | "premium" | "subscriber";
+  aiAnalysis: AIAnalysisSTR | null;
+  aiLoading: boolean;
+  aiError: string | null;
+  loadAiAnalysis: () => void;
+  aiInitiallyLoaded: boolean;
+  currency: "CLP" | "UF";
+  viewLevel: ViewLevel;
+  veredicto: VerdictSTR;
+  userCredits: number;
+}) {
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const hasAnimated = useRef(false);
+  const [phaseIndex, setPhaseIndex] = useState<number>(() => (aiInitiallyLoaded ? 9 : -1));
+
+  useEffect(() => {
+    if (!aiAnalysis || hasAnimated.current || phaseIndex >= 9) return;
+    const el = sectionRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !hasAnimated.current) {
+        hasAnimated.current = true;
+        setPhaseIndex(0);
+        setTimeout(() => setPhaseIndex(1), 600);
+      }
+    }, { threshold: 0.2 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [aiAnalysis, phaseIndex]);
+
+  const showAll = phaseIndex >= 9;
+  const next = (to: number) => () => setTimeout(() => setPhaseIndex(to), 250);
+
+  const isFree = accessLevel === "free";
+  const cfg = VERDICT_CONFIG[veredicto];
+
+  // Premium gate
+  if (isFree) {
+    return (
+      <div ref={sectionRef} className="mb-8">
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] overflow-hidden mt-5">
+          <div className="h-[3px] bg-[#C8323C]" />
+          <div className="px-6 md:px-8 pt-6 pb-5" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.11) 30%, rgba(200,50,60,0.04) 60%, transparent 90%)" }}>
+            <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
+            <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
+            <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado de tu propiedad en renta corta</div>
+          </div>
+          <div className="border-t border-[var(--franco-border)]">
+            <div className="py-11 px-6 flex flex-col items-center text-center">
+              <div className="text-4xl mb-3 text-[#C8323C]/70">✦</div>
+              <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1">Veredicto detallado + cómo operar + riesgos</div>
+              <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-5 max-w-xs mx-auto">Flujo real, tips de operación, estacionalidad, proyección a 10 años y puntos críticos.</div>
+              <button
+                type="button"
+                onClick={() => window.location.href = `/checkout?product=pro&analysisId=${analysisId}`}
+                className="bg-[#C8323C] text-white font-body text-sm font-bold px-6 py-2.5 rounded-lg shadow-[0_2px_10px_rgba(200,50,60,0.15)]"
+              >
+                Desbloquear — $4.990
+              </button>
+              {userCredits > 0 && (
+                <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-2">
+                  Tienes {userCredits} crédito{userCredits > 1 ? "s" : ""} disponible{userCredits > 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const showCTA = !aiAnalysis && !aiLoading && !aiError;
+  const isAnalyzing = aiLoading || (phaseIndex >= 0 && phaseIndex < 9 && !!aiAnalysis);
+  const isComplete = phaseIndex >= 9 || (showAll && !!aiAnalysis);
+
+  // Simplified view text
+  const simpleText = aiAnalysis ? aiText(aiAnalysis as unknown as Record<string, unknown>, viewLevel === "simple" ? "textoSimple" : "textoImportante", currency) : "";
+  const useSimplifiedView = (viewLevel === "simple" || viewLevel === "importante") && !!simpleText;
+
+  const parseImportante = (txt: string) => {
+    const getSection = (marker: string, nextMarkers: string[]): string => {
+      const regex = new RegExp(`^${marker}:?\\s*\\n([\\s\\S]*?)(?=^(?:${nextMarkers.join("|")}):?\\s*$|$)`, "m");
+      const match = txt.match(regex);
+      return match ? match[1].trim() : "";
+    };
+    return {
+      resumen: getSection("RESUMEN", ["A FAVOR", "EN CONTRA", "RECOMENDACIÓN"]),
+      aFavor: getSection("A FAVOR", ["EN CONTRA", "RECOMENDACIÓN"]),
+      enContra: getSection("EN CONTRA", ["RECOMENDACIÓN"]),
+      recomendacion: getSection("RECOMENDACIÓN", []),
+    };
+  };
+  const parseBullets = (text: string) => text.split("\n").map(l => l.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+
+  return (
+    <div ref={sectionRef} className="mb-8">
+      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] overflow-hidden mt-5">
+        <div className="h-[3px] bg-[#C8323C]" />
+        <div className="px-6 md:px-8 pt-6 pb-5 flex justify-between items-center" style={{ backgroundImage: "linear-gradient(135deg, rgba(200,50,60,0.20) 0%, rgba(200,50,60,0.11) 30%, rgba(200,50,60,0.04) 60%, transparent 90%)" }}>
+          <div>
+            <div className="font-mono text-xs text-[#C8323C] uppercase tracking-widest font-semibold mb-1.5">INFORME PRO</div>
+            <div className="font-heading font-bold text-2xl text-[var(--franco-text)]">Análisis completo con IA</div>
+            <div className="font-body text-sm text-[var(--franco-text-secondary)] mt-1.5">Análisis personalizado de tu propiedad en renta corta</div>
+          </div>
+          {isAnalyzing && (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#C8323C] animate-pulse" />
+              <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">Analizando...</span>
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-[var(--franco-border)]">
+          {showCTA && (
+            <div className="py-12 px-8 flex flex-col items-center text-center">
+              <div className="text-5xl mb-4 text-[#C8323C]/70">✦</div>
+              <div className="font-body text-[15px] font-semibold text-[var(--franco-text)] mb-1.5">Genera el análisis completo con IA</div>
+              <div className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-6 max-w-sm">Franco analiza tu propiedad en Airbnb y te dice la verdad — con datos, sin filtro.</div>
+              <button
+                type="button"
+                onClick={loadAiAnalysis}
+                className="bg-[#C8323C] text-white font-body text-[15px] font-bold px-8 py-3.5 rounded-lg shadow-[0_4px_20px_rgba(200,50,60,0.3)] flex items-center gap-2 mx-auto hover:shadow-[0_4px_24px_rgba(200,50,60,0.4)] transition-shadow"
+              >
+                <span className="text-base">✦</span>
+                Generar análisis IA →
+              </button>
+            </div>
+          )}
+
+          {aiLoading && (
+            <div className="py-12 px-8 flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-[#C8323C]" />
+              <p className="font-body text-sm text-[var(--franco-text-secondary)]">Analizando tu inversión con IA... (15-30 segundos)</p>
+            </div>
+          )}
+
+          {aiError && (
+            <div className="p-8 space-y-3">
+              <div className="rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4 text-sm text-[#C8323C]">
+                Error: {aiError}
+              </div>
+              <button type="button" onClick={loadAiAnalysis} className="text-sm font-medium text-[var(--franco-text)] hover:underline">
+                Reintentar
+              </button>
+            </div>
+          )}
+
+          {aiAnalysis && (
+            <div className="p-6 md:p-8">
+              <div className="font-body text-[15px] font-bold text-[var(--franco-text)] mb-3">Siendo franco:</div>
+
+              {/* Loading phase */}
+              {phaseIndex === 0 && (
+                <div className="flex flex-col items-center gap-3 py-8">
+                  <Sparkles className="h-8 w-8 animate-pulse text-[#C8323C]" />
+                  <p className="font-body text-sm text-[var(--franco-text-secondary)]">Analizando tu inversión con IA...</p>
+                </div>
+              )}
+
+              {/* Simplified view */}
+              {useSimplifiedView && phaseIndex >= 1 && (() => {
+                if (viewLevel === "importante" && /^RESUMEN:/m.test(simpleText) && /^A FAVOR:/m.test(simpleText)) {
+                  const { resumen, aFavor, enContra, recomendacion } = parseImportante(simpleText);
+                  return (
+                    <div className="space-y-4">
+                      {resumen && (
+                        <div className="rounded-lg p-4" style={{ background: cfg.bg, borderLeft: `3px solid ${cfg.color}`, borderRadius: "0 8px 8px 0" }}>
+                          <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)] font-body">{resumen}</p>
+                        </div>
+                      )}
+                      {(aFavor || enContra) && (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {aFavor && (
+                            <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+                              <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium" style={{ color: "var(--franco-positive, #B0BEC5)" }}>
+                                <CheckCircle2 className="h-4 w-4" /> A favor
+                              </h4>
+                              <ul className="list-disc space-y-1.5 pl-4 text-sm text-[var(--franco-text-secondary)] font-body">
+                                {parseBullets(aFavor).map((p, i) => <li key={i}>{p}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {enContra && (
+                            <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+                              <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium" style={{ color: "var(--franco-warning, #FBBF24)" }}>
+                                <AlertTriangle className="h-4 w-4" /> Atención
+                              </h4>
+                              <ul className="list-disc space-y-1.5 pl-4 text-sm text-[var(--franco-text-secondary)] font-body">
+                                {parseBullets(enContra).map((p, i) => <li key={i}>{p}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {recomendacion && (
+                        <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+                          <div className="mb-2 flex items-center gap-2">
+                            <Settings className="h-4 w-4 text-[var(--franco-text)]" />
+                            <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">Recomendación</h4>
+                          </div>
+                          <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)] font-body">{recomendacion}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 shadow-sm">
+                    {simpleText.split("\n\n").map((p, i) => (
+                      <p key={i} className="text-sm leading-relaxed text-[var(--franco-text-secondary)] font-body mb-3 last:mb-0">{p}</p>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* Sin filtro — full structured view */}
+              {!useSimplifiedView && (
+                <div className="space-y-5">
+                  {/* 1. Resumen */}
+                  {phaseIndex >= 1 && (
+                    <div className="rounded-lg p-4" style={{ background: cfg.bg, borderLeft: `3px solid ${cfg.color}`, borderRadius: "0 8px 8px 0" }}>
+                      <p className="text-sm font-medium leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo", currency) : phaseIndex === 1 ? (
+                          <TypewriterText text={aiText(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo", currency)} onComplete={next(2)} />
+                        ) : aiText(aiAnalysis as unknown as Record<string, unknown>, "resumenEjecutivo", currency)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 2. Tu Bolsillo */}
+                  {phaseIndex >= 2 && (
+                    <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm animate-fadeIn">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Wallet className="h-4 w-4 text-[var(--franco-text)]" />
+                        <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.tuBolsillo.titulo}</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido", currency) : phaseIndex === 2 ? (
+                          <TypewriterText text={aiText(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido", currency)} onComplete={next(3)} />
+                        ) : aiText(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "contenido", currency)}
+                      </p>
+                      {aiText(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta", currency) && (
+                        <div className="mt-3 rounded-md border border-[#C8323C]/20 bg-[#C8323C]/5 px-3 py-2">
+                          <p className="flex items-start gap-2 text-xs text-[#C8323C]">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                            {aiText(aiAnalysis.tuBolsillo as unknown as Record<string, unknown>, "alerta", currency)}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* 3. vs Alternativas */}
+                  {phaseIndex >= 3 && (
+                    <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm animate-fadeIn">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Scale className="h-4 w-4 text-[var(--franco-text)]" />
+                        <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.vsAlternativas.titulo}</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido", currency) : phaseIndex === 3 ? (
+                          <TypewriterText text={aiText(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido", currency)} onComplete={next(4)} />
+                        ) : aiText(aiAnalysis.vsAlternativas as unknown as Record<string, unknown>, "contenido", currency)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 4. Operación */}
+                  {phaseIndex >= 4 && (
+                    <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm animate-fadeIn">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Settings className="h-4 w-4 text-[var(--franco-text)]" />
+                        <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.operacion.titulo}</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis.operacion as unknown as Record<string, unknown>, "contenido", currency) : phaseIndex === 4 ? (
+                          <TypewriterText text={aiText(aiAnalysis.operacion as unknown as Record<string, unknown>, "contenido", currency)} onComplete={next(5)} />
+                        ) : aiText(aiAnalysis.operacion as unknown as Record<string, unknown>, "contenido", currency)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 5. Proyección */}
+                  {phaseIndex >= 5 && (
+                    <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm animate-fadeIn">
+                      <div className="mb-2 flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-[var(--franco-text)]" />
+                        <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.proyeccion.titulo}</h4>
+                      </div>
+                      <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido", currency) : phaseIndex === 5 ? (
+                          <TypewriterText text={aiText(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido", currency)} onComplete={next(6)} />
+                        ) : aiText(aiAnalysis.proyeccion as unknown as Record<string, unknown>, "contenido", currency)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 6. Riesgos */}
+                  {phaseIndex >= 6 && (
+                    <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 shadow-sm animate-fadeIn">
+                      <div className="mb-2 flex items-center gap-2">
+                        <Shield className="h-4 w-4 text-[var(--franco-text)]" />
+                        <h4 className="font-body text-sm font-semibold text-[var(--franco-text)]">{aiAnalysis.riesgos.titulo}</h4>
+                      </div>
+                      <ul className="space-y-2">
+                        {(currency === "UF" ? aiAnalysis.riesgos.items_uf : aiAnalysis.riesgos.items_clp).map((r, i) => (
+                          <li key={i} className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                            <span className="mr-1 font-medium text-[#C8323C]">⚠</span> {stripBullet(r)}
+                          </li>
+                        ))}
+                      </ul>
+                      {phaseIndex === 6 && <DelayedCallback delay={800} onComplete={() => setPhaseIndex(7)} />}
+                    </div>
+                  )}
+
+                  {/* 7. Veredicto explicación */}
+                  {phaseIndex >= 7 && (
+                    <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 animate-fadeIn">
+                      <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
+                        {showAll ? aiText(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion", currency) : phaseIndex === 7 ? (
+                          <TypewriterText text={aiText(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion", currency)} onComplete={next(8)} />
+                        ) : aiText(aiAnalysis.veredicto as unknown as Record<string, unknown>, "explicacion", currency)}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* 8. A favor / Atención */}
+                  {phaseIndex >= 8 && (
+                    <div className="grid gap-4 sm:grid-cols-2 animate-fadeIn">
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium" style={{ color: "var(--franco-positive, #B0BEC5)" }}>
+                          <CheckCircle2 className="h-4 w-4" /> A favor
+                        </h4>
+                        <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--franco-text-secondary)]">
+                          {aiAnalysis.aFavor.map((p, i) => <li key={i}>{stripBullet(p)}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="mb-2 flex items-center gap-1.5 font-body text-sm font-medium" style={{ color: "var(--franco-warning, #FBBF24)" }}>
+                          <AlertTriangle className="h-4 w-4" /> Atención
+                        </h4>
+                        <ul className="list-disc space-y-1 pl-4 text-sm text-[var(--franco-text-secondary)]">
+                          {aiAnalysis.puntosAtencion.map((c, i) => <li key={i}>{stripBullet(c)}</li>)}
+                        </ul>
+                      </div>
+                      {phaseIndex === 8 && <DelayedCallback delay={600} onComplete={() => setPhaseIndex(9)} />}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {useSimplifiedView && phaseIndex >= 1 && phaseIndex < 9 && (
+                <DelayedCallback delay={500} onComplete={() => setPhaseIndex(9)} />
+              )}
+
+              {/* Veredicto final */}
+              {isComplete && aiAnalysis.veredicto && (
+                <div className="mt-6 pt-6 border-t border-[var(--franco-border)] animate-fadeIn">
+                  <div
+                    className="relative overflow-hidden rounded-xl text-center bg-[var(--franco-card)]"
+                    style={{ border: `1px solid ${cfg.badgeBg}`, padding: "40px 24px" }}
+                  >
+                    <div className="flex items-baseline justify-center gap-2 mb-4">
+                      <span className="font-mono text-[10px] uppercase tracking-[3px] text-[var(--franco-text-muted)]">VEREDICTO</span>
+                    </div>
+                    <div
+                      className="inline-block font-mono font-semibold text-2xl tracking-[5px] uppercase rounded-lg"
+                      style={{
+                        color: cfg.color,
+                        background: cfg.badgeBg,
+                        border: `1px solid ${cfg.badgeBg}`,
+                        padding: "14px 36px",
+                      }}
+                    >
+                      {aiAnalysis.veredicto.decision}
+                    </div>
+                    <p className="text-[11px] text-[var(--franco-text-muted)] text-center mt-4 max-w-md mx-auto leading-relaxed">
+                      Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión. Consulta con un profesional antes de decidir.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {showAll && (
+                <p className="mt-4 text-center text-[10px] text-[var(--franco-text-muted)]">
+                  Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
