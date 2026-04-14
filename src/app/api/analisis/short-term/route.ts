@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getUFValue } from "@/lib/uf";
 import { calcShortTerm } from "@/lib/engines/short-term-engine";
+import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
 import { consumeCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import type { AirbnbData, ShortTermInputs } from "@/lib/engines/short-term-engine";
@@ -249,6 +250,29 @@ export async function POST(request: Request) {
     // 6. Run engine
     const result = calcShortTerm(inputs);
 
+    // 6b. Compute Franco Score STR
+    // Default lat/lng to Santiago centro if not provided (so distances to attractors still compute)
+    const lat = typeof body.lat === "number" ? body.lat : -33.4378;
+    const lng = typeof body.lng === "number" ? body.lng : -70.6504;
+
+    const monthlyRevenue = Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [];
+    const revenueP50 = airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0;
+
+    const scoreInputs: ScoreSTRInputs = {
+      results: result,
+      precioCompra: body.precioCompra,
+      dormitorios: body.dormitorios,
+      superficie: body.superficieUtil,
+      regulacionEdificio: body.edificioPermiteAirbnb || "no_seguro",
+      lat,
+      lng,
+      revenueP50,
+      monthlyRevenue,
+      distanciaMetro: typeof body.distanciaMetro === "number" ? body.distanciaMetro : 2000,
+    };
+
+    const francoScore = calcFrancoScoreSTR(scoreInputs);
+
     // 7. Insert in Supabase (same table as LTR)
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (isGuest && !serviceRoleKey) {
@@ -280,10 +304,10 @@ export async function POST(request: Request) {
         arriendo: body.arriendoLargoMensual,
         gastos: body.gastosComunes,
         contribuciones: body.contribuciones || 0,
-        score: 0,
-        desglose: {},
-        resumen: result.veredicto || 'Sin veredicto',
-        results: { ...result, tipoAnalisis: "short-term", airbnbRaw: airbnbResult.data },
+        score: francoScore.score,
+        desglose: francoScore.desglose,
+        resumen: francoScore.veredicto,
+        results: { ...result, tipoAnalisis: "short-term", veredicto: francoScore.veredicto, francoScore, airbnbRaw: airbnbResult.data },
         input_data: { ...body, tipoAnalisis: "short-term" },
         creator_name:
           user?.user_metadata?.nombre ||

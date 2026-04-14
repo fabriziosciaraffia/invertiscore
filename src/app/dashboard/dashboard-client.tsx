@@ -12,38 +12,95 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import type { Analisis } from "@/lib/types";
 import { User } from "lucide-react";
 
-type VerdictFilter = "todos" | "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+type LTRVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+type STRVerdict = "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO";
+type AnyVerdict = LTRVerdict | STRVerdict;
+type VerdictFilter = "todos" | AnyVerdict;
+type TypeFilter = "todos" | "ltr" | "str";
 
-function getVerdict(score: number, veredictoMotor?: string): "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA" {
+function getVerdict(score: number, veredictoMotor?: string): LTRVerdict {
   if (veredictoMotor === "COMPRAR" || veredictoMotor === "AJUSTA EL PRECIO" || veredictoMotor === "BUSCAR OTRA") return veredictoMotor;
   if (score >= 75) return "COMPRAR";
   if (score >= 40) return "AJUSTA EL PRECIO";
   return "BUSCAR OTRA";
 }
 
+function getSTRVerdict(item: Analisis): STRVerdict {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = item.results as any;
+  const v = r?.francoScore?.veredicto ?? r?.veredicto;
+  if (v === "VIABLE" || v === "AJUSTA ESTRATEGIA" || v === "NO RECOMENDADO") return v;
+  return "NO RECOMENDADO";
+}
 
-function getMetrics(item: Analisis) {
+function getSTRScore(item: Analisis): number | null {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const s = (item.results as any)?.francoScore?.score;
+  return typeof s === "number" ? s : null;
+}
+
+function getAnyVerdict(item: Analisis): AnyVerdict {
+  return isShortTerm(item) ? getSTRVerdict(item) : getVerdict(item.score, item.results?.veredicto);
+}
+
+function isShortTerm(item: Analisis): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = item.results as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const i = item.input_data as any;
+  return r?.tipoAnalisis === "short-term" || i?.tipoAnalisis === "short-term";
+}
+
+type CardMetrics = {
+  isSTR: boolean;
+  flujoMensual: number;
+  primary: { label: string; value: string };
+  secondary: { label: string; value: string };
+};
+
+function getMetrics(item: Analisis): CardMetrics {
   const r = item.results;
+
+  if (isShortTerm(item)) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const str = r as any;
+    const base = str?.escenarios?.base;
+    const flujo = base?.flujoCajaMensual ?? 0;
+    const capRatePct = (base?.capRate ?? 0) * 100;
+    const sobreRentaPct = (str?.comparativa?.sobreRentaPct ?? 0) * 100;
+    return {
+      isSTR: true,
+      flujoMensual: flujo,
+      primary: { label: "CAP RATE", value: `${capRatePct.toFixed(1)}%` },
+      secondary: {
+        label: "VS LTR",
+        value: sobreRentaPct === 0 ? "—" : `${sobreRentaPct > 0 ? "+" : ""}${sobreRentaPct.toFixed(0)}%`,
+      },
+    };
+  }
+
   if (r?.metrics) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const raw = r.metrics as any;
+    const rentabilidadBruta = raw.rentabilidadBruta ?? raw.yieldBruto ?? 0;
+    const flujoMensual = r.metrics.flujoNetoMensual ?? 0;
+    const multiplicador = r.exitScenario?.multiplicadorCapital ?? 0;
     return {
-      rentabilidadBruta: raw.rentabilidadBruta ?? raw.yieldBruto ?? 0,
-      flujoMensual: r.metrics.flujoNetoMensual ?? 0,
-      capRate: raw.capRate ?? 0,
-      precioM2: r.metrics.precioM2 ?? 0,
-      multiplicador: r.exitScenario?.multiplicadorCapital ?? 0,
+      isSTR: false,
+      flujoMensual,
+      primary: { label: "RENT.", value: `${rentabilidadBruta.toFixed(1)}%` },
+      secondary: { label: "RETORNO", value: multiplicador > 0 ? `${multiplicador.toFixed(1)}x` : "—" },
     };
   }
+
   const precioCLP = item.precio * 38800;
   const rentabilidadBruta = precioCLP > 0 ? ((item.arriendo * 12) / precioCLP) * 100 : 0;
   const flujoMensual = item.arriendo - item.gastos - item.contribuciones;
   return {
-    rentabilidadBruta,
+    isSTR: false,
     flujoMensual,
-    capRate: 0,
-    precioM2: item.superficie > 0 ? item.precio / item.superficie : 0,
-    multiplicador: 0,
+    primary: { label: "RENT.", value: `${rentabilidadBruta.toFixed(1)}%` },
+    secondary: { label: "RETORNO", value: "—" },
   };
 }
 
@@ -65,11 +122,29 @@ function getSiendoFranco(score: number, flujo: number) {
   return "Flujo muy negativo y retorno bajo. No vale la pena.";
 }
 
+function getSTRSiendoFranco(item: Analisis): string {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const r = item.results as any;
+  const sobreRenta = r?.comparativa?.sobreRenta ?? 0;
+  const sobreRentaPct = Math.round((r?.comparativa?.sobreRentaPct ?? 0) * 100);
+  const veredicto = getSTRVerdict(item);
+  if (veredicto === "VIABLE") {
+    return `Airbnb genera +${sobreRentaPct}% más que arriendo largo. Sobre-renta de $${Math.abs(Math.round(sobreRenta)).toLocaleString("es-CL")}/mes.`;
+  }
+  if (veredicto === "AJUSTA ESTRATEGIA") {
+    return `Airbnb genera levemente más que arriendo largo (+${sobreRentaPct}%). Evalúa si el esfuerzo operativo vale la pena.`;
+  }
+  return "El arriendo tradicional es más rentable para esta propiedad. La renta corta no cubre los costos operativos adicionales.";
+}
+
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
     COMPRAR: { color: "var(--franco-v-buy)", bg: "var(--franco-v-buy-bg)", border: "var(--franco-v-buy-bg)" },
     "AJUSTA EL PRECIO": { color: "var(--franco-v-adjust)", bg: "var(--franco-v-adjust-bg)", border: "var(--franco-v-adjust-bg)" },
     "BUSCAR OTRA": { color: "var(--franco-v-avoid)", bg: "var(--franco-v-avoid-bg)", border: "var(--franco-v-avoid-bg)" },
+    VIABLE: { color: "var(--franco-v-buy)", bg: "var(--franco-v-buy-bg)", border: "var(--franco-v-buy-bg)" },
+    "AJUSTA ESTRATEGIA": { color: "var(--franco-v-adjust)", bg: "var(--franco-v-adjust-bg)", border: "var(--franco-v-adjust-bg)" },
+    "NO RECOMENDADO": { color: "var(--franco-v-avoid)", bg: "var(--franco-v-avoid-bg)", border: "var(--franco-v-avoid-bg)" },
   };
   const s = styles[verdict] || styles["AJUSTA EL PRECIO"];
   return (
@@ -79,6 +154,24 @@ function VerdictBadge({ verdict }: { verdict: string }) {
     >
       {verdict}
     </span>
+  );
+}
+
+function STRScoreIcon({ verdict }: { verdict: STRVerdict }) {
+  const config = {
+    VIABLE: { icon: "✓", color: "var(--franco-v-buy)" },
+    "AJUSTA ESTRATEGIA": { icon: "⚠", color: "var(--franco-v-adjust)" },
+    "NO RECOMENDADO": { icon: "✗", color: "#C8323C" },
+  }[verdict];
+  return (
+    <div className="relative h-12 w-12 shrink-0">
+      <svg width="48" height="48" viewBox="0 0 48 48">
+        <circle cx="24" cy="24" r="20" fill="none" stroke={config.color} strokeWidth="3" />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="font-heading text-xl font-bold leading-none" style={{ color: config.color }}>{config.icon}</span>
+      </div>
+    </div>
   );
 }
 
@@ -108,6 +201,15 @@ function ScoreCircle({ score }: { score: number }) {
 export function DashboardClient({ analisis, firstName = "" }: { analisis: Analisis[]; firstName?: string }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<VerdictFilter>("todos");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("todos");
+
+  const handleCardClick = (item: Analisis) => {
+    if (isShortTerm(item)) {
+      router.push(`/analisis/renta-corta/${item.id}`);
+    } else {
+      router.push(`/analisis/${item.id}`);
+    }
+  };
 
   // Check welcome email for new users (fire and forget)
   useEffect(() => {
@@ -125,18 +227,35 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
     return { best, avgScore, positiveFlowCount, total: analisis.length };
   }, [analisis]);
 
-  // Verdict counts
-  const verdictCounts = useMemo(() => {
-    const counts: Record<string, number> = { COMPRAR: 0, "AJUSTA EL PRECIO": 0, "BUSCAR OTRA": 0 };
-    analisis.forEach((a) => { counts[getVerdict(a.score, a.results?.veredicto)]++; });
-    return counts;
+  // Type-filtered base list (applied before verdict filter)
+  const typeFiltered = useMemo(() => {
+    if (typeFilter === "todos") return analisis;
+    if (typeFilter === "str") return analisis.filter((a) => isShortTerm(a));
+    return analisis.filter((a) => !isShortTerm(a));
+  }, [analisis, typeFilter]);
+
+  // Type counts
+  const typeCounts = useMemo(() => {
+    let str = 0;
+    analisis.forEach((a) => { if (isShortTerm(a)) str++; });
+    return { str, ltr: analisis.length - str, total: analisis.length };
   }, [analisis]);
+
+  // Verdict counts (within type-filtered set)
+  const verdictCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      COMPRAR: 0, "AJUSTA EL PRECIO": 0, "BUSCAR OTRA": 0,
+      VIABLE: 0, "AJUSTA ESTRATEGIA": 0, "NO RECOMENDADO": 0,
+    };
+    typeFiltered.forEach((a) => { counts[getAnyVerdict(a)]++; });
+    return counts;
+  }, [typeFiltered]);
 
   // Filtered list
   const filtered = useMemo(() => {
-    if (activeFilter === "todos") return analisis;
-    return analisis.filter((a) => getVerdict(a.score, a.results?.veredicto) === activeFilter);
-  }, [analisis, activeFilter]);
+    if (activeFilter === "todos") return typeFiltered;
+    return typeFiltered.filter((a) => getAnyVerdict(a) === activeFilter);
+  }, [typeFiltered, activeFilter]);
 
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
@@ -163,11 +282,30 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
     router.refresh();
   };
 
+  const ltrVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
+    { key: "COMPRAR", label: "Comprar", color: "#B0BEC5" },
+    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", color: "#FBBF24" },
+    { key: "BUSCAR OTRA", label: "Buscar otra", color: "#C8323C" },
+  ];
+  const strVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
+    { key: "VIABLE", label: "Viable", color: "#B0BEC5" },
+    { key: "AJUSTA ESTRATEGIA", label: "Ajusta estrategia", color: "#FBBF24" },
+    { key: "NO RECOMENDADO", label: "No recomendado", color: "#C8323C" },
+  ];
+  const verdictFilterSet =
+    typeFilter === "str" ? strVerdictFilters :
+    typeFilter === "ltr" ? ltrVerdictFilters :
+    [...ltrVerdictFilters, ...strVerdictFilters].filter((f) => (verdictCounts[f.key as string] ?? 0) > 0);
+
   const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
-    { key: "todos", label: "Todos", count: analisis.length, color: null },
-    { key: "COMPRAR", label: "Comprar", count: verdictCounts.COMPRAR, color: "#B0BEC5" },
-    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", count: verdictCounts["AJUSTA EL PRECIO"], color: "#FBBF24" },
-    { key: "BUSCAR OTRA", label: "Buscar otra", count: verdictCounts["BUSCAR OTRA"], color: "#C8323C" },
+    { key: "todos", label: "Todos", count: typeFiltered.length, color: null },
+    ...verdictFilterSet.map((f) => ({ key: f.key, label: f.label, count: verdictCounts[f.key as string] ?? 0, color: f.color })),
+  ];
+
+  const typeFilters: { key: TypeFilter; label: string; count: number }[] = [
+    { key: "todos", label: "Todos los análisis", count: typeCounts.total },
+    { key: "ltr", label: "Renta larga", count: typeCounts.ltr },
+    { key: "str", label: "Renta corta", count: typeCounts.str },
   ];
 
   return (
@@ -201,17 +339,20 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
             </div>
             <div className="mb-1.5 font-heading text-xl font-bold text-[var(--franco-text)]">
-              Todavía no has analizado ningún departamento
+              Analiza tu primera inversión
             </div>
-            <div className="mx-auto mb-6 max-w-[340px] font-body text-[13px] text-[var(--franco-text-secondary)]">
-              Ingresa los datos de cualquier propiedad y Franco te dice si vale la pena en 30 segundos.
+            <div className="mx-auto mb-6 max-w-[360px] font-body text-[13px] text-[var(--franco-text-secondary)]">
+              Renta larga, renta corta o ambas. Franco te dice si el número da en 30 segundos.
             </div>
-            <Link href="/analisis/nuevo">
+            <Link href="/analisis/nuevo-v2">
               <button className="rounded-lg bg-[#C8323C] px-7 py-3 font-body text-sm font-bold text-white shadow-[0_2px_12px_rgba(200,50,60,0.2)]">
-                Analizar mi primer departamento →
+                Analizar tu primera inversión →
               </button>
             </Link>
-            <div className="mt-3">
+            <div className="mt-3 flex flex-col items-center gap-1.5">
+              <Link href="/analisis/nuevo" className="font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
+                O prueba el formulario clásico →
+              </Link>
               <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
                 O mira un ejemplo primero →
               </a>
@@ -227,11 +368,16 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                   {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
                 </p>
               </div>
-              <Link href="/analisis/nuevo">
-                <button className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-[13px] font-bold text-white shadow-[0_2px_10px_rgba(200,50,60,0.15)]">
-                  Analizar nuevo →
-                </button>
-              </Link>
+              <div className="flex flex-col items-end gap-1">
+                <Link href="/analisis/nuevo-v2">
+                  <button className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-[13px] font-bold text-white shadow-[0_2px_10px_rgba(200,50,60,0.15)]">
+                    Analizar inversión →
+                  </button>
+                </Link>
+                <Link href="/analisis/nuevo" className="font-body text-[11px] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
+                  O prueba el formulario clásico →
+                </Link>
+              </div>
             </div>
 
             {/* ─── Summary Cards ─── */}
@@ -259,6 +405,29 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                   </div>
                   <div className="mt-0.5 font-body text-[10px] text-[var(--franco-text-secondary)]">propiedades</div>
                 </div>
+              </div>
+            )}
+
+            {/* ─── Type Filters ─── */}
+            {typeCounts.str > 0 && (
+              <div className="mb-2 flex flex-wrap gap-1.5">
+                {typeFilters.map((f) => {
+                  const isActive = typeFilter === f.key;
+                  const className = `font-body text-xs px-3 py-1 rounded-md cursor-pointer border transition-colors ${
+                    isActive
+                      ? "font-semibold bg-[var(--franco-text)] border-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)]"
+                  }`;
+                  return (
+                    <button
+                      key={f.key}
+                      onClick={() => { setTypeFilter(f.key); setActiveFilter("todos"); }}
+                      className={className}
+                    >
+                      {f.label} <span className="ml-1 font-mono text-[10px] opacity-70">{f.count}</span>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -307,14 +476,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               <div className="flex flex-col gap-2.5">
                 {filtered.map((item) => {
                   const m = getMetrics(item);
-                  const verdict = getVerdict(item.score, item.results?.veredicto);
+                  const verdict: AnyVerdict = getAnyVerdict(item);
                   const isDeleting = deletingId === item.id;
                   const isSelected = selected.has(item.id);
 
                   return (
                     <div
                       key={item.id}
-                      onClick={() => router.push(`/analisis/${item.id}`)}
+                      onClick={() => handleCardClick(item)}
                       className={`cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 transition-all hover:border-[var(--franco-border-hover)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
                         isSelected ? "border-[var(--franco-border-hover)]" : "border-[var(--franco-border)]"
                       } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
@@ -338,7 +507,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                           )}
                         </button>
 
-                        <ScoreCircle score={item.score} />
+                        {m.isSTR
+                          ? (() => {
+                              const strScore = getSTRScore(item);
+                              return strScore !== null
+                                ? <ScoreCircle score={strScore} />
+                                : <STRScoreIcon verdict={verdict as STRVerdict} />;
+                            })()
+                          : <ScoreCircle score={item.score} />}
 
                         {/* Info */}
                         <div className="min-w-0 flex-1">
@@ -346,6 +522,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                             <span className="font-body text-sm font-bold text-[var(--franco-text)]">{item.nombre}</span>
                             <span className="text-[var(--franco-text-secondary)]">·</span>
                             <span className="font-body text-xs text-[var(--franco-text-secondary)]">{item.comuna}</span>
+                            {m.isSTR && (
+                              <span
+                                className="rounded font-mono text-[7px] font-bold tracking-wide"
+                                style={{ padding: "2px 6px", background: "rgba(200,50,60,0.1)", color: "#C8323C" }}
+                              >
+                                AIRBNB
+                              </span>
+                            )}
                             {item.is_premium && (
                               <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
                             )}
@@ -366,15 +550,15 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RENT.</div>
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.primary.label}</div>
                             <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
-                              {m.rentabilidadBruta.toFixed(1)}%
+                              {m.primary.value}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RETORNO</div>
+                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.secondary.label}</div>
                             <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
-                              {m.multiplicador > 0 ? `${m.multiplicador.toFixed(1)}x` : "—"}
+                              {m.secondary.value}
                             </div>
                           </div>
                         </div>
@@ -395,9 +579,11 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                       <div className="mt-2.5 border-t border-[var(--franco-border)] pt-2.5">
                         <p className="font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
                           <span className="font-semibold text-[var(--franco-text)]">Siendo franco:</span>{" "}
-                          {item.results?.resumen
-                            ? item.results.resumen.split(".")[0] + "."
-                            : getSiendoFranco(item.score, m.flujoMensual)}
+                          {m.isSTR
+                            ? getSTRSiendoFranco(item)
+                            : item.results?.resumen
+                              ? item.results.resumen.split(".")[0] + "."
+                              : getSiendoFranco(item.score, m.flujoMensual)}
                         </p>
                       </div>
                     </div>

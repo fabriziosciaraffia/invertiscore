@@ -1019,6 +1019,8 @@ export default function NuevoAnalisisV2Page() {
             costoAmoblamiento: form.estaAmoblado ? 0 : Number(form.costoAmoblamiento) || 0,
             arriendoLargoMensual: arriendoLargoCLP,
             valorUF: UF_CLP,
+            lat: geoLat || null,
+            lng: geoLng || null,
           }),
         }).then(async (res) => {
           if (!res.ok) {

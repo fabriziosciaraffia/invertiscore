@@ -13,6 +13,7 @@ import {
   Building2, Zap, Droplets, Wifi, Package, Wrench, Receipt,
 } from "lucide-react";
 import type { ShortTermResult, EscenarioSTR, FlujoEstacionalMes, SensibilidadRow } from "@/lib/engines/short-term-engine";
+import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 
 // ─── Module-level UF ───────────────────────────────
 let UF_CLP = 38800;
@@ -256,6 +257,99 @@ function MetricCard({ label, value, subtext, color, tooltip, icon: Icon }: {
   );
 }
 
+// ─── Franco Score STR block ─────────────────────────
+function scoreColor(score: number): string {
+  if (score >= 65) return "#22c55e";
+  if (score >= 40) return "#FBBF24";
+  return "#C8323C";
+}
+
+function FrancoScoreSTRBlock({ fs }: { fs: FrancoScoreSTR }) {
+  const color = scoreColor(fs.score);
+  const verdictCfg = VERDICT_CONFIG[fs.veredicto];
+  const dims = [
+    fs.desglose.rentabilidad,
+    fs.desglose.sostenibilidad,
+    fs.desglose.ventaja,
+    fs.desglose.factibilidad,
+  ];
+  // Circle math
+  const radius = 52;
+  const circ = 2 * Math.PI * radius;
+  const dash = (fs.score / 100) * circ;
+
+  return (
+    <div className="bg-[var(--franco-card)] rounded-2xl border border-[var(--franco-border)] p-6 mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--franco-text-muted)]">
+          Franco Score STR
+        </span>
+        <span
+          className="font-mono text-[10px] font-bold tracking-wide rounded px-2 py-1"
+          style={{ background: verdictCfg.bg, border: `1.5px solid ${verdictCfg.border}`, color: verdictCfg.color }}
+        >
+          {verdictCfg.label}
+        </span>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        {/* Score circle */}
+        <div className="relative h-32 w-32 shrink-0">
+          <svg width="128" height="128" viewBox="0 0 128 128">
+            <circle cx="64" cy="64" r={radius} fill="none" stroke="var(--franco-border)" strokeWidth="8" />
+            <circle
+              cx="64" cy="64" r={radius} fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeDasharray={`${dash} ${circ}`}
+              strokeLinecap="round"
+              transform="rotate(-90 64 64)"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-heading text-4xl font-bold" style={{ color }}>{fs.score}</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--franco-text-muted)]">/ 100</span>
+          </div>
+        </div>
+
+        {/* Dimensions */}
+        <div className="flex-1 w-full space-y-2">
+          {dims.map((d) => {
+            const dimColor = scoreColor(d.score);
+            return (
+              <div key={d.label} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-body text-xs font-medium text-[var(--franco-text)]">{d.label}</span>
+                      <InfoTooltip content={d.detail} />
+                    </div>
+                    <span className="font-mono text-xs font-semibold" style={{ color: dimColor }}>{d.score}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-[var(--franco-border)] overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all"
+                      style={{ width: `${d.score}%`, background: dimColor }}
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {fs.overrideApplied && (
+        <div className="mt-4 pt-3 border-t border-[var(--franco-border)]">
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
+            <span className="font-semibold text-[var(--franco-text)]">Nota:</span> {fs.overrideApplied}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Escenario verdict based on sobre-renta vs LTR (same logic as engine) ─────
 function escenarioVerdict(esc: EscenarioSTR, ltrNoiMensual: number): ShortTermResult["veredicto"] {
   const sobreRenta = esc.noiMensual - ltrNoiMensual;
@@ -317,7 +411,11 @@ export function STRResultsClient({
   const direccion = (inp?.direccion as string) ?? "";
   const costoAmoblamiento = (inp?.costoAmoblamiento as number) ?? 0;
 
-  const verdictCfg = VERDICT_CONFIG[r.veredicto];
+  // Franco Score STR (may not exist in older analyses)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const francoScore: FrancoScoreSTR | undefined = (results as any)?.francoScore;
+  const effectiveVeredicto: ShortTermResult["veredicto"] = francoScore?.veredicto ?? r.veredicto;
+  const verdictCfg = VERDICT_CONFIG[effectiveVeredicto];
   const VerdictIcon = verdictCfg.icon;
 
   // Format date
@@ -412,17 +510,20 @@ export function STRResultsClient({
             </span>
           </div>
           <p className="font-body text-sm text-[var(--franco-text-secondary)] leading-relaxed">
-            {r.veredicto === "VIABLE" && (
+            {effectiveVeredicto === "VIABLE" && (
               <>La renta corta genera <span className="font-mono font-medium text-[var(--franco-text)]">{fmtPct(comp.sobreRentaPct)}</span> más que el arriendo tradicional en NOI mensual.</>
             )}
-            {r.veredicto === "AJUSTA ESTRATEGIA" && (
+            {effectiveVeredicto === "AJUSTA ESTRATEGIA" && (
               <>La renta corta puede funcionar con ajustes. El break-even está en el <span className="font-mono font-medium text-[var(--franco-text)]">{fmtPctRaw(breakEvenPct * 100, 0)}</span> del mercado (P50).</>
             )}
-            {r.veredicto === "NO RECOMENDADO" && (
+            {effectiveVeredicto === "NO RECOMENDADO" && (
               <>Para esta propiedad, el arriendo tradicional es más rentable. La renta corta no cubre los costos operativos adicionales.</>
             )}
           </p>
         </div>
+
+        {/* Franco Score STR */}
+        {francoScore && <FrancoScoreSTRBlock fs={francoScore} />}
 
         {/* Property info card */}
         <div className="bg-[var(--franco-card)] rounded-xl border border-[var(--franco-border)] p-5 mb-4">
@@ -487,7 +588,7 @@ export function STRResultsClient({
         >
           <p className="font-body text-xs font-semibold text-[var(--franco-text)] mb-1">Siendo franco:</p>
           <p className="font-body text-sm text-[var(--franco-text-secondary)] leading-relaxed">
-            {r.veredicto === "VIABLE" && (
+            {effectiveVeredicto === "VIABLE" && (
               <>
                 En Airbnb este depto genera <span className="font-mono">{fmtMoney(comp.sobreRenta, currency)}</span>/mes más que en arriendo tradicional.
                 {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
@@ -495,7 +596,7 @@ export function STRResultsClient({
                 )}
               </>
             )}
-            {r.veredicto === "AJUSTA ESTRATEGIA" && (
+            {effectiveVeredicto === "AJUSTA ESTRATEGIA" && (
               <>
                 La renta corta puede funcionar, pero necesitas alcanzar al menos el <span className="font-mono">{fmtPctRaw(breakEvenPct * 100, 0)}</span> del revenue promedio del mercado para no perder plata.
                 {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
@@ -504,7 +605,7 @@ export function STRResultsClient({
                 {comp.paybackMeses < 0 && <> Con estos números, la inversión en amoblamiento no se recupera.</>}
               </>
             )}
-            {r.veredicto === "NO RECOMENDADO" && (
+            {effectiveVeredicto === "NO RECOMENDADO" && (
               <>
                 Los costos operativos de la renta corta (electricidad, insumos, limpieza) hacen que el arriendo tradicional sea más rentable para esta propiedad. El flujo de caja con Airbnb es <span className="font-mono">{fmtMoney(base.flujoCajaMensual, currency)}</span>/mes vs <span className="font-mono">{fmtMoney(comp.ltr.flujoCaja, currency)}</span>/mes con arriendo largo.
               </>
