@@ -4,6 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { getUFValue } from "@/lib/uf";
 import { calcShortTerm } from "@/lib/engines/short-term-engine";
+import { consumeCredit } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
 import type { AirbnbData, ShortTermInputs } from "@/lib/engines/short-term-engine";
 import type {
   AirbnbEstimateData,
@@ -158,6 +160,31 @@ export async function POST(request: Request) {
     } = await supabase.auth.getUser();
 
     const isGuest = !user;
+    const isAdmin = isAdminUser(user?.email);
+
+    // 1b. Credit check — guests and admins skip, others need credits or subscription
+    if (!isGuest && !isAdmin && user) {
+      const adminDb = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      );
+      const { data: creditData } = await adminDb
+        .from("user_credits")
+        .select("credits, subscription_status")
+        .eq("user_id", user.id)
+        .single();
+
+      const hasAccess =
+        creditData?.subscription_status === "active" ||
+        (creditData?.credits ?? 0) > 0;
+
+      if (!hasAccess) {
+        return NextResponse.json(
+          { error: "Necesitas un crédito Pro para este análisis" },
+          { status: 403 },
+        );
+      }
+    }
 
     // 2. Parse body
     const body = await request.json();
@@ -275,7 +302,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Return the inserted row
+    // 8. Consume credit after successful insert (admin & guests skip)
+    if (!isGuest && !isAdmin && user && data?.id) {
+      await consumeCredit(user.id, data.id);
+    }
+
+    // 9. Return the inserted row
     return NextResponse.json(data);
   } catch (error) {
     console.error("[short-term] API error:", error);

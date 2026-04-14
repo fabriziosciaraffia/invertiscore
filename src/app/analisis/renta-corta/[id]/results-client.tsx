@@ -256,10 +256,12 @@ function MetricCard({ label, value, subtext, color, tooltip, icon: Icon }: {
   );
 }
 
-// ─── Escenario verdict for individual scenarios ─────
-function escenarioVerdict(esc: EscenarioSTR): ShortTermResult["veredicto"] {
-  if (esc.capRate >= 0.06 && esc.cashOnCash >= 0.08) return "VIABLE";
-  if (esc.capRate >= 0.04 && esc.cashOnCash >= 0.04) return "AJUSTA ESTRATEGIA";
+// ─── Escenario verdict based on sobre-renta vs LTR (same logic as engine) ─────
+function escenarioVerdict(esc: EscenarioSTR, ltrNoiMensual: number): ShortTermResult["veredicto"] {
+  const sobreRenta = esc.noiMensual - ltrNoiMensual;
+  const sobreRentaPct = ltrNoiMensual !== 0 ? sobreRenta / ltrNoiMensual : 0;
+  if (sobreRentaPct >= 0.10) return "VIABLE";
+  if (sobreRentaPct >= 0 && esc.noiMensual > 0) return "AJUSTA ESTRATEGIA";
   return "NO RECOMENDADO";
 }
 
@@ -657,7 +659,7 @@ export function STRResultsClient({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               {(["conservador", "base", "agresivo"] as const).map(key => {
                 const esc = r.escenarios[key];
-                const v = escenarioVerdict(esc);
+                const v = escenarioVerdict(esc, comp.ltr.noiMensual);
                 const vCfg = VERDICT_CONFIG[v];
                 const isBase = key === "base";
 

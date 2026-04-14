@@ -10,7 +10,8 @@
       "Bash(npm run:*)",
       "Bash(curl:*)",
       "Bash(wc:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(tail:*)"
     ]
   }
 }
