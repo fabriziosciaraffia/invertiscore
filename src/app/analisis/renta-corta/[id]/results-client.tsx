@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ReferenceLine, Cell,
@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   Lock, CheckCircle2, AlertTriangle, XCircle,
-  TrendingUp, ArrowUpDown, Home, DollarSign,
   Building2, Zap, Droplets, Wifi, Package, Wrench, Receipt,
 } from "lucide-react";
 import type { ShortTermResult, EscenarioSTR, FlujoEstacionalMes, SensibilidadRow } from "@/lib/engines/short-term-engine";
@@ -18,7 +17,7 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 // ─── Module-level UF ───────────────────────────────
 let UF_CLP = 38800;
 
-// ─── Formatting helpers (same as LTR) ──────────────
+// ─── Formatting helpers ────────────────────────────
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
@@ -35,6 +34,17 @@ function fmtUF(n: number): string {
 function fmtMoney(n: number, currency: "CLP" | "UF"): string {
   if (currency === "UF") return fmtUF(n / UF_CLP);
   return fmtCLP(n);
+}
+
+function fmtM(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(".", ",") + "M";
+  if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000).toLocaleString("es-CL") + "K";
+  return "$" + Math.round(n).toLocaleString("es-CL");
+}
+
+function fmtMoneyCompact(n: number, currency: "CLP" | "UF"): string {
+  if (currency === "UF") return fmtUF(n / UF_CLP);
+  return fmtM(n);
 }
 
 function fmtPct(n: number, decimals: number = 1): string {
@@ -58,30 +68,61 @@ function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
 
-// ─── Verdict helpers ────────────────────────────────
-const VERDICT_CONFIG = {
+// ─── Verdict mapping (STR → LTR color semantics) ────
+// VIABLE          → positive (verde/gris azulado)
+// AJUSTA ESTRAT.  → warning (amber)
+// NO RECOMENDADO  → rojo Signal Red
+type VerdictSTR = "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO";
+
+const VERDICT_CONFIG: Record<VerdictSTR, {
+  color: string;
+  bg: string;
+  border: string;
+  badgeBg: string;
+  icon: React.ElementType;
+  label: string;
+  shortLabel: string;
+}> = {
   VIABLE: {
     color: "var(--franco-positive, #B0BEC5)",
-    bg: "rgba(176,190,197,0.12)",
-    border: "rgba(176,190,197,0.25)",
+    bg: "var(--franco-sc-good-bg, rgba(176,190,197,0.08))",
+    border: "var(--franco-sc-good-border, rgba(176,190,197,0.4))",
+    badgeBg: "rgba(176,190,197,0.15)",
     icon: CheckCircle2,
     label: "VIABLE",
+    shortLabel: "VIABLE",
   },
   "AJUSTA ESTRATEGIA": {
     color: "var(--franco-warning, #FBBF24)",
-    bg: "rgba(251,191,36,0.12)",
-    border: "rgba(251,191,36,0.25)",
+    bg: "var(--franco-v-adjust-bg, rgba(251,191,36,0.08))",
+    border: "rgba(251,191,36,0.3)",
+    badgeBg: "rgba(251,191,36,0.15)",
     icon: AlertTriangle,
     label: "AJUSTA ESTRATEGIA",
+    shortLabel: "AJUSTA",
   },
   "NO RECOMENDADO": {
     color: "#C8323C",
-    bg: "rgba(200,50,60,0.10)",
-    border: "rgba(200,50,60,0.20)",
+    bg: "var(--franco-sc-bad-bg, rgba(200,50,60,0.06))",
+    border: "rgba(200,50,60,0.3)",
+    badgeBg: "rgba(200,50,60,0.15)",
     icon: XCircle,
     label: "NO RECOMENDADO",
+    shortLabel: "NO RECOM.",
   },
-} as const;
+};
+
+// ─── FadeIn animation wrapper ──────────────────────
+function FadeIn({ show, delay = 0, children }: { show: boolean; delay?: number; children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    if (!show) return;
+    const t = setTimeout(() => setVisible(true), delay);
+    return () => clearTimeout(t);
+  }, [show, delay]);
+  if (!visible) return null;
+  return <div className="animate-fadeIn">{children}</div>;
+}
 
 // ─── CollapsibleSection ─────────────────────────────
 function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, locked = false, guestLocked = false, analysisId, children }: {
@@ -115,9 +156,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
           </div>
           {subtitle && <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-0.5">{subtitle}</p>}
         </div>
-        {locked ? (
-          <Lock className="h-4 w-4 text-[var(--franco-text-secondary)] shrink-0" />
-        ) : guestLocked ? (
+        {locked || guestLocked ? (
           <Lock className="h-4 w-4 text-[var(--franco-text-secondary)] shrink-0" />
         ) : (
           <span className={`font-body text-lg text-[var(--franco-text-secondary)] transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
@@ -171,7 +210,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, lo
 // ─── CurrencyToggle ─────────────────────────────────
 function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onToggle: () => void }) {
   return (
-    <div className="mb-6 flex items-center justify-between border border-[var(--franco-border)] bg-[var(--franco-card)] rounded-2xl px-4 py-3">
+    <div className="flex items-center justify-between border border-[var(--franco-border)] bg-[var(--franco-card)] rounded-2xl px-4 py-3">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -198,160 +237,51 @@ function CurrencyToggle({ currency, onToggle }: { currency: "CLP" | "UF"; onTogg
   );
 }
 
-// ─── ViewLevel toggle ───────────────────────────────
-function ViewLevelToggle({ level, onChange }: { level: ViewLevel; onChange: (l: ViewLevel) => void }) {
-  const options: { value: ViewLevel; label: string }[] = [
-    { value: "simple", label: "En Simple" },
-    { value: "importante", label: "Lo Importante" },
-    { value: "sinfiltro", label: "Sin Filtro" },
-  ];
-  return (
-    <div className="sticky top-[60px] z-40 bg-[var(--franco-bg)] border-b border-[var(--franco-border)] py-2 mb-6 -mx-4 px-4">
-      <div className="flex gap-1 bg-[var(--franco-elevated,var(--franco-card))] rounded-xl p-1 max-w-md mx-auto">
-        {options.map(o => (
-          <button
-            key={o.value}
-            type="button"
-            onClick={() => onChange(o.value)}
-            className={`flex-1 text-center py-2 px-3 rounded-lg font-body text-xs font-medium transition-colors ${
-              level === o.value
-                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                : "text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-            }`}
-          >
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
+// ─── ViewLevel ──────────────────────────────────────
 type ViewLevel = "simple" | "importante" | "sinfiltro";
 
-// ─── Metric Card ────────────────────────────────────
-function MetricCard({ label, value, subtext, color, tooltip, icon: Icon }: {
-  label: string;
-  value: string;
-  subtext?: string;
-  color?: string;
-  tooltip?: string;
-  icon?: React.ElementType;
-}) {
+// ─── Score + gradient bar (mirror LTR ScoreBarInline) ─
+function ScoreBarInlineSTR({ score, veredicto }: { score: number; veredicto: VerdictSTR }) {
+  const cfg = VERDICT_CONFIG[veredicto];
   return (
-    <div className="bg-[var(--franco-card)] rounded-xl border border-[var(--franco-border)] p-4">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        {Icon && <Icon className="h-3.5 w-3.5 text-[var(--franco-text-secondary)]" />}
-        <span className="font-body text-xs text-[var(--franco-text-secondary)]">
-          {label}
-        </span>
-        {tooltip && <InfoTooltip content={tooltip} />}
+    <div className="w-full min-w-[220px]">
+      <p className="font-mono text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-[3px] mb-1">FRANCO SCORE STR</p>
+      <p className="font-mono text-[52px] font-bold text-[var(--franco-text)] leading-none">{score}</p>
+      {/* Gradient bar + indicator dot */}
+      <div className="relative mt-3 h-2 rounded-full overflow-hidden">
+        <div
+          className="absolute inset-0 rounded-full opacity-20"
+          style={{ background: "var(--franco-score-gradient, linear-gradient(90deg, #C8323C 0%, #FBBF24 50%, #B0BEC5 100%))" }}
+        />
+        <div
+          className="absolute rounded-full border-2 border-[var(--franco-bg)]"
+          style={{ width: 14, height: 14, top: -3, left: `calc(${Math.max(0, Math.min(100, score))}% - 7px)`, backgroundColor: cfg.color, transition: "left 0.7s" }}
+        />
       </div>
-      <p className={`font-mono text-lg font-semibold ${color || "text-[var(--franco-text)]"}`}>
-        {value}
-      </p>
-      {subtext && (
-        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-0.5">{subtext}</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Franco Score STR block ─────────────────────────
-function scoreColor(score: number): string {
-  if (score >= 65) return "#22c55e";
-  if (score >= 40) return "#FBBF24";
-  return "#C8323C";
-}
-
-function FrancoScoreSTRBlock({ fs }: { fs: FrancoScoreSTR }) {
-  const color = scoreColor(fs.score);
-  const verdictCfg = VERDICT_CONFIG[fs.veredicto];
-  const dims = [
-    fs.desglose.rentabilidad,
-    fs.desglose.sostenibilidad,
-    fs.desglose.ventaja,
-    fs.desglose.factibilidad,
-  ];
-  // Circle math
-  const radius = 52;
-  const circ = 2 * Math.PI * radius;
-  const dash = (fs.score / 100) * circ;
-
-  return (
-    <div className="bg-[var(--franco-card)] rounded-2xl border border-[var(--franco-border)] p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--franco-text-muted)]">
-          Franco Score STR
-        </span>
+      {/* Zone labels */}
+      <div className="flex mt-2">
+        <span className="font-mono text-[8px] text-[var(--franco-text-muted)] w-[40%] text-left tracking-wide">NO RECOM.</span>
+        <span className="font-mono text-[8px] text-[var(--franco-text-muted)] w-[30%] text-center tracking-wide">AJUSTA</span>
+        <span className="font-mono text-[8px] text-[var(--franco-text-muted)] w-[30%] text-right tracking-wide">VIABLE</span>
+      </div>
+      {/* Verdict badge */}
+      <div className="mt-3">
         <span
-          className="font-mono text-[10px] font-bold tracking-wide rounded px-2 py-1"
-          style={{ background: verdictCfg.bg, border: `1.5px solid ${verdictCfg.border}`, color: verdictCfg.color }}
+          className="font-mono text-[11px] font-semibold uppercase tracking-[2px] px-4 py-1 rounded-md inline-block"
+          style={{ color: cfg.color, backgroundColor: cfg.badgeBg, border: `0.5px solid ${cfg.badgeBg}` }}
         >
-          {verdictCfg.label}
+          {cfg.label}
         </span>
       </div>
-
-      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
-        {/* Score circle */}
-        <div className="relative h-32 w-32 shrink-0">
-          <svg width="128" height="128" viewBox="0 0 128 128">
-            <circle cx="64" cy="64" r={radius} fill="none" stroke="var(--franco-border)" strokeWidth="8" />
-            <circle
-              cx="64" cy="64" r={radius} fill="none"
-              stroke={color}
-              strokeWidth="8"
-              strokeDasharray={`${dash} ${circ}`}
-              strokeLinecap="round"
-              transform="rotate(-90 64 64)"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-heading text-4xl font-bold" style={{ color }}>{fs.score}</span>
-            <span className="font-mono text-[9px] uppercase tracking-wider text-[var(--franco-text-muted)]">/ 100</span>
-          </div>
-        </div>
-
-        {/* Dimensions */}
-        <div className="flex-1 w-full space-y-2">
-          {dims.map((d) => {
-            const dimColor = scoreColor(d.score);
-            return (
-              <div key={d.label} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-body text-xs font-medium text-[var(--franco-text)]">{d.label}</span>
-                      <InfoTooltip content={d.detail} />
-                    </div>
-                    <span className="font-mono text-xs font-semibold" style={{ color: dimColor }}>{d.score}</span>
-                  </div>
-                  <div className="h-1.5 w-full rounded-full bg-[var(--franco-border)] overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${d.score}%`, background: dimColor }}
-                    />
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {fs.overrideApplied && (
-        <div className="mt-4 pt-3 border-t border-[var(--franco-border)]">
-          <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
-            <span className="font-semibold text-[var(--franco-text)]">Nota:</span> {fs.overrideApplied}
-          </p>
-        </div>
-      )}
+      <p className="text-[11px] text-[var(--franco-text-muted)] mt-3 max-w-[260px] leading-relaxed font-body">
+        Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.
+      </p>
     </div>
   );
 }
 
-// ─── Escenario verdict based on sobre-renta vs LTR (same logic as engine) ─────
-function escenarioVerdict(esc: EscenarioSTR, ltrNoiMensual: number): ShortTermResult["veredicto"] {
+// ─── Escenario verdict (sobre-renta vs LTR) ────────
+function escenarioVerdict(esc: EscenarioSTR, ltrNoiMensual: number): VerdictSTR {
   const sobreRenta = esc.noiMensual - ltrNoiMensual;
   const sobreRentaPct = ltrNoiMensual !== 0 ? sobreRenta / ltrNoiMensual : 0;
   if (sobreRentaPct >= 0.10) return "VIABLE";
@@ -385,7 +315,6 @@ export function STRResultsClient({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userId, isSharedView, userCredits,
 }: STRResultsProps) {
-  // Update module-level UF
   if (ufValue) UF_CLP = ufValue;
 
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -398,7 +327,7 @@ export function STRResultsClient({
   const isPremium = accessLevel === "premium" || accessLevel === "subscriber";
   const showSection = (levels: ViewLevel[]) => levels.includes(viewLevel);
 
-  // Shorthand access
+  // Shorthand
   const r = results;
   const base = r.escenarios.base;
   const comp = r.comparativa;
@@ -408,20 +337,54 @@ export function STRResultsClient({
   const dormitorios = (inp?.dormitorios as number) ?? 0;
   const banos = (inp?.banos as number) ?? 0;
   const modoGestion = (inp?.modoGestion as string) ?? "auto";
-  const direccion = (inp?.direccion as string) ?? "";
   const costoAmoblamiento = (inp?.costoAmoblamiento as number) ?? 0;
 
   // Franco Score STR (may not exist in older analyses)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const francoScore: FrancoScoreSTR | undefined = (results as any)?.francoScore;
-  const effectiveVeredicto: ShortTermResult["veredicto"] = francoScore?.veredicto ?? r.veredicto;
+  const score = francoScore?.score ?? 50;
+  const effectiveVeredicto: VerdictSTR = (francoScore?.veredicto as VerdictSTR) ?? r.veredicto;
   const verdictCfg = VERDICT_CONFIG[effectiveVeredicto];
-  const VerdictIcon = verdictCfg.icon;
 
-  // Format date
+  // Dimension bars from francoScore (or fallback)
+  const dimensions = useMemo(() => {
+    if (!francoScore) return [];
+    return [
+      { label: francoScore.desglose.rentabilidad.label, value: francoScore.desglose.rentabilidad.score, detail: francoScore.desglose.rentabilidad.detail },
+      { label: francoScore.desglose.sostenibilidad.label, value: francoScore.desglose.sostenibilidad.score, detail: francoScore.desglose.sostenibilidad.detail },
+      { label: francoScore.desglose.ventaja.label, value: francoScore.desglose.ventaja.score, detail: francoScore.desglose.ventaja.detail },
+      { label: francoScore.desglose.factibilidad.label, value: francoScore.desglose.factibilidad.score, detail: francoScore.desglose.factibilidad.detail },
+    ];
+  }, [francoScore]);
+
   const fechaAnalisis = createdAt ? new Date(createdAt).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" }) : "";
 
-  // ─── Comparativa table data ───────────────────────
+  // "Siendo franco" copy
+  const siendoFrancoText = useMemo(() => {
+    if (effectiveVeredicto === "VIABLE") {
+      const extra = costoAmoblamiento > 0 && comp.paybackMeses > 0 ? ` Recuperas el amoblamiento en ${comp.paybackMeses} meses.` : "";
+      return `En Airbnb este depto genera ${fmtMoney(comp.sobreRenta, currency)}/mes más que en arriendo tradicional.${extra}`;
+    }
+    if (effectiveVeredicto === "AJUSTA ESTRATEGIA") {
+      const extra = costoAmoblamiento > 0 && comp.paybackMeses > 0
+        ? ` El amoblamiento se paga en ${comp.paybackMeses} meses.`
+        : costoAmoblamiento > 0 && comp.paybackMeses < 0
+        ? ` Con estos números, la inversión en amoblamiento no se recupera.`
+        : "";
+      return `La renta corta puede funcionar pero necesitas alcanzar al menos el ${fmtPctRaw(r.breakEvenPctDelMercado * 100, 0)} del revenue promedio del mercado (P50) para no perder plata.${extra}`;
+    }
+    return `Los costos operativos de la renta corta (electricidad, insumos, limpieza) hacen que el arriendo tradicional sea más rentable para esta propiedad. Flujo con Airbnb: ${fmtMoney(base.flujoCajaMensual, currency)}/mes vs ${fmtMoney(comp.ltr.flujoCaja, currency)}/mes con arriendo largo.`;
+  }, [effectiveVeredicto, costoAmoblamiento, comp, currency, r.breakEvenPctDelMercado, base.flujoCajaMensual]);
+
+  // KPIs (4 cards)
+  const kpis = useMemo(() => [
+    { label: "NOI mensual", value: fmtMoneyCompact(base.noiMensual, currency), positive: base.noiMensual >= 0 },
+    { label: "CAP Rate", value: fmtPct(base.capRate), positive: base.capRate >= 0.04 },
+    { label: "Cash-on-Cash", value: fmtPct(base.cashOnCash), positive: base.cashOnCash >= 0 },
+    { label: "vs LTR", value: (comp.sobreRenta >= 0 ? "+" : "") + fmtMoneyCompact(comp.sobreRenta, currency), positive: comp.sobreRenta >= 0 },
+  ], [base, comp, currency]);
+
+  // Comparativa table data
   const comparativaRows = useMemo(() => {
     const gastosComunes = (inp?.gastosComunes as number) ?? 0;
     const ltrIngresoBruto = comp.ltr.ingresoBruto ?? 0;
@@ -440,27 +403,18 @@ export function STRResultsClient({
       { label: "(-) Comisión", ltr: -ltrComision, str: -strComision, tooltip: "Comisión de corredor (LTR 5%) o plataforma/administrador (STR)." },
       { label: "(-) Costos operativos", ltr: 0, str: -strCostosOp, tooltip: "Electricidad, agua, WiFi, insumos, mantención. En LTR los paga el arrendatario." },
       { label: "(-) Gastos comunes", ltr: -gastosComunes, str: -gastosComunes, tooltip: "Gastos comunes del edificio. Iguales en ambos modelos." },
-      { label: "= NOI", ltr: ltrNoi, str: strNoi, isTotal: true, tooltip: "Net Operating Income: lo que queda después de todos los costos operativos, antes del dividendo." },
+      { label: "= NOI", ltr: ltrNoi, str: strNoi, isTotal: true, tooltip: "Net Operating Income: lo que queda después de costos operativos, antes del dividendo." },
       { label: "(-) Dividendo", ltr: -dividendo, str: -dividendo, tooltip: "Cuota mensual del crédito hipotecario." },
       { label: "= Flujo de caja", ltr: ltrFlujo, str: strFlujo, isResult: true, tooltip: "Lo que entra (o sale) de tu bolsillo cada mes." },
     ];
   }, [comp, base, r.dividendoMensual, inp]);
 
-  // ─── Estacionalidad chart data ────────────────────
-  const seasonalData = useMemo(() => {
-    return r.flujoEstacional.map((m: FlujoEstacionalMes) => ({
-      mes: m.mes.substring(0, 3),
-      ingresoBruto: m.ingresoBruto,
-      ingresoNeto: m.ingresoNeto,
-      flujo: m.flujo,
-      factor: m.factor,
-    }));
-  }, [r.flujoEstacional]);
+  const seasonalData = useMemo(() => r.flujoEstacional.map((m: FlujoEstacionalMes) => ({
+    mes: m.mes.substring(0, 3),
+    flujo: m.flujo,
+  })), [r.flujoEstacional]);
 
-  // ─── Sensibilidad data ────────────────────────────
   const sensData = r.sensibilidad;
-
-  // ─── Break-even as percent of market ──────────────
   const breakEvenPct = r.breakEvenPctDelMercado;
 
   return (
@@ -492,125 +446,104 @@ export function STRResultsClient({
       <div className="container mx-auto max-w-4xl px-4 py-8">
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 1: RESUMEN EJECUTIVO                */}
+        {/* BLOQUE 1 — RESUMEN EJECUTIVO (hero card)   */}
         {/* ═══════════════════════════════════════════ */}
+        <div className="bg-[var(--franco-card)] rounded-2xl p-7 md:p-8 mb-5 border border-[var(--franco-border)]">
+          <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 items-start">
 
-        {/* Verdict banner */}
-        <div
-          className="rounded-2xl border-2 p-6 mb-6"
-          style={{ borderColor: verdictCfg.border, backgroundColor: verdictCfg.bg }}
-        >
-          <div className="flex items-center gap-3 mb-3">
-            <VerdictIcon className="h-7 w-7" style={{ color: verdictCfg.color }} />
-            <span
-              className="font-mono text-2xl font-bold tracking-wide"
-              style={{ color: verdictCfg.color }}
-            >
-              {verdictCfg.label}
-            </span>
-          </div>
-          <p className="font-body text-sm text-[var(--franco-text-secondary)] leading-relaxed">
-            {effectiveVeredicto === "VIABLE" && (
-              <>La renta corta genera <span className="font-mono font-medium text-[var(--franco-text)]">{fmtPct(comp.sobreRentaPct)}</span> más que el arriendo tradicional en NOI mensual.</>
-            )}
-            {effectiveVeredicto === "AJUSTA ESTRATEGIA" && (
-              <>La renta corta puede funcionar con ajustes. El break-even está en el <span className="font-mono font-medium text-[var(--franco-text)]">{fmtPctRaw(breakEvenPct * 100, 0)}</span> del mercado (P50).</>
-            )}
-            {effectiveVeredicto === "NO RECOMENDADO" && (
-              <>Para esta propiedad, el arriendo tradicional es más rentable. La renta corta no cubre los costos operativos adicionales.</>
-            )}
-          </p>
-        </div>
-
-        {/* Franco Score STR */}
-        {francoScore && <FrancoScoreSTRBlock fs={francoScore} />}
-
-        {/* Property info card */}
-        <div className="bg-[var(--franco-card)] rounded-xl border border-[var(--franco-border)] p-5 mb-4">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 className="font-heading text-xl font-bold text-[var(--franco-text)] mb-1">{nombre}</h1>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-[var(--franco-text-secondary)]">
-                {direccion && <span>{direccion}</span>}
-                <span>{comuna}, {ciudad}</span>
-                <span>{superficie} m² · {dormitorios}D/{banos}B</span>
-                <span>{modoGestion === "administrador" ? "Con administrador" : "Gestión propia"}</span>
+            {/* Left: Score bar */}
+            <div className="relative">
+              <div className={isGuest ? "filter blur-[8px] pointer-events-none" : ""}>
+                <ScoreBarInlineSTR score={score} veredicto={effectiveVeredicto} />
               </div>
-              {fechaAnalisis && <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1.5">Analizado el {fechaAnalisis}</p>}
+              {isGuest && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Lock className="h-4 w-4 text-[var(--franco-text)] mb-1.5" />
+                  <p className="font-body text-[11px] font-medium text-[var(--franco-text)] text-center leading-tight">Regístrate gratis<br />para ver tu Score</p>
+                  <a href="/register" className="mt-2">
+                    <span className="font-body text-[10px] font-semibold text-[#C8323C] hover:underline">Crear cuenta →</span>
+                  </a>
+                </div>
+              )}
             </div>
-            <div className="font-mono text-right">
-              <p className="text-[11px] text-[var(--franco-text-secondary)]">Precio</p>
-              <p className="text-lg font-bold text-[var(--franco-text)]">{fmtMoney(precioCompra, currency)}</p>
+
+            {/* Right: Property + toggle + KPIs + Siendo franco */}
+            <div>
+              <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-1">
+                Este es el análisis de renta corta de tu departamento en {comuna || ciudad || "tu zona"}
+              </p>
+
+              <h1 className="font-heading font-bold text-xl md:text-2xl text-[var(--franco-text)]">{nombre}</h1>
+              <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-1">
+                {ciudad && <>{ciudad} · </>}{superficie}m² · {dormitorios}D/{banos}B · {fmtMoney(precioCompra, currency)} · {modoGestion === "administrador" ? "Con administrador" : "Gestión propia"}
+              </p>
+              {fechaAnalisis && (
+                <p className="font-body text-[10px] text-[var(--franco-text-muted)] mt-0.5">Analizado el {fechaAnalisis}</p>
+              )}
+
+              {/* Currency toggle */}
+              <div className="mt-3">
+                <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
+              </div>
+
+              {/* 4 KPIs */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
+                {kpis.map((k) => (
+                  <div key={k.label} className="bg-[var(--franco-card)] rounded-[10px] p-2.5 border border-[var(--franco-border)] text-center overflow-hidden">
+                    <p className="font-body text-[8px] sm:text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-wide truncate">{k.label}</p>
+                    <p className={`font-mono text-sm sm:text-base font-semibold mt-1 truncate ${k.positive ? "text-[var(--franco-text)]" : "text-[#C8323C]"}`}>
+                      {k.value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Siendo franco */}
+              <div
+                className={`mt-3.5 ${isGuest ? "filter blur-[6px] pointer-events-none" : ""}`}
+                style={{
+                  borderLeft: `3px solid ${verdictCfg.color}`,
+                  background: verdictCfg.bg,
+                  borderRadius: "0 8px 8px 0",
+                  padding: "12px 16px",
+                }}
+              >
+                <p className="font-body text-[13px] font-semibold" style={{ color: verdictCfg.color }}>Siendo franco:</p>
+                <p className="font-body text-[12px] mt-1 text-[var(--franco-text-secondary)]">{siendoFrancoText}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Currency toggle */}
-        <CurrencyToggle currency={currency} onToggle={toggleCurrency} />
+          {/* Dimension bars below the grid */}
+          {dimensions.length > 0 && (
+            <div className={`flex flex-col gap-2.5 mt-4 pt-4 border-t border-[var(--franco-border)] ${isGuest ? "filter blur-[6px] pointer-events-none" : ""}`}>
+              {dimensions.map((d) => {
+                const val = Math.round(d.value);
+                const dimColor = val >= 70 ? "var(--franco-positive, #B0BEC5)" : val >= 40 ? "var(--franco-warning, #FBBF24)" : "#C8323C";
+                const numClass = val >= 70 ? "text-[var(--franco-positive,#B0BEC5)]" : val >= 40 ? "text-[var(--franco-warning,#FBBF24)]" : "text-[#C8323C]";
+                return (
+                  <div key={d.label} className="flex items-center gap-3">
+                    <span className="font-body text-[11px] text-[var(--franco-text-secondary)] w-[105px] shrink-0 flex items-center gap-1">
+                      {d.label}
+                      <InfoTooltip content={d.detail} />
+                    </span>
+                    <div className="relative flex-1 h-1.5 rounded-full overflow-hidden bg-[var(--franco-border)]">
+                      <div className="absolute inset-y-0 left-0 rounded-full transition-all duration-500" style={{ width: `${val}%`, backgroundColor: dimColor }} />
+                    </div>
+                    <span className={`font-mono text-[11px] font-medium w-[28px] text-right shrink-0 ${numClass}`}>{val}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-        {/* 4 KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          <MetricCard
-            label="NOI mensual"
-            value={fmtMoney(base.noiMensual, currency)}
-            color={base.noiMensual >= 0 ? "text-[var(--franco-text)]" : "text-[#C8323C]"}
-            tooltip="Net Operating Income mensual del escenario base (P50). Ingresos menos todos los costos operativos, antes del dividendo."
-            icon={DollarSign}
-          />
-          <MetricCard
-            label="CAP Rate"
-            value={fmtPct(base.capRate)}
-            color={base.capRate >= 0.06 ? "text-[var(--franco-text)]" : base.capRate >= 0.04 ? "text-[var(--franco-warning,#FBBF24)]" : "text-[#C8323C]"}
-            tooltip="Retorno neto operativo anual sobre el precio de compra. Estándar internacional de rentabilidad inmobiliaria."
-            icon={TrendingUp}
-          />
-          <MetricCard
-            label="Cash-on-Cash"
-            value={fmtPct(base.cashOnCash)}
-            color={base.cashOnCash >= 0.08 ? "text-[var(--franco-text)]" : base.cashOnCash >= 0.04 ? "text-[var(--franco-warning,#FBBF24)]" : "text-[#C8323C]"}
-            tooltip="Retorno anual sobre tu capital invertido (pie + amoblamiento + gastos de cierre)."
-            icon={ArrowUpDown}
-          />
-          <MetricCard
-            label="Sobre-renta vs LTR"
-            value={fmtMoney(comp.sobreRenta, currency)}
-            subtext={comp.sobreRenta >= 0 ? `+${fmtPct(comp.sobreRentaPct)} vs arriendo largo` : `${fmtPct(comp.sobreRentaPct)} vs arriendo largo`}
-            color={comp.sobreRenta >= 0 ? "text-[var(--franco-text)]" : "text-[#C8323C]"}
-            tooltip="Diferencia mensual en NOI entre renta corta y arriendo tradicional. Es lo que ganas (o pierdes) extra por operar en Airbnb."
-            icon={Home}
-          />
-        </div>
-
-        {/* Siendo franco box */}
-        <div
-          className="rounded-xl border p-4 mb-6"
-          style={{ borderColor: verdictCfg.border, backgroundColor: verdictCfg.bg }}
-        >
-          <p className="font-body text-xs font-semibold text-[var(--franco-text)] mb-1">Siendo franco:</p>
-          <p className="font-body text-sm text-[var(--franco-text-secondary)] leading-relaxed">
-            {effectiveVeredicto === "VIABLE" && (
-              <>
-                En Airbnb este depto genera <span className="font-mono">{fmtMoney(comp.sobreRenta, currency)}</span>/mes más que en arriendo tradicional.
-                {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
-                  <> Recuperas el amoblamiento en <span className="font-mono">{comp.paybackMeses} meses</span>.</>
-                )}
-              </>
-            )}
-            {effectiveVeredicto === "AJUSTA ESTRATEGIA" && (
-              <>
-                La renta corta puede funcionar, pero necesitas alcanzar al menos el <span className="font-mono">{fmtPctRaw(breakEvenPct * 100, 0)}</span> del revenue promedio del mercado para no perder plata.
-                {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
-                  <> El amoblamiento se paga en <span className="font-mono">{comp.paybackMeses} meses</span>.</>
-                )}
-                {comp.paybackMeses < 0 && <> Con estos números, la inversión en amoblamiento no se recupera.</>}
-              </>
-            )}
-            {effectiveVeredicto === "NO RECOMENDADO" && (
-              <>
-                Los costos operativos de la renta corta (electricidad, insumos, limpieza) hacen que el arriendo tradicional sea más rentable para esta propiedad. El flujo de caja con Airbnb es <span className="font-mono">{fmtMoney(base.flujoCajaMensual, currency)}</span>/mes vs <span className="font-mono">{fmtMoney(comp.ltr.flujoCaja, currency)}</span>/mes con arriendo largo.
-              </>
-            )}
-          </p>
+          {francoScore?.overrideApplied && !isGuest && (
+            <div className="mt-4 pt-3 border-t border-[var(--franco-border)]">
+              <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
+                <span className="font-semibold text-[var(--franco-text)]">Nota:</span> {francoScore.overrideApplied}
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Guest CTA */}
@@ -631,96 +564,118 @@ export function STRResultsClient({
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* VIEW LEVEL TOGGLE                          */}
+        {/* STICKY VIEW LEVEL TOGGLE                   */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && (
-          <ViewLevelToggle level={viewLevel} onChange={setViewLevel} />
+          <div className="sticky top-[60px] z-40 bg-[var(--franco-bg)]/95 backdrop-blur-sm py-3 mb-4">
+            <p className="text-center text-xs sm:text-sm text-[var(--franco-text-muted)] mb-2 sm:mb-3 font-body">
+              Elige cómo quieres ver el análisis. Mismos datos, diferente profundidad.
+            </p>
+            <div className="flex gap-1 bg-[var(--franco-card)] rounded-xl p-1 sm:p-1.5 border border-[var(--franco-border)]">
+              {([
+                { v: "simple", label: "En Simple", sub: "La versión rápida" },
+                { v: "importante", label: "Lo Importante", sub: "Los números clave" },
+                { v: "sinfiltro", label: "Sin Filtro", sub: "Todo el detalle" },
+              ] as const).map(opt => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setViewLevel(opt.v)}
+                  className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-4 rounded-lg text-xs sm:text-sm font-medium transition-all ${
+                    viewLevel === opt.v
+                      ? "bg-[#C8323C] text-white"
+                      : "text-[var(--franco-text-muted)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]"
+                  }`}
+                >
+                  {opt.label}
+                  <span className="hidden sm:block text-[10px] font-normal opacity-70 mt-0.5">{opt.sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 2: COMPARATIVA STR vs LTR           */}
+        {/* BLOQUE 2 — STR vs LTR                       */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && (
-          <CollapsibleSection
-            title="STR vs Arriendo Largo"
-            subtitle="Comparativa mensual lado a lado"
-            helpText="Compara los ingresos y costos de operar en Airbnb versus arrendar a largo plazo. Todos los valores son mensuales."
-            defaultOpen
-            locked={false}
-            guestLocked={false}
-            analysisId={analysisId}
-          >
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-[var(--franco-border)]">
-                    <th className="text-left font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 pr-4"></th>
-                    <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 px-3 w-[110px]">Renta Larga</th>
-                    <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 px-3 w-[110px]">Renta Corta</th>
-                    <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 pl-3 w-[100px]">Delta</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comparativaRows.map((row, i) => {
-                    const delta = row.str - row.ltr;
-                    const deltaColor = delta > 0 ? "text-[var(--franco-positive,#B0BEC5)]" : delta < 0 ? "text-[#C8323C]" : "text-[var(--franco-text-secondary)]";
-                    const rowBg = row.isResult ? "bg-[var(--franco-elevated,var(--franco-card))]" : row.isTotal ? "bg-[var(--franco-card)]" : "";
-                    const fontWeight = (row.isTotal || row.isResult) ? "font-semibold" : "font-normal";
-
-                    return (
-                      <tr key={i} className={`border-b border-[var(--franco-border)] ${rowBg}`}>
-                        <td className="py-2.5 pr-4">
-                          <span className={`font-body text-[13px] ${fontWeight} text-[var(--franco-text)] flex items-center gap-1`}>
-                            {row.label}
-                            {row.tooltip && <InfoTooltip content={row.tooltip} />}
-                          </span>
-                        </td>
-                        <td className={`text-right font-mono text-[13px] ${fontWeight} text-[var(--franco-text)] py-2.5 px-3`}>
-                          {isFree && !row.isResult && !row.isTotal ? "—" : fmtMoney(row.ltr, currency)}
-                        </td>
-                        <td className={`text-right font-mono text-[13px] ${fontWeight} text-[var(--franco-text)] py-2.5 px-3`}>
-                          {isFree && !row.isResult && !row.isTotal ? "—" : fmtMoney(row.str, currency)}
-                        </td>
-                        <td className={`text-right font-mono text-[13px] ${fontWeight} ${deltaColor} py-2.5 pl-3`}>
-                          {isFree && !row.isResult ? "—" : (delta > 0 ? "+" : "") + fmtMoney(delta, currency)}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Payback amoblamiento */}
-            {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
-              <div className="mt-4 bg-[var(--franco-elevated,var(--franco-card))] rounded-lg border border-[var(--franco-border)] p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-body text-xs text-[var(--franco-text-secondary)]">Payback amoblamiento</span>
-                  <span className="font-mono text-sm font-medium text-[var(--franco-text)]">{comp.paybackMeses} meses</span>
-                </div>
-                <div className="w-full h-2 bg-[var(--franco-border)] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{
-                      width: `${Math.min((12 / comp.paybackMeses) * 100, 100)}%`,
-                      backgroundColor: comp.paybackMeses <= 12 ? "var(--franco-positive, #B0BEC5)" : comp.paybackMeses <= 24 ? "var(--franco-warning, #FBBF24)" : "#C8323C",
-                    }}
-                  />
-                </div>
-                <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1.5">
-                  Inversión de {fmtMoney(costoAmoblamiento, currency)} recuperada con la sobre-renta mensual de {fmtMoney(comp.sobreRenta, currency)}
-                </p>
+          <FadeIn show delay={0}>
+            <CollapsibleSection
+              title="STR vs Arriendo Largo"
+              subtitle="Comparativa mensual lado a lado"
+              helpText="Compara los ingresos y costos de operar en Airbnb versus arrendar a largo plazo. Todos los valores son mensuales."
+              defaultOpen
+              analysisId={analysisId}
+            >
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-[var(--franco-border)]">
+                      <th className="text-left font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 pr-4"></th>
+                      <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 px-3 w-[110px]">Renta Larga</th>
+                      <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 px-3 w-[110px]">Renta Corta</th>
+                      <th className="text-right font-body text-xs font-medium text-[var(--franco-text-secondary)] py-2 pl-3 w-[100px]">Delta</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {comparativaRows.map((row, i) => {
+                      const delta = row.str - row.ltr;
+                      const deltaColor = delta > 0 ? "text-[var(--franco-positive,#B0BEC5)]" : delta < 0 ? "text-[#C8323C]" : "text-[var(--franco-text-secondary)]";
+                      const rowBg = row.isResult ? "bg-[var(--franco-elevated,var(--franco-card))]" : row.isTotal ? "bg-[var(--franco-card)]" : "";
+                      const fontWeight = (row.isTotal || row.isResult) ? "font-semibold" : "font-normal";
+                      return (
+                        <tr key={i} className={`border-b border-[var(--franco-border)] ${rowBg}`}>
+                          <td className="py-2.5 pr-4">
+                            <span className={`font-body text-[13px] ${fontWeight} text-[var(--franco-text)] flex items-center gap-1`}>
+                              {row.label}
+                              {row.tooltip && <InfoTooltip content={row.tooltip} />}
+                            </span>
+                          </td>
+                          <td className={`text-right font-mono text-[13px] ${fontWeight} text-[var(--franco-text)] py-2.5 px-3`}>
+                            {isFree && !row.isResult && !row.isTotal ? "—" : fmtMoney(row.ltr, currency)}
+                          </td>
+                          <td className={`text-right font-mono text-[13px] ${fontWeight} text-[var(--franco-text)] py-2.5 px-3`}>
+                            {isFree && !row.isResult && !row.isTotal ? "—" : fmtMoney(row.str, currency)}
+                          </td>
+                          <td className={`text-right font-mono text-[13px] ${fontWeight} ${deltaColor} py-2.5 pl-3`}>
+                            {isFree && !row.isResult ? "—" : (delta > 0 ? "+" : "") + fmtMoney(delta, currency)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-            {costoAmoblamiento > 0 && comp.paybackMeses < 0 && (
-              <div className="mt-4 bg-[rgba(200,50,60,0.06)] rounded-lg border border-[rgba(200,50,60,0.15)] p-4">
-                <p className="font-body text-xs text-[#C8323C] font-medium">
-                  La sobre-renta es negativa. La inversión en amoblamiento ({fmtMoney(costoAmoblamiento, currency)}) no se recupera con renta corta.
-                </p>
-              </div>
-            )}
-          </CollapsibleSection>
+
+              {costoAmoblamiento > 0 && comp.paybackMeses > 0 && (
+                <div className="mt-4 bg-[var(--franco-elevated,var(--franco-card))] rounded-lg border border-[var(--franco-border)] p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-body text-xs text-[var(--franco-text-secondary)]">Payback amoblamiento</span>
+                    <span className="font-mono text-sm font-medium text-[var(--franco-text)]">{comp.paybackMeses} meses</span>
+                  </div>
+                  <div className="w-full h-2 bg-[var(--franco-border)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{
+                        width: `${Math.min((12 / comp.paybackMeses) * 100, 100)}%`,
+                        backgroundColor: comp.paybackMeses <= 12 ? "var(--franco-positive, #B0BEC5)" : comp.paybackMeses <= 24 ? "var(--franco-warning, #FBBF24)" : "#C8323C",
+                      }}
+                    />
+                  </div>
+                  <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1.5">
+                    Inversión de {fmtMoney(costoAmoblamiento, currency)} recuperada con la sobre-renta mensual de {fmtMoney(comp.sobreRenta, currency)}
+                  </p>
+                </div>
+              )}
+              {costoAmoblamiento > 0 && comp.paybackMeses < 0 && (
+                <div className="mt-4 bg-[rgba(200,50,60,0.06)] rounded-lg border border-[rgba(200,50,60,0.15)] p-4">
+                  <p className="font-body text-xs text-[#C8323C] font-medium">
+                    La sobre-renta es negativa. La inversión en amoblamiento ({fmtMoney(costoAmoblamiento, currency)}) no se recupera con renta corta.
+                  </p>
+                </div>
+              )}
+            </CollapsibleSection>
+          </FadeIn>
         )}
 
         {/* Free-tier paywall CTA */}
@@ -746,13 +701,13 @@ export function STRResultsClient({
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 3: ESCENARIOS (premium)             */}
+        {/* BLOQUE 3 — ESCENARIOS                       */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && showSection(["importante", "sinfiltro"]) && (
           <CollapsibleSection
             title="Escenarios por percentil"
             subtitle="Conservador (P25), Base (P50), Agresivo (P75)"
-            helpText="Cada escenario usa datos reales de propiedades comparables en tu zona. P25 = solo superas al 25% del mercado, P50 = rendimiento típico, P75 = estás entre los mejores."
+            helpText="Cada escenario usa datos reales de propiedades comparables. P25 = solo superas al 25% del mercado, P50 = rendimiento típico, P75 = estás entre los mejores."
             defaultOpen
             locked={isFree}
             analysisId={analysisId}
@@ -768,17 +723,20 @@ export function STRResultsClient({
                   <div
                     key={key}
                     className={`rounded-xl border p-4 ${isBase ? "border-2" : ""}`}
-                    style={{ borderColor: isBase ? verdictCfg.border : "var(--franco-border)", backgroundColor: isBase ? verdictCfg.bg : "var(--franco-card)" }}
+                    style={{
+                      borderColor: isBase ? verdictCfg.border : "var(--franco-border)",
+                      backgroundColor: isBase ? verdictCfg.bg : "var(--franco-card)",
+                    }}
                   >
                     <div className="flex items-center justify-between mb-3">
                       <span className="font-body text-xs font-semibold text-[var(--franco-text)] uppercase tracking-wider">
                         {esc.label}
                       </span>
                       <span
-                        className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full"
-                        style={{ color: vCfg.color, backgroundColor: vCfg.bg, border: `1px solid ${vCfg.border}` }}
+                        className="font-mono text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide"
+                        style={{ color: vCfg.color, backgroundColor: vCfg.badgeBg, border: `1px solid ${vCfg.badgeBg}` }}
                       >
-                        {v}
+                        {vCfg.shortLabel}
                       </span>
                     </div>
 
@@ -826,7 +784,9 @@ export function STRResultsClient({
           </CollapsibleSection>
         )}
 
-        {/* ─── Sensibilidad ──────────────────────── */}
+        {/* ═══════════════════════════════════════════ */}
+        {/* BLOQUE 4 — SENSIBILIDAD                     */}
+        {/* ═══════════════════════════════════════════ */}
         {!isGuest && showSection(["importante", "sinfiltro"]) && (
           <CollapsibleSection
             title="Sensibilidad"
@@ -852,10 +812,7 @@ export function STRResultsClient({
                     const isBase = row.label === "P50";
                     const srColor = row.sobreRenta >= 0 ? "text-[var(--franco-text)]" : "text-[#C8323C]";
                     return (
-                      <tr
-                        key={i}
-                        className={`border-b border-[var(--franco-border)] ${isBase ? "bg-[var(--franco-elevated,var(--franco-card))]" : ""}`}
-                      >
+                      <tr key={i} className={`border-b border-[var(--franco-border)] ${isBase ? "bg-[var(--franco-elevated,var(--franco-card))]" : ""}`}>
                         <td className={`py-2 pr-3 font-body text-[13px] ${isBase ? "font-semibold" : ""} text-[var(--franco-text)]`}>
                           {row.label}
                           {isBase && <span className="ml-1 text-[10px] text-[var(--franco-text-secondary)]">(base)</span>}
@@ -876,7 +833,6 @@ export function STRResultsClient({
                 </tbody>
               </table>
             </div>
-            {/* Break-even crossover indicator */}
             {(() => {
               const crossover = sensData.find((row: SensibilidadRow) => row.sobreRenta < 0);
               if (!crossover) return null;
@@ -890,7 +846,7 @@ export function STRResultsClient({
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 4: ESTACIONALIDAD (premium)         */}
+        {/* BLOQUE 5 — ESTACIONALIDAD                   */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && showSection(["importante", "sinfiltro"]) && (
           <CollapsibleSection
@@ -901,9 +857,8 @@ export function STRResultsClient({
             locked={isFree}
             analysisId={analysisId}
           >
-            {/* Chart */}
-            <div className="h-[280px] mb-4">
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ minHeight: 300, width: "100%" }} className="mb-4">
+              <ResponsiveContainer width="100%" height={300} minWidth={0}>
                 <BarChart data={seasonalData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" />
                   <XAxis
@@ -927,25 +882,10 @@ export function STRResultsClient({
                       fontSize: "12px",
                     }}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    formatter={(value: any, name: any) => [
-                      fmtMoney(Number(value), currency),
-                      name === "flujo" ? "Flujo de caja" : name === "ingresoNeto" ? "Ingreso neto" : "Ingreso bruto",
-                    ]}
+                    formatter={(value: any) => [fmtMoney(Number(value), currency), "Flujo de caja"]}
                     labelStyle={{ fontWeight: 600, marginBottom: 4, fontSize: 12 }}
                   />
-                  <ReferenceLine
-                    y={0}
-                    stroke="var(--franco-text-secondary)"
-                    strokeDasharray="3 3"
-                    strokeOpacity={0.5}
-                  />
-                  <ReferenceLine
-                    y={-r.dividendoMensual}
-                    stroke="#C8323C"
-                    strokeDasharray="6 3"
-                    strokeOpacity={0.4}
-                    label={{ value: "Dividendo", position: "left", fontSize: 10, fill: "#C8323C" }}
-                  />
+                  <ReferenceLine y={0} stroke="var(--franco-text-secondary)" strokeDasharray="3 3" strokeOpacity={0.5} />
                   <Bar dataKey="flujo" radius={[4, 4, 0, 0]} maxBarSize={40}>
                     {seasonalData.map((entry, index) => (
                       <Cell
@@ -959,13 +899,12 @@ export function STRResultsClient({
               </ResponsiveContainer>
             </div>
 
-            {/* Ramp-up info */}
             {r.perdidaRampUp > 0 && (
               <div className="bg-[var(--franco-elevated,var(--franco-card))] rounded-lg border border-[var(--franco-border)] p-4">
                 <p className="font-body text-xs font-medium text-[var(--franco-text)] mb-1">Período de ramp-up</p>
                 <p className="font-body text-[11px] text-[var(--franco-text-secondary)] leading-relaxed">
                   Los primeros 3 meses el ingreso es menor mientras la propiedad gana tracción (70% → 80% → 90% del revenue esperado).
-                  Pérdida estimada por ramp-up: <span className="font-mono font-medium text-[var(--franco-text)]">{fmtMoney(r.perdidaRampUp, currency)}</span>
+                  Pérdida estimada: <span className="font-mono font-medium text-[var(--franco-text)]">{fmtMoney(r.perdidaRampUp, currency)}</span>
                 </p>
               </div>
             )}
@@ -973,13 +912,13 @@ export function STRResultsClient({
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 5: P&L DETALLADO (sin filtro only)  */}
+        {/* BLOQUE 6 — P&L DETALLADO (Sin Filtro)       */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && showSection(["sinfiltro"]) && (
           <CollapsibleSection
             title="P&L detallado"
             subtitle="Desglose de costos operativos mensuales"
-            helpText="Todos los costos mensuales que implica operar en renta corta. En arriendo largo, la mayoría de estos los paga el arrendatario."
+            helpText="Todos los costos mensuales que implica operar en renta corta. En arriendo largo, la mayoría los paga el arrendatario."
             defaultOpen={false}
             locked={isFree}
             analysisId={analysisId}
@@ -1004,7 +943,6 @@ export function STRResultsClient({
                   <span className="font-mono text-[13px] text-[var(--franco-text)]">{fmtMoney(item.value, currency)}</span>
                 </div>
               ))}
-              {/* Total */}
               <div className="flex items-center justify-between py-3">
                 <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Total costos operativos</span>
                 <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">
@@ -1013,14 +951,12 @@ export function STRResultsClient({
               </div>
             </div>
 
-            {/* Break-even */}
             <div className="mt-4 bg-[var(--franco-elevated,var(--franco-card))] rounded-lg border border-[var(--franco-border)] p-4">
               <p className="font-body text-xs font-medium text-[var(--franco-text)] mb-2">Break-even</p>
               <p className="font-body text-[12px] text-[var(--franco-text-secondary)] leading-relaxed">
                 Necesitas generar <span className="font-mono font-medium text-[var(--franco-text)]">{fmtMoney(r.breakEvenRevenueAnual / 12, currency)}/mes</span> (<span className="font-mono">{fmtMoney(r.breakEvenRevenueAnual, currency)}/año</span>) para cubrir todos los costos.
                 Eso es el <span className="font-mono font-medium text-[var(--franco-text)]">{fmtPctRaw(breakEvenPct * 100, 0)}</span> del revenue promedio del mercado (P50).
               </p>
-              {/* Visual gauge */}
               <div className="mt-3 relative">
                 <div className="w-full h-3 bg-[var(--franco-border)] rounded-full overflow-hidden">
                   <div
@@ -1041,7 +977,7 @@ export function STRResultsClient({
         )}
 
         {/* ═══════════════════════════════════════════ */}
-        {/* BLOQUE 6: DATOS DE MERCADO (sin filtro)    */}
+        {/* BLOQUE 7 — DATOS DE MERCADO (Sin Filtro)    */}
         {/* ═══════════════════════════════════════════ */}
         {!isGuest && showSection(["sinfiltro"]) && (
           <CollapsibleSection
@@ -1060,13 +996,13 @@ export function STRResultsClient({
                   <InfoTooltip content="Average Daily Rate: precio promedio por noche cobrado por propiedades comparables." />
                 </p>
                 <div className="space-y-2">
-                  {(["p25", "p50", "p75"] as const).map(p => {
-                    const pKey = p as "p25" | "p50" | "p75";
-                    const val = r.escenarios[pKey === "p25" ? "conservador" : pKey === "p50" ? "base" : "agresivo"].adrReferencia;
-                    const isBase = pKey === "p50";
+                  {(["conservador", "base", "agresivo"] as const).map(key => {
+                    const val = r.escenarios[key].adrReferencia;
+                    const pLabel = key === "conservador" ? "P25" : key === "base" ? "P50" : "P75";
+                    const isBase = key === "base";
                     return (
-                      <div key={p} className={`flex justify-between items-center ${isBase ? "font-semibold" : ""}`}>
-                        <span className="font-body text-xs text-[var(--franco-text-secondary)] uppercase">{p.toUpperCase()}</span>
+                      <div key={key} className={`flex justify-between items-center ${isBase ? "font-semibold" : ""}`}>
+                        <span className="font-body text-xs text-[var(--franco-text-secondary)] uppercase">{pLabel}</span>
                         <span className={`font-mono text-xs ${isBase ? "font-semibold" : ""} text-[var(--franco-text)]`}>
                           {fmtMoney(val, currency)}/noche
                         </span>
@@ -1083,13 +1019,13 @@ export function STRResultsClient({
                   <InfoTooltip content="Porcentaje de noches ocupadas al año por propiedades comparables." />
                 </p>
                 <div className="space-y-2">
-                  {(["p25", "p50", "p75"] as const).map(p => {
-                    const pKey = p as "p25" | "p50" | "p75";
-                    const val = r.escenarios[pKey === "p25" ? "conservador" : pKey === "p50" ? "base" : "agresivo"].ocupacionReferencia;
-                    const isBase = pKey === "p50";
+                  {(["conservador", "base", "agresivo"] as const).map(key => {
+                    const val = r.escenarios[key].ocupacionReferencia;
+                    const pLabel = key === "conservador" ? "P25" : key === "base" ? "P50" : "P75";
+                    const isBase = key === "base";
                     return (
-                      <div key={p} className={`flex justify-between items-center ${isBase ? "font-semibold" : ""}`}>
-                        <span className="font-body text-xs text-[var(--franco-text-secondary)] uppercase">{p.toUpperCase()}</span>
+                      <div key={key} className={`flex justify-between items-center ${isBase ? "font-semibold" : ""}`}>
+                        <span className="font-body text-xs text-[var(--franco-text-secondary)] uppercase">{pLabel}</span>
                         <span className={`font-mono text-xs ${isBase ? "font-semibold" : ""} text-[var(--franco-text)]`}>
                           {fmtPctRaw(val * 100, 0)}
                         </span>
@@ -1125,7 +1061,7 @@ export function STRResultsClient({
           </CollapsibleSection>
         )}
 
-        {/* ─── Financiamiento summary (Sin Filtro) ── */}
+        {/* ─── Financiamiento (Sin Filtro) ──────── */}
         {!isGuest && showSection(["sinfiltro"]) && (
           <CollapsibleSection
             title="Financiamiento"

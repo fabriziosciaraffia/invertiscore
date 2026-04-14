@@ -9,6 +9,7 @@ import { Loader2, ChevronDown, CheckCircle2, AlertCircle, Check } from "lucide-r
 import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import GoogleMapRadius from "@/components/GoogleMapRadius";
+import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { createClient } from "@/lib/supabase/client";
 import { estimarContribuciones } from "@/lib/contribuciones";
@@ -564,7 +565,10 @@ export default function NuevoAnalisisV2Page() {
 
   // ─── Google Places Autocomplete ──────────────────
   useEffect(() => {
+    if (currentStep !== 1) return;
     if (autocompleteRef.current || !direccionInputRef.current) return;
+
+    loadGoogleMaps();
 
     const tryInit = () => {
       if (!window.google?.maps?.places || !direccionInputRef.current) return false;
@@ -618,7 +622,7 @@ export default function NuevoAnalisisV2Page() {
     }, 200);
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setField]);
+  }, [setField, currentStep]);
 
   // ─── Fetch suggestions + map data ──────────────────
   useEffect(() => {
