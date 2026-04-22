@@ -3,8 +3,8 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
 import {
-  BarChart, Bar, Line, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, Cell, ReferenceLine,
+  Bar, Line, Area, XAxis, YAxis, CartesianGrid,
+  Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ import {
   X,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { calcFlujoDesglose, getMantencionRate } from "@/lib/analysis";
+import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/analysis";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
@@ -23,6 +23,19 @@ import { StateBox } from "@/components/ui/StateBox";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
+import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
+import SliderSimulacion from "@/components/analysis/SliderSimulacion";
+import KPICard from "@/components/analysis/KPICard";
+import {
+  calculateKPIs,
+  tonoTIR,
+  tonoCapRate,
+  tonoCashOnCash,
+  tonoPayback,
+  tonoMultiplo,
+} from "@/lib/analysis/kpi-calculations";
+import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import type { YearProjection, AnalysisMetrics } from "@/lib/types";
 
 
 // Module-level UF value, updated from server prop on mount
@@ -147,11 +160,12 @@ function hasAiV2(ai: any): ai is import("@/lib/types").AIAnalysisV2 {
     && typeof ai.conviene.respuestaDirecta_clp === "string";
 }
 
-function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, children }: {
+function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, badge, children }: {
   title: string;
   subtitle?: string;
   helpText?: string;
   defaultOpen?: boolean;
+  badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -161,11 +175,12 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, ch
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex justify-between items-center p-4 px-5 text-left"
+        className="w-full flex justify-between items-center p-4 px-5 text-left gap-3"
       >
-        <div>
-          <div className="flex items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="font-body text-[15px] font-semibold text-[var(--franco-text)]">{title}</span>
+            {badge}
           </div>
           {subtitle && <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-0.5">{subtitle}</p>}
         </div>
@@ -193,6 +208,89 @@ function MetricRow({ label, value, color, tooltip }: { label: string; value: str
         {tooltip && <InfoTooltip content={tooltip} />}
       </span>
       <span className={`font-mono text-sm font-medium ${color || "text-[var(--franco-text)]"}`}>{value}</span>
+    </div>
+  );
+}
+
+function SimulationTag() {
+  return (
+    <span
+      className="font-mono uppercase whitespace-nowrap"
+      style={{
+        fontSize: 9,
+        letterSpacing: "1.2px",
+        padding: "3px 8px",
+        borderRadius: 3,
+        background: "color-mix(in srgb, #FBBF24 15%, transparent)",
+        color: "#FBBF24",
+        border: "0.5px solid color-mix(in srgb, #FBBF24 40%, transparent)",
+        fontWeight: 600,
+      }}
+    >
+      🔄 Simulación
+    </span>
+  );
+}
+
+function IndicadoresRentabilidadContent({
+  projections,
+  metrics,
+}: {
+  projections: YearProjection[];
+  metrics: AnalysisMetrics;
+}) {
+  const { plazoAnios, plusvaliaAnual } = useSimulation();
+  const kpis = useMemo(
+    () => calculateKPIs({ projections, metrics, plazoAnios, plusvaliaAnual }),
+    [projections, metrics, plazoAnios, plusvaliaAnual]
+  );
+  const plazoLabel = `${plazoAnios} ${plazoAnios === 1 ? "AÑO" : "AÑOS"}`;
+  const paybackValue = kpis.paybackAnios ? `Año ${kpis.paybackAnios}` : ">30";
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      {/* 2 hero KPIs arriba */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+        <KPICard
+          label={`TIR @ ${plazoLabel}`}
+          value={`${kpis.tir.toFixed(1)}%`}
+          sub="Retorno total anualizado"
+          tone={tonoTIR(kpis.tir)}
+          size="hero"
+        />
+        <KPICard
+          label="CAP Rate"
+          value={`${kpis.capRate.toFixed(1)}%`}
+          sub="Rendimiento bruto sobre precio"
+          tone={tonoCapRate(kpis.capRate)}
+          size="hero"
+        />
+      </div>
+
+      {/* 3 secundarios abajo */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+        <KPICard
+          label={`Cash-on-Cash @ ${plazoLabel}`}
+          value={`${kpis.cashOnCash.toFixed(1)}%`}
+          sub="Flujo / inversión"
+          tone={tonoCashOnCash(kpis.cashOnCash)}
+          size="small"
+        />
+        <KPICard
+          label="Payback"
+          value={paybackValue}
+          sub="Recupero del pie"
+          tone={tonoPayback(kpis.paybackAnios)}
+          size="small"
+        />
+        <KPICard
+          label={`Múltiplo @ ${plazoLabel}`}
+          value={`${kpis.multiplo.toFixed(2)}x`}
+          sub="Retorno total / inversión"
+          tone={tonoMultiplo(kpis.multiplo)}
+          size="small"
+        />
+      </div>
     </div>
   );
 }
@@ -973,6 +1071,7 @@ function DashboardAnalysisSection({
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function calcTIR(flujos: number[]): number {
   let rate = 0.1;
   for (let iter = 0; iter < 100; iter++) {
@@ -1038,6 +1137,7 @@ function SectionCard({ title, description, icon: Icon, children }: {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl, inputData }: {
   m: ReturnType<typeof normalizeMetrics>;
   zoneData: MarketDataRow[] | null | undefined;
@@ -1165,7 +1265,10 @@ export function PremiumResults({
   score, freeYieldBruto, freeFlujo, freePrecioM2,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   resumenEjecutivo: _resumenEjecutivo,
-  ufValue, zoneData, aiAnalysisInitial,
+  ufValue,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  zoneData,
+  aiAnalysisInitial,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
   hidePanel = false,
@@ -1209,6 +1312,7 @@ export function PremiumResults({
   if (ufValue) UF_CLP = ufValue;
   const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sensHorizon, setSensHorizon] = useState(10);
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -1442,6 +1546,7 @@ export function PremiumResults({
     return "Aporte mensual elevado — evalúa bien";
   }, [flujoUnificado]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const flujoBreakdown = useMemo(() => {
     if (!m || !inputData) return null;
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
@@ -1482,7 +1587,8 @@ export function PremiumResults({
     };
 
     const projs = [];
-    for (let anio = 1; anio <= 20; anio++) {
+    const INFLACION_UF = 0.03; // match del motor analysis.ts
+    for (let anio = 1; anio <= 30; anio++) {
       const mesInicio = (anio - 1) * 12 + 1;
       const mesFin = anio * 12;
 
@@ -1491,10 +1597,13 @@ export function PremiumResults({
       const mantencionBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
       const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anio - 1));
 
+      // Dividendo (UF fijo) crece con inflación UF ~3% en CLP — match motor
+      const dividendoAnio = Math.round(m.dividendo * Math.pow(1 + INFLACION_UF, anio - 1));
+
       // Usar función centralizada
       const flujoMes = calcFlujoDesglose({
         arriendo: arriendoActual,
-        dividendo: m.dividendo,
+        dividendo: dividendoAnio,
         ggcc: gastosActual,
         contribuciones: contribucionesActual,
         mantencion,
@@ -1538,6 +1647,7 @@ export function PremiumResults({
 
 
   // ─── Sensitivity scenarios with projections ───
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const sensScenarios = useMemo(() => {
     if (!results || !m || !inputData) return null;
 
@@ -1624,6 +1734,7 @@ export function PremiumResults({
     { dimension: "Eficiencia", value: results.desglose.eficiencia, fullMark: 100 },
   ] : [];
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const waterfallData = useMemo(() => {
     if (!m || !inputData) return [];
     const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
@@ -1820,6 +1931,7 @@ export function PremiumResults({
   }, [horizonYears, isMonthlyView, results, m, inputData, arriendoGrowth, costGrowth]);
 
   // Egreso bar series ordered by average absolute impact (descending), filtered to non-zero
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
       { key: "Dividendo", label: "Dividendo", color: "rgba(200,50,60,0.85)" },
@@ -1842,27 +1954,17 @@ export function PremiumResults({
       .sort((a, b) => b.avg - a.avg);
   }, [cashflowData]);
 
-  // Exit scenario helper — calculates exit metrics for a given year
-  const calcExitForYear = useCallback((years: number, flujoAcum: number) => {
-    if (!results || !m || dynamicProjections.length === 0) return null;
-    const proy = dynamicProjections[years - 1];
-    if (!proy) return null;
-    const valorVenta = proy.valorPropiedad;
-    const comisionVenta = Math.round(valorVenta * 0.02);
-    const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
-    const retornoTotal = flujoAcum + gananciaNeta;
-    const multiplicadorCapital = m.pieCLP > 0 ? Math.round((retornoTotal / m.pieCLP) * 100) / 100 : 0;
-    const flujos = [-m.pieCLP];
-    for (let i = 0; i < years; i++) {
-      let flujo = dynamicProjections[i].flujoAnual;
-      if (i === years - 1) flujo += valorVenta - proy.saldoCredito - comisionVenta;
-      flujos.push(flujo);
-    }
-    const tir = calcTIR(flujos);
-    return { anios: years, valorVenta: Math.round(valorVenta), saldoCredito: Math.round(proy.saldoCredito), comisionVenta, gananciaNeta: Math.round(gananciaNeta), flujoAcumulado: flujoAcum, retornoTotal: Math.round(retornoTotal), multiplicadorCapital, tir };
-  }, [results, m, dynamicProjections]);
+  // Exit scenario helper — usa el motor como fuente única de verdad
+  const calcExitForYear = useCallback((years: number, _flujoAcum: number) => {
+    if (!results || !m || !inputData || dynamicProjections.length === 0) return null;
+    if (!dynamicProjections[years - 1]) return null;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const _unused = _flujoAcum; // firma compatible; el motor recomputa internamente
+    return calcExitScenario(inputData, m, dynamicProjections, years);
+  }, [results, m, inputData, dynamicProjections]);
 
   // Fixed 10-year exit for header metrics (independent of horizon slider)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fixedExit10 = useMemo(() => {
     if (dynamicProjections.length < 10) return null;
     // Calculate 10-year flujo acumulado from dynamicProjections
@@ -2085,6 +2187,7 @@ export function PremiumResults({
   const mapQuery = inputData?.direccion
     ? `${inputData.direccion}, ${comuna || inputData?.comuna}, Chile`
     : `${comuna || inputData?.comuna}, Santiago, Chile`;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const googleMapUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&t=&z=14&ie=UTF8&iwloc=&output=embed`;
 
   // (exit/refi section reads directly from projData inline)
@@ -2145,460 +2248,37 @@ export function PremiumResults({
             comuna={comuna}
           />
 
-          {/* 2. Flujo mensual desglose */}
-          <CollapsibleSection
-                title={flujoUnificado >= 0 ? "¿Cuánto te genera cada mes?" : "¿Cuánto sale de tu bolsillo cada mes?"}
-                subtitle="Desglose real: arriendo vs todos los costos"
-                helpText={flujoUnificado === 0 ? "El arriendo cubre exactamente todos los gastos. Break-even." : flujoUnificado > 0 ? "El arriendo cubre todos los gastos y te genera excedente. Acá está el desglose completo." : "El arriendo no cubre todos los gastos. Acá está el desglose completo — lo que tu corredor nunca te muestra."}
-                defaultOpen
-              >
-                {flujoBreakdown && (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <div className="bg-[var(--franco-card)] rounded-[10px] p-3 text-center border border-[var(--franco-border)]">
-                      <p className="font-body text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-wide">Arriendo</p>
-                      <p className="font-mono text-lg font-semibold text-[var(--franco-text)] mt-1">{fmt(flujoBreakdown.arriendo)}</p>
-                    </div>
-                    <div className="bg-[var(--franco-card)] rounded-[10px] p-3 text-center border border-[var(--franco-border)]">
-                      <p className="font-body text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-wide">Dividendo</p>
-                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.dividendo)}</p>
-                    </div>
-                    <div className="bg-[var(--franco-card)] rounded-[10px] p-3 text-center border border-[var(--franco-border)]">
-                      <p className="font-body text-[9px] text-[var(--franco-text-secondary)] uppercase tracking-wide">Gastos</p>
-                      <p className="font-mono text-lg font-semibold text-[#C8323C] mt-1">-{fmt(flujoBreakdown.totalEgresos - flujoBreakdown.dividendo)}</p>
-                    </div>
-                    <div className={`bg-[var(--franco-card)] rounded-[10px] p-3 text-center border-2 ${flujoBreakdown.flujoNeto >= 0 ? "border-[var(--franco-positive)]" : "border-[#C8323C]"}`}>
-                      <p className={`font-body text-[9px] uppercase tracking-wide font-semibold ${flujoBreakdown.flujoNeto >= 0 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}`}>Flujo neto</p>
-                      <p className={`font-mono text-lg font-semibold mt-1 ${flujoBreakdown.flujoNeto >= 0 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}`}>
-                        {flujoBreakdown.flujoNeto >= 0 ? "+" : ""}{fmt(flujoBreakdown.flujoNeto)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </CollapsibleSection>
-
-          {/* 3. Rentabilidad */}
-          <CollapsibleSection
-                title="¿Qué tan buena es la rentabilidad?"
-                subtitle="Tu corredor solo te muestra la primera"
-              >
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {[
-                    { label: "Bruta", value: `${fmtPct(m.rentabilidadBruta ?? 0)}`, hint: "Sin descontar nada", color: "var(--franco-text)", tip: "Arriendo × 12 / Precio. No descuenta ningún gasto.", levels: ['importante', 'sinfiltro'] },
-                    { label: "CAP Rate", value: `${fmtPct(m.capRate ?? 0)}`, hint: "Operativa", color: (m.capRate ?? 0) >= 4 ? "var(--franco-positive)" : (m.capRate ?? 0) >= 2 ? "var(--franco-text)" : "#C8323C", tip: "Descuenta GGCC, contribuciones y mantención. Similar a la rentabilidad neta pero sin descontar vacancia. Es la métrica estándar internacional para comparar propiedades entre sí, sin importar el financiamiento.", levels: ['sinfiltro'] },
-                    { label: "Neta", value: `${fmtPct(m.rentabilidadNeta ?? 0)}`, hint: "La que importa", color: (m.rentabilidadNeta ?? 0) >= 3 ? "var(--franco-positive)" : (m.rentabilidadNeta ?? 0) >= 1 ? "var(--franco-text)" : "#C8323C", tip: "Descuenta TODO: gastos operativos + vacancia + corretaje + recambio. No incluye el dividendo hipotecario. Mide qué tan buena es la propiedad en sí, independiente de cómo la financies. Un depto puede tener buena rentabilidad neta y flujo negativo si el financiamiento es alto.", levels: ['sinfiltro'] },
-                    { label: "Cash-on-Cash", value: `${fmtPct(m.cashOnCash ?? 0)}`, hint: "Retorno tu pie", color: (m.cashOnCash ?? 0) >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Cuánto te renta el pie que pusiste. Negativo = poniendo plata extra.", levels: ['importante', 'sinfiltro'] },
-                    { label: "TIR 10a", value: fixedExit10 ? `${fmtPct(fixedExit10.tir)}` : "—", hint: "Tasa interna", color: fixedExit10 && fixedExit10.tir >= 0 ? "var(--franco-positive)" : "#C8323C", tip: "Tasa Interna de Retorno considerando plusvalía y amortización.", levels: ['sinfiltro'] },
-                    { label: "ROI 10a", value: fixedExit10 ? `${fixedExit10.multiplicadorCapital}x` : "—", hint: "Multiplicador", color: fixedExit10 && fixedExit10.multiplicadorCapital >= 1 ? "var(--franco-positive)" : "#C8323C", tip: "Cuántas veces multiplicas tu inversión total en 10 años.", levels: ['importante', 'sinfiltro'] },
-                  ].map((metric) => (
-                    <div
-                      key={metric.label}
-                      className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-lg px-4 py-3.5 flex flex-col gap-1"
-                    >
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)] flex items-center gap-1">
-                        {metric.label}
-                        <InfoTooltip content={metric.tip} />
-                      </span>
-                      <span className="font-mono font-semibold text-lg" style={{ color: metric.color }}>{metric.value}</span>
-                      <span className="text-[10px] text-[var(--franco-text-muted)]">{metric.hint}</span>
-                    </div>
-                  ))}
-                </div>
-                {/* Insight contextual */}
-                <div
-                  className="mt-3.5 rounded-r-lg py-3 px-4 text-[13px] leading-relaxed"
-                  style={{
-                    borderLeft: `3px solid ${(m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-positive)' : '#C8323C'}`,
-                    background: (m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-sc-good-bg)' : 'rgba(200,50,60,0.08)',
-                    color: "var(--franco-text-secondary)",
-                  }}
-                >
-                  <span style={{ color: (m.rentabilidadNeta ?? 0) >= 3 ? 'var(--franco-positive)' : '#C8323C', fontWeight: 600 }}>Siendo franco:</span>{' '}
-                  {(() => {
-                    const neta = m.rentabilidadNeta ?? 0;
-                    const flujo = m.flujoNetoMensual ?? 0;
-                    if (neta >= 3 && flujo >= 0) return `Rentabilidad neta de ${fmtPct(neta)} con flujo positivo — los números cierran.`;
-                    if (neta >= 3 && flujo < 0) return `Rentabilidad neta de ${fmtPct(neta)} pero flujo negativo de ${fmtCLP(Math.abs(flujo))}/mes. La propiedad rinde bien, el costo lo pone el financiamiento.`;
-                    if (neta < 3 && flujo >= 0) return `Rentabilidad neta baja (${fmtPct(neta)}), pero al menos el flujo es positivo.`;
-                    return `La bruta engaña — con ${fmtPct(neta)} neta y flujo de -${fmtCLP(Math.abs(flujo))}/mes, la inversión depende 100% de la plusvalía.`;
-                  })()
-                  }
-                </div>
-              </CollapsibleSection>
-
-          {/* 4. Zone comparison */}
-          <CollapsibleSection
-            title="¿Cómo se compara con la zona?"
-            subtitle={`Precio y arriendo vs el promedio de ${comuna}`}
+          {/* ═══ CAPA 3 · SIMULACIÓN ═══ */}
+          <SimulationProvider
+            plazoAnios={horizonYears}
+            plusvaliaAnual={plusvaliaRate}
+            setPlazoAnios={setHorizonYears}
+            setPlusvaliaAnual={setPlusvaliaRate}
+            plazoBase={10}
+            plusvaliaBase={PLUSVALIA_HISTORICA[comuna ?? ""]?.anualizada ?? PLUSVALIA_DEFAULT.anualizada}
           >
-            <ZoneComparisonCards m={m} zoneData={zoneData} comuna={comuna} currency={currency} fmt={fmt} mapQuery={mapQuery} googleMapUrl={googleMapUrl} inputData={inputData} />
-          </CollapsibleSection>
+            <SliderSimulacion />
 
-          {/* 5. Sensibilidad */}
-          <CollapsibleSection
-            title="¿Qué pasa si cambian las condiciones?"
-            subtitle="3 escenarios: pesimista, base y optimista"
-          >
-            {sensScenarios && inputData && (
-              <>
-                <div className="mb-5">
-                  <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-sm font-medium text-[var(--franco-text)]">Horizonte de venta</h4>
-                    <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">{sensHorizon} años</span>
-                  </div>
-                  <input type="range" min={3} max={20} step={1} value={sensHorizon} onChange={(e) => setSensHorizon(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-2" />
-                  <div className="flex justify-between text-[10px] text-[var(--franco-text-secondary)] mt-0.5"><span>3 años</span><span>20 años</span></div>
-                </div>
-                <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-                  {sensScenarios.map((s) => {
-                    const scBg = s.key === "pesimista" ? "var(--franco-sc-bad-bg)" : s.key === "optimista" ? "var(--franco-sc-good-bg)" : "var(--franco-card)";
-                    const scBorder = s.key === "pesimista" ? "rgba(200,50,60,0.15)" : s.key === "optimista" ? "var(--franco-sc-good-border)" : "var(--franco-border)";
-                    const scText = s.key === "pesimista" ? "#C8323C" : s.key === "optimista" ? "var(--franco-positive)" : "var(--franco-text-secondary)";
-                    return (
-                    <div key={s.key} className="rounded-lg" style={{ border: `1px solid ${scBorder}`, background: scBg, padding: "12px 16px" }}>
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-base" style={{ color: scText }}>{s.icon}</span>
-                        <div className="text-sm font-medium" style={{ color: scText }}>{s.sub}</div>
-                      </div>
-                      <div className="mb-2">
-                        <div className="text-[10px] text-[var(--franco-text-secondary)]">Flujo mensual (año 1)</div>
-                        <div className={`font-mono text-lg font-semibold ${s.flujoMensual >= 0 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}`}>
-                          {fmt(s.flujoMensual)}<span className="text-xs font-normal text-[var(--franco-text-secondary)]">/mes</span>
-                        </div>
-                      </div>
-                      <div className="mb-3">
-                        <div className="text-[10px] text-[var(--franco-text-secondary)]">Retorno ({sensHorizon} años)</div>
-                        <div className={`font-mono text-base font-semibold ${s.retorno >= 1 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}`}>{s.retorno}x</div>
-                      </div>
-                      <div className="border-t border-dashed border-[var(--franco-border)] pt-2 text-[11px] leading-relaxed text-[var(--franco-text-secondary)]">
-                        <div>Tasa {fmtPct(s.scenTasa, 2)} · Arr. {fmtM(s.scenArriendo)}</div>
-                        <div>Vac. {s.scenVacancia}% · Plusv. {s.plusvalia}%/año</div>
-                      </div>
-                    </div>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </CollapsibleSection>
-
-          {/* 6. Plusvalía inmediata + Precios de equilibrio */}
-          {((m.plusvaliaInmediataFranco ?? 0) !== 0 || (m.plusvaliaInmediataUsuario ?? 0) !== 0 || (m.precioFlujoNeutroUF ?? 0) > 0) && (
-                <CollapsibleSection
-                  title="¿A qué precio conviene?"
-                  subtitle="Plusvalía inmediata y precios de equilibrio"
-                >
-                  {/* Plusvalía inmediata — dual: Franco + Usuario */}
-                  {(() => {
-                    const francoUF = m.valorMercadoFrancoUF ?? 0;
-                    const usuarioUF = m.valorMercadoUsuarioUF ?? 0;
-                    const francoSame = Math.abs(francoUF - usuarioUF) / (francoUF || 1) < 0.02;
-                    const showFranco = francoUF > 0 && Math.abs(m.plusvaliaInmediataFrancoPct ?? 0) > 2;
-                    const showUsuario = usuarioUF > 0 && Math.abs(m.plusvaliaInmediataUsuarioPct ?? 0) > 2 && !francoSame;
-                    if (!showFranco && !showUsuario) return null;
-
-                    const renderLine = (label: string, clp: number, pct: number, extra?: string) => {
-                      const positive = clp > 0;
-                      return (
-                        <div
-                          className="rounded-r-lg py-2.5 px-4 text-[13px] leading-relaxed"
-                          style={{ borderLeft: `3px solid ${positive ? 'var(--franco-positive)' : '#C8323C'}`, background: positive ? 'var(--franco-sc-good-bg)' : 'rgba(200,50,60,0.08)', color: "var(--franco-text-secondary)" }}
-                        >
-                          <span style={{ color: positive ? 'var(--franco-positive)' : '#C8323C', fontWeight: 600 }}>{positive ? 'Ventaja de compra' : 'Sobreprecio'}{label ? ` (${label})` : ''}:</span>{' '}
-                          {positive
-                            ? <>compraste {fmtUF(Math.abs(clp / UF_CLP))} bajo mercado ({fmtPct(Math.abs(pct))}).{m.flujoNetoMensual < 0 && <> Equivale a {Math.round(Math.abs(clp / m.flujoNetoMensual))} meses de flujo negativo recuperados al vender.</>}{m.flujoNetoMensual === 0 && <> Flujo neutro — la plusvalía es ganancia pura.</>}</>
-                            : <>pagaste {fmtUF(Math.abs(clp / UF_CLP))} sobre mercado ({fmtPct(Math.abs(pct))}). Necesitas ~{Math.ceil(Math.abs(pct) / 4)} años extra de plusvalía para recuperar.</>
-                          }
-                          {extra && <span className="block text-[11px] text-[var(--franco-text-muted)] mt-1">{extra}</span>}
-                        </div>
-                      );
-                    };
-
-                    return (
-                      <div className="space-y-2 mb-3">
-                        {showFranco && renderLine(
-                          showUsuario ? "datos Franco" : "",
-                          m.plusvaliaInmediataFranco ?? 0,
-                          m.plusvaliaInmediataFrancoPct ?? 0,
-                          showUsuario ? `Valor mercado Franco: ${fmtUF(francoUF)} — usado para proyecciones.` : undefined
-                        )}
-                        {showUsuario && renderLine(
-                          "tu estimación",
-                          m.plusvaliaInmediataUsuario ?? 0,
-                          m.plusvaliaInmediataUsuarioPct ?? 0,
-                          `Tu estimación: ${fmtUF(usuarioUF)}.${!francoSame ? " Los cálculos usan el valor de Franco para las proyecciones." : ""}`
-                        )}
-                      </div>
-                    );
-                  })()}
-
-                  {/* Precios de equilibrio */}
-                  {m.flujoNetoMensual >= 0 ? (
-                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid var(--franco-positive)', background: 'var(--franco-sc-good-bg)', color: "var(--franco-text-secondary)" }}>
-                      <span style={{ color: "var(--franco-positive)", fontWeight: 600 }}>Flujo positivo.</span> Buen precio para este financiamiento.
-                    </div>
-                  ) : (m.precioFlujoNeutroUF ?? 0) > 0 ? (
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-lg px-4 py-3">
-                          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Flujo neutro</p>
-                          <p className="font-mono font-semibold text-lg text-[var(--franco-warning)]">{fmtUF(m.precioFlujoNeutroUF ?? 0)}</p>
-                          <p className="text-[10px] text-[var(--franco-text-muted)]">{fmtPct(m.descuentoParaNeutro ?? 0)} menos</p>
-                        </div>
-                        <div className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-lg px-4 py-3">
-                          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Flujo +$50K</p>
-                          <p className="font-mono font-semibold text-lg text-[var(--franco-positive)]">{fmtUF(m.precioFlujoPositivoUF ?? 0)}</p>
-                          <p className="text-[10px] text-[var(--franco-text-muted)]">{m.precioCLP > 0 && m.precioFlujoPositivoCLP ? fmtPct(((m.precioCLP - (m.precioFlujoPositivoCLP ?? 0)) / m.precioCLP) * 100) : "—"} menos</p>
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-[var(--franco-text-muted)]">
-                        Precios máximos de compra para lograr cada nivel de flujo con tu financiamiento actual.
-                        {(m.descuentoParaNeutro ?? 0) > 15 && " El margen de negociación necesario es alto — considera más pie, menor tasa, o buscar otra propiedad."}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-r-lg py-3 px-4 text-[13px] leading-relaxed" style={{ borderLeft: '3px solid #C8323C', background: 'rgba(200,50,60,0.08)', color: "var(--franco-text-secondary)" }}>
-                      <span style={{ color: '#C8323C', fontWeight: 600 }}>Sin precio de equilibrio.</span>{' '}
-                      El arriendo no alcanza a cubrir los gastos fijos (sin dividendo). Considera más pie, menor tasa, o buscar otra propiedad.
-                    </div>
-                  )}
-                </CollapsibleSection>
+            {/* Bloque 1: Indicadores de rentabilidad (reactivo) */}
+            <CollapsibleSection
+              title="Indicadores de rentabilidad"
+              subtitle="5 KPIs financieros reactivos al plazo y plusvalía"
+              badge={<SimulationTag />}
+              defaultOpen
+            >
+              {m && (
+                <IndicadoresRentabilidadContent
+                  projections={dynamicProjections}
+                  metrics={m}
+                />
               )}
+            </CollapsibleSection>
 
-          {/* 7. Riesgos */}
-          <CollapsibleSection
-                title="¿Cuáles son los riesgos?"
-                subtitle="Qué puede salir mal y cuánto te afecta"
-              >
-                <div className="space-y-3">
-                  {(() => {
-                    // Build structured risks sorted by severity and impact
-                    const risks = ([
-                      {
-                        id: "flujo_negativo",
-                        titulo: `Flujo negativo: ${fmt(Math.abs(flujoUnificado))}/mes`,
-                        detalle: "Cada mes tendrás que poner esta plata de tu bolsillo para cubrir los costos. Asegúrate de tener este flujo disponible de forma estable.",
-                        severity: "critical" as const,
-                        show: flujoUnificado < 0,
-                      },
-                      {
-                        id: "cash_on_cash",
-                        titulo: `Cash-on-cash negativo: ${fmtPct(m.cashOnCash ?? 0)}`,
-                        detalle: flujoUnificado >= 0 ? "Cash-on-cash negativo por alta inversión inicial, pero el flujo mensual es positivo." : "El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura.",
-                        severity: "critical" as const,
-                        show: (m.cashOnCash ?? 0) < 0,
-                      },
-                      {
-                        id: "precio_maximo",
-                        titulo: `Precio máximo: ${currency === "UF" ? fmtUF(results.valorMaximoCompra) : fmtCLP(results.valorMaximoCompra * UF_CLP)}`,
-                        detalle: "Para flujo positivo con estos datos, no deberías pagar más de este precio.",
-                        severity: "critical" as const,
-                        show: true,
-                      },
-                      {
-                        id: "cap_rate_bajo",
-                        titulo: `CAP rate bajo: ${fmtPct(m.capRate ?? 0)}`,
-                        detalle: "Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.",
-                        severity: "critical" as const,
-                        show: (m.capRate ?? 0) < 4.0,
-                      },
-                      {
-                        id: "ggcc_altos",
-                        titulo: `Gastos comunes altos (${inputData ? Math.round((inputData.gastos / inputData.arriendo) * 100) : 0}% del arriendo)`,
-                        detalle: "Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.",
-                        severity: "warning" as const,
-                        show: !!inputData && inputData.arriendo > 0 && (inputData.gastos / inputData.arriendo) > 0.25,
-                      },
-                      {
-                        id: "breakeven_tasa",
-                        titulo: `Break-even tasa: ${results.breakEvenTasa === -1 ? "N/A" : `${fmtPct(results.breakEvenTasa, 2)}`}`,
-                        detalle: results.breakEvenTasa === -1
-                          ? "Incluso con tasa 0%, el flujo sería negativo. El problema es estructural."
-                          : inputData && results.breakEvenTasa < inputData.tasaInteres
-                            ? `Necesitarías una tasa de ${fmtPct(results.breakEvenTasa, 2)} para flujo positivo, bajo la actual (${fmtPct(inputData.tasaInteres, 2)}).`
-                            : `Si la tasa sube sobre ${fmtPct(results.breakEvenTasa, 2)}, pasas a flujo negativo.`,
-                        severity: "warning" as const,
-                        show: true,
-                      },
-                    ]).filter(r => r.show);
-
-                    // Also include contras that aren't covered by structured risks
-                    const structuredPhrases = ["flujo negativo", "cash-on-cash", "cash on cash", "pie está rentando", "de tu bolsillo", "precio máximo", "precio por m²", "cap rate", "gastos comunes", "break-even", "breakeven"];
-                    const extraContras = (results.contras || []).filter(c => {
-                      const lower = c.toLowerCase();
-                      return !structuredPhrases.some(p => lower.includes(p));
-                    });
-
-                    return (
-                      <>
-                        {risks.map((risk) => {
-                          const isCritical = risk.severity === "critical";
-                          const borderColor = isCritical ? "#C8323C" : "var(--franco-warning)";
-                          const bg = isCritical ? "var(--franco-sc-bad-bg)" : "var(--franco-v-adjust-bg)";
-                          return (
-                            <div key={risk.id} style={{ borderLeft: `3px solid ${borderColor}`, background: bg, borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
-                              <div className="font-body text-sm font-semibold" style={{ color: borderColor }}>{risk.titulo}</div>
-                              <div className="font-body text-[13px] text-[var(--franco-text-secondary)] leading-relaxed mt-1">{risk.detalle}</div>
-                            </div>
-                          );
-                        })}
-                        {extraContras.map((contra, i) => (
-                          <div key={`extra-${i}`} style={{ borderLeft: "3px solid var(--franco-warning)", background: "var(--franco-v-adjust-bg)", borderRadius: "0 8px 8px 0", padding: "14px 18px" }}>
-                            <div className="font-body text-[13px] text-[var(--franco-text-secondary)] leading-relaxed">{contra}</div>
-                          </div>
-                        ))}
-                      </>
-                    );
-                  })()}
-                </div>
-              </CollapsibleSection>
-
-          {/* 8. Waterfall chart — standalone */}
-          <CollapsibleSection
-            title="¿Cuáles son todos los costos?"
-            subtitle="Cascada de costos mensuales — cada peso que entra y sale"
-            defaultOpen
-          >
-            <div className="h-72">
-              <ResponsiveContainer>
-                <BarChart data={waterfallData} margin={{ top: 5, right: 10, left: 10, bottom: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={0} height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
-                  <RechartsTooltip
-                    cursor={false}
-                    content={({ active, payload, label: wfLabel }) => {
-                      if (!active || !payload || payload.length === 0) return null;
-                      const item = waterfallData.find((d) => d.name === wfLabel);
-                      if (!item) return null;
-                      const fullNames: Record<string, string> = { "Arr.": "Arriendo", "Div.": "Dividendo", "GGCC": "Gastos comunes (vacancia)", "Cont.": "Contribuciones", "Mant.": "Mantención", "Vac.": "Vacancia", "Corr.": "Corretaje", "Rec.": "Recambio arrendatario", "Admin.": "Administración de arriendo", "Neto": "Flujo Neto" };
-                      const displayName = fullNames[item.name] || item.name;
-                      return (
-                        <div className="rounded-lg border border-[var(--franco-border-hover)] bg-[var(--franco-card)] px-3 py-3 text-xs text-[var(--franco-text)] shadow-lg">
-                          <div className="mb-1 font-semibold text-[var(--franco-text)]">{item.isResult ? `→ ${displayName}` : displayName}</div>
-                          <div className={item.delta >= 0 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}>
-                            {item.delta >= 0 ? "+" : ""}{fmt(item.delta)}
-                          </div>
-                          <div className="text-[var(--franco-text-secondary)]">Acumulado: {fmt(item.running)}</div>
-                        </div>
-                      );
-                    }}
-                  />
-                  <ReferenceLine y={0} stroke="var(--franco-text-muted)" strokeDasharray="6 3" strokeWidth={1.5} />
-                  <Bar dataKey="range" radius={[4, 4, 0, 0]} activeBar={false}>
-                    {waterfallData.map((entry, i) => (
-                      <Cell
-                        key={i}
-                        fill={entry.fill}
-                        stroke={entry.isResult ? entry.fill : "none"}
-                        strokeWidth={entry.isResult ? 3 : 0}
-                        fillOpacity={entry.isResult ? 1 : 0.85}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[var(--franco-text-secondary)]">
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-bar-fill)" }} />Ingreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.8)" }} />Egreso</span>
-              <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text-secondary)" }} />Resultado</span>
-            </div>
-            {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[var(--franco-text-secondary)]">Toca las barras para ver el detalle</p>}
-            {m && (
-              <div className={`mt-3 flex items-center justify-center gap-2 rounded-lg p-2 text-sm font-mono font-semibold ${flujoUnificado >= 0 ? "bg-[var(--franco-positive)]/10 text-[var(--franco-positive)]" : "bg-[#C8323C]/10 text-[#C8323C]"}`}>
-                Flujo neto mensual: {flujoUnificado >= 0 ? "+" : ""}{fmt(flujoUnificado)}
-              </div>
-            )}
-          </CollapsibleSection>
-
-          {/* 9. Cashflow año a año */}
-          <CollapsibleSection
-            title="¿Cómo es el flujo año a año?"
-            subtitle={`Flujo de caja desde el año 1 hasta el ${horizonYears}`}
-            defaultOpen
-          >
-            <div>
-                  <h4 className="mb-1 text-sm font-semibold text-[var(--franco-text)]">
-                    Flujo de Caja — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}
-                  </h4>
-                  <p className="mb-3 text-xs text-[var(--franco-text-secondary)]">Cuánto entra y cuánto sale. La línea muestra tu acumulado.</p>
-                  <div className="relative h-64">
-                    <ResponsiveContainer>
-                      <ComposedChart data={cashflowData} stackOffset="sign" margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" horizontal vertical={false} />
-                        {/* Eje categórico visible: barras uniformes */}
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: cashflowData.length > 25 ? 7 : cashflowData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={cashflowData.length > 15 ? Math.ceil(cashflowData.length / 10) : isMonthlyView && horizonYears > 1 ? "preserveStartEnd" : 0} height={60} />
-                        {/* Eje numérico oculto: posiciona la línea de entrega */}
-                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
-                        <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload || payload.length === 0) return null;
-                            const row = payload[0]?.payload as CashflowRow | undefined;
-                            if (!row) return null;
-                            return (
-                              <div className="rounded-lg border border-[var(--franco-border-hover)] bg-[var(--franco-card)] px-3 py-3 text-xs text-[var(--franco-text)] shadow-lg">
-                                <div className="mb-1.5 font-semibold text-[var(--franco-text)]">{row.name}</div>
-                                <div className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-positive)" }} />Ingreso: <span className="font-medium text-[var(--franco-text)]">{fmt(row.Ingreso)}</span></div>
-                                {egresoBarSeries.map(s => (
-                                  <div key={s.key} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}: <span className="font-medium text-[#C8323C]">{fmt(row[s.key] as number)}</span></div>
-                                ))}
-                                <div className="my-1 border-t border-[var(--franco-border)]" />
-                                <div className={`font-bold ${row.FlujoNeto >= 0 ? "text-[var(--franco-positive)]" : "text-[#C8323C]"}`}>Flujo neto: {fmt(row.FlujoNeto)}</div>
-                                <div className="font-bold text-[var(--franco-text)]">Acumulado: {fmt(row.Acumulado)}</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <ReferenceLine y={0} stroke="var(--franco-text-muted)" strokeDasharray="6 3" strokeWidth={1} />
-                        {/* Ingreso siempre primero */}
-                        <Bar xAxisId="cat" dataKey="Ingreso" stackId="stack" fill="var(--franco-positive)" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
-                        {/* Egresos ordenados por impacto promedio descendente */}
-                        {egresoBarSeries.map((s, i) => (
-                          <Bar key={s.key} xAxisId="cat" dataKey={s.key as string} name={s.label} stackId="stack" fill={s.color} radius={i === egresoBarSeries.length - 1 ? [0, 0, 4, 4] : undefined} />
-                        ))}
-                        {/* Línea acumulado */}
-                        <Line xAxisId="cat" type="monotone" dataKey="Acumulado" stroke="var(--franco-text)" strokeWidth={2} dot={isMonthlyView ? { r: 2 } : false} legendType="none" />
-                        {/* Línea vertical de entrega */}
-                        {mesesPreEntregaTop > 0 && !horizonBeforeDelivery && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="var(--franco-text-muted)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }} />
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                    {horizonBeforeDelivery && (
-                      <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-[var(--franco-card)]/80 backdrop-blur-[1px]">
-                        <div className="flex max-w-sm flex-col items-center gap-3 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)]/95 px-6 py-5 text-center shadow-lg">
-                          <Clock className="h-7 w-7 text-[var(--franco-text)]" />
-                          <span className="text-sm font-semibold text-[var(--franco-text)]">Tu inversión aún no genera flujo</span>
-                          <p className="text-xs text-[var(--franco-text-secondary)]">
-                            La entrega está estimada para {fechaEntregaLabel}. Hasta entonces no hay ingresos ni gastos operativos.
-                            Aumenta el horizonte a más de {mesesPreEntregaTop} meses para ver el flujo post-entrega.
-                          </p>
-                          <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="text-xs font-medium text-[var(--franco-text)] hover:underline">
-                            Ver desde la entrega →
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {/* Leyenda manual */}
-                  <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] text-[var(--franco-text-secondary)]" style={{ display: 'block', width: '100%', marginBottom: '8px' }}>
-                    <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-                      <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-positive)" }} />Ingreso</span>
-                      {egresoBarSeries.map(s => (
-                        <span key={s.key} className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />{s.label}</span>
-                      ))}
-                      <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "var(--franco-text)", height: 2 }} />Acumulado</span>
-                    </div>
-                  </div>
-                  {isTouchDevice && <div style={{ display: 'block', width: '100%', textAlign: 'center', marginTop: '24px', clear: 'both', fontSize: '12px', color: "var(--franco-text-secondary)" }}>Toca las barras para ver el detalle</div>}
-            </div>
-          </CollapsibleSection>
-
-          {/* 10. Patrimonio */}
+          {/* Bloque 2: Gráfico de patrimonio */}
           <CollapsibleSection
             title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
             subtitle="Proyección de patrimonio con plusvalía y amortización"
+            badge={<SimulationTag />}
             defaultOpen
           >
             {/* Patrimonio chart + breakdown */}
@@ -2751,10 +2431,11 @@ export function PremiumResults({
             )}
           </CollapsibleSection>
 
-          {/* 11. Exit/Refi */}
+          {/* Bloque 3: Venta o refinanciamiento */}
           <CollapsibleSection
             title="¿Qué pasa si vendes o refinancias?"
             subtitle="Escenarios de salida: venta y refinanciamiento"
+            badge={<SimulationTag />}
             defaultOpen
           >
             {horizonBeforeDelivery ? (
@@ -2783,24 +2464,11 @@ export function PremiumResults({
                 const recibeNeto = vp - sc - comision;
                 const totalInvertido = m.pieCLP + Math.abs(fa);
                 const ganancia = recibeNeto - totalInvertido;
-                const multiplicador = m.pieCLP > 0 ? Math.round((recibeNeto / m.pieCLP) * 100) / 100 : 0;
-                // TIR: build yearly cash flows from projData
-                const tirFlujos = [-m.pieCLP];
-                for (let y = 1; y <= horizonYears; y++) {
-                  const moEnd = y * 12;
-                  const moStart = (y - 1) * 12;
-                  const rowEnd = projData.find(r => r._x === moEnd);
-                  const rowStart = projData.find(r => r._x === moStart);
-                  const flujoAnual = (rowEnd?.flujoAcumulado ?? 0) - (rowStart?.flujoAcumulado ?? 0);
-                  if (y === horizonYears) {
-                    const vpY = rowEnd?.valorPropiedad ?? 0;
-                    const scY = rowEnd?.saldoCredito ?? 0;
-                    tirFlujos.push(flujoAnual + vpY - scY - Math.round(vpY * 0.02));
-                  } else {
-                    tirFlujos.push(flujoAnual);
-                  }
-                }
-                const tir = calcTIR(tirFlujos);
+                // TIR y multiplicador desde el motor (fuente única de verdad).
+                // Motor devuelve tir ya en porcentaje (ej. 10.4 = 10.4%).
+                const motorExit = calcExitScenario(inputData, m, dynamicProjections, horizonYears);
+                const tir = motorExit.tir;
+                const multiplicador = motorExit.multiplicadorCapital;
                 // Abbreviated format for narrative
                 const fmtAbr = (n: number) => fmtM(Math.abs(n));
                 // Refi calculations from projData
@@ -2999,6 +2667,7 @@ export function PremiumResults({
               })()
             ) : null}
           </CollapsibleSection>
+          </SimulationProvider>
         </>
       )}
 

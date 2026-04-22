@@ -460,7 +460,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
 // Exit Scenario
 // =========================================
 
-function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): ExitScenario {
+export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): ExitScenario {
   const proy = projections[anios - 1];
   if (!proy) {
     return {
