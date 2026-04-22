@@ -80,6 +80,12 @@ export interface ExitScenario {
   retornoTotal: number;
   multiplicadorCapital: number;
   tir: number;
+  // Concepto "plata que realmente pusiste" a lo largo del plazo
+  inversionInicial: number;              // pie + gastos cierre (día 1)
+  flujoMensualAcumuladoNegativo: number; // suma absoluta de años con flujo neto negativo
+  totalAportado: number;                 // inversionInicial + flujoMensualAcumuladoNegativo
+  gananciaSobreTotal: number;            // gananciaNeta - totalAportado
+  porcentajeGananciaSobreTotal: number;  // (gananciaSobreTotal / totalAportado) * 100
 }
 
 export interface RefinanceScenario {
@@ -194,6 +200,51 @@ export interface AIAnalysis {
   puntosAtencion: string[];
   // Legacy fields for backward compatibility with old saved analyses
   resumenEjecutivo?: string;
+}
+
+export interface DatoClave {
+  label: string;
+  valor_clp: string;
+  valor_uf: string;
+  subtexto?: string;
+  color: "red" | "green" | "neutral" | "accent";
+}
+
+export interface AISection {
+  pregunta: string;
+  contenido_clp: string;
+  contenido_uf: string;
+  cajaAccionable_clp: string;
+  cajaAccionable_uf: string;
+  cajaLabel: string;
+}
+
+export interface AIConvieneSection {
+  pregunta: string;
+  respuestaDirecta_clp: string;
+  respuestaDirecta_uf: string;
+  veredictoFrase_clp: string;
+  veredictoFrase_uf: string;
+  datosClave: DatoClave[];
+  reencuadre_clp: string;
+  reencuadre_uf: string;
+  cajaAccionable_clp: string;
+  cajaAccionable_uf: string;
+  cajaLabel: string;
+}
+
+export interface AINegociacionSection extends AISection {
+  precioSugerido: string;
+}
+
+export interface AIAnalysisV2 {
+  siendoFrancoHeadline_clp: string;
+  siendoFrancoHeadline_uf: string;
+  conviene: AIConvieneSection;
+  costoMensual: AISection;
+  negociacion: AINegociacionSection;
+  largoPlazo: AISection;
+  riesgos: AISection;
 }
 
 export interface Analisis {

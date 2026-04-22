@@ -6,6 +6,7 @@ import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis, setUFValue } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { generateAiAnalysis } from "@/lib/ai-generation";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -102,6 +103,15 @@ export async function POST(request: Request) {
         result.veredicto || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
         data.id
       ).catch(e => console.error("Analysis email error:", e));
+    }
+
+    // Fire-and-forget: generate AI analysis in background without blocking response.
+    // No credit consumption here — this is the user's free first analysis. The /ai endpoint
+    // still handles credits for on-demand regeneration when needed.
+    if (data?.id) {
+      generateAiAnalysis(data.id, dbClient).catch((e) =>
+        console.error("Background AI generation failed:", e)
+      );
     }
 
     return NextResponse.json(data);

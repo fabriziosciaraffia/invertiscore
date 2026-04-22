@@ -182,3 +182,57 @@ input[type="number"] {
 .pac-logo::after {
   display: none;
 }
+
+/* Drawer animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
+.animate-slideInRight { animation: slideInRight 0.25s ease-out; }
+.animate-slideInUp { animation: slideInUp 0.25s ease-out; }
+
+/* Waterfall stagger animation — bars grow from the baseline */
+@keyframes waterfallBarIn {
+  from { transform: scaleY(0); opacity: 0; }
+  to   { transform: scaleY(1); opacity: 1; }
+}
+
+.waterfall-bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: waterfallBarIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  opacity: 0;
+}
+
+@keyframes zonePulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.zone-pulse-dot {
+  animation: zonePulse 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn,
+  .animate-slideInRight,
+  .animate-slideInUp,
+  .waterfall-bar,
+  .zone-pulse-dot {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

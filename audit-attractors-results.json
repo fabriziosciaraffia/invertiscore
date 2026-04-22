@@ -1,0 +1,242 @@
+[
+  {
+    "nombre": "Clínica Alemana",
+    "tipo": "clinica",
+    "comuna": "Vitacura",
+    "current": {
+      "lat": -33.39296205406836,
+      "lng": -70.57273638758173
+    },
+    "suggested": {
+      "lat": -33.4139208,
+      "lng": -70.5809803
+    },
+    "distance": 2453,
+    "status": "wrong",
+    "osmName": "Clínica Estética San Pascual"
+  },
+  {
+    "nombre": "Clínica Las Condes",
+    "tipo": "clinica",
+    "comuna": "Las Condes",
+    "current": {
+      "lat": -33.38520843770616,
+      "lng": -70.53152428836158
+    },
+    "suggested": {
+      "lat": -33.3845465,
+      "lng": -70.5305676
+    },
+    "distance": 115,
+    "status": "needs_review",
+    "osmName": "Clínica Las Condes"
+  },
+  {
+    "nombre": "Clínica UC Christus",
+    "tipo": "clinica",
+    "comuna": "Santiago",
+    "current": {
+      "lat": -33.442305223461155,
+      "lng": -70.6405187579885
+    },
+    "suggested": {
+      "lat": -33.4464549,
+      "lng": -70.6441072
+    },
+    "distance": 569,
+    "status": "wrong",
+    "osmName": "Clínica Central"
+  },
+  {
+    "nombre": "Clínica Meds",
+    "tipo": "clinica",
+    "comuna": "Lo Barnechea",
+    "current": {
+      "lat": -33.355680382308755,
+      "lng": -70.53515459715035
+    },
+    "suggested": {
+      "lat": -33.3554035,
+      "lng": -70.5397904
+    },
+    "distance": 432,
+    "status": "wrong",
+    "osmName": "Clinica MEDS La Dehesa - Torre Nucleo Los Trapenses"
+  },
+  {
+    "nombre": "Hospital Sótero del Río",
+    "tipo": "clinica",
+    "comuna": "Puente Alto",
+    "current": {
+      "lat": -33.57705595114272,
+      "lng": -70.58120557186426
+    },
+    "suggested": {
+      "lat": -33.5787256,
+      "lng": -70.577462
+    },
+    "distance": 393,
+    "status": "wrong",
+    "osmName": "Hospital de Campaña Sótero del Río"
+  },
+  {
+    "nombre": "Centro Financiero Santiago",
+    "tipo": "negocios",
+    "comuna": "Santiago",
+    "current": {
+      "lat": -33.44074663438647,
+      "lng": -70.65078508971384
+    },
+    "suggested": {
+      "lat": -33.4377752,
+      "lng": -70.6505796
+    },
+    "distance": 331,
+    "status": "wrong",
+    "osmName": "Centro Histórico"
+  },
+  {
+    "nombre": "U. Mayor",
+    "tipo": "universidad",
+    "comuna": "Providencia",
+    "current": {
+      "lat": -33.4202309,
+      "lng": -70.590824
+    },
+    "suggested": {
+      "lat": -33.4070951,
+      "lng": -70.5733171
+    },
+    "distance": 2185,
+    "status": "wrong",
+    "osmName": "Postgrados Universidad Mayor"
+  },
+  {
+    "nombre": "DuocUC San Carlos Apoquindo",
+    "tipo": "instituto",
+    "comuna": "Las Condes",
+    "current": {
+      "lat": -33.40015115386455,
+      "lng": -70.50584197672316
+    },
+    "suggested": {
+      "lat": -33.4002012,
+      "lng": -70.5070811
+    },
+    "distance": 115,
+    "status": "needs_review",
+    "osmName": "DuocUC"
+  },
+  {
+    "nombre": "INACAP Providencia",
+    "tipo": "instituto",
+    "comuna": "Providencia",
+    "current": {
+      "lat": -33.4535,
+      "lng": -70.607
+    },
+    "suggested": {
+      "lat": -33.4526925,
+      "lng": -70.5924401
+    },
+    "distance": 1354,
+    "status": "wrong",
+    "osmName": "INACAP Ñuñoa"
+  },
+  {
+    "nombre": "Colegio Verbo Divino",
+    "tipo": "colegio",
+    "comuna": "Las Condes",
+    "current": {
+      "lat": -33.420235845177196,
+      "lng": -70.58690137954444
+    },
+    "suggested": {
+      "lat": -33.4213194,
+      "lng": -70.5859358
+    },
+    "distance": 150,
+    "status": "needs_review",
+    "osmName": "Colegio Verbo Divino"
+  },
+  {
+    "nombre": "Saint George's College",
+    "tipo": "colegio",
+    "comuna": "Vitacura",
+    "current": {
+      "lat": -33.38413074797298,
+      "lng": -70.60008998650848
+    },
+    "suggested": {
+      "lat": -33.3836303,
+      "lng": -70.5989622
+    },
+    "distance": 119,
+    "status": "needs_review",
+    "osmName": "Saint George's College"
+  },
+  {
+    "nombre": "The Newland School",
+    "tipo": "colegio",
+    "comuna": "Las Condes",
+    "current": {
+      "lat": -33.36000934137578,
+      "lng": -70.53286234490828
+    },
+    "suggested": {
+      "lat": -33.3608812,
+      "lng": -70.5343817
+    },
+    "distance": 171,
+    "status": "needs_review",
+    "osmName": "Colegio The Newland School"
+  },
+  {
+    "nombre": "Parque Balmaceda",
+    "tipo": "parque",
+    "comuna": "Providencia",
+    "current": {
+      "lat": -33.43487328339283,
+      "lng": -70.62951706228455
+    },
+    "suggested": {
+      "lat": -33.4168136,
+      "lng": -70.6192564
+    },
+    "distance": 2222,
+    "status": "wrong",
+    "osmName": "Parque Canino"
+  },
+  {
+    "nombre": "Parque de la Familia",
+    "tipo": "parque",
+    "comuna": "Las Condes",
+    "current": {
+      "lat": -33.426055231389526,
+      "lng": -70.67709970978532
+    },
+    "suggested": {
+      "lat": -33.4240262,
+      "lng": -70.6803585
+    },
+    "distance": 377,
+    "status": "wrong",
+    "osmName": "Parque de la Familia"
+  },
+  {
+    "nombre": "Parque Brasil",
+    "tipo": "parque",
+    "comuna": "Santiago",
+    "current": {
+      "lat": -33.519060496383126,
+      "lng": -70.61145027393847
+    },
+    "suggested": {
+      "lat": -33.5192863,
+      "lng": -70.6141286
+    },
+    "distance": 250,
+    "status": "needs_review",
+    "osmName": "Parque Municipal de La Granja República de Brasil"
+  }
+]

@@ -463,7 +463,14 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
 function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projections: YearProjection[], anios: number = 10): ExitScenario {
   const proy = projections[anios - 1];
   if (!proy) {
-    return { anios, valorVenta: 0, saldoCredito: 0, comisionVenta: 0, gananciaNeta: 0, flujoAcumulado: 0, retornoTotal: 0, multiplicadorCapital: 0, tir: 0 };
+    return {
+      anios,
+      valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
+      gananciaNeta: 0, flujoAcumulado: 0, retornoTotal: 0,
+      multiplicadorCapital: 0, tir: 0,
+      inversionInicial: 0, flujoMensualAcumuladoNegativo: 0,
+      totalAportado: 0, gananciaSobreTotal: 0, porcentajeGananciaSobreTotal: 0,
+    };
   }
 
   const valorVenta = proy.valorPropiedad;
@@ -471,13 +478,32 @@ function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projec
   const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
   const retornoTotal = proy.flujoAcumulado + gananciaNeta;
 
-  // Inversión real = pie + gastos de cierre (notaría, CBR, timbres, tasación)
+  // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
   const gastosCompra = Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
-  const inversionTotal = metrics.pieCLP + gastosCompra;
-  const multiplicadorCapital = inversionTotal > 0 ? Math.round((retornoTotal / inversionTotal) * 100) / 100 : 0;
+  const inversionInicial = metrics.pieCLP + gastosCompra;
 
-  // TIR: initial investment includes closing costs
-  const flujos: number[] = [-inversionTotal];
+  // "Plata que realmente pusiste" = inicial + aportes mensuales acumulados
+  // Solo años con flujo anual negativo cuentan como aporte del bolsillo.
+  const flujoMensualAcumuladoNegativo = projections
+    .slice(0, anios)
+    .filter((p) => p.flujoAnual < 0)
+    .reduce((sum, p) => sum + Math.abs(p.flujoAnual), 0);
+  const totalAportado = inversionInicial + flujoMensualAcumuladoNegativo;
+
+  // Ganancia sobre lo que realmente pusiste (no sobre pie + cierre solamente)
+  const gananciaSobreTotal = gananciaNeta - totalAportado;
+  const porcentajeGananciaSobreTotal = totalAportado > 0
+    ? Math.round((gananciaSobreTotal / totalAportado) * 10000) / 100
+    : 0;
+
+  const multiplicadorCapital = totalAportado > 0
+    ? Math.round((retornoTotal / totalAportado) * 100) / 100
+    : 0;
+
+  // TIR: T0 = -inversionInicial. No se modifica aquí: los aportes mensuales
+  // ya están contenidos en los flujos anuales negativos (T1..Tn). Inflar T0
+  // con flujoMensualAcumuladoNegativo provocaría doble conteo.
+  const flujos: number[] = [-inversionInicial];
   for (let i = 0; i < anios; i++) {
     let flujo = projections[i].flujoAnual;
     if (i === anios - 1) {
@@ -497,6 +523,11 @@ function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics, projec
     retornoTotal: Math.round(retornoTotal),
     multiplicadorCapital,
     tir,
+    inversionInicial: Math.round(inversionInicial),
+    flujoMensualAcumuladoNegativo: Math.round(flujoMensualAcumuladoNegativo),
+    totalAportado: Math.round(totalAportado),
+    gananciaSobreTotal: Math.round(gananciaSobreTotal),
+    porcentajeGananciaSobreTotal,
   };
 }
 

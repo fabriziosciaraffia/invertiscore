@@ -11,7 +11,9 @@
       "Bash(curl:*)",
       "Bash(wc:*)",
       "Bash(ls:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Bash(python scripts/.tmp-replace-aisection.py)",
+      "Bash(awk *)"
     ]
   }
 }

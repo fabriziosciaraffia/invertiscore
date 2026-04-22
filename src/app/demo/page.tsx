@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
-import type { FullAnalysisResult, AnalisisInput, AIAnalysis } from "@/lib/types";
+import type { FullAnalysisResult, AnalisisInput, AIAnalysisV2 } from "@/lib/types";
 
 // ─── Hardcoded demo data ────────────────────────────
 const UF_CLP = 38800;
@@ -138,17 +138,43 @@ const DEMO_RESULTS: FullAnalysisResult = {
     acumulado: FLUJO_NETO * (i + 1),
   })),
   projections,
-  exitScenario: {
-    anios: 10,
-    valorVenta: projections[9].valorPropiedad,
-    saldoCredito: projections[9].saldoCredito,
-    comisionVenta: Math.round(projections[9].valorPropiedad * 0.02),
-    gananciaNeta: projections[9].valorPropiedad - projections[9].saldoCredito - Math.round(projections[9].valorPropiedad * 0.02),
-    flujoAcumulado: projections[9].flujoAcumulado,
-    retornoTotal: projections[9].valorPropiedad - projections[9].saldoCredito - Math.round(projections[9].valorPropiedad * 0.02) + projections[9].flujoAcumulado,
-    multiplicadorCapital: 3.21,
-    tir: 9.6,
-  },
+  exitScenario: (() => {
+    const valorVenta = projections[9].valorPropiedad;
+    const saldoCredito = projections[9].saldoCredito;
+    const comisionVenta = Math.round(valorVenta * 0.02);
+    const gananciaNeta = valorVenta - saldoCredito - comisionVenta;
+    const flujoAcumulado = projections[9].flujoAcumulado;
+    const retornoTotal = gananciaNeta + flujoAcumulado;
+    const inversionInicial = PIE_CLP + Math.round(PRECIO_CLP * 0.02);
+    const flujoMensualAcumuladoNegativo = projections
+      .slice(0, 10)
+      .filter((p) => p.flujoAnual < 0)
+      .reduce((s, p) => s + Math.abs(p.flujoAnual), 0);
+    const totalAportado = inversionInicial + flujoMensualAcumuladoNegativo;
+    const gananciaSobreTotal = gananciaNeta - totalAportado;
+    const porcentajeGananciaSobreTotal = totalAportado > 0
+      ? Math.round((gananciaSobreTotal / totalAportado) * 10000) / 100
+      : 0;
+    const multiplicadorCapital = totalAportado > 0
+      ? Math.round((retornoTotal / totalAportado) * 100) / 100
+      : 0;
+    return {
+      anios: 10,
+      valorVenta,
+      saldoCredito,
+      comisionVenta,
+      gananciaNeta,
+      flujoAcumulado,
+      retornoTotal,
+      multiplicadorCapital,
+      tir: 9.6,
+      inversionInicial,
+      flujoMensualAcumuladoNegativo,
+      totalAportado,
+      gananciaSobreTotal,
+      porcentajeGananciaSobreTotal,
+    };
+  })(),
   refinanceScenario: {
     nuevoAvaluo: projections[9].valorPropiedad,
     nuevoCredito: Math.round(projections[9].valorPropiedad * 0.8),
@@ -177,63 +203,78 @@ const DEMO_RESULTS: FullAnalysisResult = {
   ],
 };
 
-// ─── Hardcoded AI Analysis (typewriter animated) ────
-const DEMO_AI: AIAnalysis = {
-  resumenEjecutivo_clp: "Este departamento en Providencia presenta un escenario típico de inversión con flujo negativo. Con un arriendo de $420.000 y un dividendo de $530.341, el déficit mensual es de $289.908. Sin embargo, la plusvalía proyectada de 4% anual en Providencia compensa significativamente.",
-  resumenEjecutivo_uf: "Este departamento en Providencia presenta un escenario típico de inversión con flujo negativo. Con un arriendo de UF 10,8 y un dividendo de UF 13,7, el déficit mensual es de UF 7,5. Sin embargo, la plusvalía proyectada de 4% anual en Providencia compensa significativamente.",
-  tuBolsillo: {
-    titulo: "Tu bolsillo mes a mes",
-    contenido_clp: "Cada mes necesitas poner $289.908 de tu bolsillo. En un año, eso suma $3.478.896. Con un pie de $24.832.000, recuperas tu inversión vía plusvalía en aproximadamente 7 años — pero el flujo nunca llega a ser positivo con las condiciones actuales.",
-    contenido_uf: "Cada mes necesitas poner UF 7,5 de tu bolsillo. En un año, eso suma UF 89,6. Con un pie de UF 640, recuperas tu inversión vía plusvalía en aproximadamente 7 años — pero el flujo nunca llega a ser positivo con las condiciones actuales.",
-    alerta_clp: "El flujo negativo de $289.908/mes es manejable para un sueldo sobre $2M, pero ajustado si tienes otros compromisos financieros.",
-    alerta_uf: "El flujo negativo de UF 7,5/mes es manejable para un sueldo sobre UF 51,5, pero ajustado si tienes otros compromisos financieros.",
+// ─── Hardcoded AI Analysis (v2 structure) ────────────
+const DEMO_AI: AIAnalysisV2 = {
+  siendoFrancoHeadline_clp: "A UF 3.200 el depto no se paga solo. Bajando a UF 2.900 los números empiezan a cerrar y la plusvalía de Providencia acompaña.",
+  siendoFrancoHeadline_uf: "A UF 3.200 el depto no se paga solo. Bajando a UF 2.900 los números empiezan a cerrar y la plusvalía de Providencia acompaña.",
+  conviene: {
+    pregunta: "¿Conviene o no conviene?",
+    respuestaDirecta_clp: "Hoy no conviene al precio de lista. A UF 3.200 tendrías que poner $289.908 de tu bolsillo cada mes durante 25 años para sostener la inversión. Pero la zona es buena y hay margen para negociar: a UF 2.900 el flujo mejora significativamente y la inversión empieza a tener sentido.",
+    respuestaDirecta_uf: "Hoy no conviene al precio de lista. A UF 3.200 tendrías que poner UF 7,5 de tu bolsillo cada mes durante 25 años para sostener la inversión. Pero la zona es buena y hay margen para negociar: a UF 2.900 el flujo mejora significativamente y la inversión empieza a tener sentido.",
+    veredictoFrase_clp: "Los números piden una negociación antes de firmar.",
+    veredictoFrase_uf: "Los números piden una negociación antes de firmar.",
+    datosClave: [
+      {
+        label: "Aporte mensual",
+        valor_clp: "$289.908",
+        valor_uf: "UF 7,5",
+        subtexto: "de tu bolsillo",
+        color: "red",
+      },
+      {
+        label: "Precio sugerido",
+        valor_clp: "UF 2.900",
+        valor_uf: "UF 2.900",
+        subtexto: "-9% negociable",
+        color: "accent",
+      },
+      {
+        label: "Retorno 10 años",
+        valor_clp: "3,21x",
+        valor_uf: "3,21x",
+        subtexto: "sobre el pie",
+        color: "green",
+      },
+    ],
+    reencuadre_clp: "Con este precio y financiamiento, estás pagando principalmente por la plusvalía de Providencia — no por flujo. Si esa apuesta te calza, el margen de negociación es la palanca. Si no te calza, conviene buscar algo donde el arriendo cubra más del costo mensual.",
+    reencuadre_uf: "Con este precio y financiamiento, estás pagando principalmente por la plusvalía de Providencia — no por flujo. Si esa apuesta te calza, el margen de negociación es la palanca. Si no te calza, conviene buscar algo donde el arriendo cubra más del costo mensual.",
+    cajaAccionable_clp: "¿Puedes sostener $289.908/mes durante 10+ años sin que afecte tu estabilidad? Y si el vendedor no baja a UF 2.900, ¿qué precio máximo estás dispuesto a pagar?",
+    cajaAccionable_uf: "¿Puedes sostener UF 7,5/mes durante 10+ años sin que afecte tu estabilidad? Y si el vendedor no baja a UF 2.900, ¿qué precio máximo estás dispuesto a pagar?",
+    cajaLabel: "Antes de seguir, decide:",
   },
-  vsAlternativas: {
-    titulo: "¿Es mejor que un depósito a plazo?",
-    contenido_clp: "Si pones los $24.832.000 del pie en un depósito a plazo al 5% anual, ganas $1.241.600/año sin riesgo. Este departamento requiere aporte mensual pero genera plusvalía: en 10 años tu patrimonio neto crece 3.21x. La diferencia es apalancamiento — usas plata del banco para multiplicar tu capital.",
-    contenido_uf: "Si pones las UF 640 del pie en un depósito a plazo al 5% anual, ganas UF 32/año sin riesgo. Este departamento requiere aporte mensual pero genera plusvalía: en 10 años tu patrimonio neto crece 3.21x. La diferencia es apalancamiento — usas plata del banco para multiplicar tu capital.",
+  costoMensual: {
+    pregunta: "¿Qué te cuesta mes a mes?",
+    contenido_clp: "Entra $420.000 de arriendo. Sale $530.341 de dividendo + $80.000 de gastos comunes + $83.667 de contribuciones + mantención. Total salida: $709.908. Flujo neto: -$289.908 cada mes.",
+    contenido_uf: "Entra UF 10,8 de arriendo. Sale UF 13,7 de dividendo + UF 2,1 de gastos comunes + UF 2,2 de contribuciones + mantención. Total salida: UF 18,3. Flujo neto: -UF 7,5 cada mes.",
+    cajaAccionable_clp: "Regla del 25%: si el aporte no supera el 25% de tu ingreso líquido, es sostenible. $289.908/mes implica un sueldo líquido sobre $1.160.000 para que no te apriete.",
+    cajaAccionable_uf: "Regla del 25%: si el aporte no supera el 25% de tu ingreso líquido, es sostenible. UF 7,5/mes implica un sueldo líquido sobre UF 30 para que no te apriete.",
+    cajaLabel: "Hazte esta pregunta:",
   },
   negociacion: {
-    titulo: "Margen de negociación",
-    contenido_clp: "El precio de compra (UF 3.200 = $2.258.168/m²) está por debajo del promedio de la zona ($2.438.400/m²). Si logras bajar el precio a UF 2.900 (-9%), el flujo mejora a -$220.000/mes y la TIR sube a 11,2%. Un descuento del 5% (UF 3.040) ya mejora el flujo en $50.000/mes.",
-    contenido_uf: "El precio de compra (UF 3.200 = UF 58,2/m²) está por debajo del promedio de la zona (UF 62,8/m²). Si logras bajar el precio a UF 2.900 (-9%), el flujo mejora a UF -5,7/mes y la TIR sube a 11,2%. Un descuento del 5% (UF 3.040) ya mejora el flujo en UF 1,3/mes.",
-    precioSugerido: "UF 2.900 – UF 3.040",
+    pregunta: "¿Hay margen para negociar?",
+    contenido_clp: "A UF 2.900 (9% menos) el flujo mejora a -$220.000/mes y la TIR sube a 11,2%. Es un descuento alcanzable: el precio/m² ya está bajo el promedio de Providencia, y con las tasas actuales, pocos compradores pueden pagar precio lista.",
+    contenido_uf: "A UF 2.900 (9% menos) el flujo mejora a -UF 5,7/mes y la TIR sube a 11,2%. Es un descuento alcanzable: el precio/m² ya está bajo el promedio de Providencia, y con las tasas actuales, pocos compradores pueden pagar precio lista.",
+    cajaAccionable_clp: "Usa este guion: 'Con las tasas actuales el dividendo queda muy alto para el arriendo de mercado. A UF 2.900 puedo cerrar la semana que viene. Sobre eso no llego.'",
+    cajaAccionable_uf: "Usa este guion: 'Con las tasas actuales el dividendo queda muy alto para el arriendo de mercado. A UF 2.900 puedo cerrar la semana que viene. Sobre eso no llego.'",
+    cajaLabel: "Guión para la contraoferta:",
+    precioSugerido: "UF 2.900",
   },
-  proyeccion: {
-    titulo: "Proyección a 10 años",
-    contenido_clp: "En 10 años, tu patrimonio se multiplica 3.21x, pasando de una inversión inicial de $24.832.000 (pie 20%) a un patrimonio neto de aproximadamente $79.712.000. La plusvalía acumulada de 4% anual transforma una propiedad de $124.160.000 en una de $183.780.000.",
-    contenido_uf: "En 10 años, tu patrimonio se multiplica 3.21x, pasando de una inversión inicial de UF 640 (pie 20%) a un patrimonio neto de aproximadamente UF 2.055. La plusvalía acumulada de 4% anual transforma una propiedad de UF 3.200 en una de UF 4.738.",
+  largoPlazo: {
+    pregunta: "¿Vale la pena a 10 años?",
+    contenido_clp: "En 10 años aportas ~$34.800.000 acumulados. La propiedad vale $183.780.000 (vs $124.160.000 hoy, con plusvalía 4% anual). Patrimonio neto: $79.712.000. Retorno 3,21x sobre el pie de $24.832.000. TIR estimada: 9,6%.",
+    contenido_uf: "En 10 años aportas ~UF 897 acumulados. La propiedad vale UF 4.738 (vs UF 3.200 hoy, con plusvalía 4% anual). Patrimonio neto: UF 2.055. Retorno 3,21x sobre el pie de UF 640. TIR estimada: 9,6%.",
+    cajaAccionable_clp: "La apuesta implícita: que Providencia mantenga plusvalía de 4% anual durante 10 años. Históricamente (2014-2024) la comuna promedió 5,1% anual — la apuesta tiene respaldo, pero no está garantizada.",
+    cajaAccionable_uf: "La apuesta implícita: que Providencia mantenga plusvalía de 4% anual durante 10 años. Históricamente (2014-2024) la comuna promedió 5,1% anual — la apuesta tiene respaldo, pero no está garantizada.",
+    cajaLabel: "La apuesta que estás haciendo:",
   },
   riesgos: {
-    titulo: "Riesgos a considerar",
-    items_clp: [
-      "Si la tasa sube a 6,2% (+1,5%), el dividendo sube a $585.000 y el flujo negativo crece a $345.000/mes",
-      "Una vacancia de 2 meses al año agrega $35.000/mes al déficit",
-      "Providencia tiene baja vacancia histórica (3-4%), pero una recesión podría elevarla temporalmente",
-    ],
-    items_uf: [
-      "Si la tasa sube a 6,2% (+1,5%), el dividendo sube a UF 15,1 y el flujo negativo crece a UF 8,9/mes",
-      "Una vacancia de 2 meses al año agrega UF 0,9/mes al déficit",
-      "Providencia tiene baja vacancia histórica (3-4%), pero una recesión podría elevarla temporalmente",
-    ],
+    pregunta: "¿Qué puede salir mal?",
+    contenido_clp: "**Subida de tasas.** Si la tasa sube 1,5%, el dividendo pasa a $585.000 y el flujo negativo crece a $345.000/mes. Tu capacidad de ahorro debe absorber ese escenario.\n\n**Vacancia prolongada.** Cada mes sin arrendatario pierdes $500.000 (arriendo + GGCC). Una vacancia de 2 meses al año suma $35.000/mes al déficit.\n\n**Plusvalía por debajo del supuesto.** Si la plusvalía cae a 2% anual (en vez de 4%), el retorno 10 años baja a 2,1x en lugar de 3,21x — la inversión se sostiene pero con mucho menos margen.",
+    contenido_uf: "**Subida de tasas.** Si la tasa sube 1,5%, el dividendo pasa a UF 15,1 y el flujo negativo crece a UF 8,9/mes. Tu capacidad de ahorro debe absorber ese escenario.\n\n**Vacancia prolongada.** Cada mes sin arrendatario pierdes UF 12,9 (arriendo + GGCC). Una vacancia de 2 meses al año suma UF 0,9/mes al déficit.\n\n**Plusvalía por debajo del supuesto.** Si la plusvalía cae a 2% anual (en vez de 4%), el retorno 10 años baja a 2,1x en lugar de 3,21x — la inversión se sostiene pero con mucho menos margen.",
+    cajaAccionable_clp: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~$4.260.000. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
+    cajaAccionable_uf: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~UF 110. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
+    cajaLabel: "Si decides avanzar, protegé estos flancos:",
   },
-  veredicto: {
-    titulo: "AJUSTA EL PRECIO",
-    decision: "AJUSTA EL PRECIO" as const,
-    explicacion_clp: "El departamento tiene fundamentos sólidos: buena ubicación, precio bajo el promedio de la zona y plusvalía proyectada atractiva. El flujo negativo de $290K/mes es el punto débil. Recomendación: negocia el precio a UF 2.900-3.040 o busca un arriendo de $480.000 (+14%) para mejorar la ecuación.",
-    explicacion_uf: "El departamento tiene fundamentos sólidos: buena ubicación, precio bajo el promedio de la zona y plusvalía proyectada atractiva. El flujo negativo de UF 7,5/mes es el punto débil. Recomendación: negocia el precio a UF 2.900-3.040 o busca un arriendo de UF 12,4 (+14%) para mejorar la ecuación.",
-  },
-  aFavor: [
-    "Ubicación premium con alta demanda y baja vacancia",
-    "Precio por m² bajo el promedio de la zona (-7%)",
-    "Patrimonio se multiplica 3.21x en 10 años",
-    "Plusvalía proyectada de 4% anual en Providencia",
-  ],
-  puntosAtencion: [
-    "Flujo negativo de $290K/mes requiere capacidad de ahorro",
-    "Cash on cash negativo: la propiedad no se paga sola",
-    "Sensible a alzas de tasa de interés (+1,5% = +$55K/mes)",
-  ],
 };
 
 // ─── Zone comparison data ────────────────────────────

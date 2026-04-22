@@ -1,0 +1,166 @@
+Auditando 66 POIs contra OpenStreetMap Overpass API...
+Rate limit: ~1 request cada 4000ms → tiempo estimado ~264s
+
+[ 1/66] Clínica Alemana ... ❌ 2453m
+[ 2/66] Clínica Las Condes ... ⚠️  115m
+[ 3/66] Clínica Santa María ... ✅ 0m
+[ 4/66] Clínica Indisa ... ✅ 0m
+[ 5/66] Clínica UC Christus ... ❌ 569m
+[ 6/66] Clínica Dávila ... ✅ 0m
+[ 7/66] Clínica RedSalud Vitacura ... ✅ 0m
+[ 8/66] Clínica Meds ... ❌ 432m
+[ 9/66] Hospital Salvador ... ✅ 0m
+[10/66] Hospital Clínico U. Chile ... ❓ —
+[11/66] Hospital Sótero del Río ... ❌ 393m
+[12/66] FALP (Oncológico) ... ✅ 0m
+[13/66] Hospital Calvo Mackenna ... ✅ 0m
+[14/66] El Golf / Sanhattan ... ✅ 0m
+[15/66] Nueva Las Condes ... ✅ 0m
+[16/66] Centro Financiero Santiago ... ❌ 331m
+[17/66] UC Campus San Joaquín ... ✅ 51m
+[18/66] UC Casa Central ... ✅ 0m
+[19/66] Universidad de Chile - Casa Central ... ✅ 0m
+[20/66] Universidad de Chile - JGM ... ✅ 0m
+[21/66] USACH ... ✅ 0m
+[22/66] UDP Facultad Economía ... ✅ 64m
+[23/66] UDP Facultad Comunicaciones ... ✅ 79m
+[24/66] UAI Peñalolén ... ✅ 0m
+[25/66] UDD Las Condes ... ❓ —
+[26/66] U. Mayor ... ❌ 2185m
+[27/66] U. Andrés Bello República ... ✅ 0m
+[28/66] U. de los Andes ... ✅ 0m
+[29/66] DuocUC Antonio Varas ... ✅ 0m
+[30/66] DuocUC Plaza Oeste ... ✅ 0m
+[31/66] DuocUC San Carlos Apoquindo ... ⚠️  115m
+[32/66] INACAP Providencia ... ❌ 1354m
+[33/66] INACAP Maipú ... ✅ 52m
+[34/66] INACAP Apoquindo ... ✅ 0m
+[35/66] The Grange School ... ✅ 45m
+[36/66] Colegio Verbo Divino ... ⚠️  150m
+[37/66] Colegio Tabancura ... ✅ 0m
+[38/66] Saint George's College ... ⚠️  119m
+[39/66] Colegio San Ignacio El Bosque ... ✅ 0m
+[40/66] Colegio Nido de Águilas ... ✅ 0m
+[41/66] Colegio Cumbres ... ✅ 98m
+[42/66] The Newland School ... ⚠️  171m
+[43/66] Parque Metropolitano ... ✅ 0m
+[44/66] Parque Forestal ... ✅ 0m
+[45/66] Parque Bustamante ... ✅ 0m
+[46/66] Parque Balmaceda ... ❌ 2222m
+[47/66] Parque Inés de Suárez ... ✅ 0m
+[48/66] Parque Araucano ... ✅ 0m
+[49/66] Parque de la Familia ... ❌ 377m
+[50/66] Parque Quinta Normal ... ✅ 0m
+[51/66] Parque O'Higgins ... ✅ 0m
+[52/66] Parque Bicentenario ... ✅ 0m
+[53/66] Parque Padre Hurtado ... ✅ 45m
+[54/66] Parque Brasil ... ⚠️  250m
+[55/66] Costanera Center ... ✅ 0m
+[56/66] Parque Arauco ... ✅ 0m
+[57/66] Alto Las Condes ... ✅ 0m
+[58/66] Mall Plaza Vespucio ... ✅ 0m
+[59/66] Mall Plaza Oeste ... ❓ —
+[60/66] Mall Plaza Norte ... ✅ 0m
+[61/66] Mall Florida Center ... ✅ 29m
+[62/66] Portal La Dehesa ... ✅ 0m
+[63/66] Mall Plaza Egaña ... ✅ 0m
+[64/66] Estación Central EFE ... ✅ 0m
+[65/66] Estación Maestranza EFE ... ✅ 7m
+[66/66] Estación Nos EFE ... ✅ 75m
+
+=== REPORTE DE AUDITORÍA DE COORDENADAS ===
+
+Total POIs auditados: 66
+✅ OK (<100m):              48
+⚠️  Review (100-300m):       6
+❌ Wrong (>300m):             9
+❓ No encontrados en OSM:       3
+⏱  Tiempo total: 594.6s
+
+🔴 POIS CON ERROR >300m:
+
+  Clínica Alemana (clinica)
+    Actual:    -33.392962, -70.572736
+    Sugerido:  -33.413921, -70.580980
+    Distancia: 2453m
+    OSM name:  "Clínica Estética San Pascual"
+
+  Clínica UC Christus (clinica)
+    Actual:    -33.442305, -70.640519
+    Sugerido:  -33.446455, -70.644107
+    Distancia: 569m
+    OSM name:  "Clínica Central"
+
+  Clínica Meds (clinica)
+    Actual:    -33.355680, -70.535155
+    Sugerido:  -33.355404, -70.539790
+    Distancia: 432m
+    OSM name:  "Clinica MEDS La Dehesa - Torre Nucleo Los Trapenses"
+
+  Hospital Sótero del Río (clinica)
+    Actual:    -33.577056, -70.581206
+    Sugerido:  -33.578726, -70.577462
+    Distancia: 393m
+    OSM name:  "Hospital de Campaña Sótero del Río"
+
+  Centro Financiero Santiago (negocios)
+    Actual:    -33.440747, -70.650785
+    Sugerido:  -33.437775, -70.650580
+    Distancia: 331m
+    OSM name:  "Centro Histórico"
+
+  U. Mayor (universidad)
+    Actual:    -33.420231, -70.590824
+    Sugerido:  -33.407095, -70.573317
+    Distancia: 2185m
+    OSM name:  "Postgrados Universidad Mayor"
+
+  INACAP Providencia (instituto)
+    Actual:    -33.453500, -70.607000
+    Sugerido:  -33.452692, -70.592440
+    Distancia: 1354m
+    OSM name:  "INACAP Ñuñoa"
+
+  Parque Balmaceda (parque)
+    Actual:    -33.434873, -70.629517
+    Sugerido:  -33.416814, -70.619256
+    Distancia: 2222m
+    OSM name:  "Parque Canino"
+
+  Parque de la Familia (parque)
+    Actual:    -33.426055, -70.677100
+    Sugerido:  -33.424026, -70.680358
+    Distancia: 377m
+    OSM name:  "Parque de la Familia"
+
+
+🟡 POIS A REVISAR (100-300m):
+
+  Clínica Las Condes (clinica) — 115m
+  DuocUC San Carlos Apoquindo (instituto) — 115m
+  Colegio Verbo Divino (colegio) — 150m
+  Saint George's College (colegio) — 119m
+  The Newland School (colegio) — 171m
+  Parque Brasil (parque) — 250m
+
+❓ NO ENCONTRADOS EN OSM (buscar manualmente):
+
+  - Hospital Clínico U. Chile (clinica)
+  - UDD Las Condes (universidad)
+  - Mall Plaza Oeste (mall)
+
+📍 TOP 10 POIS MÁS DESALINEADOS:
+
+   1. ❌ Clínica Alemana                        clinica          2453m
+   2. ❌ Parque Balmaceda                       parque           2222m
+   3. ❌ U. Mayor                               universidad      2185m
+   4. ❌ INACAP Providencia                     instituto        1354m
+   5. ❌ Clínica UC Christus                    clinica           569m
+   6. ❌ Clínica Meds                           clinica           432m
+   7. ❌ Hospital Sótero del Río                clinica           393m
+   8. ❌ Parque de la Familia                   parque            377m
+   9. ❌ Centro Financiero Santiago             negocios          331m
+  10. ⚠️  Parque Brasil                          parque            250m
+
+📄 Sugerencias guardadas en: C:\Users\fabri\invertiscore\audit-attractors-results.json
+   Revisar el archivo y aplicar correcciones manualmente al attractors.ts
