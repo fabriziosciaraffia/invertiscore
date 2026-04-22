@@ -51,13 +51,17 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   const cashOnCash =
     inversionInicial > 0 ? (flujoAnualPromedio / inversionInicial) * 100 : 0;
 
-  // Payback: año en que el acumulado (-inversión inicial + flujo) cruza 0.
-  // No depende de la plusvalía (no incluye venta).
+  // Payback (con venta): año en que el acumulado del flujo operativo +
+  // (valorVenta − deuda − comisión 2%) de ese año cubre la inversión inicial.
+  // Depende de la plusvalía: al vender más caro, recuperas antes.
   let paybackAnios: number | null = null;
-  let acum = -inversionInicial;
+  let flujoAcumIter = 0;
   for (let i = 0; i < projections.length; i++) {
-    acum += projections[i].flujoAnual;
-    if (acum >= 0) {
+    const p = projections[i];
+    flujoAcumIter += p.flujoAnual;
+    const cajaSiVendiera = p.valorPropiedad - p.saldoCredito - Math.round(p.valorPropiedad * 0.02);
+    const totalRecuperado = flujoAcumIter + cajaSiVendiera;
+    if (totalRecuperado >= inversionInicial) {
       paybackAnios = i + 1;
       break;
     }
@@ -96,8 +100,8 @@ export function tonoCashOnCash(coc: number): Tone {
 
 export function tonoPayback(p: number | null): Tone {
   if (p === null) return "bad";
-  if (p <= 10) return "good";
-  if (p <= 20) return "warn";
+  if (p <= 5) return "good";
+  if (p <= 10) return "warn";
   return "bad";
 }
 

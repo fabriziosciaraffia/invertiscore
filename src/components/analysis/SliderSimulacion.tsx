@@ -3,34 +3,39 @@
 import { useSimulation } from "@/contexts/SimulationContext";
 import { Info } from "lucide-react";
 
-export default function SliderSimulacion() {
+export default function SliderSimulacion({ variant = "card" }: { variant?: "card" | "integrated" }) {
   const { plazoAnios, plusvaliaAnual, setPlazoAnios, setPlusvaliaAnual } = useSimulation();
 
   const sliderStyles = {
     accentColor: "#FBBF24",
   } as React.CSSProperties;
 
+  const wrapperStyle: React.CSSProperties =
+    variant === "integrated"
+      ? { padding: 0, margin: 0 }
+      : {
+          background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
+          border: "0.5px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+          borderRadius: 10,
+          padding: "18px 20px",
+          margin: "20px 0 24px",
+        };
+
   return (
-    <div
-      style={{
-        background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
-        border: "0.5px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
-        borderRadius: 10,
-        padding: "18px 20px",
-        margin: "20px 0 24px",
-      }}
-    >
-      <span
-        className="font-mono uppercase block mb-4"
-        style={{
-          fontSize: 10,
-          letterSpacing: 2,
-          color: "#FBBF24",
-          fontWeight: 600,
-        }}
-      >
-        Simulación
-      </span>
+    <div style={wrapperStyle}>
+      {variant === "card" && (
+        <span
+          className="font-mono uppercase block mb-4"
+          style={{
+            fontSize: 10,
+            letterSpacing: 2,
+            color: "#FBBF24",
+            fontWeight: 600,
+          }}
+        >
+          Simulación
+        </span>
+      )}
 
       {/* Plazo */}
       <div className="mb-4">

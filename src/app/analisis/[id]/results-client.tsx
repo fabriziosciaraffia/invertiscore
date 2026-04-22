@@ -3,7 +3,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
 import {
-  Bar, Line, Area, XAxis, YAxis, CartesianGrid,
+  Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, ReferenceLine,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,6 +160,7 @@ function hasAiV2(ai: any): ai is import("@/lib/types").AIAnalysisV2 {
     && typeof ai.conviene.respuestaDirecta_clp === "string";
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, badge, children }: {
   title: string;
   subtitle?: string;
@@ -212,6 +213,7 @@ function MetricRow({ label, value, color, tooltip }: { label: string; value: str
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function SimulationTag() {
   return (
     <span
@@ -277,9 +279,9 @@ function IndicadoresRentabilidadContent({
           size="small"
         />
         <KPICard
-          label="Payback"
+          label="Payback (con venta)"
           value={paybackValue}
-          sub="Recupero del pie"
+          sub="Año en que recuperas toda la inversión"
           tone={tonoPayback(kpis.paybackAnios)}
           size="small"
         />
@@ -291,6 +293,785 @@ function IndicadoresRentabilidadContent({
           size="small"
         />
       </div>
+    </div>
+  );
+}
+
+// ─── Gráfico de patrimonio (acordeón 2 · Capa 3) ─────
+function GraficoPatrimonioContent({
+  projections,
+  metrics,
+  inputData,
+  currency,
+  valorUF,
+}: {
+  projections: YearProjection[];
+  metrics: AnalysisMetrics;
+  inputData: AnalisisInput;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const { plazoAnios } = useSimulation();
+
+  const chartData = useMemo(() => {
+    const pieCLP = metrics.pieCLP ?? 0;
+    const precioCLP = metrics.precioCLP ?? 0;
+    const creditoInicial = Math.max(precioCLP - pieCLP, 0);
+    const inversionInicial = pieCLP + Math.round(precioCLP * 0.02);
+    const rows: Array<{
+      anio: number;
+      aporteAcum: number;
+      valorDepto: number;
+      patrimonioNeto: number;
+      flujoAcumulado: number;
+      deudaPendiente: number;
+    }> = [];
+
+    // Año 0 — día de cierre
+    rows.push({
+      anio: 0,
+      aporteAcum: inversionInicial,
+      valorDepto: precioCLP,
+      patrimonioNeto: precioCLP - creditoInicial - Math.round(precioCLP * 0.02),
+      flujoAcumulado: 0,
+      deudaPendiente: creditoInicial,
+    });
+
+    // Años 1..plazoAnios
+    for (let i = 1; i <= plazoAnios; i++) {
+      const p = projections[i - 1];
+      if (!p) break;
+      const aporteAcum = inversionInicial + Math.abs(Math.min(0, p.flujoAcumulado));
+      const comision = Math.round(p.valorPropiedad * 0.02);
+      rows.push({
+        anio: i,
+        aporteAcum,
+        valorDepto: p.valorPropiedad,
+        patrimonioNeto: p.valorPropiedad - p.saldoCredito - comision,
+        flujoAcumulado: p.flujoAcumulado,
+        deudaPendiente: p.saldoCredito,
+      });
+    }
+    return rows;
+  }, [projections, metrics, plazoAnios]);
+
+  // Año de entrega si es venta en blanco
+  const entregaAnio = useMemo(() => {
+    if (!inputData.fechaEntrega || inputData.estadoVenta === "inmediata") return null;
+    const [a, me] = inputData.fechaEntrega.split("-").map(Number);
+    const now = new Date();
+    const ent = new Date(a, (me || 1) - 1);
+    const meses = Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    if (meses <= 0) return null;
+    return Math.ceil(meses / 12);
+  }, [inputData.fechaEntrega, inputData.estadoVenta]);
+
+  const last = chartData[chartData.length - 1];
+  const ganancia = last ? last.patrimonioNeto - last.aporteAcum : 0;
+  const gananciaPct = last && last.aporteAcum > 0 ? (ganancia / last.aporteAcum) * 100 : 0;
+
+  const tickFormatter = (v: number) => fmtAxisMoney(v, currency);
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div style={{ width: "100%", height: 320 }}>
+        <ResponsiveContainer>
+          <ComposedChart data={chartData} margin={{ top: 10, right: 16, left: currency === "UF" ? 20 : 10, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" vertical={false} />
+            <XAxis
+              dataKey="anio"
+              tick={{ fontSize: 11, fill: "var(--franco-text-secondary)" }}
+              tickFormatter={(v) => `a${v}`}
+            />
+            <YAxis
+              tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }}
+              tickFormatter={tickFormatter}
+            />
+            <RechartsTooltip
+              content={({ active, payload }) => {
+                if (!active || !payload || payload.length === 0) return null;
+                const row = payload[0]?.payload as (typeof chartData)[number] | undefined;
+                if (!row) return null;
+                const fmt = (n: number) => fmtMoney(n, currency);
+                return (
+                  <div
+                    className="rounded-lg px-3 py-2.5 shadow-lg"
+                    style={{
+                      border: "0.5px solid var(--franco-border-hover)",
+                      background: "var(--franco-card)",
+                      fontSize: 12,
+                      color: "var(--franco-text)",
+                    }}
+                  >
+                    <div className="mb-1.5 font-semibold">Año {row.anio}</div>
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#FBBF24" }} />
+                      Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
+                    </div>
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#C8323C" }} />
+                      − Deuda: <span className="ml-auto font-mono" style={{ color: "#C8323C" }}>−{fmt(row.deudaPendiente)}</span>
+                    </div>
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "rgba(250,250,248,0.5)" }} />
+                      Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
+                    </div>
+                    <div className="mt-1.5 pt-1.5 flex items-center gap-2" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#B0BEC5" }} />
+                      <span className="font-semibold" style={{ color: "var(--franco-text)" }}>= Patrimonio neto</span>
+                      <span className="ml-auto font-mono font-bold" style={{ color: "#B0BEC5" }}>{fmt(row.patrimonioNeto)}</span>
+                    </div>
+                  </div>
+                );
+              }}
+            />
+            {entregaAnio !== null && entregaAnio <= plazoAnios && (
+              <ReferenceLine
+                x={entregaAnio}
+                stroke="var(--franco-text-muted)"
+                strokeDasharray="4 4"
+                strokeWidth={1}
+                label={{ value: "📦 Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }}
+              />
+            )}
+            <Bar
+              dataKey="aporteAcum"
+              stackId="composicion"
+              fill="rgba(250,250,248,0.5)"
+              name="Aporte acumulado"
+              barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
+            />
+            <Bar
+              dataKey="valorDepto"
+              stackId="composicion"
+              fill="#FBBF24"
+              name="Valor depto"
+              barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
+            />
+            <Line
+              type="monotone"
+              dataKey="patrimonioNeto"
+              stroke="#B0BEC5"
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: "#B0BEC5", stroke: "var(--franco-card)", strokeWidth: 1 }}
+              name="Patrimonio neto"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Leyenda */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center font-mono" style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 65%, transparent)" }}>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />
+          Aporte acumulado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FBBF24" }} />
+          Valor depto
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 rounded" style={{ background: "#B0BEC5", height: 2 }} />
+          Patrimonio neto
+        </span>
+      </div>
+
+      {/* Checkpoint final */}
+      {last && (
+        <div
+          style={{
+            background: "color-mix(in srgb, #B0BEC5 8%, var(--franco-card))",
+            border: "0.5px solid color-mix(in srgb, #B0BEC5 25%, transparent)",
+            borderLeft: "3px solid #B0BEC5",
+            borderRadius: "0 10px 10px 0",
+            padding: "14px 18px",
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
+            >
+              Patrimonio al año {plazoAnios}
+            </span>
+            <span
+              className="font-mono font-bold whitespace-nowrap text-[20px] sm:text-[24px]"
+              style={{ color: "#B0BEC5", lineHeight: 1 }}
+            >
+              {fmtMoney(last.patrimonioNeto, currency)}
+            </span>
+          </div>
+          <div className="flex items-baseline justify-between gap-2 mt-2">
+            <span className="font-body" style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}>
+              vs {fmtMoney(last.aporteAcum, currency)} aportados
+            </span>
+            <span
+              className="font-mono font-bold whitespace-nowrap"
+              style={{ fontSize: 13, color: ganancia >= 0 ? "#B0BEC5" : "#C8323C" }}
+            >
+              {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
+            </span>
+          </div>
+        </div>
+      )}
+      {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+      <span style={{ display: "none" }} aria-hidden>{valorUF}</span>
+    </div>
+  );
+}
+
+// ─── Venta o Refi (acordeón 3 · Capa 3) ──────────────
+function VentaRefiContent({
+  projections,
+  metrics,
+  inputData,
+  currency,
+  valorUF,
+}: {
+  projections: YearProjection[];
+  metrics: AnalysisMetrics;
+  inputData: AnalisisInput;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const { plazoAnios } = useSimulation();
+  const [mode, setMode] = useState<"venta" | "refi">("venta");
+  const [ltv, setLtv] = useState<0.60 | 0.70 | 0.75>(0.70);
+
+  const data = useMemo(() => {
+    const pieCLP = metrics.pieCLP ?? 0;
+    const precioCLP = metrics.precioCLP ?? 0;
+    const inversionInicial = pieCLP + Math.round(precioCLP * 0.02);
+
+    const lastProy = projections[Math.min(plazoAnios, projections.length) - 1];
+    if (!lastProy) {
+      return null;
+    }
+    const valorDepto = lastProy.valorPropiedad;
+    const deudaPendiente = lastProy.saldoCredito;
+    const flujoAcumulado = lastProy.flujoAcumulado;
+    const aporteAcum = inversionInicial + Math.abs(Math.min(0, flujoAcumulado));
+
+    // Venta (sin notaría — ya no se resta)
+    const comisionVenta = Math.round(valorDepto * 0.02);
+    const teQueda = valorDepto - deudaPendiente - comisionVenta;
+    const gananciaNeta = teQueda - aporteAcum;
+    const gananciaPct = aporteAcum > 0 ? (gananciaNeta / aporteAcum) * 100 : 0;
+
+    // Refi — LTV parametrizable
+    const nuevoCredito = Math.round(valorDepto * ltv);
+    const liquidez = nuevoCredito - deudaPendiente;
+
+    return {
+      valorDepto,
+      deudaPendiente,
+      comisionVenta,
+      teQueda,
+      aporteAcum,
+      gananciaNeta,
+      gananciaPct,
+      nuevoCredito,
+      liquidez,
+      LTV: ltv,
+    };
+  }, [projections, metrics, plazoAnios, ltv]);
+
+  const fmt = (n: number) => fmtMoney(n, currency);
+
+  // Entrega futura: si el horizonte elegido está antes de la entrega, no aplica venta/refi
+  const mesesPreEntrega = useMemo(() => {
+    if (!inputData.fechaEntrega || inputData.estadoVenta === "inmediata") return 0;
+    const [a, me] = inputData.fechaEntrega.split("-").map(Number);
+    const now = new Date();
+    const ent = new Date(a, (me || 1) - 1);
+    return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  }, [inputData.fechaEntrega, inputData.estadoVenta]);
+  const horizonBeforeDelivery = mesesPreEntrega > 0 && plazoAnios * 12 <= mesesPreEntrega;
+
+  if (horizonBeforeDelivery || !data) {
+    return (
+      <div
+        className="flex items-center gap-3 rounded-lg p-4"
+        style={{ border: "1px solid color-mix(in srgb, #C8323C 30%, transparent)", background: "color-mix(in srgb, #C8323C 5%, transparent)" }}
+      >
+        <Clock className="h-5 w-5 shrink-0" style={{ color: "#C8323C" }} />
+        <div>
+          <p className="text-sm font-medium" style={{ color: "var(--franco-text)" }}>
+            No puedes vender ni refinanciar antes de la entrega
+          </p>
+          <p className="mt-1 text-xs" style={{ color: "var(--franco-text-secondary)" }}>
+            Aumenta el plazo del slider para ver escenarios de salida.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Toggle segmented */}
+      <div
+        className="grid grid-cols-2 p-0.5 rounded-lg"
+        style={{
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+          border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setMode("venta")}
+          className="py-2 px-3 rounded-md font-body text-sm transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
+          style={{
+            background: mode === "venta" ? "rgba(250,250,248,0.08)" : "transparent",
+            color: mode === "venta" ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+            fontWeight: mode === "venta" ? 600 : 400,
+            boxShadow: mode === "venta" ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
+            border: mode === "venta" ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+          }}
+        >
+          Si vendes
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode("refi")}
+          className="py-2 px-3 rounded-md font-body text-sm transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
+          style={{
+            background: mode === "refi" ? "rgba(250,250,248,0.08)" : "transparent",
+            color: mode === "refi" ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+            fontWeight: mode === "refi" ? 600 : 400,
+            boxShadow: mode === "refi" ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
+            border: mode === "refi" ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+          }}
+        >
+          Si refinancias
+        </button>
+      </div>
+
+      {mode === "venta" ? (
+        <>
+          {/* Hero venta */}
+          <div
+            style={{
+              background: "color-mix(in srgb, #B0BEC5 8%, var(--franco-card))",
+              border: "0.5px solid color-mix(in srgb, #B0BEC5 25%, transparent)",
+              borderLeft: "3px solid #B0BEC5",
+              borderRadius: "0 10px 10px 0",
+              padding: "14px 18px",
+            }}
+          >
+            <p
+              className="font-mono uppercase m-0 mb-1"
+              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+            >
+              Al vender en el año {plazoAnios} recibes
+            </p>
+            <p
+              className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
+              style={{ color: "#B0BEC5", lineHeight: 1 }}
+            >
+              {fmt(data.teQueda)}
+            </p>
+          </div>
+
+          {/* Tabla desglose */}
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{
+              background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+            }}
+          >
+            {[
+              { label: "Valor del depto", value: data.valorDepto, color: "var(--franco-text)", sign: "+" },
+              { label: "− Deuda pendiente", value: data.deudaPendiente, color: "#C8323C", sign: "−" },
+              { label: "− Comisión venta (2%)", value: data.comisionVenta, color: "#C8323C", sign: "−" },
+            ].map((row, i) => (
+              <div
+                key={row.label}
+                className="flex items-baseline justify-between px-4 py-2.5"
+                style={{
+                  borderTop: i === 0 ? "none" : "0.5px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
+                }}
+              >
+                <span className="font-body" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 85%, transparent)" }}>
+                  {row.label}
+                </span>
+                <span className="font-mono font-semibold whitespace-nowrap" style={{ fontSize: 13, color: row.color }}>
+                  {row.sign}{fmt(row.value)}
+                </span>
+              </div>
+            ))}
+            <div
+              className="flex items-baseline justify-between px-4 py-3"
+              style={{
+                borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 20%, transparent)",
+                background: "color-mix(in srgb, #B0BEC5 5%, transparent)",
+              }}
+            >
+              <span className="font-mono uppercase" style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}>
+                = Te queda
+              </span>
+              <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 16, color: "var(--franco-text)" }}>
+                {fmt(data.teQueda)}
+              </span>
+            </div>
+          </div>
+
+          {/* Badge ganancia neta */}
+          <div
+            className="rounded-lg p-3"
+            style={{
+              background: `color-mix(in srgb, ${data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C"} 10%, transparent)`,
+              border: `0.5px solid color-mix(in srgb, ${data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C"} 30%, transparent)`,
+            }}
+          >
+            <p className="font-body m-0" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 80%, transparent)" }}>
+              Ganancia neta{" "}
+              <span
+                className="font-mono font-bold"
+                style={{ color: data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C" }}
+              >
+                {data.gananciaNeta >= 0 ? "+" : "−"}{fmt(Math.abs(data.gananciaNeta))}
+              </span>{" "}
+              ({data.gananciaNeta >= 0 ? "+" : "−"}{Math.round(Math.abs(data.gananciaPct))}%) vs inversión total de{" "}
+              <span className="font-mono" style={{ color: "var(--franco-text)" }}>
+                {fmt(data.aporteAcum)}
+              </span>
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Hero refi */}
+          <div
+            style={{
+              background: "color-mix(in srgb, #FBBF24 8%, var(--franco-card))",
+              border: "0.5px solid color-mix(in srgb, #FBBF24 25%, transparent)",
+              borderLeft: "3px solid #FBBF24",
+              borderRadius: "0 10px 10px 0",
+              padding: "14px 18px",
+            }}
+          >
+            <p
+              className="font-mono uppercase m-0 mb-1"
+              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+            >
+              Sin vender, puedes sacar
+            </p>
+            <p
+              className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
+              style={{ color: "#FBBF24", lineHeight: 1 }}
+            >
+              {fmt(data.liquidez)}
+            </p>
+          </div>
+
+          {/* Selector LTV */}
+          <div className="flex items-center gap-3">
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 10, letterSpacing: "1.2px", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
+            >
+              LTV banco
+            </span>
+            <div
+              className="grid grid-cols-3 p-0.5 rounded-md flex-1 max-w-[220px]"
+              style={{
+                background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+                border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+              }}
+            >
+              {[0.60, 0.70, 0.75].map((opt) => {
+                const active = ltv === opt;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setLtv(opt as 0.60 | 0.70 | 0.75)}
+                    className="py-1.5 px-2 rounded-sm font-mono transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
+                    style={{
+                      fontSize: 11,
+                      background: active ? "rgba(250,250,248,0.08)" : "transparent",
+                      color: active ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+                      fontWeight: active ? 700 : 400,
+                      boxShadow: active ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
+                      border: active ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+                    }}
+                  >
+                    {Math.round(opt * 100)}%
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tabla desglose refi */}
+          <div
+            className="rounded-lg overflow-hidden"
+            style={{
+              background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+            }}
+          >
+            {[
+              { label: "Valor del depto", value: fmt(data.valorDepto), color: "var(--franco-text)" },
+              { label: `× LTV ${Math.round(data.LTV * 100)}%`, value: "", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" },
+              { label: "= Nuevo crédito", value: fmt(data.nuevoCredito), color: "var(--franco-text)", bold: true },
+              { label: "− Deuda actual", value: "−" + fmt(data.deudaPendiente), color: "#C8323C" },
+            ].map((row, i) => (
+              <div
+                key={row.label}
+                className="flex items-baseline justify-between px-4 py-2.5"
+                style={{
+                  borderTop: i === 0 ? "none" : "0.5px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
+                }}
+              >
+                <span className="font-body" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 85%, transparent)" }}>
+                  {row.label}
+                </span>
+                <span
+                  className="font-mono font-semibold whitespace-nowrap"
+                  style={{ fontSize: 13, color: row.color, fontWeight: row.bold ? 700 : 600 }}
+                >
+                  {row.value}
+                </span>
+              </div>
+            ))}
+            <div
+              className="flex items-baseline justify-between px-4 py-3"
+              style={{
+                borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 20%, transparent)",
+                background: "color-mix(in srgb, #FBBF24 5%, transparent)",
+              }}
+            >
+              <span className="font-mono uppercase" style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}>
+                = Liquidez disponible
+              </span>
+              <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 16, color: "var(--franco-text)" }}>
+                {fmt(data.liquidez)}
+              </span>
+            </div>
+          </div>
+
+          {/* Badge refi */}
+          <div
+            className="rounded-lg p-3"
+            style={{
+              background: "color-mix(in srgb, #FBBF24 10%, transparent)",
+              border: "0.5px solid color-mix(in srgb, #FBBF24 30%, transparent)",
+            }}
+          >
+            <p className="font-body m-0" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 80%, transparent)" }}>
+              Mantienes el depto y liberas{" "}
+              <span className="font-mono font-bold" style={{ color: "#FBBF24" }}>
+                {fmt(data.liquidez)}
+              </span>{" "}
+              de capital.
+            </p>
+          </div>
+        </>
+      )}
+      {/* eslint-disable-next-line @typescript-eslint/no-unused-vars */}
+      <span style={{ display: "none" }} aria-hidden>{valorUF}</span>
+    </div>
+  );
+}
+
+// ─── Capa 3 unificada: un único acordeón con todo adentro ────
+function Capa3Unificado({
+  projections,
+  metrics,
+  inputData,
+  currency,
+  valorUF,
+}: {
+  projections: YearProjection[];
+  metrics: AnalysisMetrics;
+  inputData: AnalisisInput;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const [open, setOpen] = useState(false);
+
+  const sectionHeader = (label: string) => (
+    <div
+      className="flex items-center gap-3"
+      style={{
+        borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+        paddingTop: 18,
+        marginTop: 24,
+        marginBottom: 14,
+      }}
+    >
+      <span
+        className="font-mono uppercase"
+        style={{
+          fontSize: 11,
+          letterSpacing: "1.5px",
+          color: "color-mix(in srgb, var(--franco-text) 55%, transparent)",
+          fontWeight: 600,
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+
+  if (!open) {
+    // CTA promocional colapsado
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full text-left group transition-colors"
+        style={{
+          background: "rgba(251, 191, 36, 0.04)",
+          border: "1px solid rgba(251, 191, 36, 0.2)",
+          borderLeft: "3px solid #FBBF24",
+          borderRadius: "0 10px 10px 0",
+          padding: "22px 24px",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(251, 191, 36, 0.07)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(251, 191, 36, 0.04)")}
+      >
+        <div
+          className="flex items-center gap-2 mb-3"
+        >
+          <span
+            className="font-mono uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "1.5px",
+              color: "#FBBF24",
+              fontWeight: 600,
+            }}
+          >
+            🔄 Simulación
+          </span>
+        </div>
+
+        <div className="mb-2" style={{ fontFamily: "'Source Serif 4', Georgia, serif", fontWeight: 600, fontSize: 19, lineHeight: 1.35, color: "var(--franco-text)" }}>
+          ¿Qué pasaría si la plusvalía fuera 6%?
+        </div>
+        <div className="mb-4" style={{ fontFamily: "'Source Serif 4', Georgia, serif", fontWeight: 600, fontSize: 19, lineHeight: 1.35, color: "var(--franco-text)" }}>
+          ¿Y si vendes en 15 años?
+        </div>
+
+        <p
+          className="font-body m-0 mb-4"
+          style={{
+            fontSize: 13,
+            color: "color-mix(in srgb, var(--franco-text) 65%, transparent)",
+            lineHeight: 1.5,
+          }}
+        >
+          Explorá distintos escenarios sin afectar tu análisis principal.
+        </p>
+
+        <div className="flex justify-end">
+          <span
+            className="font-body font-semibold inline-flex items-center gap-1"
+            style={{
+              fontSize: 13,
+              color: "#FBBF24",
+            }}
+          >
+            Explorar escenarios
+            <span aria-hidden>→</span>
+          </span>
+        </div>
+      </button>
+    );
+  }
+
+  // Contenido expandido
+  return (
+    <div
+      style={{
+        background: "rgba(251, 191, 36, 0.03)",
+        border: "1px solid rgba(251, 191, 36, 0.18)",
+        borderLeft: "3px solid #FBBF24",
+        borderRadius: "0 10px 10px 0",
+        padding: "24px 28px",
+      }}
+    >
+      {/* Header + botón cerrar */}
+      <div className="flex items-start justify-between gap-3 mb-1">
+        <div>
+          <span
+            className="font-mono uppercase block mb-1"
+            style={{
+              fontSize: 10,
+              letterSpacing: "1.5px",
+              color: "#FBBF24",
+              fontWeight: 600,
+            }}
+          >
+            🔄 Simulación interactiva
+          </span>
+          <p
+            className="font-body m-0"
+            style={{
+              fontSize: 13,
+              color: "color-mix(in srgb, var(--franco-text) 65%, transparent)",
+            }}
+          >
+            Explorá distintos escenarios
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-label="Cerrar simulación"
+          className="shrink-0 rounded-md transition-colors"
+          style={{
+            padding: "6px 10px",
+            fontSize: 16,
+            color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
+            background: "transparent",
+            border: "0.5px solid color-mix(in srgb, var(--franco-text) 15%, transparent)",
+            cursor: "pointer",
+          }}
+        >
+          ↑
+        </button>
+      </div>
+
+      <div
+        style={{
+          borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+          marginTop: 14,
+          paddingTop: 18,
+        }}
+      >
+        {/* Sliders integrados */}
+        <SliderSimulacion variant="integrated" />
+      </div>
+
+      {/* Sub-sección 1: Indicadores */}
+      {sectionHeader("Indicadores")}
+      <IndicadoresRentabilidadContent projections={projections} metrics={metrics} />
+
+      {/* Sub-sección 2: Gráfico de patrimonio */}
+      {sectionHeader("Gráfico de patrimonio")}
+      <GraficoPatrimonioContent
+        projections={projections}
+        metrics={metrics}
+        inputData={inputData}
+        currency={currency}
+        valorUF={valorUF}
+      />
+
+      {/* Sub-sección 3: Venta o refinanciamiento */}
+      {sectionHeader("Venta o refinanciamiento")}
+      <VentaRefiContent
+        projections={projections}
+        metrics={metrics}
+        inputData={inputData}
+        currency={currency}
+        valorUF={valorUF}
+      />
     </div>
   );
 }
@@ -1314,11 +2095,13 @@ export function PremiumResults({
   const [horizonYears, setHorizonYears] = useState(10);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sensHorizon, setSensHorizon] = useState(10);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
   const [arriendoGrowth, setArriendoGrowth] = useState(3.5);
   const [costGrowth, setCostGrowth] = useState(3.0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [refiPct, setRefiPct] = useState(80);
 
 
@@ -1336,6 +2119,7 @@ export function PremiumResults({
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   useEffect(() => {
@@ -1505,6 +2289,7 @@ export function PremiumResults({
     return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
   }, [inputData]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fechaEntregaLabel = useMemo(() => {
     if (!inputData?.fechaEntrega) return "";
     const [a, me] = inputData.fechaEntrega.split("-").map(Number);
@@ -1512,11 +2297,15 @@ export function PremiumResults({
     return `${meses[(me || 1) - 1]} ${a}`;
   }, [inputData]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const horizonBeforeDelivery = mesesPreEntregaTop > 0 && horizonYears * 12 <= mesesPreEntregaTop;
   const mesesParaVerFlujo = mesesPreEntregaTop + 12;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const anosParaVerFlujo = Math.ceil(mesesParaVerFlujo / 12);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
 
   // Flujo unificado: SIEMPRE recalculado con calcFlujoDesglose (ignora valor guardado en DB)
@@ -2000,6 +2789,7 @@ export function PremiumResults({
     return `M${month}`;
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const projData = useMemo((): PatrimonioRow[] => {
     if (!results || !m || !inputData) return [];
     const precioCLP = inputData.precio * UF_CLP;
@@ -2248,7 +3038,7 @@ export function PremiumResults({
             comuna={comuna}
           />
 
-          {/* ═══ CAPA 3 · SIMULACIÓN ═══ */}
+          {/* ═══ CAPA 3 · SIMULACIÓN (acordeón unificado) ═══ */}
           <SimulationProvider
             plazoAnios={horizonYears}
             plusvaliaAnual={plusvaliaRate}
@@ -2257,416 +3047,15 @@ export function PremiumResults({
             plazoBase={10}
             plusvaliaBase={PLUSVALIA_HISTORICA[comuna ?? ""]?.anualizada ?? PLUSVALIA_DEFAULT.anualizada}
           >
-            <SliderSimulacion />
-
-            {/* Bloque 1: Indicadores de rentabilidad (reactivo) */}
-            <CollapsibleSection
-              title="Indicadores de rentabilidad"
-              subtitle="5 KPIs financieros reactivos al plazo y plusvalía"
-              badge={<SimulationTag />}
-              defaultOpen
-            >
-              {m && (
-                <IndicadoresRentabilidadContent
-                  projections={dynamicProjections}
-                  metrics={m}
-                />
-              )}
-            </CollapsibleSection>
-
-          {/* Bloque 2: Gráfico de patrimonio */}
-          <CollapsibleSection
-            title={`¿Cuánto ganas si vendes en ${horizonYears} años?`}
-            subtitle="Proyección de patrimonio con plusvalía y amortización"
-            badge={<SimulationTag />}
-            defaultOpen
-          >
-            {/* Patrimonio chart + breakdown */}
-            {projData.length > 0 && (
-              <>
-                <div>
-                  <div className="mb-1 flex items-center gap-2">
-                    <h4 className="text-sm font-semibold text-[var(--franco-text)]">Proyección de Patrimonio — {isMonthlyView ? `${horizonYears} año${horizonYears > 1 ? "s" : ""} (mensual)` : `${horizonYears} años (anual)`}</h4>
-                    {horizonBeforeDelivery && (
-                      <span className="rounded-full bg-[#C8323C]/10 px-2 py-0.5 text-[10px] font-medium text-[#C8323C]">
-                        Período pre-entrega: tu patrimonio crece con los pagos del pie
-                      </span>
-                    )}
-                  </div>
-                  <p className="mb-3 text-xs text-[var(--franco-text-secondary)]">De dónde viene tu patrimonio. Plusvalía {fmtPct(plusvaliaRate)}/año y arriendos +{fmtPct(arriendoGrowth)}/año.</p>
-                  <div className="h-72">
-                    <ResponsiveContainer>
-                      <ComposedChart data={projData} margin={{ top: 5, right: 10, left: currency === "UF" ? 20 : 10, bottom: 40 }} barCategoryGap="15%" barGap={2}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" horizontal vertical={false} />
-                        <XAxis xAxisId="cat" dataKey="name" tick={{ fontSize: projData.length > 25 ? 7 : projData.length > 15 ? 8 : 10, fill: "var(--franco-text-secondary)" }} angle={-45} textAnchor="end" dy={10} interval={projData.length > 15 ? Math.ceil(projData.length / 10) : isMonthlyView ? "preserveStartEnd" : 0} height={60} />
-                        <XAxis xAxisId="num" dataKey="_x" type="number" hide domain={[0, horizonYears * 12]} />
-                        <YAxis tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }} tickFormatter={fmtAxis} />
-                        <RechartsTooltip
-                          content={({ active, payload }) => {
-                            if (!active || !payload || payload.length === 0) return null;
-                            const row = payload[0]?.payload as PatrimonioRow | undefined;
-                            if (!row) return null;
-                            const pre = row.isPreEntrega;
-                            return (
-                              <div className="rounded-lg border border-[var(--franco-border-hover)] bg-[var(--franco-card)] px-3 py-3 text-xs text-[var(--franco-text)] shadow-lg">
-                                <div className="mb-1.5 font-semibold text-[var(--franco-text)]">{row.name}{pre ? " (pre-entrega)" : ""}</div>
-                                {pre ? (
-                                  <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.15 }} />Pie acumulado: <span className="font-medium" style={{ color: "var(--franco-text)" }}>{fmt(row.piePagado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.25 }} />Plusvalía estimada: <span className="font-medium" style={{ color: "var(--franco-text)" }}>{fmt(row.plusvalia)}</span></div>
-                                    <div style={{ color: "var(--franco-text-secondary)" }}>Deuda: <span style={{ color: "var(--franco-text-secondary)" }}>$0 (crédito aún no comienza)</span></div>
-                                  </>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.3 }} />Valor propiedad: <span className="font-medium" style={{ color: "var(--franco-text)" }}>{fmt(row.valorPropiedad)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C" }} />Deuda restante: <span className="font-medium" style={{ color: "#C8323C" }}>-{fmt(row.saldoCredito ?? 0)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.15 }} />Pie + amortización: <span className="font-medium" style={{ color: "var(--franco-text)" }}>{fmt(row.piePagado + row.capitalAmortizado)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.25 }} />Plusvalía acumulada: <span className="font-medium" style={{ color: "var(--franco-text)" }}>{fmt(row.plusvalia)}</span></div>
-                                    <div className="flex items-center gap-1.5" style={{ color: "var(--franco-text-secondary)" }}><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo: <span className="font-medium" style={{ color: "#C8323C" }}>{fmt(row.flujoAcumulado)}</span></div>
-                                  </>
-                                )}
-                                <div className="mt-1 border-t border-[var(--franco-border)] pt-1 font-semibold" style={{ color: "var(--franco-text)" }}>Patrimonio neto: {fmt(row.patrimonioNeto)}</div>
-                              </div>
-                            );
-                          }}
-                        />
-                        <Area xAxisId="cat" type="monotone" dataKey="valorPropArea" fill="var(--franco-text)" fillOpacity={0.06} stroke="var(--franco-text)" strokeWidth={2} />
-                        <Area xAxisId="cat" type="monotone" dataKey="saldoCredito" fill="#C8323C" fillOpacity={0.06} stroke="none" />
-                        <Bar xAxisId="cat" dataKey="piePagado" stackId="patrimonio" fill="var(--franco-text)" fillOpacity={0.15} name="Pie pagado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="capitalAmortizado" stackId="patrimonio" fill="var(--franco-text)" fillOpacity={0.4} name="Capital amortizado" radius={[0, 0, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="plusvalia" stackId="patrimonio" fill="var(--franco-text)" fillOpacity={0.25} name="Plusvalía" radius={[4, 4, 0, 0]} />
-                        <Bar xAxisId="cat" dataKey="flujoAcumulado" stackId="patrimonio" fill="rgba(200,50,60,0.25)" stroke="rgba(200,50,60,0.45)" strokeWidth={1} name="Flujo de bolsillo" radius={[0, 0, 0, 0]} />
-                        <Line xAxisId="cat" type="monotone" dataKey="saldoCredito" stroke="#C8323C" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Deuda restante" />
-                        <Line xAxisId="cat" type="monotone" dataKey="patrimonioNeto" stroke="var(--franco-text)" strokeWidth={2.5} dot={{ r: 4, fill: "var(--franco-text)", stroke: "var(--franco-bg)", strokeWidth: 2 }} name="Patrimonio neto" />
-                        {mesesPreEntregaTop > 0 && (
-                          <ReferenceLine xAxisId="num" x={mesesPreEntregaTop} stroke="var(--franco-text-muted)" strokeDasharray="4 4" strokeWidth={1} label={{ value: "Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }} />
-                        )}
-                      </ComposedChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-[var(--franco-text-secondary)]">
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.15 }} />Pie pagado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.3 }} />Capital amortizado</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.08, border: "1px solid var(--franco-border)" }} />Plusvalía</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(200,50,60,0.30)", border: "1px solid rgba(200,50,60,0.5)" }} />Flujo de bolsillo</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.2 }} />Valor propiedad</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#C8323C", opacity: 0.7 }} />Deuda</span>
-                    <span className="flex items-center gap-1"><span className="inline-block h-0.5 w-3 rounded" style={{ background: "var(--franco-text)", height: 3 }} />Patrimonio neto</span>
-                  </div>
-                  {isTouchDevice && <p className="mt-4 text-center text-[10px] text-[var(--franco-text-secondary)]">Toca las barras para ver el detalle</p>}
-                  {/* Desglose de patrimonio */}
-                  {(() => {
-                    const lastRow = projData.find(r => r._x === horizonYears * 12);
-                    if (!lastRow || !m || !inputData) return null;
-                    // All values from projData so table matches chart exactly
-                    const plusvaliaGanancia = lastRow.plusvalia;
-                    const capitalAmortizado = lastRow.capitalAmortizado;
-                    const flujoAcum = lastRow.flujoAcumulado;
-                    const patrimonioTotal = lastRow.piePagado + lastRow.capitalAmortizado + lastRow.plusvalia; // = valorProp - saldo
-                    const gananciaReal = lastRow.patrimonioNeto; // already = valorProp - saldo - gastosCierre + flujo - pie
-                    return (
-                      <>
-                      {/* Bloque 1: Desglose de patrimonio */}
-                      <div className="mt-4 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)]">
-                        <div className="space-y-0 divide-y divide-[var(--franco-border)] sm:hidden">
-                          {[
-                            { label: "Tu inversión inicial (pie)", value: fmt(m.pieCLP), color: "text-[var(--franco-text)]" },
-                            { label: `Ganancia por plusvalía (${fmtUF(inputData.precio)} → ${fmtUF(lastRow.valorPropiedad / UF_CLP)})`, value: fmt(plusvaliaGanancia), color: "text-[var(--franco-positive)]" },
-                            { label: "Capital amortizado", value: fmt(capitalAmortizado), color: "text-[var(--franco-positive)]" },
-                            { label: "Patrimonio neto total", value: fmt(patrimonioTotal), color: "text-[var(--franco-text)]", bold: true },
-                          ].map(({ label, value, color, bold }) => (
-                            <div key={label} className={`px-3 py-2 ${bold ? "bg-[var(--franco-border)]" : ""}`}>
-                              <div className="text-[11px] text-[var(--franco-text-secondary)]">{label}</div>
-                              <div className={`text-sm font-medium ${color || ""} ${bold ? "font-bold" : ""}`}>{value}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <table className="hidden w-full text-sm sm:table">
-                          <tbody>
-                            <tr className="border-b border-[var(--franco-border)]">
-                              <td className="py-2 px-4 text-[var(--franco-text)]">Tu inversión inicial (pie)</td>
-                              <td className="py-2 px-4 text-right font-medium text-[var(--franco-text)]">{fmt(m.pieCLP)}</td>
-                            </tr>
-                            <tr className="border-b border-[var(--franco-border)]">
-                              <td className="py-2 px-4 text-[var(--franco-text)]">Ganancia por plusvalía ({fmtUF(inputData.precio)} → {fmtUF(lastRow.valorPropiedad / UF_CLP)})</td>
-                              <td className="py-2 px-4 text-right font-medium text-[var(--franco-positive)]">{fmt(plusvaliaGanancia)}</td>
-                            </tr>
-                            <tr className="border-b border-[var(--franco-border)]">
-                              <td className="py-2 px-4 text-[var(--franco-text)]">Capital amortizado (pagado del crédito)</td>
-                              <td className="py-2 px-4 text-right font-medium text-[var(--franco-positive)]">{fmt(capitalAmortizado)}</td>
-                            </tr>
-                            <tr className="border-t border-[var(--franco-border)]">
-                              <td className="py-2 px-4 font-semibold text-[var(--franco-text)]">Patrimonio neto total</td>
-                              <td className="py-2 px-4 text-right font-bold text-[var(--franco-text)]">{fmt(patrimonioTotal)}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                        <p className="px-3 pb-2 text-[10px] text-[var(--franco-text-secondary)] sm:px-4">= valor propiedad − deuda restante</p>
-                      </div>
-
-                      {/* Bloque 2: Lo que pusiste de tu bolsillo */}
-                      <div className="mt-3 rounded-lg" style={{ border: "1px solid rgba(200,50,60,0.2)", background: "rgba(200,50,60,0.04)" }}>
-                        <div className="px-3 py-2.5 sm:px-4">
-                          <div className="mb-1 font-mono text-xs font-medium uppercase" style={{ color: "#C8323C" }}>Lo que pusiste de tu bolsillo</div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-[var(--franco-text-secondary)]">Flujo acumulado ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                            <span className="font-mono font-medium" style={{ color: "#C8323C" }}>{fmt(flujoAcum)}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Bloque 3: Ganancia real */}
-                      <div className="mt-3 rounded-lg" style={{ border: "1px solid var(--franco-border)", background: "var(--franco-card)" }}>
-                        <div className="px-3 py-3 sm:px-4">
-                          <p className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Si vendieras en {horizonYears === 1 ? "1 año" : `${horizonYears} años`}, tu ganancia real sería:</p>
-                          <p className="mt-0.5 font-mono text-xs" style={{ color: "var(--franco-text-muted)" }}>patrimonio − pie + flujo − gastos cierre</p>
-                          <div className={`mt-2 font-mono text-[22px] font-semibold ${gananciaReal >= 0 ? "" : ""}`} style={{ color: gananciaReal >= 0 ? "var(--franco-text)" : "#C8323C" }}>{fmt(gananciaReal)}</div>
-                        </div>
-                      </div>
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
+            {m && inputData && (
+              <Capa3Unificado
+                projections={dynamicProjections}
+                metrics={m}
+                inputData={inputData}
+                currency={currency}
+                valorUF={UF_CLP}
+              />
             )}
-          </CollapsibleSection>
-
-          {/* Bloque 3: Venta o refinanciamiento */}
-          <CollapsibleSection
-            title="¿Qué pasa si vendes o refinancias?"
-            subtitle="Escenarios de salida: venta y refinanciamiento"
-            badge={<SimulationTag />}
-            defaultOpen
-          >
-            {horizonBeforeDelivery ? (
-              <div>
-                <div className="flex items-center gap-3 rounded-lg border border-[#C8323C]/30 bg-[#C8323C]/5 p-4">
-                  <Clock className="h-5 w-5 shrink-0 text-[#C8323C]" />
-                  <div>
-                    <p className="text-sm font-medium text-[var(--franco-text)]">No puedes vender ni refinanciar antes de la entrega</p>
-                    <p className="mt-1 text-xs text-[var(--franco-text-secondary)]">
-                      La entrega está estimada para {fechaEntregaLabel}. Aumenta el horizonte para ver escenarios de salida.
-                    </p>
-                    <button type="button" onClick={() => setHorizonYears(anosParaVerFlujo)} className="mt-2 text-xs font-medium text-[var(--franco-text)] hover:underline">
-                      Ver desde la entrega →
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : projData.length > 0 && m ? (
-              (() => {
-                const lastPoint = projData.find(r => r._x === horizonYears * 12);
-                if (!lastPoint || !inputData) return null;
-                const vp = lastPoint.valorPropiedad;
-                const sc = lastPoint.saldoCredito ?? 0;
-                const fa = lastPoint.flujoAcumulado;
-                const comision = Math.round(vp * 0.02);
-                const recibeNeto = vp - sc - comision;
-                const totalInvertido = m.pieCLP + Math.abs(fa);
-                const ganancia = recibeNeto - totalInvertido;
-                // TIR y multiplicador desde el motor (fuente única de verdad).
-                // Motor devuelve tir ya en porcentaje (ej. 10.4 = 10.4%).
-                const motorExit = calcExitScenario(inputData, m, dynamicProjections, horizonYears);
-                const tir = motorExit.tir;
-                const multiplicador = motorExit.multiplicadorCapital;
-                // Abbreviated format for narrative
-                const fmtAbr = (n: number) => fmtM(Math.abs(n));
-                // Refi calculations from projData
-                const refiNuevoCredito = Math.round(vp * (refiPct / 100));
-                const refiCapitalLiberado = refiNuevoCredito - sc;
-                const refiTasaMensual = inputData.tasaInteres / 100 / 12;
-                const refiN = 20 * 12; // 20-year new term
-                const refiNuevoDividendo = refiTasaMensual === 0 ? Math.round(refiNuevoCredito / refiN) : Math.round((refiNuevoCredito * refiTasaMensual) / (1 - Math.pow(1 + refiTasaMensual, -refiN)));
-                // Projected arriendo/gastos at horizon year
-                const arriendoProyectado = Math.round(inputData.arriendo * Math.pow(1 + arriendoGrowth / 100, horizonYears));
-                const gastosProyectados = Math.round((inputData.gastos ?? 0) * Math.pow(1 + costGrowth / 100, horizonYears));
-                const contribProyectadas = Math.round(inputData.contribuciones * Math.pow(1 + costGrowth / 100, horizonYears));
-                const antiguedadFutura = inputData.antiguedad + horizonYears;
-                const mantProyectada = inputData.provisionMantencion || Math.round(((inputData.precio * UF_CLP) * getMantencionRate(antiguedadFutura)) / 12);
-                const refiFlujoDsg = calcFlujoDesglose({
-                  arriendo: arriendoProyectado,
-                  dividendo: refiNuevoDividendo,
-                  ggcc: gastosProyectados,
-                  contribuciones: contribProyectadas,
-                  mantencion: mantProyectada,
-                  vacanciaMeses: inputData.vacanciaMeses ?? 1,
-                  usaAdministrador: inputData.usaAdministrador,
-                  comisionAdministrador: inputData.comisionAdministrador,
-                });
-                const refiNuevoFlujoNeto = refiFlujoDsg.flujoNeto;
-                const nDeptos = Math.floor(refiCapitalLiberado / m.pieCLP);
-
-                return (
-              <div>
-                <div className="mb-4 flex gap-2">
-                  <button type="button" onClick={() => setExitMode("venta")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "venta" ? "bg-[#C8323C] text-white" : "bg-transparent border border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:border-[var(--franco-border-hover)]"}`}>Venta</button>
-                  <button type="button" onClick={() => setExitMode("refinanciamiento")} className={`flex-1 px-6 py-2.5 font-body text-sm font-semibold rounded-lg transition-colors ${exitMode === "refinanciamiento" ? "bg-[#C8323C] text-white" : "bg-transparent border border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:border-[var(--franco-border-hover)]"}`}>Refinanciamiento</button>
-                </div>
-
-                {exitMode === "venta" ? (
-                  <div className="space-y-4 text-sm text-[var(--franco-text)]">
-                    {/* Intro */}
-                    <p className="rounded-lg bg-[var(--franco-card)] p-3 text-xs text-[var(--franco-text-secondary)]">
-                      Si vendieras {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} al valor proyectado (plusvalía {fmtPct(plusvaliaRate)}/año), ¿cuánto ganarías?
-                    </p>
-
-                    {/* Lo que pusiste */}
-                    <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que pusiste</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pie inicial</span>
-                        <span className="font-mono text-sm text-[var(--franco-text)]">{fmt(m.pieCLP)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Flujo de bolsillo ({horizonYears === 1 ? "1 año" : `${horizonYears} años`})</span>
-                        <span className="font-mono text-sm" style={{ color: "#C8323C" }}>{fmt(Math.abs(fa))}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px] font-semibold text-[var(--franco-text)]">Total invertido</span>
-                        <span className="font-mono text-[15px] font-bold text-[var(--franco-text)]">{fmt(totalInvertido)}</span>
-                      </div>
-                    </div>
-
-                    {/* Lo que recuperas */}
-                    <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Lo que recuperas</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Valor de venta estimado</span>
-                        <span className="font-mono text-sm text-[var(--franco-text)]">{fmt(vp)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Saldo crédito restante</span>
-                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Comisión venta (2%)</span>
-                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>-{fmt(comision)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px] font-semibold text-[var(--franco-text)]">Recibes neto</span>
-                        <span className="font-mono text-[15px] font-bold text-[var(--franco-text)]">{fmt(recibeNeto)}</span>
-                      </div>
-                    </div>
-
-                    {/* Resultado */}
-                    <div className="rounded-[10px] p-5" style={{ background: "var(--franco-card)", border: "1px solid var(--franco-border)" }}>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Resultado</div>
-                      <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
-                        <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Tu ganancia</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: ganancia >= 0 ? "var(--franco-text)" : "#C8323C" }}>{fmt(ganancia)}</div>
-                        </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border)" }} />
-                        <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Multiplicador</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: multiplicador >= 1 ? "var(--franco-text)" : "#C8323C" }}>{multiplicador}x</div>
-                        </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border)" }} />
-                        <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>TIR</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: tir >= 0 ? "var(--franco-text)" : "#C8323C" }}>{fmtPct(tir)}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Narrativa Franco */}
-                    <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
-                        Pusiste <span className="font-medium text-[var(--franco-text)]">{fmtAbr(m.pieCLP)}</span> de pie y <span className="font-medium text-[var(--franco-text)]">{fmtAbr(fa)}</span> de flujo durante {horizonYears} años.
-                        {" "}Al vender, recibes <span className="font-medium text-[var(--franco-text)]">{fmtAbr(recibeNeto)}</span> netos.
-                        {" "}Tu ganancia real es <span className="font-medium text-[var(--franco-text)]">{fmtAbr(ganancia)}</span> — tu inversión inicial se multiplicó <span className="font-medium text-[var(--franco-text)]">{multiplicador}x</span>.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 text-sm text-[var(--franco-text)]">
-                    {/* Intro */}
-                    <p className="rounded-lg bg-[var(--franco-card)] p-3 text-xs text-[var(--franco-text-secondary)]">
-                      Si en vez de vender refinancias {horizonYears === 1 ? "al año 1" : `a los ${horizonYears} años`} con el nuevo valor de mercado, ¿cuánto capital puedes liberar para otra inversión?
-                    </p>
-
-                    {/* Selector % refi */}
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs" style={{ color: "var(--franco-text-secondary)" }}>% refinanciamiento:</span>
-                      <div className="flex gap-1.5">
-                        {[60, 70, 80, 90].map((pct) => (
-                          <button key={pct} type="button" onClick={() => setRefiPct(pct)}
-                            className="rounded px-3 py-1.5 text-xs font-medium transition-colors"
-                            style={refiPct === pct
-                              ? { border: "1px solid var(--franco-text)", color: "var(--franco-text)", fontWeight: 500 }
-                              : { border: "1px solid var(--franco-border)", color: "var(--franco-text-secondary)" }}
-                          >{pct}%</button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Tu depto hoy */}
-                    <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Tu depto hoy</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo avalúo (valor proyectado)</span>
-                        <span className="font-mono text-sm text-[var(--franco-text)]">{fmt(vp)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Deuda actual</span>
-                        <span className="font-mono text-sm text-[var(--franco-text)]">{fmt(sc)}</span>
-                      </div>
-                    </div>
-
-                    {/* Nuevo crédito */}
-                    <div>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Nuevo crédito</div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo crédito ({refiPct}% del avalúo)</span>
-                        <span className="font-mono text-sm text-[var(--franco-text)]">{fmt(refiNuevoCredito)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px]" style={{ color: "var(--franco-text-secondary)" }}>Pago deuda anterior</span>
-                        <span className="font-mono text-sm" style={{ color: "var(--franco-text-secondary)" }}>{sc > 0 ? `-${fmt(sc)}` : fmt(0)}</span>
-                      </div>
-                      <div className="flex justify-between py-2" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-                        <span className="text-[13px] font-semibold text-[var(--franco-text)]">Capital liberado</span>
-                        <span className="font-mono text-[15px] font-bold text-[var(--franco-text)]">{fmt(refiCapitalLiberado)}</span>
-                      </div>
-                    </div>
-
-                    {/* Impacto en tu flujo */}
-                    <div className="rounded-[10px] p-5" style={{ background: "var(--franco-card)", border: "1px solid var(--franco-border)" }}>
-                      <div className="mb-3 font-mono text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--franco-text-muted)", letterSpacing: "0.08em" }}>Impacto en tu flujo</div>
-                      <div className="flex items-center justify-between sm:flex-row flex-col gap-4">
-                        <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo dividendo</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoDividendo)}</div>
-                        </div>
-                        <div className="hidden sm:block h-10" style={{ width: 1, background: "var(--franco-border)" }} />
-                        <div className="sm:hidden w-full" style={{ height: 1, background: "var(--franco-border)" }} />
-                        <div className="flex-1 text-center">
-                          <div className="text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>Nuevo flujo neto</div>
-                          <div className="mt-1 font-mono text-[22px] font-bold" style={{ color: "#C8323C" }}>{fmt(refiNuevoFlujoNeto)}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Narrativa Franco */}
-                    <div style={{ borderLeft: "2px solid #C8323C", background: "rgba(200,50,60,0.04)", borderRadius: "0 8px 8px 0", padding: "12px 16px" }}>
-                      <p className="text-[13px] leading-relaxed" style={{ color: "var(--franco-text-secondary)" }}>
-                        Sin vender tu depto, puedes liberar <span className="font-medium text-[var(--franco-text)]">{fmtAbr(refiCapitalLiberado)}</span> en efectivo refinanciando al {refiPct}%.
-                        {" "}{nDeptos >= 2
-                          ? <>Ese capital alcanza como pie para <span className="font-medium text-[var(--franco-text)]">{nDeptos} departamentos</span> similares.</>
-                          : <>Ese capital equivale a <span className="font-medium text-[var(--franco-text)]">{(Math.round(refiCapitalLiberado / m.pieCLP * 10) / 10)}x</span> tu pie original.</>
-                        }
-                        {" "}Tu nuevo dividendo sube a <span className="font-medium text-[var(--franco-text)]">{fmt(refiNuevoDividendo)}</span>/mes y el flujo neto queda en <span className="font-medium text-[var(--franco-text)]">{fmt(refiNuevoFlujoNeto)}</span>/mes.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-                );
-              })()
-            ) : null}
-          </CollapsibleSection>
           </SimulationProvider>
         </>
       )}
