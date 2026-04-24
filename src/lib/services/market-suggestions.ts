@@ -24,11 +24,18 @@ export interface Sugerencias {
   source: "radio" | "comuna" | "estimacion";
   sampleSize: number;
   radiusMeters?: number;
+  /** Radio final usado por el loop adaptativo (solo source="radio"). Alias explícito de radiusMeters. */
+  radiusUsed?: number;
   precioM2?: number;
   nearbyProperties?: NearbyPropertyPoint[];
   totalInRadius?: number;
   filteredInRadius?: number;
 }
+
+// Radio adaptativo: objetivo 20 comparables, tope 2000m.
+// Empieza a 500m y expande progresivamente hasta conseguir la muestra.
+const ADAPTIVE_RADII = [500, 750, 1000, 1500, 2000] as const;
+const TARGET_SAMPLE = 20;
 
 export async function getSugerencias(
   comuna: string,
@@ -37,49 +44,62 @@ export async function getSugerencias(
   precioUF?: number,
   lat?: number,
   lng?: number,
-  radiusMeters: number = 800,
+  // Deprecated: el loop adaptativo ignora este valor. Se mantiene por
+  // compatibilidad con callers antiguos.
+  _radiusMeters: number = 500,
   propType: string = "arriendo",
   condicion: string | null = null
 ): Promise<Sugerencias> {
-  // dormitorios=0 means "no filter" → pass null to RPC
+  void _radiusMeters;
   const dormFilter = dormitorios > 0 ? dormitorios : null;
 
-  // Fetch nearby properties for map: ALL properties (sin filtro dormitorios) for density
-  let nearbyProperties: NearbyPropertyPoint[] | undefined;
-  let totalInRadius = 0;
-  let filteredInRadius = 0;
+  // NIVEL 1: loop adaptativo por radio (500→750→1000→1500→2000)
   if (lat && lng) {
-    const mapData = await getNearbyPropertiesForMap(lat, lng, radiusMeters, dormFilter, comuna, propType, condicion);
-    nearbyProperties = mapData.all;
-    totalInRadius = mapData.all.length;
-    filteredInRadius = dormFilter ? mapData.filteredCount : mapData.all.length;
-  }
+    let best: Sugerencias | null = null;
+    let bestMap: Awaited<ReturnType<typeof getNearbyPropertiesForMap>> | null = null;
 
-  const mapFields = { nearbyProperties, totalInRadius, filteredInRadius };
+    for (const r of ADAPTIVE_RADII) {
+      const mapData = await getNearbyPropertiesForMap(
+        lat, lng, r, dormFilter, comuna, propType, condicion,
+      );
+      const result = await getSugerenciasPorRadio(
+        lat, lng, r, superficie, dormFilter, comuna, propType, condicion,
+      );
 
-  // NIVEL 1: Si tenemos coordenadas, buscar por radio
-  if (lat && lng) {
-    const radioResult = await getSugerenciasPorRadio(
-      lat, lng, radiusMeters, superficie, dormFilter, comuna, propType, condicion
-    );
-    if (radioResult) return { ...radioResult, ...mapFields };
+      if (!result) {
+        // no hay nada con este radio — seguir expandiendo
+        if (!best) bestMap = mapData; // guardar último map por si caemos a fallback
+        continue;
+      }
 
-    // Expandir radio si no hay suficientes datos
-    const expandedResult = await getSugerenciasPorRadio(
-      lat, lng, radiusMeters * 2, superficie, dormFilter, comuna, propType, condicion
-    );
-    if (expandedResult) return { ...expandedResult, radiusMeters: radiusMeters * 2, ...mapFields };
+      // Guardar siempre el "mejor hasta ahora" (mayor sampleSize gana)
+      if (!best || result.sampleSize > best.sampleSize) {
+        best = { ...result, radiusUsed: r, radiusMeters: r };
+        bestMap = mapData;
+      }
+
+      // Si alcanzamos el objetivo, cortar el loop
+      if (result.sampleSize >= TARGET_SAMPLE) break;
+    }
+
+    if (best && bestMap) {
+      return {
+        ...best,
+        nearbyProperties: bestMap.all,
+        totalInRadius: bestMap.all.length,
+        filteredInRadius: dormFilter ? bestMap.filteredCount : bestMap.all.length,
+      };
+    }
   }
 
   // NIVEL 2: Estadísticas por comuna + dormitorios
-  const dormForComuna = dormFilter || 2; // comuna stats need a dorm value
+  const dormForComuna = dormFilter || 2;
   const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormForComuna, propType);
-  if (comunaResult) return { ...comunaResult, ...mapFields };
+  if (comunaResult) return comunaResult;
 
   // NIVEL 3: Fallback a estimación hardcodeada
   const ufCLP = await getUFValue();
-  const fallback = getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF, ufCLP);
-  return { ...fallback, ...mapFields };
+  return getFallbackEstimacion(comuna, superficie, dormForComuna, precioUF, ufCLP);
 }
 
 async function getNearbyPropertiesForMap(
@@ -283,6 +303,29 @@ function getFallbackEstimacion(
     source: "estimacion",
     sampleSize: 0,
   };
+}
+
+/**
+ * Fallback para gastos comunes cuando el RPC devuelve ggcc=null (ninguno de los
+ * comparables tiene dato). Promedios de mercado por tier de comuna, en CLP/m²/mes.
+ * Fuentes: portales inmobiliarios Santiago, promedios primera mitad 2026.
+ */
+const GGCC_POR_M2_TIER_ALTO = 2200; // Providencia, Las Condes, Vitacura, Lo Barnechea
+const GGCC_POR_M2_TIER_MEDIO = 1800; // Santiago, Ñuñoa, La Reina
+const GGCC_POR_M2_TIER_BAJO = 1400; // Resto
+
+const COMUNAS_TIER_ALTO = new Set(["Providencia", "Las Condes", "Vitacura", "Lo Barnechea"]);
+const COMUNAS_TIER_MEDIO = new Set(["Santiago", "Santiago Centro", "Ñuñoa", "La Reina"]);
+
+export function getGgccFallback(comuna: string, superficie: number): number | null {
+  if (!superficie || superficie <= 0) return null;
+  const porM2 = COMUNAS_TIER_ALTO.has(comuna)
+    ? GGCC_POR_M2_TIER_ALTO
+    : COMUNAS_TIER_MEDIO.has(comuna)
+      ? GGCC_POR_M2_TIER_MEDIO
+      : GGCC_POR_M2_TIER_BAJO;
+  // Redondear a miles para no mostrar cifras sueltas tipo $108.372.
+  return Math.round((porM2 * superficie) / 1000) * 1000;
 }
 
 function median(arr: number[]): number {

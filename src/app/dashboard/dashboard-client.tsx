@@ -350,9 +350,6 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               </button>
             </Link>
             <div className="mt-3 flex flex-col items-center gap-1.5">
-              <Link href="/analisis/nuevo" className="font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
-                O prueba el formulario clásico →
-              </Link>
               <a href="/analisis/6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" className="font-body text-xs text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
                 O mira un ejemplo primero →
               </a>
@@ -373,9 +370,6 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                   <button className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-[13px] font-bold text-white shadow-[0_2px_10px_rgba(200,50,60,0.15)]">
                     Analizar inversión →
                   </button>
-                </Link>
-                <Link href="/analisis/nuevo" className="font-body text-[11px] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]">
-                  O prueba el formulario clásico →
                 </Link>
               </div>
             </div>

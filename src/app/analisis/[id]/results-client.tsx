@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   MapPin,
-  SlidersHorizontal, RefreshCw, Loader2, Clock,
-  X,
+  RefreshCw, Loader2, Clock,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/analysis";
@@ -21,6 +20,7 @@ import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import { StateBox } from "@/components/ui/StateBox";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { LoadingFranco } from "@/components/analysis/LoadingFranco";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
@@ -1155,31 +1155,57 @@ function buildHeroDatosClave(
     color: "accent",
   };
 
-  // 3) Retorno 10 años — TIR from motor
-  const tir = results?.exitScenario?.tir;
-  let retornoValorCLP = "—";
-  let retornoValorUF = "—";
-  let retornoColor: import("@/lib/types").DatoClave["color"] = "neutral";
-  let retornoSub = "A 10 años";
-  if (typeof tir === "number" && !isNaN(tir)) {
-    const tirFmt = "TIR " + tir.toFixed(1).replace(".", ",") + "%";
-    retornoValorCLP = tirFmt;
-    retornoValorUF = tirFmt;
-    retornoColor = tir < 0 ? "red" : tir < 5 ? "neutral" : "green";
-    retornoSub = "Rent. anual 10 años";
-  } else if (typeof results?.exitScenario?.retornoTotal === "number") {
-    const retorno = results!.exitScenario!.retornoTotal;
-    const retAbs = Math.abs(retorno);
-    retornoValorCLP = (retorno < 0 ? "-$" : "+$") + Math.round(retAbs / 1_000_000) + "M";
-    retornoValorUF = (retorno < 0 ? "-UF " : "+UF ") + Math.round(retAbs / (valorUF || 1)).toLocaleString("es-CL");
-    retornoColor = retorno < 0 ? "red" : "green";
+  // 3) Pasada / Sobreprecio / Precio alineado — vs valor de mercado Franco
+  const precioUF = results?.metrics?.valorMercadoUsuarioUF ?? 0; // no siempre viene
+  const vmFrancoUF = results?.metrics?.valorMercadoFrancoUF ?? 0;
+  const precioCLP = results?.metrics?.precioCLP ?? 0;
+  const vmFrancoCLP = vmFrancoUF > 0 ? vmFrancoUF * (valorUF || 0) : precioCLP;
+  const diferenciaCLP = vmFrancoCLP - precioCLP;
+  const pctDiferencia = vmFrancoCLP > 0 ? (Math.abs(diferenciaCLP) / vmFrancoCLP) * 100 : 0;
+  const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
+  const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
+
+  let pasadaLabel: string;
+  let pasadaValorCLP: string;
+  let pasadaValorUF: string;
+  let pasadaSub: string;
+  let pasadaColor: import("@/lib/types").DatoClave["color"];
+  const fmtCLPSigned = (v: number) => (v >= 0 ? "+$" : "−$") + Math.round(Math.abs(v)).toLocaleString("es-CL");
+  const fmtUFSigned = (v: number) => {
+    const uf = v / (valorUF || 1);
+    return (v >= 0 ? "+UF " : "−UF ") + Math.round(Math.abs(uf)).toLocaleString("es-CL");
+  };
+
+  if (esPasada) {
+    pasadaLabel = "Ventaja";
+    pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
+    pasadaValorUF = fmtUFSigned(diferenciaCLP);
+    pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
+    pasadaColor = "green";
+  } else if (esSobreprecio) {
+    pasadaLabel = "Sobreprecio";
+    pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
+    pasadaValorUF = fmtUFSigned(diferenciaCLP);
+    pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
+    pasadaColor = "red";
+  } else {
+    // Precio y vmFranco coinciden (≤2% de diferencia). En vez de mostrar
+    // "≈ UF 0" sin contexto (semánticamente confuso), mostrar el precio de
+    // compra como valor del card y un subtexto claro.
+    pasadaLabel = "Precio alineado";
+    pasadaValorCLP = "$" + Math.round(precioCLP).toLocaleString("es-CL");
+    pasadaValorUF = "UF " + Math.round(precioCLP / (valorUF || 1)).toLocaleString("es-CL");
+    pasadaSub = "Tu precio coincide con mercado";
+    pasadaColor = "neutral";
   }
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _precioUFUnused = precioUF;
   const retornoCard: import("@/lib/types").DatoClave = {
-    label: "Retorno 10 años",
-    valor_clp: retornoValorCLP,
-    valor_uf: retornoValorUF,
-    subtexto: retornoSub,
-    color: retornoColor,
+    label: pasadaLabel,
+    valor_clp: pasadaValorCLP,
+    valor_uf: pasadaValorUF,
+    subtexto: pasadaSub,
+    color: pasadaColor,
   };
 
   // Subtextos are motor-dictated to stay consistent with the sign of the value.
@@ -1614,68 +1640,6 @@ function MiniCard({
   );
 }
 
-function DashboardSkeleton() {
-  return (
-    <div id="informe-pro-section" className="mb-8">
-      {/* Hero con franja superior + cuerpo */}
-      <div className="rounded-[16px] border border-[var(--franco-border)] bg-[var(--franco-card)] overflow-hidden mb-3">
-        {/* Top strip skeleton */}
-        <div className="px-5 md:px-8 py-4 md:py-5 flex flex-col md:flex-row md:items-center gap-4 md:gap-6 border-b border-[var(--franco-border)]">
-          <div className="flex items-center gap-3">
-            <div>
-              <div className="h-2 w-16 bg-[var(--franco-bar-track)] rounded animate-pulse mb-1.5" />
-              <div className="h-7 w-10 bg-[var(--franco-bar-track)] rounded animate-pulse mb-1.5" />
-              <div className="h-1 w-32 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-            </div>
-            <div className="h-5 w-20 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-          </div>
-          <div className="flex-1 md:border-l md:border-[var(--franco-border)] md:pl-6">
-            <div className="h-2 w-36 bg-[var(--franco-bar-track)] rounded animate-pulse mb-1.5" />
-            <div className="h-4 w-24 bg-[var(--franco-bar-track)] rounded animate-pulse mb-1.5" />
-            <div className="h-2 w-48 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-          </div>
-          <div className="h-7 w-16 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-        </div>
-
-        {/* Body skeleton */}
-        <div className="p-6 md:p-8">
-          <div className="h-3 w-24 bg-[var(--franco-bar-track)] rounded animate-pulse mb-3" />
-          <div className="h-7 w-3/4 bg-[var(--franco-bar-track)] rounded animate-pulse mb-4" />
-          <div className="space-y-2 mb-4">
-            <div className="h-4 w-full bg-[var(--franco-bar-track)] rounded animate-pulse" />
-            <div className="h-4 w-11/12 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-            <div className="h-4 w-4/5 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-4">
-            <div className="h-20 bg-[var(--franco-bar-track)] rounded-xl animate-pulse" />
-            <div className="h-20 bg-[var(--franco-bar-track)] rounded-xl animate-pulse" />
-            <div className="h-20 bg-[var(--franco-bar-track)] rounded-xl animate-pulse" />
-          </div>
-          <div className="space-y-2">
-            <div className="h-4 w-full bg-[var(--franco-bar-track)] rounded animate-pulse" />
-            <div className="h-4 w-10/12 bg-[var(--franco-bar-track)] rounded animate-pulse" />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className="bg-[var(--franco-card)] border border-[var(--franco-border)] rounded-2xl p-5 min-h-[168px] flex flex-col"
-          >
-            <div className="h-3 w-20 bg-[var(--franco-bar-track)] rounded animate-pulse mb-2" />
-            <div className="h-5 w-5/6 bg-[var(--franco-bar-track)] rounded animate-pulse mb-3" />
-            <div className="h-7 w-32 bg-[var(--franco-bar-track)] rounded animate-pulse mb-1" />
-            <div className="h-3 w-24 bg-[var(--franco-bar-track)] rounded animate-pulse mt-auto" />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-
 function DashboardAnalysisSection({
   aiAnalysis,
   loading,
@@ -1731,8 +1695,23 @@ function DashboardAnalysisSection({
         ? { lat: inputAny.zonaRadio.lat as number, lng: inputAny.zonaRadio.lng as number }
         : null;
 
-  if (loading && !aiAnalysis) {
-    return <DashboardSkeleton />;
+  const hasReadyData = !!aiAnalysis && hasAiV2(aiAnalysis);
+  const [loadingDismissed, setLoadingDismissed] = useState(hasReadyData);
+  useEffect(() => {
+    if (hasReadyData && !loadingDismissed) {
+      const t = setTimeout(() => setLoadingDismissed(true), 1100);
+      return () => clearTimeout(t);
+    }
+  }, [hasReadyData, loadingDismissed]);
+
+  const showLoading = (loading && !aiAnalysis) || (hasReadyData && !loadingDismissed);
+
+  if (showLoading) {
+    return (
+      <div id="informe-pro-section" className="mb-8 rounded-[16px] overflow-hidden">
+        <LoadingFranco isDataReady={hasReadyData} />
+      </div>
+    );
   }
 
   if ((error && !aiAnalysis) || (!aiAnalysis && !loading) || (aiAnalysis && !hasAiV2(aiAnalysis))) {
@@ -2115,9 +2094,11 @@ export function PremiumResults({
   const [adjContribuciones, setAdjContribuciones] = useState(inputData?.contribuciones ?? 0);
   const [adjVacanciaPct, setAdjVacanciaPct] = useState(() => Math.round((inputData?.vacanciaMeses ?? 1) * 100 / 12));
   const [adjAdminPct, setAdjAdminPct] = useState(() => inputData?.usaAdministrador ? (inputData?.comisionAdministrador ?? 7) : 0);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTouchDevice, setIsTouchDevice] = useState(false);
@@ -2362,7 +2343,10 @@ export function PremiumResults({
     let arriendoActual = inputData.arriendo;
     let gastosActual = inputData.gastos;
     let contribucionesActual = inputData.contribuciones;
-    let valorPropiedad = precioCLP;
+    // Match motor: arranca desde valor de mercado Franco (si existe) para que
+    // Capa 3 con plazo=10 y plusvalía=4% coincida con la TIR de Capa 1.
+    const vmFrancoUF = (inputData as AnalisisInput & { valorMercadoFranco?: number }).valorMercadoFranco || inputData.precio;
+    let valorPropiedad = vmFrancoUF * UF_CLP;
     let flujoAcumulado = 0;
     const plusvaliaDec = plusvaliaRate / 100;
     const costGrowthDec = costGrowth / 100;
@@ -2995,7 +2979,7 @@ export function PremiumResults({
       {isSharedView && (
         <div className="bg-[var(--franco-card)] text-[var(--franco-text)] rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-[var(--franco-border)]">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
-          <a href="/analisis/nuevo" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
+          <a href="/analisis/nuevo-v2" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
             Analizar mi propio depto →
           </a>
         </div>
@@ -3089,6 +3073,7 @@ export function PremiumResults({
     return () => window.removeEventListener("scroll", handleScroll);
   }, [hasPanelContent]);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const panelFields = hasPanelContent ? (
     <div className="space-y-2">
       <div>
@@ -3185,6 +3170,7 @@ export function PremiumResults({
     </div>
   ) : null;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const panelButton = hasPanelContent ? (
     <div>
       <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-[#C8323C] text-white hover:bg-[#C8323C]/90">
@@ -3195,6 +3181,7 @@ export function PremiumResults({
     </div>
   ) : null;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const projectionFields = hasPanelContent ? (
     currentAccess !== 'subscriber' ? (
       <div className="p-3 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] text-center">
@@ -3243,100 +3230,11 @@ export function PremiumResults({
     )
   ) : null;
 
+  // Paneles laterales eliminados (Fase 3). Capa 1+2 usan siempre valores del
+  // análisis original; la simulación editable vive en el acordeón Capa 3.
   return (
-    <div className={hasPanelContent ? "lg:grid lg:grid-cols-[1fr_260px] lg:gap-6" : ""}>
-      {/* Main content — all zones */}
-      <div className="min-w-0">
-        {mainContent}
-      </div>
-
-      {/* Sidebar column — both panels stacked */}
-      {hasPanelContent && (
-        <aside className="hidden lg:block">
-          {/* Panel 1: Normal position, stays at top */}
-          <div
-            className="flex flex-col rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm"
-            style={{ maxHeight: "calc(100vh - 2rem)" }}
-          >
-            <div className="shrink-0 px-3 pt-3 pb-1">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-[var(--franco-text)]" />
-                <h3 className="font-body text-xs font-semibold text-[var(--franco-text)]">Ajusta los números</h3>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
-              {panelFields}
-            </div>
-            <div className="shrink-0 border-t border-[var(--franco-border)] px-3 py-2">
-              {panelButton}
-            </div>
-          </div>
-
-          {/* Panel 2: sticky, always visible */}
-          {(
-            <div
-              className="sticky top-20 mt-8 flex flex-col rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm animate-fadeIn"
-              style={{ maxHeight: "calc(100vh - 2rem)" }}
-            >
-              <div className="shrink-0 px-3 pt-3 pb-1">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="h-4 w-4 text-[var(--franco-text)]" />
-                  <h3 className="font-body text-xs font-semibold text-[var(--franco-text)]">Proyecciones</h3>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto scrollbar-hide px-3 py-2">
-                {projectionFields}
-              </div>
-            </div>
-          )}
-        </aside>
-      )}
-
-      {/* Mobile FAB + drawer */}
-      {hasPanelContent && (
-        <>
-          {!drawerOpen && fabState !== 'hidden' && (
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="fixed bottom-5 right-4 z-40 flex items-center gap-2 rounded-full bg-[var(--franco-card)] border border-[var(--franco-border)] text-[var(--franco-text)] shadow-[0_4px_20px_rgba(0,0,0,0.5)] px-4 py-3 lg:hidden transition-opacity duration-200"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              <span className="font-body text-[13px] font-medium">{fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}</span>
-            </button>
-          )}
-
-          {drawerOpen && (
-            <div className="fixed inset-0 z-50 lg:hidden">
-              <div className="absolute inset-0 bg-black/50" onClick={() => setDrawerOpen(false)} />
-              <div className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-2xl bg-[var(--franco-card)] shadow-2xl" style={{ maxHeight: "80vh" }}>
-                <div className="mx-auto mt-3 h-1 w-10 rounded-full bg-[var(--franco-border)]" />
-                <div className="shrink-0 px-5 pt-3 pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <SlidersHorizontal className="h-4 w-4 text-[var(--franco-text)]" />
-                      <h3 className="font-body text-base font-medium text-[var(--franco-text)]">
-                        {fabState === 'projections' ? 'Proyecciones' : 'Ajusta los números'}
-                      </h3>
-                    </div>
-                    <button type="button" onClick={() => setDrawerOpen(false)} className="rounded-full p-1 hover:bg-[var(--franco-border)]">
-                      <X className="h-5 w-5 text-[var(--franco-text-secondary)]" />
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-1 overflow-y-auto scrollbar-hide px-5 py-2">
-                  {fabState === 'projections' ? projectionFields : panelFields}
-                </div>
-                {fabState !== 'projections' && (
-                  <div className="shrink-0 border-t border-[var(--franco-border)] px-5 py-3">
-                    {panelButton}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+    <div className="min-w-0">
+      {mainContent}
     </div>
   );
 }

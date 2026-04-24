@@ -109,7 +109,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
             <nav className="hidden items-center gap-6 md:flex">
               <Link href="/comunas" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Comunas</Link>
               <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
-              <Link href="/analisis/nuevo" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
+              <Link href="/analisis/nuevo-v2" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
                 Analizar gratis
               </Link>
             </nav>
@@ -225,7 +225,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
               Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
             </p>
             <Link
-              href={`/analisis/nuevo?comuna=${encodeURIComponent(stats.nombre)}`}
+              href={`/analisis/nuevo-v2?comuna=${encodeURIComponent(stats.nombre)}`}
               className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
             >
               Analizar depto en {stats.nombre}

@@ -63,7 +63,7 @@ export function AnalysisNav({
             <>
               <ShareButton id={analysisId} score={score} nombre={nombre} comuna={comuna} />
               {!isSharedView && <DeleteButton id={analysisId} />}
-              <Link href={isSharedView ? "/analisis/nuevo" : "/dashboard"}>
+              <Link href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"}>
                 <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]">
                   <ArrowLeft className="h-4 w-4" /> {isSharedView ? "Analizar mi depto" : "Dashboard"}
                 </Button>
@@ -111,7 +111,7 @@ export function AnalysisNav({
                         <DeleteButton id={analysisId} />
                       </div>
                     )}
-                    <Link href={isSharedView ? "/analisis/nuevo" : "/dashboard"} onClick={() => setMenuOpen(false)}>
+                    <Link href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"} onClick={() => setMenuOpen(false)}>
                       <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
                         <ArrowLeft className="h-4 w-4" /> {isSharedView ? "Analizar mi depto" : "Dashboard"}
                       </Button>

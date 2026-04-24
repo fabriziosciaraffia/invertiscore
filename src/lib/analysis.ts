@@ -8,6 +8,7 @@ import type {
   SensitivityRow,
   Desglose,
   FullAnalysisResult,
+  NegociacionScenario,
 } from "./types";
 import { estimarContribuciones } from "./contribuciones";
 import { findNearestStation } from "./metro-stations";
@@ -913,11 +914,67 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
 
 export { calcMetrics, calcScoreFromMetrics };
 
+// TIR para un precio alternativo (UF). Recomputa métricas/proyecciones/exit.
+export function tirForPrice(input: AnalisisInput, precioUF: number): number {
+  const clone: AnalisisInput = { ...input, precio: precioUF };
+  const m = calcMetrics(clone);
+  const projs = calcProjections(clone, m, 20);
+  const ex = calcExitScenario(clone, m, projs, 10);
+  return ex.tir;
+}
+
+function calcNegociacionScenario(
+  input: AnalisisInput,
+  tirActual: number
+): NegociacionScenario {
+  const vmFrancoUF = input.valorMercadoFranco || input.precio;
+  // Fórmula corregida: sugerido es 3% bajo el menor entre precio y vmFranco.
+  // Garantiza que precioSugerido < precioCompra siempre.
+  const baseSugerido = Math.min(input.precio, vmFrancoUF);
+  const precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
+  const tirAlSugerido = tirForPrice(input, precioSugeridoUF);
+  const tirAlVmFranco = tirForPrice(input, vmFrancoUF);
+
+  // Precio límite: buscar por bisección el precio donde TIR cae a 6%.
+  let precioLimiteUF: number | null = null;
+  let tirAlLimite: number | null = null;
+  if (tirActual > 6) {
+    let lo = input.precio;
+    let hi = Math.max(input.precio * 1.5, vmFrancoUF * 1.3);
+    for (let i = 0; i < 18; i++) {
+      const mid = (lo + hi) / 2;
+      const tir = tirForPrice(input, mid);
+      if (tir > 6) lo = mid;
+      else hi = mid;
+      if (Math.abs(tir - 6) < 0.1) {
+        precioLimiteUF = Math.round(mid * 10) / 10;
+        tirAlLimite = 6.0;
+        break;
+      }
+    }
+    if (precioLimiteUF === null && hi > lo) {
+      precioLimiteUF = Math.round(((lo + hi) / 2) * 10) / 10;
+      tirAlLimite = 6.0;
+    }
+  }
+
+  return {
+    precioSugeridoUF,
+    precioSugeridoCLP: Math.round(precioSugeridoUF * UF_CLP),
+    tirAlSugerido,
+    precioLimiteUF,
+    precioLimiteCLP: precioLimiteUF ? Math.round(precioLimiteUF * UF_CLP) : null,
+    tirAlLimite,
+    tirAlVmFranco,
+  };
+}
+
 export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const metrics = calcMetrics(input);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
   const projections = calcProjections(input, metrics, 20);
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
+  const negociacion = calcNegociacionScenario(input, exitScenario.tir);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
   const score = calcScoreFromMetrics(input, metrics);
   const sensitivity = calcSensitivity(input, score, metrics);
@@ -1050,6 +1107,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     sensitivity,
     breakEvenTasa,
     valorMaximoCompra,
+    negociacion,
     resumen,
     pros,
     contras,

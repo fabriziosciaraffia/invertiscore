@@ -246,6 +246,203 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       }
     }
 
+    // ─── Contexto estructurado de negociación (v2) ─────────
+    // Variables categóricas + numéricas explícitas para la IA, y guía de cómo
+    // abordar la dualidad veredicto ↔ pasada/sobreprecio.
+    const vmFrancoUF = input.valorMercadoFranco || input.precio;
+    const vmFrancoCLP = vmFrancoUF * UF_CLP;
+    const precioCompraCLP = m.precioCLP;
+    const diferenciaCLP = vmFrancoCLP - precioCompraCLP;
+    const pctDiferencia = vmFrancoCLP > 0
+      ? (Math.abs(diferenciaCLP) / vmFrancoCLP) * 100
+      : 0;
+    const tipoNegociacion: "PASADA" | "SOBREPRECIO" | "PRECIO_ALINEADO" =
+      pctDiferencia <= 2
+        ? "PRECIO_ALINEADO"
+        : diferenciaCLP > 0
+          ? "PASADA"
+          : "SOBREPRECIO";
+
+    // ─── Señales derivadas para el prompt IA ──────────────────────────
+    // `tieneDiferenciaValida`: si el motor tiene un vmFranco real y distinto
+    // del precio. Cuando es false (vmFranco === precio por falta de datos o
+    // por fallback), la IA no debe generar frases "UF X sobre mercado" — son
+    // alucinaciones. Solo puede hablar del indicador por m².
+    // Threshold: |diferencia| > $1M CLP ≈ UF 25 — descarta ruido de redondeo.
+    const tieneDiferenciaValida = Math.abs(diferenciaCLP) > 1_000_000;
+    // `sobrepreciioPorM2UF`: siempre computable cuando hay precioM2Zona,
+    // independiente de que vmFranco sea real o fallback. Deja que la IA hable
+    // de sobreprecio/m² sin inventar el absoluto.
+    const sobreprecioPorM2UF = precioM2Zona > 0 && m.precioM2 > 0
+      ? Math.round((m.precioM2 - precioM2Zona) * 10) / 10
+      : null;
+
+    const neg = results.negociacion;
+    const precioSugeridoCLPNeg = neg?.precioSugeridoCLP ?? Math.round(Math.min(input.precio, vmFrancoUF) * 0.97 * UF_CLP);
+    const tirActual = exit?.tir ?? 0;
+    const tirAlSugeridoNeg = neg?.tirAlSugerido ?? null;
+    const deltaTirSugerido = typeof tirAlSugeridoNeg === "number"
+      ? tirAlSugeridoNeg - tirActual
+      : null;
+    const precioLimiteCLPNeg = neg?.precioLimiteCLP ?? null;
+
+    // Meses estimados con flujo negativo: cuántos meses aportas antes de que el
+    // flujo mensual cruce a positivo. NO confundir con plazoCredito (duración del
+    // crédito) ni con payback (recuperación del capital invertido).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const projYears = (results.projections as any[]) || [];
+    let anioCruce = -1;
+    for (let i = 0; i < projYears.length; i++) {
+      if ((projYears[i]?.flujoAnual ?? 0) >= 0) {
+        anioCruce = i + 1;
+        break;
+      }
+    }
+    let mesesDeFlujoNegativo = 0;
+    let flujoCruzaEnHorizonte = true;
+    if (m.flujoNetoMensual >= 0) {
+      mesesDeFlujoNegativo = 0;
+    } else if (anioCruce === -1) {
+      // Nunca cruza dentro del horizonte de proyección
+      mesesDeFlujoNegativo = projYears.length * 12;
+      flujoCruzaEnHorizonte = false;
+    } else {
+      // Flujo mensual es constante dentro de cada año. Si el año N es el primero
+      // con flujoAnual ≥ 0, los meses 1..12*(N-1) son negativos y el cruce ocurre
+      // al inicio del año N.
+      mesesDeFlujoNegativo = Math.max(0, (anioCruce - 1) * 12);
+    }
+
+    const contextoNegociacionV2 = `
+CONTEXTO ESTRUCTURADO DE NEGOCIACIÓN:
+- tipoNegociacion: ${tipoNegociacion}
+- precioCompra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
+- vmFranco (valor real de mercado): ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})
+- diferencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)
+- tieneDiferenciaValida: ${tieneDiferenciaValida} — cuando es false, vmFranco puede ser igual a precio por fallback del motor (faltan datos de venta en la zona). En ese caso NO uses la diferencia absoluta.
+- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${m.precioM2.toFixed(1)} vs zona ${precioM2Zona.toFixed(1)})` : "sin dato"}
+- precioSugerido (3% bajo el menor entre precioCompra y vmFranco): ${fmtCLP(precioSugeridoCLPNeg)}
+- tirActual al precio actual: ${tirActual.toFixed(1)}%
+- tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
+- delta TIR (sugerido − actual): ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
+- precioLimite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}
+- aporteMensual: ${fmtCLP(Math.abs(m.flujoNetoMensual))}/mes ${m.flujoNetoMensual < 0 ? "(sale de bolsillo)" : "(excedente)"}
+- mesesDeFlujoNegativo: ${
+  m.flujoNetoMensual >= 0
+    ? "0 — flujo ya positivo"
+    : flujoCruzaEnHorizonte
+      ? `${mesesDeFlujoNegativo} meses (≈${Math.round(mesesDeFlujoNegativo / 12)} años hasta que el arriendo cubra el dividendo)`
+      : `>${projYears.length * 12} meses — el flujo NO cruza a positivo en el horizonte de ${projYears.length} años de proyección. El aporte mensual se mantiene durante toda la proyección.`
+}
+- plazoCredito: ${input.plazoCredito} años (${input.plazoCredito * 12} meses) — duración del crédito, NO es lo mismo que mesesDeFlujoNegativo
+- veredictoCategoria: ${(results.veredicto || "").replace(/\\s+/g, "_")}
+
+INSTRUCCIONES PARA ABORDAR LA DUALIDAD VEREDICTO ↔ NEGOCIACIÓN:
+
+En \`conviene.respuestaDirecta\` y \`conviene.reencuadre\`, DEBES:
+
+0. REGLA CRÍTICA — DIFERENCIA ABSOLUTA vs POR m²:
+   - Si \`tieneDiferenciaValida\` es false: **PROHIBIDO** mencionar montos absolutos como "UF X sobre mercado" o "UF X de sobreprecio total" o "pagas $Y sobre mercado". Esos números serían inventados porque el motor no tiene un valor real de mercado. Usa ÚNICAMENTE el indicador por m² (\`sobreprecioPorM2\`) para hablar de sobre/bajo mercado.
+     Ejemplo correcto: "Tu precio/m² (UF 103,4) está UF 35,4 sobre el promedio de la zona (UF 68)."
+     Ejemplos PROHIBIDOS: "UF 3.122 sobre mercado" · "pagas $2.000.000 sobre mercado" · "compraste $15M bajo mercado".
+   - Si \`tieneDiferenciaValida\` es true: puedes usar libremente el monto absoluto "UF X sobre/bajo mercado" y también el por m². Ambos deben ser consistentes entre sí (verifica mentalmente antes de escribir).
+
+1. RECONOCER LA VENTAJA O SOBREPRECIO EXPLÍCITAMENTE con monto y porcentaje concretos.
+   - Si tipoNegociacion === "PASADA": mencionar "compraste X% bajo mercado (monto $Y)" como dato positivo real — usar la palabra "ventaja" (NO "pasada") al referirse al concepto en la narrativa.
+   - Si "SOBREPRECIO": mencionar "pagas X% sobre mercado (monto $Y)" como costo explícito.
+   - Si "PRECIO_ALINEADO": mencionar que el precio está cerca del valor real (±2%).
+
+2. ABORDAR LA TENSIÓN VEREDICTO ↔ NEGOCIACIÓN cuando exista. Casos:
+
+   PASADA + AJUSTA_EL_PRECIO: "Compraste bajo mercado (+X de ventaja), lo cual es positivo. Pero con las tasas actuales y arriendo insuficiente para cubrir el dividendo, aportas $Y al mes durante ~Z años. La ventaja es un bono, no un salvavidas — bajar a $sugerido mejora la posición."
+
+   SOBREPRECIO + BUSCAR_OTRA: "Doble alerta: pagas X sobre mercado Y la rentabilidad no funciona ni así. Mejor renegociar agresivo o buscar otro depto."
+
+   SOBREPRECIO + AJUSTA_EL_PRECIO: "El precio está sobre mercado (+X%), y eso es exactamente por lo que hay que negociar. A $sugerido los números mejoran (TIR sube a Z%)."
+
+   PASADA + COMPRAR: "Excelente combinación. Compraste bien (+X de ventaja) y la matemática cierra sola. Poco que negociar — cierra rápido."
+
+   PASADA + BUSCAR_OTRA: raro, pero si ocurre: "Aunque compras bajo mercado (+X), el flujo mensual y la rentabilidad no funcionan. La ventaja no compensa el costo operativo."
+
+   PRECIO_ALINEADO + AJUSTA_EL_PRECIO: "El precio está en línea con mercado, pero con tasas actuales y arriendo bajo, igual conviene presionar un 3% a $sugerido."
+
+   PRECIO_ALINEADO + COMPRAR: "Precio justo y números que cierran. No hay mucho que negociar."
+
+3. SER HONESTO SOBRE EL ESFUERZO Y SU DURACIÓN
+   Usar el campo \`mesesDeFlujoNegativo\` para describir el período de aporte mensual.
+   NO confundirlo con \`plazoCredito\` (duración del crédito).
+
+   Importante: cuando el flujo cruza a positivo en el mes N, el usuario NO empieza
+   a ganar — solo deja de perder. El flujo positivo post-cruce es típicamente
+   marginal (pocos miles de pesos), y la ganancia real viene de la VENTA del depto.
+
+   Si \`mesesDeFlujoNegativo\` indica que el flujo NO cruza en el horizonte de
+   proyección, decirlo explícitamente: el aporte se mantiene durante toda la
+   proyección y la única vía de retorno es la venta/plusvalía.
+
+   Ejemplos de redacción correcta:
+   ✓ "Aportas $X mensuales durante ~N meses hasta que el arriendo cubra el dividendo. Después el flujo se vuelve neutro — la ganancia real viene al vender."
+   ✓ "Esta inversión requiere aporte de bolsillo durante ~N meses. Recién en el mes N+1 el arriendo iguala los costos, pero la rentabilidad significativa solo aparece al vender."
+   ✓ "Durante ~4 años aportas $X al mes. Después el depto se sostiene solo, pero recuperar la inversión requiere vender."
+
+   Ejemplos INCORRECTOS (no usar):
+   ✗ "Aportas durante 20 años" (eso es plazo del crédito, no aporte de bolsillo)
+   ✗ "Después de N meses empiezas a ganar" (engañoso, solo deja de perder)
+   ✗ "En N meses recuperas lo invertido" (eso es payback, distinto concepto)
+
+4. CONECTAR CON EL SUGERIDO en \`negociacion.contenido\` y \`cajaAccionable\`: si tirAlSugerido está disponible, mencionar que bajar al sugerido mejora TIR en +Δ pp.
+
+5. CERRAR \`conviene.cajaAccionable\` con pregunta accionable que use \`mesesDeFlujoNegativo\` convertido a años, NO el plazo del crédito.
+
+   Ejemplo correcto:
+   ✓ "¿Puedes sostener $292.673 mensuales durante ~4 años antes de que el depto se pague solo?"
+
+   Ejemplo incorrecto:
+   ✗ "¿Puedes sostener $292.673 mensuales durante 20 años?" (eso es el crédito, no el aporte neto)
+
+   Si el flujo no cruza en el horizonte, la pregunta cambia:
+   ✓ "¿Puedes sostener $X al mes sin tope claro en la proyección? El retorno depende solo de la venta."
+
+6. GENERAR \`negociacion.estrategiaSugerida_clp\` y \`_uf\` (bloque nuevo, no lo omitas):
+
+   Requisitos:
+   - 1-3 frases, máximo 60 palabras.
+   - Acción concreta: qué precio intentar, cuánto mejora la TIR, hasta dónde aguantar.
+   - Honestidad sobre la dualidad (veredictoCategoria vs tipoNegociacion).
+   - Si \`flujoCruzaEnHorizonte = false\`, NO prometer que el flujo mejorará — la ganancia real depende solo de la venta y la plusvalía.
+   - Sin moralizar ni dar consejos genéricos tipo "consulta con tu asesor".
+   - Tutear, tono chileno profesional.
+   - Usa los valores reales de las variables del contexto (precioSugerido, tirActual, tirAlSugerido, diferenciaCLP, flujoCruzaEnHorizonte, etc.). Los números en los ejemplos son ficticios.
+
+   Terminología visible: el enum interno es \`tipoNegociacion: "PASADA"\`, pero en la narrativa visible al usuario usa la palabra "ventaja" (nunca "pasada"). Ejemplos: "ventaja favorable", "$15M de ventaja al comprar", "la ventaja es un bono". "Sobreprecio" sí mantiene su nombre.
+
+   Ejemplos por caso (usar como guía, no copiar literal):
+
+   PASADA + AJUSTA_EL_PRECIO (flujo cruza en horizonte):
+   "Ya estás bajo mercado ($15M de ventaja), pero la matemática mensual no cierra. Intenta bajar a $213M — mejora tu TIR de 10,4% a 11,2% y reduce ~$2M de aporte acumulado. Si el corredor no cede, cierra igual: la ventaja ya es un bono sólido."
+
+   PASADA + AJUSTA_EL_PRECIO (flujo NUNCA cruza):
+   "Compraste bajo mercado ($15M de ventaja), pero el flujo se mantiene negativo durante todo el plazo. Bajar a $213M mejora TIR a 12% y reduce aporte mensual, pero el retorno depende íntegramente de la venta. Apuesta solo si tienes estómago para aportar $292K durante 20 años."
+
+   SOBREPRECIO + AJUSTA_EL_PRECIO:
+   "Estás pagando $30M sobre mercado Y los números mensuales son justos. Negocia con firmeza hasta $215M (TIR sube a 9,8%). Si no baja de $240M, este depto no rinde — busca otro."
+
+   SOBREPRECIO + BUSCAR_OTRA:
+   "Doble alerta: $30M sobre mercado y la TIR queda en 5,2% (peor que un depósito UF). Mejor pasar — hay mejores oportunidades en la zona."
+
+   SOBREPRECIO + AJUSTA_EL_PRECIO (flujo NUNCA cruza):
+   "Estás pagando sobreprecio Y el flujo nunca se vuelve positivo. Bajar a precio sugerido es mandatorio — sin eso, esta inversión es una apuesta ciega a la plusvalía sosteniendo 20 años de aporte."
+
+   PASADA + COMPRAR:
+   "Excelente combinación. Compraste $15M bajo mercado y la matemática cierra sola. No hay mucho que negociar — cierra rápido antes de que el corredor recalibre."
+
+   PRECIO_ALINEADO + AJUSTA_EL_PRECIO:
+   "El precio es justo pero los números piden aire. Intenta $215M — sube TIR de 9,5% a 9,9%. Si no, $220M también funciona."
+
+   PRECIO_ALINEADO + COMPRAR:
+   "Precio alineado con mercado y números sólidos. No hay urgencia por negociar — cierra tranquilo."
+`.trim();
+
     // --- Datos Score v2 ---
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const inputAny = input as any;
@@ -399,6 +596,8 @@ DATOS DE NEGOCIACIÓN (calculados por el motor):
 ${datosNegociacion}
 ${datosPasada ? `\nPLUSVALÍA INMEDIATA:\n${datosPasada}` : ""}
 
+${contextoNegociacionV2}
+
 DATOS ADICIONALES PARA CONSTRUIR EL ANÁLISIS:
 - Flujo negativo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
 - Flujo negativo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
@@ -451,6 +650,8 @@ Responde SOLO con un JSON válido con esta estructura exacta:
     "pregunta": "¿Hay margen para negociar?",
     "contenido_clp": "2-3 oraciones que explican a qué precio el depto se paga solo, cuánto descuento requiere, y qué tan realista es. Basado en los DATOS DE NEGOCIACIÓN calculados arriba (precioFlujoNeutro, descuentoParaNeutro). Montos en CLP.",
     "contenido_uf": "Lo mismo en UF.",
+    "estrategiaSugerida_clp": "1-3 frases (máx 60 palabras) con una acción concreta: qué precio intentar, cuánto mejora la TIR, hasta dónde aguantar. Integra veredictoCategoria + tipoNegociacion + flujoCruzaEnHorizonte. Usa la palabra \\"ventaja\\" (nunca \\"pasada\\") al referirse al caso de compra bajo mercado. Montos en CLP.",
+    "estrategiaSugerida_uf": "Lo mismo en UF.",
     "cajaAccionable_clp": "Guion o argumento concreto que el usuario puede usar para plantear la contraoferta. Puede incluir texto entre comillas que el usuario pueda citar. Montos en CLP.",
     "cajaAccionable_uf": "Lo mismo en UF.",
     "cajaLabel": "Guión para la contraoferta:",

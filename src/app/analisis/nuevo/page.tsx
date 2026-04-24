@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { usePostHog } from "posthog-js/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
@@ -228,11 +227,10 @@ const GUEST_LS_KEY = "franco_guest_analysis";
 
 export default function NuevoAnalisisPage() {
   const router = useRouter();
-  const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ufValue, setUfValue] = useState(UF_CLP_FALLBACK);
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null); // null = loading
+  const [, setIsLoggedIn] = useState<boolean | null>(null); // only used as a gate for guestBlocked below
   const [guestBlocked, setGuestBlocked] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkLoading, setLinkLoading] = useState(false);
@@ -395,9 +393,33 @@ export default function NuevoAnalisisPage() {
   }, [fieldCurrency]);
 
   // ─── localStorage persistence ──────────────────────
-  // Restore draft on mount
+  // Restore draft on mount, OR hydrate from revisar flow (takes precedence)
   useEffect(() => {
     try {
+      const hydrateFlag = sessionStorage.getItem("franco:revisar:hydrate-form");
+      const revisarRaw = sessionStorage.getItem("franco:revisar:v1");
+      if (hydrateFlag && revisarRaw) {
+        const revisar = JSON.parse(revisarRaw);
+        if (revisar?.formState && typeof revisar.formState === "object") {
+          setForm((prev) => ({ ...prev, ...revisar.formState }));
+        }
+        if (revisar?.apiPayload) {
+          // Apply any inline edits the user made in the revisar screen
+          setForm((prev) => ({
+            ...prev,
+            precio: String(revisar.apiPayload.precio ?? prev.precio),
+            arriendo: String(revisar.apiPayload.arriendo ?? prev.arriendo),
+            piePct: String(revisar.apiPayload.piePct ?? prev.piePct),
+            plazoCredito: String(revisar.apiPayload.plazoCredito ?? prev.plazoCredito),
+            tasaInteres: String(revisar.apiPayload.tasaInteres ?? prev.tasaInteres),
+          }));
+          // Ensure precio is read as UF on re-hydration since that's how we stored it
+          setFieldCurrency((fc) => ({ ...fc, precio: "UF", arriendo: "CLP" }));
+        }
+        sessionStorage.removeItem("franco:revisar:hydrate-form");
+        formInitialized.current = true;
+        return;
+      }
       const saved = localStorage.getItem(LS_KEY);
       if (saved) {
         const draft = JSON.parse(saved);
@@ -986,7 +1008,10 @@ export default function NuevoAnalisisPage() {
     setField("cuotasPie", String(meses));
   }, [form.fechaEntregaMes, form.fechaEntregaAnio, setField]);
 
-  // ─── Submit ────────────────────────────────────────
+  // ─── Siguiente → Revisar ───────────────────────────
+  // En lugar de crear el análisis aquí, armamos el payload final + metadata y
+  // navegamos a /analisis/nuevo/revisar. La creación real ocurre ahí.
+  const REVISAR_SS_KEY = "franco:revisar:v1";
   const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError("");
@@ -1002,82 +1027,89 @@ export default function NuevoAnalisisPage() {
     const ciudad = selectedComuna?.ciudad || "Santiago";
     const nombre = form.nombreAnalisis.trim() || `Depto ${form.dormitorios || '2'}D${form.banos || '1'}B ${form.comuna}`;
 
+    const apiPayload = {
+      nombre,
+      comuna: form.comuna,
+      ciudad,
+      direccion: form.direccion || undefined,
+      tipo: "Departamento",
+      dormitorios: Number(form.dormitorios) || 2,
+      banos: Number(form.banos) || 1,
+      superficie: supUtil,
+      superficieTotal: supUtil,
+      antiguedad,
+      enConstruccion: form.estadoVenta !== "inmediata",
+      piso: 0,
+      estacionamiento: Number(form.estacionamiento) > 0 ? "si" : "no",
+      cantidadEstacionamientos: Number(form.estacionamiento),
+      precioEstacionamiento: 0,
+      bodega: Number(form.bodega) > 0,
+      cantidadBodegas: Number(form.bodega),
+      estadoVenta: form.estadoVenta === "futura" ? "futura" : "inmediata",
+      fechaEntrega: form.estadoVenta === "futura"
+        ? `${form.fechaEntregaAnio}-${form.fechaEntregaMes}`
+        : undefined,
+      cuotasPie: Number(form.cuotasPie) || (form.tipoPropiedad === "nuevo" && form.estadoVenta === "inmediata" ? 1 : 0),
+      montoCuota: Number(form.cuotasPie) > 0 ? Math.round((calc.pieUF / Number(form.cuotasPie)) * UF_CLP) : 0,
+      precio: precioUF,
+      valorMercadoFranco: suggestions?.precioSugeridoUF || undefined,
+      valorMercadoUsuario: form.valorMercado ? toUF("valorMercado", Number(form.valorMercado) || 0) : undefined,
+      piePct: parseFloat(form.piePct),
+      plazoCredito: parseFloat(form.plazoCredito),
+      tasaInteres: parseFloat(form.tasaInteres),
+      gastos: gastos || calc.gastosAuto,
+      contribuciones: contribuciones || calc.contribucionesAuto,
+      provisionMantencion,
+      tipoRenta: "larga",
+      arriendo,
+      arriendoEstacionamiento: Number(form.arriendoEstac) || 0,
+      arriendoBodega: Number(form.arriendoBodega) || 0,
+      vacanciaMeses: parseFloat(form.vacanciaPct) * 12 / 100,
+      usaAdministrador: parseFloat(form.adminPct) > 0,
+      comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
+      zonaRadio: {
+        precioM2VentaCLP: ventaRef?.precioM2 || null,
+        arriendoPromedio: suggestions?.arriendoBase || apiSuggestions?.arriendo || null,
+        arriendoPrecioM2: suggestions?.precioM2Arriendo || apiSuggestions?.precioM2 || null,
+        sampleSizeArriendo: apiSuggestions?.sampleSize || 0,
+        sampleSizeVenta: ventaRef?.sampleSize || 0,
+        radioMetros: radius,
+        lat: geoLat || null,
+        lng: geoLng || null,
+      },
+    };
+
+    const mesEtiqueta = form.fechaEntregaMes && form.fechaEntregaAnio
+      ? `${form.fechaEntregaMes.padStart(2, "0")}/${form.fechaEntregaAnio}`
+      : "";
+    const estadoLabel = form.estadoVenta === "futura" && mesEtiqueta
+      ? `Entrega ${mesEtiqueta}`
+      : "Entrega inmediata";
+
+    const revisarPayload = {
+      apiPayload,
+      displayMeta: {
+        direccionFull: form.direccion || "",
+        comunaLabel: form.comuna,
+        tipoLabel: form.tipoPropiedad === "nuevo" ? "Nuevo" : "Usado",
+        estadoLabel,
+        superficieM2: supUtil,
+        UF_CLP,
+        vmFrancoUF: suggestions?.precioSugeridoUF ?? null,
+        arriendoRangeBase: suggestions?.arriendoBase ?? apiSuggestions?.arriendo ?? null,
+      },
+      formState: form,
+    };
+
     try {
-      const res = await fetch("/api/analisis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre,
-          comuna: form.comuna,
-          ciudad,
-          direccion: form.direccion || undefined,
-          tipo: "Departamento",
-          dormitorios: Number(form.dormitorios) || 2,
-          banos: Number(form.banos) || 1,
-          superficie: supUtil,
-          superficieTotal: supUtil,
-          antiguedad,
-          enConstruccion: form.estadoVenta !== "inmediata",
-          piso: 0,
-          estacionamiento: Number(form.estacionamiento) > 0 ? "si" : "no",
-          cantidadEstacionamientos: Number(form.estacionamiento),
-          precioEstacionamiento: 0,
-          bodega: Number(form.bodega) > 0,
-          cantidadBodegas: Number(form.bodega),
-          estadoVenta: form.estadoVenta === "futura" ? "futura" : "inmediata",
-          fechaEntrega: form.estadoVenta === "futura"
-            ? `${form.fechaEntregaAnio}-${form.fechaEntregaMes}`
-            : undefined,
-          cuotasPie: Number(form.cuotasPie) || (form.tipoPropiedad === "nuevo" && form.estadoVenta === "inmediata" ? 1 : 0),
-          montoCuota: Number(form.cuotasPie) > 0 ? Math.round((calc.pieUF / Number(form.cuotasPie)) * UF_CLP) : 0,
-          precio: precioUF,
-          valorMercadoFranco: suggestions?.precioSugeridoUF || undefined,
-          valorMercadoUsuario: form.valorMercado ? toUF("valorMercado", Number(form.valorMercado) || 0) : undefined,
-          piePct: parseFloat(form.piePct),
-          plazoCredito: parseFloat(form.plazoCredito),
-          tasaInteres: parseFloat(form.tasaInteres),
-          gastos: gastos || calc.gastosAuto,
-          contribuciones: contribuciones || calc.contribucionesAuto,
-          provisionMantencion,
-          tipoRenta: "larga",
-          arriendo,
-          arriendoEstacionamiento: Number(form.arriendoEstac) || 0,
-          arriendoBodega: Number(form.arriendoBodega) || 0,
-          vacanciaMeses: parseFloat(form.vacanciaPct) * 12 / 100,
-          usaAdministrador: parseFloat(form.adminPct) > 0,
-          comisionAdministrador: parseFloat(form.adminPct) > 0 ? parseFloat(form.adminPct) : undefined,
-          zonaRadio: {
-            precioM2VentaCLP: ventaRef?.precioM2 || null,
-            // Use the scaled suggestion (precioM2 × superficie), same value the user sees,
-            // not the raw median which may include larger deptos if surface filter relaxed
-            arriendoPromedio: suggestions?.arriendoBase || apiSuggestions?.arriendo || null,
-            arriendoPrecioM2: suggestions?.precioM2Arriendo || apiSuggestions?.precioM2 || null,
-            sampleSizeArriendo: apiSuggestions?.sampleSize || 0,
-            sampleSizeVenta: ventaRef?.sampleSize || 0,
-            radioMetros: radius,
-            lat: geoLat || null,
-            lng: geoLng || null,
-          },
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Error al crear el análisis");
-      }
-
-      const data = await res.json();
-      localStorage.removeItem(LS_KEY);
-      // Mark guest analysis in localStorage
-      if (!isLoggedIn) {
-        localStorage.setItem(GUEST_LS_KEY, JSON.stringify({ id: data.id, timestamp: Date.now() }));
-      }
-      posthog?.capture('analysis_created', { comuna: form.comuna, tipo: form.tipoPropiedad, dormitorios: form.dormitorios, score: data.score, veredicto: data.results?.veredicto, is_premium: false });
-      router.push(`/analisis/${data.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error inesperado");
+      sessionStorage.setItem(REVISAR_SS_KEY, JSON.stringify(revisarPayload));
+    } catch {
+      setError("No se pudo guardar el resumen. Intenta de nuevo.");
       setLoading(false);
+      return;
     }
+
+    router.push("/analisis/nuevo/revisar");
   };
 
   // ─── Shared input class ────────────────────────────
@@ -2098,13 +2130,13 @@ export default function NuevoAnalisisPage() {
             className="w-full py-3.5 rounded-xl bg-[#C8323C] text-white font-body text-sm font-bold flex items-center justify-center gap-1.5 transition-all hover:bg-[#B02A34] disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? (
-              <><Loader2 className="h-4 w-4 animate-spin" /> Calculando...</>
+              <><Loader2 className="h-4 w-4 animate-spin" /> Preparando resumen...</>
             ) : (
-              <>✦ Generar Franco Score</>
+              <>Siguiente →</>
             )}
           </button>
           <p className="text-center font-body text-[11px] text-[var(--franco-text-muted)] mt-2">
-            {!canSubmit ? `Faltan: ${progress.missing.join(", ")}` : "Análisis gratuito · 30 segundos"}
+            {!canSubmit ? `Faltan: ${progress.missing.join(", ")}` : "Revisa tu resumen antes de analizar"}
           </p>
         </div>
       </>)}

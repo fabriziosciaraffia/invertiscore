@@ -532,7 +532,7 @@ export function STRResultsClient({
                 </Button>
               </a>
             ) : (
-              <a href={isSharedView ? "/analisis/nuevo" : "/dashboard"}>
+              <a href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"}>
                 <Button variant="ghost" size="sm" className="font-body text-xs text-[var(--franco-text-secondary)]">
                   ← {isSharedView ? "Analizar mi depto" : "Dashboard"}
                 </Button>
@@ -1212,7 +1212,7 @@ export function STRResultsClient({
 
         {/* ─── Bottom CTA ──────────────────────────── */}
         <div className="mt-8 text-center pb-12">
-          <a href="/analisis/nuevo">
+          <a href="/analisis/nuevo-v2">
             <Button
               variant="outline"
               className="font-body text-sm border-[var(--franco-border)] text-[var(--franco-text)] hover:bg-[var(--franco-card)]"

@@ -139,6 +139,16 @@ export interface AnalysisMetrics {
   };
 }
 
+export interface NegociacionScenario {
+  precioSugeridoUF: number;
+  precioSugeridoCLP: number;
+  tirAlSugerido: number;
+  precioLimiteUF: number | null;
+  precioLimiteCLP: number | null;
+  tirAlLimite: number | null;
+  tirAlVmFranco: number;
+}
+
 export interface FullAnalysisResult {
   score: number;
   clasificacion: string;
@@ -154,6 +164,7 @@ export interface FullAnalysisResult {
   sensitivity: SensitivityRow[];
   breakEvenTasa: number;
   valorMaximoCompra: number;
+  negociacion?: NegociacionScenario;
   resumen: string;
   pros: string[];
   contras: string[];
@@ -235,6 +246,8 @@ export interface AIConvieneSection {
 
 export interface AINegociacionSection extends AISection {
   precioSugerido: string;
+  estrategiaSugerida_clp?: string;
+  estrategiaSugerida_uf?: string;
 }
 
 export interface AIAnalysisV2 {

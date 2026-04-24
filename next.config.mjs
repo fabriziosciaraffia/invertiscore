@@ -16,6 +16,17 @@ const nextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      // 302: el formulario canónico ahora es el wizard v2. Path exacto: no captura
+      // /analisis/nuevo/revisar (ese sigue vivo para entries antiguas).
+      {
+        source: '/analisis/nuevo',
+        destination: '/analisis/nuevo-v2',
+        permanent: false,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

@@ -846,7 +846,7 @@ export default function LeverageSection() {
               <p className="mb-3 font-body text-[13px] text-[var(--franco-text-muted)]">
                 ¿Quieres ver estos números con tu propiedad real?
               </p>
-              <Link href="/analisis/nuevo">
+              <Link href="/analisis/nuevo-v2">
                 <button className="rounded-lg bg-[var(--franco-bg)] px-7 py-3 font-body text-sm font-semibold text-white transition-opacity hover:opacity-90">
                   Analizar mi propiedad gratis →
                 </button>

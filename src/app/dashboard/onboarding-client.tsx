@@ -68,7 +68,7 @@ export function OnboardingClient() {
     await markOnboardingComplete();
 
     if (selected === "free") {
-      router.push("/analisis/nuevo");
+      router.push("/analisis/nuevo-v2");
       return;
     }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import type {
   AIAnalysisV2,
   AISection,
@@ -8,7 +8,7 @@ import type {
   FullAnalysisResult,
   AnalisisInput,
 } from "@/lib/types";
-import { calcFlujoDesglose } from "@/lib/analysis";
+import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { StateBox } from "@/components/ui/StateBox";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZoneStatsCards } from "@/components/zone-insight/ZoneStatsCards";
@@ -297,164 +297,382 @@ function DrawerCostoMensual({
 }
 
 // ─── Negociación drawer ─────────────────────────────
-function parseUF(s: string | undefined): number {
-  if (!s) return 0;
-  const m = s.match(/[\d.,]+/);
-  if (!m) return 0;
-  const clean = m[0].replace(/\./g, "").replace(",", ".");
-  return parseFloat(clean) || 0;
-}
 
 function DrawerNegociacion({
   data,
   currency,
   inputData,
   results,
+  valorUF,
 }: {
   data: AINegociacionSection;
   currency: "CLP" | "UF";
   inputData: AnalisisInput;
   results: FullAnalysisResult;
+  valorUF: number;
 }) {
-  const listaUF = inputData.precio || 0;
-  const listaFmt = `UF ${listaUF.toLocaleString("es-CL")}`;
-  const sugeridoRaw = data.precioSugerido || listaFmt;
-  const sugeridoUF = parseUF(sugeridoRaw) || listaUF;
+  const precioCLP = (inputData.precio || 0) * valorUF;
+  const vmFrancoUF = results.metrics?.valorMercadoFrancoUF ?? (inputData.precio || 0);
+  const vmFrancoCLP = vmFrancoUF * valorUF;
 
-  // Use motor's precioFlujoNeutroUF when available; hide the "paga solo" dot if it
-  // isn't meaningful (≥ sugerido, too close, or non-positive).
-  const pagaSoloRaw = results.metrics?.precioFlujoNeutroUF ?? 0;
-  const pagaSoloUF = pagaSoloRaw > 0 ? Math.round(pagaSoloRaw) : 0;
-  const showPagaSolo = pagaSoloUF > 0 && pagaSoloUF < sugeridoUF - 50 && pagaSoloUF < listaUF - 50;
-  const pagaSoloFmt = `UF ${pagaSoloUF.toLocaleString("es-CL")}`;
+  const diferenciaCLP = vmFrancoCLP - precioCLP;
+  const pctDiferencia = vmFrancoCLP > 0 ? (Math.abs(diferenciaCLP) / vmFrancoCLP) * 100 : 0;
+  const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
+  const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
 
-  // Position the 3 (or 2) dots on the bar.
-  // With paga-solo: paga-solo=14%, lista=86%, sugerido interpolated in between.
-  // Without: sugerido=30%, lista=80%.
-  const posPagaSolo = 14;
-  const posLista = 86;
-  const range = Math.max(listaUF - (showPagaSolo ? pagaSoloUF : 0), 1);
-  const posSugeridoRaw = showPagaSolo
-    ? posPagaSolo + ((sugeridoUF - pagaSoloUF) / range) * (posLista - posPagaSolo)
-    : 30 + ((sugeridoUF / listaUF) * (posLista - 30));
-  const posSugerido = Math.min(Math.max(posSugeridoRaw, (showPagaSolo ? posPagaSolo + 10 : 22)), posLista - 10);
+  const tirActual = results.exitScenario?.tir ?? 0;
+  const neg = results.negociacion;
 
-  const guion = currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf;
+  // Fallbacks si el análisis es viejo (sin motor.negociacion): recomputar en el
+  // cliente con el mismo helper del motor (fuente única de verdad).
+  const negData = useMemo(() => {
+    if (neg) return neg;
+    const baseSugerido = Math.min(inputData.precio, vmFrancoUF);
+    const precioSugUF = Math.round(baseSugerido * 0.97 * 10) / 10;
+    const tirSug = tirForPrice(inputData, precioSugUF);
+    const tirVm = tirForPrice(inputData, vmFrancoUF);
+    // Precio límite por bisección simple solo si la TIR actual es > 6
+    let precioLimUF: number | null = null;
+    let tirLim: number | null = null;
+    if (tirActual > 6) {
+      let lo = inputData.precio;
+      let hi = Math.max(inputData.precio * 1.5, vmFrancoUF * 1.3);
+      for (let i = 0; i < 18; i++) {
+        const mid = (lo + hi) / 2;
+        const t = tirForPrice(inputData, mid);
+        if (t > 6) lo = mid; else hi = mid;
+        if (Math.abs(t - 6) < 0.1) {
+          precioLimUF = Math.round(mid * 10) / 10;
+          tirLim = 6.0;
+          break;
+        }
+      }
+      if (precioLimUF === null && hi > lo) {
+        precioLimUF = Math.round(((lo + hi) / 2) * 10) / 10;
+        tirLim = 6.0;
+      }
+    }
+    return {
+      precioSugeridoUF: precioSugUF,
+      precioSugeridoCLP: Math.round(precioSugUF * valorUF),
+      tirAlSugerido: tirSug,
+      precioLimiteUF: precioLimUF,
+      precioLimiteCLP: precioLimUF ? Math.round(precioLimUF * valorUF) : null,
+      tirAlLimite: tirLim,
+      tirAlVmFranco: tirVm,
+    };
+  }, [neg, inputData, vmFrancoUF, valorUF, tirActual]);
 
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    if (!guion) return;
-    navigator.clipboard.writeText(guion).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }).catch(() => {/* ignore */});
+  const precioSugeridoCLP = negData.precioSugeridoCLP;
+  const tirAlSugerido = negData.tirAlSugerido;
+  const tirAlVmFranco = negData.tirAlVmFranco;
+  const precioLimiteCLP = negData.precioLimiteCLP;
+  const tirAlLimite = negData.tirAlLimite;
+
+  const fmtFull = (v: number) => {
+    if (currency === "CLP") return "$" + Math.round(v).toLocaleString("es-CL");
+    const uf = valorUF > 0 ? v / valorUF : 0;
+    return "UF " + Math.round(uf).toLocaleString("es-CL");
+  };
+  const fmtShort = (v: number) => fmtCompact(v, currency, valorUF);
+  const fmtTir = (t: number | null | undefined) =>
+    typeof t === "number" && !isNaN(t)
+      ? t.toFixed(1).replace(".", ",") + "%"
+      : "—";
+  const tirColor = (t: number | null | undefined) => {
+    if (typeof t !== "number" || isNaN(t)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
+    if (t >= 9) return "#B0BEC5";
+    if (t >= 7) return "#FBBF24";
+    return "#C8323C";
   };
 
+  // Veredicto styling
+  let veredictoLabel: string;
+  let veredictoDesc: string;
+  let veredictoColor: string;
+  let veredictoMonto: string;
+  let veredictoSub: string;
+  if (esPasada) {
+    veredictoLabel = "Ventaja de compra";
+    veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
+    veredictoMonto = "+" + fmtFull(diferenciaCLP);
+    veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
+    veredictoColor = "#B0BEC5";
+  } else if (esSobreprecio) {
+    veredictoLabel = "Sobreprecio";
+    veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
+    veredictoMonto = "−" + fmtFull(Math.abs(diferenciaCLP));
+    veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
+    veredictoColor = "#C8323C";
+  } else {
+    veredictoLabel = "Precio alineado";
+    veredictoDesc = `El precio está cerca del valor real de mercado`;
+    veredictoMonto = "≈ " + fmtFull(0);
+    veredictoSub = "Alineado con el mercado";
+    veredictoColor = "color-mix(in srgb, var(--franco-text) 75%, transparent)";
+  }
+
+  // Estrategia: ahora viene de la IA (estrategiaSugerida_clp/_uf). Para análisis
+  // viejos sin el campo se muestra un fallback neutro.
+  const estrategiaIA = currency === "UF"
+    ? data.estrategiaSugerida_uf
+    : data.estrategiaSugerida_clp;
+  const estrategia = estrategiaIA?.trim()
+    || "Intenta cerrar en el precio sugerido. Si el corredor no cede, evalúa según tu veredicto base.";
+
+  // Tabla comparativa: 4 filas
+  const maxPrecio = Math.max(precioCLP, vmFrancoCLP, precioSugeridoCLP, precioLimiteCLP ?? 0) * 1.05;
+  const barW = (v: number) => (maxPrecio > 0 ? (v / maxPrecio) * 100 : 0);
+
+  const filas = [
+    {
+      key: "tu",
+      nombre: "Tu precio",
+      sub: "lo que pide el corredor",
+      precio: precioCLP,
+      tir: tirActual,
+      barColor: "rgba(250,250,248,0.55)",
+      highlight: false,
+    },
+    {
+      key: "vm",
+      nombre: "vmFranco",
+      sub: "valor real de mercado",
+      precio: vmFrancoCLP,
+      tir: tirAlVmFranco ?? tirActual,
+      barColor: "#B0BEC5",
+      highlight: false,
+    },
+    {
+      key: "sug",
+      nombre: "⭐ Sugerido",
+      sub: "cierra acá si puedes",
+      precio: precioSugeridoCLP,
+      tir: tirAlSugerido,
+      barColor: "#FBBF24",
+      highlight: true,
+    },
+    {
+      key: "lim",
+      nombre: "Límite",
+      sub: precioLimiteCLP === null ? "tu precio ya rinde bajo 6%" : "máximo que conviene pagar",
+      precio: precioLimiteCLP,
+      tir: tirAlLimite,
+      barColor: "#C8323C",
+      highlight: false,
+    },
+  ];
+
   return (
-    <div>
-      <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-5 whitespace-pre-wrap">
-        {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
-      </p>
-
-      {/* Horizontal bar with up to 3 dots */}
-      {(() => {
-        // Build the list of dots (skip paga-solo when motor data isn't meaningful).
-        type DotSpec = {
-          key: string;
-          pos: number;
-          valueFmt: string;
-          labelText: string;
-          color: string;
-          valueTop: number;  // px offset for value label above the dot
-          fontSize: number;  // px
-        };
-        const raw: DotSpec[] = [];
-        if (showPagaSolo) {
-          raw.push({ key: "pagaSolo", pos: posPagaSolo, valueFmt: pagaSoloFmt, labelText: "Se paga solo", color: "#B0BEC5", valueTop: 0, fontSize: 11 });
-        }
-        raw.push({ key: "sugerido", pos: posSugerido, valueFmt: sugeridoRaw, labelText: "Sugerido", color: "#FBBF24", valueTop: 0, fontSize: 11 });
-        raw.push({ key: "lista", pos: posLista, valueFmt: listaFmt, labelText: "Lista", color: "#C8323C", valueTop: 0, fontSize: 11 });
-
-        // Anti-overlap pass: if two adjacent dots are closer than ~10% of the bar,
-        // stack the earlier value higher and shrink both fonts so they breathe.
-        raw.sort((a, b) => a.pos - b.pos);
-        const MIN_GAP_PCT = 10;
-        for (let i = 1; i < raw.length; i++) {
-          const prev = raw[i - 1];
-          const curr = raw[i];
-          if (curr.pos - prev.pos < MIN_GAP_PCT) {
-            prev.valueTop = -14;
-            curr.valueTop = 4;
-            prev.fontSize = 9;
-            curr.fontSize = 9;
-          }
-        }
-
-        return (
-          <div className="relative h-[82px] my-6">
-            <div
-              className="absolute top-[38px] left-0 right-0 h-[6px] rounded-[3px]"
-              style={{
-                background: "linear-gradient(to right, rgba(176,190,197,0.5), rgba(251,191,36,0.5) 50%, rgba(200,50,60,0.5))",
-              }}
-            />
-            {raw.map((d) => (
-              <div key={d.key}>
-                {/* Dot */}
-                <div className="absolute top-[28px]" style={{ left: `${d.pos}%`, transform: "translateX(-50%)" }}>
-                  <div
-                    className="w-[26px] h-[26px] rounded-full bg-[var(--franco-card)]"
-                    style={{ border: `2.5px solid ${d.color}` }}
-                  />
-                </div>
-                {/* Value */}
-                <span
-                  className="absolute font-mono font-bold whitespace-nowrap"
-                  style={{
-                    left: `${d.pos}%`,
-                    top: `${d.valueTop}px`,
-                    transform: "translateX(-50%)",
-                    color: d.color,
-                    fontSize: `${d.fontSize}px`,
-                  }}
-                >
-                  {d.valueFmt}
-                </span>
-                {/* Label under the dot */}
-                <span
-                  className="absolute top-[62px] font-mono text-[9px] uppercase tracking-[1px] whitespace-nowrap"
-                  style={{ left: `${d.pos}%`, transform: "translateX(-50%)", color: d.color }}
-                >
-                  {d.labelText}
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {/* Guión box — neutral left-border */}
+    <div className="flex flex-col gap-5">
+      {/* BLOQUE A · HERO VEREDICTO */}
       <div
-        className="mt-6 p-4 rounded-r-lg"
         style={{
-          borderLeft: "3px solid var(--franco-text)",
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+          background: `color-mix(in srgb, ${veredictoColor} 6%, var(--franco-card))`,
+          border: `0.5px solid color-mix(in srgb, ${veredictoColor} 25%, transparent)`,
+          borderLeft: `3px solid ${veredictoColor}`,
+          borderRadius: "0 10px 10px 0",
+          padding: "18px 20px",
         }}
       >
-        <p className="font-mono text-[10px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-2 font-semibold m-0">
-          {data.cajaLabel || "Guión para la contraoferta:"}
-        </p>
-        <p className="font-heading italic text-[13px] leading-[1.6] text-[var(--franco-text)] m-0">
-          {guion}
-        </p>
-        <button
-          type="button"
-          onClick={copy}
-          className="mt-3 font-mono text-[9px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] bg-[var(--franco-bar-track)] hover:bg-[var(--franco-border)] border border-[var(--franco-border)] px-2.5 py-1.5 rounded transition-colors"
+        <span
+          className="font-mono uppercase block mb-2"
+          style={{ fontSize: 10, letterSpacing: "1.5px", color: veredictoColor, fontWeight: 600 }}
         >
-          {copied ? "✓ Copiado" : "⧉ Copiar guion"}
-        </button>
+          {veredictoLabel}
+        </span>
+        <p
+          className="font-heading m-0 mb-3"
+          style={{ fontSize: 14, color: "color-mix(in srgb, var(--franco-text) 85%, transparent)", lineHeight: 1.5 }}
+        >
+          {veredictoDesc}
+        </p>
+        <p
+          className="font-mono font-bold m-0 whitespace-nowrap text-[26px] sm:text-[32px]"
+          style={{ color: veredictoColor, lineHeight: 1 }}
+        >
+          {veredictoMonto}
+        </p>
+        <p
+          className="font-mono font-bold m-0 mt-1"
+          style={{ fontSize: 12, color: veredictoColor }}
+        >
+          {veredictoSub}
+        </p>
       </div>
+
+      {/* BLOQUE B · TABLA COMPARATIVA */}
+      <div
+        style={{
+          background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
+          border: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
+          borderRadius: 10,
+          padding: "16px 18px",
+        }}
+      >
+        <p
+          className="font-mono uppercase m-0 mb-3"
+          style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)", fontWeight: 600 }}
+        >
+          Comparativa de precios
+        </p>
+
+        {/* Header de columnas — solo desktop (mobile muestra precio+tir apilados) */}
+        <div
+          className="hidden sm:grid items-center gap-3 pb-2 mb-1 font-mono uppercase"
+          style={{
+            gridTemplateColumns: "140px 1fr 90px 60px",
+            fontSize: 9,
+            letterSpacing: "1px",
+            color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
+            borderBottom: "0.5px dashed color-mix(in srgb, var(--franco-text) 15%, transparent)",
+          }}
+        >
+          <span></span>
+          <span></span>
+          <span className="text-right">Precio</span>
+          <span className="text-right">TIR</span>
+        </div>
+
+        <div className="flex flex-col gap-1.5 mt-2">
+          {filas.map((f) => {
+            const isNull = f.precio === null;
+            const rowBg = f.highlight ? "color-mix(in srgb, #FBBF24 8%, transparent)" : "transparent";
+            const rowBorder = f.highlight ? "0.5px solid color-mix(in srgb, #FBBF24 30%, transparent)" : "0.5px solid transparent";
+            return (
+              <div
+                key={f.key}
+                className="rounded py-1.5 px-2"
+                style={{ background: rowBg, border: rowBorder }}
+              >
+                {/* Desktop: 4 columnas */}
+                <div
+                  className="hidden sm:grid items-center gap-3"
+                  style={{ gridTemplateColumns: "140px 1fr 90px 60px" }}
+                >
+                  <div className="flex flex-col min-w-0">
+                    <span
+                      className="font-body font-semibold truncate"
+                      style={{ fontSize: 13, color: "var(--franco-text)" }}
+                    >
+                      {f.nombre}
+                    </span>
+                    <span
+                      className="font-heading italic truncate"
+                      style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+                    >
+                      {f.sub}
+                    </span>
+                  </div>
+                  <div
+                    className="relative rounded-[3px]"
+                    style={{
+                      height: 14,
+                      background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+                    }}
+                  >
+                    {!isNull && f.precio !== null && (
+                      <div
+                        className="absolute top-0 left-0 rounded-[3px]"
+                        style={{
+                          width: `${barW(f.precio)}%`,
+                          height: "100%",
+                          background: f.barColor,
+                        }}
+                      />
+                    )}
+                  </div>
+                  <span
+                    className="font-mono font-semibold text-right whitespace-nowrap"
+                    style={{
+                      fontSize: 12,
+                      color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
+                    }}
+                  >
+                    {isNull ? "—" : fmtShort(f.precio as number)}
+                  </span>
+                  <span
+                    className="font-mono font-bold text-right whitespace-nowrap"
+                    style={{ fontSize: 12, color: tirColor(f.tir) }}
+                  >
+                    {fmtTir(f.tir)}
+                  </span>
+                </div>
+
+                {/* Mobile: 2 columnas, sin barra, precio+TIR apilados a la derecha */}
+                <div className="flex sm:hidden items-start justify-between gap-3">
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span
+                      className="font-body font-semibold truncate"
+                      style={{ fontSize: 13, color: "var(--franco-text)" }}
+                    >
+                      {f.nombre}
+                    </span>
+                    <span
+                      className="font-heading italic truncate"
+                      style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+                    >
+                      {f.sub}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <span
+                      className="font-mono font-semibold whitespace-nowrap"
+                      style={{
+                        fontSize: 14,
+                        color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
+                      }}
+                    >
+                      {isNull ? "—" : fmtShort(f.precio as number)}
+                    </span>
+                    <span
+                      className="font-mono font-bold whitespace-nowrap"
+                      style={{ fontSize: 12, color: tirColor(f.tir) }}
+                    >
+                      {fmtTir(f.tir)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* BLOQUE C · ESTRATEGIA */}
+      <div
+        style={{
+          background: "color-mix(in srgb, #FBBF24 6%, var(--franco-card))",
+          border: "0.5px solid color-mix(in srgb, #FBBF24 25%, transparent)",
+          borderLeft: "3px solid #FBBF24",
+          borderRadius: "0 10px 10px 0",
+          padding: "14px 18px",
+        }}
+      >
+        <p
+          className="font-mono uppercase m-0 mb-2"
+          style={{ fontSize: 10, letterSpacing: "1.5px", color: "#FBBF24", fontWeight: 600 }}
+        >
+          Estrategia sugerida
+        </p>
+        <p
+          className="font-body m-0"
+          style={{ fontSize: 13, color: "var(--franco-text)", lineHeight: 1.6 }}
+        >
+          {estrategia}
+        </p>
+      </div>
+
+      {/* data.cajaAccionable (IA) si existe — mantener el guión editorial */}
+      {(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) && (
+        <StateBox
+          variant="left-border"
+          state="neutral"
+          label={data.cajaLabel || "Guión para la contraoferta:"}
+        >
+          {currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf}
+        </StateBox>
+      )}
     </div>
   );
 }
@@ -508,52 +726,124 @@ function DrawerLargoPlazo({
   const esPositiva = gananciaSobreTotal >= 0;
   const colorAccent = esPositiva ? "#B0BEC5" : "#C8323C";
 
-  // Bloque 3: waterfall matemáticamente exacto.
-  // valorVenta − saldoCredito − comisionVenta === gananciaNeta (por definición del motor).
-  const maxEjeB3 = Math.max(valorVenta, 1) * 1.05;
+  // Bloque 3: waterfall con pasada/sobreprecio explícito.
+  // precio + pasada/−sobreprecio + plusvalía − deuda − comisión === gananciaNeta
+  const vmFrancoUF = results.metrics?.valorMercadoFrancoUF ?? 0;
+  const vmFrancoCLP = vmFrancoUF > 0 ? vmFrancoUF * valorUF : precioCLP;
+  const diferenciaCLP = vmFrancoCLP - precioCLP;
+  const pctDiferencia = vmFrancoCLP > 0 ? (Math.abs(diferenciaCLP) / vmFrancoCLP) * 100 : 0;
+  const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
+  const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
+  const plusvaliaCalc = Math.max(valorVenta - vmFrancoCLP, 0);
+
+  const maxEjeB3 = Math.max(valorVenta, precioCLP, 1) * 1.05;
   const pctB3 = (v: number) => (maxEjeB3 > 0 ? (v / maxEjeB3) * 100 : 0);
 
-  const b3Rows = [
-    {
-      key: "depto",
-      label: "Depto valorizado",
-      sub: `precio + plusvalía ${aniosPlazo}a`,
-      value: valorVenta,
-      fmtValue: "+" + fmtShort(valorVenta),
-      fillLeft: 0,
-      fillWidth: pctB3(valorVenta),
-      fillColor: "color-mix(in srgb, var(--franco-text) 40%, transparent)",
-      fillTextColor: "var(--franco-card)",
-      valueColor: "var(--franco-text)",
+  const b3Rows: Array<{
+    key: string;
+    label: string;
+    sub: string;
+    value: number;
+    fmtValue: string;
+    fillLeft: number;
+    fillWidth: number;
+    fillColor: string;
+    fillTextColor: string;
+    valueColor: string;
+    isNeg: boolean;
+  }> = [];
+
+  // 1. Precio que pagaste
+  b3Rows.push({
+    key: "precio",
+    label: "Precio que pagaste",
+    sub: "lo que sale de tu crédito + pie",
+    value: precioCLP,
+    fmtValue: "+" + fmtShort(precioCLP),
+    fillLeft: 0,
+    fillWidth: pctB3(precioCLP),
+    fillColor: "rgba(250,250,248,0.45)",
+    fillTextColor: "#0F0F0F",
+    valueColor: "var(--franco-text)",
+    isNeg: false,
+  });
+
+  // 2. Pasada o Sobreprecio (solo si > 2%)
+  if (esPasada) {
+    b3Rows.push({
+      key: "pasada",
+      label: "+ Ventaja (día 1)",
+      sub: "compraste bajo mercado",
+      value: diferenciaCLP,
+      fmtValue: "+" + fmtShort(diferenciaCLP),
+      fillLeft: pctB3(precioCLP),
+      fillWidth: pctB3(diferenciaCLP),
+      fillColor: "#B0BEC5",
+      fillTextColor: "#0F0F0F",
+      valueColor: "#B0BEC5",
       isNeg: false,
-    },
-    {
-      key: "deuda",
-      label: "− Deuda pendiente",
-      sub: "saldo del crédito",
-      value: saldoCredito,
-      fmtValue: "−" + fmtShort(saldoCredito),
-      fillLeft: pctB3(valorVenta - saldoCredito),
-      fillWidth: pctB3(saldoCredito),
+    });
+  } else if (esSobreprecio) {
+    const sobre = Math.abs(diferenciaCLP);
+    b3Rows.push({
+      key: "sobreprecio",
+      label: "− Sobreprecio (día 1)",
+      sub: "pagaste sobre mercado",
+      value: sobre,
+      fmtValue: "−" + fmtShort(sobre),
+      fillLeft: pctB3(vmFrancoCLP),
+      fillWidth: pctB3(sobre),
       fillColor: "#C8323C",
       fillTextColor: "#FAFAF8",
       valueColor: "#C8323C",
       isNeg: true,
-    },
-    {
-      key: "comision",
-      label: "− Comisión venta",
-      sub: "2% sobre precio de venta",
-      value: comisionVenta,
-      fmtValue: "−" + fmtShort(comisionVenta),
-      fillLeft: pctB3(valorVenta - saldoCredito - comisionVenta),
-      fillWidth: pctB3(comisionVenta),
-      fillColor: "#C8323C",
-      fillTextColor: "#FAFAF8",
-      valueColor: "#C8323C",
-      isNeg: true,
-    },
-  ];
+    });
+  }
+
+  // 3. Plusvalía (sobre vmFranco)
+  b3Rows.push({
+    key: "plusvalia",
+    label: `+ Plusvalía ${aniosPlazo}a`,
+    sub: "+4% anual sobre valor real",
+    value: plusvaliaCalc,
+    fmtValue: "+" + fmtShort(plusvaliaCalc),
+    fillLeft: pctB3(vmFrancoCLP),
+    fillWidth: pctB3(plusvaliaCalc),
+    fillColor: "#FBBF24",
+    fillTextColor: "#0F0F0F",
+    valueColor: "var(--franco-text)",
+    isNeg: false,
+  });
+
+  // 4. Deuda
+  b3Rows.push({
+    key: "deuda",
+    label: "− Deuda pendiente",
+    sub: "saldo del crédito",
+    value: saldoCredito,
+    fmtValue: "−" + fmtShort(saldoCredito),
+    fillLeft: pctB3(valorVenta - saldoCredito),
+    fillWidth: pctB3(saldoCredito),
+    fillColor: "#C8323C",
+    fillTextColor: "#FAFAF8",
+    valueColor: "#C8323C",
+    isNeg: true,
+  });
+
+  // 5. Comisión
+  b3Rows.push({
+    key: "comision",
+    label: "− Comisión venta",
+    sub: "2% sobre precio de venta",
+    value: comisionVenta,
+    fmtValue: "−" + fmtShort(comisionVenta),
+    fillLeft: pctB3(valorVenta - saldoCredito - comisionVenta),
+    fillWidth: pctB3(comisionVenta),
+    fillColor: "#C8323C",
+    fillTextColor: "#FAFAF8",
+    valueColor: "#C8323C",
+    isNeg: true,
+  });
   const b3Total = {
     key: "total",
     label: "= Al vender recibes",
@@ -581,6 +871,104 @@ function DrawerLargoPlazo({
   const renderB3Row = (r: typeof b3Rows[number] | typeof b3Total, isTotal: boolean) => {
     const height = isTotal ? 30 : 24;
     const border = isTotal ? "1px solid #B0BEC5" : "none";
+
+    // Mobile: fila total sin barra — solo label + valor, destacado con border-top
+    if (isTotal) {
+      return (
+        <div
+          key={r.key}
+          role="img"
+          aria-label={`${r.label} ${r.fmtValue}`}
+        >
+          {/* Desktop: grid con barra */}
+          <div
+            className="hidden sm:grid items-center gap-3"
+            style={{ gridTemplateColumns: "130px 1fr 92px" }}
+          >
+            <div className="flex flex-col gap-[1px]">
+              <span
+                className="font-mono uppercase"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "1px",
+                  color: "color-mix(in srgb, var(--franco-text) 85%, transparent)",
+                  fontWeight: 500,
+                }}
+              >
+                {r.label}
+              </span>
+              <span
+                className="font-heading italic"
+                style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }}
+              >
+                {r.sub}
+              </span>
+            </div>
+            <div
+              className="relative rounded-[3px]"
+              style={{
+                height,
+                background: "color-mix(in srgb, #B0BEC5 8%, transparent)",
+                overflow: "visible",
+              }}
+            >
+              {r.fillWidth > 0 && (
+                <div
+                  className="absolute top-0 rounded-[3px] flex items-center"
+                  style={{
+                    left: `${r.fillLeft}%`,
+                    width: `${r.fillWidth}%`,
+                    height: "100%",
+                    background: r.fillColor,
+                    border,
+                    paddingLeft: 8,
+                    paddingRight: 8,
+                  }}
+                >
+                  {r.fillWidth >= 8 && (
+                    <span
+                      className="font-mono font-bold whitespace-nowrap"
+                      style={{ fontSize: 12, color: r.fillTextColor }}
+                    >
+                      {r.fmtValue}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+            <span
+              className="font-mono font-bold text-right whitespace-nowrap"
+              style={{ fontSize: 14, color: r.valueColor }}
+            >
+              {r.fmtValue}
+            </span>
+          </div>
+
+          {/* Mobile: sin barra, línea destacada */}
+          <div className="flex sm:hidden items-baseline justify-between gap-3 py-1">
+            <span
+              className="font-mono uppercase whitespace-nowrap"
+              style={{
+                fontSize: 10,
+                letterSpacing: "1px",
+                color: "var(--franco-text)",
+                fontWeight: 600,
+              }}
+            >
+              {r.label}
+            </span>
+            <span
+              className="font-mono font-bold whitespace-nowrap"
+              style={{ fontSize: 16, color: "#B0BEC5" }}
+            >
+              {r.fmtValue}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Filas normales (no total)
     return (
       <div
         key={r.key}
@@ -612,9 +1000,7 @@ function DrawerLargoPlazo({
           className="relative rounded-[3px]"
           style={{
             height,
-            background: isTotal
-              ? "color-mix(in srgb, #B0BEC5 8%, transparent)"
-              : "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
             overflow: "visible",
           }}
         >
@@ -633,10 +1019,10 @@ function DrawerLargoPlazo({
             >
               {r.fillWidth >= 8 && (
                 <span
-                  className="font-mono font-bold whitespace-nowrap"
-                  style={{ fontSize: isTotal ? 12 : 11, color: r.fillTextColor }}
+                  className="hidden sm:inline font-mono font-bold whitespace-nowrap"
+                  style={{ fontSize: 11, color: r.fillTextColor }}
                 >
-                  {isTotal ? r.fmtValue : fmtShort(r.value)}
+                  {fmtShort(r.value)}
                 </span>
               )}
             </div>
@@ -644,10 +1030,7 @@ function DrawerLargoPlazo({
         </div>
         <span
           className="font-mono font-bold text-right whitespace-nowrap"
-          style={{
-            fontSize: isTotal ? 14 : 12,
-            color: r.valueColor,
-          }}
+          style={{ fontSize: 12, color: r.valueColor }}
         >
           {r.fmtValue}
         </span>
@@ -864,10 +1247,17 @@ function DrawerLargoPlazo({
           </div>
         </div>
 
+        {/* Separador sutil arriba del eje (solo mobile) */}
+        <div
+          className="block sm:hidden mt-3"
+          style={{
+            borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 6%, transparent)",
+            paddingTop: 8,
+          }}
+        />
         {/* Eje */}
         <div
-          className="flex justify-between mt-2"
-          style={{ paddingLeft: 142, paddingRight: 104 }}
+          className="flex justify-between mt-0 sm:mt-2 pl-0 pr-0 sm:pl-[142px] sm:pr-[104px]"
         >
           <span
             className="font-mono"
@@ -1164,6 +1554,7 @@ export function AnalysisDrawer({
               currency={currency}
               inputData={inputData}
               results={results}
+              valorUF={valorUF}
             />
           )}
           {activeKey === "largoPlazo" && (

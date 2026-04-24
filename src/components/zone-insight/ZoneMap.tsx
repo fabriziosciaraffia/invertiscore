@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import type { ZoneInsightData, ZonePOI } from "@/hooks/useZoneInsight";
+import { francoMapStyleForTheme } from "@/lib/map-styles";
 
 type CategoryKey = keyof ZoneInsightData["pois"];
 
@@ -108,41 +109,13 @@ const CATEGORY_LABELS: Record<CategoryKey, string> = {
   negocios: "Negocios",
 };
 
-const DARK_MAP_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#1a1a1a" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a1a" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#2a2a2a" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a2a2a" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#0f0f0f" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3a3a3a" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#a0a0a0" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0a0a0a" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-];
-
-const LIGHT_MAP_STYLE: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#f5f5f0" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#5a5a56" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0dc" }] },
-  { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e8e8e4" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#f8d9a8" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6a6a66" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#c8d6db" }] },
-  { featureType: "transit", stylers: [{ visibility: "off" }] },
-];
-
 function isLightMode(): boolean {
   if (typeof document === "undefined") return false;
   return document.documentElement.getAttribute("data-theme") === "light";
 }
 
 function getMapStyle(): google.maps.MapTypeStyle[] {
-  return isLightMode() ? LIGHT_MAP_STYLE : DARK_MAP_STYLE;
+  return francoMapStyleForTheme(isLightMode() ? "light" : "dark") as google.maps.MapTypeStyle[];
 }
 
 function buildMarkerIcon(spec: IconSpec, size = 32): google.maps.Icon {
