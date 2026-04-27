@@ -109,9 +109,10 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
           <span
             className="font-mono text-[9px] uppercase tracking-[1px] px-[7px] py-[3px] rounded"
             style={{
-              background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
-              border: "1px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
+              background: "color-mix(in srgb, var(--ink-400) 15%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--ink-400) 40%, transparent)",
               color: "var(--ink-400)",
+              fontWeight: 500,
             }}
           >
             {loading && !data ? "—" : `${totalPOIs} lugares`}

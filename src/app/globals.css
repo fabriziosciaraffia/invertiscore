@@ -84,9 +84,9 @@
   }
 
   [data-theme="light"] {
-    --franco-bg: #FFFFFF;
-    --franco-card: #FAFAFA;
-    --franco-elevated: #F5F5F5;
+    --franco-bg: #E8E6E1;
+    --franco-card: #FAFAF8;
+    --franco-elevated: #FFFFFF;
     --franco-text: #111111;
     --franco-text-secondary: #888888;
     --franco-text-muted: #BBBBBB;
