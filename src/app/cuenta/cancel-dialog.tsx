@@ -32,7 +32,7 @@ export function CancelSubscriptionButton() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-md border border-[#C8323C] bg-transparent px-4 py-2 font-body text-sm font-medium text-[#C8323C] transition-colors hover:bg-[#C8323C]/10"
+        className="rounded-md border border-signal-red bg-transparent px-4 py-2 font-body text-sm font-medium text-signal-red transition-colors hover:bg-signal-red/10"
       >
         Cancelar suscripción
       </button>
@@ -49,7 +49,7 @@ export function CancelSubscriptionButton() {
                 type="button"
                 onClick={handleCancel}
                 disabled={loading}
-                className="flex-1 rounded-md border border-[#C8323C] bg-transparent px-4 py-2 font-body text-sm font-medium text-[#C8323C] transition-colors hover:bg-[#C8323C]/10 disabled:opacity-50"
+                className="flex-1 rounded-md border border-signal-red bg-transparent px-4 py-2 font-body text-sm font-medium text-signal-red transition-colors hover:bg-signal-red/10 disabled:opacity-50"
               >
                 {loading ? "Cancelando..." : "Sí, cancelar"}
               </button>

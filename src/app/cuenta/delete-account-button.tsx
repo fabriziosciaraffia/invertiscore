@@ -23,7 +23,7 @@ export function DeleteAccountButton() {
 
   if (state === "sent") {
     return (
-      <p className="font-body text-sm text-[#16A34A]">
+      <p className="font-body text-sm text-ink-400">
         Solicitud enviada — Recibirás confirmación por email
       </p>
     );
@@ -35,7 +35,7 @@ export function DeleteAccountButton() {
         No se pudo enviar la solicitud.{" "}
         <a
           href="mailto:hola@refranco.ai?subject=Solicitud%20eliminación%20de%20cuenta"
-          className="text-[#C8323C] hover:underline"
+          className="text-signal-red hover:underline"
         >
           Escríbenos a hola@refranco.ai
         </a>
@@ -54,7 +54,7 @@ export function DeleteAccountButton() {
             type="button"
             onClick={handleRequest}
             disabled={state === "sending"}
-            className="rounded-md border border-[#C8323C] bg-transparent px-3 py-1.5 font-body text-sm text-[#C8323C] transition-colors hover:bg-[#C8323C]/10 disabled:opacity-50"
+            className="rounded-md border border-signal-red bg-transparent px-3 py-1.5 font-body text-sm text-signal-red transition-colors hover:bg-signal-red/10 disabled:opacity-50"
           >
             {state === "sending" ? (
               <span className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export function DeleteAccountButton() {
     <button
       type="button"
       onClick={() => setState("confirm")}
-      className="font-body text-sm text-[var(--franco-text-muted)] hover:text-[#C8323C] transition-colors"
+      className="font-body text-sm text-[var(--franco-text-muted)] hover:text-signal-red transition-colors"
     >
       Solicitar eliminación de cuenta
     </button>

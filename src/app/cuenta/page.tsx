@@ -82,7 +82,7 @@ export default async function CuentaPage() {
           <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
             {isSubscriber && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "#16A34A", borderColor: "#16A34A" }}>
+                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--ink-400)", borderColor: "var(--ink-400)" }}>
                   SUSCRIPTOR
                 </span>
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis Pro ilimitados</p>
@@ -99,7 +99,7 @@ export default async function CuentaPage() {
 
             {isCancelled && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "#D97706", borderColor: "#D97706" }}>
+                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--ink-500)", borderColor: "var(--ink-500)" }}>
                   CANCELADA
                 </span>
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Tu suscripción fue cancelada</p>
@@ -111,7 +111,7 @@ export default async function CuentaPage() {
                 <div className="mt-4">
                   <Link
                     href="/pricing"
-                    className="inline-block rounded-md bg-[#C8323C] px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-[#C8323C]/90"
+                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Reactivar suscripción →
                   </Link>
@@ -121,7 +121,7 @@ export default async function CuentaPage() {
 
             {hasCredits && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "#C8323C", borderColor: "#C8323C" }}>
+                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--signal-red)", borderColor: "var(--signal-red)" }}>
                   PRO
                 </span>
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
@@ -133,7 +133,7 @@ export default async function CuentaPage() {
                 <div className="mt-4">
                   <Link
                     href="/pricing"
-                    className="inline-block rounded-md bg-[#C8323C] px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-[#C8323C]/90"
+                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Comprar más créditos →
                   </Link>
@@ -152,7 +152,7 @@ export default async function CuentaPage() {
                 <div className="mt-4">
                   <Link
                     href="/pricing"
-                    className="inline-block rounded-md bg-[#C8323C] px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-[#C8323C]/90"
+                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
                     Ver planes →
                   </Link>
@@ -169,7 +169,7 @@ export default async function CuentaPage() {
             {payments.length === 0 ? (
               <p className="font-body text-sm text-[var(--franco-text-muted)] py-2">
                 Todavía no has comprado nada.{" "}
-                <Link href="/analisis/nuevo-v2" className="text-[#C8323C] hover:underline">
+                <Link href="/analisis/nuevo-v2" className="text-signal-red hover:underline">
                   Analiza tu primer departamento →
                 </Link>
               </p>
@@ -188,7 +188,7 @@ export default async function CuentaPage() {
                     const productLabel = p.product === "pro" ? "Análisis Pro" : p.product === "pack3" ? "Pack x3" : p.product === "subscription" ? "Suscripción Mensual" : p.product;
                     const isCredit = p.amount === 0 || (p.commerce_order && p.commerce_order.startsWith("credit-"));
                     const statusLabel = p.status === "paid" ? "Pagado" : p.status === "rejected" ? "Rechazado" : "Pendiente";
-                    const statusColor = p.status === "paid" ? "#16A34A" : p.status === "rejected" ? "#C8323C" : "#D97706";
+                    const statusColor = p.status === "paid" ? "var(--ink-400)" : p.status === "rejected" ? "var(--signal-red)" : "var(--ink-500)";
                     return (
                       <tr key={p.id} className="border-b border-[var(--franco-border)] last:border-b-0">
                         <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">{fmtDate(p.created_at)}</td>
