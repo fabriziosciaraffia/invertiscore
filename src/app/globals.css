@@ -10,6 +10,21 @@
 
 @layer base {
   :root {
+    /* ─── Capa 1 cromática (skill franco-design-system v1.1) ─────────
+       Tokens crudos: invariantes entre dark y light. Los roles
+       semánticos (qué stop usás para fondo en cada modo) viven en
+       --franco-* y se migrarán en fases siguientes. */
+    --ink-900: #0F0F0F;
+    --ink-800: #1A1A1A;
+    --ink-700: #2C2C2A;
+    --ink-600: #5F5E5A;
+    --ink-500: #888780;
+    --ink-400: #B4B2A9;
+    --ink-300: #CDCBC6;
+    --ink-200: #E8E6E1;
+    --ink-100: #FAFAF8;
+    --signal-red: #C8323C;
+
     --background: 40 20% 98%;
     --foreground: 0 0% 6%;
     --card: 40 20% 98%;

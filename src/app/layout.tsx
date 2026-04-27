@@ -5,7 +5,8 @@ import { PHProvider } from "./providers";
 
 const sourceSerif = Source_Serif_4({
   subsets: ["latin", "latin-ext"],
-  weight: ["400", "700"],
+  // Skill franco-design-system Capa 2: Light 300 (italic, solo wordmark "re") + Bold 700 (resto)
+  weight: ["300", "700"],
   style: ["normal", "italic"],
   variable: "--font-heading",
   display: "swap",
@@ -13,7 +14,8 @@ const sourceSerif = Source_Serif_4({
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ["latin", "latin-ext"],
-  weight: ["300", "400", "500", "600", "700"],
+  // Skill franco-design-system Capa 2: Regular 400 + Medium 500. Prohíbe Semibold/Bold (énfasis va por familia, no por peso).
+  weight: ["400", "500"],
   variable: "--font-body",
   display: "swap",
 });

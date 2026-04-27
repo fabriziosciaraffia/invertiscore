@@ -13,8 +13,26 @@ const config: Config = {
   			heading: ['var(--font-heading)', 'Georgia', 'serif'],
   			body: ['var(--font-body)', '-apple-system', 'sans-serif'],
   			mono: ['var(--font-mono)', 'monospace'],
+  			// Aliases para Fase 2+ (apuntan a las mismas variables CSS):
+  			serif: ['var(--font-heading)', 'Georgia', 'serif'],
+  			sans: ['var(--font-body)', '-apple-system', 'sans-serif'],
   		},
   		colors: {
+  			// ─── Capa 1 cromática (skill franco-design-system) ───
+  			ink: {
+  				100: 'var(--ink-100)',
+  				200: 'var(--ink-200)',
+  				300: 'var(--ink-300)',
+  				400: 'var(--ink-400)',
+  				500: 'var(--ink-500)',
+  				600: 'var(--ink-600)',
+  				700: 'var(--ink-700)',
+  				800: 'var(--ink-800)',
+  				900: 'var(--ink-900)',
+  			},
+  			signal: {
+  				red: 'var(--signal-red)',
+  			},
   			franco: {
   				bg: 'var(--franco-bg)',
   				card: 'var(--franco-card)',
