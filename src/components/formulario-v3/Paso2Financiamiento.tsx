@@ -68,7 +68,7 @@ export function Paso2Financiamiento({
     : 0;
 
   const inputBase =
-    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none";
+    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
   return (
     <div className="flex flex-col gap-5">
@@ -104,12 +104,12 @@ export function Paso2Financiamiento({
           <div className="flex items-center gap-1.5 mt-1.5">
             <span
               className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: "#5DCAA5" }}
+              style={{ background: "var(--ink-400)" }}
               aria-hidden="true"
             />
             <span
               className="font-body text-[10px]"
-              style={{ color: "color-mix(in srgb, #5DCAA5 70%, transparent)" }}
+              style={{ color: "color-mix(in srgb, var(--ink-400) 70%, transparent)" }}
             >
               Mercado sugiere UF {precioSugeridoUF.toLocaleString("es-CL")}
               {superficie > 0 && precioM2UF

@@ -19,7 +19,7 @@ export function WizardStepper({ current }: { current: 1 | 2 | 3 }) {
                 <span
                   className={`inline-flex h-6 w-6 items-center justify-center rounded-full font-mono text-[11px] font-semibold shrink-0 ${
                     active
-                      ? "bg-[#C8323C] text-white"
+                      ? "bg-signal-red text-white"
                       : done
                         ? "bg-[var(--franco-v-buy)] text-[var(--franco-bg)]"
                         : "bg-[var(--franco-card)] border border-[var(--franco-border)] text-[var(--franco-text-muted)]"
@@ -30,7 +30,7 @@ export function WizardStepper({ current }: { current: 1 | 2 | 3 }) {
                 <span
                   className={`font-body text-[12px] hidden sm:inline truncate ${
                     active
-                      ? "text-[var(--franco-text)] font-semibold"
+                      ? "text-[var(--franco-text)] font-medium"
                       : "text-[var(--franco-text-muted)]"
                   }`}
                 >

@@ -64,7 +64,7 @@ export function ResumenCard({
         <button
           type="button"
           onClick={onAjustar}
-          className="font-body text-[12px] font-semibold text-[#C8323C] hover:underline shrink-0"
+          className="font-body text-[12px] font-medium text-signal-red hover:underline shrink-0"
         >
           Ajustar
         </button>
@@ -90,12 +90,12 @@ export function ResumenCard({
             <div className="flex items-center gap-1.5 mt-1">
               <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: "#5DCAA5" }}
+                style={{ background: "var(--ink-400)" }}
                 aria-hidden="true"
               />
               <span
                 className="font-body text-[9px] truncate"
-                style={{ color: "color-mix(in srgb, #5DCAA5 80%, transparent)" }}
+                style={{ color: "color-mix(in srgb, var(--ink-400) 80%, transparent)" }}
               >
                 Basado en {sampleSize} deptos similares
               </span>

@@ -86,7 +86,7 @@ export function ModalEntregaNuevo({
     : 0;
 
   const inputBase =
-    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none";
+    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
   return createPortal(
     <div
@@ -191,7 +191,7 @@ export function ModalEntregaNuevo({
           <button
             type="button"
             onClick={handleSave}
-            className="font-body font-semibold text-[14px] text-white px-5 py-2.5 rounded-lg bg-[#C8323C] hover:bg-[#B02A34] transition-colors min-h-[40px]"
+            className="font-body font-medium text-[14px] text-white px-5 py-2.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[40px]"
           >
             Guardar
           </button>

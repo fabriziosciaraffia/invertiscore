@@ -251,9 +251,9 @@ export function ResumenConfirmacion({
 
   // ─── Shared input class ───────────────────────────
   const inputBase =
-    "w-full h-10 rounded-lg border bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none transition-colors";
-  const inputOk = "border-[var(--franco-border)] focus:border-[#C8323C]";
-  const inputAlert = "border-[#C8323C] focus:border-[#C8323C]";
+    "w-full h-10 rounded-lg border bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:ring-1 focus:ring-signal-red/20 focus:outline-none transition-colors";
+  const inputOk = "border-[var(--franco-border)] focus:border-signal-red";
+  const inputAlert = "border-signal-red focus:border-signal-red";
 
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-6 py-8 md:py-12">
@@ -301,7 +301,7 @@ export function ResumenConfirmacion({
           <h2 className="font-mono text-[10px] uppercase tracking-[2px] text-[var(--franco-text-muted)] m-0">
             Precio y arriendo
           </h2>
-          <span className="font-mono text-[9px] uppercase tracking-[1.5px] px-2 py-0.5 rounded-full bg-[#C8323C]/10 text-[#C8323C] font-semibold">
+          <span className="font-mono text-[9px] uppercase tracking-[1.5px] px-2 py-0.5 rounded-full bg-signal-red/10 text-signal-red font-semibold">
             editable
           </span>
         </div>
@@ -328,7 +328,7 @@ export function ResumenConfirmacion({
               ≈ {fmtCLPShort(precioCLP)}
             </p>
             {precioDirty && precioHigh && vmFrancoUF && (
-              <p className="font-body text-[11px] text-[#C8323C] mt-1 m-0">
+              <p className="font-body text-[11px] text-signal-red mt-1 m-0">
                 Parece sobre mercado. Referencia zona: UF {Math.round(vmFrancoUF).toLocaleString("es-CL")}
               </p>
             )}
@@ -353,7 +353,7 @@ export function ResumenConfirmacion({
               />
             </div>
             {arriendoDirty && arriendoLow && arriendoRangeBase && (
-              <p className="font-body text-[11px] text-[#C8323C] mt-1 m-0">
+              <p className="font-body text-[11px] text-signal-red mt-1 m-0">
                 Parece bajo para {superficieM2}m² en {comunaLabel}. Mercado: {fmtCLP(arriendoRangeMin)} – {fmtCLP(arriendoRangeMax)}
               </p>
             )}
@@ -367,7 +367,7 @@ export function ResumenConfirmacion({
           <h2 className="font-mono text-[10px] uppercase tracking-[2px] text-[var(--franco-text-muted)] m-0">
             Financiamiento
           </h2>
-          <span className="font-mono text-[9px] uppercase tracking-[1.5px] px-2 py-0.5 rounded-full bg-[#C8323C]/10 text-[#C8323C] font-semibold">
+          <span className="font-mono text-[9px] uppercase tracking-[1.5px] px-2 py-0.5 rounded-full bg-signal-red/10 text-signal-red font-semibold">
             editable
           </span>
         </div>
@@ -389,7 +389,7 @@ export function ResumenConfirmacion({
         <div className="mb-4">
           <StateBox variant="left-border" state="negative" label="Antes de continuar">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-[#C8323C]" />
+              <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-signal-red" />
               <div>
                 {arriendoDirty && arriendoLow && (
                   <p className="m-0 mb-1">
@@ -444,7 +444,7 @@ export function ResumenConfirmacion({
           type="button"
           onClick={handleVolver}
           disabled={submitting}
-          className="font-body font-semibold text-[14px] text-[var(--franco-text)] px-5 py-3 rounded-lg border border-[var(--franco-border-hover)] bg-transparent hover:bg-[var(--franco-card)] transition-colors min-h-[44px] disabled:opacity-60"
+          className="font-body font-medium text-[14px] text-[var(--franco-text)] px-5 py-3 rounded-lg border border-[var(--franco-border-hover)] bg-transparent hover:bg-[var(--franco-card)] transition-colors min-h-[44px] disabled:opacity-60"
         >
           ← Volver al formulario
         </button>
@@ -452,7 +452,7 @@ export function ResumenConfirmacion({
           type="button"
           onClick={handleAnalizar}
           disabled={submitting}
-          className="font-body font-semibold text-[14px] text-white px-6 py-3 rounded-lg bg-[#C8323C] hover:bg-[#B02A34] transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          className="font-body font-medium text-[14px] text-white px-6 py-3 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {submitting ? (
             <>

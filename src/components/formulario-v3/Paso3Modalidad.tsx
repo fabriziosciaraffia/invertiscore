@@ -74,7 +74,7 @@ export function Paso3Modalidad({
         <button
           type="button"
           onClick={() => setMostrandoProximamente(null)}
-          className="mt-2 font-body text-[13px] font-semibold text-[#C8323C] hover:underline"
+          className="mt-2 font-body text-[13px] font-medium text-signal-red hover:underline"
         >
           ← Volver a elegir
         </button>
@@ -130,12 +130,12 @@ export function Paso3Modalidad({
           <div
             className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5"
             style={{
-              background: "rgba(200,50,60,0.08)",
-              border: "1px solid rgba(200,50,60,0.4)",
+              background: "color-mix(in srgb, var(--signal-red) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--signal-red) 40%, transparent)",
             }}
           >
             <div className="flex items-center gap-2 min-w-0">
-              <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "#C8323C" }} strokeWidth={3} />
+              <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--signal-red)" }} strokeWidth={3} />
               <span className="font-mono text-[11px] uppercase tracking-[1.5px] font-semibold text-[var(--franco-text)]">
                 {modLabel?.label}{modLabel?.star ? " ★" : ""}
               </span>
@@ -186,7 +186,7 @@ export function Paso3Modalidad({
             type="button"
             onClick={onAnalizar}
             disabled={submitting || mod !== "ltr"}
-            className="font-body font-semibold text-[14px] text-white px-6 py-3.5 rounded-lg bg-[#C8323C] hover:bg-[#B02A34] transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+            className="font-body font-medium text-[14px] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>

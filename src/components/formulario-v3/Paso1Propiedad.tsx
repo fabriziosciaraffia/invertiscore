@@ -67,8 +67,8 @@ export function Paso1Propiedad({
   }, [setState]);
 
   const inputBase =
-    "w-full h-10 rounded-lg border bg-[var(--franco-card)] px-3 text-[14px] text-[var(--franco-text)] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none transition-colors";
-  const inputOk = "border-[var(--franco-border)] focus:border-[#C8323C]";
+    "w-full h-10 rounded-lg border bg-[var(--franco-card)] px-3 text-[14px] text-[var(--franco-text)] focus:ring-1 focus:ring-signal-red/20 focus:outline-none transition-colors";
+  const inputOk = "border-[var(--franco-border)] focus:border-signal-red";
 
   return (
     <div className="flex flex-col gap-5">
@@ -170,7 +170,7 @@ export function Paso1Propiedad({
           <button
             type="button"
             onClick={() => setEntregaOpen(true)}
-            className="shrink-0 font-body text-[12px] font-semibold text-[#C8323C] hover:underline"
+            className="shrink-0 font-body text-[12px] font-medium text-signal-red hover:underline"
           >
             Ajustar entrega →
           </button>
@@ -196,7 +196,7 @@ export function Paso1Propiedad({
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          className="shrink-0 font-body text-[12px] font-semibold text-[#C8323C] hover:underline"
+          className="shrink-0 font-body text-[12px] font-medium text-signal-red hover:underline"
         >
           Ajustar detalles →
         </button>

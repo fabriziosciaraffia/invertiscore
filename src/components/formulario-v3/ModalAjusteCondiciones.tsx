@@ -140,9 +140,9 @@ export function ModalAjusteCondiciones({
         {TABS.map((t) => {
           const active = t.key === activeTab;
           const dirty = tabHasChanges(t.key);
-          // Prioridad del color: dirty (ámbar) > active (blanco) > default (muted)
+          // Prioridad del color: dirty (intermedio Ink 500) > active (blanco) > default (muted)
           const color = dirty
-            ? "#E89A3C"
+            ? "var(--ink-500)"
             : active
               ? "var(--franco-text)"
               : "var(--franco-text-muted)";
@@ -153,7 +153,7 @@ export function ModalAjusteCondiciones({
               onClick={() => setActiveTab(t.key)}
               className={`px-4 py-2.5 font-body text-[12px] font-medium transition-colors ${
                 active
-                  ? "border-b-2 border-[#C8323C] -mb-px"
+                  ? "border-b-2 border-signal-red -mb-px"
                   : "hover:text-[var(--franco-text)]"
               }`}
               style={{ color }}
@@ -204,7 +204,7 @@ export function ModalAjusteCondiciones({
             <button
               type="button"
               onClick={handleSaveAndExit}
-              className="font-body font-semibold text-[13px] px-4 py-2 rounded-lg border transition-colors"
+              className="font-body font-medium text-[13px] px-4 py-2 rounded-lg border transition-colors"
               style={{
                 borderColor: "color-mix(in srgb, var(--franco-v-adjust) 40%, transparent)",
                 color: "var(--franco-v-adjust)",
@@ -216,7 +216,7 @@ export function ModalAjusteCondiciones({
             <button
               type="button"
               onClick={handleNext}
-              className="font-body font-semibold text-[13px] text-white px-4 py-2 rounded-lg bg-[#C8323C] hover:bg-[#B02A34] transition-colors"
+              className="font-body font-medium text-[13px] text-white px-4 py-2 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors"
             >
               {isLastTab ? "Fin →" : "Siguiente →"}
             </button>
@@ -242,14 +242,14 @@ type LocalState = {
 };
 
 const inputBase =
-  "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-[#C8323C] focus:ring-1 focus:ring-[#C8323C]/20 focus:outline-none";
+  "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
 function Suggest({ sugerido }: { sugerido: number | null }) {
   if (!sugerido) return null;
   return (
     <p
       className="font-body text-[10px] m-0 mt-1"
-      style={{ color: "color-mix(in srgb, #5DCAA5 70%, transparent)" }}
+      style={{ color: "color-mix(in srgb, var(--ink-400) 70%, transparent)" }}
     >
       Mercado sugiere {fmtCLP(sugerido)}
     </p>

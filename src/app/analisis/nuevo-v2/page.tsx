@@ -490,7 +490,7 @@ export default function NuevoAnalisisV3Page() {
               type="button"
               onClick={goNext}
               disabled={step === 1 ? !canAdvanceFromStep1 : !canAdvanceFromStep2}
-              className="font-body font-semibold text-[14px] text-white px-6 py-3 rounded-lg bg-[#C8323C] hover:bg-[#B02A34] transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="font-body font-medium text-[14px] text-white px-6 py-3 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Siguiente →
             </button>
