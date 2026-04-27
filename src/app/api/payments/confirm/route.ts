@@ -164,7 +164,7 @@ export async function POST(request: Request) {
 <body style="margin:0;padding:0;background:#0F0F0F;font-family:'Helvetica Neue',Arial,sans-serif;">
   <div style="max-width:600px;margin:0 auto;padding:24px 16px;">
     <div style="background:#151515;border-radius:16px;border:1px solid #222;padding:40px 32px;">
-      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#16A34A;margin:0 0 24px 0;">
+      <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:700;color:#B4B2A9;margin:0 0 24px 0;">
         Nuevo pago confirmado
       </h1>
       <div style="background:#1A1A1A;border-radius:12px;padding:20px 24px;margin:0 0 16px 0;">

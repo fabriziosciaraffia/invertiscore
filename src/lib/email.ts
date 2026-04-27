@@ -106,7 +106,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
       subject: `Pago confirmado — ${productName}`,
       html: emailWrapper(`
         <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
-          Pago confirmado <span style="color: #B0BEC5;">&#10003;</span>
+          Pago confirmado <span style="color: #B4B2A9;">&#10003;</span>
         </h1>
 
         <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
@@ -147,9 +147,9 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 
 export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
   const firstName = name.split(' ')[0] || '';
-  const verdictColor = veredicto === 'COMPRAR' ? '#B0BEC5' : veredicto === 'BUSCAR OTRA' ? '#C8323C' : '#FBBF24';
-  const verdictBg = veredicto === 'COMPRAR' ? 'rgba(176,190,197,0.12)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.12)' : 'rgba(251,191,36,0.12)';
-  const verdictBorder = veredicto === 'COMPRAR' ? 'rgba(176,190,197,0.3)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.3)' : 'rgba(251,191,36,0.3)';
+  const verdictColor = veredicto === 'COMPRAR' ? '#B4B2A9' : veredicto === 'BUSCAR OTRA' ? '#C8323C' : '#888780';
+  const verdictBg = veredicto === 'COMPRAR' ? 'rgba(180,178,169,0.12)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.12)' : 'rgba(136,135,128,0.12)';
+  const verdictBorder = veredicto === 'COMPRAR' ? 'rgba(180,178,169,0.3)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.3)' : 'rgba(136,135,128,0.3)';
 
   try {
     await getResend()?.emails.send({
