@@ -37,8 +37,11 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, sub, tone = "default" }: StatCardProps) {
+  // TODO(franco-design): tone "warning" mapeado a Signal Red. Skill elimina ámbar
+  // y prefiere resolver warning vía composición (label uppercase + border-left
+  // Ink 600). Refactor a composición queda fuera del scope Fase 2.
   const valueColor =
-    tone === "positive" ? "#B0BEC5" : tone === "warning" ? "#FBBF24" : "var(--franco-text)";
+    tone === "positive" ? "var(--ink-400)" : tone === "warning" ? "var(--signal-red)" : "var(--franco-text)";
   return (
     <div
       className="rounded-xl"

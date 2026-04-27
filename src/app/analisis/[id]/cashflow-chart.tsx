@@ -72,7 +72,7 @@ export function CashflowChart({
             Ingreso
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#C8323C]" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-signal-red" />
             Egreso
           </span>
           <span className="flex items-center gap-1.5">
@@ -108,18 +108,18 @@ export function CashflowChart({
                     <div className="text-[var(--franco-text)]">
                       Ingreso: {fmt(m.ingreso)}
                     </div>
-                    <div className="text-[#C8323C]">
+                    <div className="text-signal-red">
                       Egreso: {fmt(m.egreso)}
                     </div>
                     <div
                       className={
-                        m.flujo >= 0 ? "text-[var(--franco-text)]" : "text-[#C8323C]"
+                        m.flujo >= 0 ? "text-[var(--franco-text)]" : "text-signal-red"
                       }
                     >
                       Flujo: {fmt(m.flujo)}
                     </div>
                     {m.gastoExtra > 0 && (
-                      <div className="text-[#C8323C]">
+                      <div className="text-signal-red">
                         Corretaje: {fmt(m.gastoExtra)}
                       </div>
                     )}
@@ -132,7 +132,7 @@ export function CashflowChart({
                       style={{ height: ingresoH }}
                     />
                     <div
-                      className="w-3 rounded-t-sm bg-[#C8323C]/80 transition-all group-hover:bg-[#C8323C]"
+                      className="w-3 rounded-t-sm bg-signal-red/80 transition-all group-hover:bg-signal-red"
                       style={{ height: egresoH }}
                     />
                   </div>

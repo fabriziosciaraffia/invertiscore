@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 
 function getScoreColor(score: number): string {
-  if (score >= 75) return "#B0BEC5";  // verdict-buy
-  if (score >= 40) return "#C8323C";  // franco-red
-  return "#C8323C";                    // verdict-avoid
+  if (score >= 75) return "var(--ink-400)";    // verdict COMPRAR
+  if (score >= 40) return "var(--signal-red)"; // verdict AJUSTAR EL PRECIO
+  return "var(--signal-red)";                  // verdict BUSCAR OTRA
 }
 
 function getScoreLabel(score: number): string {
@@ -45,7 +45,7 @@ export function ScoreCircle({ score, size = "lg" }: { score: number; size?: "sm"
   return (
     <div className={`relative flex ${containerSize} shrink-0 items-center justify-center`}>
       <svg className="absolute inset-0 -rotate-90" viewBox="0 0 120 120">
-        <circle cx="60" cy="60" r={radius} fill="none" stroke="#E6E6E2" strokeWidth="8" />
+        <circle cx="60" cy="60" r={radius} fill="none" stroke="var(--ink-200)" strokeWidth="8" />
         <circle
           cx="60" cy="60" r={radius} fill="none"
           stroke={color} strokeWidth="8" strokeLinecap="round"
@@ -55,9 +55,10 @@ export function ScoreCircle({ score, size = "lg" }: { score: number; size?: "sm"
       </svg>
       <div className="text-center">
         <div className="font-body text-[8px] uppercase tracking-widest text-franco-muted">Franco Score</div>
+        {/* TODO(franco-design): Capa 3 Patrón 1 manda "Score: número Mono Bold 30px"; hoy está en Source Serif Bold. Revisar en migración Capa 3. */}
         <div className={`${textSize} font-heading font-bold text-franco-ink`}>{displayed}</div>
         {size === "lg" && (
-          <div className="text-[10px] font-bold" style={{ color }}>{label}</div>
+          <div className="text-[10px] font-medium" style={{ color }}>{label}</div>
         )}
       </div>
     </div>

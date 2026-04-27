@@ -142,7 +142,7 @@ function renderAiContent(texto: string): React.ReactNode {
     <p key={i} className={i > 0 ? "mt-3 mb-0" : "m-0"}>
       {parrafo.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
         if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={j} className="font-semibold">{part.slice(2, -2)}</strong>;
+          return <strong key={j} className="font-medium">{part.slice(2, -2)}</strong>;
         }
         return part;
       })}
@@ -180,7 +180,7 @@ function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, ba
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-body text-[15px] font-semibold text-[var(--franco-text)]">{title}</span>
+            <span className="font-body text-[15px] font-medium text-[var(--franco-text)]">{title}</span>
             {badge}
           </div>
           {subtitle && <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-0.5">{subtitle}</p>}
@@ -223,9 +223,9 @@ function SimulationTag() {
         letterSpacing: "1.2px",
         padding: "3px 8px",
         borderRadius: 3,
-        background: "color-mix(in srgb, #FBBF24 15%, transparent)",
-        color: "#FBBF24",
-        border: "0.5px solid color-mix(in srgb, #FBBF24 40%, transparent)",
+        background: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
+        color: "var(--signal-red)",
+        border: "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)",
         fontWeight: 600,
       }}
     >
@@ -403,23 +403,23 @@ function GraficoPatrimonioContent({
                       color: "var(--franco-text)",
                     }}
                   >
-                    <div className="mb-1.5 font-semibold">Año {row.anio}</div>
+                    <div className="mb-1.5 font-medium">Año {row.anio}</div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#FBBF24" }} />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--ink-400)" }} />
                       Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
                     </div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#C8323C" }} />
-                      − Deuda: <span className="ml-auto font-mono" style={{ color: "#C8323C" }}>−{fmt(row.deudaPendiente)}</span>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
+                      − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--signal-red)" }}>−{fmt(row.deudaPendiente)}</span>
                     </div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
                       <span className="inline-block h-2 w-2 rounded-full" style={{ background: "rgba(250,250,248,0.5)" }} />
                       Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
                     </div>
                     <div className="mt-1.5 pt-1.5 flex items-center gap-2" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "#B0BEC5" }} />
-                      <span className="font-semibold" style={{ color: "var(--franco-text)" }}>= Patrimonio neto</span>
-                      <span className="ml-auto font-mono font-bold" style={{ color: "#B0BEC5" }}>{fmt(row.patrimonioNeto)}</span>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--ink-400)" }} />
+                      <span className="font-medium" style={{ color: "var(--franco-text)" }}>= Patrimonio neto</span>
+                      <span className="ml-auto font-mono font-bold" style={{ color: "var(--ink-400)" }}>{fmt(row.patrimonioNeto)}</span>
                     </div>
                   </div>
                 );
@@ -441,19 +441,24 @@ function GraficoPatrimonioContent({
               name="Aporte acumulado"
               barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
             />
+            {/* TODO(franco-design): "Valor depto" (proyección de valor) y
+                "Patrimonio neto" (equity) ambos en var(--ink-400) — riesgo de
+                colisión visual en chart y leyenda (mismo color de swatch).
+                Skill sugiere diferenciar proyectados con pattern (diagonales)
+                o stroke. Refactor pendiente. */}
             <Bar
               dataKey="valorDepto"
               stackId="composicion"
-              fill="#FBBF24"
+              fill="var(--ink-400)"
               name="Valor depto"
               barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
             />
             <Line
               type="monotone"
               dataKey="patrimonioNeto"
-              stroke="#B0BEC5"
+              stroke="var(--ink-400)"
               strokeWidth={2.5}
-              dot={{ r: 3, fill: "#B0BEC5", stroke: "var(--franco-card)", strokeWidth: 1 }}
+              dot={{ r: 3, fill: "var(--ink-400)", stroke: "var(--franco-card)", strokeWidth: 1 }}
               name="Patrimonio neto"
             />
           </ComposedChart>
@@ -467,11 +472,11 @@ function GraficoPatrimonioContent({
           Aporte acumulado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "#FBBF24" }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--ink-400)" }} />
           Valor depto
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 rounded" style={{ background: "#B0BEC5", height: 2 }} />
+          <span className="inline-block w-4 rounded" style={{ background: "var(--ink-400)", height: 2 }} />
           Patrimonio neto
         </span>
       </div>
@@ -480,9 +485,9 @@ function GraficoPatrimonioContent({
       {last && (
         <div
           style={{
-            background: "color-mix(in srgb, #B0BEC5 8%, var(--franco-card))",
-            border: "0.5px solid color-mix(in srgb, #B0BEC5 25%, transparent)",
-            borderLeft: "3px solid #B0BEC5",
+            background: "color-mix(in srgb, var(--ink-400) 8%, var(--franco-card))",
+            border: "0.5px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
+            borderLeft: "3px solid var(--ink-400)",
             borderRadius: "0 10px 10px 0",
             padding: "14px 18px",
           }}
@@ -496,7 +501,7 @@ function GraficoPatrimonioContent({
             </span>
             <span
               className="font-mono font-bold whitespace-nowrap text-[20px] sm:text-[24px]"
-              style={{ color: "#B0BEC5", lineHeight: 1 }}
+              style={{ color: "var(--ink-400)", lineHeight: 1 }}
             >
               {fmtMoney(last.patrimonioNeto, currency)}
             </span>
@@ -507,7 +512,7 @@ function GraficoPatrimonioContent({
             </span>
             <span
               className="font-mono font-bold whitespace-nowrap"
-              style={{ fontSize: 13, color: ganancia >= 0 ? "#B0BEC5" : "#C8323C" }}
+              style={{ fontSize: 13, color: ganancia >= 0 ? "var(--ink-400)" : "var(--signal-red)" }}
             >
               {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
             </span>
@@ -592,9 +597,9 @@ function VentaRefiContent({
     return (
       <div
         className="flex items-center gap-3 rounded-lg p-4"
-        style={{ border: "1px solid color-mix(in srgb, #C8323C 30%, transparent)", background: "color-mix(in srgb, #C8323C 5%, transparent)" }}
+        style={{ border: "1px solid color-mix(in srgb, var(--signal-red) 30%, transparent)", background: "color-mix(in srgb, var(--signal-red) 5%, transparent)" }}
       >
-        <Clock className="h-5 w-5 shrink-0" style={{ color: "#C8323C" }} />
+        <Clock className="h-5 w-5 shrink-0" style={{ color: "var(--signal-red)" }} />
         <div>
           <p className="text-sm font-medium" style={{ color: "var(--franco-text)" }}>
             No puedes vender ni refinanciar antes de la entrega
@@ -652,9 +657,9 @@ function VentaRefiContent({
           {/* Hero venta */}
           <div
             style={{
-              background: "color-mix(in srgb, #B0BEC5 8%, var(--franco-card))",
-              border: "0.5px solid color-mix(in srgb, #B0BEC5 25%, transparent)",
-              borderLeft: "3px solid #B0BEC5",
+              background: "color-mix(in srgb, var(--ink-400) 8%, var(--franco-card))",
+              border: "0.5px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
+              borderLeft: "3px solid var(--ink-400)",
               borderRadius: "0 10px 10px 0",
               padding: "14px 18px",
             }}
@@ -667,7 +672,7 @@ function VentaRefiContent({
             </p>
             <p
               className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
-              style={{ color: "#B0BEC5", lineHeight: 1 }}
+              style={{ color: "var(--ink-400)", lineHeight: 1 }}
             >
               {fmt(data.teQueda)}
             </p>
@@ -683,8 +688,8 @@ function VentaRefiContent({
           >
             {[
               { label: "Valor del depto", value: data.valorDepto, color: "var(--franco-text)", sign: "+" },
-              { label: "− Deuda pendiente", value: data.deudaPendiente, color: "#C8323C", sign: "−" },
-              { label: "− Comisión venta (2%)", value: data.comisionVenta, color: "#C8323C", sign: "−" },
+              { label: "− Deuda pendiente", value: data.deudaPendiente, color: "var(--signal-red)", sign: "−" },
+              { label: "− Comisión venta (2%)", value: data.comisionVenta, color: "var(--signal-red)", sign: "−" },
             ].map((row, i) => (
               <div
                 key={row.label}
@@ -705,7 +710,7 @@ function VentaRefiContent({
               className="flex items-baseline justify-between px-4 py-3"
               style={{
                 borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 20%, transparent)",
-                background: "color-mix(in srgb, #B0BEC5 5%, transparent)",
+                background: "color-mix(in srgb, var(--ink-400) 5%, transparent)",
               }}
             >
               <span className="font-mono uppercase" style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}>
@@ -721,15 +726,15 @@ function VentaRefiContent({
           <div
             className="rounded-lg p-3"
             style={{
-              background: `color-mix(in srgb, ${data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C"} 10%, transparent)`,
-              border: `0.5px solid color-mix(in srgb, ${data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C"} 30%, transparent)`,
+              background: `color-mix(in srgb, ${data.gananciaNeta >= 0 ? "var(--ink-400)" : "var(--signal-red)"} 10%, transparent)`,
+              border: `0.5px solid color-mix(in srgb, ${data.gananciaNeta >= 0 ? "var(--ink-400)" : "var(--signal-red)"} 30%, transparent)`,
             }}
           >
             <p className="font-body m-0" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 80%, transparent)" }}>
               Ganancia neta{" "}
               <span
                 className="font-mono font-bold"
-                style={{ color: data.gananciaNeta >= 0 ? "#B0BEC5" : "#C8323C" }}
+                style={{ color: data.gananciaNeta >= 0 ? "var(--ink-400)" : "var(--signal-red)" }}
               >
                 {data.gananciaNeta >= 0 ? "+" : "−"}{fmt(Math.abs(data.gananciaNeta))}
               </span>{" "}
@@ -745,9 +750,9 @@ function VentaRefiContent({
           {/* Hero refi */}
           <div
             style={{
-              background: "color-mix(in srgb, #FBBF24 8%, var(--franco-card))",
-              border: "0.5px solid color-mix(in srgb, #FBBF24 25%, transparent)",
-              borderLeft: "3px solid #FBBF24",
+              background: "color-mix(in srgb, var(--signal-red) 8%, var(--franco-card))",
+              border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
+              borderLeft: "3px solid var(--signal-red)",
               borderRadius: "0 10px 10px 0",
               padding: "14px 18px",
             }}
@@ -760,7 +765,7 @@ function VentaRefiContent({
             </p>
             <p
               className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
-              style={{ color: "#FBBF24", lineHeight: 1 }}
+              style={{ color: "var(--signal-red)", lineHeight: 1 }}
             >
               {fmt(data.liquidez)}
             </p>
@@ -817,7 +822,7 @@ function VentaRefiContent({
               { label: "Valor del depto", value: fmt(data.valorDepto), color: "var(--franco-text)" },
               { label: `× LTV ${Math.round(data.LTV * 100)}%`, value: "", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" },
               { label: "= Nuevo crédito", value: fmt(data.nuevoCredito), color: "var(--franco-text)", bold: true },
-              { label: "− Deuda actual", value: "−" + fmt(data.deudaPendiente), color: "#C8323C" },
+              { label: "− Deuda actual", value: "−" + fmt(data.deudaPendiente), color: "var(--signal-red)" },
             ].map((row, i) => (
               <div
                 key={row.label}
@@ -841,7 +846,7 @@ function VentaRefiContent({
               className="flex items-baseline justify-between px-4 py-3"
               style={{
                 borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 20%, transparent)",
-                background: "color-mix(in srgb, #FBBF24 5%, transparent)",
+                background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
               }}
             >
               <span className="font-mono uppercase" style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}>
@@ -857,13 +862,13 @@ function VentaRefiContent({
           <div
             className="rounded-lg p-3"
             style={{
-              background: "color-mix(in srgb, #FBBF24 10%, transparent)",
-              border: "0.5px solid color-mix(in srgb, #FBBF24 30%, transparent)",
+              background: "color-mix(in srgb, var(--signal-red) 10%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--signal-red) 30%, transparent)",
             }}
           >
             <p className="font-body m-0" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 80%, transparent)" }}>
               Mantienes el depto y liberas{" "}
-              <span className="font-mono font-bold" style={{ color: "#FBBF24" }}>
+              <span className="font-mono font-bold" style={{ color: "var(--signal-red)" }}>
                 {fmt(data.liquidez)}
               </span>{" "}
               de capital.
@@ -925,15 +930,15 @@ function Capa3Unificado({
         onClick={() => setOpen(true)}
         className="w-full text-left group transition-colors"
         style={{
-          background: "rgba(251, 191, 36, 0.04)",
-          border: "1px solid rgba(251, 191, 36, 0.2)",
-          borderLeft: "3px solid #FBBF24",
+          background: "color-mix(in srgb, var(--signal-red) 4%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)",
+          borderLeft: "3px solid var(--signal-red)",
           borderRadius: "0 10px 10px 0",
           padding: "22px 24px",
           cursor: "pointer",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(251, 191, 36, 0.07)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "rgba(251, 191, 36, 0.04)")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--signal-red) 7%, transparent)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--signal-red) 4%, transparent)")}
       >
         <div
           className="flex items-center gap-2 mb-3"
@@ -943,7 +948,7 @@ function Capa3Unificado({
             style={{
               fontSize: 10,
               letterSpacing: "1.5px",
-              color: "#FBBF24",
+              color: "var(--signal-red)",
               fontWeight: 600,
             }}
           >
@@ -971,10 +976,10 @@ function Capa3Unificado({
 
         <div className="flex justify-end">
           <span
-            className="font-body font-semibold inline-flex items-center gap-1"
+            className="font-body font-medium inline-flex items-center gap-1"
             style={{
               fontSize: 13,
-              color: "#FBBF24",
+              color: "var(--signal-red)",
             }}
           >
             Explorar escenarios
@@ -989,9 +994,9 @@ function Capa3Unificado({
   return (
     <div
       style={{
-        background: "rgba(251, 191, 36, 0.03)",
-        border: "1px solid rgba(251, 191, 36, 0.18)",
-        borderLeft: "3px solid #FBBF24",
+        background: "color-mix(in srgb, var(--signal-red) 3%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--signal-red) 18%, transparent)",
+        borderLeft: "3px solid var(--signal-red)",
         borderRadius: "0 10px 10px 0",
         padding: "24px 28px",
       }}
@@ -1004,7 +1009,7 @@ function Capa3Unificado({
             style={{
               fontSize: 10,
               letterSpacing: "1.5px",
-              color: "#FBBF24",
+              color: "var(--signal-red)",
               fontWeight: 600,
             }}
           >
@@ -1080,24 +1085,24 @@ function Capa3Unificado({
 const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string; bgInner: string; borderInner: string }> = {
   COMPRAR: {
     color: "var(--franco-positive)",
-    bg: "rgba(176, 190, 197, 0.08)",
-    border: "rgba(176, 190, 197, 0.30)",
-    bgInner: "rgba(176, 190, 197, 0.18)",
-    borderInner: "rgba(176, 190, 197, 0.40)",
+    bg: "color-mix(in srgb, var(--franco-positive) 8%, transparent)",
+    border: "color-mix(in srgb, var(--franco-positive) 30%, transparent)",
+    bgInner: "color-mix(in srgb, var(--franco-positive) 18%, transparent)",
+    borderInner: "color-mix(in srgb, var(--franco-positive) 40%, transparent)",
   },
   "BUSCAR OTRA": {
-    color: "#C8323C",
-    bg: "rgba(200, 50, 60, 0.06)",
-    border: "rgba(200, 50, 60, 0.25)",
-    bgInner: "rgba(200, 50, 60, 0.12)",
-    borderInner: "rgba(200, 50, 60, 0.30)",
+    color: "var(--signal-red)",
+    bg: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+    border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
+    bgInner: "color-mix(in srgb, var(--signal-red) 12%, transparent)",
+    borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
   },
   "AJUSTA EL PRECIO": {
     color: "var(--franco-warning)",
-    bg: "rgba(251, 191, 36, 0.08)",
-    border: "rgba(251, 191, 36, 0.25)",
-    bgInner: "rgba(251, 191, 36, 0.15)",
-    borderInner: "rgba(251, 191, 36, 0.30)",
+    bg: "color-mix(in srgb, var(--franco-warning) 8%, transparent)",
+    border: "color-mix(in srgb, var(--franco-warning) 25%, transparent)",
+    bgInner: "color-mix(in srgb, var(--franco-warning) 15%, transparent)",
+    borderInner: "color-mix(in srgb, var(--franco-warning) 30%, transparent)",
   },
 };
 
@@ -1221,7 +1226,7 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
 
   const colorClass = (
     {
-      red: "text-[#C8323C]",
+      red: "text-signal-red",
       green: "text-[var(--franco-positive)]",
       neutral: "text-[var(--franco-text)]",
       accent: "text-[var(--franco-text)]",
@@ -1229,10 +1234,10 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
   )[dato.color] || "text-[var(--franco-text)]";
 
   const borderClass = isAccent
-    ? "border-2 border-[#C8323C]"
+    ? "border-2 border-signal-red"
     : "border border-[var(--franco-border)]";
   const labelClass = isAccent
-    ? "text-[#C8323C] font-semibold"
+    ? "text-signal-red font-medium"
     : "text-[var(--franco-text-secondary)]";
 
   return (
@@ -1290,7 +1295,12 @@ function HeroTopStrip({
               <div
                 className="h-1 rounded-full relative"
                 style={{
-                  background: "linear-gradient(to right, rgba(200,50,60,0.6), rgba(251,191,36,0.6) 50%, rgba(176,190,197,0.6))",
+                  // TODO(franco-design): gradient 3-stops (rojo · ámbar · slate-blue)
+                  // conserva la identidad visual del Score Bar pero entra en conflicto
+                  // con el sistema binario Ink + Signal Red. Refactor del Score Bar
+                  // pendiente para futura ronda (skill sugiere stops binarios o
+                  // single-color con marker).
+                  background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 60%, transparent), color-mix(in srgb, var(--franco-warning) 60%, transparent) 50%, color-mix(in srgb, var(--franco-positive) 60%, transparent))",
                 }}
               >
                 <div
@@ -1521,7 +1531,7 @@ function getPunchline(
       return {
         value: `${isNeg ? "-" : "+"}${formatted}`,
         sub: isNeg ? "De tu bolsillo cada mes" : "Te sobra cada mes",
-        color: isNeg ? "#C8323C" : "#B0BEC5",
+        color: isNeg ? "var(--signal-red)" : "var(--ink-400)",
       };
     }
     return { value: "—", sub: "Aporte mensual", color: "var(--franco-text)" };
@@ -1548,10 +1558,13 @@ function getPunchline(
       const tirPct = tir.toFixed(1).replace(".", ",");
       const isNeg = tir < 0;
       const isMarginal = tir < 5 && tir >= 0;
+      // TODO(franco-design): escala TIR 3-niveles (negativo · marginal · positivo)
+      // colapsa a Ink/Signal Red. Marginal (0-5%) mapeado a var(--ink-500) como
+      // intermedio neutro. Misma decisión que tirColor en AnalysisDrawer.
       return {
         value: `TIR ${tirPct}%`,
         sub: "Rentabilidad anual a 10 años",
-        color: isNeg ? "#C8323C" : isMarginal ? "#FBBF24" : "#B0BEC5",
+        color: isNeg ? "var(--signal-red)" : isMarginal ? "var(--ink-500)" : "var(--ink-400)",
       };
     }
     const retorno = results?.exitScenario?.retornoTotal;
@@ -1563,7 +1576,7 @@ function getPunchline(
       return {
         value: `${isNeg ? "-" : "+"}${formatted}`,
         sub: "Ganancia total 10 años",
-        color: isNeg ? "#C8323C" : "#B0BEC5",
+        color: isNeg ? "var(--signal-red)" : "var(--ink-400)",
       };
     }
     return { value: "—", sub: "Retorno 10 años", color: "var(--franco-text)" };
@@ -1576,7 +1589,7 @@ function getPunchline(
     return {
       value: `${count} flancos`,
       sub: "Requieren defensa",
-      color: "#FBBF24",
+      color: "var(--signal-red)",
     };
   }
 
@@ -1605,7 +1618,7 @@ function MiniCard({
   const punchline = getPunchline(section, data, currency, results, valorUF);
   const labelColorValue: Record<"info" | "warning" | "neutral", string> = {
     info: "var(--franco-text-secondary)",
-    warning: "#FBBF24",
+    warning: "var(--signal-red)",
     neutral: "var(--franco-text)",
   };
 
@@ -1724,7 +1737,7 @@ function DashboardAnalysisSection({
           <button
             type="button"
             onClick={onRetry}
-            className="font-body text-sm font-semibold text-[#C8323C] hover:underline"
+            className="font-body text-sm font-medium text-signal-red hover:underline"
           >
             Reintentar
           </button>
@@ -1887,7 +1900,7 @@ function SectionCard({ title, description, icon: Icon, children }: {
         <CardHeader>
           <div className="flex items-center gap-2">
             <Icon className="h-5 w-5 text-[var(--franco-text)]" />
-            <CardTitle className="font-body font-bold text-lg text-[var(--franco-text)]">{title}</CardTitle>
+            <CardTitle className="font-body font-medium text-lg text-[var(--franco-text)]">{title}</CardTitle>
           </div>
           {description && <p className="text-sm text-[var(--franco-text-secondary)]">{description}</p>}
         </CardHeader>
@@ -1986,7 +1999,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
         {cards.map((c) => {
           const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;
           const isFavorable = c.invertColor ? delta < 0 : delta > 0;
-          const deltaColor = isFavorable ? "text-[var(--franco-positive)]" : "text-[#C8323C]";
+          const deltaColor = isFavorable ? "text-[var(--franco-positive)]" : "text-signal-red";
           const deltaSign = delta > 0 ? "+" : "";
           const contextText = c.invertColor
             ? (delta < 0 ? "bajo el promedio" : "sobre el promedio")
@@ -2430,7 +2443,7 @@ export function PremiumResults({
     const nMeses = inputData.plazoCredito * 12;
 
     const configs = [
-      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "#C8323C", borderClass: "border-[var(--franco-sc-bad-border)]", bgClass: "bg-[var(--franco-sc-bad-bg)]", labelClass: "text-[#C8323C]" },
+      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "var(--signal-red)", borderClass: "border-[var(--franco-sc-bad-border)]", bgClass: "bg-[var(--franco-sc-bad-bg)]", labelClass: "text-signal-red" },
       { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "var(--franco-text)", borderClass: "border-[var(--franco-border)]", bgClass: "bg-[var(--franco-card)]", labelClass: "text-[var(--franco-text)]" },
       { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "var(--franco-text)", borderClass: "border-[var(--franco-sc-good-border)]", bgClass: "bg-[var(--franco-sc-good-bg)]", labelClass: "text-[var(--franco-positive)]" },
     ];
@@ -2547,7 +2560,7 @@ export function PremiumResults({
       items.push({
         name: s.name,
         range: [bottom, top],
-        fill: s.delta >= 0 ? "var(--franco-bar-fill)" : "rgba(200,50,60,0.8)",
+        fill: s.delta >= 0 ? "var(--franco-bar-fill)" : "color-mix(in srgb, var(--signal-red) 80%, transparent)",
         isResult: false,
         delta: s.delta,
         running: newRunning,
@@ -2559,7 +2572,7 @@ export function PremiumResults({
     items.push({
       name: "Neto",
       range: [Math.min(0, flujo), Math.max(0, flujo)],
-      fill: flujo >= 0 ? "var(--franco-text-secondary)" : "#C8323C",
+      fill: flujo >= 0 ? "var(--franco-text-secondary)" : "var(--signal-red)",
       isResult: true,
       delta: flujo,
       running: flujo,
@@ -2707,10 +2720,10 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const egresoBarSeries = useMemo(() => {
     const allSeries: { key: keyof CashflowRow; label: string; color: string }[] = [
-      { key: "Dividendo", label: "Dividendo", color: "rgba(200,50,60,0.85)" },
-      { key: "GGCC", label: "GGCC", color: "rgba(200,50,60,0.7)" },
+      { key: "Dividendo", label: "Dividendo", color: "color-mix(in srgb, var(--signal-red) 85%, transparent)" },
+      { key: "GGCC", label: "GGCC", color: "color-mix(in srgb, var(--signal-red) 70%, transparent)" },
       { key: "Contribuciones", label: "Contribuciones", color: "var(--franco-text-muted)" },
-      { key: "Mantencion", label: "Mantención", color: "rgba(200,50,60,0.6)" },
+      { key: "Mantencion", label: "Mantención", color: "color-mix(in srgb, var(--signal-red) 60%, transparent)" },
       { key: "Vacancia", label: "Vacancia", color: "var(--franco-border)" },
       { key: "Corretaje", label: "Corretaje", color: "var(--franco-text-muted)" },
       { key: "Recambio", label: "Recambio", color: "var(--franco-border)" },
@@ -2979,7 +2992,7 @@ export function PremiumResults({
       {isSharedView && (
         <div className="bg-[var(--franco-card)] text-[var(--franco-text)] rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-[var(--franco-border)]">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
-          <a href="/analisis/nuevo-v2" className="font-body text-sm font-semibold text-[#C8323C] hover:underline shrink-0">
+          <a href="/analisis/nuevo-v2" className="font-body text-sm font-medium text-signal-red hover:underline shrink-0">
             Analizar mi propio depto →
           </a>
         </div>
@@ -3162,7 +3175,7 @@ export function PremiumResults({
           <p className="text-[var(--franco-text-muted)] text-xs mb-2 font-body leading-relaxed">
             Desbloquea arriendo, vacancia y más variables con la suscripción mensual
           </p>
-          <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+          <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-signal-red text-xs font-medium hover:underline font-body">
             Ver planes →
           </a>
         </div>
@@ -3173,7 +3186,7 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const panelButton = hasPanelContent ? (
     <div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-[#C8323C] text-white hover:bg-[#C8323C]/90">
+      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-signal-red text-white hover:bg-signal-red/90">
         {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
         {recalcLoading ? "Recalculando..." : "Recalcular"}
       </Button>
@@ -3188,7 +3201,7 @@ export function PremiumResults({
         <p className="text-[var(--franco-text-muted)] text-xs mb-2 font-body leading-relaxed">
           Las proyecciones dinámicas (plusvalía, crecimiento) están disponibles con la suscripción mensual
         </p>
-        <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-[#C8323C] text-xs font-semibold hover:underline font-body">
+        <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-signal-red text-xs font-medium hover:underline font-body">
           Ver planes →
         </a>
       </div>

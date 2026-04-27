@@ -1,9 +1,13 @@
 import type { Tone } from "@/lib/analysis/kpi-calculations";
 
+// TODO(franco-design): tone "warn" mapeado a Signal Red (mismo color que "bad").
+// Skill elimina ámbar y prefiere resolver warning vía composición (label
+// uppercase + border-left Ink 600). Refactor a composición queda fuera del
+// scope Fase 2 — la distinción semántica warn/bad se pierde temporalmente.
 const TONE_COLORS: Record<Tone, string> = {
-  good: "#B0BEC5",
-  warn: "#FBBF24",
-  bad: "#C8323C",
+  good: "var(--ink-400)",
+  warn: "var(--signal-red)",
+  bad: "var(--signal-red)",
   neutral: "var(--franco-text)",
 };
 

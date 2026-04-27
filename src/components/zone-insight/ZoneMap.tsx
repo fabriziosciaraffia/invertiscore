@@ -287,7 +287,7 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
   void themeVersion;
   const legendBg = light ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.75)";
   const legendBorder = light ? "rgba(0,0,0,0.08)" : "rgba(255,255,255,0.1)";
-  const legendText = light ? "#2a2a2a" : "rgba(250,250,248,0.85)";
+  const legendText = "var(--franco-text-secondary)";
 
   return (
     <div className="relative">
@@ -340,9 +340,12 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
         })}
         {/* Tu depto — siempre visible al final */}
         <div className="flex items-center gap-1.5">
+          {/* TODO(franco-design): el border var(--ink-100) se pierde en light mode
+              cuando legendBg es rgba(255,255,255,0.92). Mismo bug aplica al fondo
+              del legend dot de "clinicas" (#FAFAF8). Resolver en rediseño Drawer Zona. */}
           <span
             className="w-2.5 h-2.5 rounded-full shrink-0"
-            style={{ background: "#C8323C", border: "1.5px solid #FAFAF8" }}
+            style={{ background: "var(--signal-red)", border: "1.5px solid var(--ink-100)" }}
           />
           <span
             className="font-mono uppercase whitespace-nowrap"

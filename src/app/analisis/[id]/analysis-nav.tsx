@@ -54,7 +54,7 @@ export function AnalysisNav({
                 </Button>
               </Link>
               <Link href="/register">
-                <Button size="sm" className="gap-2 bg-[#C8323C] text-white hover:bg-[#C8323C]/90">
+                <Button size="sm" className="gap-2 bg-signal-red text-white hover:bg-signal-red/90">
                   Registrarme gratis
                 </Button>
               </Link>

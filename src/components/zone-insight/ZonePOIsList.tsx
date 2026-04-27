@@ -120,16 +120,16 @@ export function ZonePOIsList({ pois }: Props) {
                           style={{
                             fontSize: 9,
                             letterSpacing: "0.5px",
-                            color: "#B0BEC5",
-                            background: "color-mix(in srgb, #B0BEC5 10%, transparent)",
-                            border: "0.5px solid color-mix(in srgb, #B0BEC5 28%, transparent)",
+                            color: "var(--ink-400)",
+                            background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
+                            border: "0.5px solid color-mix(in srgb, var(--ink-400) 28%, transparent)",
                             borderRadius: 3,
                             padding: "2px 6px",
                           }}
                         >
                           <span
                             className="zone-pulse-dot inline-block rounded-full"
-                            style={{ width: 5, height: 5, background: "#B0BEC5" }}
+                            style={{ width: 5, height: 5, background: "var(--ink-400)" }}
                           />
                           Cerca
                         </span>
@@ -137,7 +137,7 @@ export function ZonePOIsList({ pois }: Props) {
                       <span
                         className="font-mono text-[11px]"
                         style={{
-                          color: close ? "#B0BEC5" : "var(--franco-text-secondary)",
+                          color: close ? "var(--ink-400)" : "var(--franco-text-secondary)",
                           fontWeight: close ? 600 : 400,
                         }}
                       >

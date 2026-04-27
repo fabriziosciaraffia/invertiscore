@@ -7,7 +7,7 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
   const { plazoAnios, plusvaliaAnual, setPlazoAnios, setPlusvaliaAnual } = useSimulation();
 
   const sliderStyles = {
-    accentColor: "#FBBF24",
+    accentColor: "var(--franco-text)",
   } as React.CSSProperties;
 
   const wrapperStyle: React.CSSProperties =
@@ -29,7 +29,7 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
           style={{
             fontSize: 10,
             letterSpacing: 2,
-            color: "#FBBF24",
+            color: "var(--franco-text)",
             fontWeight: 600,
           }}
         >
@@ -45,7 +45,7 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
           </span>
           <span
             className="font-mono font-bold"
-            style={{ fontSize: 14, color: "#FBBF24" }}
+            style={{ fontSize: 14, color: "var(--franco-text)" }}
           >
             {plazoAnios} {plazoAnios === 1 ? "año" : "años"}
           </span>
@@ -81,7 +81,7 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
           </span>
           <span
             className="font-mono font-bold"
-            style={{ fontSize: 14, color: "#FBBF24" }}
+            style={{ fontSize: 14, color: "var(--franco-text)" }}
           >
             {plusvaliaAnual.toFixed(1)}%
           </span>

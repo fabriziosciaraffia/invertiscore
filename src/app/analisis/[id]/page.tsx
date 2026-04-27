@@ -176,7 +176,7 @@ export default async function AnalisisDetallePage({
         {/* Fallback for old analyses without full results */}
         {!results && (
           <div className="mb-8 rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
-            <h3 className="mb-2 text-sm font-semibold text-[var(--franco-text)]">Resumen</h3>
+            <h3 className="mb-2 text-sm font-serif font-bold text-[var(--franco-text)]">Resumen</h3>
             <p className="text-sm leading-relaxed text-[var(--franco-text-secondary)]">
               {analisis.resumen}
             </p>

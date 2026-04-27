@@ -48,7 +48,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
       disabled={loading && !data}
       className="w-full text-left transition-colors disabled:cursor-wait group relative overflow-hidden"
       style={{
-        background: "linear-gradient(135deg, color-mix(in srgb, #B0BEC5 6%, transparent) 0%, transparent 60%), var(--franco-card)",
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--ink-400) 6%, transparent) 0%, transparent 60%), var(--franco-card)",
         border: "1px solid var(--franco-border)",
         borderRadius: 16,
         padding: "16px 18px",
@@ -59,16 +59,16 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
       <span
         aria-hidden="true"
         className="absolute left-0 right-0 top-0 pointer-events-none"
-        style={{ height: 3, background: "#B0BEC5" }}
+        style={{ height: 3, background: "var(--ink-400)" }}
       />
       <div className="grid items-center gap-3.5 md:gap-4" style={{ gridTemplateColumns: "44px 1fr auto" }}>
         {/* Icono: radar / círculos concéntricos */}
         <div
           className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
           style={{
-            background: "color-mix(in srgb, #B0BEC5 10%, transparent)",
-            border: "1px solid color-mix(in srgb, #B0BEC5 35%, transparent)",
-            color: "#B0BEC5",
+            background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--ink-400) 35%, transparent)",
+            color: "var(--ink-400)",
           }}
           aria-hidden="true"
         >
@@ -83,7 +83,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
         <div className="min-w-0 flex flex-col gap-1">
           <span
             className="font-mono text-[9px] uppercase tracking-[1.5px] font-medium"
-            style={{ color: "#B0BEC5" }}
+            style={{ color: "var(--ink-400)" }}
           >
             Zona · 06
           </span>
@@ -109,9 +109,9 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
           <span
             className="font-mono text-[9px] uppercase tracking-[1px] px-[7px] py-[3px] rounded"
             style={{
-              background: "color-mix(in srgb, #B0BEC5 10%, transparent)",
-              border: "1px solid color-mix(in srgb, #B0BEC5 25%, transparent)",
-              color: "#B0BEC5",
+              background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
+              color: "var(--ink-400)",
             }}
           >
             {loading && !data ? "—" : `${totalPOIs} lugares`}

@@ -95,7 +95,7 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
             WhatsApp
           </button>
           <button onClick={copyLink} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
-            {copied ? <Check className="h-4 w-4 text-[#B0BEC5]" /> : <Link2 className="h-4 w-4 text-[var(--franco-text-secondary)]" />}
+            {copied ? <Check className="h-4 w-4 text-ink-400" /> : <Link2 className="h-4 w-4 text-[var(--franco-text-secondary)]" />}
             {copied ? "Link copiado" : "Copiar link"}
           </button>
           <button onClick={shareEmail} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">

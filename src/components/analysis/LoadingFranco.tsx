@@ -87,9 +87,9 @@ export function LoadingFranco({ isDataReady = false }: LoadingFrancoProps) {
                 <span
                   style={{
                     color: isDone
-                      ? "#5DCAA5"
+                      ? "var(--ink-400)"
                       : isActive
-                      ? "#C8323C"
+                      ? "var(--signal-red)"
                       : "color-mix(in srgb, var(--franco-text) 30%, transparent)",
                     fontSize: isDone || isActive ? 14 : 12,
                     width: 14,
@@ -113,7 +113,7 @@ export function LoadingFranco({ isDataReady = false }: LoadingFrancoProps) {
                   style={{
                     color: isDone
                       ? "color-mix(in srgb, var(--franco-text) 35%, transparent)"
-                      : "#C8323C",
+                      : "var(--signal-red)",
                     fontSize: 10,
                     minWidth: 20,
                     textAlign: "right",

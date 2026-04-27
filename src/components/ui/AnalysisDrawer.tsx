@@ -125,7 +125,7 @@ function DrawerCostoMensual({
   const maxSale = Math.max(...saleItems.map((s) => s.value), 1);
   const resultLabel = isNeg ? "SALE DE TU BOLSILLO CADA MES" : "TE SOBRA CADA MES";
   const resultSub = isNeg ? "Tienes que poner este dinero tú" : "Queda a tu favor después de todos los gastos";
-  const resultColor = isNeg ? "#C8323C" : "#B0BEC5";
+  const resultColor = isNeg ? "var(--signal-red)" : "var(--ink-400)";
 
   return (
     <div>
@@ -137,17 +137,17 @@ function DrawerCostoMensual({
       <div className="mb-4">
         <div
           className="flex items-baseline justify-between pb-1.5 mb-2"
-          style={{ borderBottom: "0.5px solid color-mix(in srgb, #B0BEC5 35%, transparent)" }}
+          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--ink-400) 35%, transparent)" }}
         >
           <span
             className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "#B0BEC5" }}
+            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--ink-400)" }}
           >
             Entra
           </span>
           <span
             className="font-mono font-bold"
-            style={{ fontSize: 13, color: "#B0BEC5" }}
+            style={{ fontSize: 13, color: "var(--ink-400)" }}
           >
             +{fmt(arriendo)}
           </span>
@@ -170,12 +170,12 @@ function DrawerCostoMensual({
           >
             <div
               className="absolute top-0 left-0 h-full rounded-[2px]"
-              style={{ width: "100%", background: "#B0BEC5" }}
+              style={{ width: "100%", background: "var(--ink-400)" }}
             />
           </div>
           <span
             className="font-mono font-bold text-right"
-            style={{ fontSize: 12, color: "#B0BEC5" }}
+            style={{ fontSize: 12, color: "var(--ink-400)" }}
           >
             +{fmt(arriendo)}
           </span>
@@ -186,17 +186,17 @@ function DrawerCostoMensual({
       <div className="mb-4">
         <div
           className="flex items-baseline justify-between pb-1.5 mb-2"
-          style={{ borderBottom: "0.5px solid color-mix(in srgb, #C8323C 35%, transparent)" }}
+          style={{ borderBottom: "0.5px solid color-mix(in srgb, var(--signal-red) 35%, transparent)" }}
         >
           <span
             className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "#C8323C" }}
+            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--signal-red)" }}
           >
             Sale
           </span>
           <span
             className="font-mono font-bold"
-            style={{ fontSize: 13, color: "#C8323C" }}
+            style={{ fontSize: 13, color: "var(--signal-red)" }}
           >
             −{fmt(totalSale)}
           </span>
@@ -230,14 +230,14 @@ function DrawerCostoMensual({
                 >
                   <div
                     className="absolute top-0 left-0 h-full rounded-[2px]"
-                    style={{ width: `${widthPct}%`, background: "#C8323C", opacity: 0.85 }}
+                    style={{ width: `${widthPct}%`, background: "var(--signal-red)", opacity: 0.85 }}
                   />
                 </div>
                 <span
                   className="font-mono font-bold text-right"
                   style={{
                     fontSize: 12,
-                    color: zero ? "color-mix(in srgb, var(--franco-text) 40%, transparent)" : "#C8323C",
+                    color: zero ? "color-mix(in srgb, var(--franco-text) 40%, transparent)" : "var(--signal-red)",
                   }}
                 >
                   {zero ? fmt(0) : `−${fmt(it.value)}`}
@@ -254,8 +254,8 @@ function DrawerCostoMensual({
         style={{
           gridTemplateColumns: "1fr auto",
           background: isNeg
-            ? "color-mix(in srgb, #C8323C 10%, var(--franco-card))"
-            : "color-mix(in srgb, #B0BEC5 10%, var(--franco-card))",
+            ? "color-mix(in srgb, var(--signal-red) 10%, var(--franco-card))"
+            : "color-mix(in srgb, var(--ink-400) 10%, var(--franco-card))",
           border: `1px solid color-mix(in srgb, ${resultColor} 40%, transparent)`,
           borderLeft: `3px solid ${resultColor}`,
           borderRadius: "0 8px 8px 0",
@@ -381,9 +381,13 @@ function DrawerNegociacion({
       : "—";
   const tirColor = (t: number | null | undefined) => {
     if (typeof t !== "number" || isNaN(t)) return "color-mix(in srgb, var(--franco-text) 45%, transparent)";
-    if (t >= 9) return "#B0BEC5";
-    if (t >= 7) return "#FBBF24";
-    return "#C8323C";
+    if (t >= 9) return "var(--ink-400)";
+    // TODO(franco-design): rama intermedia 7-9% (antes ámbar) mapeada a Ink 500
+    // como "ni positivo ni crítico". Skill colapsa la escala 3-niveles a binaria
+    // Ink/Signal Red — la distinción semántica fina TIR aceptable vs TIR aprobada
+    // se pierde. Evaluar si recuperarla por composición (peso/border) en futura ronda.
+    if (t >= 7) return "var(--ink-500)";
+    return "var(--signal-red)";
   };
 
   // Veredicto styling
@@ -397,13 +401,13 @@ function DrawerNegociacion({
     veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
     veredictoMonto = "+" + fmtFull(diferenciaCLP);
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
-    veredictoColor = "#B0BEC5";
+    veredictoColor = "var(--ink-400)";
   } else if (esSobreprecio) {
     veredictoLabel = "Sobreprecio";
     veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
     veredictoMonto = "−" + fmtFull(Math.abs(diferenciaCLP));
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
-    veredictoColor = "#C8323C";
+    veredictoColor = "var(--signal-red)";
   } else {
     veredictoLabel = "Precio alineado";
     veredictoDesc = `El precio está cerca del valor real de mercado`;
@@ -440,7 +444,7 @@ function DrawerNegociacion({
       sub: "valor real de mercado",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
-      barColor: "#B0BEC5",
+      barColor: "var(--ink-400)",
       highlight: false,
     },
     {
@@ -449,7 +453,7 @@ function DrawerNegociacion({
       sub: "cierra acá si puedes",
       precio: precioSugeridoCLP,
       tir: tirAlSugerido,
-      barColor: "#FBBF24",
+      barColor: "var(--franco-text)",
       highlight: true,
     },
     {
@@ -458,7 +462,7 @@ function DrawerNegociacion({
       sub: precioLimiteCLP === null ? "tu precio ya rinde bajo 6%" : "máximo que conviene pagar",
       precio: precioLimiteCLP,
       tir: tirAlLimite,
-      barColor: "#C8323C",
+      barColor: "var(--signal-red)",
       highlight: false,
     },
   ];
@@ -537,8 +541,8 @@ function DrawerNegociacion({
         <div className="flex flex-col gap-1.5 mt-2">
           {filas.map((f) => {
             const isNull = f.precio === null;
-            const rowBg = f.highlight ? "color-mix(in srgb, #FBBF24 8%, transparent)" : "transparent";
-            const rowBorder = f.highlight ? "0.5px solid color-mix(in srgb, #FBBF24 30%, transparent)" : "0.5px solid transparent";
+            const rowBg = f.highlight ? "color-mix(in srgb, var(--franco-text) 4%, transparent)" : "transparent";
+            const rowBorder = f.highlight ? "0.5px solid color-mix(in srgb, var(--franco-text) 15%, transparent)" : "0.5px solid transparent";
             return (
               <div
                 key={f.key}
@@ -552,7 +556,7 @@ function DrawerNegociacion({
                 >
                   <div className="flex flex-col min-w-0">
                     <span
-                      className="font-body font-semibold truncate"
+                      className="font-body font-medium truncate"
                       style={{ fontSize: 13, color: "var(--franco-text)" }}
                     >
                       {f.nombre}
@@ -603,7 +607,7 @@ function DrawerNegociacion({
                 <div className="flex sm:hidden items-start justify-between gap-3">
                   <div className="flex flex-col min-w-0 flex-1">
                     <span
-                      className="font-body font-semibold truncate"
+                      className="font-body font-medium truncate"
                       style={{ fontSize: 13, color: "var(--franco-text)" }}
                     >
                       {f.nombre}
@@ -642,16 +646,16 @@ function DrawerNegociacion({
       {/* BLOQUE C · ESTRATEGIA */}
       <div
         style={{
-          background: "color-mix(in srgb, #FBBF24 6%, var(--franco-card))",
-          border: "0.5px solid color-mix(in srgb, #FBBF24 25%, transparent)",
-          borderLeft: "3px solid #FBBF24",
+          background: "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))",
+          border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
+          borderLeft: "3px solid var(--signal-red)",
           borderRadius: "0 10px 10px 0",
           padding: "14px 18px",
         }}
       >
         <p
           className="font-mono uppercase m-0 mb-2"
-          style={{ fontSize: 10, letterSpacing: "1.5px", color: "#FBBF24", fontWeight: 600 }}
+          style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--signal-red)", fontWeight: 600 }}
         >
           Estrategia sugerida
         </p>
@@ -724,7 +728,7 @@ function DrawerLargoPlazo({
   const fmtShort = (v: number) => fmtCompact(v, currency, valorUF);
 
   const esPositiva = gananciaSobreTotal >= 0;
-  const colorAccent = esPositiva ? "#B0BEC5" : "#C8323C";
+  const colorAccent = esPositiva ? "var(--ink-400)" : "var(--signal-red)";
 
   // Bloque 3: waterfall con pasada/sobreprecio explícito.
   // precio + pasada/−sobreprecio + plusvalía − deuda − comisión === gananciaNeta
@@ -763,7 +767,7 @@ function DrawerLargoPlazo({
     fillLeft: 0,
     fillWidth: pctB3(precioCLP),
     fillColor: "rgba(250,250,248,0.45)",
-    fillTextColor: "#0F0F0F",
+    fillTextColor: "var(--ink-900)",
     valueColor: "var(--franco-text)",
     isNeg: false,
   });
@@ -778,9 +782,9 @@ function DrawerLargoPlazo({
       fmtValue: "+" + fmtShort(diferenciaCLP),
       fillLeft: pctB3(precioCLP),
       fillWidth: pctB3(diferenciaCLP),
-      fillColor: "#B0BEC5",
-      fillTextColor: "#0F0F0F",
-      valueColor: "#B0BEC5",
+      fillColor: "var(--ink-400)",
+      fillTextColor: "var(--ink-900)",
+      valueColor: "var(--ink-400)",
       isNeg: false,
     });
   } else if (esSobreprecio) {
@@ -793,14 +797,18 @@ function DrawerLargoPlazo({
       fmtValue: "−" + fmtShort(sobre),
       fillLeft: pctB3(vmFrancoCLP),
       fillWidth: pctB3(sobre),
-      fillColor: "#C8323C",
-      fillTextColor: "#FAFAF8",
-      valueColor: "#C8323C",
+      fillColor: "var(--signal-red)",
+      fillTextColor: "var(--ink-100)",
+      valueColor: "var(--signal-red)",
       isNeg: true,
     });
   }
 
   // 3. Plusvalía (sobre vmFranco)
+  // TODO(franco-design): fillColor migrado a var(--ink-400) (mismo tratamiento
+  // que valores positivos). Plusvalía es valor proyectado, no realizado — el
+  // skill sugiere diferenciar proyectados con pattern (diagonales) o stroke
+  // hatching. Refactor estructural pendiente para futura ronda.
   b3Rows.push({
     key: "plusvalia",
     label: `+ Plusvalía ${aniosPlazo}a`,
@@ -809,8 +817,8 @@ function DrawerLargoPlazo({
     fmtValue: "+" + fmtShort(plusvaliaCalc),
     fillLeft: pctB3(vmFrancoCLP),
     fillWidth: pctB3(plusvaliaCalc),
-    fillColor: "#FBBF24",
-    fillTextColor: "#0F0F0F",
+    fillColor: "var(--ink-400)",
+    fillTextColor: "var(--ink-900)",
     valueColor: "var(--franco-text)",
     isNeg: false,
   });
@@ -824,9 +832,9 @@ function DrawerLargoPlazo({
     fmtValue: "−" + fmtShort(saldoCredito),
     fillLeft: pctB3(valorVenta - saldoCredito),
     fillWidth: pctB3(saldoCredito),
-    fillColor: "#C8323C",
-    fillTextColor: "#FAFAF8",
-    valueColor: "#C8323C",
+    fillColor: "var(--signal-red)",
+    fillTextColor: "var(--ink-100)",
+    valueColor: "var(--signal-red)",
     isNeg: true,
   });
 
@@ -839,9 +847,9 @@ function DrawerLargoPlazo({
     fmtValue: "−" + fmtShort(comisionVenta),
     fillLeft: pctB3(valorVenta - saldoCredito - comisionVenta),
     fillWidth: pctB3(comisionVenta),
-    fillColor: "#C8323C",
-    fillTextColor: "#FAFAF8",
-    valueColor: "#C8323C",
+    fillColor: "var(--signal-red)",
+    fillTextColor: "var(--ink-100)",
+    valueColor: "var(--signal-red)",
     isNeg: true,
   });
   const b3Total = {
@@ -852,9 +860,9 @@ function DrawerLargoPlazo({
     fmtValue: fmtFull(gananciaNeta),
     fillLeft: 0,
     fillWidth: pctB3(gananciaNeta),
-    fillColor: "color-mix(in srgb, #B0BEC5 40%, var(--franco-card))",
+    fillColor: "color-mix(in srgb, var(--ink-400) 40%, var(--franco-card))",
     fillTextColor: "var(--franco-text)",
-    valueColor: "#B0BEC5",
+    valueColor: "var(--ink-400)",
     isNeg: false,
   };
 
@@ -870,7 +878,7 @@ function DrawerLargoPlazo({
   // Común: render de una fila de waterfall B3
   const renderB3Row = (r: typeof b3Rows[number] | typeof b3Total, isTotal: boolean) => {
     const height = isTotal ? 30 : 24;
-    const border = isTotal ? "1px solid #B0BEC5" : "none";
+    const border = isTotal ? "1px solid var(--ink-400)" : "none";
 
     // Mobile: fila total sin barra — solo label + valor, destacado con border-top
     if (isTotal) {
@@ -908,7 +916,7 @@ function DrawerLargoPlazo({
               className="relative rounded-[3px]"
               style={{
                 height,
-                background: "color-mix(in srgb, #B0BEC5 8%, transparent)",
+                background: "color-mix(in srgb, var(--ink-400) 8%, transparent)",
                 overflow: "visible",
               }}
             >
@@ -959,7 +967,7 @@ function DrawerLargoPlazo({
             </span>
             <span
               className="font-mono font-bold whitespace-nowrap"
-              style={{ fontSize: 16, color: "#B0BEC5" }}
+              style={{ fontSize: 16, color: "var(--ink-400)" }}
             >
               {r.fmtValue}
             </span>
@@ -1221,7 +1229,7 @@ function DrawerLargoPlazo({
         <div className="flex items-center justify-between mb-2">
           <span
             className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "#FBBF24", fontWeight: 600 }}
+            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text)", fontWeight: 600 }}
           >
             De dónde salen los {headerMonto}
           </span>
@@ -1241,7 +1249,7 @@ function DrawerLargoPlazo({
           {/* Separador + total */}
           <div
             className="pt-2 mt-1"
-            style={{ borderTop: "0.5px dashed color-mix(in srgb, #B0BEC5 30%, transparent)" }}
+            style={{ borderTop: "0.5px dashed color-mix(in srgb, var(--ink-400) 30%, transparent)" }}
           >
             {renderB3Row(b3Total, true)}
           </div>
@@ -1353,13 +1361,13 @@ function DrawerRiesgos({
             key={i}
             className="rounded-r-lg p-3"
             style={{
-              borderLeft: "3px solid #FBBF24",
-              background: "color-mix(in srgb, #FBBF24 6%, transparent)",
-              border: "0.5px solid color-mix(in srgb, #FBBF24 25%, transparent)",
+              borderLeft: "3px solid var(--signal-red)",
+              background: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+              border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
               borderLeftWidth: "3px",
             }}
           >
-            <h4 className="font-body font-semibold text-[13px] mb-1 m-0" style={{ color: "#FBBF24" }}>
+            <h4 className="font-body font-medium text-[13px] mb-1 m-0" style={{ color: "var(--signal-red)" }}>
               {r.titulo}
             </h4>
             <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 leading-[1.45]">
@@ -1408,7 +1416,7 @@ function ZoneErrorState({ message }: { message: string | null }) {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="font-mono text-[10px] uppercase tracking-[1.5px] text-[#C8323C] hover:underline"
+        className="font-mono text-[10px] uppercase tracking-[1.5px] text-signal-red hover:underline"
       >
         Reintentar
       </button>
