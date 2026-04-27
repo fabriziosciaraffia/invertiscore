@@ -137,8 +137,8 @@ export function OnboardingClient() {
               franco
             </span>
             <span
-              className="font-body font-semibold"
-              style={{ color: "#C8323C", fontSize: "18px", marginLeft: "1px" }}
+              className="font-body font-medium"
+              style={{ color: "var(--signal-red)", fontSize: "18px", marginLeft: "1px" }}
             >
               .ai
             </span>
@@ -161,12 +161,12 @@ export function OnboardingClient() {
                 style={{
                   width: 32,
                   height: 32,
-                  backgroundColor: "rgba(200, 50, 60, 0.15)",
+                  backgroundColor: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
                 }}
               >
                 <span
                   className="font-mono"
-                  style={{ fontSize: 14, fontWeight: 600, color: "#C8323C" }}
+                  style={{ fontSize: 14, fontWeight: 600, color: "var(--signal-red)" }}
                 >
                   {step.n}
                 </span>
@@ -235,9 +235,9 @@ export function OnboardingClient() {
             // Border priority: selected > popular > default
             let border: string;
             if (isSelected) {
-              border = "1px solid rgba(200,50,60,0.6)";
+              border = "1px solid color-mix(in srgb, var(--signal-red) 60%, transparent)";
             } else if (isPro) {
-              border = "1px solid rgba(200,50,60,0.4)";
+              border = "1px solid color-mix(in srgb, var(--signal-red) 40%, transparent)";
             } else {
               border = "0.5px solid var(--franco-border)";
             }
@@ -263,7 +263,7 @@ export function OnboardingClient() {
                       top: -8,
                       left: "50%",
                       transform: "translateX(-50%)",
-                      background: "#C8323C",
+                      background: "var(--signal-red)",
                       padding: "2px 10px",
                       borderRadius: 10,
                       fontSize: 9,
@@ -274,7 +274,7 @@ export function OnboardingClient() {
                 )}
                 <div
                   className="font-mono uppercase"
-                  style={{ fontSize: 11, color: isPro ? "#C8323C" : "var(--franco-text-secondary)" }}
+                  style={{ fontSize: 11, color: isPro ? "var(--signal-red)" : "var(--franco-text-secondary)" }}
                 >
                   {plan.label}
                 </div>
@@ -323,7 +323,7 @@ export function OnboardingClient() {
                 disabled={loading}
                 className="font-body text-white disabled:opacity-60"
                 style={{
-                  background: "#C8323C",
+                  background: "var(--signal-red)",
                   borderRadius: 8,
                   padding: "12px 32px",
                   fontSize: 15,

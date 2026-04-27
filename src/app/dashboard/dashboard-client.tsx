@@ -161,7 +161,7 @@ function STRScoreIcon({ verdict }: { verdict: STRVerdict }) {
   const config = {
     VIABLE: { icon: "✓", color: "var(--franco-v-buy)" },
     "AJUSTA ESTRATEGIA": { icon: "⚠", color: "var(--franco-v-adjust)" },
-    "NO RECOMENDADO": { icon: "✗", color: "#C8323C" },
+    "NO RECOMENDADO": { icon: "✗", color: "var(--signal-red)" },
   }[verdict];
   return (
     <div className="relative h-12 w-12 shrink-0">
@@ -176,7 +176,7 @@ function STRScoreIcon({ verdict }: { verdict: STRVerdict }) {
 }
 
 function ScoreCircle({ score }: { score: number }) {
-  const color = score >= 75 ? "var(--franco-v-buy)" : score >= 40 ? "var(--franco-v-adjust)" : "#C8323C";
+  const color = score >= 75 ? "var(--franco-v-buy)" : score >= 40 ? "var(--franco-v-adjust)" : "var(--signal-red)";
   const dashLen = (score / 100) * 126;
   return (
     <div className="relative h-12 w-12 shrink-0">
@@ -283,14 +283,14 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
   };
 
   const ltrVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
-    { key: "COMPRAR", label: "Comprar", color: "#B0BEC5" },
-    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", color: "#FBBF24" },
-    { key: "BUSCAR OTRA", label: "Buscar otra", color: "#C8323C" },
+    { key: "COMPRAR", label: "Comprar", color: "var(--ink-400)" },
+    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", color: "var(--ink-500)" },
+    { key: "BUSCAR OTRA", label: "Buscar otra", color: "var(--signal-red)" },
   ];
   const strVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
-    { key: "VIABLE", label: "Viable", color: "#B0BEC5" },
-    { key: "AJUSTA ESTRATEGIA", label: "Ajusta estrategia", color: "#FBBF24" },
-    { key: "NO RECOMENDADO", label: "No recomendado", color: "#C8323C" },
+    { key: "VIABLE", label: "Viable", color: "var(--ink-400)" },
+    { key: "AJUSTA ESTRATEGIA", label: "Ajusta estrategia", color: "var(--ink-500)" },
+    { key: "NO RECOMENDADO", label: "No recomendado", color: "var(--signal-red)" },
   ];
   const verdictFilterSet =
     typeFilter === "str" ? strVerdictFilters :
@@ -316,7 +316,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
           <FrancoLogo size="header" href="/" inverted />
           <div className="flex items-center gap-3">
             <Link href="/pricing">
-              <span className="rounded-md bg-[#C8323C] px-3 py-1.5 font-body text-sm font-bold text-white transition-colors hover:bg-[#C8323C]/90">Premium</span>
+              <span className="rounded-md bg-signal-red px-3 py-1.5 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90">Premium</span>
             </Link>
             <Link href="/cuenta">
               <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">
@@ -336,7 +336,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             <div className="mb-6 flex select-none items-baseline justify-center opacity-[0.08]">
               <span className="font-heading text-[64px] font-normal italic leading-none tracking-tight text-[var(--franco-text)]">re</span>
               <span className="font-heading text-[64px] font-bold leading-none tracking-tight text-[var(--franco-text)]">franco</span>
-              <span className="ml-1 font-body text-sm font-semibold uppercase tracking-wider text-[#C8323C]">.ai</span>
+              <span className="ml-1 font-body text-sm font-medium uppercase tracking-wider text-signal-red">.ai</span>
             </div>
             <div className="mb-1.5 font-heading text-xl font-bold text-[var(--franco-text)]">
               Analiza tu primera inversión
@@ -345,7 +345,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               Renta larga, renta corta o ambas. Franco te dice si el número da en 30 segundos.
             </div>
             <Link href="/analisis/nuevo-v2">
-              <button className="rounded-lg bg-[#C8323C] px-7 py-3 font-body text-sm font-bold text-white shadow-[0_2px_12px_rgba(200,50,60,0.2)]">
+              <button className="rounded-lg bg-signal-red px-7 py-3 font-body text-sm font-medium text-white shadow-[0_2px_12px_color-mix(in_srgb,var(--signal-red)_20%,transparent)]">
                 Analizar tu primera inversión →
               </button>
             </Link>
@@ -367,7 +367,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               </div>
               <div className="flex flex-col items-end gap-1">
                 <Link href="/analisis/nuevo-v2">
-                  <button className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-[13px] font-bold text-white shadow-[0_2px_10px_rgba(200,50,60,0.15)]">
+                  <button className="rounded-lg bg-signal-red px-5 py-2.5 font-body text-[13px] font-medium text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--signal-red)_15%,transparent)]">
                     Analizar inversión →
                   </button>
                 </Link>
@@ -380,7 +380,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                 {/* Best analysis */}
                 <div className="rounded-[10px] border border-[var(--franco-border)] bg-[var(--franco-card)] p-3.5 px-4">
                   <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">MEJOR ANÁLISIS</div>
-                  <div className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
+                  <div className="font-body text-[13px] font-medium text-[var(--franco-text)]">
                     {summaryData.best.nombre} · {summaryData.best.comuna}
                   </div>
                   <div className="mt-0.5 font-mono text-[11px] text-[var(--franco-text-secondary)]">Score {summaryData.best.score}</div>
@@ -394,7 +394,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                 {/* Positive flow */}
                 <div className="rounded-[10px] border border-[var(--franco-border)] bg-[var(--franco-card)] p-3.5 px-4">
                   <div className="mb-1 font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO POSITIVO</div>
-                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-[#C8323C]" : "text-[var(--franco-text)]"}`}>
+                  <div className={`font-heading text-[22px] font-bold ${summaryData.positiveFlowCount === 0 ? "text-signal-red" : "text-[var(--franco-text)]"}`}>
                     {summaryData.positiveFlowCount}/{summaryData.total}
                   </div>
                   <div className="mt-0.5 font-body text-[10px] text-[var(--franco-text-secondary)]">propiedades</div>
@@ -409,7 +409,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                   const isActive = typeFilter === f.key;
                   const className = `font-body text-xs px-3 py-1 rounded-md cursor-pointer border transition-colors ${
                     isActive
-                      ? "font-semibold bg-[var(--franco-text)] border-[var(--franco-text)] text-[var(--franco-bg)]"
+                      ? "font-medium bg-[var(--franco-text)] border-[var(--franco-text)] text-[var(--franco-bg)]"
                       : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)]"
                   }`;
                   return (
@@ -435,9 +435,9 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                 if (isActive) {
                   if (c) {
                     // Colored active filter - use inline styles for dynamic colors
-                    className += "font-semibold";
+                    className += "font-medium";
                   } else {
-                    className += "font-semibold bg-[var(--franco-card)] border-[var(--franco-border-hover)] text-[var(--franco-text)]";
+                    className += "font-medium bg-[var(--franco-card)] border-[var(--franco-border-hover)] text-[var(--franco-text)]";
                   }
                 } else {
                   className += "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)]";
@@ -449,8 +449,8 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                     onClick={() => setActiveFilter(f.key)}
                     className={className}
                     style={isActive && c ? {
-                      backgroundColor: `${c}10`,
-                      borderColor: `${c}66`,
+                      backgroundColor: `color-mix(in srgb, ${c} 6%, transparent)`,
+                      borderColor: `color-mix(in srgb, ${c} 40%, transparent)`,
                       color: c,
                       borderWidth: "1.5px",
                     } : undefined}
@@ -513,19 +513,19 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {/* Info */}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-body text-sm font-bold text-[var(--franco-text)]">{item.nombre}</span>
+                            <span className="font-body text-sm font-medium text-[var(--franco-text)]">{item.nombre}</span>
                             <span className="text-[var(--franco-text-secondary)]">·</span>
                             <span className="font-body text-xs text-[var(--franco-text-secondary)]">{item.comuna}</span>
                             {m.isSTR && (
                               <span
                                 className="rounded font-mono text-[7px] font-bold tracking-wide"
-                                style={{ padding: "2px 6px", background: "rgba(200,50,60,0.1)", color: "#C8323C" }}
+                                style={{ padding: "2px 6px", background: "color-mix(in srgb, var(--signal-red) 10%, transparent)", color: "var(--signal-red)" }}
                               >
                                 AIRBNB
                               </span>
                             )}
                             {item.is_premium && (
-                              <span className="rounded bg-[#C8323C]/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-[#C8323C]">PRO</span>
+                              <span className="rounded bg-signal-red/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-signal-red">PRO</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1.5">
@@ -539,7 +539,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         <div className="hidden items-center gap-4 sm:flex">
                           <div className="min-w-[55px] text-right">
                             <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO</div>
-                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-[#C8323C]" : "text-[var(--franco-text)]"}`}>
+                            <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-signal-red" : "text-[var(--franco-text)]"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
@@ -561,7 +561,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
                           <button
                             onClick={(e) => handleDelete(e, item.id)}
-                            className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-[#C8323C]"
+                            className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-signal-red"
                             title="Eliminar análisis"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -572,7 +572,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                       {/* Row 2: "Siendo franco:" summary */}
                       <div className="mt-2.5 border-t border-[var(--franco-border)] pt-2.5">
                         <p className="font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
-                          <span className="font-semibold text-[var(--franco-text)]">Siendo franco:</span>{" "}
+                          <span className="font-medium text-[var(--franco-text)]">Siendo franco:</span>{" "}
                           {m.isSTR
                             ? getSTRSiendoFranco(item)
                             : item.results?.resumen
@@ -597,7 +597,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               {selected.size} análisis seleccionados
             </span>
             <Link href={`/comparar?ids=${Array.from(selected).join(",")}`}>
-              <Button className="gap-2 rounded-xl bg-[#C8323C] px-6 text-sm font-semibold text-white hover:bg-[#C8323C]/90">
+              <Button className="gap-2 rounded-xl bg-signal-red px-6 text-sm font-medium text-white hover:bg-signal-red/90">
                 Comparar {selected.size} análisis <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
