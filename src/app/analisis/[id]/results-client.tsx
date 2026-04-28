@@ -1263,7 +1263,6 @@ function HeroTopStrip({
   metadataItems,
   currency,
   onCurrencyChange,
-  verdictColor,
 }: {
   score: number;
   veredicto: string;
@@ -1272,7 +1271,6 @@ function HeroTopStrip({
   metadataItems: { label: string; value: string }[];
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
-  verdictColor: string;
 }) {
   const clampedScore = Math.min(Math.max(score, 0), 100);
   return (
@@ -1319,12 +1317,18 @@ function HeroTopStrip({
             <div
               className="h-1 rounded-full relative"
               style={{
-                // Gradient binario Signal Red → Ink (skill: sistema cromático
-                // Ink + Signal Red). Stop intermedio en Signal Red 35% para
-                // suavizar el cruce sin introducir ámbar.
-                background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 80%, transparent), color-mix(in srgb, var(--signal-red) 35%, transparent) 50%, color-mix(in srgb, var(--franco-text) 70%, transparent))",
+                background: "color-mix(in srgb, var(--franco-text) 10%, transparent)",
               }}
             >
+              {/* Fill bar Signal Red sólido de 0 a clampedScore% */}
+              <div
+                className="absolute top-0 left-0 h-full rounded-full"
+                style={{
+                  width: `${clampedScore}%`,
+                  background: "var(--signal-red)",
+                }}
+              />
+              {/* Dot indicator en posición del score */}
               <div
                 className="absolute top-[-3px] w-2.5 h-2.5 rounded-full border-2"
                 style={{
@@ -1372,8 +1376,8 @@ function HeroTopStrip({
           <span
             className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
             style={{
-              color: verdictColor,
-              background: `color-mix(in srgb, ${verdictColor} 18%, transparent)`,
+              color: veredicto === "COMPRAR" ? "var(--franco-bg)" : "white",
+              background: veredicto === "COMPRAR" ? "var(--franco-text)" : "var(--signal-red)",
             }}
           >
             {veredicto}
@@ -1409,9 +1413,11 @@ function HeroCard({
   valorUF: number;
 }) {
   const v = getVerdictStyles(veredicto);
-  // Hero acento: COMPRAR → Ink primario; AJUSTA/BUSCAR OTRA → Signal Red.
-  // Per skill: ámbar eliminado, criterio Fase 2 colapsa a binario Ink + Signal Red.
-  const heroBorderLeft = veredicto === "COMPRAR" ? "var(--franco-text)" : "var(--signal-red)";
+  // Veredicto bg/text inverted: COMPRAR usa Ink + texto invertido; BUSCAR/AJUSTA
+  // usa Signal Red sólido + white. Aplica a badges y pills del Hero.
+  const isCompra = veredicto === "COMPRAR";
+  const verdictPillBg = isCompra ? "var(--franco-text)" : "var(--signal-red)";
+  const verdictPillText = isCompra ? "var(--franco-bg)" : "white";
   const respuesta = currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
   const veredictoFrase = currency === "CLP" ? data.conviene.veredictoFrase_clp : data.conviene.veredictoFrase_uf;
   const reencuadre = currency === "CLP" ? data.conviene.reencuadre_clp : data.conviene.reencuadre_uf;
@@ -1427,7 +1433,6 @@ function HeroCard({
       style={{
         background: "var(--franco-card)",
         border: "1px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
-        borderLeft: `3px solid ${heroBorderLeft}`,
       }}
     >
       {/* FRANJA SUPERIOR */}
@@ -1439,7 +1444,6 @@ function HeroCard({
         metadataItems={metadataItems}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
-        verdictColor={v.color}
       />
 
       {/* Divider tintado según veredicto */}
@@ -1475,8 +1479,8 @@ function HeroCard({
           <span
             className="self-start sm:self-auto font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
             style={{
-              color: v.color,
-              background: `color-mix(in srgb, ${v.color} 18%, transparent)`,
+              color: verdictPillText,
+              background: verdictPillBg,
             }}
           >
             {veredicto}
@@ -1498,16 +1502,24 @@ function HeroCard({
 
         <StateBox
           variant="left-border"
-          state={veredicto === "COMPRAR" ? "neutral" : "negative"}
-          label={veredicto === "COMPRAR" ? "Considera antes de avanzar:" : "Antes de seguir, decide:"}
+          state={isCompra ? "neutral" : "negative"}
           className="mt-5"
           style={{
-            background: veredicto === "COMPRAR"
+            background: isCompra
               ? "color-mix(in srgb, var(--franco-text) 6%, transparent)"
               : "color-mix(in srgb, var(--signal-red) 6%, transparent)",
             borderRadius: "0 8px 8px 0",
           }}
         >
+          <span
+            className="font-mono text-[10px] font-semibold tracking-[2px] uppercase inline-block px-2.5 py-1 rounded mb-2"
+            style={{
+              color: verdictPillText,
+              background: verdictPillBg,
+            }}
+          >
+            {isCompra ? "Considera antes de avanzar:" : "Antes de seguir, decide:"}
+          </span>
           {renderAiContent(cajaAccionable)}
         </StateBox>
       </div>
