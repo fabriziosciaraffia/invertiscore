@@ -1098,11 +1098,11 @@ const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string
     borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
   },
   "AJUSTA EL PRECIO": {
-    color: "var(--franco-warning)",
-    bg: "color-mix(in srgb, var(--franco-warning) 8%, transparent)",
-    border: "color-mix(in srgb, var(--franco-warning) 25%, transparent)",
-    bgInner: "color-mix(in srgb, var(--franco-warning) 15%, transparent)",
-    borderInner: "color-mix(in srgb, var(--franco-warning) 30%, transparent)",
+    color: "var(--signal-red)",
+    bg: "color-mix(in srgb, var(--signal-red) 8%, transparent)",
+    border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
+    bgInner: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
+    borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
   },
 };
 
