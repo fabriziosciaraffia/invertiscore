@@ -223,9 +223,9 @@ function SimulationTag() {
         letterSpacing: "1.2px",
         padding: "3px 8px",
         borderRadius: 3,
-        background: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
-        color: "var(--signal-red)",
-        border: "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)",
+        background: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
+        color: "var(--franco-text)",
+        border: "0.5px solid color-mix(in srgb, var(--franco-text) 25%, transparent)",
         fontWeight: 600,
       }}
     >
@@ -930,15 +930,15 @@ function Capa3Unificado({
         onClick={() => setOpen(true)}
         className="w-full text-left group transition-colors"
         style={{
-          background: "color-mix(in srgb, var(--signal-red) 4%, transparent)",
-          border: "1px solid color-mix(in srgb, var(--signal-red) 20%, transparent)",
-          borderLeft: "3px solid var(--signal-red)",
+          background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+          borderLeft: "3px solid var(--franco-text)",
           borderRadius: "0 10px 10px 0",
           padding: "22px 24px",
           cursor: "pointer",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--signal-red) 7%, transparent)")}
-        onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--signal-red) 4%, transparent)")}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--franco-text) 12%, transparent)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--franco-text) 8%, transparent)")}
       >
         <div
           className="flex items-center gap-2 mb-3"
@@ -948,7 +948,7 @@ function Capa3Unificado({
             style={{
               fontSize: 10,
               letterSpacing: "1.5px",
-              color: "var(--signal-red)",
+              color: "var(--franco-text)",
               fontWeight: 600,
             }}
           >
@@ -979,7 +979,7 @@ function Capa3Unificado({
             className="font-body font-medium inline-flex items-center gap-1"
             style={{
               fontSize: 13,
-              color: "var(--signal-red)",
+              color: "var(--franco-text)",
             }}
           >
             Explorar escenarios
@@ -994,9 +994,9 @@ function Capa3Unificado({
   return (
     <div
       style={{
-        background: "color-mix(in srgb, var(--signal-red) 3%, transparent)",
-        border: "1px solid color-mix(in srgb, var(--signal-red) 18%, transparent)",
-        borderLeft: "3px solid var(--signal-red)",
+        background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+        borderLeft: "3px solid var(--franco-text)",
         borderRadius: "0 10px 10px 0",
         padding: "24px 28px",
       }}
@@ -1009,7 +1009,7 @@ function Capa3Unificado({
             style={{
               fontSize: 10,
               letterSpacing: "1.5px",
-              color: "var(--signal-red)",
+              color: "var(--franco-text)",
               fontWeight: 600,
             }}
           >
