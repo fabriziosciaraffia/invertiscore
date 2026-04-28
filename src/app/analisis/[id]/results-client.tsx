@@ -1413,7 +1413,7 @@ function HeroCard({
       className="rounded-[16px] overflow-hidden mb-3"
       style={{
         background: "var(--franco-card)",
-        border: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+        border: "1px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
         borderLeft: `3px solid ${heroBorderLeft}`,
       }}
     >
@@ -1454,8 +1454,8 @@ function HeroCard({
         <div
           className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg my-4"
           style={{
-            background: `color-mix(in srgb, ${v.color} 10%, transparent)`,
-            border: `0.5px solid color-mix(in srgb, ${v.color} 25%, transparent)`,
+            background: `color-mix(in srgb, ${v.color} 5%, transparent)`,
+            border: `0.5px solid color-mix(in srgb, ${v.color} 18%, transparent)`,
           }}
         >
           <span
@@ -1487,6 +1487,11 @@ function HeroCard({
           state={veredicto === "COMPRAR" ? "neutral" : "negative"}
           label={data.conviene.cajaLabel}
           className="mt-5"
+          style={{
+            background: veredicto === "COMPRAR"
+              ? "color-mix(in srgb, var(--franco-text) 6%, transparent)"
+              : "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+          }}
         >
           {renderAiContent(cajaAccionable)}
         </StateBox>
