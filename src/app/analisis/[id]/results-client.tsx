@@ -898,9 +898,8 @@ function Capa3Unificado({
 }) {
   const [open, setOpen] = useState(false);
 
-  const sectionHeader = (label: string) => (
+  const sectionHeader = (num: string, label: string, title: string) => (
     <div
-      className="flex items-center gap-3"
       style={{
         borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
         paddingTop: 18,
@@ -909,16 +908,21 @@ function Capa3Unificado({
       }}
     >
       <span
-        className="font-mono uppercase"
+        className="font-mono uppercase block mb-1.5"
         style={{
-          fontSize: 11,
+          fontSize: 10,
           letterSpacing: "1.5px",
-          color: "color-mix(in srgb, var(--franco-text) 55%, transparent)",
-          fontWeight: 600,
+          color: "var(--franco-text-secondary)",
         }}
       >
-        {label}
+        {num} · {label}
       </span>
+      <h3
+        className="font-heading font-bold m-0"
+        style={{ fontSize: 20, lineHeight: 1.25, color: "var(--franco-text)" }}
+      >
+        {title}
+      </h3>
     </div>
   );
 
@@ -1043,23 +1047,16 @@ function Capa3Unificado({
         </button>
       </div>
 
-      <div
-        style={{
-          borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
-          marginTop: 14,
-          paddingTop: 18,
-        }}
-      >
-        {/* Sliders integrados */}
-        <SliderSimulacion variant="integrated" />
-      </div>
+      {/* Sub-sección 07 · ESCENARIOS */}
+      {sectionHeader("07", "Escenarios", "Ajusta plazo y plusvalía")}
+      <SliderSimulacion variant="integrated" />
 
-      {/* Sub-sección 1: Indicadores */}
-      {sectionHeader("Indicadores")}
+      {/* Sub-sección 08 · INDICADORES */}
+      {sectionHeader("08", "Indicadores", "Rendimiento y métricas")}
       <IndicadoresRentabilidadContent projections={projections} metrics={metrics} />
 
-      {/* Sub-sección 2: Gráfico de patrimonio */}
-      {sectionHeader("Gráfico de patrimonio")}
+      {/* Sub-sección 09 · PATRIMONIO */}
+      {sectionHeader("09", "Patrimonio", "Cómo crece tu capital")}
       <GraficoPatrimonioContent
         projections={projections}
         metrics={metrics}
@@ -1068,8 +1065,8 @@ function Capa3Unificado({
         valorUF={valorUF}
       />
 
-      {/* Sub-sección 3: Venta o refinanciamiento */}
-      {sectionHeader("Venta o refinanciamiento")}
+      {/* Sub-sección 10 · VENTA O REFINANCIAMIENTO */}
+      {sectionHeader("10", "Venta o refinanciamiento", "Cómo materializas la inversión")}
       <VentaRefiContent
         projections={projections}
         metrics={metrics}
