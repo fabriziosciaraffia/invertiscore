@@ -1288,16 +1288,14 @@ function HeroTopStrip({
             <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none mb-1.5 text-[var(--franco-text)] m-0">
               {score}
             </p>
-            <div className="w-[120px] md:w-[140px]">
+            <div className="w-[180px] md:w-[220px]">
               <div
                 className="h-1 rounded-full relative"
                 style={{
-                  // TODO(franco-design): gradient 3-stops (rojo · ámbar · slate-blue)
-                  // conserva la identidad visual del Score Bar pero entra en conflicto
-                  // con el sistema binario Ink + Signal Red. Refactor del Score Bar
-                  // pendiente para futura ronda (skill sugiere stops binarios o
-                  // single-color con marker).
-                  background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 60%, transparent), color-mix(in srgb, var(--franco-warning) 60%, transparent) 50%, color-mix(in srgb, var(--franco-positive) 60%, transparent))",
+                  // Gradient binario Signal Red → Ink (skill: sistema cromático
+                  // Ink + Signal Red). Stop intermedio en Signal Red 35% para
+                  // suavizar el cruce sin introducir ámbar.
+                  background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 80%, transparent), color-mix(in srgb, var(--signal-red) 35%, transparent) 50%, color-mix(in srgb, var(--franco-text) 70%, transparent))",
                 }}
               >
                 <div
