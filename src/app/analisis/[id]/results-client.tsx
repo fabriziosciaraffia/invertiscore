@@ -1305,12 +1305,9 @@ function HeroTopStrip({
           ))}
         </div>
 
-        {/* ZONA C — CENTRO-DER: Franco Score (con divider vertical Ink translúcido a la izquierda) */}
+        {/* ZONA C — CENTRO-DER: Franco Score (con divider vertical Ink translúcido a la izquierda en md+) */}
         <div
-          className="shrink-0 md:pl-6"
-          style={{
-            borderLeft: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
-          }}
+          className="shrink-0 mt-2 md:mt-0 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]"
         >
           <p className="font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
             Franco Score
@@ -1468,10 +1465,11 @@ function HeroCard({
         </div>
 
         <div
-          className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-lg my-4"
+          className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-r-lg my-4"
           style={{
             background: `color-mix(in srgb, ${v.color} 5%, transparent)`,
             border: `0.5px solid color-mix(in srgb, ${v.color} 18%, transparent)`,
+            borderLeft: `3px solid ${v.color}`,
           }}
         >
           <span
@@ -1501,12 +1499,13 @@ function HeroCard({
         <StateBox
           variant="left-border"
           state={veredicto === "COMPRAR" ? "neutral" : "negative"}
-          label={data.conviene.cajaLabel}
+          label={veredicto === "COMPRAR" ? "Considera antes de avanzar:" : "Antes de seguir, decide:"}
           className="mt-5"
           style={{
             background: veredicto === "COMPRAR"
               ? "color-mix(in srgb, var(--franco-text) 6%, transparent)"
               : "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+            borderRadius: "0 8px 8px 0",
           }}
         >
           {renderAiContent(cajaAccionable)}
