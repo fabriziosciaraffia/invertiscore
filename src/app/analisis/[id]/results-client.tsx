@@ -1401,6 +1401,9 @@ function HeroCard({
   valorUF: number;
 }) {
   const v = getVerdictStyles(veredicto);
+  // Hero acento: COMPRAR → Ink primario; AJUSTA/BUSCAR OTRA → Signal Red.
+  // Per skill: ámbar eliminado, criterio Fase 2 colapsa a binario Ink + Signal Red.
+  const heroBorderLeft = veredicto === "COMPRAR" ? "var(--franco-text)" : "var(--signal-red)";
   const respuesta = currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
   const veredictoFrase = currency === "CLP" ? data.conviene.veredictoFrase_clp : data.conviene.veredictoFrase_uf;
   const reencuadre = currency === "CLP" ? data.conviene.reencuadre_clp : data.conviene.reencuadre_uf;
@@ -1414,8 +1417,9 @@ function HeroCard({
     <div
       className="rounded-[16px] overflow-hidden mb-3"
       style={{
-        background: `color-mix(in srgb, ${v.color} 5%, var(--franco-card))`,
-        border: `1px solid color-mix(in srgb, ${v.color} 28%, transparent)`,
+        background: "var(--franco-card)",
+        border: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+        borderLeft: `3px solid ${heroBorderLeft}`,
       }}
     >
       {/* FRANJA SUPERIOR */}
@@ -1485,7 +1489,7 @@ function HeroCard({
 
         <StateBox
           variant="left-border"
-          state="warning"
+          state={veredicto === "COMPRAR" ? "neutral" : "negative"}
           label={data.conviene.cajaLabel}
           className="mt-5"
         >
