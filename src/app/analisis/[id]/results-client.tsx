@@ -1258,18 +1258,18 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
 function HeroTopStrip({
   score,
   veredicto,
-  propiedadNombre,
-  propiedadContext,
-  propiedadSpecs,
+  propiedadTitle,
+  propiedadSubtitle,
+  metadataItems,
   currency,
   onCurrencyChange,
   verdictColor,
 }: {
   score: number;
   veredicto: string;
-  propiedadNombre: string;
-  propiedadContext: string;
-  propiedadSpecs: string;
+  propiedadTitle: string;
+  propiedadSubtitle: string;
+  metadataItems: { label: string; value: string }[];
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   verdictColor: string;
@@ -1277,46 +1277,103 @@ function HeroTopStrip({
   const clampedScore = Math.min(Math.max(score, 0), 100);
   return (
     <div className="px-5 md:px-8 py-4 md:py-5">
-      <div className="flex flex-col md:grid md:grid-cols-[auto_1fr_auto] gap-4 md:gap-6 items-start md:items-center">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_auto_auto_auto] md:gap-6 md:items-center">
 
-        {/* SCORE */}
-        <div className="flex items-center gap-3 md:gap-4">
-          <div>
-            <p className="font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
-              Franco Score
+        {/* ZONA A — IZQ: título + subtítulo */}
+        <div className="flex flex-col gap-1 min-w-0">
+          <h2 className="font-heading font-bold text-[18px] md:text-[22px] text-[var(--franco-text)] m-0 leading-[1.2] truncate">
+            {propiedadTitle}
+          </h2>
+          {propiedadSubtitle && (
+            <p className="font-body text-[11px] md:text-[12px] text-[var(--franco-text-secondary)] m-0 truncate">
+              {propiedadSubtitle}
             </p>
-            <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none mb-1.5 text-[var(--franco-text)] m-0">
-              {score}
-            </p>
-            <div className="w-[180px] md:w-[220px]">
+          )}
+        </div>
+
+        {/* ZONA B — CENTRO-IZQ: metadata 2x2 */}
+        <div className="grid grid-cols-2 gap-x-5 gap-y-2 shrink-0">
+          {metadataItems.map((item) => (
+            <div key={item.label} className="flex flex-col gap-0.5">
+              <span className="font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
+                {item.label}
+              </span>
+              <span className="font-mono text-[12px] md:text-[13px] font-medium text-[var(--franco-text)] whitespace-nowrap">
+                {item.value}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* ZONA C — CENTRO-DER: Franco Score (con divider vertical Ink translúcido a la izquierda) */}
+        <div
+          className="shrink-0 md:pl-6"
+          style={{
+            borderLeft: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+          }}
+        >
+          <p className="font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
+            Franco Score
+          </p>
+          <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none mb-1.5 text-[var(--franco-text)] m-0">
+            {score}
+          </p>
+          <div className="w-[180px] md:w-[220px]">
+            <div
+              className="h-1 rounded-full relative"
+              style={{
+                // Gradient binario Signal Red → Ink (skill: sistema cromático
+                // Ink + Signal Red). Stop intermedio en Signal Red 35% para
+                // suavizar el cruce sin introducir ámbar.
+                background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 80%, transparent), color-mix(in srgb, var(--signal-red) 35%, transparent) 50%, color-mix(in srgb, var(--franco-text) 70%, transparent))",
+              }}
+            >
               <div
-                className="h-1 rounded-full relative"
+                className="absolute top-[-3px] w-2.5 h-2.5 rounded-full border-2"
                 style={{
-                  // Gradient binario Signal Red → Ink (skill: sistema cromático
-                  // Ink + Signal Red). Stop intermedio en Signal Red 35% para
-                  // suavizar el cruce sin introducir ámbar.
-                  background: "linear-gradient(to right, color-mix(in srgb, var(--signal-red) 80%, transparent), color-mix(in srgb, var(--signal-red) 35%, transparent) 50%, color-mix(in srgb, var(--franco-text) 70%, transparent))",
+                  left: `${clampedScore}%`,
+                  transform: "translateX(-50%)",
+                  background: "var(--franco-text)",
+                  borderColor: "var(--franco-card)",
                 }}
-              >
-                <div
-                  className="absolute top-[-3px] w-2.5 h-2.5 rounded-full border-2"
-                  style={{
-                    left: `${clampedScore}%`,
-                    transform: "translateX(-50%)",
-                    background: "var(--franco-text)",
-                    borderColor: "var(--franco-card)",
-                  }}
-                />
-              </div>
-              <div className="flex justify-between font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
-                <span>Buscar</span>
-                <span>Ajusta</span>
-                <span>Comprar</span>
-              </div>
+              />
+            </div>
+            <div className="flex justify-between font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
+              <span>Buscar</span>
+              <span>Ajusta</span>
+              <span>Comprar</span>
             </div>
           </div>
+        </div>
+
+        {/* ZONA D — DER: Toggle CLP/UF arriba + Badge veredicto debajo */}
+        <div className="flex flex-col items-stretch md:items-end gap-2 shrink-0">
+          <div className="flex bg-[var(--franco-bar-track)] rounded-md p-0.5">
+            <button
+              type="button"
+              onClick={() => onCurrencyChange("CLP")}
+              className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
+                currency === "CLP"
+                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                  : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
+              }`}
+            >
+              CLP
+            </button>
+            <button
+              type="button"
+              onClick={() => onCurrencyChange("UF")}
+              className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
+                currency === "UF"
+                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                  : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
+              }`}
+            >
+              UF
+            </button>
+          </div>
           <span
-            className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap"
+            className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
             style={{
               color: verdictColor,
               background: `color-mix(in srgb, ${verdictColor} 18%, transparent)`,
@@ -1324,47 +1381,6 @@ function HeroTopStrip({
           >
             {veredicto}
           </span>
-        </div>
-
-        {/* CONTEXTO */}
-        <div className="flex flex-col gap-1 md:border-l md:border-[var(--franco-border)] md:pl-6 min-w-0 w-full">
-          {propiedadContext && (
-            <p className="font-body text-[11px] md:text-[12px] text-[var(--franco-text-secondary)] m-0 truncate">
-              {propiedadContext}
-            </p>
-          )}
-          <p className="font-heading text-[16px] md:text-[18px] font-bold text-[var(--franco-text)] m-0 leading-[1.2] truncate">
-            {propiedadNombre}
-          </p>
-          <p className="font-mono text-[10px] text-[var(--franco-text-secondary)] m-0 mt-0.5 tracking-[0.3px] truncate">
-            {propiedadSpecs}
-          </p>
-        </div>
-
-        {/* TOGGLE CLP/UF */}
-        <div className="flex bg-[var(--franco-bar-track)] rounded-md p-0.5 self-start md:self-center">
-          <button
-            type="button"
-            onClick={() => onCurrencyChange("CLP")}
-            className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
-              currency === "CLP"
-                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-            }`}
-          >
-            CLP
-          </button>
-          <button
-            type="button"
-            onClick={() => onCurrencyChange("UF")}
-            className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
-              currency === "UF"
-                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-            }`}
-          >
-            UF
-          </button>
         </div>
 
       </div>
@@ -1378,9 +1394,9 @@ function HeroCard({
   onCurrencyChange,
   veredicto,
   score,
-  propiedadNombre,
-  propiedadContext,
-  propiedadSpecs,
+  propiedadTitle,
+  propiedadSubtitle,
+  metadataItems,
   results,
   valorUF,
 }: {
@@ -1389,9 +1405,9 @@ function HeroCard({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   veredicto: string;
   score: number;
-  propiedadNombre: string;
-  propiedadContext: string;
-  propiedadSpecs: string;
+  propiedadTitle: string;
+  propiedadSubtitle: string;
+  metadataItems: { label: string; value: string }[];
   results: import("@/lib/types").FullAnalysisResult | null | undefined;
   valorUF: number;
 }) {
@@ -1421,9 +1437,9 @@ function HeroCard({
       <HeroTopStrip
         score={score}
         veredicto={veredicto}
-        propiedadNombre={propiedadNombre}
-        propiedadContext={propiedadContext}
-        propiedadSpecs={propiedadSpecs}
+        propiedadTitle={propiedadTitle}
+        propiedadSubtitle={propiedadSubtitle}
+        metadataItems={metadataItems}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
         verdictColor={v.color}
@@ -1665,9 +1681,9 @@ function DashboardAnalysisSection({
   onCurrencyChange,
   veredicto,
   score,
-  propiedadNombre,
-  propiedadContext,
-  propiedadSpecs,
+  propiedadTitle,
+  propiedadSubtitle,
+  metadataItems,
   onRetry,
   results,
   inputData,
@@ -1682,9 +1698,9 @@ function DashboardAnalysisSection({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   veredicto: string;
   score: number;
-  propiedadNombre: string;
-  propiedadContext: string;
-  propiedadSpecs: string;
+  propiedadTitle: string;
+  propiedadSubtitle: string;
+  metadataItems: { label: string; value: string }[];
   onRetry: () => void;
   results: import("@/lib/types").FullAnalysisResult | null | undefined;
   inputData: import("@/lib/types").AnalisisInput | null | undefined;
@@ -1760,9 +1776,9 @@ function DashboardAnalysisSection({
         onCurrencyChange={onCurrencyChange}
         veredicto={veredicto}
         score={score}
-        propiedadNombre={propiedadNombre}
-        propiedadContext={propiedadContext}
-        propiedadSpecs={propiedadSpecs}
+        propiedadTitle={propiedadTitle}
+        propiedadSubtitle={propiedadSubtitle}
+        metadataItems={metadataItems}
         results={results}
         valorUF={valorUF}
       />
@@ -2984,10 +3000,22 @@ export function PremiumResults({
   // (exit/refi section reads directly from projData inline)
 
   // Derived strings for HeroCard top strip
-  const propiedadContext = ownerFirstName && !isSharedView
+  // Title: "Depto {dorm}D{baños}B / {comuna}" si hay schema completo;
+  // fallback al nombre user-given si dormitorios/baños faltan (análisis legacy).
+  const propiedadTitle = (inputData?.dormitorios != null && inputData?.banos != null)
+    ? `Depto ${inputData.dormitorios}D${inputData.banos}B / ${comuna || ciudad || ""}`
+    : nombre || `Depto / ${comuna || ciudad || ""}`;
+  const propiedadSubtitle = ownerFirstName && !isSharedView
     ? `${ownerFirstName}, tu análisis en ${comuna || ciudad || "tu zona"}`
     : `Análisis en ${comuna || ciudad || "tu zona"}`;
-  const propiedadSpecs = `${superficie}m² · ${fmtUF(precioUF)} · ${currency === "UF" ? fmtUF(freePrecioM2) : fmtCLP(freePrecioM2 * UF_CLP)}/m² · Pie ${inputData?.piePct ?? 20}%`;
+  // Metadata 2x2: PRECIO siempre UF, $/M² siempre CLP (unidades complementarias,
+  // independientes del toggle currency que afecta KPIs de abajo).
+  const metadataItems = [
+    { label: "SUPERFICIE", value: `${superficie} m²` },
+    { label: "PRECIO", value: fmtUF(precioUF) },
+    { label: "$/M²", value: fmtCLP(freePrecioM2 * UF_CLP) },
+    { label: "PIE", value: `${inputData?.piePct ?? 20}%` },
+  ];
   const resolvedVeredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
   const mainContent = (
@@ -3028,9 +3056,9 @@ export function PremiumResults({
             onCurrencyChange={setCurrency}
             veredicto={resolvedVeredicto}
             score={score}
-            propiedadNombre={nombre}
-            propiedadContext={propiedadContext}
-            propiedadSpecs={propiedadSpecs}
+            propiedadTitle={propiedadTitle}
+            propiedadSubtitle={propiedadSubtitle}
+            metadataItems={metadataItems}
             onRetry={generateAiManually}
             results={results}
             inputData={inputData}
