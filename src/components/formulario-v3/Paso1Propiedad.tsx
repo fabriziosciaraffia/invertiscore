@@ -67,7 +67,7 @@ export function Paso1Propiedad({
   }, [setState]);
 
   const inputBase =
-    "w-full h-10 rounded-lg border bg-[var(--franco-card)] px-3 text-[14px] text-[var(--franco-text)] focus:ring-1 focus:ring-signal-red/20 focus:outline-none transition-colors";
+    "w-full h-10 rounded-lg border-[0.5px] bg-[var(--franco-card)] px-3 text-[14px] text-[var(--franco-text)] focus:ring-1 focus:ring-signal-red/20 focus:outline-none transition-colors";
   const inputOk = "border-[var(--franco-border)] focus:border-signal-red";
 
   return (
@@ -122,7 +122,7 @@ export function Paso1Propiedad({
                 className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                   state.tipoPropiedad === t
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
                 }`}
               >
                 {t}
@@ -160,7 +160,7 @@ export function Paso1Propiedad({
           }}
         >
           <div className="min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-1">
+            <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
               Entrega del proyecto
             </p>
             <p className="font-body text-[13px] text-[var(--franco-text)] m-0 truncate">
@@ -186,7 +186,7 @@ export function Paso1Propiedad({
         }}
       >
         <div className="min-w-0">
-          <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-1">
+          <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
             Detalles del depto
           </p>
           <p className="font-body text-[13px] text-[var(--franco-text)] m-0 truncate">

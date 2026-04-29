@@ -107,7 +107,7 @@ export function Paso3Modalidad({
                 onClick={() => selectModalidad(o.key)}
                 className="relative text-left rounded-xl border p-4 transition-all bg-[var(--franco-card)] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
               >
-                <p className="font-mono text-[10px] uppercase tracking-[1.5px] m-0 mb-1 font-semibold text-[var(--franco-text-muted)]">
+                <p className="font-mono text-[10px] uppercase tracking-[0.06em] m-0 mb-1 font-semibold text-[var(--franco-text-muted)]">
                   {o.label}{o.star ? " ★" : ""}
                 </p>
                 <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 leading-snug">
@@ -136,7 +136,7 @@ export function Paso3Modalidad({
           >
             <div className="flex items-center gap-2 min-w-0">
               <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--signal-red)" }} strokeWidth={3} />
-              <span className="font-mono text-[11px] uppercase tracking-[1.5px] font-semibold text-[var(--franco-text)]">
+              <span className="font-mono text-[11px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text)]">
                 {modLabel?.label}{modLabel?.star ? " ★" : ""}
               </span>
               <span className="font-body text-[12px] text-[var(--franco-text-secondary)] truncate">
@@ -186,7 +186,7 @@ export function Paso3Modalidad({
             type="button"
             onClick={onAnalizar}
             disabled={submitting || mod !== "ltr"}
-            className="font-body font-medium text-[14px] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
@@ -216,7 +216,7 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-start justify-between gap-4">
       <div>
-        <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-1">
+        <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
           Costo
         </p>
         <p className="font-body text-[13px] font-medium m-0" style={{ color }}>
@@ -224,7 +224,7 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
         </p>
       </div>
       <div className="text-right shrink-0">
-        <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-1">
+        <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
           Plan actual
         </p>
         <p className="font-mono text-[12px] font-semibold text-[var(--franco-text)] m-0 tracking-wide">
@@ -236,11 +236,13 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
 }
 
 function tierCopy(info: TierInfo): { costo: string; plan: string; color: string } {
-  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text-secondary)" };
-  if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-v-buy)" };
-  if (info.tier === "premium" && info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-v-adjust)" };
-  if (info.tier === "free") return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-v-adjust)" };
-  return { costo: "Análisis gratuito (modo invitado)", plan: "INVITADO", color: "var(--franco-text-secondary)" };
+  // Capa 1 binario: tier ya queda señalado por plan acronym (FRANCOMENSUAL, PRO,
+  // GRATUITO, INVITADO, ADMIN). Color colapsado a Ink primario sin amarillo/verde.
+  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)" };
+  if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)" };
+  if (info.tier === "premium" && info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)" };
+  if (info.tier === "free") return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)" };
+  return { costo: "Análisis gratuito (modo invitado)", plan: "INVITADO", color: "var(--franco-text)" };
 }
 
 // Suppress unused export warning

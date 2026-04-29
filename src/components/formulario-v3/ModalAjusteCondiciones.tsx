@@ -205,12 +205,8 @@ export function ModalAjusteCondiciones({
             <button
               type="button"
               onClick={handleSaveAndExit}
-              className="font-body font-medium text-[13px] px-4 py-2 rounded-lg border transition-colors"
-              style={{
-                borderColor: "color-mix(in srgb, var(--franco-v-adjust) 40%, transparent)",
-                color: "var(--franco-v-adjust)",
-                background: "color-mix(in srgb, var(--franco-v-adjust) 8%, transparent)",
-              }}
+              className="font-body font-medium text-[13px] px-4 py-2 rounded-lg text-[var(--franco-text)] hover:bg-[color-mix(in_srgb,var(--franco-text)_4%,transparent)] transition-colors"
+              style={{ border: "0.5px solid var(--franco-border)" }}
             >
               Guardar y salir
             </button>

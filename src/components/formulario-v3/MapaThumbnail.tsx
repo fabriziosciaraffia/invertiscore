@@ -236,7 +236,7 @@ function Placeholder({
           {locationLabel}
         </span>
       )}
-      <span className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)]">
+      <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
         {keyMissing ? "Mapa no configurado" : "Mapa no disponible"}
       </span>
     </div>

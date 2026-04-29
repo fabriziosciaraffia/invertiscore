@@ -30,34 +30,32 @@ export function ResumenCard({
   const hasAjustes = state.editedFields.length > 0;
   const isEdited = (field: string) => state.editedFields.includes(field);
 
-  const valueColor = (field: string) =>
-    isEdited(field) ? "var(--franco-v-adjust)" : "var(--franco-text)";
-
   return (
     <div
-      className="rounded-2xl border p-5 flex flex-col gap-4"
+      className="rounded-2xl p-5 flex flex-col gap-4"
       style={{
-        borderColor: hasAjustes
-          ? "color-mix(in srgb, var(--franco-v-adjust) 35%, transparent)"
-          : "var(--franco-border)",
+        border: hasAjustes
+          ? "0.5px solid var(--franco-text-secondary)"
+          : "0.5px solid var(--franco-border)",
         background: "var(--franco-card)",
       }}
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-mono text-[10px] uppercase tracking-[2px] text-[var(--franco-text-muted)] font-semibold m-0">
+          <h3 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] font-semibold m-0">
             Datos del análisis
           </h3>
           {hasAjustes && (
             <span
-              className="font-mono text-[9px] uppercase tracking-[1.5px] px-2 py-0.5 rounded-full font-semibold"
+              className="font-mono text-[9px] uppercase tracking-[0.06em] font-semibold rounded"
               style={{
-                background: "color-mix(in srgb, var(--franco-v-adjust) 12%, transparent)",
-                color: "var(--franco-v-adjust)",
+                background: "var(--franco-text)",
+                color: "var(--franco-bg)",
+                padding: "4px 8px",
               }}
             >
-              ajustado
+              AJUSTADO
             </span>
           )}
         </div>
@@ -77,45 +75,37 @@ export function ResumenCard({
         <Cell
           label="Plazo · Tasa"
           value={`${plazo}a · ${tasa}%`}
-          color={isEdited("plazoCredito") || isEdited("tasaInteres") ? "var(--franco-v-adjust)" : "var(--franco-text)"}
+          edited={isEdited("plazoCredito") || isEdited("tasaInteres")}
         />
         <Cell label="Dividendo" value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"} />
         <div>
           <Cell
             label="Arriendo est."
             value={arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
-            color={valueColor("arriendo")}
+            edited={isEdited("arriendo")}
           />
           {sampleSize > 0 && (
-            <div className="flex items-center gap-1.5 mt-1">
-              <span
-                className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: "var(--ink-400)" }}
-                aria-hidden="true"
-              />
-              <span
-                className="font-body text-[9px] truncate"
-                style={{ color: "color-mix(in srgb, var(--ink-400) 80%, transparent)" }}
-              >
-                Basado en {sampleSize} deptos similares
-              </span>
-            </div>
+            <p
+              className="font-mono text-[11px] mt-1 m-0 truncate text-[var(--franco-text-secondary)]"
+            >
+              ● Basado en {sampleSize} deptos similares
+            </p>
           )}
         </div>
         <Cell
           label="Vacancia · Admin"
           value={`${state.vacanciaPct}% · ${state.adminPct}%`}
-          color={isEdited("vacanciaPct") || isEdited("adminPct") ? "var(--franco-v-adjust)" : "var(--franco-text)"}
+          edited={isEdited("vacanciaPct") || isEdited("adminPct")}
         />
         <Cell
           label="Gastos comunes"
           value={gastos > 0 ? `${fmtCLP(gastos)}/mes` : "—"}
-          color={valueColor("gastos")}
+          edited={isEdited("gastos")}
         />
         <Cell
           label="Contribuciones"
           value={contribuciones > 0 ? `${fmtCLP(contribuciones)}/trim` : "—"}
-          color={valueColor("contribuciones")}
+          edited={isEdited("contribuciones")}
         />
       </div>
 
@@ -129,17 +119,22 @@ export function ResumenCard({
   );
 }
 
-function Cell({ label, value, color = "var(--franco-text)" }: { label: string; value: string; color?: string }) {
+function Cell({ label, value, edited = false }: { label: string; value: string; edited?: boolean }) {
   return (
     <div>
-      <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-0.5">
+      <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
         {label}
       </p>
-      <p
-        className="font-mono text-[14px] font-semibold m-0 leading-tight"
-        style={{ color }}
-      >
+      <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
         {value}
+        {edited && (
+          <span
+            className="ml-1.5 font-mono text-[10px] text-[var(--franco-text-secondary)]"
+            aria-label="Ajustado manualmente"
+          >
+            ●
+          </span>
+        )}
       </p>
     </div>
   );

@@ -68,7 +68,7 @@ export function Paso2Financiamiento({
     : 0;
 
   const inputBase =
-    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
+    "w-full h-10 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
   return (
     <div className="flex flex-col gap-5">
@@ -96,27 +96,17 @@ export function Paso2Financiamiento({
               }}
             />
           </div>
-          <div className="flex items-center px-3 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-[var(--franco-text-secondary)]">
+          <div className="flex items-center px-3 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-[var(--franco-text-secondary)]">
             ≈ {precioCLP > 0 ? fmtCLPShort(precioCLP) : "$—"}
           </div>
         </div>
         {precioSugeridoUF && (
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <span
-              className="w-1.5 h-1.5 rounded-full shrink-0"
-              style={{ background: "var(--ink-400)" }}
-              aria-hidden="true"
-            />
-            <span
-              className="font-body text-[10px]"
-              style={{ color: "color-mix(in srgb, var(--ink-400) 70%, transparent)" }}
-            >
-              Mercado sugiere UF {precioSugeridoUF.toLocaleString("es-CL")}
-              {superficie > 0 && precioM2UF
-                ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie}m²)`
-                : ""}
-            </span>
-          </div>
+          <p className="font-mono text-[11px] mt-1.5 m-0 text-[var(--franco-text-secondary)]">
+            ● Mercado sugiere UF {precioSugeridoUF.toLocaleString("es-CL")}
+            {superficie > 0 && precioM2UF
+              ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie}m²)`
+              : ""}
+          </p>
         )}
       </div>
 
@@ -137,7 +127,7 @@ export function Paso2Financiamiento({
           step={5}
           value={piePct}
           onChange={(e) => setState({ piePct: e.target.value })}
-          className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+          className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
         />
         <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
           <span>10%</span>
@@ -163,7 +153,7 @@ export function Paso2Financiamiento({
                 className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                   state.pieModoPago === m
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border border-[var(--franco-border)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                 }`}
               >
                 {m === "contado" ? "Contado" : "En cuotas"}
@@ -213,9 +203,9 @@ export function Paso2Financiamiento({
       )}
 
       {/* ── Dividendo readonly ── */}
-      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
+      <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
         <div>
-          <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] m-0 mb-1">
+          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
             Dividendo estimado
           </p>
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0">
