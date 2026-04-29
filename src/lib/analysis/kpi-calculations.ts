@@ -105,8 +105,11 @@ export function tonoPayback(p: number | null): Tone {
   return "bad";
 }
 
+// Múltiplo: ajustado para análisis típico de 10 años. 2x sin contexto temporal
+// es aspiracional; 1.5x al año 10 ≈ 4.1% TIR (decente). Umbral bad < 1x = pérdida
+// nominal real (no recuperaste lo que pusiste).
 export function tonoMultiplo(m: number): Tone {
-  if (m >= 2) return "good";
-  if (m >= 1.3) return "warn";
+  if (m >= 1.5) return "good";
+  if (m >= 1.0) return "warn";
   return "bad";
 }
