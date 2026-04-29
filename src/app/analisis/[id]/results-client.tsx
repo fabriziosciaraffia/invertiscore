@@ -405,7 +405,7 @@ function GraficoPatrimonioContent({
                   >
                     <div className="mb-1.5 font-medium">Año {row.anio}</div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--ink-400)" }} />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }} />
                       Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
                     </div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
@@ -413,13 +413,13 @@ function GraficoPatrimonioContent({
                       − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--signal-red)" }}>−{fmt(row.deudaPendiente)}</span>
                     </div>
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "rgba(250,250,248,0.5)" }} />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
                       Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
                     </div>
                     <div className="mt-1.5 pt-1.5 flex items-center gap-2" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--ink-400)" }} />
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--franco-text)" }} />
                       <span className="font-medium" style={{ color: "var(--franco-text)" }}>= Patrimonio neto</span>
-                      <span className="ml-auto font-mono font-bold" style={{ color: "var(--ink-400)" }}>{fmt(row.patrimonioNeto)}</span>
+                      <span className="ml-auto font-mono font-bold" style={{ color: "var(--franco-text)" }}>{fmt(row.patrimonioNeto)}</span>
                     </div>
                   </div>
                 );
@@ -434,31 +434,31 @@ function GraficoPatrimonioContent({
                 label={{ value: "📦 Entrega", position: "top", fontSize: 10, fill: "var(--franco-text-secondary)" }}
               />
             )}
+            {/* Aporte acumulado en Signal Red — uso #8 explícito skill (egresos
+                visualizados en gráficos / dinero que pones) */}
             <Bar
               dataKey="aporteAcum"
               stackId="composicion"
-              fill="rgba(250,250,248,0.5)"
+              fill="var(--signal-red)"
               name="Aporte acumulado"
               barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
             />
-            {/* TODO(franco-design): "Valor depto" (proyección de valor) y
-                "Patrimonio neto" (equity) ambos en var(--ink-400) — riesgo de
-                colisión visual en chart y leyenda (mismo color de swatch).
-                Skill sugiere diferenciar proyectados con pattern (diagonales)
-                o stroke. Refactor pendiente. */}
+            {/* Valor depto en Ink primary opacity 50% — proyección de valor */}
             <Bar
               dataKey="valorDepto"
               stackId="composicion"
-              fill="var(--ink-400)"
+              fill="var(--franco-text)"
+              fillOpacity={0.5}
               name="Valor depto"
               barSize={Math.max(8, Math.floor(280 / Math.max(plazoAnios, 1)))}
             />
+            {/* Patrimonio neto en Ink primary sólido — el resultado neto */}
             <Line
               type="monotone"
               dataKey="patrimonioNeto"
-              stroke="var(--ink-400)"
+              stroke="var(--franco-text)"
               strokeWidth={2.5}
-              dot={{ r: 3, fill: "var(--ink-400)", stroke: "var(--franco-card)", strokeWidth: 1 }}
+              dot={{ r: 3, fill: "var(--franco-card)", stroke: "var(--franco-text)", strokeWidth: 1.5 }}
               name="Patrimonio neto"
             />
           </ComposedChart>
@@ -466,53 +466,56 @@ function GraficoPatrimonioContent({
       </div>
 
       {/* Leyenda */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center font-mono" style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 65%, transparent)" }}>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center font-mono" style={{ fontSize: 10, color: "var(--franco-text-secondary)" }}>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "rgba(250,250,248,0.5)" }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--signal-red)" }} />
           Aporte acumulado
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--ink-400)" }} />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.5 }} />
           Valor depto
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block w-4 rounded" style={{ background: "var(--ink-400)", height: 2 }} />
+          <span className="inline-block w-4 rounded" style={{ background: "var(--franco-text)", height: 2 }} />
           Patrimonio neto
         </span>
       </div>
 
-      {/* Checkpoint final */}
+      {/* Checkpoint final — chart conclusive box (skill 7.B.3) */}
       {last && (
         <div
+          className="flex justify-between items-start gap-3"
           style={{
-            background: "color-mix(in srgb, var(--ink-400) 8%, var(--franco-card))",
-            border: "0.5px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
-            borderLeft: "3px solid var(--ink-400)",
-            borderRadius: "0 10px 10px 0",
-            padding: "14px 18px",
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            borderRadius: "0 8px 8px 0",
+            padding: "12px 16px",
+            marginTop: "1.25rem",
           }}
         >
-          <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-2">
+          {/* Izq: label uppercase + context Sans */}
+          <div className="flex flex-col gap-0.5 min-w-0">
             <span
               className="font-mono uppercase"
-              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
+              style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
             >
               Patrimonio al año {plazoAnios}
             </span>
+            <span className="font-body" style={{ fontSize: 12, color: "var(--franco-text-secondary)" }}>
+              vs {fmtMoney(last.aporteAcum, currency)} aportados
+            </span>
+          </div>
+          {/* Der: valor mono bold + delta mono pequeño */}
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
             <span
-              className="font-mono font-bold whitespace-nowrap text-[20px] sm:text-[24px]"
-              style={{ color: "var(--ink-400)", lineHeight: 1 }}
+              className="font-mono font-bold whitespace-nowrap"
+              style={{ fontSize: 22, color: "var(--franco-text)", lineHeight: 1 }}
             >
               {fmtMoney(last.patrimonioNeto, currency)}
             </span>
-          </div>
-          <div className="flex items-baseline justify-between gap-2 mt-2">
-            <span className="font-body" style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}>
-              vs {fmtMoney(last.aporteAcum, currency)} aportados
-            </span>
             <span
-              className="font-mono font-bold whitespace-nowrap"
-              style={{ fontSize: 13, color: ganancia >= 0 ? "var(--ink-400)" : "var(--signal-red)" }}
+              className="font-mono whitespace-nowrap"
+              style={{ fontSize: 11, color: ganancia >= 0 ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
             >
               {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
             </span>
@@ -654,25 +657,24 @@ function VentaRefiContent({
 
       {mode === "venta" ? (
         <>
-          {/* Hero venta */}
+          {/* Hero venta — Ink secundario per skill 7.B.4 */}
           <div
             style={{
-              background: "color-mix(in srgb, var(--ink-400) 8%, var(--franco-card))",
-              border: "0.5px solid color-mix(in srgb, var(--ink-400) 25%, transparent)",
-              borderLeft: "3px solid var(--ink-400)",
-              borderRadius: "0 10px 10px 0",
+              background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+              borderLeft: "3px solid var(--franco-text-secondary)",
+              borderRadius: "0 8px 8px 0",
               padding: "14px 18px",
             }}
           >
             <p
               className="font-mono uppercase m-0 mb-1"
-              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+              style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
             >
               Al vender en el año {plazoAnios} recibes
             </p>
             <p
-              className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
-              style={{ color: "var(--ink-400)", lineHeight: 1 }}
+              className="font-mono font-bold m-0 whitespace-nowrap"
+              style={{ fontSize: 28, color: "var(--franco-text)", lineHeight: 1 }}
             >
               {fmt(data.teQueda)}
             </p>
@@ -747,25 +749,24 @@ function VentaRefiContent({
         </>
       ) : (
         <>
-          {/* Hero refi */}
+          {/* Hero refi — Ink secundario per skill 7.B.4 (mismo treatment que venta) */}
           <div
             style={{
-              background: "color-mix(in srgb, var(--signal-red) 8%, var(--franco-card))",
-              border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
-              borderLeft: "3px solid var(--signal-red)",
-              borderRadius: "0 10px 10px 0",
+              background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+              borderLeft: "3px solid var(--franco-text-secondary)",
+              borderRadius: "0 8px 8px 0",
               padding: "14px 18px",
             }}
           >
             <p
               className="font-mono uppercase m-0 mb-1"
-              style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+              style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
             >
               Sin vender, puedes sacar
             </p>
             <p
-              className="font-mono font-bold m-0 whitespace-nowrap text-[24px] sm:text-[28px]"
-              style={{ color: "var(--signal-red)", lineHeight: 1 }}
+              className="font-mono font-bold m-0 whitespace-nowrap"
+              style={{ fontSize: 28, color: "var(--franco-text)", lineHeight: 1 }}
             >
               {fmt(data.liquidez)}
             </p>
@@ -846,7 +847,7 @@ function VentaRefiContent({
               className="flex items-baseline justify-between px-4 py-3"
               style={{
                 borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 20%, transparent)",
-                background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+                background: "color-mix(in srgb, var(--franco-text) 5%, transparent)",
               }}
             >
               <span className="font-mono uppercase" style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}>
@@ -859,16 +860,17 @@ function VentaRefiContent({
           </div>
 
           {/* Badge refi */}
+          {/* Refi badge final — Ink secundario consistente con hero refi */}
           <div
             className="rounded-lg p-3"
             style={{
-              background: "color-mix(in srgb, var(--signal-red) 10%, transparent)",
-              border: "0.5px solid color-mix(in srgb, var(--signal-red) 30%, transparent)",
+              background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+              border: "0.5px solid var(--franco-border)",
             }}
           >
             <p className="font-body m-0" style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 80%, transparent)" }}>
               Mantienes el depto y liberas{" "}
-              <span className="font-mono font-bold" style={{ color: "var(--signal-red)" }}>
+              <span className="font-mono font-bold" style={{ color: "var(--franco-text)" }}>
                 {fmt(data.liquidez)}
               </span>{" "}
               de capital.
@@ -899,20 +901,13 @@ function Capa3Unificado({
   const [open, setOpen] = useState(false);
 
   const sectionHeader = (num: string, label: string, title: string) => (
-    <div
-      style={{
-        borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 10%, transparent)",
-        paddingTop: 18,
-        marginTop: 24,
-        marginBottom: 14,
-      }}
-    >
+    <div style={{ marginBottom: 14 }}>
       <span
         className="font-mono uppercase block mb-1.5"
         style={{
           fontSize: 10,
-          letterSpacing: "1.5px",
-          color: "var(--franco-text-secondary)",
+          letterSpacing: "0.06em",
+          color: "var(--franco-text-tertiary)",
         }}
       >
         {num} · {label}
@@ -994,25 +989,32 @@ function Capa3Unificado({
     );
   }
 
-  // Contenido expandido
+  // Contenido expandido — UNA mega-card con header + 4 sub-secciones separadas
+  // por dividers solid (skill Patrón 7.B).
   return (
     <div
       style={{
-        background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
-        border: "1px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
-        borderLeft: "3px solid var(--franco-text)",
-        borderRadius: "0 10px 10px 0",
-        padding: "24px 28px",
+        background: "var(--franco-card)",
+        border: "0.5px solid var(--franco-border)",
+        borderRadius: "12px",
+        padding: 0,
+        overflow: "hidden",
       }}
     >
-      {/* Header + botón cerrar */}
-      <div className="flex items-start justify-between gap-3 mb-1">
+      {/* Section header único arriba */}
+      <div
+        className="flex items-start justify-between gap-3"
+        style={{
+          padding: "1.25rem 1.25rem 1rem",
+          borderBottom: "0.5px solid var(--franco-border)",
+        }}
+      >
         <div>
           <span
             className="font-mono uppercase block mb-1"
             style={{
-              fontSize: 10,
-              letterSpacing: "1.5px",
+              fontSize: 11,
+              letterSpacing: "0.06em",
               color: "var(--franco-text)",
               fontWeight: 600,
             }}
@@ -1023,10 +1025,10 @@ function Capa3Unificado({
             className="font-body m-0"
             style={{
               fontSize: 13,
-              color: "color-mix(in srgb, var(--franco-text) 65%, transparent)",
+              color: "var(--franco-text-secondary)",
             }}
           >
-            Explorá distintos escenarios
+            Explorá distintos escenarios sin afectar el análisis principal
           </p>
         </div>
         <button
@@ -1036,10 +1038,10 @@ function Capa3Unificado({
           className="shrink-0 rounded-md transition-colors"
           style={{
             padding: "6px 10px",
-            fontSize: 16,
-            color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
+            fontSize: 11,
+            color: "var(--franco-text-secondary)",
             background: "transparent",
-            border: "0.5px solid color-mix(in srgb, var(--franco-text) 15%, transparent)",
+            border: "0.5px solid var(--franco-border)",
             cursor: "pointer",
           }}
         >
@@ -1048,32 +1050,43 @@ function Capa3Unificado({
       </div>
 
       {/* Sub-sección 07 · ESCENARIOS */}
-      {sectionHeader("07", "Escenarios", "Ajusta plazo y plusvalía")}
-      <SliderSimulacion variant="integrated" />
+      <div style={{ padding: "1.25rem" }}>
+        {sectionHeader("07", "Escenarios", "Ajusta plazo y plusvalía")}
+        <SliderSimulacion variant="integrated" />
+      </div>
+      <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
       {/* Sub-sección 08 · INDICADORES */}
-      {sectionHeader("08", "Indicadores", "Rendimiento y métricas")}
-      <IndicadoresRentabilidadContent projections={projections} metrics={metrics} />
+      <div style={{ padding: "1.25rem" }}>
+        {sectionHeader("08", "Indicadores", "Rendimiento y métricas")}
+        <IndicadoresRentabilidadContent projections={projections} metrics={metrics} />
+      </div>
+      <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
       {/* Sub-sección 09 · PATRIMONIO */}
-      {sectionHeader("09", "Patrimonio", "Cómo crece tu capital")}
-      <GraficoPatrimonioContent
-        projections={projections}
-        metrics={metrics}
-        inputData={inputData}
-        currency={currency}
-        valorUF={valorUF}
-      />
+      <div style={{ padding: "1.25rem" }}>
+        {sectionHeader("09", "Patrimonio", "Cómo crece tu capital")}
+        <GraficoPatrimonioContent
+          projections={projections}
+          metrics={metrics}
+          inputData={inputData}
+          currency={currency}
+          valorUF={valorUF}
+        />
+      </div>
+      <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
       {/* Sub-sección 10 · VENTA O REFINANCIAMIENTO */}
-      {sectionHeader("10", "Venta o refinanciamiento", "Cómo materializas la inversión")}
-      <VentaRefiContent
-        projections={projections}
-        metrics={metrics}
-        inputData={inputData}
-        currency={currency}
-        valorUF={valorUF}
-      />
+      <div style={{ padding: "1.25rem" }}>
+        {sectionHeader("10", "Venta o refinanciamiento", "Cómo materializas la inversión")}
+        <VentaRefiContent
+          projections={projections}
+          metrics={metrics}
+          inputData={inputData}
+          currency={currency}
+          valorUF={valorUF}
+        />
+      </div>
     </div>
   );
 }
