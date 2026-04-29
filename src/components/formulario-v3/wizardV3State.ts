@@ -96,6 +96,16 @@ export function parseNum(s: string): number {
   return parseFloat(cleaned) || 0;
 }
 
+// Para decimales SIN thousands separator (tasa %, pie %).
+//  Para CLP/UF con thousands, usar parseNum. parseNum borra todos
+//  los puntos asumiendo formato chileno, lo cual rompe valores
+//  como '4.72'.
+export function parseDecimalLocale(s: string): number {
+  if (!s) return 0;
+  const n = parseFloat(String(s).replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
 export function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }

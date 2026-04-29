@@ -8,6 +8,7 @@ import { MoneyInput } from "@/components/ui/MoneyInput";
 import {
   calcDividendo,
   fmtCLP,
+  parseDecimalLocale,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -267,7 +268,7 @@ function TabFinanciamiento({
   const precioUF = Number(state.precio) || 0;
   const piePct = Number(state.piePct) || 20;
   const plazo = Number(local.plazoCredito) || 25;
-  const tasa = Number(local.tasaInteres) || 4.72;
+  const tasa = parseDecimalLocale(local.tasaInteres) || 4.72;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
 
   return (
@@ -289,10 +290,15 @@ function TabFinanciamiento({
           Tasa de interés anual (%)
         </span>
         <input
-          type="number" step="0.01" inputMode="decimal"
+          type="text"
+          inputMode="decimal"
+          placeholder="4,72"
           className={inputBase}
           value={local.tasaInteres}
-          onChange={(e) => setLocal("tasaInteres", e.target.value)}
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === "" || /^\d*[.,]?\d*$/.test(v)) setLocal("tasaInteres", v);
+          }}
         />
       </label>
       <div
