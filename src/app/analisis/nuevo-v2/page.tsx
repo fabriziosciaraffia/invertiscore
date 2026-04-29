@@ -407,13 +407,13 @@ export default function NuevoAnalisisV3Page() {
 
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {/* Header + stepper */}
-        <div className="mb-6">
+        <div className="mb-10">
           <WizardStepper current={step} />
           <div className="mt-5">
-            <h1 className="font-heading text-2xl md:text-3xl font-bold text-[var(--franco-text)] m-0 mb-1.5">
+            <h1 className="font-heading text-2xl md:text-[32px] font-bold text-[var(--franco-text)] m-0 mb-1.5 leading-tight">
               {titleByStep.title}
             </h1>
-            <p className="font-body text-[13px] md:text-sm text-[var(--franco-text-secondary)] m-0">
+            <p className="font-body text-sm md:text-base text-[var(--franco-text-secondary)] m-0">
               {titleByStep.sub}
             </p>
           </div>
@@ -466,7 +466,10 @@ export default function NuevoAnalisisV3Page() {
             se transforma en "← Cambiar modalidad" y solo limpia la selección.
             El CTA principal del paso 3 ("Analizar ahora →") sigue viviendo dentro
             de Paso3Modalidad — aquí solo renderizamos la fila de secondary actions. */}
-        <div className="mt-8 flex items-center justify-between gap-3">
+        <div
+          className="mt-8 pt-6 flex items-center justify-between gap-3"
+          style={{ borderTop: "0.5px solid var(--franco-border)" }}
+        >
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -490,7 +493,7 @@ export default function NuevoAnalisisV3Page() {
               type="button"
               onClick={goNext}
               disabled={step === 1 ? !canAdvanceFromStep1 : !canAdvanceFromStep2}
-              className="font-body font-medium text-[14px] text-white px-6 py-3 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Siguiente →
             </button>

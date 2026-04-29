@@ -13,38 +13,39 @@ export function WizardStepper({ current }: { current: 1 | 2 | 3 }) {
         {STEPS.map((s, i) => {
           const active = s.num === current;
           const done = s.num < current;
+          // Done state: Ink secundario (no verde --franco-v-buy).
+          //  Sistema es binario Capa 1: solo Ink + Signal Red, sin verde.
+          const badgeClass = active
+            ? "bg-signal-red text-white"
+            : done
+              ? "bg-[var(--franco-text-secondary)] text-[var(--franco-bg)]"
+              : "border border-[var(--franco-text-secondary)] text-[var(--franco-text-secondary)]";
+          const labelClass = active
+            ? "text-signal-red font-medium"
+            : "text-[var(--franco-text-secondary)]";
           return (
             <div key={s.num} className="flex items-center gap-3 flex-1 last:flex-none">
               <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full font-mono text-[11px] font-semibold shrink-0 ${
-                    active
-                      ? "bg-signal-red text-white"
-                      : done
-                        ? "bg-[var(--franco-v-buy)] text-[var(--franco-bg)]"
-                        : "bg-[var(--franco-card)] border border-[var(--franco-border)] text-[var(--franco-text-muted)]"
-                  }`}
+                  className={`inline-flex h-6 w-6 items-center justify-center rounded-full font-mono text-[11px] font-semibold shrink-0 ${badgeClass}`}
                 >
                   {done ? "✓" : s.num}
                 </span>
-                <span
-                  className={`font-body text-[12px] hidden sm:inline truncate ${
-                    active
-                      ? "text-[var(--franco-text)] font-medium"
-                      : "text-[var(--franco-text-muted)]"
-                  }`}
-                >
+                <span className={`font-body text-[12px] hidden sm:inline truncate ${labelClass}`}>
                   {s.label}
                 </span>
               </div>
               {i < STEPS.length - 1 && (
-                <div className="h-px flex-1 bg-[var(--franco-border)]" />
+                <div
+                  className="flex-1 min-w-[16px] bg-[var(--franco-border)]"
+                  style={{ height: "0.5px" }}
+                />
               )}
             </div>
           );
         })}
       </div>
-      <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-muted)] ml-3 shrink-0">
+      <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] ml-3 shrink-0">
         Paso {current} de 3
       </span>
     </div>
