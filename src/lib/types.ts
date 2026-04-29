@@ -218,6 +218,10 @@ export interface DatoClave {
   valor_clp: string;
   valor_uf: string;
   subtexto?: string;
+  // isLabel = true → render mono uppercase (etiqueta cuantitativa, sin verbo
+  // conjugado, e.g. "BAJO MERCADO"). false/undefined → render Sans regular
+  // (frase narrativa, e.g. "Sale de tu bolsillo"). Skill Capa 2.
+  isLabel?: boolean;
   color: "red" | "green" | "neutral" | "accent";
 }
 

@@ -1191,18 +1191,21 @@ function buildHeroDatosClave(
     return (v >= 0 ? "+UF " : "−UF ") + Math.round(Math.abs(uf)).toLocaleString("es-CL");
   };
 
+  let pasadaIsLabel: boolean;
   if (esPasada) {
     pasadaLabel = "Ventaja";
     pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
     pasadaValorUF = fmtUFSigned(diferenciaCLP);
     pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
     pasadaColor = "green";
+    pasadaIsLabel = true; // etiqueta cuantitativa sin verbo
   } else if (esSobreprecio) {
     pasadaLabel = "Sobreprecio";
     pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
     pasadaValorUF = fmtUFSigned(diferenciaCLP);
     pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
     pasadaColor = "red";
+    pasadaIsLabel = true; // etiqueta cuantitativa sin verbo
   } else {
     // Precio y vmFranco coinciden (≤2% de diferencia). En vez de mostrar
     // "≈ UF 0" sin contexto (semánticamente confuso), mostrar el precio de
@@ -1212,6 +1215,7 @@ function buildHeroDatosClave(
     pasadaValorUF = "UF " + Math.round(precioCLP / (valorUF || 1)).toLocaleString("es-CL");
     pasadaSub = "Tu precio coincide con mercado";
     pasadaColor = "neutral";
+    pasadaIsLabel = false; // verbo "coincide" conjugado → narrative
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _precioUFUnused = precioUF;
@@ -1220,6 +1224,7 @@ function buildHeroDatosClave(
     valor_clp: pasadaValorCLP,
     valor_uf: pasadaValorUF,
     subtexto: pasadaSub,
+    isLabel: pasadaIsLabel,
     color: pasadaColor,
   };
 
@@ -1243,15 +1248,21 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
     } as Record<string, string>
   )[dato.color] || "text-[var(--franco-text)]";
 
+  // Featured (accent) card: bg elevated + border 1.5px Signal Red — se siente
+  // elevada respecto a las cards normales. Normal: bg card + border 0.5px
+  // transparent (sin border visible, layout reservation only).
   const borderClass = isAccent
-    ? "border-2 border-signal-red"
-    : "border border-[var(--franco-border)]";
+    ? "border-[1.5px] border-signal-red"
+    : "border-[0.5px] border-transparent";
+  const bgClass = isAccent
+    ? "bg-[var(--franco-elevated)]"
+    : "bg-[var(--franco-card)]";
   const labelClass = isAccent
     ? "text-signal-red font-medium"
     : "text-[var(--franco-text-secondary)]";
 
   return (
-    <div className={`bg-[var(--franco-card)] rounded-xl p-4 ${borderClass}`}>
+    <div className={`${bgClass} rounded-xl p-4 ${borderClass}`}>
       <p className={`font-mono text-[9px] uppercase tracking-[1.5px] mb-1.5 ${labelClass}`}>
         {dato.label}
       </p>
@@ -1259,9 +1270,15 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
         {valor}
       </p>
       {dato.subtexto && (
-        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1 m-0">
-          {dato.subtexto}
-        </p>
+        dato.isLabel ? (
+          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mt-1 m-0">
+            {dato.subtexto}
+          </p>
+        ) : (
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1 m-0">
+            {dato.subtexto}
+          </p>
+        )
       )}
     </div>
   );
@@ -1550,14 +1567,14 @@ function HeroCard({
         </div>
 
         <div
-          className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-r-lg my-4"
+          className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-r-lg my-4"
           style={{
             background: calloutBg,
             border: calloutBorder,
           }}
         >
           <span
-            className="self-start sm:self-auto font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
+            className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
             style={{
               color: badgeText,
               background: badgeBg,
