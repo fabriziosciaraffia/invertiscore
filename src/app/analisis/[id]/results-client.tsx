@@ -1495,10 +1495,14 @@ function HeroCard({
   const badgeBorder = isAjusta ? "0.5px solid var(--franco-border)" : undefined;
 
   // Verdict callout banner — bg/border per veredicto
-  const calloutBg = isCompra
-    ? "var(--franco-card)"
-    : "color-mix(in srgb, var(--signal-red) 8%, transparent)";
-  const calloutBorder = isCompra ? "0.5px solid var(--franco-border)" : "none";
+  // Solo BUSCAR OTRA lleva wash Signal Red. AJUSTA mantiene bg neutro — el
+  // rojo en AJUSTA vive solo en border-left + label/pill, no en wash.
+  const calloutBg = isBuscar
+    ? "color-mix(in srgb, var(--signal-red) 8%, transparent)"
+    : "var(--franco-card)"; // COMPRAR + AJUSTA neutros
+  const calloutBorder = isBuscar
+    ? "none"
+    : "0.5px solid var(--franco-border)"; // COMPRAR + AJUSTA con border sutil
 
   // Toggle CLP/UF group border (tintado per veredicto)
   // AJUSTA bumped a Signal Red 35% (era Ink 12% imperceptible). Esto hace al toggle
@@ -1603,9 +1607,12 @@ function HeroCard({
           state={isCompra ? "neutral" : "negative"}
           className="mt-5"
           style={{
-            background: isCompra
-              ? "var(--franco-card)"
-              : "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+            // Solo BUSCAR OTRA lleva wash Signal Red. AJUSTA mantiene bg neutro
+            // — el state="negative" sigue aportando borderLeft Signal Red 3px
+            // y label color Signal Red por dentro de StateBox.
+            background: isBuscar
+              ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
+              : "var(--franco-card)",
             borderRadius: "0 8px 8px 0",
             ...(isCompra ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
           }}
