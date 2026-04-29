@@ -141,7 +141,7 @@ function DrawerCostoMensual({
         >
           <span
             className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--ink-400)" }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--ink-400)" }}
           >
             Entra
           </span>
@@ -190,7 +190,7 @@ function DrawerCostoMensual({
         >
           <span
             className="font-mono uppercase font-semibold"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--signal-red)" }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--signal-red)" }}
           >
             Sale
           </span>
@@ -265,13 +265,13 @@ function DrawerCostoMensual({
         <div>
           <p
             className="font-mono uppercase font-semibold m-0"
-            style={{ fontSize: 10, letterSpacing: "2px", color: resultColor }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: resultColor }}
           >
             = {resultLabel}
           </p>
           <p
-            className="font-heading italic m-0 mt-1"
-            style={{ fontSize: 11, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)" }}
+            className="font-body italic m-0 mt-1"
+            style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)" }}
           >
             {resultSub}
           </p>
@@ -475,13 +475,13 @@ function DrawerNegociacion({
           background: `color-mix(in srgb, ${veredictoColor} 6%, var(--franco-card))`,
           border: `0.5px solid color-mix(in srgb, ${veredictoColor} 25%, transparent)`,
           borderLeft: `3px solid ${veredictoColor}`,
-          borderRadius: "0 10px 10px 0",
+          borderRadius: "0 8px 8px 0",
           padding: "18px 20px",
         }}
       >
         <span
           className="font-mono uppercase block mb-2"
-          style={{ fontSize: 10, letterSpacing: "1.5px", color: veredictoColor, fontWeight: 600 }}
+          style={{ fontSize: 10, letterSpacing: "0.06em", color: veredictoColor, fontWeight: 600 }}
         >
           {veredictoLabel}
         </span>
@@ -516,7 +516,7 @@ function DrawerNegociacion({
       >
         <p
           className="font-mono uppercase m-0 mb-3"
-          style={{ fontSize: 10, letterSpacing: "1.3px", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)", fontWeight: 600 }}
+          style={{ fontSize: 10, letterSpacing: "0.06em", color: "color-mix(in srgb, var(--franco-text) 55%, transparent)", fontWeight: 600 }}
         >
           Comparativa de precios
         </p>
@@ -527,7 +527,7 @@ function DrawerNegociacion({
           style={{
             gridTemplateColumns: "140px 1fr 90px 60px",
             fontSize: 9,
-            letterSpacing: "1px",
+            letterSpacing: "0.06em",
             color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
             borderBottom: "0.5px dashed color-mix(in srgb, var(--franco-text) 15%, transparent)",
           }}
@@ -649,18 +649,18 @@ function DrawerNegociacion({
           background: "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))",
           border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
           borderLeft: "3px solid var(--signal-red)",
-          borderRadius: "0 10px 10px 0",
+          borderRadius: "0 8px 8px 0",
           padding: "14px 18px",
         }}
       >
         <p
           className="font-mono uppercase m-0 mb-2"
-          style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--signal-red)", fontWeight: 600 }}
+          style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--signal-red)", fontWeight: 600 }}
         >
           Estrategia sugerida
         </p>
         <p
-          className="font-body m-0"
+          className="font-body italic m-0"
           style={{ fontSize: 13, color: "var(--franco-text)", lineHeight: 1.6 }}
         >
           {estrategia}
@@ -898,7 +898,7 @@ function DrawerLargoPlazo({
                 className="font-mono uppercase"
                 style={{
                   fontSize: 10,
-                  letterSpacing: "1px",
+                  letterSpacing: "0.06em",
                   color: "color-mix(in srgb, var(--franco-text) 85%, transparent)",
                   fontWeight: 500,
                 }}
@@ -958,7 +958,7 @@ function DrawerLargoPlazo({
               className="font-mono uppercase whitespace-nowrap"
               style={{
                 fontSize: 10,
-                letterSpacing: "1px",
+                letterSpacing: "0.06em",
                 color: "var(--franco-text)",
                 fontWeight: 600,
               }}
@@ -990,7 +990,7 @@ function DrawerLargoPlazo({
             className="font-mono uppercase"
             style={{
               fontSize: 10,
-              letterSpacing: "1px",
+              letterSpacing: "0.06em",
               color: "color-mix(in srgb, var(--franco-text) 85%, transparent)",
               fontWeight: 500,
             }}
@@ -1047,19 +1047,6 @@ function DrawerLargoPlazo({
   };
 
   // Label de bloque "N DE 3"
-  const blockBadge = (n: number) => (
-    <span
-      className="font-mono uppercase"
-      style={{
-        fontSize: 10,
-        letterSpacing: "1.5px",
-        color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
-      }}
-    >
-      {n} de 3
-    </span>
-  );
-
   return (
     <div className="flex flex-col gap-4">
       {/* ─── BLOQUE 1 · EL VEREDICTO ─────────────────── */}
@@ -1068,18 +1055,17 @@ function DrawerLargoPlazo({
           background: `color-mix(in srgb, ${colorAccent} 6%, var(--franco-card))`,
           border: `0.5px solid color-mix(in srgb, ${colorAccent} 25%, transparent)`,
           borderLeft: `3px solid ${colorAccent}`,
-          borderRadius: "0 10px 10px 0",
+          borderRadius: "0 8px 8px 0",
           padding: "18px 20px",
         }}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <span
             className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: colorAccent, fontWeight: 600 }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: colorAccent, fontWeight: 600 }}
           >
             El veredicto
           </span>
-          {blockBadge(1)}
         </div>
 
         <p
@@ -1125,14 +1111,13 @@ function DrawerLargoPlazo({
           padding: "18px 20px",
         }}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <span
             className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text)", fontWeight: 600 }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text)", fontWeight: 600 }}
           >
             Tu esfuerzo total
           </span>
-          {blockBadge(2)}
         </div>
 
         <p
@@ -1202,7 +1187,7 @@ function DrawerLargoPlazo({
             <div className="grid items-baseline gap-3" style={{ gridTemplateColumns: "1fr auto" }}>
               <span
                 className="font-mono uppercase"
-                style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}
+                style={{ fontSize: 11, letterSpacing: "0.06em", color: "var(--franco-text)", fontWeight: 600 }}
               >
                 = Total aportado
               </span>
@@ -1226,14 +1211,13 @@ function DrawerLargoPlazo({
           padding: "18px 20px",
         }}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <span
             className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text)", fontWeight: 600 }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text)", fontWeight: 600 }}
           >
             De dónde salen los {headerMonto}
           </span>
-          {blockBadge(3)}
         </div>
 
         <p
@@ -1379,7 +1363,7 @@ function DrawerRiesgos({
 
       <StateBox
         variant="left-border"
-        state="warning"
+        state="info"
         label={data.cajaLabel || "Si decides avanzar, protege estos flancos:"}
         className="mt-5"
       >
@@ -1530,10 +1514,10 @@ export function AnalysisDrawer({
         <div className="p-5 md:p-6">
           <div className="flex justify-between items-start mb-4 pb-4 border-b border-[var(--franco-border)]">
             <div>
-              <p className="font-mono text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
+              <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mb-1 m-0">
                 {meta.num} · {meta.label}
               </p>
-              <h2 className="font-heading font-bold text-[18px] md:text-[20px] leading-[1.25] text-[var(--franco-text)] m-0">
+              <h2 className="font-heading font-bold text-[20px] md:text-[24px] leading-[1.25] text-[var(--franco-text)] m-0">
                 {section.pregunta}
               </h2>
             </div>
@@ -1597,7 +1581,7 @@ export function AnalysisDrawer({
               <button
                 type="button"
                 onClick={() => onNavigate(meta.prev!)}
-                className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
                 ← {DRAWER_META[meta.prev].num} {DRAWER_META[meta.prev].label}
               </button>
@@ -1609,7 +1593,7 @@ export function AnalysisDrawer({
               <button
                 type="button"
                 onClick={() => onNavigate(meta.next!)}
-                className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
                 {DRAWER_META[meta.next].num} {DRAWER_META[meta.next].label} →
               </button>
@@ -1617,7 +1601,7 @@ export function AnalysisDrawer({
               <button
                 type="button"
                 onClick={onClose}
-                className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
                 Cerrar análisis ✕
               </button>
