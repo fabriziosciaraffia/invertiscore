@@ -15,39 +15,44 @@ export function ZoneInsightAI({ insight, currency }: Props) {
   return (
     <div
       style={{
+        // borderLeft Ink primary (mode-aware). Skill dice "Ink 100" pero en
+        // light mode Ink 100 (#FAFAF8) = bg card claro, invisible. var(--franco-text)
+        // es la interpretación práctica de "Ink primary visible en ambos modos".
         borderLeft: "3px solid var(--franco-text)",
-        background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+        background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
         borderRadius: "0 8px 8px 0",
         padding: "14px 18px",
       }}
     >
-      {/* Badge: Insight generado por Franco IA */}
-      <div className="flex items-center gap-1.5 mb-2.5" style={{ opacity: 0.75 }}>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--franco-text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-        </svg>
-        <span
-          className="font-mono uppercase font-medium"
-          style={{ fontSize: 9, letterSpacing: "1.2px", color: "var(--franco-text)" }}
-        >
-          Insight generado por Franco IA
-        </span>
-      </div>
+      {/* Tag pill: ★ asterisco firma identitaria IA (skill Patrón 4 obligatorio) */}
+      <span
+        className="inline-block font-mono uppercase font-medium mb-2.5"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.06em",
+          color: "var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+          padding: "4px 8px",
+          borderRadius: 4,
+        }}
+      >
+        ★ Insight generado por Franco IA
+      </span>
 
       <p
         className="font-mono uppercase m-0 mb-2 font-semibold"
-        style={{ fontSize: 10, letterSpacing: "2px", color: "var(--franco-text)" }}
+        style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
       >
         Drivers de demanda identificados
       </p>
       {headline && (
-        <p className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.35] text-[var(--franco-text)] m-0 mb-2">
+        <p className="font-heading font-bold text-[18px] leading-[1.35] text-[var(--franco-text)] m-0 mb-2">
           {headline}
         </p>
       )}
       {narrative && (
         <p
-          className="font-heading italic text-[13px] md:text-[14px] leading-[1.65] m-0"
+          className="font-body italic text-[14px] leading-[1.65] m-0"
           style={{ color: "color-mix(in srgb, var(--franco-text) 90%, transparent)" }}
         >
           {narrative}
