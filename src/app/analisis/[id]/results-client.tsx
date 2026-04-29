@@ -1484,11 +1484,15 @@ function HeroCard({
   const calloutBorder = isCompra ? "0.5px solid var(--franco-border)" : "none";
 
   // Toggle CLP/UF group border (tintado per veredicto)
+  // AJUSTA bumped a Signal Red 35% (era Ink 12% imperceptible). Esto hace al toggle
+  // border de AJUSTA más visible que el de BUSCAR (25%) — la jerarquía global
+  // BUSCAR > AJUSTA se mantiene vía container wash (BUSCAR signal-red 6% vs
+  // AJUSTA Ink 4%).
   const toggleGroupBorder = isCompra
     ? "var(--franco-border)"
     : isBuscar
       ? "color-mix(in srgb, var(--signal-red) 25%, transparent)"
-      : "color-mix(in srgb, var(--franco-text) 12%, transparent)";
+      : "color-mix(in srgb, var(--signal-red) 35%, transparent)";
 
   const respuesta = currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
   const veredictoFrase = currency === "CLP" ? data.conviene.veredictoFrase_clp : data.conviene.veredictoFrase_uf;
