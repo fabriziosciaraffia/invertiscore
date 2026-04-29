@@ -1263,6 +1263,11 @@ function HeroTopStrip({
   metadataItems,
   currency,
   onCurrencyChange,
+  badgeBg,
+  badgeText,
+  badgeBorder,
+  toggleGroupBorder,
+  dividerDashedColor,
 }: {
   score: number;
   veredicto: string;
@@ -1271,13 +1276,18 @@ function HeroTopStrip({
   metadataItems: { label: string; value: string }[];
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
+  badgeBg: string;
+  badgeText: string;
+  badgeBorder: string | undefined;
+  toggleGroupBorder: string;
+  dividerDashedColor: string;
 }) {
   const clampedScore = Math.min(Math.max(score, 0), 100);
   return (
     <div className="px-5 md:px-8 py-4 md:py-5">
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_auto_auto_auto] md:gap-6 md:items-center">
 
-        {/* ZONA A — IZQ: título + subtítulo */}
+      {/* ROW 1 — prop-top: title + subtitle (izq) | toggle CLP/UF (der) */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-4">
         <div className="flex flex-col gap-1 min-w-0">
           <h2 className="font-heading font-bold text-[18px] md:text-[22px] text-[var(--franco-text)] m-0 leading-[1.2] truncate">
             {propiedadTitle}
@@ -1288,9 +1298,47 @@ function HeroTopStrip({
             </p>
           )}
         </div>
+        <div
+          className="flex bg-[var(--franco-bar-track)] rounded-md p-0.5 self-start md:self-center shrink-0"
+          style={{ border: `0.5px solid ${toggleGroupBorder}` }}
+        >
+          <button
+            type="button"
+            onClick={() => onCurrencyChange("CLP")}
+            className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
+              currency === "CLP"
+                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                : "bg-transparent text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text)]"
+            }`}
+          >
+            CLP
+          </button>
+          <button
+            type="button"
+            onClick={() => onCurrencyChange("UF")}
+            className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
+              currency === "UF"
+                ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                : "bg-transparent text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text)]"
+            }`}
+          >
+            UF
+          </button>
+        </div>
+      </div>
 
-        {/* ZONA B — CENTRO-IZQ: metadata 2x2 */}
-        <div className="grid grid-cols-2 gap-x-5 gap-y-2 shrink-0">
+      {/* DIVIDER DASHED entre prop-top y parallel-row */}
+      <div
+        className="my-4 md:my-5"
+        style={{ borderTop: `0.5px dashed ${dividerDashedColor}` }}
+      />
+
+      {/* ROW 2 — parallel-row: metadata 2x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
+      {/* Mobile: SCORE primero, METADATA segundo (skill regla dura) */}
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto_1fr] md:gap-6 md:items-start">
+
+        {/* Metadata 2x2 — order-2 mobile / order-1 desktop */}
+        <div className="grid grid-cols-2 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
           {metadataItems.map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
               <span className="font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
@@ -1303,85 +1351,51 @@ function HeroTopStrip({
           ))}
         </div>
 
-        {/* ZONA C — CENTRO-DER: Franco Score (con divider vertical Ink translúcido a la izquierda en md+) */}
-        <div
-          className="shrink-0 mt-2 md:mt-0 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]"
-        >
+        {/* Score block — order-1 mobile / order-2 desktop. Vertical divider Ink en md+ */}
+        <div className="order-1 md:order-2 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
           <p className="font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
             Franco Score
           </p>
-          <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none mb-1.5 text-[var(--franco-text)] m-0">
-            {score}
-          </p>
+          {/* Score number + badge a la derecha. Mobile fallback: stack vertical si viewport angosto. */}
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mb-1.5">
+            <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none text-[var(--franco-text)] m-0">
+              {score}
+            </p>
+            <span
+              className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
+              style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
+            >
+              {veredicto}
+            </span>
+          </div>
           <div className="w-[180px] md:w-[220px]">
+            {/* GRADIENT INVARIANT (Signal Red → Ink 500 → Ink 400) — mismo en los 3 veredictos per skill */}
             <div
-              className="h-1 rounded-full relative"
+              className="rounded-[3px] relative"
               style={{
-                background: "color-mix(in srgb, var(--franco-text) 10%, transparent)",
+                height: 5,
+                background: "linear-gradient(90deg, var(--signal-red) 0%, var(--ink-500) 50%, var(--ink-400) 100%)",
               }}
             >
-              {/* Fill bar Signal Red sólido de 0 a clampedScore% */}
               <div
-                className="absolute top-0 left-0 h-full rounded-full"
+                className="absolute rounded-full"
                 style={{
-                  width: `${clampedScore}%`,
-                  background: "var(--signal-red)",
-                }}
-              />
-              {/* Dot indicator en posición del score */}
-              <div
-                className="absolute top-[-3px] w-2.5 h-2.5 rounded-full border-2"
-                style={{
+                  width: 11,
+                  height: 11,
                   left: `${clampedScore}%`,
-                  transform: "translateX(-50%)",
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
                   background: "var(--franco-text)",
-                  borderColor: "var(--franco-card)",
+                  border: "2px solid var(--franco-bg)",
                 }}
               />
             </div>
             <div className="flex justify-between font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
-              <span>Buscar</span>
-              <span>Ajusta</span>
-              <span>Comprar</span>
+              <span>BUSCAR</span>
+              <span>AJUSTA</span>
+              <span>COMPRAR</span>
             </div>
           </div>
-        </div>
-
-        {/* ZONA D — DER: Toggle CLP/UF arriba + Badge veredicto debajo */}
-        <div className="flex flex-col items-stretch md:items-end gap-2 shrink-0">
-          <div className="flex bg-[var(--franco-bar-track)] rounded-md p-0.5">
-            <button
-              type="button"
-              onClick={() => onCurrencyChange("CLP")}
-              className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
-                currency === "CLP"
-                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                  : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-              }`}
-            >
-              CLP
-            </button>
-            <button
-              type="button"
-              onClick={() => onCurrencyChange("UF")}
-              className={`font-mono text-[10px] px-2.5 py-1 rounded font-medium tracking-[0.5px] transition-colors ${
-                currency === "UF"
-                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                  : "bg-transparent text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
-              }`}
-            >
-              UF
-            </button>
-          </div>
-          <span
-            className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
-            style={{
-              color: veredicto === "COMPRAR" ? "var(--franco-bg)" : "white",
-              background: veredicto === "COMPRAR" ? "var(--franco-text)" : "var(--signal-red)",
-            }}
-          >
-            {veredicto}
-          </span>
         </div>
 
       </div>
@@ -1412,12 +1426,57 @@ function HeroCard({
   results: import("@/lib/types").FullAnalysisResult | null | undefined;
   valorUF: number;
 }) {
+  // v.color sigue usándose para la numeración "01 · Veredicto" tag (consistencia con
+  // VERDICT_STYLES). El resto del styling vive en helpers veredicto-based abajo.
   const v = getVerdictStyles(veredicto);
-  // Veredicto bg/text inverted: COMPRAR usa Ink + texto invertido; BUSCAR/AJUSTA
-  // usa Signal Red sólido + white. Aplica a badges y pills del Hero.
   const isCompra = veredicto === "COMPRAR";
-  const verdictPillBg = isCompra ? "var(--franco-text)" : "var(--signal-red)";
-  const verdictPillText = isCompra ? "var(--franco-bg)" : "white";
+  const isAjusta = veredicto === "AJUSTA EL PRECIO";
+  const isBuscar = veredicto === "BUSCAR OTRA";
+
+  // Hero container — bg/border per veredicto (Capa 3 Patrón 1)
+  const heroContainerBg = isCompra
+    ? "var(--franco-card)"
+    : isBuscar
+      ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
+      : "color-mix(in srgb, var(--franco-text) 4%, transparent)"; // AJUSTA Ink secundario per skill
+  const heroContainerBorder = isCompra
+    ? "0.5px solid var(--franco-border)"
+    : isBuscar
+      ? "0.5px solid color-mix(in srgb, var(--signal-red) 35%, transparent)"
+      : "0.5px solid color-mix(in srgb, var(--franco-text) 12%, transparent)";
+
+  // Divider dashed entre prop-top y parallel-row (dentro de HeroTopStrip)
+  const dividerDashedColor = isCompra
+    ? "var(--franco-border)"
+    : "color-mix(in srgb, var(--signal-red) 20%, transparent)";
+
+  // Badge / pill 3-case (skill Patrón 1):
+  // BUSCAR → Signal Red sólido + white | AJUSTA → outline (bg page + Signal Red text + border) | COMPRAR → Ink invertido
+  const badgeBg = isCompra
+    ? "var(--franco-text)"
+    : isAjusta
+      ? "var(--franco-bg)"
+      : "var(--signal-red)";
+  const badgeText = isCompra
+    ? "var(--franco-bg)"
+    : isAjusta
+      ? "var(--signal-red)"
+      : "white";
+  const badgeBorder = isAjusta ? "0.5px solid var(--franco-border)" : undefined;
+
+  // Verdict callout banner — bg/border per veredicto
+  const calloutBg = isCompra
+    ? "var(--franco-card)"
+    : "color-mix(in srgb, var(--signal-red) 8%, transparent)";
+  const calloutBorder = isCompra ? "0.5px solid var(--franco-border)" : "none";
+
+  // Toggle CLP/UF group border (tintado per veredicto)
+  const toggleGroupBorder = isCompra
+    ? "var(--franco-border)"
+    : isBuscar
+      ? "color-mix(in srgb, var(--signal-red) 25%, transparent)"
+      : "color-mix(in srgb, var(--franco-text) 12%, transparent)";
+
   const respuesta = currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
   const veredictoFrase = currency === "CLP" ? data.conviene.veredictoFrase_clp : data.conviene.veredictoFrase_uf;
   const reencuadre = currency === "CLP" ? data.conviene.reencuadre_clp : data.conviene.reencuadre_uf;
@@ -1431,8 +1490,8 @@ function HeroCard({
     <div
       className="rounded-[16px] overflow-hidden mb-3"
       style={{
-        background: "var(--franco-card)",
-        border: "1px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
+        background: heroContainerBg,
+        border: heroContainerBorder,
       }}
     >
       {/* FRANJA SUPERIOR */}
@@ -1444,12 +1503,17 @@ function HeroCard({
         metadataItems={metadataItems}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
+        badgeBg={badgeBg}
+        badgeText={badgeText}
+        badgeBorder={badgeBorder}
+        toggleGroupBorder={toggleGroupBorder}
+        dividerDashedColor={dividerDashedColor}
       />
 
-      {/* Divider tintado según veredicto */}
+      {/* Divider sólido neutro entre HeroTopStrip y CUERPO (no compite con el dashed dentro de HeroTopStrip) */}
       <div
         className="h-px"
-        style={{ background: `color-mix(in srgb, ${v.color} 20%, transparent)` }}
+        style={{ background: "color-mix(in srgb, var(--franco-text) 12%, transparent)" }}
       />
 
       {/* CUERPO — veredicto completo */}
@@ -1471,16 +1535,16 @@ function HeroCard({
         <div
           className="flex flex-col sm:flex-row sm:items-center gap-3 px-4 py-3 rounded-r-lg my-4"
           style={{
-            background: `color-mix(in srgb, ${v.color} 5%, transparent)`,
-            border: `0.5px solid color-mix(in srgb, ${v.color} 18%, transparent)`,
-            borderLeft: `3px solid ${v.color}`,
+            background: calloutBg,
+            border: calloutBorder,
           }}
         >
           <span
             className="self-start sm:self-auto font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
             style={{
-              color: verdictPillText,
-              background: verdictPillBg,
+              color: badgeText,
+              background: badgeBg,
+              border: badgeBorder,
             }}
           >
             {veredicto}
@@ -1506,20 +1570,27 @@ function HeroCard({
           className="mt-5"
           style={{
             background: isCompra
-              ? "color-mix(in srgb, var(--franco-text) 6%, transparent)"
+              ? "var(--franco-card)"
               : "color-mix(in srgb, var(--signal-red) 6%, transparent)",
             borderRadius: "0 8px 8px 0",
+            ...(isCompra ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
           }}
         >
-          <span
-            className="font-mono text-[10px] font-semibold tracking-[2px] uppercase inline-block px-2.5 py-1 rounded mb-2"
-            style={{
-              color: verdictPillText,
-              background: verdictPillBg,
-            }}
-          >
-            {isCompra ? "Considera antes de avanzar:" : "Antes de seguir, decide:"}
-          </span>
+          {isCompra ? (
+            <p
+              className="font-mono text-[10px] uppercase tracking-[2px] mb-2 m-0 font-semibold"
+              style={{ color: "var(--franco-text-tertiary)" }}
+            >
+              Considera antes de avanzar:
+            </p>
+          ) : (
+            <span
+              className="font-mono text-[10px] font-semibold tracking-[2px] uppercase inline-block px-2.5 py-1 rounded mb-2"
+              style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
+            >
+              Antes de seguir, decide:
+            </span>
+          )}
           {renderAiContent(cajaAccionable)}
         </StateBox>
       </div>

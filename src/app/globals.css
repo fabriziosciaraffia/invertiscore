@@ -58,6 +58,7 @@
     --franco-text: #FAFAF8;
     --franco-text-secondary: rgba(250,250,248,0.5);
     --franco-text-muted: rgba(250,250,248,0.35);
+    --franco-text-tertiary: #888780;
     --franco-border: rgba(250,250,248,0.06);
     --franco-border-hover: rgba(250,250,248,0.12);
     --franco-border-strong: rgba(250,250,248,0.15);
@@ -90,6 +91,7 @@
     --franco-text: #111111;
     --franco-text-secondary: #888888;
     --franco-text-muted: #BBBBBB;
+    --franco-text-tertiary: #B4B2A9;
     --franco-border: #E5E5E5;
     --franco-border-hover: #D5D5D5;
     --franco-border-strong: #CCCCCC;
