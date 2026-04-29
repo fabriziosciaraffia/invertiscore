@@ -86,7 +86,7 @@ export function ResumenCard({
           />
           {sampleSize > 0 && (
             <p
-              className="font-mono text-[11px] mt-1 m-0 truncate text-[var(--franco-text-secondary)]"
+              className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]"
             >
               ● Basado en {sampleSize} deptos similares
             </p>
