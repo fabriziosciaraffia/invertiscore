@@ -1400,7 +1400,7 @@ function ZoneErrorState({ message }: { message: string | null }) {
       <button
         type="button"
         onClick={() => window.location.reload()}
-        className="font-mono text-[10px] uppercase tracking-[1.5px] text-signal-red hover:underline"
+        className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text)] hover:underline"
       >
         Reintentar
       </button>

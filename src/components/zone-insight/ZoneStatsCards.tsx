@@ -37,22 +37,22 @@ interface StatCardProps {
 }
 
 function StatCard({ label, value, sub, tone = "default" }: StatCardProps) {
-  // TODO(franco-design): tone "warning" mapeado a Signal Red. Skill elimina ámbar
-  // y prefiere resolver warning vía composición (label uppercase + border-left
-  // Ink 600). Refactor a composición queda fuera del scope Fase 2.
+  // Zona NUNCA usa Signal Red (skill Patrón 2 — regla dura). El tone "warning"
+  // mapea a Ink 500 intermedio para diferenciarse de "default" sin introducir
+  // criticidad cromática. Resuelve TODO previo de Fase 2.
   const valueColor =
-    tone === "positive" ? "var(--ink-400)" : tone === "warning" ? "var(--signal-red)" : "var(--franco-text)";
+    tone === "positive" ? "var(--ink-400)" : tone === "warning" ? "var(--ink-500)" : "var(--franco-text)";
   return (
     <div
       className="rounded-xl"
       style={{
         background: "var(--franco-bar-track)",
-        border: "1px solid var(--franco-border)",
+        border: "0.5px solid var(--franco-border)",
         padding: "14px 18px",
       }}
     >
       <p
-        className="font-mono text-[9px] uppercase tracking-[1.5px] m-0 mb-1.5"
+        className="font-mono text-[9px] uppercase tracking-[0.06em] m-0 mb-1.5"
         style={{ color: "var(--franco-text-secondary)" }}
       >
         {label}
@@ -135,7 +135,7 @@ export function ZoneStatsCards({
   return (
     <section>
       <p
-        className="font-mono text-[9px] uppercase tracking-[2px] m-0 mb-3"
+        className="font-mono text-[9px] uppercase tracking-[0.06em] m-0 mb-3"
         style={{ color: "var(--franco-text-secondary)" }}
       >
         Contexto de {comuna}

@@ -77,11 +77,11 @@ export function ZonePOIsList({ pois }: Props) {
                 className="w-2 h-2 rounded-full shrink-0 relative top-[-1px]"
                 style={{ background: color }}
               />
-              <span className="font-mono text-[10px] uppercase tracking-[1.5px] font-semibold text-[var(--franco-text)]">
+              <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text)]">
                 {CATEGORY_LABELS[k]}
               </span>
               <span
-                className="font-mono text-[10px] uppercase tracking-[1px]"
+                className="font-mono text-[10px] uppercase tracking-[0.06em]"
                 style={{ color: "var(--franco-text-secondary)" }}
               >
                 · {list.length} {list.length === 1 ? "lugar" : "lugares"}
@@ -119,7 +119,7 @@ export function ZonePOIsList({ pois }: Props) {
                           title="A menos de 500 m caminando (menos de 7 min)"
                           style={{
                             fontSize: 9,
-                            letterSpacing: "0.5px",
+                            letterSpacing: "0.06em",
                             color: "var(--ink-400)",
                             background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
                             border: "0.5px solid color-mix(in srgb, var(--ink-400) 28%, transparent)",
