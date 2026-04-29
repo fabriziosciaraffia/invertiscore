@@ -125,7 +125,21 @@ function DrawerCostoMensual({
   const maxSale = Math.max(...saleItems.map((s) => s.value), 1);
   const resultLabel = isNeg ? "SALE DE TU BOLSILLO CADA MES" : "TE SOBRA CADA MES";
   const resultSub = isNeg ? "Tienes que poner este dinero tú" : "Queda a tu favor después de todos los gastos";
-  const resultColor = isNeg ? "var(--signal-red)" : "var(--ink-400)";
+  // Bloque conclusivo Patrón 3 — treatment condicional según naturaleza del KPI:
+  // - Negativo crítico: wash Signal Red 6% + borderLeft Signal Red + label/KPI Signal Red
+  // - Positivo o neutro: wash Ink 3% + borderLeft Ink secundario + label Ink secundario
+  //   + KPI Ink primary + sin border outline
+  // Regla del sistema (formalizada Fase 4.9 Commit 4): el rojo solo aparece cuando
+  // el dato comunica criticidad real. KPIs positivos/neutros usan Ink.
+  const blockBg = isNeg
+    ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
+    : "color-mix(in srgb, var(--franco-text) 3%, transparent)";
+  const blockBorder = isNeg
+    ? "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)"
+    : "none";
+  const blockBorderLeftColor = isNeg ? "var(--signal-red)" : "var(--franco-text-secondary)";
+  const blockLabelColor = isNeg ? "var(--signal-red)" : "var(--franco-text-secondary)";
+  const blockKPIColor = isNeg ? "var(--signal-red)" : "var(--franco-text)";
 
   return (
     <div>
@@ -248,16 +262,14 @@ function DrawerCostoMensual({
         </div>
       </div>
 
-      {/* CAJA RESULTADO */}
+      {/* CAJA RESULTADO — bloque conclusivo Patrón 3 condicional pos/neg */}
       <div
         className="mt-4 grid items-center gap-3"
         style={{
           gridTemplateColumns: "1fr auto",
-          background: isNeg
-            ? "color-mix(in srgb, var(--signal-red) 10%, var(--franco-card))"
-            : "color-mix(in srgb, var(--ink-400) 10%, var(--franco-card))",
-          border: `1px solid color-mix(in srgb, ${resultColor} 40%, transparent)`,
-          borderLeft: `3px solid ${resultColor}`,
+          background: blockBg,
+          border: blockBorder,
+          borderLeft: `3px solid ${blockBorderLeftColor}`,
           borderRadius: "0 8px 8px 0",
           padding: "14px 16px",
         }}
@@ -265,7 +277,7 @@ function DrawerCostoMensual({
         <div>
           <p
             className="font-mono uppercase font-semibold m-0"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: resultColor }}
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: blockLabelColor }}
           >
             = {resultLabel}
           </p>
@@ -278,7 +290,7 @@ function DrawerCostoMensual({
         </div>
         <p
           className="font-mono font-bold m-0 text-right"
-          style={{ fontSize: 28, color: resultColor, lineHeight: 1 }}
+          style={{ fontSize: 24, color: blockKPIColor, lineHeight: 1 }}
         >
           {isNeg ? "−" : "+"}{fmt(Math.abs(flujo))}
         </p>
@@ -469,19 +481,35 @@ function DrawerNegociacion({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* BLOQUE A · HERO VEREDICTO */}
+      {/* BLOQUE A · HERO VEREDICTO — bloque conclusivo Patrón 3 condicional */}
+      {/* Regla pos/neg formalizada Fase 4.9 Commit 4:
+          - esSobreprecio (KPI negativo crítico): wash Signal Red 6% + borderLeft
+            Signal Red + label/KPI Signal Red
+          - esPasada (Ventaja, KPI positivo) o alineado (neutro): wash Ink 3% +
+            borderLeft Ink secundario + label Ink secundario + KPI Ink primary
+            + sin border outline
+          Sub-KPI veredictoSub mantiene veredictoColor (existing logic) per scope. */}
       <div
         style={{
-          background: `color-mix(in srgb, ${veredictoColor} 6%, var(--franco-card))`,
-          border: `0.5px solid color-mix(in srgb, ${veredictoColor} 25%, transparent)`,
-          borderLeft: `3px solid ${veredictoColor}`,
+          background: esSobreprecio
+            ? "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))"
+            : "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+          border: esSobreprecio
+            ? "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)"
+            : "none",
+          borderLeft: `3px solid ${esSobreprecio ? "var(--signal-red)" : "var(--franco-text-secondary)"}`,
           borderRadius: "0 8px 8px 0",
           padding: "18px 20px",
         }}
       >
         <span
           className="font-mono uppercase block mb-2"
-          style={{ fontSize: 10, letterSpacing: "0.06em", color: veredictoColor, fontWeight: 600 }}
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text-secondary)",
+            fontWeight: 600,
+          }}
         >
           {veredictoLabel}
         </span>
@@ -492,8 +520,12 @@ function DrawerNegociacion({
           {veredictoDesc}
         </p>
         <p
-          className="font-mono font-bold m-0 whitespace-nowrap text-[26px] sm:text-[32px]"
-          style={{ color: veredictoColor, lineHeight: 1 }}
+          className="font-mono font-bold m-0 whitespace-nowrap"
+          style={{
+            fontSize: 24,
+            color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text)",
+            lineHeight: 1,
+          }}
         >
           {veredictoMonto}
         </p>
@@ -1049,12 +1081,24 @@ function DrawerLargoPlazo({
   // Label de bloque "N DE 3"
   return (
     <div className="flex flex-col gap-4">
-      {/* ─── BLOQUE 1 · EL VEREDICTO ─────────────────── */}
+      {/* ─── BLOQUE 1 · EL VEREDICTO — bloque conclusivo Patrón 3 condicional */}
+      {/* Regla pos/neg formalizada Fase 4.9 Commit 4:
+          - !esPositiva (gananciaSobreTotal < 0, pérdida): wash Signal Red 6% +
+            borderLeft Signal Red + label/KPI principal Signal Red
+          - esPositiva (ganancia o equilibrio): wash Ink 3% + borderLeft Ink
+            secundario + label Ink secundario + KPI principal Ink primary
+            + sin border outline
+          colorAccent (ink-400/signal-red) se preserva SOLO para el sub-KPI
+          "+/-X% sobre lo que pusiste" (per scope: no tocar sub-KPI L1099-1104). */}
       <div
         style={{
-          background: `color-mix(in srgb, ${colorAccent} 6%, var(--franco-card))`,
-          border: `0.5px solid color-mix(in srgb, ${colorAccent} 25%, transparent)`,
-          borderLeft: `3px solid ${colorAccent}`,
+          background: esPositiva
+            ? "color-mix(in srgb, var(--franco-text) 3%, transparent)"
+            : "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))",
+          border: esPositiva
+            ? "none"
+            : "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
+          borderLeft: `3px solid ${esPositiva ? "var(--franco-text-secondary)" : "var(--signal-red)"}`,
           borderRadius: "0 8px 8px 0",
           padding: "18px 20px",
         }}
@@ -1062,7 +1106,12 @@ function DrawerLargoPlazo({
         <div className="mb-2">
           <span
             className="font-mono uppercase"
-            style={{ fontSize: 10, letterSpacing: "0.06em", color: colorAccent, fontWeight: 600 }}
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.06em",
+              color: esPositiva ? "var(--franco-text-secondary)" : "var(--signal-red)",
+              fontWeight: 600,
+            }}
           >
             El veredicto
           </span>
@@ -1076,8 +1125,13 @@ function DrawerLargoPlazo({
         </p>
 
         <p
-          className="font-mono font-bold m-0 whitespace-nowrap text-[32px] sm:text-[40px]"
-          style={{ color: colorAccent, lineHeight: 1, marginTop: 8 }}
+          className="font-mono font-bold m-0 whitespace-nowrap"
+          style={{
+            fontSize: 24,
+            color: esPositiva ? "var(--franco-text)" : "var(--signal-red)",
+            lineHeight: 1,
+            marginTop: 8,
+          }}
         >
           {esPositiva ? "+" : "−"}{fmtFull(Math.abs(gananciaSobreTotal))}
         </p>
@@ -1346,7 +1400,7 @@ function DrawerRiesgos({
             className="rounded-r-lg p-3"
             style={{
               borderLeft: "3px solid var(--signal-red)",
-              background: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+              background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
               border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
               borderLeftWidth: "3px",
             }}
