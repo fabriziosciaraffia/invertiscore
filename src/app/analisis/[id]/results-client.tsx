@@ -1495,11 +1495,16 @@ function HeroCard({
   const badgeBorder = isAjusta ? "0.5px solid var(--franco-border)" : undefined;
 
   // Verdict callout banner — bg/border per veredicto
-  // Solo BUSCAR OTRA lleva wash Signal Red. AJUSTA mantiene bg neutro — el
-  // rojo en AJUSTA vive solo en border-left + label/pill, no en wash.
+  // - BUSCAR OTRA: wash Signal Red 8%
+  // - AJUSTA EL PRECIO: var(--franco-card) (Hero tiene wash Ink, callout
+  //   destaca con color de Hero base + acentos Signal Red en pill/label)
+  // - COMPRAR: var(--franco-elevated) (Hero ES var(--franco-card), elevated
+  //   crea elevación visible sin tinte cromático)
   const calloutBg = isBuscar
     ? "color-mix(in srgb, var(--signal-red) 8%, transparent)"
-    : "var(--franco-card)"; // COMPRAR + AJUSTA neutros
+    : isCompra
+      ? "var(--franco-elevated)"
+      : "var(--franco-card)"; // AJUSTA
   const calloutBorder = isBuscar
     ? "none"
     : "0.5px solid var(--franco-border)"; // COMPRAR + AJUSTA con border sutil
@@ -1607,12 +1612,16 @@ function HeroCard({
           state={isCompra ? "neutral" : "negative"}
           className="mt-5"
           style={{
-            // Solo BUSCAR OTRA lleva wash Signal Red. AJUSTA mantiene bg neutro
-            // — el state="negative" sigue aportando borderLeft Signal Red 3px
-            // y label color Signal Red por dentro de StateBox.
+            // - BUSCAR OTRA: wash Signal Red 6%
+            // - AJUSTA EL PRECIO: var(--franco-card) (state="negative" preserva
+            //   borderLeft Signal Red + label Signal Red vía StateBox internal)
+            // - COMPRAR: var(--franco-elevated) (Hero base es card; elevated
+            //   crea elevación visible sin tinte cromático)
             background: isBuscar
               ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
-              : "var(--franco-card)",
+              : isCompra
+                ? "var(--franco-elevated)"
+                : "var(--franco-card)",
             borderRadius: "0 8px 8px 0",
             ...(isCompra ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
           }}
