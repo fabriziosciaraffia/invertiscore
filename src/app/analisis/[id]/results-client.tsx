@@ -1633,7 +1633,7 @@ function getPunchline(
       return {
         value: `${isNeg ? "-" : "+"}${formatted}`,
         sub: isNeg ? "De tu bolsillo cada mes" : "Te sobra cada mes",
-        color: isNeg ? "var(--signal-red)" : "var(--ink-400)",
+        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
       };
     }
     return { value: "—", sub: "Aporte mensual", color: "var(--franco-text)" };
@@ -1659,14 +1659,13 @@ function getPunchline(
     if (typeof tir === "number" && !isNaN(tir)) {
       const tirPct = tir.toFixed(1).replace(".", ",");
       const isNeg = tir < 0;
-      const isMarginal = tir < 5 && tir >= 0;
-      // TODO(franco-design): escala TIR 3-niveles (negativo · marginal · positivo)
-      // colapsa a Ink/Signal Red. Marginal (0-5%) mapeado a var(--ink-500) como
-      // intermedio neutro. Misma decisión que tirColor en AnalysisDrawer.
+      // Skill Patrón 2: KPI binario (signal-red criticidad / var(--franco-text)
+      // neutro). El dato hace el trabajo — la distinción TIR baja vs alta vive
+      // en el valor mismo, no en color intermedio.
       return {
         value: `TIR ${tirPct}%`,
         sub: "Rentabilidad anual a 10 años",
-        color: isNeg ? "var(--signal-red)" : isMarginal ? "var(--ink-500)" : "var(--ink-400)",
+        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
       };
     }
     const retorno = results?.exitScenario?.retornoTotal;
@@ -1678,7 +1677,7 @@ function getPunchline(
       return {
         value: `${isNeg ? "-" : "+"}${formatted}`,
         sub: "Ganancia total 10 años",
-        color: isNeg ? "var(--signal-red)" : "var(--ink-400)",
+        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
       };
     }
     return { value: "—", sub: "Retorno 10 años", color: "var(--franco-text)" };
@@ -1701,7 +1700,6 @@ function getPunchline(
 function MiniCard({
   section,
   label,
-  labelColor,
   data,
   currency,
   onClick,
@@ -1710,7 +1708,6 @@ function MiniCard({
 }: {
   section: MiniCardSection;
   label: string;
-  labelColor: "info" | "warning" | "neutral";
   data: import("@/lib/types").AISection | import("@/lib/types").AINegociacionSection;
   currency: "CLP" | "UF";
   onClick: () => void;
@@ -1718,39 +1715,35 @@ function MiniCard({
   valorUF: number;
 }) {
   const punchline = getPunchline(section, data, currency, results, valorUF);
-  const labelColorValue: Record<"info" | "warning" | "neutral", string> = {
-    info: "var(--franco-text-secondary)",
-    warning: "var(--signal-red)",
-    neutral: "var(--franco-text)",
-  };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="bg-[var(--franco-card)] border border-[var(--franco-border)] hover:border-[var(--franco-border-hover)] rounded-2xl p-4 md:p-5 text-left transition-colors duration-200 min-h-[150px] md:min-h-[168px] flex flex-col w-full"
+      className="bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)] rounded-[12px] p-[1.125rem] text-left transition-colors duration-200 min-h-[150px] md:min-h-[168px] flex flex-col w-full"
     >
       <p
-        className="font-mono text-[9px] uppercase tracking-[1.5px] mb-2 font-medium m-0"
-        style={{ color: labelColorValue[labelColor] }}
+        className="font-mono text-[10px] uppercase tracking-[1.5px] mb-2 font-medium m-0 text-[var(--franco-text-secondary)]"
       >
         {label}
       </p>
-      <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
+      <h3 className="font-heading font-bold text-[18px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
         {data.pregunta}
       </h3>
       <p
-        className="font-mono text-[17px] md:text-[19px] font-bold m-0 mb-1"
+        className="font-mono text-[22px] font-bold m-0 mb-1 leading-[1.1]"
         style={{ color: punchline.color }}
       >
         {punchline.value}
       </p>
-      <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mb-auto leading-[1.4] m-0">
+      <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] mb-auto leading-[1.4] m-0">
         {punchline.sub}
       </p>
-      <span className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] mt-3">
-        Leer análisis completo →
-      </span>
+      <div className="border-t-[0.5px] border-[var(--franco-border)] mt-4 pt-3.5">
+        <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)]">
+          Leer análisis completo →
+        </span>
+      </div>
     </button>
   );
 }
@@ -1869,7 +1862,6 @@ function DashboardAnalysisSection({
         <MiniCard
           section="costoMensual"
           label="Costo mensual"
-          labelColor="info"
           data={aiAnalysis.costoMensual}
           currency={currency}
           onClick={() => setActiveDrawer("costoMensual")}
@@ -1879,7 +1871,6 @@ function DashboardAnalysisSection({
         <MiniCard
           section="negociacion"
           label="Negociación"
-          labelColor="neutral"
           data={aiAnalysis.negociacion}
           currency={currency}
           onClick={() => setActiveDrawer("negociacion")}
@@ -1889,7 +1880,6 @@ function DashboardAnalysisSection({
         <MiniCard
           section="largoPlazo"
           label="Largo plazo"
-          labelColor="info"
           data={aiAnalysis.largoPlazo}
           currency={currency}
           onClick={() => setActiveDrawer("largoPlazo")}
@@ -1899,7 +1889,6 @@ function DashboardAnalysisSection({
         <MiniCard
           section="riesgos"
           label="Riesgos"
-          labelColor="warning"
           data={aiAnalysis.riesgos}
           currency={currency}
           onClick={() => setActiveDrawer("riesgos")}
