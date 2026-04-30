@@ -1,25 +1,10 @@
-import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
 
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-{/* Header */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" inverted />
-          <div className="flex items-center gap-2">
-            <Link
-              href="/register"
-              className="bg-[#C8323C] text-white font-body text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#C8323C]/90 transition-colors"
-            >
-              Analizar gratis →
-            </Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      <AppNav variant="marketing" ctaSlot={<NavPrimaryCTA href="/register" />} />
 
       {/* Content */}
       <main className="max-w-[640px] mx-auto px-6 py-16 md:py-24">

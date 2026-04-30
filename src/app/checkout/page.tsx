@@ -6,8 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 
 const PRODUCTS = {
   pro: {
@@ -136,12 +135,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" inverted href="/" />
-          <ThemeToggle />
-        </div>
-      </nav>
+      <AppNav variant="marketing" />
 
       <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
         {/* Back link */}

@@ -1,20 +1,10 @@
-import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
+import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-<nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" inverted />
-          <Link
-            href="/register"
-            className="bg-[#C8323C] text-white font-body text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#C8323C]/90 transition-colors"
-          >
-            Analizar gratis →
-          </Link>
-        </div>
-      </nav>
+      <AppNav variant="marketing" ctaSlot={<NavPrimaryCTA href="/register" />} />
 
       <main className="max-w-[640px] mx-auto px-6 py-16 md:py-24">
         <h1 className="font-heading font-bold text-3xl md:text-4xl text-[var(--franco-text)]">

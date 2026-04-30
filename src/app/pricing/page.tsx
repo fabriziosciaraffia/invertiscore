@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
 import type { User } from "@supabase/supabase-js";
 
 // ─── FadeIn ─────────────────────────────────────────
@@ -86,28 +86,23 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/80 backdrop-blur-xl">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" inverted href="/" />
-          <div className="flex items-center gap-2">
-            {user ? (
-              <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-                Dashboard
+      <AppNav
+        variant="marketing"
+        ctaSlot={
+          user ? (
+            <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+              Dashboard
+            </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link href="/login" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+                Iniciar sesión
               </Link>
-            ) : (
-              <>
-                <Link href="/login" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors px-3 py-2">
-                  Iniciar sesión
-                </Link>
-                <Link href="/register" className="bg-[#C8323C] text-white font-body text-xs font-semibold px-4 py-2 rounded-lg hover:bg-[#b02a33] transition-colors">
-                  Registrarse
-                </Link>
-              </>
-            )}
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+              <NavPrimaryCTA href="/register" label="Registrarse" />
+            </div>
+          )
+        }
+      />
 
       {/* Hero */}
       <section className="py-16 md:py-20 px-6">

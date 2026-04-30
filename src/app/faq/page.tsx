@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
 
 interface FAQItem {
   q: string;
@@ -117,16 +117,16 @@ export default function FAQPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
-        <div className="max-w-[780px] mx-auto flex items-center justify-between h-14 px-6">
-          <FrancoLogo size="sm" href="/" inverted />
-          <div className="flex items-center gap-4">
-            <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Precios</Link>
-            <Link href="/analisis/nuevo-v2" className="font-body text-[11px] font-semibold text-[var(--franco-bg)] bg-[var(--franco-text)] hover:bg-[var(--franco-text)] px-3 py-1.5 rounded-md transition-colors">Analizar</Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      <AppNav
+        variant="marketing"
+        linksSlot={
+          <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+            Precios
+          </Link>
+        }
+        ctaSlot={<NavPrimaryCTA href="/analisis/nuevo-v2" label="Analizar →" />}
+        mobileMenuItems={[{ label: "Precios", href: "/pricing" }]}
+      />
 
       {/* Header */}
       <section className="py-16 px-6">

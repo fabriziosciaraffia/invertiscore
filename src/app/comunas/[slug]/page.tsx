@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
-import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
 
 export const revalidate = 86400;
 
@@ -102,21 +101,20 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* Navbar */}
-      <header className="border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="mx-auto flex h-14 max-w-[1100px] items-center justify-between px-6">
-          <FrancoLogo size="header" inverted href="/" />
-          <div className="flex items-center gap-4">
-            <nav className="hidden items-center gap-6 md:flex">
-              <Link href="/comunas" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Comunas</Link>
-              <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
-              <Link href="/analisis/nuevo-v2" className="rounded-lg bg-[#C8323C] px-5 py-2.5 font-body text-sm font-bold text-white hover:bg-[#b02a33]">
-                Analizar gratis
-              </Link>
-            </nav>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <AppNav
+        variant="marketing"
+        linksSlot={
+          <>
+            <Link href="/comunas" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Comunas</Link>
+            <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
+          </>
+        }
+        ctaSlot={<NavPrimaryCTA href="/analisis/nuevo-v2" />}
+        mobileMenuItems={[
+          { label: "Comunas", href: "/comunas" },
+          { label: "Precios", href: "/pricing" },
+        ]}
+      />
 
       <main className="mx-auto max-w-[1100px] px-6 py-12">
         {/* Breadcrumb */}
