@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   calcDividendo,
   fmtCLP,
@@ -10,6 +11,11 @@ import {
   parseNum,
   type WizardV3State,
 } from "./wizardV3State";
+
+const MESES_ES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 
 export function Paso2Financiamiento({
   state,
@@ -109,6 +115,80 @@ export function Paso2Financiamiento({
           </p>
         )}
       </div>
+
+      {/* ── Estado del proyecto (solo nuevo) ── */}
+      {state.tipoPropiedad === "nuevo" && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <label className="font-mono text-[10px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-secondary)]">
+              Estado del proyecto
+            </label>
+            <InfoTooltip content="Inmediata = proyecto entregado o por entregar en menos de 6 meses. Futura = compra antes de entrega (en verde o en blanco), pagás cuotas hasta la entrega." />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {(["inmediata", "futura"] as const).map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => setState({
+                  estadoVenta: e,
+                  // Limpiar fecha si vuelve a inmediata (defensivo, igual que modal viejo)
+                  fechaEntregaMes: e === "inmediata" ? "" : state.fechaEntregaMes,
+                  fechaEntregaAnio: e === "inmediata" ? "" : state.fechaEntregaAnio,
+                })}
+                className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
+                  state.estadoVenta === e
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
+                }`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          {state.estadoVenta === "futura" && (
+            <div className="mt-3 flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
+                    Mes
+                  </label>
+                  <select
+                    className={`${inputBase} appearance-none text-[13px]`}
+                    value={state.fechaEntregaMes}
+                    onChange={(e) => setState({ fechaEntregaMes: e.target.value })}
+                  >
+                    <option value="">—</option>
+                    {MESES_ES.map((m, i) => (
+                      <option key={m} value={String(i + 1).padStart(2, "0")}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
+                    Año
+                  </label>
+                  <select
+                    className={`${inputBase} appearance-none text-[13px]`}
+                    value={state.fechaEntregaAnio}
+                    onChange={(e) => setState({ fechaEntregaAnio: e.target.value })}
+                  >
+                    <option value="">—</option>
+                    {Array.from({ length: 7 }, (_, i) => 2026 + i).map((y) => (
+                      <option key={y} value={String(y)}>{y}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              {mesesSugeridos > 0 && (
+                <p className="font-mono text-[11px] m-0 text-[var(--franco-text-secondary)]">
+                  ● Pagás el pie en ~{mesesSugeridos} cuotas hasta la entrega
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Pie ── */}
       <div>
