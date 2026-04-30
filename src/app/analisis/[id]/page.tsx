@@ -105,6 +105,16 @@ export default async function AnalisisDetallePage({
     userCredits = credits?.credits ?? 0;
   }
 
+  // Pro CTA banner: total de analisis del user para threshold check.
+  let analysesCount = 0;
+  if (user) {
+    const { count } = await supabase
+      .from("analisis")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+    analysesCount = count ?? 0;
+  }
+
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
   if (isAdmin) {
     accessLevel = "subscriber";
@@ -171,6 +181,8 @@ export default async function AnalisisDetallePage({
           isSharedLink={isSharedLink}
           userCredits={userCredits}
           ownerFirstName={ownerFirstName}
+          analysesCount={analysesCount}
+          isLoggedIn={isLoggedIn}
         />
 
         {/* Fallback for old analyses without full results */}

@@ -21,6 +21,7 @@ import type { MarketDataRow } from "@/lib/market-data";
 import { StateBox } from "@/components/ui/StateBox";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
+import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
@@ -2194,6 +2195,8 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userCredits = 0,
   ownerFirstName = "",
+  analysesCount = 0,
+  isLoggedIn = false,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -2220,6 +2223,8 @@ export function PremiumResults({
   isSharedLink?: boolean;
   userCredits?: number;
   ownerFirstName?: string;
+  analysesCount?: number;
+  isLoggedIn?: boolean;
 }) {
   const posthog = usePostHog();
   // Update module-level UF value from server
@@ -3399,9 +3404,17 @@ export function PremiumResults({
   // Paneles laterales eliminados (Fase 3). Capa 1+2 usan siempre valores del
   // análisis original; la simulación editable vive en el acordeón Capa 3.
   return (
-    <div className="min-w-0">
-      {mainContent}
-    </div>
+    <>
+      <div className="min-w-0">
+        {mainContent}
+      </div>
+      <ProCTABanner
+        analysesCount={analysesCount}
+        isLoggedIn={isLoggedIn}
+        accessLevel={accessLevel}
+        source="results"
+      />
+    </>
   );
 }
 
