@@ -30,12 +30,15 @@ export function Paso2Financiamiento({
   setState,
   ufCLP,
   precioM2UF,
+  precioM2SampleSize,
 }: {
   state: WizardV3State;
   setState: (patch: Partial<WizardV3State>) => void;
   ufCLP: number;
   /** UF/m² sugerido del radio (venta). Cuando llega, mostramos hint debajo del precio. */
   precioM2UF?: number | null;
+  /** N comparables del fetch de venta. Si null o 0 → ocultar el sufijo. */
+  precioM2SampleSize?: number | null;
 }) {
   const precioUF = Number(state.precio) || 0;
   const piePct = Number(state.piePct) || 20;
@@ -132,7 +135,7 @@ export function Paso2Financiamiento({
           </label>
           <InfoTooltip
             trigger="click"
-            content="Para depto nuevo usa UF (es el formato estándar de inmobiliarias). Para usado, también ingresa la cifra acordada en UF; la conversión a CLP se calcula automáticamente."
+            content="Ingresa el precio de venta del departamento en UF. La conversión a CLP se calcula automáticamente."
           />
         </div>
         <div className="flex items-stretch gap-2">
@@ -163,6 +166,9 @@ export function Paso2Financiamiento({
             ● Mercado sugiere UF {precioSugeridoUF.toLocaleString("es-CL")}
             {superficie > 0 && precioM2UF
               ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie}m²)`
+              : ""}
+            {precioM2SampleSize && precioM2SampleSize > 0
+              ? ` · basado en ${precioM2SampleSize} ${precioM2SampleSize === 1 ? "unidad comparable" : "unidades comparables"} en la zona`
               : ""}
           </p>
         )}
@@ -201,7 +207,7 @@ export function Paso2Financiamiento({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Inmediata = proyecto entregado o por entregar en menos de 6 meses. Futura = compra antes de entrega (en verde o en blanco), pagas cuotas hasta la entrega."
+              content="Inmediata: proyecto terminado, entrega inmediata. Futura: compra antes de entrega (en verde o en blanco), pagas cuotas hasta la entrega."
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -281,7 +287,7 @@ export function Paso2Financiamiento({
               </div>
               {mesesSugeridos > 0 && (
                 <p className="font-mono text-[11px] m-0 text-[var(--franco-text-secondary)]">
-                  ● Pagas el pie en ~{mesesSugeridos} cuotas hasta la entrega
+                  ● Pagas el pie en ~{mesesSugeridos} cuotas hasta la entrega (se calcula automáticamente con fecha de entrega).
                 </p>
               )}
             </div>
@@ -299,7 +305,7 @@ export function Paso2Financiamiento({
               </label>
               <InfoTooltip
                 trigger="click"
-                content="Porcentaje del precio que pagas con recursos propios, sin crédito. Mínimo habitual: 20% para usados, puede ser menor en proyectos nuevos con apalancamiento."
+                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -333,7 +339,7 @@ export function Paso2Financiamiento({
               </label>
               <InfoTooltip
                 trigger="click"
-                content="Porcentaje del precio que pagas con recursos propios, sin crédito. Mínimo habitual: 20% para usados, puede ser menor en proyectos nuevos con apalancamiento."
+                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -382,7 +388,7 @@ export function Paso2Financiamiento({
                   </label>
                   <InfoTooltip
                     trigger="click"
-                    content="Número de cuotas en que dividirás el pie hasta la entrega del depto. Ej: 24 cuotas si la entrega es en 2 años."
+                    content="Número de cuotas en que pagarás el pie."
                   />
                 </span>
                 <input
@@ -402,9 +408,15 @@ export function Paso2Financiamiento({
                 )}
               </div>
               <div>
-                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
-                  Cuota mensual (UF)
-                </label>
+                <span className="flex items-center gap-1.5 mb-1">
+                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
+                    Cuota mensual (UF)
+                  </label>
+                  <InfoTooltip
+                    trigger="click"
+                    content="Valor de la cuota del pie pactada en UF. La conversión a CLP se calcula automáticamente."
+                  />
+                </span>
                 <input
                   type="text"
                   inputMode="decimal"
@@ -416,6 +428,16 @@ export function Paso2Financiamiento({
                     if (v === "" || /^\d*[.,]?\d*$/.test(v)) handleMontoChange(v);
                   }}
                 />
+                {(() => {
+                  const cuotaNum = parseDecimalLocale(cuotaUFDisplay);
+                  if (!(cuotaNum > 0 && ufCLP > 0)) return null;
+                  const cuotaCLP = cuotaNum * ufCLP;
+                  return (
+                    <p className="font-mono text-[11px] mt-1 m-0 text-[var(--franco-text-secondary)]">
+                      ● ≈ {fmtCLPShort(cuotaCLP)} CLP/mes
+                    </p>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -423,17 +445,22 @@ export function Paso2Financiamiento({
       )}
 
       {/* ── Dividendo readonly ── */}
-      <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
-        <div>
-          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
-            Dividendo estimado
-          </p>
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0">
-            Plazo {plazo}a · Tasa {tasa}%
+      <div>
+        <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
+              Dividendo estimado
+            </p>
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0">
+              Plazo {plazo} años · Tasa {tasa}%
+            </p>
+          </div>
+          <p className="font-mono text-[18px] font-semibold text-[var(--franco-text)] m-0">
+            {dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
           </p>
         </div>
-        <p className="font-mono text-[18px] font-semibold text-[var(--franco-text)] m-0">
-          {dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
+        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+          ● Plazo y tasa son ajustables en el paso 3.
         </p>
       </div>
     </div>

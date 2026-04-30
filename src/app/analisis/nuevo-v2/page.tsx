@@ -50,6 +50,7 @@ export default function NuevoAnalisisV3Page() {
     gastos: number | null;
     contribuciones: number | null;
     precioM2UF: number | null;   // UF/m² sugerido (para cálculo de precioSugeridoUF)
+    precioM2SampleSize: number | null; // n comparables del fetch de venta (para hint)
     sampleSize: number;
     radiusUsed: number | null;
     totalInRadius: number;
@@ -59,6 +60,7 @@ export default function NuevoAnalisisV3Page() {
     nearbyProperties: Array<{ lat: number | null; lng: number | null }>;
   }>({
     arriendo: null, gastos: null, contribuciones: null, precioM2UF: null,
+    precioM2SampleSize: null,
     sampleSize: 0, radiusUsed: null, totalInRadius: 0, nearbyProperties: [],
   });
 
@@ -177,6 +179,9 @@ export default function NuevoAnalisisV3Page() {
         const precioM2UF: number | null = venta && Number.isFinite(venta.precioM2) && venta.precioM2 > 0 && ufCLP > 0
           ? Number(venta.precioM2) / ufCLP
           : null;
+        const precioM2SampleSize: number | null = venta
+          ? (venta.sampleSize ?? venta.filteredInRadius ?? null)
+          : null;
         if (venta && venta.precioM2 !== undefined) {
           console.info("[MapaPrecio]", {
             raw_precioM2: venta.precioM2,
@@ -195,6 +200,7 @@ export default function NuevoAnalisisV3Page() {
           gastos: gastosFinal,
           contribuciones: sup > 0 ? contribSugerida : null,
           precioM2UF,
+          precioM2SampleSize,
           sampleSize,
           radiusUsed,
           totalInRadius,
@@ -438,6 +444,7 @@ export default function NuevoAnalisisV3Page() {
                 setState={patch}
                 ufCLP={ufCLP}
                 precioM2UF={suggestions.precioM2UF}
+                precioM2SampleSize={suggestions.precioM2SampleSize}
               />
             )}
             {step === 3 && (
