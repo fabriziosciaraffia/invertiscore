@@ -177,17 +177,6 @@ function parseMapProperty(
     }
     if (precio === 0) return null;
 
-    // TODO[Fase5-audit]: remover este log tras validar empíricamente el contrato
-    // TocToc con 5-10 propiedades reales. Ver auditoría 2026-04-30.
-    // [TEMP-AUDIT-SUPERFICIE] Validación heurística Path B — remover tras confirmar
-    console.log("[TocToc-map-audit]", {
-      pos_27: arr[27],
-      pos_28: arr[28],
-      pos_33: arr[33],
-      pos_34: arr[34],
-      idProperty: arr[1],
-    });
-
     // Surface: search positions 27-28, 33-34
     let superficieM2: number | undefined;
     for (const pos of [27, 28, 33, 34]) {
@@ -307,18 +296,6 @@ function parsePropertyFromResult(
 
     const precio = precioCLP || (precioUF ? precioUF : 0);
     if (precio === 0) return null;
-
-    // TODO[Fase5-audit]: remover este log tras validar empíricamente el contrato
-    // TocToc con 5-10 propiedades reales. Ver auditoría 2026-04-30.
-    // [TEMP-AUDIT-SUPERFICIE] Validación contrato TocToc — remover tras confirmar
-    console.log("[TocToc-superficie-audit]", {
-      titulo: item.titulo?.substring(0, 60),
-      superficie_array: item.superficie,
-      longitud: Array.isArray(item.superficie) ? item.superficie.length : null,
-      pos_0: item.superficie?.[0],
-      pos_1: item.superficie?.[1],
-      url: item.urlFicha,
-    });
 
     let superficieM2: number | undefined;
     if (item.superficie && Array.isArray(item.superficie) && item.superficie[0]) {

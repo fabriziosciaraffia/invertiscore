@@ -161,7 +161,7 @@ export function Paso1Propiedad({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Superficie del depto en m². Si tienes ambos datos, prefiere la útil (interior, sin terraza)."
+              content="Superficie del depto en m², según el aviso o plano."
             />
           </div>
           <div className="relative">
