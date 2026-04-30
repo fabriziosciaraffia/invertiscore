@@ -1,6 +1,6 @@
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 import WaitlistForm from "@/components/waitlist-form";
 
 export const revalidate = 86400;
@@ -16,14 +16,10 @@ export default async function ProximamentePage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-{/* Top accent line */}
+{/* Top accent line decorativa — landing-only, fuera del chrome */}
       <div className="h-[2px] bg-[#C8323C]" />
 
-      {/* Header — logo only */}
-      <header className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-6">
-        <FrancoLogo size="header" inverted href="/" />
-        <ThemeToggle />
-      </header>
+      <AppNav variant="landing" />
 
       <main className="mx-auto max-w-[700px] px-6">
         {/* Hero */}
