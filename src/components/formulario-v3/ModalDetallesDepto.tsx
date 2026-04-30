@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "@/components/ui/Modal";
-import { MoneyInput } from "@/components/ui/MoneyInput";
+import { StateBox } from "@/components/ui/StateBox";
 import { useResetOnOpen } from "@/hooks/useResetOnOpen";
 import type { WizardV3State } from "./wizardV3State";
 
@@ -16,19 +16,16 @@ export function ModalDetallesDepto({
   state: WizardV3State;
   onSave: (patch: Partial<WizardV3State>) => void;
 }) {
+  // arriendoEstac y arriendoBodega NO se editan aqui — viven en Paso 3
+  // (ModalAjusteCondiciones · TabArriendo). State global persiste intacto.
   const [local, setLocal] = useResetOnOpen(open, {
     dormitorios: state.dormitorios,
     esStudio: state.esStudio === true,
     banos: state.banos,
     estacionamientos: state.estacionamientos,
     bodegas: state.bodegas,
-    arriendoEstac: state.arriendoEstac,
-    arriendoBodega: state.arriendoBodega,
     antiguedad: state.antiguedad,
   });
-
-  const nEstac = Number(local.estacionamientos) || 0;
-  const nBodega = Number(local.bodegas) || 0;
 
   function handleSave() {
     onSave(local);
@@ -124,31 +121,6 @@ export function ModalDetallesDepto({
         </Field>
       </div>
 
-      {(nEstac > 0 || nBodega > 0) && (
-        <div className="grid grid-cols-2 gap-4 mt-4">
-          {nEstac > 0 && (
-            <Field label="Arriendo estacionamiento ($/mes)">
-              <MoneyInput
-                placeholder={(40000 * nEstac).toLocaleString("es-CL")}
-                className={inputClass}
-                value={local.arriendoEstac}
-                onChange={(raw) => setLocal({ ...local, arriendoEstac: raw })}
-              />
-            </Field>
-          )}
-          {nBodega > 0 && (
-            <Field label="Arriendo bodega ($/mes)">
-              <MoneyInput
-                placeholder={(15000 * nBodega).toLocaleString("es-CL")}
-                className={inputClass}
-                value={local.arriendoBodega}
-                onChange={(raw) => setLocal({ ...local, arriendoBodega: raw })}
-              />
-            </Field>
-          )}
-        </div>
-      )}
-
       {state.tipoPropiedad === "usado" && (
         <div className="mt-4">
           <Field label="Antigüedad">
@@ -166,6 +138,12 @@ export function ModalDetallesDepto({
           </Field>
         </div>
       )}
+
+      <div className="mt-5">
+        <StateBox variant="left-border" state="info">
+          Los arriendos sugeridos (depto, estacionamiento y bodega) los verás en el paso 3, calculados según tu zona. Podrás ajustarlos si tienes información distinta.
+        </StateBox>
+      </div>
     </Modal>
   );
 }
