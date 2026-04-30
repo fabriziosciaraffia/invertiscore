@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
@@ -45,6 +45,11 @@ export function Paso2Financiamiento({
   const plazo = Number(state.plazoCredito) || 25;
   const tasa = Number(state.tasaInteres) || 4.72;
   const superficie = parseNum(state.superficieUtil);
+
+  // Toggle local: expansión inline de Plazo/Tasa editables. No persiste en
+  // wizardV3State — al volver a Paso 2 vuelve a estado readonly aunque los
+  // valores editados sí persistan en el state global.
+  const [ajustePlazoTasaOpen, setAjustePlazoTasaOpen] = useState(false);
 
   const precioCLP = precioUF * ufCLP;
   const pieCLP = precioCLP * (piePct / 100);
@@ -377,6 +382,31 @@ export function Paso2Financiamiento({
             </div>
           )}
 
+          {/* Slider Pie editable cuando Nuevo + Inmediata + Contado.
+              Sin cuotas que pagar (es contado total al cierre), por lo que la
+              edición indirecta vía cuotas+monto no aplica acá. Reuso 1:1 del
+              slider Pie Usado: range 10-50 step 5, mismo accent + marks. */}
+          {state.estadoVenta === "inmediata" && state.pieModoPago === "contado" && (
+            <div className="mt-3">
+              <input
+                type="range"
+                min={10}
+                max={50}
+                step={5}
+                value={piePct}
+                onChange={(e) => setState({ piePct: e.target.value })}
+                className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+              />
+              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+                <span>10%</span>
+                <span>20%</span>
+                <span>30%</span>
+                <span>40%</span>
+                <span>50%</span>
+              </div>
+            </div>
+          )}
+
           {/* Inputs cuotas + cuota mensual UF.
               Visible cuando: futura (siempre) o inmediata+cuotas. */}
           {(state.estadoVenta === "futura" || (state.estadoVenta === "inmediata" && state.pieModoPago === "cuotas")) && (
@@ -444,7 +474,7 @@ export function Paso2Financiamiento({
         </div>
       )}
 
-      {/* ── Dividendo readonly ── */}
+      {/* ── Dividendo readonly + ajuste plazo/tasa inline ── */}
       <div>
         <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
           <div>
@@ -459,9 +489,83 @@ export function Paso2Financiamiento({
             {dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
           </p>
         </div>
-        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-          ● Plazo y tasa son ajustables en el paso 3.
-        </p>
+
+        {/* Trigger ajuste plazo/tasa. Tokens reusados del patrón "Cambiar"
+            de Paso3Modalidad chip selection: Sans medium 12px text-secondary
+            hover:text-primary underline-offset-2. Sin Signal Red. Chevron
+            rotates on expand. */}
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setAjustePlazoTasaOpen((v) => !v)}
+            aria-expanded={ajustePlazoTasaOpen}
+            className="inline-flex items-center gap-1 font-body text-[12px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2 transition-colors"
+          >
+            Ajustar plazo y tasa
+            <ChevronDown
+              className="h-3.5 w-3.5 transition-transform"
+              style={{ transform: ajustePlazoTasaOpen ? "rotate(180deg)" : "rotate(0deg)" }}
+            />
+          </button>
+        </div>
+
+        {ajustePlazoTasaOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {/* Plazo slider — patrón idéntico al slider Pie Usado (auditoría C.1)
+                + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 5). */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
+                  Plazo
+                </label>
+                <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">
+                  {plazo} años
+                </span>
+              </div>
+              <input
+                type="range"
+                min={10}
+                max={30}
+                step={5}
+                value={plazo}
+                onChange={(e) => setState({ plazoCredito: e.target.value })}
+                className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+              />
+              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+                <span>10</span>
+                <span>15</span>
+                <span>20</span>
+                <span>25</span>
+                <span>30</span>
+              </div>
+            </div>
+
+            {/* Tasa input — patrón idéntico a ModalAjusteCondiciones · Tasa
+                (text decimal regex /^\d*[.,]?\d*$/). Sufijo % inline mismo
+                pattern que Superficie m² (Paso 1). */}
+            <div>
+              <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1.5">
+                Tasa
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="4,72"
+                  className={`${inputBase} pr-8`}
+                  value={state.tasaInteres}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ tasaInteres: v });
+                  }}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
+                  %
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
