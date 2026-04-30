@@ -103,7 +103,7 @@ export function Paso1Propiedad({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Si el pin no quedó exacto, arrástralo. La ubicación afecta el cálculo de cercanía a metro y servicios cercanos."
+              content="La ubicación afecta el cálculo de comparables, cercanía a metro y servicios cercanos."
             />
           </div>
           <MapaThumbnail
@@ -125,7 +125,7 @@ export function Paso1Propiedad({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Nuevo: en venta directa por inmobiliaria, puede ser en verde (proyecto) o en blanco (entrega inmediata). Usado: ya entregado, vendido por particular o corredor."
+              content="Nuevo: en venta directa por inmobiliaria. En el paso 2 defines estado del proyecto y tipo de entrega. Usado: vendido por particular o corredor."
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -150,7 +150,7 @@ export function Paso1Propiedad({
           </div>
           {state.tipoPropiedad === "nuevo" && (
             <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-              ● Te pediremos fecha estimada de entrega y detalles del pie en cuotas para proyectar el flujo durante la pre-entrega.
+              ● En el paso 2 te pediremos estado del proyecto, fecha estimada de entrega y detalles del pie en cuotas para proyectar el flujo durante la pre-entrega.
             </p>
           )}
         </div>
@@ -161,7 +161,7 @@ export function Paso1Propiedad({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Superficie útil interior, sin incluir terraza ni espacios comunes. Si tu propiedad publica «superficie total», réstale la terraza."
+              content="Superficie del depto en m². Si tienes ambos datos, prefiere la útil (interior, sin terraza)."
             />
           </div>
           <div className="relative">
