@@ -174,12 +174,32 @@ export function Paso2Financiamiento({
               <button
                 key={e}
                 type="button"
-                onClick={() => setState({
-                  estadoVenta: e,
-                  // Limpiar fecha si vuelve a inmediata (defensivo, igual que modal viejo)
-                  fechaEntregaMes: e === "inmediata" ? "" : state.fechaEntregaMes,
-                  fechaEntregaAnio: e === "inmediata" ? "" : state.fechaEntregaAnio,
-                })}
+                onClick={() => {
+                  if (e === "inmediata") {
+                    // Limpiar fecha (defensivo, igual que modal viejo).
+                    setState({
+                      estadoVenta: e,
+                      fechaEntregaMes: "",
+                      fechaEntregaAnio: "",
+                    });
+                  } else {
+                    // Prefill fecha = hoy + 24 meses si vacía.
+                    const future = new Date();
+                    future.setMonth(future.getMonth() + 24);
+                    const defaultMes = String(future.getMonth() + 1).padStart(2, "0");
+                    const defaultAnio = String(future.getFullYear());
+                    const newMes = state.fechaEntregaMes || defaultMes;
+                    const newAnio = state.fechaEntregaAnio || defaultAnio;
+                    // Prefill cuotasPie = mesesHastaEntrega(fechaResuelta) si vacío.
+                    const newCuotas = state.cuotasPie || String(mesesHastaEntrega(newMes, newAnio));
+                    setState({
+                      estadoVenta: e,
+                      fechaEntregaMes: newMes,
+                      fechaEntregaAnio: newAnio,
+                      cuotasPie: newCuotas,
+                    });
+                  }
+                }}
                 className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                   state.estadoVenta === e
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
@@ -281,7 +301,17 @@ export function Paso2Financiamiento({
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setState({ pieModoPago: m })}
+                  onClick={() => {
+                    if (m === "cuotas") {
+                      // Prefill 12 cuotas (1 año) en inmediata si vacío.
+                      setState({
+                        pieModoPago: m,
+                        cuotasPie: state.cuotasPie || "12",
+                      });
+                    } else {
+                      setState({ pieModoPago: m });
+                    }
+                  }}
                   className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                     state.pieModoPago === m
                       ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
