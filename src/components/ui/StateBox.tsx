@@ -1,7 +1,7 @@
 import type { ReactNode, CSSProperties } from "react";
 
 export type StateBoxVariant = "left-border" | "full-border";
-export type StateBoxState = "positive" | "warning" | "negative" | "neutral" | "info";
+export type StateBoxState = "positive" | "warning" | "negative" | "neutral" | "info" | "attention";
 
 interface StateBoxProps {
   variant: StateBoxVariant;
@@ -15,13 +15,16 @@ interface StateBoxProps {
 // Color expression per state. positive/warning use theme-aware CSS variables so they
 // adapt between dark and light modes; negative uses the invariant Signal Red; neutral
 // maps to the current text color (so it flips between off-white/ink across modes);
-// info is a fixed zinc that reads in both.
+// info is a fixed zinc that reads in both. attention is the Ink-only formal replacement
+// for amber alerts per Capa 1 binaria del skill (Ink + Signal Red exclusivamente);
+// usar attention cuando se necesita llamar la atención sin Signal Red ni amber.
 const STATE_COLORS: Record<StateBoxState, string> = {
   positive: "var(--franco-v-buy)",
   warning: "var(--franco-v-adjust)",
   negative: "#C8323C",
   neutral: "var(--franco-text)",
   info: "#71717A",
+  attention: "var(--franco-text-secondary)",
 };
 
 function mix(color: string, pct: number): string {

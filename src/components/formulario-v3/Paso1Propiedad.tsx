@@ -148,6 +148,11 @@ export function Paso1Propiedad({
               </button>
             ))}
           </div>
+          {state.tipoPropiedad === "nuevo" && (
+            <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+              ● Te pediremos fecha estimada de entrega y detalles del pie en cuotas para proyectar el flujo durante la pre-entrega.
+            </p>
+          )}
         </div>
         <div>
           <div className="flex items-center gap-1.5 mb-1.5">

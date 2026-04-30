@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { StateBox } from "@/components/ui/StateBox";
 import {
   calcDividendo,
   fmtCLP,
@@ -164,6 +166,30 @@ export function Paso2Financiamiento({
               : ""}
           </p>
         )}
+        {/* Validación suave: precio/m² del usuario vs promedio de zona.
+            Solo si > 30% deviación. Ink-only (Capa 1 binaria, sin Signal Red
+            ni amber). NO bloquea el flujo, solo invita a verificar. */}
+        {(() => {
+          if (!(superficie > 0 && precioUF > 0 && precioM2UF && precioM2UF > 0)) return null;
+          const userM2 = precioUF / superficie;
+          const dev = (userM2 - precioM2UF) / precioM2UF;
+          if (Math.abs(dev) <= 0.30) return null;
+          const pct = Math.round(Math.abs(dev) * 100);
+          const direccion = dev > 0 ? "por encima" : "por debajo";
+          const comuna = state.comuna || "la zona";
+          return (
+            <div className="mt-3">
+              <StateBox variant="left-border" state="attention" label="Atención">
+                <span className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+                  <span>
+                    El precio por m² ingresado está un {pct}% {direccion} del promedio de {comuna}. Verifica que el dato sea correcto antes de continuar.
+                  </span>
+                </span>
+              </StateBox>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── Estado del proyecto (solo nuevo) ── */}
