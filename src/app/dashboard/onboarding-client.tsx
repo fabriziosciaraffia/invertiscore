@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-type PlanKey = "free" | "pro" | "pack3" | "subscription";
+type PlanKey = "demo" | "plan10" | "planPro";
 
 interface PlanConfig {
   key: PlanKey;
@@ -17,34 +17,28 @@ interface PlanConfig {
 
 const PLANS: PlanConfig[] = [
   {
-    key: "free",
-    label: "GRATIS",
+    key: "demo",
+    label: "DEMO",
     price: "$0",
-    desc: ["Análisis básico", "sin panel de ajustes"],
+    desc: ["1 análisis para probar", "sin tarjeta"],
     ctaText: "Analizar mi primer departamento →",
   },
   {
-    key: "pro",
-    label: "PRO",
-    price: "$4.990",
-    desc: ["Análisis completo", "+ panel de ajustes"],
-    popular: true,
-    ctaText: "Comprar Pro y analizar →",
-  },
-  {
-    key: "pack3",
-    label: "PACK 3×",
-    price: "$9.990",
-    desc: ["3 análisis Pro", "al precio de 2"],
-    ctaText: "Comprar Pack y analizar →",
-  },
-  {
-    key: "subscription",
-    label: "MENSUAL",
-    price: "$19.990",
+    key: "plan10",
+    label: "PLAN 10",
+    price: "$49.990",
     priceSuffix: "/mes",
-    desc: ["Análisis ilimitados", "+ todas las variables"],
-    ctaText: "Suscribirme y analizar →",
+    desc: ["10 análisis al mes", "para inversionistas activos"],
+    popular: true,
+    ctaText: "Ver más planes →",
+  },
+  {
+    key: "planPro",
+    label: "PLAN PRO",
+    price: "$499.990",
+    priceSuffix: "/mes",
+    desc: ["Análisis ilimitados", "para profesionales"],
+    ctaText: "Ver más planes →",
   },
 ];
 
@@ -67,46 +61,14 @@ export function OnboardingClient() {
     setLoading(true);
     await markOnboardingComplete();
 
-    if (selected === "free") {
+    // demo → analizar directo. plan10/planPro → /pricing (backend de pagos
+    // para los nuevos productos aún no existe; redirigir mantiene el flow
+    // honesto hasta que se implementen).
+    if (selected === "demo") {
       router.push("/analisis/nuevo-v2");
       return;
     }
-
-    if (selected === "subscription") {
-      try {
-        const res = await fetch("/api/subscriptions/create", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-          return;
-        }
-      } catch {
-        // fall through
-      }
-      router.push("/checkout?product=subscription");
-      return;
-    }
-
-    // pro / pack3 → /api/payments/create
-    try {
-      const res = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product: selected }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
-    } catch {
-      // fall through
-    }
-    router.push(`/checkout?product=${selected}`);
+    router.push("/pricing");
   }
 
   async function handleSecondary() {
@@ -227,7 +189,7 @@ export function OnboardingClient() {
           Elige cómo analizar
         </p>
 
-        <div className="mt-5 grid grid-cols-1 gap-[10px] sm:grid-cols-2 md:grid-cols-4">
+        <div className="mt-5 grid grid-cols-1 gap-[10px] sm:grid-cols-3">
           {PLANS.map((plan) => {
             const isSelected = selected === plan.key;
             const isPro = plan.popular;

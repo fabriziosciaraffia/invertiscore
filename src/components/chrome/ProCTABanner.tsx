@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
 
 const STORAGE_KEY = "franco_pro_cta_dismissed_at";
-const DEFAULT_THRESHOLD = 3;
+const DEFAULT_THRESHOLD = 1;
 const DEFAULT_DISMISS_DAYS = 7;
 
 interface ProCTABannerProps {
@@ -84,10 +84,10 @@ export function ProCTABanner({
       >
         <div className="flex-1 min-w-0">
           <p className="font-body text-sm font-bold text-[var(--franco-text)] m-0 leading-snug">
-            Decidí mejor con datos completos
+            Más análisis con Franco
           </p>
           <p className="hidden sm:block font-body text-[12px] text-[var(--franco-text-secondary)] m-0 leading-snug mt-0.5">
-            Pro desbloquea simulaciones, comparativas y exportación PDF
+            Créditos sin vencimiento o suscripción con 30% off anual
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export function ProCTABanner({
             onClick={handleClickPro}
             className="bg-signal-red text-white font-mono uppercase text-[11px] font-semibold tracking-[0.06em] px-4 py-2 rounded-md hover:bg-signal-red/90 transition-colors"
           >
-            Ver Pro →
+            Ver planes →
           </Link>
           <button
             type="button"

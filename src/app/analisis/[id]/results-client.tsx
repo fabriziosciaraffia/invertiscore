@@ -3285,59 +3285,48 @@ export function PremiumResults({
           </div>
         </div>
       </div>
-      {currentAccess === 'subscriber' ? (
-        <div>
-          <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Cuánto genera</h4>
-          <div className="space-y-1">
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[var(--franco-text)]">Arriendo</label>
-                <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-              </div>
-              <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+      <div>
+        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Cuánto genera</h4>
+        <div className="space-y-1">
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Arriendo</label>
+              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
             </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[var(--franco-text)]">GGCC</label>
-                <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-              </div>
-              <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">GGCC</label>
+              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
             </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[var(--franco-text)]">Contrib. /trim</label>
-                <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-              </div>
-              <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Contrib. /trim</label>
+              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
             </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[var(--franco-text)]">Vacancia</label>
-                <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjVacanciaPct}%</span>
-              </div>
-              <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-              <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Vacancia</label>
+              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjVacanciaPct}%</span>
             </div>
-            <div>
-              <div className="flex items-center justify-between">
-                <label className="font-body text-sm font-medium text-[var(--franco-text)]">Administración</label>
-                <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjAdminPct}%</span>
-              </div>
-              <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-              <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
+            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+            <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Administración</label>
+              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjAdminPct}%</span>
             </div>
+            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
+            <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
           </div>
         </div>
-      ) : (
-        <div className="mt-4 p-3 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] text-center">
-          <p className="text-[var(--franco-text-muted)] text-xs mb-2 font-body leading-relaxed">
-            Desbloquea arriendo, vacancia y más variables con la suscripción mensual
-          </p>
-          <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-signal-red text-xs font-medium hover:underline font-body">
-            Ver planes →
-          </a>
-        </div>
-      )}
+      </div>
     </div>
   ) : null;
 
@@ -3354,16 +3343,6 @@ export function PremiumResults({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const projectionFields = hasPanelContent ? (
-    currentAccess !== 'subscriber' ? (
-      <div className="p-3 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] text-center">
-        <p className="text-[var(--franco-text-muted)] text-xs mb-2 font-body leading-relaxed">
-          Las proyecciones dinámicas (plusvalía, crecimiento) están disponibles con la suscripción mensual
-        </p>
-        <a href="/pricing" onClick={() => { posthog?.capture('pro_cta_clicked', { source: 'results' }); }} className="text-signal-red text-xs font-medium hover:underline font-body">
-          Ver planes →
-        </a>
-      </div>
-    ) : (
     <div className="space-y-3">
       <div>
         <div className="flex items-center justify-between">
@@ -3398,7 +3377,6 @@ export function PremiumResults({
         <p className="mt-0.5 text-[10px] text-[var(--franco-text-secondary)]">Aplica a GGCC, contribuciones y mantención</p>
       </div>
     </div>
-    )
   ) : null;
 
   // Paneles laterales eliminados (Fase 3). Capa 1+2 usan siempre valores del
