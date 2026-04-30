@@ -31,9 +31,10 @@ export interface WizardV3State {
 
   // Paso 2 — visibles
   precio: string;                    // valor en UF (string por control de input)
-  piePct: string;                    // %
+  piePct: string;                    // % — auto-derivado en Nuevo cuando user edita cuota mensual
   pieModoPago: "contado" | "cuotas"; // solo nuevo+inmediata
   cuotasPie: string;                 // cuando cuotas o futura
+  montoCuotaPieUF: string;           // input controlado en Nuevo (UF/cuota); vacío = derivar de piePct
 
   // Paso 2 — ocultos con default
   plazoCredito: string;
@@ -76,6 +77,7 @@ export const DEFAULT_STATE: WizardV3State = {
   piePct: "20",
   pieModoPago: "contado",
   cuotasPie: "",
+  montoCuotaPieUF: "",
   plazoCredito: "25",
   tasaInteres: "4.72",
   modalidad: null,

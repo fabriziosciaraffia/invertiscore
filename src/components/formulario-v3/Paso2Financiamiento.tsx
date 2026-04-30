@@ -8,9 +8,15 @@ import {
   fmtCLP,
   fmtCLPShort,
   mesesHastaEntrega,
+  parseDecimalLocale,
   parseNum,
   type WizardV3State,
 } from "./wizardV3State";
+
+function fmtPiePct(pct: number): string {
+  if (Number.isInteger(pct)) return String(pct);
+  return (Math.round(pct * 10) / 10).toString().replace(".", ",");
+}
 
 const MESES_ES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -75,6 +81,44 @@ export function Paso2Financiamiento({
 
   const inputBase =
     "w-full h-10 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
+
+  // ─── Pie auto-derivado para Nuevo ──────────────────────
+  // En Nuevo el user edita Cuotas y/o Cuota mensual (UF). piePct se calcula
+  // como `(montoUF × cuotas / precio) × 100`. Source of truth para el motor
+  // sigue siendo `piePct`; `montoCuotaPieUF` es buffer de UI.
+  const cuotasNum = Number(state.cuotasPie) || mesesSugeridos || 1;
+  const cuotaUFDerived = precioUF > 0 && cuotasNum > 0
+    ? (precioUF * piePct / 100 / cuotasNum)
+    : 0;
+  const cuotaUFDisplay = state.montoCuotaPieUF !== ""
+    ? state.montoCuotaPieUF
+    : cuotaUFDerived > 0
+      ? cuotaUFDerived.toFixed(2).replace(".", ",")
+      : "";
+
+  // TODO: si user editó monto y luego cambia precio, piePct chip puede
+  // divergir levemente. Trade-off conocido, no es bug.
+  function handleCuotasChange(v: string) {
+    const cuotas = Number(v) || 0;
+    const monto = parseDecimalLocale(state.montoCuotaPieUF);
+    if (cuotas > 0 && monto > 0 && precioUF > 0) {
+      const newPiePct = (monto * cuotas / precioUF) * 100;
+      setState({ cuotasPie: v, piePct: newPiePct.toFixed(4) });
+    } else {
+      setState({ cuotasPie: v });
+    }
+  }
+
+  function handleMontoChange(v: string) {
+    const monto = parseDecimalLocale(v);
+    const cuotas = Number(state.cuotasPie) || 0;
+    if (monto > 0 && cuotas > 0 && precioUF > 0) {
+      const newPiePct = (monto * cuotas / precioUF) * 100;
+      setState({ montoCuotaPieUF: v, piePct: newPiePct.toFixed(4) });
+    } else {
+      setState({ montoCuotaPieUF: v });
+    }
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -191,94 +235,107 @@ export function Paso2Financiamiento({
       )}
 
       {/* ── Pie ── */}
-      <div>
-        <div className="flex items-center justify-between mb-1.5">
-          <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
-            Pie
-          </label>
-          <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-            {piePct}% · {pieCLP > 0 ? fmtCLPShort(pieCLP) : "$—"}
-          </span>
-        </div>
-        <input
-          type="range"
-          min={10}
-          max={50}
-          step={5}
-          value={piePct}
-          onChange={(e) => setState({ piePct: e.target.value })}
-          className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
-        />
-        <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
-          <span>10%</span>
-          <span>20%</span>
-          <span>30%</span>
-          <span>40%</span>
-          <span>50%</span>
-        </div>
-      </div>
-
-      {/* ── Modo de pago del pie ── */}
-      {state.tipoPropiedad === "nuevo" && state.estadoVenta === "inmediata" && (
+      {state.tipoPropiedad === "usado" ? (
         <div>
-          <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-            ¿Cómo pagas el pie?
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            {(["contado", "cuotas"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setState({ pieModoPago: m })}
-                className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
-                  state.pieModoPago === m
-                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
-                }`}
-              >
-                {m === "contado" ? "Contado" : "En cuotas"}
-              </button>
-            ))}
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Pie
+            </label>
+            <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
+              {piePct}% · {pieCLP > 0 ? fmtCLPShort(pieCLP) : "$—"}
+            </span>
           </div>
-          {state.pieModoPago === "cuotas" && (
-            <div className="mt-3">
-              <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
-                ¿Cuántas cuotas?
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={84}
-                placeholder="12"
-                className={inputBase}
-                value={state.cuotasPie}
-                onChange={(e) => setState({ cuotasPie: e.target.value })}
-              />
+          <input
+            type="range"
+            min={10}
+            max={50}
+            step={5}
+            value={piePct}
+            onChange={(e) => setState({ piePct: e.target.value })}
+            className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+          />
+          <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+            <span>10%</span>
+            <span>20%</span>
+            <span>30%</span>
+            <span>40%</span>
+            <span>50%</span>
+          </div>
+        </div>
+      ) : (
+        <div>
+          {/* Chip readonly: piePct auto-derivado + pie absoluto en UF */}
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Pie
+            </label>
+            <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
+              {fmtPiePct(piePct)}% · {precioUF > 0 ? `UF ${(Math.round((precioUF * piePct / 100) * 10) / 10).toLocaleString("es-CL")}` : "—"}
+            </span>
+          </div>
+
+          {/* Toggle Contado/Cuotas (solo inmediata) */}
+          {state.estadoVenta === "inmediata" && (
+            <div className="grid grid-cols-2 gap-2">
+              {(["contado", "cuotas"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setState({ pieModoPago: m })}
+                  className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
+                    state.pieModoPago === m
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
+                  }`}
+                >
+                  {m === "contado" ? "Contado" : "En cuotas"}
+                </button>
+              ))}
             </div>
           )}
-        </div>
-      )}
 
-      {/* ── Cuotas futura (editable) ── */}
-      {state.tipoPropiedad === "nuevo" && state.estadoVenta === "futura" && mesesSugeridos > 0 && (
-        <div>
-          <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Cuotas del pie
-          </label>
-          <input
-            type="number"
-            inputMode="numeric"
-            min={1}
-            max={84}
-            placeholder={String(mesesSugeridos)}
-            className={inputBase}
-            value={state.cuotasPie}
-            onChange={(e) => setState({ cuotasPie: e.target.value })}
-          />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-            Sugerido: {mesesSugeridos} cuotas (hasta entrega)
-          </p>
+          {/* Inputs cuotas + cuota mensual UF.
+              Visible cuando: futura (siempre) o inmediata+cuotas. */}
+          {(state.estadoVenta === "futura" || (state.estadoVenta === "inmediata" && state.pieModoPago === "cuotas")) && (
+            <div className={state.estadoVenta === "inmediata" ? "mt-3 grid grid-cols-2 gap-3" : "grid grid-cols-2 gap-3"}>
+              <div>
+                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
+                  Cuotas del pie
+                </label>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={84}
+                  placeholder={String(mesesSugeridos || 1)}
+                  className={inputBase}
+                  value={state.cuotasPie}
+                  onChange={(e) => handleCuotasChange(e.target.value)}
+                />
+                {state.estadoVenta === "futura" && mesesSugeridos > 0 && (
+                  <p className="font-mono text-[11px] mt-1 m-0 text-[var(--franco-text-secondary)]">
+                    ● Sugerido: {mesesSugeridos} (hasta entrega)
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1">
+                  Cuota mensual (UF)
+                </label>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="—"
+                  className={inputBase}
+                  value={cuotaUFDisplay}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === "" || /^\d*[.,]?\d*$/.test(v)) handleMontoChange(v);
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
 
