@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import FrancoLogo from "@/components/franco-logo";
 
 const STEPS = [
   "Comparando propiedades cercanas",
@@ -33,7 +34,13 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
   }, [isDataReady]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[var(--franco-bg)]">
+    // Overlay fixed full-page: cubre cualquier contenido detrás (results-client
+    // inner usage durante carga de aiAnalysis tenía secciones visibles abajo).
+    // bg opaco — no semi-transparente — para no exponer el layout subyacente.
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8 overflow-y-auto"
+      style={{ background: "var(--franco-bg)" }}
+    >
       <div
         className="w-full max-w-md"
         style={{
@@ -43,28 +50,11 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
           padding: "32px 28px",
         }}
       >
-        {/* Wordmark refranco.ai */}
-        <div
-          className="text-center m-0 mb-3"
-          style={{
-            fontFamily: "var(--font-heading), Georgia, serif",
-            fontSize: 28,
-            color: "var(--franco-text)",
-            lineHeight: 1,
-          }}
-        >
-          <span style={{ fontStyle: "italic", fontWeight: 400, opacity: 0.32 }}>re</span>
-          <span style={{ fontWeight: 700 }}>franco</span>
-          <span
-            style={{
-              fontFamily: "var(--font-body), system-ui, sans-serif",
-              fontSize: 20,
-              fontWeight: 600,
-              color: "var(--signal-red)",
-            }}
-          >
-            .ai
-          </span>
+        {/* Wordmark canónico (FrancoLogo): 're' italic ghost + 'franco' bold
+            + '.ai' Sans semibold Signal Red @ 0.35em. Reusamos el componente
+            para garantizar exact match con header en producción. */}
+        <div className="flex justify-center mb-3">
+          <FrancoLogo size="lg" />
         </div>
 
         {/* Tagline italic */}
