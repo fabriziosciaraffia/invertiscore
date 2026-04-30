@@ -7,6 +7,7 @@ import { usePostHog } from "posthog-js/react";
 import { Loader2 } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
@@ -392,6 +393,13 @@ export default function NuevoAnalisisV3Page() {
     2: { title: "¿Cómo la compras?", sub: "Precio y pie. Tasa y plazo los asignamos nosotros — podrás ajustarlos en el siguiente paso." },
     3: { title: "Último paso", sub: "Confirma la modalidad y revisa el resumen." },
   }[step];
+
+  // Overlay full-page durante submit (30-60s). Cubre la ventana real sin
+  // feedback — el POST /api/analisis tarda en server-side y antes el user
+  // veía solo un spinner inline en el botón "Analizar ahora".
+  if (submitting) {
+    return <LoadingEditorial />;
+  }
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">

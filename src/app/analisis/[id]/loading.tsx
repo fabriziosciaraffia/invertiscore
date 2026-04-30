@@ -1,9 +1,5 @@
-import { LoadingFranco } from "@/components/analysis/LoadingFranco";
+import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 
 export default function AnalisisLoading() {
-  return (
-    <div className="min-h-screen bg-[var(--franco-bg)]">
-      <LoadingFranco />
-    </div>
-  );
+  return <LoadingEditorial />;
 }

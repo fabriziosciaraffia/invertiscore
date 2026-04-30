@@ -1,0 +1,146 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+const STEPS = [
+  "Comparando propiedades cercanas",
+  "Calculando dividendo, contribuciones y vacancia",
+  "Proyectando flujo y plusvalía a 10 años",
+  "Generando análisis de zona y POIs",
+  "Redactando veredicto final",
+];
+
+// Timing por step (ms desde mount). Index 0 está activo en t=0.
+const STEP_TRIGGERS_MS = [6000, 15000, 30000, 45000];
+
+interface LoadingEditorialProps {
+  isDataReady?: boolean;
+}
+
+export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps) {
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const timers = STEP_TRIGGERS_MS.map((t, i) =>
+      setTimeout(() => setActiveIdx((s) => Math.max(s, i + 1)), t),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  // Si los datos están listos, saltar al último step.
+  useEffect(() => {
+    if (isDataReady) setActiveIdx(STEPS.length - 1);
+  }, [isDataReady]);
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-[var(--franco-bg)]">
+      <div
+        className="w-full max-w-md"
+        style={{
+          background: "var(--franco-card)",
+          border: "0.5px solid var(--franco-border)",
+          borderRadius: 12,
+          padding: "32px 28px",
+        }}
+      >
+        {/* Wordmark refranco.ai */}
+        <div
+          className="text-center m-0 mb-3"
+          style={{
+            fontFamily: "var(--font-heading), Georgia, serif",
+            fontSize: 28,
+            color: "var(--franco-text)",
+            lineHeight: 1,
+          }}
+        >
+          <span style={{ fontStyle: "italic", fontWeight: 400, opacity: 0.32 }}>re</span>
+          <span style={{ fontWeight: 700 }}>franco</span>
+          <span
+            style={{
+              fontFamily: "var(--font-body), system-ui, sans-serif",
+              fontSize: 20,
+              fontWeight: 600,
+              color: "var(--signal-red)",
+            }}
+          >
+            .ai
+          </span>
+        </div>
+
+        {/* Tagline italic */}
+        <p
+          className="text-center m-0 mb-7"
+          style={{
+            fontFamily: "var(--font-heading), Georgia, serif",
+            fontStyle: "italic",
+            fontSize: 17,
+            lineHeight: 1.4,
+            color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
+          }}
+        >
+          Estamos siendo francos con tu inversión.
+        </p>
+
+        {/* Lista de estados */}
+        <ul className="list-none m-0 p-0 flex flex-col gap-2.5">
+          {STEPS.map((label, i) => {
+            const isActive = i === activeIdx;
+            const isDone = i < activeIdx;
+            const dotBg = isActive
+              ? "var(--signal-red)"
+              : isDone
+                ? "var(--franco-text)"
+                : "color-mix(in srgb, var(--franco-text) 20%, transparent)";
+            const textOpacity = isActive ? 1 : isDone ? 0.85 : 0.35;
+            const textWeight = isActive ? 500 : 400;
+
+            return (
+              <li
+                key={i}
+                className="flex items-center gap-3"
+                style={{
+                  fontFamily: "var(--font-mono), monospace",
+                  fontSize: 12,
+                  color: "var(--franco-text)",
+                  opacity: textOpacity,
+                  fontWeight: textWeight,
+                }}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${isActive ? "loading-pulse-dot" : ""}`}
+                  style={{ background: dotBg }}
+                  aria-hidden="true"
+                />
+                <span>{label}</span>
+              </li>
+            );
+          })}
+        </ul>
+
+        {/* Footer disclaimer */}
+        <div className="mt-7 pt-4" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
+          <p
+            className="text-center m-0 font-mono uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.06em",
+              color: "var(--franco-text-tertiary)",
+            }}
+          >
+            Esto puede tomar hasta 60 segundos · No cierres la página
+          </p>
+        </div>
+
+        <style jsx>{`
+          .loading-pulse-dot {
+            animation: loadingPulse 1.4s ease-in-out infinite;
+          }
+          @keyframes loadingPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+}

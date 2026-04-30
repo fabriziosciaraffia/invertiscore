@@ -20,7 +20,7 @@ import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import { StateBox } from "@/components/ui/StateBox";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
-import { LoadingFranco } from "@/components/analysis/LoadingFranco";
+import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
@@ -1867,7 +1867,7 @@ function DashboardAnalysisSection({
   if (showLoading) {
     return (
       <div id="informe-pro-section" className="mb-8 rounded-[16px] overflow-hidden">
-        <LoadingFranco isDataReady={hasReadyData} />
+        <LoadingEditorial isDataReady={hasReadyData} />
       </div>
     );
   }
