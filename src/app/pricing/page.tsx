@@ -5,8 +5,8 @@ import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
 import { Check, ChevronDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
 import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 import type { User } from "@supabase/supabase-js";
 
 // ─── FadeIn ─────────────────────────────────────────
@@ -300,48 +300,36 @@ export default function PricingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--franco-border)] bg-[var(--franco-bg)] py-9 px-6">
-        <div className="max-w-[780px] mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-start gap-8">
+      <AppFooter
+        variant="rich"
+        linksSlot={
+          <div className="flex gap-9 flex-wrap">
             <div>
-              <FrancoLogo inverted size="header" href="/" />
-              <p className="font-mono text-[8px] text-white/25 uppercase tracking-[0.1em] mt-1">
-                RE FRANCO CON TU INVERSIÓN
-              </p>
+              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Producto</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href={ctaHref} className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Análisis gratis</Link>
+                <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Informe Pro</Link>
+                <Link href="/dashboard" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Dashboard</Link>
+              </div>
             </div>
-            <div className="flex gap-9 flex-wrap">
-              <div>
-                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Producto</p>
-                <div className="space-y-1.5">
-                  <Link href={ctaHref} className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Análisis gratis</Link>
-                  <Link href="/pricing" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Informe Pro</Link>
-                  <Link href="/dashboard" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Dashboard</Link>
-                </div>
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Empresa</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href="/about" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Sobre Franco</Link>
+                <Link href="/aprende" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Aprende</Link>
+                <Link href="/contact" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Contacto</Link>
               </div>
-              <div>
-                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Empresa</p>
-                <div className="space-y-1.5">
-                  <Link href="/about" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Sobre Franco</Link>
-                  <Link href="/aprende" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Aprende</Link>
-                  <Link href="/contact" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Contacto</Link>
-                </div>
-              </div>
-              <div>
-                <p className="font-body text-[9px] text-white/25 uppercase tracking-[0.1em] mb-2">Legal</p>
-                <div className="space-y-1.5">
-                  <Link href="/terms" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Términos</Link>
-                  <Link href="/privacy" className="block font-body text-[11px] text-white/45 hover:text-white/70 transition-colors">Privacidad</Link>
-                </div>
+            </div>
+            <div>
+              <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Legal</p>
+              <div className="flex flex-col gap-1.5">
+                <Link href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Términos</Link>
+                <Link href="/privacy" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Privacidad</Link>
               </div>
             </div>
           </div>
-          <div className="border-t border-[var(--franco-border)] mt-6 pt-3.5">
-            <p className="font-body text-[10px] text-[var(--franco-text-muted)]">
-              © 2026 refranco.ai — No somos asesores financieros. Somos francos.
-            </p>
-          </div>
-        </div>
-      </footer>
+        }
+      />
     </div>
   );
 }

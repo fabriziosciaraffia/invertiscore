@@ -6,6 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,11 +37,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--franco-bg)] px-4">
+    <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
       <div className="fixed top-4 right-4 z-50">
         <ThemeToggle />
       </div>
-<div className="w-full max-w-md">
+      <div className="flex flex-1 items-center justify-center px-4 py-8">
+        <div className="w-full max-w-md">
         <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">
           <form onSubmit={handleLogin}>
             {/* Header */}
@@ -142,7 +144,9 @@ export default function LoginPage() {
         <div className="mt-6 text-center font-body text-[11px] text-[var(--franco-text-secondary)]">
           Tu corredor gana si compras. Franco gana si decides bien.
         </div>
+        </div>
       </div>
+      <AppFooter variant="minimal" />
     </div>
   );
 }

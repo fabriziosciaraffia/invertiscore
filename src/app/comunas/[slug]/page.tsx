@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
 import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 export const revalidate = 86400;
 
@@ -246,11 +247,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
       </main>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-[var(--franco-border)] py-8 text-center">
-        <p className="font-body text-xs text-[var(--franco-text-muted)]">
-          Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
-        </p>
-      </footer>
+      <AppFooter variant="minimal" />
     </div>
   );
 }

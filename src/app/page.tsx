@@ -1,6 +1,7 @@
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
 import { AppNav } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 import WaitlistForm from "@/components/waitlist-form";
 
 export const revalidate = 86400;
@@ -102,15 +103,7 @@ export default async function ProximamentePage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="border-t py-8 text-center" style={{ borderColor: "var(--franco-border)" }}>
-        <div className="flex justify-center mb-4">
-          <FrancoLogo size="md" inverted showTagline />
-        </div>
-        <p className="font-body text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
-          Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
-        </p>
-      </footer>
+      <AppFooter variant="minimal" />
     </div>
   );
 }

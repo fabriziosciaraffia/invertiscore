@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import FrancoLogo from "@/components/franco-logo";
 import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 interface FAQItem {
   q: string;
@@ -168,17 +168,17 @@ export default function FAQPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--franco-border)] bg-[var(--franco-bg)] py-6 px-6">
-        <div className="max-w-[600px] mx-auto flex items-center justify-between">
-          <FrancoLogo size="sm" href="/" inverted />
-          <div className="flex gap-4">
-            <Link href="/pricing" className="font-body text-[10px] text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors">Precios</Link>
-            <Link href="/terms" className="font-body text-[10px] text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors">Términos</Link>
-            <Link href="/privacy" className="font-body text-[10px] text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors">Privacidad</Link>
-            <Link href="/contact" className="font-body text-[10px] text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors">Contacto</Link>
+      <AppFooter
+        variant="minimal"
+        linksSlot={
+          <div className="flex flex-wrap gap-4">
+            <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Precios</Link>
+            <Link href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Términos</Link>
+            <Link href="/privacy" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Privacidad</Link>
+            <Link href="/contact" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Contacto</Link>
           </div>
-        </div>
-      </footer>
+        }
+      />
     </div>
   );
 }

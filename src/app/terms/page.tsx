@@ -1,5 +1,5 @@
-import FrancoLogo from "@/components/franco-logo";
 import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 export default function TermsPage() {
   return (
@@ -97,19 +97,7 @@ export default function TermsPage() {
         </div>
       </main>
 
-      <footer className="bg-[var(--franco-bg)] py-9 px-6">
-        <div className="max-w-[640px] mx-auto">
-          <FrancoLogo inverted size="header" href="/" />
-          <p className="font-mono text-[8px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em] mt-1">
-            RE FRANCO CON TU INVERSIÓN
-          </p>
-          <div className="border-t border-[var(--franco-border)] mt-6 pt-3.5">
-            <p className="font-body text-[10px] text-[var(--franco-text-muted)]">
-              © 2026 refranco.ai — No somos asesores financieros. Somos francos.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <AppFooter variant="rich" />
     </div>
   );
 }

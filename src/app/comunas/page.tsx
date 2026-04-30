@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { AppFooter } from "@/components/chrome/AppFooter";
 
 export const revalidate = 86400; // ISR: 24 hours
 
@@ -116,11 +117,7 @@ export default async function ComunasIndexPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[var(--franco-border)] py-8 text-center">
-        <p className="font-body text-xs text-[var(--franco-text-muted)]">
-          Análisis informativo, no constituye asesoría de inversión. Datos actualizados semanalmente desde fuentes públicas.
-        </p>
-      </footer>
+      <AppFooter variant="minimal" />
     </div>
   );
 }
