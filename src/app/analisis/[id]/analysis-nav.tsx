@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Menu, X, Share2 } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
+import { ArrowLeft, Share2 } from "lucide-react";
 import { ShareButton } from "./share-button";
 import { DeleteButton } from "./delete-button";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 
 export function AnalysisNav({
   userId,
@@ -25,105 +23,35 @@ export function AnalysisNav({
   isSharedView?: boolean;
 }) {
   const isGuest = !userId;
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    function handleClickOutside(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [menuOpen]);
-
-  return (
-    <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-      <div className="container mx-auto flex h-14 items-center justify-between px-4">
-        <FrancoLogo size="header" href="/" inverted />
-
-        {/* Desktop */}
-        <div className="hidden items-center gap-2 md:flex">
-          {isGuest ? (
-            <>
-              <Link href="/register" title="Regístrate para compartir este análisis">
-                <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)]">
-                  <Share2 className="h-4 w-4" /> Compartir
-                </Button>
-              </Link>
-              <Link href="/register">
-                <Button size="sm" className="gap-2 bg-signal-red text-white hover:bg-signal-red/90">
-                  Registrarme gratis
-                </Button>
-              </Link>
-            </>
-          ) : (
-            <>
-              <ShareButton id={analysisId} score={score} nombre={nombre} comuna={comuna} />
-              {!isSharedView && <DeleteButton id={analysisId} />}
-              <Link href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"}>
-                <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]">
-                  <ArrowLeft className="h-4 w-4" /> {isSharedView ? "Analizar mi depto" : "Dashboard"}
-                </Button>
-              </Link>
-            </>
-          )}
-          <ThemeToggle />
-        </div>
-
-        {/* Mobile: toggle + hamburger */}
-        <div className="flex items-center gap-1 md:hidden">
-          <ThemeToggle />
-          <div className="relative" ref={menuRef}>
-          <button
-            className="p-2 text-[var(--franco-text-secondary)]"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Menú"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-
-          {menuOpen && (
-            <div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-3 shadow-lg">
-              <div className="flex flex-col gap-1">
-                {isGuest ? (
-                  <>
-                    <Link href="/register" onClick={() => setMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-[var(--franco-text-secondary)]">
-                        <Share2 className="h-4 w-4" /> Compartir
-                      </Button>
-                    </Link>
-                    <Link href="/register" onClick={() => setMenuOpen(false)}>
-                      <Button size="sm" className="w-full gap-2 bg-[var(--franco-bg)] text-[var(--franco-text)] hover:opacity-90">
-                        Registrarme gratis
-                      </Button>
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <div onClick={() => setMenuOpen(false)}>
-                      <ShareButton id={analysisId} score={score} nombre={nombre} comuna={comuna} />
-                    </div>
-                    {!isSharedView && (
-                      <div onClick={() => setMenuOpen(false)}>
-                        <DeleteButton id={analysisId} />
-                      </div>
-                    )}
-                    <Link href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"} onClick={() => setMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start gap-2">
-                        <ArrowLeft className="h-4 w-4" /> {isSharedView ? "Analizar mi depto" : "Dashboard"}
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
-      </div>
-    </nav>
+  // ctaSlot se renderiza inline tanto en desktop como mobile via AppNav.
+  // ShareButton/DeleteButton son client components con UI propia (dropdowns/
+  // confirmaciones internas) — no fitean el API simple de mobileMenuItems.
+  // Los labels usan `hidden sm:inline` para compactar mobile.
+  const ctaSlot = isGuest ? (
+    <div className="flex items-center gap-2">
+      <Link href="/register" title="Regístrate para compartir este análisis">
+        <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)]">
+          <Share2 className="h-4 w-4" /> <span className="hidden sm:inline">Compartir</span>
+        </Button>
+      </Link>
+      <Link href="/register">
+        <Button size="sm" className="gap-2 bg-signal-red text-white hover:bg-signal-red/90">
+          Registrarme gratis
+        </Button>
+      </Link>
+    </div>
+  ) : (
+    <div className="flex items-center gap-2">
+      <ShareButton id={analysisId} score={score} nombre={nombre} comuna={comuna} />
+      {!isSharedView && <DeleteButton id={analysisId} />}
+      <Link href={isSharedView ? "/analisis/nuevo-v2" : "/dashboard"}>
+        <Button variant="ghost" size="sm" className="gap-2 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]">
+          <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">{isSharedView ? "Analizar mi depto" : "Dashboard"}</span>
+        </Button>
+      </Link>
+    </div>
   );
+
+  return <AppNav variant="app" ctaSlot={ctaSlot} />;
 }
