@@ -5,10 +5,8 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { MapaThumbnail, type Comparable } from "./MapaThumbnail";
 import { ModalDetallesDepto } from "./ModalDetallesDepto";
-import { ModalEntregaNuevo } from "./ModalEntregaNuevo";
 import {
   previewDetalles,
-  previewEntrega,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -24,7 +22,6 @@ export function Paso1Propiedad({
   comparables?: Comparable[];
 }) {
   const [modalOpen, setModalOpen] = useState(false);
-  const [entregaOpen, setEntregaOpen] = useState(false);
   const direccionRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const autocompleteRef = useRef<any>(null);
@@ -150,33 +147,6 @@ export function Paso1Propiedad({
         </div>
       </div>
 
-      {/* ── Card Entrega del proyecto (solo nuevo) ── */}
-      {state.tipoPropiedad === "nuevo" && (
-        <div
-          className="rounded-xl p-4 flex items-center justify-between gap-3"
-          style={{
-            border: "1px dashed var(--franco-border-hover)",
-            background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
-          }}
-        >
-          <div className="min-w-0">
-            <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
-              Entrega del proyecto
-            </p>
-            <p className="font-body text-[13px] text-[var(--franco-text)] m-0 truncate">
-              {previewEntrega(state)}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setEntregaOpen(true)}
-            className="shrink-0 font-body text-[12px] font-medium text-signal-red hover:underline"
-          >
-            Ajustar entrega →
-          </button>
-        </div>
-      )}
-
       {/* ── Card Detalles del depto ── */}
       <div
         className="rounded-xl p-4 flex items-center justify-between gap-3"
@@ -205,13 +175,6 @@ export function Paso1Propiedad({
       <ModalDetallesDepto
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        state={state}
-        onSave={setState}
-      />
-
-      <ModalEntregaNuevo
-        open={entregaOpen}
-        onClose={() => setEntregaOpen(false)}
         state={state}
         onSave={setState}
       />
