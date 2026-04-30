@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useResetOnOpen } from "@/hooks/useResetOnOpen";
 import { MoneyInput } from "@/components/ui/MoneyInput";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   calcDividendo,
   fmtCLP,
@@ -282,8 +283,14 @@ function TabFinanciamiento({
         <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">{plazo} años</span>
       </label>
       <label className="block">
-        <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-          Tasa de interés anual (%)
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Tasa de interés anual (%)
+          </span>
+          <InfoTooltip
+            trigger="click"
+            content="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas para Subsidio a la Tasa, puede bajar a ~4%."
+          />
         </span>
         <input
           type="text"
@@ -325,8 +332,14 @@ function TabArriendo({
   return (
     <div className="flex flex-col gap-4">
       <label className="block">
-        <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-          Arriendo mensual ($)
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Arriendo mensual ($)
+          </span>
+          <InfoTooltip
+            trigger="click"
+            content="Calculado con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% de superficie) en la zona. Edítalo si tienes referencia distinta."
+          />
         </span>
         <MoneyInput
           className={inputBase}
@@ -363,8 +376,14 @@ function TabArriendo({
       </div>
       {nEstac > 0 && (
         <label className="block">
-          <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Arriendo estacionamiento ($/mes)
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Arriendo estacionamiento ($/mes)
+            </span>
+            <InfoTooltip
+              trigger="click"
+              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia de un arriendo real cercano."
+            />
           </span>
           <MoneyInput
             className={inputBase}
@@ -376,8 +395,14 @@ function TabArriendo({
       )}
       {nBodega > 0 && (
         <label className="block">
-          <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Arriendo bodega ($/mes)
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Arriendo bodega ($/mes)
+            </span>
+            <InfoTooltip
+              trigger="click"
+              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia distinta."
+            />
           </span>
           <MoneyInput
             className={inputBase}
@@ -401,8 +426,14 @@ function TabGastos({
   return (
     <div className="flex flex-col gap-4">
       <label className="block">
-        <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-          Gastos comunes ($/mes)
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Gastos comunes ($/mes)
+          </span>
+          <InfoTooltip
+            trigger="click"
+            content="Pago mensual a la administración del edificio. Si no sabes el valor exacto, una buena referencia es 0,7% del valor del depto al año, dividido en 12 meses."
+          />
         </span>
         <MoneyInput
           className={inputBase}
@@ -412,8 +443,14 @@ function TabGastos({
         <Suggest sugerido={suggestions.gastos} />
       </label>
       <label className="block">
-        <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-          Contribuciones (trimestral, $)
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Contribuciones (trimestral, $)
+          </span>
+          <InfoTooltip
+            trigger="click"
+            content="Impuesto territorial trimestral del SII. Deptos nuevos califican a exención DFL-2 si avalúo fiscal está bajo el umbral. Franco lo calcula automáticamente."
+          />
         </span>
         <MoneyInput
           className={inputBase}

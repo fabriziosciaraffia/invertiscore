@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Loader2, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, Check, X } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
 import { ResumenCard } from "./ResumenCard";
 import { ModalAjusteCondiciones } from "./ModalAjusteCondiciones";
@@ -50,6 +50,27 @@ export function Paso3Modalidad({
 }) {
   const [ajustarOpen, setAjustarOpen] = useState(false);
   const [mostrandoProximamente, setMostrandoProximamente] = useState<"str" | "both" | null>(null);
+
+  // Banner introductorio: dismiss persiste por sesión (sessionStorage,
+  // se limpia al cerrar la pestaña). Mount-only check.
+  const [introDismissed, setIntroDismissed] = useState(false);
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("franco_p3_intro_dismissed") === "1") {
+        setIntroDismissed(true);
+      }
+    } catch {
+      // private mode — banner reaparece esta sesión, sin persistir.
+    }
+  }, []);
+  function dismissIntro() {
+    try {
+      sessionStorage.setItem("franco_p3_intro_dismissed", "1");
+    } catch {
+      // graceful
+    }
+    setIntroDismissed(true);
+  }
 
   const mod = state.modalidad;
 
@@ -166,6 +187,25 @@ export function Paso3Modalidad({
               {" · pie "}{state.piePct}%
             </p>
           </div>
+
+          {/* Banner introductorio dismissable — pattern dot indicator
+              narrativo (Fase 4.8). sessionStorage persiste durante la
+              sesión, reset al cerrar la pestaña. */}
+          {!introDismissed && (
+            <div className="flex items-start gap-3">
+              <p className="font-mono text-[11px] m-0 flex-1 leading-[1.6] text-[var(--franco-text-secondary)]">
+                ● Estos valores son sugerencias automáticas según el mercado de tu zona. Ajústalos si tienes información más precisa de tu caso.
+              </p>
+              <button
+                type="button"
+                onClick={dismissIntro}
+                aria-label="Cerrar mensaje"
+                className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
 
           <ResumenCard
             state={state}
