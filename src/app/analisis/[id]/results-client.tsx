@@ -971,7 +971,7 @@ function Capa3Unificado({
             lineHeight: 1.5,
           }}
         >
-          Explorá distintos escenarios sin afectar tu análisis principal.
+          Explora distintos escenarios sin afectar tu análisis principal.
         </p>
 
         <div className="flex justify-end">
@@ -1029,7 +1029,7 @@ function Capa3Unificado({
               color: "var(--franco-text-secondary)",
             }}
           >
-            Explorá distintos escenarios sin afectar el análisis principal
+            Explora distintos escenarios sin afectar el análisis principal
           </p>
         </div>
         <button

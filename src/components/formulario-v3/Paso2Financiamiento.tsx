@@ -167,7 +167,7 @@ export function Paso2Financiamiento({
             <label className="font-mono text-[10px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-secondary)]">
               Estado del proyecto
             </label>
-            <InfoTooltip content="Inmediata = proyecto entregado o por entregar en menos de 6 meses. Futura = compra antes de entrega (en verde o en blanco), pagás cuotas hasta la entrega." />
+            <InfoTooltip content="Inmediata = proyecto entregado o por entregar en menos de 6 meses. Futura = compra antes de entrega (en verde o en blanco), pagas cuotas hasta la entrega." />
           </div>
           <div className="grid grid-cols-2 gap-2">
             {(["inmediata", "futura"] as const).map((e) => (

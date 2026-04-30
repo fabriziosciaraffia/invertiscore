@@ -108,7 +108,7 @@ const TIERS: Tier[] = [
     annual: null,
     qty: "Sin vencimiento",
     perAnalysis: "$9.990",
-    bullets: ["Misma experiencia Franco", "Sin vencimiento", "Pagás solo lo que usás"],
+    bullets: ["Misma experiencia Franco", "Sin vencimiento", "Pagas solo lo que usas"],
     cta: "Comprar",
     ctaHref: "/checkout?product=single",
   },
@@ -227,7 +227,7 @@ function TierCard({ tier, billing }: { tier: Tier; billing: BillingMode }) {
               className="font-mono uppercase font-semibold m-0 mt-1"
               style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--signal-red)" }}
             >
-              Ahorrás 30%
+              Ahorras 30%
             </p>
           </>
         ) : tier.monthly === 0 ? (
@@ -325,7 +325,7 @@ export default function PricingPage() {
         <div className="max-w-[900px] mx-auto text-center">
           <FadeIn>
             <h1 className="font-heading font-bold text-3xl md:text-[40px] text-[var(--franco-text)] tracking-tight leading-tight">
-              Elegí cómo analizar
+              Elige cómo analizar
             </h1>
             <p className="font-body text-base md:text-lg text-[var(--franco-text-secondary)] mt-4 max-w-[560px] mx-auto leading-relaxed">
               Misma experiencia Franco en todos los planes. Solo cambia la cantidad.
@@ -358,14 +358,14 @@ export default function PricingPage() {
                     fontWeight: active ? 600 : 500,
                   }}
                 >
-                  {m === "monthly" ? "Mensual" : "Anual · ahorrá 30%"}
+                  {m === "monthly" ? "Mensual" : "Anual · ahorra 30%"}
                 </button>
               );
             })}
           </div>
           <p className="block text-center mt-3 font-body text-[11px] text-[var(--franco-text-tertiary)]">
             {billing === "annual"
-              ? "Pagás upfront una vez al año, sin sorpresas."
+              ? "Pagas upfront una vez al año, sin sorpresas."
               : "Sin compromiso anual."}
           </p>
         </FadeIn>
@@ -400,10 +400,10 @@ export default function PricingPage() {
             <FadeIn delay={0} className="flex">
               <div className="rounded-xl bg-[var(--franco-bg)] p-6 flex flex-col w-full" style={{ border: "0.5px solid var(--franco-border)" }}>
                 <p className="font-mono uppercase mb-2 m-0" style={{ fontSize: 11, letterSpacing: "0.06em", color: "var(--franco-text-secondary)", fontWeight: 600 }}>
-                  Pagás por uso
+                  Paga por uso
                 </p>
                 <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed m-0">
-                  Si analizás 1 depto al año, comprá créditos sueltos. No vencen.
+                  Si analizas 1 depto al año, compra créditos sueltos. No vencen.
                 </p>
               </div>
             </FadeIn>
@@ -413,7 +413,7 @@ export default function PricingPage() {
                   Suscripción
                 </p>
                 <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed m-0">
-                  Si buscás activamente, suscribite. Saldo acumulable hasta 12 meses.
+                  Si buscas activamente, suscríbete. Saldo acumulable hasta 12 meses.
                 </p>
               </div>
             </FadeIn>
@@ -443,9 +443,9 @@ export default function PricingPage() {
           <FadeIn delay={100}>
             <FAQGroup items={[
               { q: "¿Puedo cambiar de plan?", a: "Sí, en cualquier momento. Tu saldo acumulable se mantiene." },
-              { q: "¿Los créditos vencen?", a: "Pagás por uso (Por análisis) — no vencen nunca. En suscripciones, el saldo se acumula hasta 12 meses." },
+              { q: "¿Los créditos vencen?", a: "Pagas por uso (Por análisis) — no vencen nunca. En suscripciones, el saldo se acumula hasta 12 meses." },
               { q: "¿Qué pasa si no uso todo el mes?", a: "El saldo no consumido se acumula y queda disponible hasta 12 meses." },
-              { q: "¿Puedo cancelar la suscripción?", a: "Sí, sin penalidad ni letra chica. Mantenés el saldo acumulado hasta usar todos los créditos." },
+              { q: "¿Puedo cancelar la suscripción?", a: "Sí, sin penalidad ni letra chica. Mantienes el saldo acumulado hasta usar todos los créditos." },
               { q: "¿Cuál es la diferencia entre planes?", a: "Solo cantidad. Misma experiencia Franco completa en todos: Score, IA, proyecciones, simulaciones, comparativas, exportación PDF." },
               { q: "¿Hay descuentos?", a: "Sí, 30% off pagando el plan anual upfront. Equivale a 3.6 meses gratis." },
             ]} />
