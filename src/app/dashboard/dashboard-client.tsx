@@ -6,9 +6,8 @@ import { useRouter } from "next/navigation";
 import { Trash2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import FrancoLogo from "@/components/franco-logo";
+import { AppNav } from "@/components/chrome/AppNav";
 import { LogoutButton } from "@/components/logout-button";
-import { ThemeToggle } from "@/components/theme-toggle";
 import type { Analisis } from "@/lib/types";
 import { User } from "lucide-react";
 
@@ -311,9 +310,9 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="mx-auto flex h-14 max-w-[820px] items-center justify-between px-5">
-          <FrancoLogo size="header" href="/" inverted />
+      <AppNav
+        variant="app"
+        ctaSlot={
           <div className="flex items-center gap-3">
             <Link href="/pricing">
               <span className="rounded-md bg-signal-red px-3 py-1.5 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90">Premium</span>
@@ -323,11 +322,10 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                 <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Cuenta</span>
               </Button>
             </Link>
-            <ThemeToggle />
             <LogoutButton />
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       <div className="mx-auto max-w-[820px] px-5 py-7">
         {analisis.length === 0 ? (

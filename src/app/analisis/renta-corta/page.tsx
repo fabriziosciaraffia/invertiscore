@@ -6,8 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 import GoogleMapRadius from "@/components/GoogleMapRadius";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
@@ -752,17 +751,14 @@ export default function RentaCortaFormPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-[620px] items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" inverted />
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-              ← Dashboard
-            </Link>
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
+      <AppNav
+        variant="app"
+        ctaSlot={
+          <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+            ← Dashboard
+          </Link>
+        }
+      />
 
       <div className="mx-auto max-w-[620px] px-4 pb-12 pt-6 overflow-x-hidden">
         {/* Guest blocked */}

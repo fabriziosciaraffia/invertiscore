@@ -9,11 +9,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { User, CreditCard, Clock, ArrowLeft, Sparkles } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
+import { AppNav } from "@/components/chrome/AppNav";
 import { LogoutButton } from "@/components/logout-button";
 import { ChangePasswordForm } from "./change-password-form";
 import { isAdminUser } from "@/lib/admin";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 interface PaymentRow {
   id: string;
@@ -123,10 +122,9 @@ export default async function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" inverted />
+      <AppNav
+        variant="app"
+        ctaSlot={
           <div className="flex items-center gap-2">
             <Link href="/dashboard">
               <Button
@@ -137,11 +135,10 @@ export default async function PerfilPage() {
                 <ArrowLeft className="h-4 w-4" /> Dashboard
               </Button>
             </Link>
-            <ThemeToggle />
             <LogoutButton />
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       <div className="container mx-auto max-w-2xl px-4 py-8">
         <h1 className="mb-8 text-3xl font-bold text-[var(--franco-text)]">Mi Perfil</h1>

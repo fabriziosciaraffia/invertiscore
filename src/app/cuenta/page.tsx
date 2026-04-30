@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import FrancoLogo from "@/components/franco-logo";
+import { AppNav } from "@/components/chrome/AppNav";
 import { LogoutButton } from "@/components/logout-button";
 import { CancelSubscriptionButton } from "./cancel-dialog";
 import { DeleteAccountButton } from "./delete-account-button";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
@@ -53,21 +52,20 @@ export default async function CuentaPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="container mx-auto flex h-14 items-center justify-between px-4">
-          <FrancoLogo size="header" href="/" inverted />
+      <AppNav
+        variant="app"
+        ctaSlot={
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard"
-              className="font-body text-sm text-[var(--franco-text)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)] px-3 py-1.5 rounded-md transition-colors"
+              className="font-body text-sm text-[var(--franco-text)] hover:bg-[var(--franco-card)] px-3 py-1.5 rounded-md transition-colors"
             >
               ← Dashboard
             </Link>
-            <ThemeToggle />
             <LogoutButton />
           </div>
-        </div>
-      </nav>
+        }
+      />
 
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}

@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { Loader2 } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
@@ -403,15 +401,7 @@ export default function NuevoAnalisisV3Page() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
-        <div className="max-w-3xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <FrancoLogo />
-          </Link>
-          <ThemeToggle />
-        </div>
-      </nav>
+      <AppNav variant="app" />
 
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {/* Header + stepper */}

@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Loader2 } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { AppNav } from "@/components/chrome/AppNav";
 import {
   ResumenConfirmacion,
   REVISAR_SS_KEY,
@@ -62,14 +60,7 @@ export default function RevisarAnalisisPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav (same shell pattern as /analisis/nuevo) */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]/95 backdrop-blur-md">
-        <div className="max-w-6xl mx-auto px-4 md:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center">
-            <FrancoLogo />
-          </Link>
-          <ThemeToggle />
-        </div>
-      </nav>
+      <AppNav variant="app" />
 
       {!ready || !payload || !tierInfo ? (
         <div className="flex items-center justify-center py-32 text-[var(--franco-text-secondary)]">

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
-import FrancoLogo from "@/components/franco-logo";
+import { AppNav } from "@/components/chrome/AppNav";
 import type { Analisis, Desglose } from "@/lib/types";
 
 const CHART_COLORS = ["#B0BEC5", "#3b82f6", "#f59e0b"];
@@ -384,11 +384,7 @@ export function CompararClient({ analisis }: { analisis: Analisis[] }) {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 border-b border-[var(--franco-border)] bg-[var(--franco-bg)]">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-5 sm:px-6">
-          <FrancoLogo size="header" href="/" inverted />
-        </div>
-      </nav>
+      <AppNav variant="app" />
 
       <div className="mx-auto max-w-5xl px-5 py-8 sm:px-6">
         {/* Header */}
