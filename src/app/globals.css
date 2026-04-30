@@ -67,6 +67,15 @@
     --franco-wm-franco: #FAFAF8;
     --franco-bar-track: rgba(250,250,248,0.06);
     --franco-bar-fill: rgba(250,250,248,0.6);
+    /* DEUDA FORMAL Fase 4.13: Capa 1 binaria pendiente.
+       Variables --franco-v-buy y --franco-v-adjust siguen activas en:
+         - StateBox.tsx (positive/warning)
+         - dashboard-client.tsx (verdict pills + scores)
+         - onboarding-client.tsx (tier badges)
+         - ResumenConfirmacion.tsx (legacy form)
+         - renta-corta/results-client.tsx (fallback bg)
+         - comunas/[slug]/page.tsx (badge highlight)
+       Migrar a Ink + Signal Red + dot indicator antes de eliminar las vars. */
     --franco-v-buy: #B0BEC5;
     --franco-v-buy-bg: rgba(176,190,197,0.15);
     --franco-v-adjust: #FBBF24;
