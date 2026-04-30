@@ -2,6 +2,7 @@
 
 import { Modal } from "@/components/ui/Modal";
 import { StateBox } from "@/components/ui/StateBox";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { useResetOnOpen } from "@/hooks/useResetOnOpen";
 import type { WizardV3State } from "./wizardV3State";
 
@@ -123,7 +124,16 @@ export function ModalDetallesDepto({
 
       {state.tipoPropiedad === "usado" && (
         <div className="mt-4">
-          <Field label="Antigüedad">
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Antigüedad
+              </span>
+              <InfoTooltip
+                trigger="click"
+                content="Afecta la proyección de plusvalía. Deptos sobre 30 años suelen apreciarse menos que nuevos en la misma zona."
+              />
+            </span>
             <select
               className={`${inputClass} appearance-none`}
               value={local.antiguedad}
@@ -135,7 +145,7 @@ export function ModalDetallesDepto({
               <option value="11-20">11-20 años</option>
               <option value="20+">20+ años</option>
             </select>
-          </Field>
+          </label>
         </div>
       )}
 

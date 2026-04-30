@@ -1,7 +1,13 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
+
+// Singleton: solo un tooltip abierto a la vez. Cuando una instancia abre,
+// dispatcha un evento que cierra todas las demas. Cada instancia escucha
+// y se cierra si el evento NO viene de si misma.
+const FRANCO_TOOLTIP_OPEN_EVENT = "franco:tooltip-open";
+interface TooltipOpenDetail { exceptId: string; }
 
 interface TooltipBubbleProps {
   content: string;
@@ -84,7 +90,7 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
     });
   }, [triggerRef]);
 
-  // Close on outside click/touch
+  // Close on outside click/touch + ESC
   useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
       if (
@@ -94,11 +100,16 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
         onClose();
       }
     };
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
     document.addEventListener("mousedown", handler);
     document.addEventListener("touchstart", handler);
+    document.addEventListener("keydown", keyHandler);
     return () => {
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
+      document.removeEventListener("keydown", keyHandler);
     };
   }, [onClose, triggerRef]);
 
@@ -115,19 +126,70 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
   );
 }
 
-export function InfoTooltip({ content }: { content: string }) {
+interface InfoTooltipProps {
+  content: string;
+  /**
+   * Trigger mode: "hover" (default — abre con hover y click, mantiene
+   * comportamiento legacy) o "click" (solo click, mejor en mobile).
+   */
+  trigger?: "hover" | "click";
+}
+
+export function InfoTooltip({ content, trigger = "hover" }: InfoTooltipProps) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const id = useId();
+
+  // Singleton: cuando este abre, cerrar todos los demas. Cuando recibe el
+  // evento abierto por otro, este se cierra.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<TooltipOpenDetail>).detail;
+      if (detail?.exceptId !== id) setOpen(false);
+    };
+    window.addEventListener(FRANCO_TOOLTIP_OPEN_EVENT, handler);
+    return () => window.removeEventListener(FRANCO_TOOLTIP_OPEN_EVENT, handler);
+  }, [id]);
+
+  function handleOpen() {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent<TooltipOpenDetail>(FRANCO_TOOLTIP_OPEN_EVENT, {
+          detail: { exceptId: id },
+        }),
+      );
+    }
+    setOpen(true);
+  }
+
+  function handleToggle() {
+    if (open) {
+      setOpen(false);
+    } else {
+      handleOpen();
+    }
+  }
+
+  // Hover handlers: solo en mode "hover" (default). En "click" se ignoran.
+  const hoverHandlers =
+    trigger === "hover"
+      ? {
+          onMouseEnter: handleOpen,
+          onMouseLeave: () => setOpen(false),
+        }
+      : {};
 
   return (
     <span className="inline-flex">
       <button
         ref={triggerRef}
         type="button"
-        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-[var(--franco-border)] font-mono text-[9px] text-[var(--franco-text-muted)] cursor-help shrink-0 hover:bg-[var(--franco-border-hover)] hover:text-[var(--franco-text-secondary)] transition-colors"
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onClick={() => setOpen((v) => !v)}
+        aria-label="Más información"
+        aria-expanded={open}
+        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-[var(--franco-border)] font-mono text-[9px] text-[var(--franco-text-muted)] cursor-help shrink-0 hover:bg-[var(--franco-border-hover)] hover:text-[var(--franco-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--franco-text-secondary)] focus:ring-offset-1 focus:ring-offset-[var(--franco-bg)] transition-colors"
+        onClick={handleToggle}
+        {...hoverHandlers}
       >
         ?
       </button>

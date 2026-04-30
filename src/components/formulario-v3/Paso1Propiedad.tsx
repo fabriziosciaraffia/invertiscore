@@ -5,6 +5,7 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { MapaThumbnail, type Comparable } from "./MapaThumbnail";
 import { ModalDetallesDepto } from "./ModalDetallesDepto";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   previewDetalles,
   type WizardV3State,
@@ -82,30 +83,51 @@ export function Paso1Propiedad({
           defaultValue={state.direccion}
           onChange={(e) => setState({ direccion: e.target.value })}
         />
-        {state.comuna && (
+        {state.comuna ? (
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1">
             {state.comuna}{state.ciudad ? ` · ${state.ciudad}` : ""}
+          </p>
+        ) : (
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1">
+            Escribe y selecciona una opción del dropdown para ubicar en el mapa.
           </p>
         )}
       </div>
 
       {/* ── Mapa thumbnail (solo si hay lat/lng) ── */}
       {state.lat && state.lng && (
-        <MapaThumbnail
-          lat={state.lat}
-          lng={state.lng}
-          comparables={comparables}
-          comparablesCount={comparablesCount}
-          locationLabel={[state.comuna, state.ciudad].filter(Boolean).join(" · ")}
-        />
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Ubicación en el mapa
+            </label>
+            <InfoTooltip
+              trigger="click"
+              content="Si el pin no quedó exacto, arrástralo. La ubicación afecta el cálculo de cercanía a metro y servicios cercanos."
+            />
+          </div>
+          <MapaThumbnail
+            lat={state.lat}
+            lng={state.lng}
+            comparables={comparables}
+            comparablesCount={comparablesCount}
+            locationLabel={[state.comuna, state.ciudad].filter(Boolean).join(" · ")}
+          />
+        </div>
       )}
 
       {/* ── Tipo + Superficie ── */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Tipo
-          </label>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Tipo
+            </label>
+            <InfoTooltip
+              trigger="click"
+              content="Nuevo: en venta directa por inmobiliaria, puede ser en verde (proyecto) o en blanco (entrega inmediata). Usado: ya entregado, vendido por particular o corredor."
+            />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {(["usado", "nuevo"] as const).map((t) => (
               <button
@@ -128,9 +150,15 @@ export function Paso1Propiedad({
           </div>
         </div>
         <div>
-          <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Superficie útil
-          </label>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Superficie útil
+            </label>
+            <InfoTooltip
+              trigger="click"
+              content="Superficie útil interior, sin incluir terraza ni espacios comunes. Si tu propiedad publica «superficie total», réstale la terraza."
+            />
+          </div>
           <div className="relative">
             <input
               type="number"
