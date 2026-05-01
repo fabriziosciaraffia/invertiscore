@@ -34,7 +34,13 @@ export interface WizardV3State {
   piePct: string;                    // % — auto-derivado en Nuevo cuando user edita cuota mensual
   pieModoPago: "contado" | "cuotas"; // solo nuevo+inmediata
   cuotasPie: string;                 // cuando cuotas o futura
-  montoCuotaPieUF: string;           // input controlado en Nuevo (UF/cuota); vacío = derivar de piePct
+  /**
+   * @deprecated Fase 9 — cuota UF pasó a readonly derivada (pieUF / cuotasPie).
+   * Ya no se escribe. Se conserva en el shape solo para no romper drafts viejos
+   * de localStorage (`franco_wizard_v3_draft`) al hacer JSON.parse + spread.
+   * Eliminar cuando todos los drafts en circulación sean post-Fase 9.
+   */
+  montoCuotaPieUF: string;
 
   // Paso 2 — ocultos con default
   plazoCredito: string;

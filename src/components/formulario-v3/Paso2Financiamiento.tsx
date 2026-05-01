@@ -9,8 +9,8 @@ import {
   calcDividendo,
   fmtCLP,
   fmtCLPShort,
+  fmtUF,
   mesesHastaEntrega,
-  parseDecimalLocale,
   parseNum,
   type WizardV3State,
 } from "./wizardV3State";
@@ -92,43 +92,14 @@ export function Paso2Financiamiento({
   const inputBase =
     "w-full h-10 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
-  // ─── Pie auto-derivado para Nuevo ──────────────────────
-  // En Nuevo el user edita Cuotas y/o Cuota mensual (UF). piePct se calcula
-  // como `(montoUF × cuotas / precio) × 100`. Source of truth para el motor
-  // sigue siendo `piePct`; `montoCuotaPieUF` es buffer de UI.
+  // ─── Pie en Nuevo ──────────────────────────────────────
+  // Fase 9: piePct se edita vía slider (igual que Usado). La cuota mensual UF
+  // pasa a display readonly derivado de `pieUF / cuotasPie`. El user solo
+  // puede editar piePct (slider) y cuotasPie (input). Source of truth: piePct.
   const cuotasNum = Number(state.cuotasPie) || mesesSugeridos || 1;
   const cuotaUFDerived = precioUF > 0 && cuotasNum > 0
     ? (precioUF * piePct / 100 / cuotasNum)
     : 0;
-  const cuotaUFDisplay = state.montoCuotaPieUF !== ""
-    ? state.montoCuotaPieUF
-    : cuotaUFDerived > 0
-      ? cuotaUFDerived.toFixed(2).replace(".", ",")
-      : "";
-
-  // TODO: si user editó monto y luego cambia precio, piePct chip puede
-  // divergir levemente. Trade-off conocido, no es bug.
-  function handleCuotasChange(v: string) {
-    const cuotas = Number(v) || 0;
-    const monto = parseDecimalLocale(state.montoCuotaPieUF);
-    if (cuotas > 0 && monto > 0 && precioUF > 0) {
-      const newPiePct = (monto * cuotas / precioUF) * 100;
-      setState({ cuotasPie: v, piePct: newPiePct.toFixed(4) });
-    } else {
-      setState({ cuotasPie: v });
-    }
-  }
-
-  function handleMontoChange(v: string) {
-    const monto = parseDecimalLocale(v);
-    const cuotas = Number(state.cuotasPie) || 0;
-    if (monto > 0 && cuotas > 0 && precioUF > 0) {
-      const newPiePct = (monto * cuotas / precioUF) * 100;
-      setState({ montoCuotaPieUF: v, piePct: newPiePct.toFixed(4) });
-    } else {
-      setState({ montoCuotaPieUF: v });
-    }
-  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -382,35 +353,33 @@ export function Paso2Financiamiento({
             </div>
           )}
 
-          {/* Slider Pie editable cuando Nuevo + Inmediata + Contado.
-              Sin cuotas que pagar (es contado total al cierre), por lo que la
-              edición indirecta vía cuotas+monto no aplica acá. Reuso 1:1 del
-              slider Pie Usado: range 10-50 step 5, mismo accent + marks. */}
-          {state.estadoVenta === "inmediata" && state.pieModoPago === "contado" && (
-            <div className="mt-3">
-              <input
-                type="range"
-                min={10}
-                max={50}
-                step={5}
-                value={piePct}
-                onChange={(e) => setState({ piePct: e.target.value })}
-                className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
-              />
-              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
-                <span>10%</span>
-                <span>20%</span>
-                <span>30%</span>
-                <span>40%</span>
-                <span>50%</span>
-              </div>
+          {/* Slider Pie editable — siempre en Nuevo (Fase 9).
+              Reuso 1:1 del slider Pie Usado: range 10-50 step 5. mt-3 cuando
+              hay toggle Contado/Cuotas encima (inmediata); sin mt cuando va
+              directo bajo el header (futura). */}
+          <div className={state.estadoVenta === "inmediata" ? "mt-3" : ""}>
+            <input
+              type="range"
+              min={10}
+              max={50}
+              step={5}
+              value={piePct}
+              onChange={(e) => setState({ piePct: e.target.value })}
+              className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+            />
+            <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+              <span>10%</span>
+              <span>20%</span>
+              <span>30%</span>
+              <span>40%</span>
+              <span>50%</span>
             </div>
-          )}
+          </div>
 
-          {/* Inputs cuotas + cuota mensual UF.
+          {/* Inputs cuotas + cuota mensual UF (readonly derivada).
               Visible cuando: futura (siempre) o inmediata+cuotas. */}
           {(state.estadoVenta === "futura" || (state.estadoVenta === "inmediata" && state.pieModoPago === "cuotas")) && (
-            <div className={state.estadoVenta === "inmediata" ? "mt-3 grid grid-cols-2 gap-3" : "grid grid-cols-2 gap-3"}>
+            <div className="mt-3 grid grid-cols-2 gap-3">
               <div>
                 <span className="flex items-center gap-1.5 mb-1">
                   <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
@@ -429,7 +398,7 @@ export function Paso2Financiamiento({
                   placeholder={String(mesesSugeridos || 1)}
                   className={inputBase}
                   value={state.cuotasPie}
-                  onChange={(e) => handleCuotasChange(e.target.value)}
+                  onChange={(e) => setState({ cuotasPie: e.target.value })}
                 />
                 {state.estadoVenta === "futura" && mesesSugeridos > 0 && (
                   <p className="font-mono text-[11px] mt-1 m-0 text-[var(--franco-text-secondary)]">
@@ -444,30 +413,17 @@ export function Paso2Financiamiento({
                   </label>
                   <InfoTooltip
                     trigger="click"
-                    content="Valor de la cuota del pie pactada en UF. La conversión a CLP se calcula automáticamente."
+                    content="Se calcula automáticamente según el monto del pie y el número de cuotas."
                   />
                 </span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="—"
-                  className={inputBase}
-                  value={cuotaUFDisplay}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d*[.,]?\d*$/.test(v)) handleMontoChange(v);
-                  }}
-                />
-                {(() => {
-                  const cuotaNum = parseDecimalLocale(cuotaUFDisplay);
-                  if (!(cuotaNum > 0 && ufCLP > 0)) return null;
-                  const cuotaCLP = cuotaNum * ufCLP;
-                  return (
-                    <p className="font-mono text-[11px] mt-1 m-0 text-[var(--franco-text-secondary)]">
-                      ● ≈ {fmtCLPShort(cuotaCLP)} CLP/mes
-                    </p>
-                  );
-                })()}
+                <div className="flex items-center px-3 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-[var(--franco-text-secondary)] h-10">
+                  {cuotaUFDerived > 0 ? fmtUF(cuotaUFDerived, 2) : "—"}
+                </div>
+                {cuotaUFDerived > 0 && ufCLP > 0 && (
+                  <p className="font-mono text-[11px] mt-1 m-0 text-[var(--franco-text-secondary)]">
+                    ● ≈ {fmtCLPShort(cuotaUFDerived * ufCLP)} CLP/mes
+                  </p>
+                )}
               </div>
             </div>
           )}
