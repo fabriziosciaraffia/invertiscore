@@ -16,6 +16,7 @@ import {
   DEFAULT_STATE,
   antiguedadToNumber,
   mesesHastaEntrega,
+  parseDecimalLocale,
   parseNum,
   type WizardV3State,
 } from "@/components/formulario-v3/wizardV3State";
@@ -124,7 +125,7 @@ export default function NuevoAnalisisV3Page() {
   // solo cuando hay superficie real.
   useEffect(() => {
     if (!state.comuna) return;
-    const sup = parseNum(state.superficieUtil);
+    const sup = parseDecimalLocale(state.superficieUtil);
     const supForFetch = sup > 0 ? sup : 50; // default p/ conteo; no prefill cuando sup=0
     const ctrl = new AbortController();
     const params = new URLSearchParams({
@@ -237,7 +238,7 @@ export default function NuevoAnalisisV3Page() {
 
   // ─── Step validation ──
   const canAdvanceFromStep1 = !!(state.direccion && state.comuna && state.tipoPropiedad
-    && parseNum(state.superficieUtil) > 0);
+    && parseDecimalLocale(state.superficieUtil) > 0);
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
   function goNext() {
@@ -282,7 +283,7 @@ export default function NuevoAnalisisV3Page() {
         const n = Number(v);
         return Number.isFinite(n) && n >= 0 ? n : fallback;
       };
-      const supUtil = parseNum(state.superficieUtil);
+      const supUtil = parseDecimalLocale(state.superficieUtil);
       const precioUF = parseNum(state.precio);
       const nEstac = parseIntSafe(state.estacionamientos, 0);
       const nBodega = parseIntSafe(state.bodegas, 0);

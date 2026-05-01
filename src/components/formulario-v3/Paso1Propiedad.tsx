@@ -166,12 +166,15 @@ export function Paso1Propiedad({
           </div>
           <div className="relative">
             <input
-              type="number"
-              inputMode="numeric"
+              type="text"
+              inputMode="decimal"
               placeholder="50"
               className={`${inputBase} ${inputOk} font-mono pr-10`}
               value={state.superficieUtil}
-              onChange={(e) => setState({ superficieUtil: e.target.value })}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ superficieUtil: v });
+              }}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
               m²

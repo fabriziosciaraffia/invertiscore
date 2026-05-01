@@ -11,7 +11,7 @@ import {
   fmtCLPShort,
   fmtUF,
   mesesHastaEntrega,
-  parseNum,
+  parseDecimalLocale,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -44,7 +44,10 @@ export function Paso2Financiamiento({
   const piePct = Number(state.piePct) || 20;
   const plazo = Number(state.plazoCredito) || 25;
   const tasa = Number(state.tasaInteres) || 4.72;
-  const superficie = parseNum(state.superficieUtil);
+  // parseDecimalLocale (no parseNum): superficie nunca lleva separador de miles
+  // y sí puede tener decimal con coma o punto (ej. "75,5" o "75.5"). parseNum
+  // strippea todos los puntos asumiendo formato de miles → corrompe "75.5".
+  const superficie = parseDecimalLocale(state.superficieUtil);
 
   // Toggle local: expansión inline de Plazo/Tasa editables. No persiste en
   // wizardV3State — al volver a Paso 2 vuelve a estado readonly aunque los
