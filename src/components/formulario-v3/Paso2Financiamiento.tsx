@@ -151,25 +151,49 @@ export function Paso2Financiamiento({
           </p>
         )}
         {/* Validación suave: precio/m² del usuario vs promedio de zona.
-            Solo si > 30% deviación. Ink-only (Capa 1 binaria, sin Signal Red
-            ni amber). NO bloquea el flujo. Mensaje simétrico:
-              - dev > +0.30 → attention + AlertTriangle (sobreprecio)
-              - dev < -0.30 → info sin ícono (oportunidad / ventaja inicial) */}
+            3 tiers según |dev| (Capa 1 binaria, cero amber/verde):
+              - aligned (|dev| <  5%) → dot pattern neutro confirmando alineación
+              - soft    (5-15%)        → dot pattern direccional (sobreprecio / ventaja)
+              - strong  (>15%)         → StateBox attention (alto) o info (bajo)
+            Render mutuamente excluyente. Solo si hay datos suficientes (precio
+            + superficie + precioM2 comuna). NO bloquea el flujo. */}
         {(() => {
           if (!(superficie > 0 && precioUF > 0 && precioM2UF && precioM2UF > 0)) return null;
           const userM2 = precioUF / superficie;
           const dev = (userM2 - precioM2UF) / precioM2UF;
-          if (Math.abs(dev) <= 0.30) return null;
-          const pct = Math.round(Math.abs(dev) * 100);
+          const absDev = Math.abs(dev);
+          const tier = absDev < 0.05 ? "aligned" : absDev <= 0.15 ? "soft" : "strong";
+          const direction: "high" | "low" = dev > 0 ? "high" : "low";
+          const pctStr = fmtPiePct(absDev * 100);
           const comuna = state.comuna || "la zona";
-          if (dev > 0) {
+
+          if (tier === "aligned") {
+            return (
+              <p className="font-mono text-[11px] mt-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+                ● Precio dentro del rango de mercado de {comuna}.
+              </p>
+            );
+          }
+
+          if (tier === "soft") {
+            return (
+              <p className="font-mono text-[11px] mt-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+                {direction === "high"
+                  ? `● El precio está ${pctStr}% por encima del promedio de ${comuna}. Se reflejará como sobreprecio en el análisis.`
+                  : `● Bien: estás comprando ${pctStr}% por debajo del promedio de ${comuna}. Se reflejará como ventaja inicial en el análisis.`}
+              </p>
+            );
+          }
+
+          // strong
+          if (direction === "high") {
             return (
               <div className="mt-3">
                 <StateBox variant="left-border" state="attention" label="Atención">
                   <span className="flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
                     <span>
-                      El precio por m² ingresado está un {pct}% por encima del promedio de {comuna}. Esto puede reflejarse como sobreprecio en el análisis. Verifica el dato antes de continuar.
+                      El precio por m² ingresado está un {pctStr}% por encima del promedio de {comuna} — desviación importante. Esto se reflejará como sobreprecio relevante en el análisis. Verifica el dato antes de continuar.
                     </span>
                   </span>
                 </StateBox>
@@ -179,7 +203,7 @@ export function Paso2Financiamiento({
           return (
             <div className="mt-3">
               <StateBox variant="left-border" state="info" label="Información">
-                Buena noticia: estás comprando {pct}% por debajo del promedio de {comuna}. Se reflejará como ventaja inicial en el análisis. Igual verifica el dato.
+                Buena noticia: estás comprando un {pctStr}% por debajo del promedio de {comuna} — diferencia importante. Se reflejará como ventaja inicial relevante en el análisis. Igual verifica el dato.
               </StateBox>
             </div>
           );
