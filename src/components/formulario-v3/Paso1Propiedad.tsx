@@ -125,7 +125,7 @@ export function Paso1Propiedad({
             </label>
             <InfoTooltip
               trigger="click"
-              content="Nuevo: en venta directa por inmobiliaria. En el paso 2 defines estado del proyecto y tipo de entrega. Usado: vendido por particular o corredor."
+              content="Nuevo: en venta directa por inmobiliaria. Usado: vendido por particular o corredor."
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
