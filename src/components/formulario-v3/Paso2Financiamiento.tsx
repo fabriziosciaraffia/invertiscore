@@ -144,7 +144,7 @@ export function Paso2Financiamiento({
           <p className="font-mono text-[11px] mt-1.5 m-0 text-[var(--franco-text-secondary)]">
             ● Mercado sugiere UF {precioSugeridoUF.toLocaleString("es-CL")}
             {superficie > 0 && precioM2UF
-              ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie}m²)`
+              ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie.toLocaleString("es-CL")}m²)`
               : ""}
             {precioM2SampleSize && precioM2SampleSize > 0
               ? ` · basado en ${precioM2SampleSize} ${precioM2SampleSize === 1 ? "unidad comparable" : "unidades comparables"} en la zona`
