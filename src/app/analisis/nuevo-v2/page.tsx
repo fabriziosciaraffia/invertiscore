@@ -338,7 +338,7 @@ export default function NuevoAnalisisV3Page() {
         valorMercadoUsuario: undefined, // no se pregunta en v3
         piePct: Number(state.piePct),
         plazoCredito: Number(state.plazoCredito),
-        tasaInteres: Number(state.tasaInteres),
+        tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
         gastos,
         contribuciones,
         provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),

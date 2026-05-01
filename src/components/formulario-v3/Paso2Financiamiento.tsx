@@ -43,7 +43,7 @@ export function Paso2Financiamiento({
   const precioUF = Number(state.precio) || 0;
   const piePct = Number(state.piePct) || 20;
   const plazo = Number(state.plazoCredito) || 25;
-  const tasa = Number(state.tasaInteres) || 4.72;
+  const tasa = parseDecimalLocale(state.tasaInteres) || 4.72;
   // parseDecimalLocale (no parseNum): superficie nunca lleva separador de miles
   // y sí puede tener decimal con coma o punto (ej. "75,5" o "75.5"). parseNum
   // strippea todos los puntos asumiendo formato de miles → corrompe "75.5".
@@ -449,16 +449,16 @@ export function Paso2Financiamiento({
           </p>
         </div>
 
-        {/* Trigger ajuste plazo/tasa. Tokens reusados del patrón "Cambiar"
-            de Paso3Modalidad chip selection: Sans medium 12px text-secondary
-            hover:text-primary underline-offset-2. Sin Signal Red. Chevron
-            rotates on expand. */}
-        <div className="mt-2 flex justify-end">
+        {/* Trigger ajuste plazo/tasa — patrón Link CTA del skill franco-design-system
+            (mono uppercase tracking + arrow, mismo nivel visual que "LEER ANÁLISIS
+            COMPLETO →" en cards de resultados). Sin Signal Red: ajustar es
+            opcional, no requiere atención. Chevron rotates on expand. */}
+        <div className="mt-3 flex justify-end">
           <button
             type="button"
             onClick={() => setAjustePlazoTasaOpen((v) => !v)}
             aria-expanded={ajustePlazoTasaOpen}
-            className="inline-flex items-center gap-1 font-body text-[12px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2 transition-colors"
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--franco-text)] hover:text-[var(--franco-text-secondary)] underline underline-offset-4 decoration-1 transition-colors"
           >
             Ajustar plazo y tasa
             <ChevronDown
