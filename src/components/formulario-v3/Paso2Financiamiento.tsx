@@ -297,7 +297,7 @@ export function Paso2Financiamiento({
             onChange={(e) => setState({ piePct: e.target.value })}
             className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
           />
-          <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+          <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
             <span>10%</span>
             <span>20%</span>
             <span>30%</span>
@@ -367,7 +367,7 @@ export function Paso2Financiamiento({
               onChange={(e) => setState({ piePct: e.target.value })}
               className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
             />
-            <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+            <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
               <span>10%</span>
               <span>20%</span>
               <span>30%</span>
@@ -434,10 +434,10 @@ export function Paso2Financiamiento({
       <div>
         <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-center justify-between">
           <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
+            <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-1">
               Dividendo estimado
             </p>
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0">
+            <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0">
               Plazo {plazo} años · Tasa {tasa}%
             </p>
           </div>
@@ -487,7 +487,7 @@ export function Paso2Financiamiento({
                 onChange={(e) => setState({ plazoCredito: e.target.value })}
                 className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
               />
-              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-muted)] mt-1">
+              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
                 <span>10</span>
                 <span>15</span>
                 <span>20</span>

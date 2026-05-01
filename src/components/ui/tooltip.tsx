@@ -187,7 +187,7 @@ export function InfoTooltip({ content, trigger = "hover" }: InfoTooltipProps) {
         type="button"
         aria-label="Más información"
         aria-expanded={open}
-        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-[var(--franco-border)] font-mono text-[9px] text-[var(--franco-text-muted)] cursor-help shrink-0 hover:bg-[var(--franco-border-hover)] hover:text-[var(--franco-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--franco-text-secondary)] focus:ring-offset-1 focus:ring-offset-[var(--franco-bg)] transition-colors"
+        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-[var(--franco-text-tertiary)] font-mono text-[9px] text-[var(--franco-text)] cursor-help shrink-0 hover:bg-[var(--franco-text-secondary)] hover:text-[var(--franco-card)] focus:outline-none focus:ring-2 focus:ring-[var(--franco-text-secondary)] focus:ring-offset-1 focus:ring-offset-[var(--franco-bg)] transition-colors"
         onClick={handleToggle}
         {...hoverHandlers}
       >

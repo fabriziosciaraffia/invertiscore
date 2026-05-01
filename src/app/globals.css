@@ -98,8 +98,12 @@
     --franco-card: #FAFAF8;
     --franco-elevated: #FFFFFF;
     --franco-text: #111111;
-    --franco-text-secondary: #888888;
-    --franco-text-muted: #BBBBBB;
+    /* Fase 10 — alineado con escala Ink del skill franco-design-system.
+       Antes: secondary #888888, muted #BBBBBB → ratios 1.5-1.8:1 vs page bg
+       (fail WCAG AA). Tras refactor: Ink 600 / Ink 500 → 5.4 / 3.0 vs bg.
+       Dark mode no se toca (rgba sobre #0F0F0F siguen válidos). */
+    --franco-text-secondary: #5F5E5A;
+    --franco-text-muted: #888780;
     --franco-text-tertiary: #B4B2A9;
     --franco-border: #E5E5E5;
     --franco-border-hover: #D5D5D5;
