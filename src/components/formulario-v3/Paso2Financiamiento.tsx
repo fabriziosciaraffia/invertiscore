@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronDown, Sliders } from "lucide-react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
@@ -55,7 +55,6 @@ export function Paso2Financiamiento({
   const [ajustePlazoTasaOpen, setAjustePlazoTasaOpen] = useState(false);
 
   const precioCLP = precioUF * ufCLP;
-  const pieCLP = precioCLP * (piePct / 100);
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
 
   // Sugerencia de precio: UF/m² × superficie. Solo si ambos datos existen.
@@ -153,24 +152,34 @@ export function Paso2Financiamiento({
         )}
         {/* Validación suave: precio/m² del usuario vs promedio de zona.
             Solo si > 30% deviación. Ink-only (Capa 1 binaria, sin Signal Red
-            ni amber). NO bloquea el flujo, solo invita a verificar. */}
+            ni amber). NO bloquea el flujo. Mensaje simétrico:
+              - dev > +0.30 → attention + AlertTriangle (sobreprecio)
+              - dev < -0.30 → info sin ícono (oportunidad / ventaja inicial) */}
         {(() => {
           if (!(superficie > 0 && precioUF > 0 && precioM2UF && precioM2UF > 0)) return null;
           const userM2 = precioUF / superficie;
           const dev = (userM2 - precioM2UF) / precioM2UF;
           if (Math.abs(dev) <= 0.30) return null;
           const pct = Math.round(Math.abs(dev) * 100);
-          const direccion = dev > 0 ? "por encima" : "por debajo";
           const comuna = state.comuna || "la zona";
+          if (dev > 0) {
+            return (
+              <div className="mt-3">
+                <StateBox variant="left-border" state="attention" label="Atención">
+                  <span className="flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+                    <span>
+                      El precio por m² ingresado está un {pct}% por encima del promedio de {comuna}. Esto puede reflejarse como sobreprecio en el análisis. Verifica el dato antes de continuar.
+                    </span>
+                  </span>
+                </StateBox>
+              </div>
+            );
+          }
           return (
             <div className="mt-3">
-              <StateBox variant="left-border" state="attention" label="Atención">
-                <span className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
-                  <span>
-                    El precio por m² ingresado está un {pct}% {direccion} del promedio de {comuna}. Verifica que el dato sea correcto antes de continuar.
-                  </span>
-                </span>
+              <StateBox variant="left-border" state="info" label="Información">
+                Buena noticia: estás comprando {pct}% por debajo del promedio de {comuna}. Se reflejará como ventaja inicial en el análisis. Igual verifica el dato.
               </StateBox>
             </div>
           );
@@ -288,7 +297,7 @@ export function Paso2Financiamiento({
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-              {piePct}% · {pieCLP > 0 ? fmtCLPShort(pieCLP) : "$—"}
+              {fmtPiePct(piePct)}% · {precioUF > 0 ? `UF ${(Math.round((precioUF * piePct / 100) * 10) / 10).toLocaleString("es-CL")}` : "—"}
             </span>
           </div>
           <input
@@ -458,8 +467,9 @@ export function Paso2Financiamiento({
             type="button"
             onClick={() => setAjustePlazoTasaOpen((v) => !v)}
             aria-expanded={ajustePlazoTasaOpen}
-            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--franco-text)] hover:text-[var(--franco-text-secondary)] underline underline-offset-4 decoration-1 transition-colors"
+            className="inline-flex items-center gap-2 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--franco-text)] hover:text-[var(--franco-text-secondary)] underline underline-offset-4 decoration-1 transition-colors"
           >
+            <Sliders className="h-3.5 w-3.5" />
             Ajustar plazo y tasa
             <ChevronDown
               className="h-3.5 w-3.5 transition-transform"
@@ -469,60 +479,83 @@ export function Paso2Financiamiento({
         </div>
 
         {ajustePlazoTasaOpen && (
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {/* Plazo slider — patrón idéntico al slider Pie Usado (auditoría C.1)
-                + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 5). */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
-                  Plazo
-                </label>
-                <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">
-                  {plazo} años
-                </span>
+          <div className="mt-3 flex flex-col gap-3">
+            <div className="grid grid-cols-2 gap-3">
+              {/* Plazo slider — patrón idéntico al slider Pie Usado (auditoría C.1)
+                  + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 5). */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
+                    Plazo
+                  </label>
+                  <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">
+                    {plazo} años
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={30}
+                  step={5}
+                  value={plazo}
+                  onChange={(e) => setState({ plazoCredito: e.target.value })}
+                  className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+                />
+                <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
+                  <span>10</span>
+                  <span>15</span>
+                  <span>20</span>
+                  <span>25</span>
+                  <span>30</span>
+                </div>
               </div>
-              <input
-                type="range"
-                min={10}
-                max={30}
-                step={5}
-                value={plazo}
-                onChange={(e) => setState({ plazoCredito: e.target.value })}
-                className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
-              />
-              <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
-                <span>10</span>
-                <span>15</span>
-                <span>20</span>
-                <span>25</span>
-                <span>30</span>
+
+              {/* Tasa input — patrón idéntico a ModalAjusteCondiciones · Tasa
+                  (text decimal regex /^\d*[.,]?\d*$/). Sufijo % inline mismo
+                  pattern que Superficie m² (Paso 1). */}
+              <div>
+                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1.5">
+                  Tasa
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="4,72"
+                    className={`${inputBase} pr-8`}
+                    value={state.tasaInteres}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ tasaInteres: v });
+                    }}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
+                    %
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Tasa input — patrón idéntico a ModalAjusteCondiciones · Tasa
-                (text decimal regex /^\d*[.,]?\d*$/). Sufijo % inline mismo
-                pattern que Superficie m² (Paso 1). */}
-            <div>
-              <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1.5">
-                Tasa
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="4,72"
-                  className={`${inputBase} pr-8`}
-                  value={state.tasaInteres}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ tasaInteres: v });
-                  }}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
-                  %
+            {/* Microcopy referencial tasa — dot pattern Fase 4.8. */}
+            <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+              ● Tasa promedio referencial del mercado hipotecario chileno, actualizada periódicamente.
+            </p>
+
+            {/* Validación suave tasa fuera de rango razonable UF Chile (3-7%).
+                Mismo patrón que validación precio: Ink-only (Capa 1 binaria),
+                StateBox attention + AlertTriangle. NO bloquea. */}
+            {(tasa < 3 || tasa > 7) && (
+              <StateBox variant="left-border" state="attention" label="Atención">
+                <span className="flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+                  <span>
+                    {tasa < 3
+                      ? "Tasa muy baja respecto al promedio del mercado. Verifica que el valor sea correcto."
+                      : "Tasa muy alta respecto al promedio del mercado. Verifica que el valor sea correcto."}
+                  </span>
                 </span>
-              </div>
-            </div>
+              </StateBox>
+            )}
           </div>
         )}
       </div>
