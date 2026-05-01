@@ -5,6 +5,7 @@ import { AlertTriangle, ChevronDown, Sliders } from "lucide-react";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
+import { useDebouncedReady } from "@/hooks/useDebouncedReady";
 import {
   calcDividendo,
   fmtCLP,
@@ -53,6 +54,13 @@ export function Paso2Financiamiento({
   // wizardV3State — al volver a Paso 2 vuelve a estado readonly aunque los
   // valores editados sí persistan en el state global.
   const [ajustePlazoTasaOpen, setAjustePlazoTasaOpen] = useState(false);
+
+  // Debounce + on-blur para alertas suaves: mientras el user tipea precio o
+  // tasa, las validaciones quedan suprimidas. Se muestran tras 600ms de pausa
+  // o al hacer blur del input. Cálculos derivados (chips, dividendo, hint
+  // mercado) siguen en vivo — esto solo afecta a los StateBox condicionales.
+  const [precioReady, commitPrecio] = useDebouncedReady(state.precio);
+  const [tasaReady, commitTasa] = useDebouncedReady(state.tasaInteres);
 
   const precioCLP = precioUF * ufCLP;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
@@ -133,6 +141,7 @@ export function Paso2Financiamiento({
                 }
                 setState(patch);
               }}
+              onBlur={commitPrecio}
             />
           </div>
           <div className="flex items-center px-3 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -158,6 +167,7 @@ export function Paso2Financiamiento({
             Render mutuamente excluyente. Solo si hay datos suficientes (precio
             + superficie + precioM2 comuna). NO bloquea el flujo. */}
         {(() => {
+          if (!precioReady) return null;
           if (!(superficie > 0 && precioUF > 0 && precioM2UF && precioM2UF > 0)) return null;
           const userM2 = precioUF / superficie;
           const dev = (userM2 - precioM2UF) / precioM2UF;
@@ -566,6 +576,7 @@ export function Paso2Financiamiento({
                       const v = e.target.value;
                       if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ tasaInteres: v });
                     }}
+                    onBlur={commitTasa}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">
                     %
@@ -581,8 +592,9 @@ export function Paso2Financiamiento({
 
             {/* Validación suave tasa fuera de rango razonable UF Chile (3-7%).
                 Mismo patrón que validación precio: Ink-only (Capa 1 binaria),
-                StateBox attention + AlertTriangle. NO bloquea. */}
-            {(tasa < 3 || tasa > 7) && (
+                StateBox attention + AlertTriangle. NO bloquea. Suprimida
+                durante edición activa (debounce 600ms o blur del input). */}
+            {tasaReady && (tasa < 3 || tasa > 7) && (
               <StateBox variant="left-border" state="attention" label="Atención">
                 <span className="flex items-start gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
