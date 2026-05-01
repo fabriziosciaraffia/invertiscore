@@ -176,12 +176,26 @@ export function Paso2Financiamiento({
           }
 
           if (tier === "soft") {
+            if (direction === "high") {
+              return (
+                <div className="mt-3">
+                  <StateBox variant="left-border" state="attention" label="Atención">
+                    <span className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+                      <span>
+                        El precio está {pctStr}% por encima del promedio de {comuna}. Se reflejará como sobreprecio en el análisis.
+                      </span>
+                    </span>
+                  </StateBox>
+                </div>
+              );
+            }
             return (
-              <p className="font-mono text-[11px] mt-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-                {direction === "high"
-                  ? `● El precio está ${pctStr}% por encima del promedio de ${comuna}. Se reflejará como sobreprecio en el análisis.`
-                  : `● Bien: estás comprando ${pctStr}% por debajo del promedio de ${comuna}. Se reflejará como ventaja inicial en el análisis.`}
-              </p>
+              <div className="mt-3">
+                <StateBox variant="left-border" state="info" label="Información">
+                  Bien: estás comprando {pctStr}% por debajo del promedio de {comuna}. Se reflejará como ventaja inicial en el análisis.
+                </StateBox>
+              </div>
             );
           }
 
