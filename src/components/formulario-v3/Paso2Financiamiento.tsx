@@ -7,6 +7,10 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import { useDebouncedReady } from "@/hooks/useDebouncedReady";
 import {
+  calcTasaConSubsidio,
+  calificaSubsidio as calificaSubsidioHelper,
+} from "@/lib/constants/subsidio";
+import {
   calcDividendo,
   fmtCLP,
   fmtCLPShort,
@@ -21,6 +25,11 @@ function fmtPiePct(pct: number): string {
   return (Math.round(pct * 10) / 10).toString().replace(".", ",");
 }
 
+/** Render coma chilena para tasas (sin redondeo extra: preserva 4,72 vs 4,7). */
+function fmtTasa(n: number): string {
+  return n.toLocaleString("es-CL", { maximumFractionDigits: 2 });
+}
+
 const MESES_ES = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
@@ -30,12 +39,15 @@ export function Paso2Financiamiento({
   state,
   setState,
   ufCLP,
+  tasaMercado,
   precioM2UF,
   precioM2SampleSize,
 }: {
   state: WizardV3State;
   setState: (patch: Partial<WizardV3State>) => void;
   ufCLP: number;
+  /** Tasa hipotecaria de mercado (referencia para subsidio + comparativa). */
+  tasaMercado: number;
   /** UF/m² sugerido del radio (venta). Cuando llega, mostramos hint debajo del precio. */
   precioM2UF?: number | null;
   /** N comparables del fetch de venta. Si null o 0 → ocultar el sufijo. */
@@ -61,6 +73,12 @@ export function Paso2Financiamiento({
   // mercado) siguen en vivo — esto solo afecta a los StateBox condicionales.
   const [precioReady, commitPrecio] = useDebouncedReady(state.precio);
   const [tasaReady, commitTasa] = useDebouncedReady(state.tasaInteres);
+
+  // Subsidio a la Tasa (Ley 21.748). Se calcula vs tasa de mercado vigente
+  // (no la editada por el user) — la editada se usa para detectar si "ya
+  // está aplicando" el subsidio. Helpers centralizados en lib/constants.
+  const tasaConSubsidio = calcTasaConSubsidio(tasaMercado);
+  const calificaSubsidio = calificaSubsidioHelper(state.tipoPropiedad, precioUF);
 
   const precioCLP = precioUF * ufCLP;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
@@ -498,7 +516,7 @@ export function Paso2Financiamiento({
               Dividendo estimado
             </p>
             <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0">
-              Plazo {plazo} años · Tasa {tasa}%
+              Plazo {plazo} años · Tasa {fmtTasa(tasa)}%
             </p>
           </div>
           <p className="font-mono text-[18px] font-semibold text-[var(--franco-text)] m-0">
@@ -528,6 +546,42 @@ export function Paso2Financiamiento({
 
         {ajustePlazoTasaOpen && (
           <div className="mt-3 flex flex-col gap-3">
+            {/* Card subsidio — solo si Nuevo + precio ≤ 4.000 UF (Ley 21.748).
+                StateBox info Ink-only (Capa 1 binaria, cero Signal Red en bg/border).
+                CTA "Usar X%" usa el patrón mono uppercase del trigger Fase 11. */}
+            {calificaSubsidio && (
+              <StateBox variant="left-border" state="info" label="Subsidio a la Tasa">
+                <div className="flex flex-col gap-2">
+                  <p className="m-0">
+                    Tu depto califica al <strong className="font-semibold">Subsidio a la Tasa (Ley 21.748)</strong>.
+                  </p>
+                  <p className="font-mono text-[12px] m-0 text-[var(--franco-text-secondary)]">
+                    Tasa promedio: {fmtTasa(tasaMercado)}% → Con subsidio: ~{fmtTasa(tasaConSubsidio)}%
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setState({ tasaInteres: fmtTasa(tasaConSubsidio) })}
+                      className="inline-flex items-center font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--franco-text)] hover:text-[var(--franco-text-secondary)] underline underline-offset-4 decoration-1 transition-colors"
+                    >
+                      Usar {fmtTasa(tasaConSubsidio)}%
+                    </button>
+                    <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">
+                      Vigente hasta mayo 2027 · Requiere primera vivienda
+                    </span>
+                  </div>
+                  <a
+                    href="https://www.minvu.gob.cl/nuevo-subsidio-al-credito-hipotecario/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2 inline-flex items-center gap-1 mt-0.5"
+                  >
+                    Más información →
+                  </a>
+                </div>
+              </StateBox>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
               {/* Plazo slider — patrón idéntico al slider Pie Usado (auditoría C.1)
                   + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 5). */}
@@ -585,10 +639,14 @@ export function Paso2Financiamiento({
               </div>
             </div>
 
-            {/* Microcopy referencial tasa — dot pattern Fase 4.8. */}
-            <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-              ● Tasa promedio referencial del mercado hipotecario chileno, actualizada periódicamente.
-            </p>
+            {/* Microcopy referencial tasa — dot pattern Fase 4.8.
+                Oculto cuando califica subsidio: la card de arriba ya entrega
+                la referencia (tasa promedio + tasa con subsidio). */}
+            {!calificaSubsidio && (
+              <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+                ● Tasa promedio referencial del mercado hipotecario chileno, actualizada periódicamente.
+              </p>
+            )}
 
             {/* Validación suave tasa fuera de rango razonable UF Chile (3-7%).
                 Mismo patrón que validación precio: Ink-only (Capa 1 binaria),

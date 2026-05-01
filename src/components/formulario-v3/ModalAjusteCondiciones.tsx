@@ -289,7 +289,7 @@ function TabFinanciamiento({
           </span>
           <InfoTooltip
             trigger="click"
-            content="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas para Subsidio a la Tasa, puede bajar a ~4%."
+            content="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas al Subsidio a la Tasa (Ley 21.748), puede bajar ~0,6 puntos."
           />
         </span>
         <input

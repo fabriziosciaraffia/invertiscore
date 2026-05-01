@@ -85,7 +85,7 @@ export const DEFAULT_STATE: WizardV3State = {
   cuotasPie: "",
   montoCuotaPieUF: "",
   plazoCredito: "25",
-  tasaInteres: "4.72",
+  tasaInteres: "4,72",
   modalidad: null,
   arriendo: "",
   gastos: "",

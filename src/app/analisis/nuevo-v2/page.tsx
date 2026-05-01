@@ -33,6 +33,10 @@ export default function NuevoAnalisisV3Page() {
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [ufCLP, setUfCLP] = useState(UF_CLP_FALLBACK);
+  // Tasa hipotecaria de mercado (referencia para subsidio + microcopy).
+  // Se actualiza desde /api/config?key=tasa_hipotecaria. Independiente de
+  // state.tasaInteres (que puede ser editada por el user).
+  const [tasaMercado, setTasaMercado] = useState<number>(4.72);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -94,8 +98,13 @@ export default function NuevoAnalisisV3Page() {
 
     fetch("/api/config?key=tasa_hipotecaria").then((r) => r.ok ? r.json() : null).then((d) => {
       if (d?.value) {
+        const n = Number(d.value);
+        if (Number.isFinite(n)) setTasaMercado(n);
+        // Normalizar a coma chilena en display. parseDecimalLocale maneja
+        // ambos formatos al consumirla, pero el render del input es literal.
+        const tasaStr = String(d.value).replace(".", ",");
         setState((prev) => prev.tasaInteres === DEFAULT_STATE.tasaInteres
-          ? { ...prev, tasaInteres: String(d.value) }
+          ? { ...prev, tasaInteres: tasaStr }
           : prev);
       }
     }).catch(() => { /* keep default */ });
@@ -444,6 +453,7 @@ export default function NuevoAnalisisV3Page() {
                 state={state}
                 setState={patch}
                 ufCLP={ufCLP}
+                tasaMercado={tasaMercado}
                 precioM2UF={suggestions.precioM2UF}
                 precioM2SampleSize={suggestions.precioM2SampleSize}
               />

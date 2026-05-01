@@ -3,6 +3,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import {
+  TASA_MERCADO_FALLBACK,
+  calcTasaConSubsidio,
+  calificaSubsidio,
+  aplicaSubsidio,
+} from "@/lib/constants/subsidio";
 
 const anthropic = new Anthropic();
 
@@ -564,10 +570,9 @@ Menciona estos datos en tu análisis cuando sean relevantes:
 - Si la eficiencia es alta (>70), destaca que está comprando a buen precio relativo al mercado del radio
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}
 ${(() => {
-  const calificaSubsidio = (input.tipo === "Nuevo" || input.tipo === "nuevo") && input.precio <= 4000;
-  if (!calificaSubsidio) return "";
-  const tasaConSubsidio = 3.5;
-  const usoTasaSubsidio = input.tasaInteres <= tasaConSubsidio + 0.2;
+  if (!calificaSubsidio(input.tipo, input.precio)) return "";
+  const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
+  const usoTasaSubsidio = aplicaSubsidio(input.tasaInteres, tasaConSubsidio);
   const dividendoActual = m.dividendo;
   const creditoCLPSub = m.precioCLP * (1 - input.piePct / 100);
   const tasaMesSub = tasaConSubsidio / 100 / 12;

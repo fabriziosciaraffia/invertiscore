@@ -13,6 +13,12 @@ import type {
 import { estimarContribuciones } from "./contribuciones";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
+import {
+  TASA_MERCADO_FALLBACK,
+  calcTasaConSubsidio,
+  calificaSubsidio as calificaSubsidioHelper,
+  aplicaSubsidio,
+} from "./constants/subsidio";
 
 // Dynamic UF value — set via setUFValue() before calling runAnalysis()
 let UF_CLP = 38800;
@@ -289,10 +295,9 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / UF_CLP * 100) / 100,
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
     subsidioTasa: (() => {
-      const califica = (input.tipo === "Nuevo" || input.tipo === "nuevo") && input.precio <= 4000;
-      const tasaMercado = 4.1;
-      const tasaConSubsidio = Math.round((tasaMercado - 0.6) * 10) / 10;
-      return { califica, tasaConSubsidio, aplicado: califica && input.tasaInteres <= tasaConSubsidio + 0.2 };
+      const califica = calificaSubsidioHelper(input.tipo, input.precio);
+      const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
+      return { califica, tasaConSubsidio, aplicado: califica && aplicaSubsidio(input.tasaInteres, tasaConSubsidio) };
     })(),
   };
 }
