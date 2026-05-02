@@ -1,5 +1,6 @@
 "use client";
 
+import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   calcDividendo,
   fmtCLP,
@@ -109,14 +110,20 @@ export function ResumenCard({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
         <Cell
           label="Plazo · Tasa"
-          value={`${plazo}a · ${tasa}%`}
+          value={`${plazo} años · ${tasa}%`}
+          tooltip="Plazo: años de duración del crédito. Tasa: tasa anual de interés. Ambos editables en Ajustar."
           edited={isEdited("plazoCredito") || isEdited("tasaInteres")}
         />
-        <Cell label="Dividendo" value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"} />
+        <Cell
+          label="Dividendo"
+          value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
+          tooltip="Cuota mensual del crédito hipotecario. Calculada con precio, pie, plazo y tasa."
+        />
         <div>
           <Cell
-            label="Arriendo est."
+            label="Arriendo estimado"
             value={arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
+            tooltip="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Editable en Ajustar."
             edited={isEdited("arriendo")}
           />
           {sampleSize > 0 && (
@@ -128,18 +135,21 @@ export function ResumenCard({
           )}
         </div>
         <Cell
-          label="Vacancia · Admin"
+          label="Vacancia · Administración"
           value={`${state.vacanciaPct}% · ${state.adminPct}%`}
+          tooltip="Vacancia: % del año sin arrendatario. Administración: % del arriendo al administrador. Ambos editables en Ajustar."
           edited={isEdited("vacanciaPct") || isEdited("adminPct")}
         />
         <Cell
           label="Gastos comunes"
           value={gastos > 0 ? `${fmtCLP(gastos)}/mes` : "—"}
+          tooltip="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Editable en Ajustar."
           edited={isEdited("gastos")}
         />
         <Cell
           label="Contribuciones"
           value={contribuciones > 0 ? `${fmtCLP(contribuciones)}/trim` : "—"}
+          tooltip="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente."
           edited={isEdited("contribuciones")}
         />
       </div>
@@ -155,11 +165,22 @@ export function ResumenCard({
   );
 }
 
-function Cell({ label, value, edited = false }: { label: string; value: string; edited?: boolean }) {
+function Cell({
+  label,
+  value,
+  edited = false,
+  tooltip,
+}: {
+  label: string;
+  value: string;
+  edited?: boolean;
+  tooltip?: string;
+}) {
   return (
     <div>
-      <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
-        {label}
+      <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
+        <span>{label}</span>
+        {tooltip && <InfoTooltip trigger="click" content={tooltip} />}
       </p>
       <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
         {value}
