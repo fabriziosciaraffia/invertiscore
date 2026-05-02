@@ -1,17 +1,36 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { AlertTriangle, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useResetOnOpen } from "@/hooks/useResetOnOpen";
+import { useDebouncedReady } from "@/hooks/useDebouncedReady";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { StateBox } from "@/components/ui/StateBox";
 import {
   calcDividendo,
   fmtCLP,
   parseDecimalLocale,
   type WizardV3State,
 } from "./wizardV3State";
+
+// 3-tier alert helper: aligned (<5%) / soft (5-15%) / strong (>15%).
+// Replicado del patrón de Paso2Financiamiento (validación precio Fase 12).
+// Si user o market son inválidos (≤0), retorna null → no se muestra alerta.
+function calcTier(user: number, market: number) {
+  if (!(user > 0 && market > 0)) return null;
+  const dev = (user - market) / market;
+  const absDev = Math.abs(dev);
+  const tier: "aligned" | "soft" | "strong" =
+    absDev < 0.05 ? "aligned" : absDev <= 0.15 ? "soft" : "strong";
+  const direction: "high" | "low" = dev > 0 ? "high" : "low";
+  const rounded = Math.round(absDev * 100 * 10) / 10;
+  const pctStr = Number.isInteger(rounded)
+    ? String(rounded)
+    : rounded.toString().replace(".", ",");
+  return { tier, direction, pctStr };
+}
 
 type TabKey = "financiamiento" | "arriendo" | "gastos";
 
@@ -42,6 +61,7 @@ export function ModalAjusteCondiciones({
   onSave: (patch: Partial<WizardV3State>) => void;
   suggestions: {
     arriendo: number | null;
+    arriendoSampleSize?: number;
     gastos: number | null;
     contribuciones: number | null;
   };
@@ -187,7 +207,13 @@ export function ModalAjusteCondiciones({
             <TabFinanciamiento local={local} setLocal={patch} state={state} ufCLP={ufCLP} />
           )}
           {activeTab === "arriendo" && (
-            <TabArriendo local={local} setLocal={patch} state={state} suggestion={suggestions.arriendo} />
+            <TabArriendo
+              local={local}
+              setLocal={patch}
+              state={state}
+              suggestion={suggestions.arriendo}
+              sampleSize={suggestions.arriendoSampleSize}
+            />
           )}
           {activeTab === "gastos" && (
             <TabGastos local={local} setLocal={patch} suggestions={suggestions} />
@@ -242,7 +268,13 @@ type LocalState = {
 const inputBase =
   "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-bg)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
-function Suggest({ sugerido }: { sugerido: number | null }) {
+function Suggest({
+  sugerido,
+  sampleSize,
+}: {
+  sugerido: number | null;
+  sampleSize?: number;
+}) {
   if (!sugerido) return null;
   return (
     <p
@@ -250,6 +282,9 @@ function Suggest({ sugerido }: { sugerido: number | null }) {
       style={{ color: "color-mix(in srgb, var(--ink-400) 70%, transparent)" }}
     >
       Mercado sugiere {fmtCLP(sugerido)}
+      {sampleSize && sampleSize > 0
+        ? ` · basado en ${sampleSize} ${sampleSize === 1 ? "propiedad comparable" : "propiedades comparables"}`
+        : ""}
     </p>
   );
 }
@@ -320,15 +355,20 @@ function TabFinanciamiento({
 }
 
 function TabArriendo({
-  local, setLocal, state, suggestion,
+  local, setLocal, state, suggestion, sampleSize,
 }: {
   local: LocalState;
   setLocal: <K extends keyof LocalState>(k: K, v: LocalState[K]) => void;
   state: WizardV3State;
   suggestion: number | null;
+  sampleSize?: number;
 }) {
   const nEstac = Number(state.estacionamientos) || 0;
   const nBodega = Number(state.bodegas) || 0;
+  const [arriendoReady, commitArriendo] = useDebouncedReady(local.arriendo);
+  const arriendoTier = arriendoReady
+    ? calcTier(parseDecimalLocale(local.arriendo), suggestion ?? 0)
+    : null;
   return (
     <div className="flex flex-col gap-4">
       <label className="block">
@@ -338,20 +378,28 @@ function TabArriendo({
           </span>
           <InfoTooltip
             trigger="click"
-            content="Calculado con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% de superficie) en la zona. Edítalo si tienes referencia distinta."
+            content="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta."
           />
         </span>
         <MoneyInput
           className={inputBase}
           value={local.arriendo}
           onChange={(raw) => setLocal("arriendo", raw)}
+          onBlur={commitArriendo}
         />
-        <Suggest sugerido={suggestion} />
+        <Suggest sugerido={suggestion} sampleSize={sampleSize} />
+        <ArriendoAlert tier={arriendoTier} />
       </label>
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
-          <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Vacancia (%)
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Vacancia (%)
+            </span>
+            <InfoTooltip
+              trigger="click"
+              content="Porcentaje del año estimado sin arrendatario (búsqueda de inquilino, transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
+            />
           </span>
           <input
             type="range" min={0} max={25} step={1}
@@ -362,8 +410,14 @@ function TabArriendo({
           <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">{local.vacanciaPct}%</span>
         </label>
         <label className="block">
-          <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-            Administración (%)
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Administración (%)
+            </span>
+            <InfoTooltip
+              trigger="click"
+              content="Porcentaje del arriendo que paga al administrador (corredor que gestiona la propiedad). Default 0% asume autogestión. Típico mercado: 8-12% si delega."
+            />
           </span>
           <input
             type="range" min={0} max={15} step={1}
@@ -423,6 +477,14 @@ function TabGastos({
   setLocal: <K extends keyof LocalState>(k: K, v: LocalState[K]) => void;
   suggestions: { gastos: number | null; contribuciones: number | null };
 }) {
+  const [gastosReady, commitGastos] = useDebouncedReady(local.gastos);
+  const [contribReady, commitContrib] = useDebouncedReady(local.contribuciones);
+  const gastosTier = gastosReady
+    ? calcTier(parseDecimalLocale(local.gastos), suggestions.gastos ?? 0)
+    : null;
+  const contribTier = contribReady
+    ? calcTier(parseDecimalLocale(local.contribuciones), suggestions.contribuciones ?? 0)
+    : null;
   return (
     <div className="flex flex-col gap-4">
       <label className="block">
@@ -432,15 +494,20 @@ function TabGastos({
           </span>
           <InfoTooltip
             trigger="click"
-            content="Pago mensual a la administración del edificio. Si no sabes el valor exacto, una buena referencia es 0,7% del valor del depto al año, dividido en 12 meses."
+            content="Pago mensual a la administración del edificio. Sugerencia calculada según tier de comuna (~$1.400-2.200/m²). Edita si conoces el valor real."
           />
         </span>
         <MoneyInput
           className={inputBase}
           value={local.gastos}
           onChange={(raw) => setLocal("gastos", raw)}
+          onBlur={commitGastos}
         />
         <Suggest sugerido={suggestions.gastos} />
+        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+          ● Calculado por superficie útil × valor $/m² según tier de comuna.
+        </p>
+        <GastosAlert tier={gastosTier} />
       </label>
       <label className="block">
         <span className="flex items-center gap-1.5 mb-1.5">
@@ -456,9 +523,173 @@ function TabGastos({
           className={inputBase}
           value={local.contribuciones}
           onChange={(raw) => setLocal("contribuciones", raw)}
+          onBlur={commitContrib}
         />
         <Suggest sugerido={suggestions.contribuciones} />
+        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+          ● Calculado con avalúo fiscal estimado (precio × 0,7), exenciones DFL-2 si aplica, y tasa progresiva SII.
+        </p>
+        <ContribAlert tier={contribTier} />
       </label>
+    </div>
+  );
+}
+
+// ─── Alert components per field ─────────────────────
+type Tier = ReturnType<typeof calcTier>;
+
+function ArriendoAlert({ tier }: { tier: Tier }) {
+  if (!tier) return null;
+  if (tier.tier === "aligned") {
+    return (
+      <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Arriendo dentro del rango sugerido.
+      </p>
+    );
+  }
+  if (tier.tier === "soft") {
+    if (tier.direction === "high") {
+      return (
+        <div className="mt-2">
+          <StateBox variant="left-border" state="attention" label="Atención">
+            <span className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+              <span>El arriendo está {tier.pctStr}% sobre la sugerencia. Verifica que sea alcanzable en la zona.</span>
+            </span>
+          </StateBox>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="info" label="Información">
+          Bien: arriendo {tier.pctStr}% bajo la sugerencia, conservador para la proyección.
+        </StateBox>
+      </div>
+    );
+  }
+  // strong
+  if (tier.direction === "high") {
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="attention" label="Atención">
+          <span className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+            <span>El arriendo está un {tier.pctStr}% sobre la sugerencia — desviación importante. Puede sobreestimar el flujo proyectado. Verifica el dato.</span>
+          </span>
+        </StateBox>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2">
+      <StateBox variant="left-border" state="info" label="Información">
+        Buena noticia: arriendo {tier.pctStr}% bajo la sugerencia — diferencia importante. La proyección será conservadora.
+      </StateBox>
+    </div>
+  );
+}
+
+function GastosAlert({ tier }: { tier: Tier }) {
+  if (!tier) return null;
+  if (tier.tier === "aligned") {
+    return (
+      <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Gastos dentro del rango del tier de comuna.
+      </p>
+    );
+  }
+  if (tier.tier === "soft") {
+    if (tier.direction === "high") {
+      return (
+        <div className="mt-2">
+          <StateBox variant="left-border" state="attention" label="Atención">
+            <span className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+              <span>Gastos {tier.pctStr}% sobre el promedio del tier de comuna. Verifica el valor real.</span>
+            </span>
+          </StateBox>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="info" label="Información">
+          Gastos {tier.pctStr}% bajo el promedio del tier de comuna.
+        </StateBox>
+      </div>
+    );
+  }
+  // strong
+  if (tier.direction === "high") {
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="attention" label="Atención">
+          <span className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+            <span>Gastos {tier.pctStr}% sobre el promedio del tier de comuna — desviación importante. Verifica el valor real con la administración del edificio.</span>
+          </span>
+        </StateBox>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2">
+      <StateBox variant="left-border" state="info" label="Información">
+        Gastos {tier.pctStr}% bajo el promedio del tier de comuna — diferencia importante. Confirma con la administración.
+      </StateBox>
+    </div>
+  );
+}
+
+function ContribAlert({ tier }: { tier: Tier }) {
+  if (!tier) return null;
+  if (tier.tier === "aligned") {
+    return (
+      <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Contribuciones alineadas con cálculo SII.
+      </p>
+    );
+  }
+  if (tier.tier === "soft") {
+    if (tier.direction === "high") {
+      return (
+        <div className="mt-2">
+          <StateBox variant="left-border" state="attention" label="Atención">
+            <span className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+              <span>Contribuciones {tier.pctStr}% sobre el cálculo SII. Verifica con avalúo real.</span>
+            </span>
+          </StateBox>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="info" label="Información">
+          Contribuciones {tier.pctStr}% bajo el cálculo SII.
+        </StateBox>
+      </div>
+    );
+  }
+  // strong
+  if (tier.direction === "high") {
+    return (
+      <div className="mt-2">
+        <StateBox variant="left-border" state="attention" label="Atención">
+          <span className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-[var(--franco-text-secondary)]" />
+            <span>Contribuciones {tier.pctStr}% sobre el cálculo SII — desviación importante. Verifica con avalúo real del SII.</span>
+          </span>
+        </StateBox>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-2">
+      <StateBox variant="left-border" state="info" label="Información">
+        Contribuciones {tier.pctStr}% bajo el cálculo SII — diferencia importante. Verifica si aplica DFL-2 u otra exención.
+      </StateBox>
     </div>
   );
 }

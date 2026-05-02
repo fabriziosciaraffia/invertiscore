@@ -41,6 +41,7 @@ export function Paso3Modalidad({
   tierInfo: TierInfo | null;
   suggestions: {
     arriendo: number | null;
+    arriendoSampleSize?: number;
     gastos: number | null;
     contribuciones: number | null;
   };

@@ -466,6 +466,7 @@ export default function NuevoAnalisisV3Page() {
                 tierInfo={tierInfo}
                 suggestions={{
                   arriendo: suggestions.arriendo,
+                  arriendoSampleSize: suggestions.sampleSize,
                   gastos: suggestions.gastos,
                   contribuciones: suggestions.contribuciones,
                 }}
