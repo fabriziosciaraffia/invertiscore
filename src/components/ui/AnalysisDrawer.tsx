@@ -123,8 +123,8 @@ function DrawerCostoMensual({
     { name: "Administración", value: desglose.administracion },
   ];
   const maxSale = Math.max(...saleItems.map((s) => s.value), 1);
-  const resultLabel = isNeg ? "SALE DE TU BOLSILLO CADA MES" : "TE SOBRA CADA MES";
-  const resultSub = isNeg ? "Tienes que poner este dinero tú" : "Queda a tu favor después de todos los gastos";
+  const resultLabel = isNeg ? "SALE DE TU BOLSILLO" : "ENTRA A TU BOLSILLO";
+  const resultSub = isNeg ? "Tienes que poner este dinero tú" : "Entra cada mes después de cubrir todos los gastos";
   // Bloque conclusivo Patrón 3 — treatment condicional según naturaleza del KPI:
   // - Negativo crítico: wash Signal Red 6% + borderLeft Signal Red + label/KPI Signal Red
   // - Positivo o neutro: wash Ink 3% + borderLeft Ink secundario + label Ink secundario

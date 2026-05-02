@@ -1176,7 +1176,7 @@ function buildHeroDatosClave(
     label: flujo < 0 ? "Aporte mensual" : "Te sobra mensual",
     valor_clp: flujoFmtCLP,
     valor_uf: flujoFmtUF,
-    subtexto: flujo < 0 ? "Sale de tu bolsillo" : "Queda a tu favor",
+    subtexto: flujo < 0 ? "Sale de tu bolsillo" : "Entra a tu bolsillo",
     color: flujoColor,
   };
 
@@ -1724,7 +1724,7 @@ function getPunchline(
       const isNeg = flujo < 0;
       return {
         value: `${isNeg ? "-" : "+"}${formatted}`,
-        sub: isNeg ? "De tu bolsillo cada mes" : "Te sobra cada mes",
+        sub: isNeg ? "Sale de tu bolsillo" : "Entra a tu bolsillo",
         color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
       };
     }
@@ -2495,33 +2495,6 @@ export function PremiumResults({
   const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
-
-  // Flujo unificado: SIEMPRE recalculado con calcFlujoDesglose (ignora valor guardado en DB)
-  const flujoUnificado = useMemo(() => {
-    if (!m || !inputData) return freeFlujo;
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
-    return calcFlujoDesglose({
-      arriendo: inputData.arriendo,
-      dividendo: m.dividendo,
-      ggcc: inputData.gastos,
-      contribuciones: inputData.contribuciones,
-      mantencion,
-      vacanciaMeses: inputData.vacanciaMeses,
-      usaAdministrador: inputData.usaAdministrador,
-      comisionAdministrador: inputData.comisionAdministrador,
-    }).flujoNeto;
-  }, [m, inputData, freeFlujo]);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const flujoText = useMemo(() => {
-    const f = flujoUnificado;
-    const abs = Math.abs(f);
-    if (f === 0) return "Break-even — sin ganancia ni pérdida mensual.";
-    if (f > 0) return "La propiedad se paga sola y genera ganancia";
-    if (abs <= 100000) return "Aporte mensual moderado para el mercado";
-    if (abs <= 300000) return "Aporte mensual significativo de tu bolsillo";
-    return "Aporte mensual elevado — evalúa bien";
-  }, [flujoUnificado]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const flujoBreakdown = useMemo(() => {
