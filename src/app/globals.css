@@ -27,8 +27,10 @@
      * EXCEPCIÓN CAPA 1 — Indicador de ajuste manual (decisión producto 2026-05)
      * Signal Red usado fuera de los 8 usos permitidos del skill
      * (franco-design-system) en `ResumenCard.tsx`:
-     *   - dot indicator por field ajustado
-     *   - border 1px de la card cuando hay ajustes
+     *   - dot indicator por field ajustado (texto Signal Red)
+     *   - badge "AJUSTADO" en el header (bg Signal Red sólido + texto blanco)
+     * NO en border de la card — ese sigue Ink (text-secondary), Capa 1
+     * compliant. La excepción se acota a los dos micro-elementos visibles.
      * Justificación: el indicador "ajustado manualmente" requiere visibilidad
      * alta para que el usuario distinga sus ajustes de las sugerencias
      * automáticas. Las alternativas Ink-only (dot text-primary, wash, border

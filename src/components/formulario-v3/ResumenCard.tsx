@@ -67,9 +67,8 @@ export function ResumenCard({
     <div
       className="rounded-2xl p-5 flex flex-col gap-4"
       style={{
-        // Excepción Capa 1 documentada en globals.css (decisión producto 2026-05).
         border: hasAjustes
-          ? "1px solid #C8323C"
+          ? "1px solid var(--franco-text-secondary)"
           : "0.5px solid var(--franco-border)",
         background: "var(--franco-card)",
       }}
