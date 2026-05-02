@@ -50,26 +50,13 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
           padding: "32px 28px",
         }}
       >
-        {/* Wordmark canónico (FrancoLogo): 're' italic ghost + 'franco' bold
-            + '.ai' Sans semibold Signal Red @ 0.35em. Reusamos el componente
-            para garantizar exact match con header en producción. */}
-        <div className="flex justify-center mb-3">
-          <FrancoLogo size="lg" />
+        {/* Wordmark canónico + tagline (FrancoLogo): 're' italic ghost +
+            'franco' bold + '.ai' Sans semibold Signal Red. Tagline JetBrains
+            Mono uppercase tracking 0.2em muted. Reusamos el componente para
+            single source of truth con landing/auth/dashboard. */}
+        <div className="flex justify-center mb-7">
+          <FrancoLogo size="lg" showTagline />
         </div>
-
-        {/* Tagline italic */}
-        <p
-          className="text-center m-0 mb-7"
-          style={{
-            fontFamily: "var(--font-heading), Georgia, serif",
-            fontStyle: "italic",
-            fontSize: 17,
-            lineHeight: 1.4,
-            color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
-          }}
-        >
-          Real Estate en su estado más franco.
-        </p>
 
         {/* Lista de estados */}
         <ul className="list-none m-0 p-0 flex flex-col gap-2.5">
