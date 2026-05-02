@@ -1101,6 +1101,18 @@ const VERDICT_TOOLTIPS: Record<string, string> = {
 
 const FRANCO_SCORE_TOOLTIP = "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA EL PRECIO. Bajo 50: BUSCAR OTRA.";
 
+// Tooltips de las 3 DatoCards del Hero. Lookup por label (los labels son
+// hardcoded por buildHeroDatosClave). Si una label nueva aparece sin entry,
+// el card se renderiza sin tooltip (degradación graceful).
+const DATO_TOOLTIPS: Record<string, string> = {
+  "Aporte mensual": "Lo que sale de tu bolsillo cada mes porque el arriendo no cubre los costos (dividendo + gastos + contribuciones + mantención).",
+  "Te sobra mensual": "Excedente mensual: el arriendo cubre todos los costos y queda saldo a tu favor.",
+  "Precio sugerido": "Precio recomendado por Franco para que la inversión tenga sentido financiero. Útil como punto de partida para negociar.",
+  "Ventaja": "Diferencia favorable entre el precio que pagas y el valor de mercado del depto en la zona. Compras bajo mercado.",
+  "Sobreprecio": "Diferencia desfavorable: estás pagando más que el valor de mercado en la zona.",
+  "Precio alineado": "Tu precio de compra coincide con el valor de mercado de la zona (±2% de diferencia).",
+};
+
 // ─── AI Analysis Section (v2) ────────────────────────
 const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string; bgInner: string; borderInner: string }> = {
   COMPRAR: {
@@ -1271,10 +1283,13 @@ function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; c
     ? "text-signal-red font-medium"
     : "text-[var(--franco-text-secondary)]";
 
+  const tooltip = DATO_TOOLTIPS[dato.label];
+
   return (
     <div className={`${bgClass} rounded-xl p-4 ${borderClass}`}>
-      <p className={`font-mono text-[9px] uppercase tracking-[1.5px] mb-1.5 ${labelClass}`}>
-        {dato.label}
+      <p className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[1.5px] mb-1.5 ${labelClass}`}>
+        <span>{dato.label}</span>
+        {tooltip && <InfoTooltip content={tooltip} />}
       </p>
       <p className={`font-mono text-[22px] font-semibold m-0 ${colorClass}`}>
         {valor}
