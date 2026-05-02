@@ -1092,6 +1092,16 @@ function Capa3Unificado({
   );
 }
 
+// Copy de tooltips por veredicto — usado en el badge del callout (Fase 17).
+const VERDICT_TOOLTIPS: Record<string, string> = {
+  COMPRAR: "El depto cumple los criterios de inversión: buena rentabilidad, flujo razonable y plusvalía proyectada.",
+  "AJUSTA EL PRECIO": "El depto tiene potencial pero el precio actual no lo justifica. Negociar puede convertirlo en buena inversión.",
+  "BUSCAR OTRA": "Los números no cierran. Mejor dedicar el presupuesto a otra propiedad o zona.",
+};
+
+const FRANCO_SCORE_TOOLTIP = "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA EL PRECIO. Bajo 50: BUSCAR OTRA.";
+const SCORE_AXIS_TOOLTIP = "Tres veredictos posibles según el Franco Score: BUSCAR OTRA (<50), AJUSTA EL PRECIO (50-70), COMPRAR (>70).";
+
 // ─── AI Analysis Section (v2) ────────────────────────
 const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string; bgInner: string; borderInner: string }> = {
   COMPRAR: {
@@ -1304,7 +1314,7 @@ function HeroTopStrip({
   veredicto: string;
   propiedadTitle: string;
   propiedadSubtitle: string;
-  metadataItems: { label: string; value: string }[];
+  metadataItems: { label: string; value: string; tooltip?: string }[];
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
   badgeBg: string;
@@ -1372,8 +1382,9 @@ function HeroTopStrip({
         <div className="grid grid-cols-2 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
           {metadataItems.map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
-              <span className="font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
-                {item.label}
+              <span className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
+                <span>{item.label}</span>
+                {item.tooltip && <InfoTooltip content={item.tooltip} />}
               </span>
               <span className="font-mono text-[12px] md:text-[13px] font-medium text-[var(--franco-text)] whitespace-nowrap">
                 {item.value}
@@ -1384,8 +1395,9 @@ function HeroTopStrip({
 
         {/* Score block — order-1 mobile / order-2 desktop. Vertical divider Ink en md+ */}
         <div className="order-1 md:order-2 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
-          <p className="font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
-            Franco Score
+          <p className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
+            <span>Franco Score</span>
+            <InfoTooltip content={FRANCO_SCORE_TOOLTIP} />
           </p>
           {/* Score number + badge a la derecha. Mobile fallback: stack vertical si viewport angosto. */}
           <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mb-1.5">
@@ -1421,10 +1433,13 @@ function HeroTopStrip({
                 }}
               />
             </div>
-            <div className="flex justify-between font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
+            <div className="flex justify-between items-center font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
               <span>BUSCAR</span>
               <span>AJUSTA</span>
-              <span>COMPRAR</span>
+              <span className="inline-flex items-center gap-1">
+                COMPRAR
+                <InfoTooltip content={SCORE_AXIS_TOOLTIP} />
+              </span>
             </div>
           </div>
         </div>
@@ -1453,7 +1468,7 @@ function HeroCard({
   score: number;
   propiedadTitle: string;
   propiedadSubtitle: string;
-  metadataItems: { label: string; value: string }[];
+  metadataItems: { label: string; value: string; tooltip?: string }[];
   results: import("@/lib/types").FullAnalysisResult | null | undefined;
   valorUF: number;
 }) {
@@ -1569,7 +1584,7 @@ function HeroCard({
           01 · Veredicto
         </p>
         <h2 className="font-heading font-bold text-[20px] md:text-[24px] leading-[1.25] mb-4 text-[var(--franco-text)] m-0">
-          {data.conviene.pregunta}
+          {isCompra ? "¿Por qué conviene?" : isAjusta ? "¿Conviene si negocias?" : "¿Por qué no conviene?"}
         </h2>
 
         <div className="font-body text-[14px] md:text-[15px] leading-[1.65] text-[var(--franco-text)] mb-3">
@@ -1583,15 +1598,18 @@ function HeroCard({
             border: calloutBorder,
           }}
         >
-          <span
-            className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
-            style={{
-              color: badgeText,
-              background: badgeBg,
-              border: badgeBorder,
-            }}
-          >
-            {veredicto}
+          <span className="inline-flex items-center gap-1.5 shrink-0">
+            <span
+              className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase"
+              style={{
+                color: badgeText,
+                background: badgeBg,
+                border: badgeBorder,
+              }}
+            >
+              {veredicto}
+            </span>
+            <InfoTooltip content={VERDICT_TOOLTIPS[veredicto] ?? VERDICT_TOOLTIPS["AJUSTA EL PRECIO"]} />
           </span>
           <p className="font-body text-[13px] md:text-[14px] font-medium text-[var(--franco-text)] m-0">
             {veredictoFrase}
@@ -1639,7 +1657,7 @@ function HeroCard({
               className="font-mono text-[10px] font-semibold tracking-[2px] uppercase inline-block px-2.5 py-1 rounded mb-2"
               style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
             >
-              Antes de seguir, decide:
+              {isAjusta ? "Antes de negociar:" : "Próximos pasos:"}
             </span>
           )}
           {renderAiContent(cajaAccionable)}
@@ -1826,7 +1844,7 @@ function DashboardAnalysisSection({
   score: number;
   propiedadTitle: string;
   propiedadSubtitle: string;
-  metadataItems: { label: string; value: string }[];
+  metadataItems: { label: string; value: string; tooltip?: string }[];
   onRetry: () => void;
   results: import("@/lib/types").FullAnalysisResult | null | undefined;
   inputData: import("@/lib/types").AnalisisInput | null | undefined;
@@ -3139,8 +3157,16 @@ export function PremiumResults({
   const metadataItems = [
     { label: "SUPERFICIE", value: `${superficie} m²` },
     { label: "PRECIO", value: fmtUF(precioUF) },
-    { label: "$/M²", value: fmtCLP(freePrecioM2 * UF_CLP) },
-    { label: "PIE", value: `${inputData?.piePct ?? 20}%` },
+    {
+      label: "$/M²",
+      value: fmtCLP(freePrecioM2 * UF_CLP),
+      tooltip: "Precio por metro cuadrado en CLP. Útil para comparar contra el promedio de la comuna independiente del tamaño del depto.",
+    },
+    {
+      label: "PIE",
+      value: `${inputData?.piePct ?? 20}%`,
+      tooltip: "Porcentaje del precio pagado con recursos propios, sin crédito hipotecario.",
+    },
   ];
   const resolvedVeredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
