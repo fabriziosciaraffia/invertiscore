@@ -1375,10 +1375,10 @@ function HeroTopStrip({
 
       {/* ROW 2 — parallel-row: metadata 3x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
       {/* Mobile: SCORE primero, METADATA segundo (skill regla dura) */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-[2fr_1fr] md:gap-6 md:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_2fr] md:gap-6 md:items-start">
 
-        {/* Metadata 2x3 mobile / 3x2 desktop — order-2 mobile / order-1 desktop */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
+        {/* Metadata 2x3 mobile / 3x2 desktop — siempre order-2 (mobile abajo / desktop derecha) */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2 shrink-0 order-2">
           {metadataItems.map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
               <span className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
@@ -1392,12 +1392,13 @@ function HeroTopStrip({
           ))}
         </div>
 
-        {/* Score block — order-1 mobile / order-2 desktop. Vertical divider Ink en md+.
+        {/* Score block — siempre order-1 (mobile arriba / desktop izquierda).
+            Vertical divider Ink en md+ a la derecha del score block.
             Layout post-Fase 18:
               [FRANCO SCORE ?]   [BADGE VEREDICTO]
               [score]   [────barra────]
               BUSCAR · AJUSTA · COMPRAR */}
-        <div className="order-1 md:order-2 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
+        <div className="order-1 md:pr-6 md:border-r md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
           {/* Header row: label "Franco Score" + badge a la derecha.
               Tracking reducido (1.5px label / 1px badge) y padding compacto
               para que "BUSCAR OTRA" (badge más largo) entre en el ancho 1fr
