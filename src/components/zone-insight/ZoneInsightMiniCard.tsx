@@ -85,7 +85,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
             className="font-mono text-[9px] uppercase tracking-[1.5px] font-medium"
             style={{ color: "var(--ink-400)" }}
           >
-            Zona · 06
+            06 · Zona
           </span>
           <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.2] text-[var(--franco-text)] m-0">
             Lo que no ves a simple vista

@@ -1768,6 +1768,7 @@ function getPunchline(
 
 function MiniCard({
   section,
+  numero,
   label,
   data,
   currency,
@@ -1776,6 +1777,8 @@ function MiniCard({
   valorUF,
 }: {
   section: MiniCardSection;
+  /** Numeración mono per skill líneas 254-258 ("02 · COSTO MENSUAL", etc). */
+  numero: string;
   label: string;
   data: import("@/lib/types").AISection | import("@/lib/types").AINegociacionSection;
   currency: "CLP" | "UF";
@@ -1794,7 +1797,7 @@ function MiniCard({
       <p
         className="font-mono text-[10px] uppercase tracking-[1.5px] mb-2 font-medium m-0 text-[var(--franco-text-secondary)]"
       >
-        {label}
+        {numero} · {label}
       </p>
       <h3 className="font-heading font-bold text-[18px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
         {data.pregunta}
@@ -1930,6 +1933,7 @@ function DashboardAnalysisSection({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
         <MiniCard
           section="costoMensual"
+          numero="02"
           label="Costo mensual"
           data={aiAnalysis.costoMensual}
           currency={currency}
@@ -1939,6 +1943,7 @@ function DashboardAnalysisSection({
         />
         <MiniCard
           section="negociacion"
+          numero="03"
           label="Negociación"
           data={aiAnalysis.negociacion}
           currency={currency}
@@ -1948,6 +1953,7 @@ function DashboardAnalysisSection({
         />
         <MiniCard
           section="largoPlazo"
+          numero="04"
           label="Largo plazo"
           data={aiAnalysis.largoPlazo}
           currency={currency}
@@ -1957,6 +1963,7 @@ function DashboardAnalysisSection({
         />
         <MiniCard
           section="riesgos"
+          numero="05"
           label="Riesgos"
           data={aiAnalysis.riesgos}
           currency={currency}
