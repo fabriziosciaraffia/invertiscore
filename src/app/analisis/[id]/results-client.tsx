@@ -1407,11 +1407,14 @@ function HeroTopStrip({
               <span>Franco Score</span>
               <InfoTooltip content={FRANCO_SCORE_TOOLTIP} />
             </p>
-            <span
-              className="font-mono text-[10px] font-semibold tracking-[1px] uppercase px-2 py-1 rounded whitespace-nowrap text-center shrink-0"
-              style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
-            >
-              {veredicto}
+            <span className="inline-flex items-center gap-1.5 shrink-0">
+              <span
+                className="font-mono text-[10px] font-semibold tracking-[1px] uppercase px-2 py-1 rounded whitespace-nowrap text-center"
+                style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
+              >
+                {veredicto}
+              </span>
+              <InfoTooltip content={VERDICT_TOOLTIPS[veredicto] ?? VERDICT_TOOLTIPS["AJUSTA EL PRECIO"]} />
             </span>
           </div>
 
@@ -1605,18 +1608,15 @@ function HeroCard({
             border: calloutBorder,
           }}
         >
-          <span className="inline-flex items-center gap-1.5 shrink-0">
-            <span
-              className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase"
-              style={{
-                color: badgeText,
-                background: badgeBg,
-                border: badgeBorder,
-              }}
-            >
-              {veredicto}
-            </span>
-            <InfoTooltip content={VERDICT_TOOLTIPS[veredicto] ?? VERDICT_TOOLTIPS["AJUSTA EL PRECIO"]} />
+          <span
+            className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
+            style={{
+              color: badgeText,
+              background: badgeBg,
+              border: badgeBorder,
+            }}
+          >
+            {veredicto}
           </span>
           <p className="font-body text-[13px] md:text-[14px] font-medium text-[var(--franco-text)] m-0">
             {veredictoFrase}
