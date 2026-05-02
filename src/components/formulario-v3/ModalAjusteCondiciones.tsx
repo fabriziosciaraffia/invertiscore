@@ -271,20 +271,22 @@ const inputBase =
 function Suggest({
   sugerido,
   sampleSize,
+  note,
 }: {
   sugerido: number | null;
   sampleSize?: number;
+  /** Continuación inline del hint, pe. fórmula del cálculo. Tiene prioridad sobre sampleSize. */
+  note?: string;
 }) {
   if (!sugerido) return null;
+  const tail = note
+    ? ` · ${note}`
+    : sampleSize && sampleSize > 0
+      ? ` · basado en ${sampleSize} ${sampleSize === 1 ? "propiedad comparable" : "propiedades comparables"}`
+      : "";
   return (
-    <p
-      className="font-body text-[10px] m-0 mt-1"
-      style={{ color: "color-mix(in srgb, var(--ink-400) 70%, transparent)" }}
-    >
-      Mercado sugiere {fmtCLP(sugerido)}
-      {sampleSize && sampleSize > 0
-        ? ` · basado en ${sampleSize} ${sampleSize === 1 ? "propiedad comparable" : "propiedades comparables"}`
-        : ""}
+    <p className="font-body text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+      Mercado sugiere {fmtCLP(sugerido)}{tail}
     </p>
   );
 }
@@ -416,7 +418,7 @@ function TabArriendo({
             </span>
             <InfoTooltip
               trigger="click"
-              content="Porcentaje del arriendo que paga al administrador (corredor que gestiona la propiedad). Default 0% asume autogestión. Típico mercado: 8-12% si delega."
+              content="Porcentaje del arriendo que se paga al administrador (corredor que gestiona la propiedad). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
             />
           </span>
           <input
@@ -494,7 +496,7 @@ function TabGastos({
           </span>
           <InfoTooltip
             trigger="click"
-            content="Pago mensual a la administración del edificio. Sugerencia calculada según tier de comuna (~$1.400-2.200/m²). Edita si conoces el valor real."
+            content="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Edita si conoces el valor real."
           />
         </span>
         <MoneyInput
@@ -503,10 +505,10 @@ function TabGastos({
           onChange={(raw) => setLocal("gastos", raw)}
           onBlur={commitGastos}
         />
-        <Suggest sugerido={suggestions.gastos} />
-        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-          ● Calculado por superficie útil × valor $/m² según tier de comuna.
-        </p>
+        <Suggest
+          sugerido={suggestions.gastos}
+          note="calculado por superficie útil × valor $/m² según tier de comuna"
+        />
         <GastosAlert tier={gastosTier} />
       </label>
       <label className="block">
@@ -516,7 +518,7 @@ function TabGastos({
           </span>
           <InfoTooltip
             trigger="click"
-            content="Impuesto territorial trimestral del SII. Deptos nuevos califican a exención DFL-2 si avalúo fiscal está bajo el umbral. Franco lo calcula automáticamente."
+            content="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente."
           />
         </span>
         <MoneyInput
@@ -525,10 +527,10 @@ function TabGastos({
           onChange={(raw) => setLocal("contribuciones", raw)}
           onBlur={commitContrib}
         />
-        <Suggest sugerido={suggestions.contribuciones} />
-        <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-          ● Calculado con avalúo fiscal estimado (precio × 0,7), exenciones DFL-2 si aplica, y tasa progresiva SII.
-        </p>
+        <Suggest
+          sugerido={suggestions.contribuciones}
+          note="calculado con avalúo fiscal estimado (precio × 0,7), exenciones DFL-2 si aplica, y tasa progresiva SII"
+        />
         <ContribAlert tier={contribTier} />
       </label>
     </div>
@@ -563,7 +565,7 @@ function ArriendoAlert({ tier }: { tier: Tier }) {
     return (
       <div className="mt-2">
         <StateBox variant="left-border" state="info" label="Información">
-          Bien: arriendo {tier.pctStr}% bajo la sugerencia, conservador para la proyección.
+          Arriendo {tier.pctStr}% bajo la sugerencia. La proyección será conservadora.
         </StateBox>
       </div>
     );
@@ -584,7 +586,7 @@ function ArriendoAlert({ tier }: { tier: Tier }) {
   return (
     <div className="mt-2">
       <StateBox variant="left-border" state="info" label="Información">
-        Buena noticia: arriendo {tier.pctStr}% bajo la sugerencia — diferencia importante. La proyección será conservadora.
+        Arriendo {tier.pctStr}% bajo la sugerencia — diferencia importante. La proyección será muy conservadora. Verifica el dato.
       </StateBox>
     </div>
   );

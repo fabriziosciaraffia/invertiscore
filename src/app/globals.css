@@ -23,6 +23,18 @@
     --ink-300: #CDCBC6;
     --ink-200: #E8E6E1;
     --ink-100: #FAFAF8;
+    /*
+     * EXCEPCIÓN CAPA 1 — Indicador de ajuste manual (decisión producto 2026-05)
+     * Signal Red usado fuera de los 8 usos permitidos del skill
+     * (franco-design-system) en `ResumenCard.tsx`:
+     *   - dot indicator por field ajustado
+     *   - border 1px de la card cuando hay ajustes
+     * Justificación: el indicador "ajustado manualmente" requiere visibilidad
+     * alta para que el usuario distinga sus ajustes de las sugerencias
+     * automáticas. Las alternativas Ink-only (dot text-primary, wash, border
+     * secondary) no aportaron contraste suficiente en QA visual.
+     * Si se documenta uso #9 en el skill, mover esta nota allá.
+     */
     --signal-red: #C8323C;
 
     --background: 40 20% 98%;

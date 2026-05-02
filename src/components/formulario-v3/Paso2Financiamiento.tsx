@@ -232,7 +232,7 @@ export function Paso2Financiamiento({
             return (
               <div className="mt-3">
                 <StateBox variant="left-border" state="info" label="Información">
-                  Bien: estás comprando {pctStr}% por debajo del promedio de {comuna}. Se reflejará como ventaja inicial en el análisis.
+                  Estás comprando {pctStr}% bajo el promedio de {comuna}. Se reflejará como ventaja inicial.
                 </StateBox>
               </div>
             );
@@ -256,7 +256,7 @@ export function Paso2Financiamiento({
           return (
             <div className="mt-3">
               <StateBox variant="left-border" state="info" label="Información">
-                Buena noticia: estás comprando un {pctStr}% por debajo del promedio de {comuna} — diferencia importante. Se reflejará como ventaja inicial relevante en el análisis. Igual verifica el dato.
+                Estás comprando {pctStr}% bajo el promedio de {comuna} — diferencia importante. Se reflejará como ventaja inicial relevante. Verifica el dato.
               </StateBox>
             </div>
           );
