@@ -93,25 +93,34 @@ export async function POST(request: Request) {
       );
     }
 
-    // Send analysis ready email (non-blocking, only for logged-in users)
-    if (user?.email && data?.id) {
-      sendAnalysisReadyEmail(
-        user.email,
-        user.user_metadata?.nombre || user.user_metadata?.full_name || '',
-        body.nombre || `${body.comuna} - ${body.superficie}m²`,
-        result.score,
-        result.veredicto || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
-        data.id
-      ).catch(e => console.error("Analysis email error:", e));
-    }
-
-    // Fire-and-forget: generate AI analysis in background without blocking response.
-    // No credit consumption here — this is the user's free first analysis. The /ai endpoint
-    // still handles credits for on-demand regeneration when needed.
+    // Background: generate AI analysis, luego mandar email cuando esté listo
+    // (o cuando falle — no bloqueamos la notificación por error IA, el page
+    // puede recuperar la IA vía polling /ai-status). No await: el response
+    // al cliente se devuelve inmediato.
+    // No credit consumption here — primer análisis. El /ai endpoint sigue
+    // manejando créditos para regeneración on-demand.
     if (data?.id) {
-      generateAiAnalysis(data.id, dbClient).catch((e) =>
-        console.error("Background AI generation failed:", e)
-      );
+      (async () => {
+        try {
+          await generateAiAnalysis(data.id, dbClient);
+        } catch (e) {
+          console.error("Background AI generation failed:", e);
+        }
+        if (user?.email) {
+          try {
+            await sendAnalysisReadyEmail(
+              user.email,
+              user.user_metadata?.nombre || user.user_metadata?.full_name || '',
+              body.nombre || `${body.comuna} - ${body.superficie}m²`,
+              result.score,
+              result.veredicto || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
+              data.id,
+            );
+          } catch (e) {
+            console.error("Analysis email error:", e);
+          }
+        }
+      })();
     }
 
     return NextResponse.json(data);
