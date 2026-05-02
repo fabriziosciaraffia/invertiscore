@@ -6,6 +6,39 @@ import {
   type WizardV3State,
 } from "./wizardV3State";
 
+// Labels human-readable para footer "X ajustado(s) manualmente". Keys
+// alineadas con state.editedFields. Si una key falta acá, se cae a la key
+// cruda como fallback.
+const FIELD_LABELS: Record<string, string> = {
+  precio: "Precio",
+  piePct: "Pie",
+  plazoCredito: "Plazo",
+  tasaInteres: "Tasa",
+  arriendo: "Arriendo",
+  vacanciaPct: "Vacancia",
+  adminPct: "Administración",
+  arriendoEstac: "Arriendo estac.",
+  arriendoBodega: "Arriendo bodega",
+  gastos: "Gastos comunes",
+  contribuciones: "Contribuciones",
+};
+
+function formatEditedFooter(keys: string[]): string {
+  const labels = keys.map((k) => FIELD_LABELS[k] ?? k);
+  if (labels.length === 1) {
+    return `${labels[0]} ajustado manualmente · Resto: valores estimados de mercado.`;
+  }
+  if (labels.length === 2) {
+    return `${labels[0]} y ${labels[1]} ajustados manualmente · Resto: valores estimados.`;
+  }
+  if (labels.length === 3) {
+    return `${labels[0]}, ${labels[1]} y ${labels[2]} ajustados manualmente · Resto: valores estimados.`;
+  }
+  // 4+
+  const restCount = labels.length - 2;
+  return `${labels[0]}, ${labels[1]} y ${restCount} más ajustados manualmente · Resto: valores estimados.`;
+}
+
 export function ResumenCard({
   state,
   ufCLP,
@@ -35,7 +68,7 @@ export function ResumenCard({
       className="rounded-2xl p-5 flex flex-col gap-4"
       style={{
         border: hasAjustes
-          ? "0.5px solid var(--franco-text-secondary)"
+          ? "1px solid var(--franco-text-secondary)"
           : "0.5px solid var(--franco-border)",
         background: "var(--franco-card)",
       }}
@@ -109,10 +142,11 @@ export function ResumenCard({
         />
       </div>
 
-      {/* Footer nota: solo cuando hay ajustes manuales */}
+      {/* Footer nota: solo cuando hay ajustes manuales. Enumera las claves
+          editadas con labels legibles (Fase 14a — antes solo conteo). */}
       {hasAjustes && (
         <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 border-t border-[var(--franco-border)] pt-3">
-          {state.editedFields.length} ajustado{state.editedFields.length === 1 ? "" : "s"} manualmente · Resto son valores estimados de mercado.
+          {formatEditedFooter(state.editedFields)}
         </p>
       )}
     </div>
@@ -129,7 +163,7 @@ function Cell({ label, value, edited = false }: { label: string; value: string; 
         {value}
         {edited && (
           <span
-            className="ml-1.5 font-mono text-[10px] text-[var(--franco-text-secondary)]"
+            className="ml-1.5 font-mono text-[10px] text-[var(--franco-text)]"
             aria-label="Ajustado manualmente"
           >
             ●

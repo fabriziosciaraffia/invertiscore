@@ -80,6 +80,17 @@ export function Paso2Financiamiento({
   const tasaConSubsidio = calcTasaConSubsidio(tasaMercado);
   const calificaSubsidio = calificaSubsidioHelper(state.tipoPropiedad, precioUF);
 
+  // Helper: setState + tracking en editedFields. Aplica al patrón de campos
+  // editables del Paso 2 (sliders piePct, plazoCredito; input tasaInteres;
+  // CTA subsidio). El precio usa este patrón inline desde Fase 4.
+  function trackEdit(key: keyof WizardV3State, value: string) {
+    const patch = { [key]: value } as Partial<WizardV3State>;
+    if (!state.editedFields.includes(key as string)) {
+      patch.editedFields = [...state.editedFields, key as string];
+    }
+    setState(patch);
+  }
+
   const precioCLP = precioUF * ufCLP;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
 
@@ -372,7 +383,7 @@ export function Paso2Financiamiento({
             max={50}
             step={5}
             value={piePct}
-            onChange={(e) => setState({ piePct: e.target.value })}
+            onChange={(e) => trackEdit("piePct", e.target.value)}
             className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
           />
           <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
@@ -442,7 +453,7 @@ export function Paso2Financiamiento({
               max={50}
               step={5}
               value={piePct}
-              onChange={(e) => setState({ piePct: e.target.value })}
+              onChange={(e) => trackEdit("piePct", e.target.value)}
               className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
             />
             <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
@@ -561,7 +572,7 @@ export function Paso2Financiamiento({
                   <div className="flex flex-wrap items-center gap-3 mt-1">
                     <button
                       type="button"
-                      onClick={() => setState({ tasaInteres: fmtTasa(tasaConSubsidio) })}
+                      onClick={() => trackEdit("tasaInteres", fmtTasa(tasaConSubsidio))}
                       className="inline-flex items-center font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-[var(--franco-text)] hover:text-[var(--franco-text-secondary)] underline underline-offset-4 decoration-1 transition-colors"
                     >
                       Usar {fmtTasa(tasaConSubsidio)}%
@@ -600,7 +611,7 @@ export function Paso2Financiamiento({
                   max={30}
                   step={5}
                   value={plazo}
-                  onChange={(e) => setState({ plazoCredito: e.target.value })}
+                  onChange={(e) => trackEdit("plazoCredito", e.target.value)}
                   className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
                 />
                 <div className="flex justify-between font-mono text-[9px] text-[var(--franco-text-secondary)] mt-1">
@@ -628,7 +639,7 @@ export function Paso2Financiamiento({
                     value={state.tasaInteres}
                     onChange={(e) => {
                       const v = e.target.value;
-                      if (v === "" || /^\d*[.,]?\d*$/.test(v)) setState({ tasaInteres: v });
+                      if (v === "" || /^\d*[.,]?\d*$/.test(v)) trackEdit("tasaInteres", v);
                     }}
                     onBlur={commitTasa}
                   />

@@ -190,11 +190,15 @@ export function Paso3Modalidad({
 
           {/* Banner introductorio dismissable — pattern dot indicator
               narrativo (Fase 4.8). sessionStorage persiste durante la
-              sesión, reset al cerrar la pestaña. */}
+              sesión, reset al cerrar la pestaña. Copy condicional según si
+              hay edits previos (Fase 14a) — evita el framing "valores
+              automáticos" cuando el user ya editó campos en pasos 1-2. */}
           {!introDismissed && (
             <div className="flex items-start gap-3">
               <p className="font-mono text-[11px] m-0 flex-1 leading-[1.6] text-[var(--franco-text-secondary)]">
-                ● Estos valores son sugerencias automáticas según el mercado de tu zona. Ajústalos si tienes información más precisa de tu caso.
+                {state.editedFields.length > 0
+                  ? "● Estos son los valores con tus ajustes previos más sugerencias de mercado. Edítalos si necesitas refinar."
+                  : "● Estos valores son sugerencias automáticas según el mercado de tu zona. Ajústalos si tienes información más precisa de tu caso."}
               </p>
               <button
                 type="button"
