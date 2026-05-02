@@ -68,7 +68,7 @@ export function LoadingEditorial({ isDataReady = false }: LoadingEditorialProps)
             color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
           }}
         >
-          Estamos siendo francos con tu inversión.
+          Real Estate en su estado más franco.
         </p>
 
         {/* Lista de estados */}
