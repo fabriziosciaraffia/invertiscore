@@ -1100,7 +1100,6 @@ const VERDICT_TOOLTIPS: Record<string, string> = {
 };
 
 const FRANCO_SCORE_TOOLTIP = "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA EL PRECIO. Bajo 50: BUSCAR OTRA.";
-const SCORE_AXIS_TOOLTIP = "Tres veredictos posibles según el Franco Score: BUSCAR OTRA (<50), AJUSTA EL PRECIO (50-70), COMPRAR (>70).";
 
 // ─── AI Analysis Section (v2) ────────────────────────
 const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string; bgInner: string; borderInner: string }> = {
@@ -1374,12 +1373,12 @@ function HeroTopStrip({
         style={{ borderTop: `0.5px dashed ${dividerDashedColor}` }}
       />
 
-      {/* ROW 2 — parallel-row: metadata 2x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
+      {/* ROW 2 — parallel-row: metadata 3x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
       {/* Mobile: SCORE primero, METADATA segundo (skill regla dura) */}
       <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto_1fr] md:gap-6 md:items-start">
 
-        {/* Metadata 2x2 — order-2 mobile / order-1 desktop */}
-        <div className="grid grid-cols-2 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
+        {/* Metadata 2x3 mobile / 3x2 desktop — order-2 mobile / order-1 desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
           {metadataItems.map((item) => (
             <div key={item.label} className="flex flex-col gap-0.5">
               <span className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] whitespace-nowrap">
@@ -1393,16 +1392,17 @@ function HeroTopStrip({
           ))}
         </div>
 
-        {/* Score block — order-1 mobile / order-2 desktop. Vertical divider Ink en md+ */}
+        {/* Score block — order-1 mobile / order-2 desktop. Vertical divider Ink en md+.
+            Layout post-Fase 18:
+              [FRANCO SCORE ?]   [BADGE VEREDICTO]
+              [score]   [────barra────]
+              BUSCAR · AJUSTA · COMPRAR */}
         <div className="order-1 md:order-2 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
-          <p className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] mb-1 m-0">
-            <span>Franco Score</span>
-            <InfoTooltip content={FRANCO_SCORE_TOOLTIP} />
-          </p>
-          {/* Score number + badge a la derecha. Mobile fallback: stack vertical si viewport angosto. */}
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 mb-1.5">
-            <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none text-[var(--franco-text)] m-0">
-              {score}
+          {/* Header row: label "Franco Score" + badge a la derecha */}
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] m-0">
+              <span>Franco Score</span>
+              <InfoTooltip content={FRANCO_SCORE_TOOLTIP} />
             </p>
             <span
               className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
@@ -1411,35 +1411,39 @@ function HeroTopStrip({
               {veredicto}
             </span>
           </div>
-          <div className="w-[180px] md:w-[220px]">
-            {/* GRADIENT INVARIANT (Signal Red → Ink 500 → Ink 400) — mismo en los 3 veredictos per skill */}
-            <div
-              className="rounded-[3px] relative"
-              style={{
-                height: 5,
-                background: "linear-gradient(90deg, var(--signal-red) 0%, var(--ink-500) 50%, var(--ink-400) 100%)",
-              }}
-            >
+
+          {/* Score number izq + bar+axis a la derecha (horizontal) */}
+          <div className="flex items-center gap-3">
+            <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none text-[var(--franco-text)] m-0 shrink-0">
+              {score}
+            </p>
+            <div className="flex-1 min-w-0 flex flex-col gap-1">
+              {/* GRADIENT INVARIANT — mismo en los 3 veredictos per skill */}
               <div
-                className="absolute rounded-full"
+                className="rounded-[3px] relative"
                 style={{
-                  width: 11,
-                  height: 11,
-                  left: `${clampedScore}%`,
-                  top: "50%",
-                  transform: "translate(-50%, -50%)",
-                  background: "var(--franco-text)",
-                  border: "2px solid var(--franco-bg)",
+                  height: 5,
+                  background: "linear-gradient(90deg, var(--signal-red) 0%, var(--ink-500) 50%, var(--ink-400) 100%)",
                 }}
-              />
-            </div>
-            <div className="flex justify-between items-center font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px] mt-1">
-              <span>BUSCAR</span>
-              <span>AJUSTA</span>
-              <span className="inline-flex items-center gap-1">
-                COMPRAR
-                <InfoTooltip content={SCORE_AXIS_TOOLTIP} />
-              </span>
+              >
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    width: 11,
+                    height: 11,
+                    left: `${clampedScore}%`,
+                    top: "50%",
+                    transform: "translate(-50%, -50%)",
+                    background: "var(--franco-text)",
+                    border: "2px solid var(--franco-bg)",
+                  }}
+                />
+              </div>
+              <div className="flex justify-between font-mono text-[7px] text-[var(--franco-text-secondary)] uppercase tracking-[1px]">
+                <span>BUSCAR</span>
+                <span>AJUSTA</span>
+                <span>COMPRAR</span>
+              </div>
             </div>
           </div>
         </div>
@@ -3159,20 +3163,47 @@ export function PremiumResults({
   const propiedadSubtitle = ownerFirstName && !isSharedView
     ? `${ownerFirstName}, tu análisis en ${comuna || ciudad || "tu zona"}`
     : `Análisis en ${comuna || ciudad || "tu zona"}`;
-  // Metadata 2x2: PRECIO siempre UF, $/M² siempre CLP (unidades complementarias,
-  // independientes del toggle currency que afecta KPIs de abajo).
+  // Metadata 3x2 (Fase 18): Superficie/Pie/Financiamiento siempre en su unidad
+  // natural (m² / % / años·%). Precio, $/M² y Arriendo respetan toggle currency.
+  const arriendoCLP = Number(inputData?.arriendo) || 0;
+  const plazoAnios = Number(inputData?.plazoCredito) || 25;
+  const tasaPct = Number(inputData?.tasaInteres) || 4.72;
+  const tasaStr = tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
   const metadataItems = [
-    { label: "SUPERFICIE", value: `${superficie} m²` },
-    { label: "PRECIO", value: fmtUF(precioUF) },
+    {
+      label: "SUPERFICIE",
+      value: `${superficie} m²`,
+      tooltip: "Superficie útil del depto en metros cuadrados.",
+    },
+    {
+      label: "PRECIO",
+      value: currency === "UF" ? fmtUF(precioUF) : fmtCLP(precioUF * UF_CLP),
+    },
     {
       label: "$/M²",
-      value: fmtCLP(freePrecioM2 * UF_CLP),
-      tooltip: "Precio por metro cuadrado en CLP. Útil para comparar contra el promedio de la comuna independiente del tamaño del depto.",
+      value: currency === "UF"
+        ? `UF ${(Math.round(freePrecioM2 * 100) / 100).toLocaleString("es-CL")}/m²`
+        : fmtCLP(freePrecioM2 * UF_CLP),
+      tooltip: "Precio por metro cuadrado. Útil para comparar contra el promedio de la comuna independiente del tamaño del depto.",
     },
     {
       label: "PIE",
       value: `${inputData?.piePct ?? 20}%`,
       tooltip: "Porcentaje del precio pagado con recursos propios, sin crédito hipotecario.",
+    },
+    {
+      label: "FINANCIAMIENTO",
+      value: `${plazoAnios} años · ${tasaStr}%`,
+      tooltip: "Plazo del crédito hipotecario y tasa anual de interés.",
+    },
+    {
+      label: "ARRIENDO",
+      value: arriendoCLP > 0
+        ? (currency === "UF"
+          ? `UF ${(Math.round((arriendoCLP / UF_CLP) * 100) / 100).toLocaleString("es-CL")}/mes`
+          : `${fmtCLP(arriendoCLP)}/mes`)
+        : "—",
+      tooltip: "Arriendo mensual estimado o ajustado por el usuario.",
     },
   ];
   const resolvedVeredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
