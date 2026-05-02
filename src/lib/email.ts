@@ -8,9 +8,17 @@ function getResend(): Resend | null {
 }
 const FROM_EMAIL = 'Franco <hola@refranco.ai>';
 
-// Shared email components
-const WORDMARK = `<div style="margin-bottom: 32px; font-size: 24px; color: #FAFAF8;">
-  <span style="font-family: Georgia, 'Times New Roman', serif; opacity: 0.28; font-style: italic;">re</span><span style="font-family: Georgia, 'Times New Roman', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-family: Arial, sans-serif; font-size: 14px; font-weight: 600;">.ai</span>
+// Shared email components.
+// Tagline en mono websafe (Courier New) ya que JetBrains Mono no carga
+// confiable en clientes email. Mantiene la regla cromática (muted) y
+// tipográfica (uppercase tracking) del landing.
+const WORDMARK = `<div style="margin-bottom: 32px;">
+  <div style="font-size: 24px; color: #FAFAF8; line-height: 1;">
+    <span style="font-family: Georgia, 'Times New Roman', serif; opacity: 0.28; font-style: italic;">re</span><span style="font-family: Georgia, 'Times New Roman', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-family: Arial, sans-serif; font-size: 14px; font-weight: 600;">.ai</span>
+  </div>
+  <div style="margin-top: 8px; font-family: 'Courier New', Courier, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: #71717A;">
+    Real estate en su estado más franco
+  </div>
 </div>`;
 
 const FOOTER_DISCLAIMER = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
@@ -58,7 +66,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
       html: emailWrapper(`
         <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 16px 0;">${greeting}</h1>
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Ahora puedes analizar cualquier departamento en Santiago y saber en 30 segundos si es buena inversión.
+          Analiza cualquier depto en Santiago. En 30 segundos sabes si la inversión vale la pena.
         </p>
 
         <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
@@ -78,7 +86,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
           </div>
         </div>
 
-        ${ctaButton('Analizar mi primer departamento →', 'https://refranco.ai/analisis/nuevo')}
+        ${ctaButton('Analizar mi primer departamento →', 'https://refranco.ai/analisis/nuevo-v2')}
       `),
     });
   } catch (error) {
@@ -94,8 +102,11 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 
   const ctaUrl = analysisId
     ? `https://refranco.ai/analisis/${analysisId}`
-    : 'https://refranco.ai/dashboard';
-  const ctaText = analysisId ? 'Ver mi análisis →' : 'Ir al dashboard →';
+    : 'https://refranco.ai/analisis/nuevo-v2';
+  const ctaText = analysisId ? 'Ver mi análisis →' : 'Analizar un depto →';
+  const bodyCopy = analysisId
+    ? 'Tu análisis Pro está listo.'
+    : 'Tus créditos están disponibles. Úsalos cuando quieras analizar un depto.';
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
@@ -127,7 +138,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
         </div>
 
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          ${greeting} Tu análisis premium está listo. Incluye análisis IA personalizado, proyecciones a 20 años y escenarios de salida.
+          ${greeting} ${bodyCopy}${analysisId ? ' Incluye análisis IA personalizado, proyecciones a 20 años y escenarios de salida.' : ''}
         </p>
 
         ${ctaButton(ctaText, ctaUrl)}
@@ -169,10 +180,10 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
         </div>
 
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          ¿Quieres el análisis completo con IA, proyecciones a 20 años y precio sugerido?
+          Score, veredicto y métricas listos. El análisis completo con IA, proyecciones a 20 años y escenarios de salida está disponible en tu cuenta.
         </p>
 
-        ${ctaButton('Desbloquear análisis completo — $4.990 →', `https://refranco.ai/analisis/${analysisId}`)}
+        ${ctaButton('Ver análisis completo →', `https://refranco.ai/analisis/${analysisId}`)}
       `),
     });
   } catch (error) {
