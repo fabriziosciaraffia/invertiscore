@@ -1375,7 +1375,7 @@ function HeroTopStrip({
 
       {/* ROW 2 — parallel-row: metadata 3x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
       {/* Mobile: SCORE primero, METADATA segundo (skill regla dura) */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-[1.4fr_1fr] md:gap-6 md:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[1fr_1.4fr] md:gap-6 md:items-start">
 
         {/* Metadata 2x3 mobile / 3x2 desktop — siempre order-2 (mobile abajo / desktop derecha) */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2 shrink-0 order-2">
