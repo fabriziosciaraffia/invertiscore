@@ -1375,7 +1375,7 @@ function HeroTopStrip({
 
       {/* ROW 2 — parallel-row: metadata 3x2 (desktop izq) | divider vertical | score+badge (desktop der) */}
       {/* Mobile: SCORE primero, METADATA segundo (skill regla dura) */}
-      <div className="flex flex-col gap-4 md:grid md:grid-cols-[auto_1fr] md:gap-6 md:items-start">
+      <div className="flex flex-col gap-4 md:grid md:grid-cols-[2fr_1fr] md:gap-6 md:items-start">
 
         {/* Metadata 2x3 mobile / 3x2 desktop — order-2 mobile / order-1 desktop */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-x-5 gap-y-2 shrink-0 order-2 md:order-1">
@@ -1398,14 +1398,17 @@ function HeroTopStrip({
               [score]   [────barra────]
               BUSCAR · AJUSTA · COMPRAR */}
         <div className="order-1 md:order-2 md:pl-6 md:border-l md:border-[color-mix(in_srgb,var(--franco-text)_12%,transparent)]">
-          {/* Header row: label "Franco Score" + badge a la derecha */}
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[2px] text-[var(--franco-text-secondary)] m-0">
+          {/* Header row: label "Franco Score" + badge a la derecha.
+              Tracking reducido (1.5px label / 1px badge) y padding compacto
+              para que "BUSCAR OTRA" (badge más largo) entre en el ancho 1fr
+              del score block en desktop. */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="inline-flex items-center gap-1 font-mono text-[8px] md:text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0">
               <span>Franco Score</span>
               <InfoTooltip content={FRANCO_SCORE_TOOLTIP} />
             </p>
             <span
-              className="font-mono text-[10px] font-semibold tracking-[2px] uppercase px-2.5 py-1 rounded whitespace-nowrap text-center"
+              className="font-mono text-[10px] font-semibold tracking-[1px] uppercase px-2 py-1 rounded whitespace-nowrap text-center shrink-0"
               style={{ color: badgeText, background: badgeBg, border: badgeBorder }}
             >
               {veredicto}
