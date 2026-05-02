@@ -81,11 +81,13 @@ export function ResumenCard({
             Datos del análisis
           </h3>
           {hasAjustes && (
+            // Excepción Capa 1 documentada en globals.css (decisión producto 2026-05).
+            // Badge alineado con dot/border Signal Red por consistencia visual.
             <span
               className="font-mono text-[9px] uppercase tracking-[0.06em] font-semibold rounded"
               style={{
-                background: "var(--franco-text)",
-                color: "var(--franco-bg)",
+                background: "#C8323C",
+                color: "#FFFFFF",
                 padding: "4px 8px",
               }}
             >
