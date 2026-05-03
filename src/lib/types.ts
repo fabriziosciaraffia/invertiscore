@@ -149,8 +149,15 @@ export interface NegociacionScenario {
   tirAlVmFranco: number;
 }
 
+// El motor produce solo 3 señales matemáticas. Solo Franco puede emitir el
+// 4to veredicto RECONSIDERA LA ESTRUCTURA (cuando el problema es financiero,
+// no del depto). Ver analysis-voice-franco/SKILL.md §1.5 + §1.7.
 export type EngineSignal = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
-export type FrancoVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+export type FrancoVerdict =
+  | "COMPRAR"
+  | "AJUSTA EL PRECIO"
+  | "BUSCAR OTRA"
+  | "RECONSIDERA LA ESTRUCTURA";
 
 export interface FullAnalysisResult {
   score: number;
@@ -263,14 +270,34 @@ export interface AINegociacionSection extends AISection {
   estrategiaSugerida_uf?: string;
 }
 
+// Sección opcional que aparece solo cuando Franco activa el Nivel 3 del
+// escalonado de financingHealth (skill §1.5). Va entre `negociacion` y
+// `largoPlazo` en el render. Si está presente, el francoVerdict suele ser
+// "RECONSIDERA LA ESTRUCTURA".
+export interface AIReestructuracionSection {
+  contenido_clp: string;
+  contenido_uf: string;
+  estructuraSugerida: {
+    pieSugerido_pct: number;
+    plazoSugerido_anios: number;
+    tasaObjetivo_pct: number;
+    impactoCuotaMensual_clp: number;
+  };
+}
+
 export interface AIAnalysisV2 {
   siendoFrancoHeadline_clp: string;
   siendoFrancoHeadline_uf: string;
   conviene: AIConvieneSection;
   costoMensual: AISection;
   negociacion: AINegociacionSection;
+  // Opcional: solo presente cuando Franco recomienda Nivel 3 (skill §1.5).
+  reestructuracion?: AIReestructuracionSection;
   largoPlazo: AISection;
   riesgos: AISection;
+  // Veredicto que Franco emite. Puede coincidir o no con engineSignal del motor.
+  // Opcional para backward-compat con análisis IA generados antes del refactor.
+  francoVerdict?: FrancoVerdict;
 }
 
 export interface Analisis {
