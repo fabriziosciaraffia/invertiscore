@@ -1862,7 +1862,7 @@ function MiniCard({
             const vmFranco = results?.metrics?.valorMercadoFrancoUF ?? precioUF;
             const dev = vmFranco > 0 ? (vmFranco - precioUF) / vmFranco : 0;
             const absDev = Math.abs(dev);
-            if (absDev <= 0.02) return "¿Cuánto puedes apretar?";
+            if (absDev <= 0.02) return "¿Vale la pena negociar?";
             if (dev > 0) return "¿Vale la pena seguir negociando?";
             return "¿Cuánto bajar el precio?";
           }

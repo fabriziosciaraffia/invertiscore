@@ -453,6 +453,9 @@ function DrawerNegociacion({
     return "UF " + Math.round(uf).toLocaleString("es-CL");
   };
   const fmtShort = (v: number) => fmtCompact(v, currency, valorUF);
+  // Híbrido: CLP se abrevia ($230M); UF muestra completo (UF 8.450) porque
+  // los rangos típicos (3.000-15.000 UF) abreviados quedan ilegibles ("UF 8K").
+  const fmtPrecio = (v: number) => (currency === "UF" ? fmtFull(v) : fmtShort(v));
   const fmtTir = (t: number | null | undefined) =>
     typeof t === "number" && !isNaN(t)
       ? t.toFixed(1).replace(".", ",") + "%"
@@ -481,14 +484,14 @@ function DrawerNegociacion({
   if (esPasada) {
     veredictoLabel = "Ventaja de compra";
     veredictoTooltip = "Compras bajo el valor de mercado de la zona. Diferencia favorable entre precio y valor de mercado.";
-    veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
+    veredictoDesc = `Estás pagando ${fmtPrecio(precioCLP)} por algo que vale ${fmtPrecio(vmFrancoCLP)}`;
     veredictoMonto = "+" + fmtFull(diferenciaCLP);
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
     veredictoColor = "var(--ink-400)";
   } else if (esSobreprecio) {
     veredictoLabel = "Sobreprecio";
     veredictoTooltip = "Pagas más que el valor de mercado de la zona.";
-    veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
+    veredictoDesc = `Estás pagando ${fmtPrecio(precioCLP)} por algo que vale ${fmtPrecio(vmFrancoCLP)}`;
     veredictoMonto = "−" + fmtFull(Math.abs(diferenciaCLP));
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
     veredictoColor = "var(--signal-red)";
@@ -528,7 +531,7 @@ function DrawerNegociacion({
     {
       key: "vm",
       nombre: "Valor de mercado",
-      sub: "estimado por Franco según comparables",
+      sub: "estimado según comparables de zona",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
       barColor: "var(--ink-400)",
@@ -557,7 +560,7 @@ function DrawerNegociacion({
       tir: tirAlLimite,
       barColor: "var(--signal-red)",
       highlight: false,
-      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Sobre eso, no conviene financieramente.",
+      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Sobre 6% es el umbral mínimo para que la inversión sea más atractiva que instrumentos de bajo riesgo (depósitos a plazo, fondos mutuos conservadores).",
     },
   ].filter((f) => {
     // PARTE 7.1: ocultar fila Límite cuando esSobreprecio + null (combo ilógico).
@@ -725,7 +728,7 @@ function DrawerNegociacion({
                       color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
                     }}
                   >
-                    {isNull ? "—" : fmtShort(f.precio as number)}
+                    {isNull ? "—" : fmtPrecio(f.precio as number)}
                   </span>
                   <span
                     className="font-mono font-bold text-right whitespace-nowrap"
@@ -759,7 +762,7 @@ function DrawerNegociacion({
                         color: isNull ? "color-mix(in srgb, var(--franco-text) 45%, transparent)" : "var(--franco-text)",
                       }}
                     >
-                      {isNull ? "—" : fmtShort(f.precio as number)}
+                      {isNull ? "—" : fmtPrecio(f.precio as number)}
                     </span>
                     <span
                       className="font-mono font-bold whitespace-nowrap"
@@ -1659,7 +1662,7 @@ export function AnalysisDrawer({
       const vmFranco = results.metrics?.valorMercadoFrancoUF ?? precioActual;
       const dev = vmFranco > 0 ? (vmFranco - precioActual) / vmFranco : 0;
       const absDev = Math.abs(dev);
-      if (absDev <= 0.02) return "¿Cuánto puedes apretar?";
+      if (absDev <= 0.02) return "¿Vale la pena negociar?";
       if (dev > 0) return "¿Vale la pena seguir negociando?"; // esPasada
       return "¿Cuánto bajar el precio?"; // esSobreprecio
     }
