@@ -174,10 +174,27 @@ function DrawerCostoMensual({
   const blockLabelColor = isNeg ? "var(--signal-red)" : "var(--franco-text-secondary)";
   const blockKPIColor = isNeg ? "var(--signal-red)" : "var(--franco-text)";
 
+  // Items SALE ordenados por value desc; los zero al final (manteniendo
+  // grayed-out). Tooltips se asocian por nombre (no por posición), así que
+  // un sort no rompe el mapeo.
+  const saleItemsSorted = [...saleItems].sort((a, b) => {
+    const aZero = a.value <= 0;
+    const bZero = b.value <= 0;
+    if (aZero && !bZero) return 1;
+    if (!aZero && bZero) return -1;
+    return b.value - a.value;
+  });
+
   return (
     <div>
       <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text)] mb-4 whitespace-pre-wrap">
         {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
+      </p>
+
+      {/* Mensaje educativo (dot pattern Fase 4.8): justifica por qué incluimos
+          gastos que otros análisis omiten. */}
+      <p className="font-mono text-[11px] mt-1 mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● A diferencia de otros análisis, Franco considera todos los gastos que impactan tu flujo real: vacancia, mantención, corretaje, recambio y gestión. Una evaluación honesta los incluye.
       </p>
 
       {/* GRUPO "ENTRA" */}
@@ -249,7 +266,7 @@ function DrawerCostoMensual({
           </span>
         </div>
         <div className="flex flex-col">
-          {saleItems.map((it) => {
+          {saleItemsSorted.map((it) => {
             const zero = it.value <= 0;
             const widthPct = zero ? 0 : Math.max((it.value / maxSale) * 100, 2);
             return (
