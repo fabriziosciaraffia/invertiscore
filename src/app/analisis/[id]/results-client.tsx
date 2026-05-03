@@ -1731,18 +1731,42 @@ function getPunchline(
     return { value: "—", sub: "Aporte mensual", color: "var(--franco-text)" };
   }
 
-  // 2. Negociación — from IA (string in UF), converted to CLP on demand
-  if (section === "negociacion" && "precioSugerido" in data && (data as import("@/lib/types").AINegociacionSection).precioSugerido) {
-    const raw = (data as import("@/lib/types").AINegociacionSection).precioSugerido;
-    const precioUF = parseUFString(raw);
-    if (precioUF > 0 && valorUF > 0) {
-      const value = currency === "CLP"
-        ? "$" + Math.round(precioUF * valorUF).toLocaleString("es-CL")
-        : "UF " + Math.round(precioUF).toLocaleString("es-CL");
-      return { value, sub: "Precio al que conviene cerrar", color: "var(--franco-text)" };
+  // 2. Negociación — IA da string UF; motor da numérico. Validamos y caemos
+  // al motor si IA halluciná (Fase 20 P2/P3).
+  if (section === "negociacion") {
+    const motorSugUF = results?.negociacion?.precioSugeridoUF ?? 0;
+    // Precio actual de compra: deriva de metrics.precioCLP (no valorMercadoUsuario,
+    // ese es la estimación del usuario). Ambos en UF para comparar contra sugerido.
+    const precioActualCLP = results?.metrics?.precioCLP ?? 0;
+    const precioActualUF = valorUF > 0 ? precioActualCLP / valorUF : 0;
+    const raw = "precioSugerido" in data
+      ? (data as import("@/lib/types").AINegociacionSection).precioSugerido
+      : "";
+    const iaUF = parseUFString(raw);
+
+    // P2 (7.5): si IA sugiere ≥ precio actual, descartamos IA y usamos motor.
+    // P3 (7.7): si IA está vacío/null, fallback a motor.
+    let sugeridoUF: number;
+    if (iaUF > 0 && (precioActualUF === 0 || iaUF < precioActualUF)) {
+      sugeridoUF = iaUF;
+    } else if (motorSugUF > 0) {
+      sugeridoUF = motorSugUF;
+    } else {
+      // Sin datos: caer al raw IA si existe, sino "—".
+      return { value: raw || "—", sub: "Precio al que conviene cerrar", color: "var(--franco-text)" };
     }
-    // Fallback: raw string as IA provided (UF format)
-    return { value: raw, sub: "Precio al que conviene cerrar", color: "var(--franco-text)" };
+
+    // P3 (7.6): si sugerido === precio actual (o muy cerca), copy variable.
+    const sugeridoIgualPrecio = precioActualUF > 0 && Math.abs(sugeridoUF - precioActualUF) / precioActualUF < 0.005;
+    const sub = sugeridoIgualPrecio ? "Tu precio ya está alineado" : "Precio al que conviene cerrar";
+
+    if (valorUF > 0) {
+      const value = currency === "CLP"
+        ? "$" + Math.round(sugeridoUF * valorUF).toLocaleString("es-CL")
+        : "UF " + Math.round(sugeridoUF).toLocaleString("es-CL");
+      return { value, sub, color: "var(--franco-text)" };
+    }
+    return { value: `UF ${Math.round(sugeridoUF)}`, sub, color: "var(--franco-text)" };
   }
 
   // 3. Largo plazo — from motor
@@ -1824,12 +1848,23 @@ function MiniCard({
       </p>
       <h3 className="font-heading font-bold text-[18px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
         {(() => {
-          // Override pregunta para Costo Mensual según signo del flujo (Fase 19).
+          // Override pregunta según estado (Fase 19/20). Coherente con el
+          // override del drawer wrapper en AnalysisDrawer.tsx.
           if (section === "costoMensual") {
             const flujo = results?.metrics?.flujoNetoMensual ?? 0;
             if (flujo < -1000) return "¿Cuánto te cuesta mes a mes?";
             if (flujo > 1000) return "¿Cuánto te queda mes a mes?";
             return "¿Cómo queda tu flujo mensual?";
+          }
+          if (section === "negociacion") {
+            const precioCLP = results?.metrics?.precioCLP ?? 0;
+            const precioUF = valorUF > 0 ? precioCLP / valorUF : 0;
+            const vmFranco = results?.metrics?.valorMercadoFrancoUF ?? precioUF;
+            const dev = vmFranco > 0 ? (vmFranco - precioUF) / vmFranco : 0;
+            const absDev = Math.abs(dev);
+            if (absDev <= 0.02) return "¿Cuánto puedes apretar?";
+            if (dev > 0) return "¿Vale la pena seguir negociando?";
+            return "¿Cuánto bajar el precio?";
           }
           return data.pregunta;
         })()}

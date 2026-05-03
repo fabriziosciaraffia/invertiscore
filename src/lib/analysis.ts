@@ -945,7 +945,9 @@ function calcNegociacionScenario(
   let tirAlLimite: number | null = null;
   if (tirActual > 6) {
     let lo = input.precio;
-    let hi = Math.max(input.precio * 1.5, vmFrancoUF * 1.3);
+    // P2 (Fase 20): rango ampliado a vmFranco × 1.5 (era × 1.3) para que
+    // Límite ≥ vmFranco en deals con ventaja extrema (>30% bajo mercado).
+    let hi = Math.max(input.precio * 1.5, vmFrancoUF * 1.5);
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
       const tir = tirForPrice(input, mid);

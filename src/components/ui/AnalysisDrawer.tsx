@@ -399,7 +399,9 @@ function DrawerNegociacion({
     let tirLim: number | null = null;
     if (tirActual > 6) {
       let lo = inputData.precio;
-      let hi = Math.max(inputData.precio * 1.5, vmFrancoUF * 1.3);
+      // P2 (Fase 20): rango ampliado a vmFranco × 1.5 (era × 1.3) para que
+      // Límite ≥ vmFranco en deals con ventaja extrema (>30% bajo mercado).
+      let hi = Math.max(inputData.precio * 1.5, vmFrancoUF * 1.5);
       for (let i = 0; i < 18; i++) {
         const mid = (lo + hi) / 2;
         const t = tirForPrice(inputData, mid);
@@ -425,6 +427,19 @@ function DrawerNegociacion({
       tirAlVmFranco: tirVm,
     };
   }, [neg, inputData, vmFrancoUF, valorUF, tirActual]);
+
+  // Guard P3: data corrupta o legacy sin precio válido — el resto del drawer
+  // produciría barras NaN y veredicto sin sentido. Después de hooks por
+  // las reglas de React.
+  if (!Number.isFinite(precioCLP) || precioCLP <= 0) {
+    return (
+      <div>
+        <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text-secondary)]">
+          Datos insuficientes para análisis de negociación.
+        </p>
+      </div>
+    );
+  }
 
   const precioSugeridoCLP = negData.precioSugeridoCLP;
   const tirAlSugerido = negData.tirAlSugerido;
@@ -455,28 +470,36 @@ function DrawerNegociacion({
 
   // Veredicto styling
   let veredictoLabel: string;
+  let veredictoTooltip: string;
   let veredictoDesc: string;
   let veredictoColor: string;
   let veredictoMonto: string;
   let veredictoSub: string;
+  // P1 (Fase 20): KPI Hero solo visible cuando hay diferencia material.
+  // En "Precio alineado" se oculta para evitar el ambiguo "≈ $0".
+  let mostrarKPI = true;
   if (esPasada) {
     veredictoLabel = "Ventaja de compra";
+    veredictoTooltip = "Compras bajo el valor de mercado de la zona. Diferencia favorable entre precio y valor de mercado.";
     veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
     veredictoMonto = "+" + fmtFull(diferenciaCLP);
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
     veredictoColor = "var(--ink-400)";
   } else if (esSobreprecio) {
     veredictoLabel = "Sobreprecio";
+    veredictoTooltip = "Pagas más que el valor de mercado de la zona.";
     veredictoDesc = `Estás pagando ${fmtShort(precioCLP)} por algo que vale ${fmtShort(vmFrancoCLP)}`;
     veredictoMonto = "−" + fmtFull(Math.abs(diferenciaCLP));
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
     veredictoColor = "var(--signal-red)";
   } else {
     veredictoLabel = "Precio alineado";
+    veredictoTooltip = "Tu precio coincide con el valor de mercado (±2% diferencia).";
     veredictoDesc = `El precio está cerca del valor real de mercado`;
-    veredictoMonto = "≈ " + fmtFull(0);
-    veredictoSub = "Alineado con el mercado";
+    veredictoMonto = ""; // unused — mostrarKPI=false
+    veredictoSub = "";
     veredictoColor = "color-mix(in srgb, var(--franco-text) 75%, transparent)";
+    mostrarKPI = false;
   }
 
   // Estrategia: ahora viene de la IA (estrategiaSugerida_clp/_uf). Para análisis
@@ -500,35 +523,47 @@ function DrawerNegociacion({
       tir: tirActual,
       barColor: "rgba(250,250,248,0.55)",
       highlight: false,
+      tooltip: "Precio publicado por el corredor que estás analizando.",
     },
     {
       key: "vm",
-      nombre: "vmFranco",
-      sub: "valor real de mercado",
+      nombre: "Valor de mercado",
+      sub: "estimado por Franco según comparables",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
       barColor: "var(--ink-400)",
       highlight: false,
+      tooltip: "Valor estimado de mercado calculado por Franco según comparables de la zona, no según el precio publicado.",
     },
     {
       key: "sug",
-      nombre: "⭐ Sugerido",
+      nombre: "Sugerido",
       sub: "cierra acá si puedes",
       precio: precioSugeridoCLP,
       tir: tirAlSugerido,
       barColor: "var(--franco-text)",
       highlight: true,
+      tooltip: "Precio recomendado por Franco para que la inversión cierre con TIR razonable. Punto de partida para negociar.",
     },
     {
       key: "lim",
       nombre: "Límite",
-      sub: precioLimiteCLP === null ? "tu precio ya rinde bajo 6%" : "máximo que conviene pagar",
+      // Sub varía: si esSobreprecio + null → fila se oculta directamente más abajo.
+      // Si null + no-sobreprecio → reescritura clara. Default: "máximo que conviene pagar".
+      sub: precioLimiteCLP === null
+        ? "sin límite definido — tu precio ya rinde bajo el umbral 6%"
+        : "máximo que conviene pagar",
       precio: precioLimiteCLP,
       tir: tirAlLimite,
       barColor: "var(--signal-red)",
       highlight: false,
+      tooltip: "Precio máximo bajo el cual la TIR cae bajo 6%. Sobre eso, no conviene financieramente.",
     },
-  ];
+  ].filter((f) => {
+    // PARTE 7.1: ocultar fila Límite cuando esSobreprecio + null (combo ilógico).
+    if (f.key === "lim" && esSobreprecio && precioLimiteCLP === null) return false;
+    return true;
+  });
 
   return (
     <div className="flex flex-col gap-5">
@@ -554,7 +589,7 @@ function DrawerNegociacion({
         }}
       >
         <span
-          className="font-mono uppercase block mb-2"
+          className="inline-flex items-center gap-1 mb-2"
           style={{
             fontSize: 10,
             letterSpacing: "0.06em",
@@ -562,31 +597,41 @@ function DrawerNegociacion({
             fontWeight: 600,
           }}
         >
-          {veredictoLabel}
+          <span className="font-mono uppercase">{veredictoLabel}</span>
+          <InfoTooltip content={veredictoTooltip} />
         </span>
         <p
-          className="font-heading m-0 mb-3"
+          className="font-heading m-0"
           style={{ fontSize: 14, color: "color-mix(in srgb, var(--franco-text) 85%, transparent)", lineHeight: 1.5 }}
         >
           {veredictoDesc}
         </p>
-        <p
-          className="font-mono font-bold m-0 whitespace-nowrap"
-          style={{
-            fontSize: 24,
-            color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text)",
-            lineHeight: 1,
-          }}
-        >
-          {veredictoMonto}
-        </p>
-        <p
-          className="font-mono font-bold m-0 mt-1"
-          style={{ fontSize: 12, color: veredictoColor }}
-        >
-          {veredictoSub}
-        </p>
+        {mostrarKPI && (
+          <>
+            <p
+              className="font-mono font-bold m-0 mt-3 whitespace-nowrap"
+              style={{
+                fontSize: 24,
+                color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text)",
+                lineHeight: 1,
+              }}
+            >
+              {veredictoMonto}
+            </p>
+            <p
+              className="font-mono font-bold m-0 mt-1"
+              style={{ fontSize: 12, color: veredictoColor }}
+            >
+              {veredictoSub}
+            </p>
+          </>
+        )}
       </div>
+
+      {/* Mensaje educativo dot Fase 4.8 — explica la lógica de comparación. */}
+      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Franco compara contra el valor real de mercado de la zona, no contra el precio publicado. Por eso la &ldquo;ventaja&rdquo; o &ldquo;sobreprecio&rdquo; refleja realidad, no marketing.
+      </p>
 
       {/* BLOQUE B · TABLA COMPARATIVA */}
       <div
@@ -618,7 +663,10 @@ function DrawerNegociacion({
           <span></span>
           <span></span>
           <span className="text-right">Precio</span>
-          <span className="text-right">TIR</span>
+          <span className="inline-flex items-center justify-end gap-1">
+            <span>TIR</span>
+            <InfoTooltip content="Tasa Interna de Retorno: rentabilidad anual proyectada de la inversión incluyendo flujo, plusvalía y venta a 10 años." />
+          </span>
         </div>
 
         <div className="flex flex-col gap-1.5 mt-2">
@@ -639,10 +687,11 @@ function DrawerNegociacion({
                 >
                   <div className="flex flex-col min-w-0">
                     <span
-                      className="font-body font-medium truncate"
+                      className="inline-flex items-center gap-1 font-body font-medium truncate"
                       style={{ fontSize: 13, color: "var(--franco-text)" }}
                     >
-                      {f.nombre}
+                      <span className="truncate">{f.nombre}</span>
+                      {f.tooltip && <InfoTooltip content={f.tooltip} />}
                     </span>
                     <span
                       className="font-heading italic truncate"
@@ -726,19 +775,32 @@ function DrawerNegociacion({
         </div>
       </div>
 
-      {/* BLOQUE C · ESTRATEGIA */}
+      {/* BLOQUE C · ESTRATEGIA — wash condicional (Fase 20 PARTE 6).
+          Signal Red SOLO cuando esSobreprecio (caso que requiere atención).
+          Ventaja y Alineado: Ink wash neutro. Capa 1 binaria respetada. */}
       <div
         style={{
-          background: "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))",
-          border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
-          borderLeft: "3px solid var(--signal-red)",
+          background: esSobreprecio
+            ? "color-mix(in srgb, var(--signal-red) 6%, var(--franco-card))"
+            : "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+          border: esSobreprecio
+            ? "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)"
+            : "none",
+          borderLeft: esSobreprecio
+            ? "3px solid var(--signal-red)"
+            : "3px solid var(--franco-text-secondary)",
           borderRadius: "0 8px 8px 0",
           padding: "14px 18px",
         }}
       >
         <p
           className="font-mono uppercase m-0 mb-2"
-          style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--signal-red)", fontWeight: 600 }}
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.06em",
+            color: esSobreprecio ? "var(--signal-red)" : "var(--franco-text-secondary)",
+            fontWeight: 600,
+          }}
         >
           Estrategia sugerida
         </p>
@@ -1582,15 +1644,26 @@ export function AnalysisDrawer({
       ? ({ pregunta: zonaTitle } as { pregunta: string })
       : aiAnalysis[activeKey];
 
-  // Override de pregunta para drawer 02 (Costo mensual): variable según el
-  // signo del flujo. La pregunta IA es siempre "¿Qué te cuesta mes a mes?",
-  // confusa cuando el flujo es positivo. Hardcoded por veredicto numérico.
+  // Override de pregunta por drawer + estado. La pregunta IA es genérica;
+  // hardcoded varía según el "veredicto numérico" del bloque para evitar
+  // disonancia (ej. "¿Qué te cuesta?" cuando el flujo es positivo).
   const flujoNetoMensual = results.metrics?.flujoNetoMensual ?? 0;
   const drawerPregunta = (() => {
-    if (activeKey !== "costoMensual") return section.pregunta;
-    if (flujoNetoMensual < -1000) return "¿Cuánto te cuesta mes a mes?";
-    if (flujoNetoMensual > 1000) return "¿Cuánto te queda mes a mes?";
-    return "¿Cómo queda tu flujo mensual?";
+    if (activeKey === "costoMensual") {
+      if (flujoNetoMensual < -1000) return "¿Cuánto te cuesta mes a mes?";
+      if (flujoNetoMensual > 1000) return "¿Cuánto te queda mes a mes?";
+      return "¿Cómo queda tu flujo mensual?";
+    }
+    if (activeKey === "negociacion") {
+      const precioActual = (inputData?.precio || 0);
+      const vmFranco = results.metrics?.valorMercadoFrancoUF ?? precioActual;
+      const dev = vmFranco > 0 ? (vmFranco - precioActual) / vmFranco : 0;
+      const absDev = Math.abs(dev);
+      if (absDev <= 0.02) return "¿Cuánto puedes apretar?";
+      if (dev > 0) return "¿Vale la pena seguir negociando?"; // esPasada
+      return "¿Cuánto bajar el precio?"; // esSobreprecio
+    }
+    return section.pregunta;
   })();
 
   useEffect(() => {
