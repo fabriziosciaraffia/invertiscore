@@ -137,7 +137,7 @@ function DrawerCostoMensual({
     {
       name: "Mantención",
       value: desglose.mantencion,
-      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto. Default 0,3-1,5% del precio anual.",
+      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto. Calculada como % anual del precio según antigüedad (0,3% en deptos nuevos hasta 1,5% en sobre 20 años).",
     },
     {
       name: "Corretaje",
@@ -147,7 +147,7 @@ function DrawerCostoMensual({
     {
       name: "Recambio",
       value: desglose.recambio,
-      tooltip: "Costo de recambios mayores (electrodomésticos, pinturas, refresh) prorrateado al mes.",
+      tooltip: "Costo de turnover entre arrendatarios: pintura, limpieza profunda y reparaciones menores. Estimado en medio mes de arriendo cada 2 años, prorrateado al mes.",
     },
     {
       name: "Gestión del arriendo",
