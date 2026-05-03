@@ -1,4 +1,5 @@
 import type { Tone } from "@/lib/analysis/kpi-calculations";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 // Deuda técnica documentada: la distinción warn/bad colapsa a binario hoy.
 // Refactor pendiente per skill Capa 3: warn debería resolverse con composición
@@ -18,9 +19,10 @@ export type KPICardProps = {
   sub: string;
   tone: Tone;
   size: "hero" | "small";
+  tooltip?: string;
 };
 
-export default function KPICard({ label, value, sub, tone, size }: KPICardProps) {
+export default function KPICard({ label, value, sub, tone, size, tooltip }: KPICardProps) {
   const color = TONE_COLORS[tone];
   return (
     <div
@@ -33,7 +35,7 @@ export default function KPICard({ label, value, sub, tone, size }: KPICardProps)
       }}
     >
       <span
-        className="font-mono uppercase"
+        className="inline-flex items-center gap-1 font-mono uppercase"
         style={{
           fontSize: 10,
           letterSpacing: "1.2px",
@@ -41,7 +43,8 @@ export default function KPICard({ label, value, sub, tone, size }: KPICardProps)
           fontWeight: 500,
         }}
       >
-        {label}
+        <span>{label}</span>
+        {tooltip && <InfoTooltip content={tooltip} />}
       </span>
       <span
         className="font-mono font-bold whitespace-nowrap"

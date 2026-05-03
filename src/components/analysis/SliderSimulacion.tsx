@@ -1,9 +1,16 @@
 "use client";
 
 import { useSimulation } from "@/contexts/SimulationContext";
-import { Info } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
-export default function SliderSimulacion({ variant = "card" }: { variant?: "card" | "integrated" }) {
+export default function SliderSimulacion({
+  variant = "card",
+  legacy = false,
+}: {
+  variant?: "card" | "integrated";
+  /** P2 Fase 24 — Análisis legacy sin recompute reactivo (projections estáticas). */
+  legacy?: boolean;
+}) {
   const { plazoAnios, plusvaliaAnual, setPlazoAnios, setPlusvaliaAnual } = useSimulation();
 
   const sliderStyles = {
@@ -37,11 +44,26 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
         </span>
       )}
 
+      {/* P1 Fase 24 — Disclaimer prominente sobre los sliders.
+          Antes era footer mono 10px gris (fácil de ignorar). Ahora dot pattern
+          al inicio para que el user entienda el scope ANTES de mover sliders. */}
+      <p className="font-mono text-[11px] mt-0 mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Estos ajustes simulan escenarios. Los números del veredicto, costo mensual y largo plazo (arriba) NO cambian — quedan fijos en tu análisis original.
+      </p>
+
+      {/* P2 Fase 24 — Disclaimer adicional para análisis legacy. */}
+      {legacy && (
+        <p className="font-mono text-[11px] mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+          ● Análisis legacy: el slider de plusvalía no afecta los cálculos. Genera un nuevo análisis para simular escenarios.
+        </p>
+      )}
+
       {/* Plazo */}
       <div className="mb-4">
         <div className="flex items-baseline justify-between mb-1.5">
-          <span className="font-body" style={{ fontSize: 14, color: "var(--franco-text)" }}>
-            Plazo de análisis
+          <span className="inline-flex items-center gap-1 font-body" style={{ fontSize: 14, color: "var(--franco-text)" }}>
+            <span>Plazo de análisis</span>
+            <InfoTooltip content="Horizonte temporal de la proyección. Afecta TIR, payback, múltiplo, patrimonio y la simulación de venta/refinanciamiento." />
           </span>
           <span
             className="font-mono font-bold"
@@ -76,12 +98,22 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
       {/* Plusvalía */}
       <div>
         <div className="flex items-baseline justify-between mb-1.5">
-          <span className="font-body" style={{ fontSize: 14, color: "var(--franco-text)" }}>
-            Plusvalía anual
+          <span
+            className="inline-flex items-center gap-1 font-body"
+            style={{
+              fontSize: 14,
+              color: legacy ? "color-mix(in srgb, var(--franco-text) 50%, transparent)" : "var(--franco-text)",
+            }}
+          >
+            <span>Plusvalía anual</span>
+            <InfoTooltip content="Apreciación anual del valor del depto. Default = histórico real de la comuna. Slider permite simular escenarios optimistas o conservadores." />
           </span>
           <span
             className="font-mono font-bold"
-            style={{ fontSize: 14, color: "var(--franco-text)" }}
+            style={{
+              fontSize: 14,
+              color: legacy ? "color-mix(in srgb, var(--franco-text) 50%, transparent)" : "var(--franco-text)",
+            }}
           >
             {plusvaliaAnual.toFixed(1)}%
           </span>
@@ -93,8 +125,9 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
           step={0.1}
           value={plusvaliaAnual}
           onChange={(e) => setPlusvaliaAnual(Number(e.target.value))}
-          className="w-full h-1 cursor-pointer"
-          style={sliderStyles}
+          disabled={legacy}
+          className="w-full h-1 cursor-pointer disabled:cursor-not-allowed"
+          style={{ ...sliderStyles, opacity: legacy ? 0.5 : 1 }}
           aria-label="Plusvalía anual"
         />
         <div
@@ -107,28 +140,12 @@ export default function SliderSimulacion({ variant = "card" }: { variant?: "card
           <span>0%</span>
           <span>15%</span>
         </div>
-      </div>
-
-      {/* Disclaimer */}
-      <div
-        className="flex items-center gap-1.5 mt-4 pt-3"
-        style={{
-          borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 15%, transparent)",
-          fontFamily: "var(--font-mono, 'JetBrains Mono'), monospace",
-          fontSize: 10,
-          letterSpacing: 1,
-          color: "color-mix(in srgb, var(--franco-text) 55%, transparent)",
-        }}
-      >
-        <Info size={12} />
-        <span>Los números de arriba no cambian con estos ajustes</span>
-        <span
-          className="ml-auto cursor-help"
-          style={{ color: "color-mix(in srgb, var(--franco-text) 70%, transparent)" }}
-          title="Los indicadores de arriba (veredicto, aporte mensual, TIR 10 años, etc.) se calculan con los datos originales del análisis y no se modifican al mover los controles. Para cambiar esos valores, debes crear un nuevo análisis."
-        >
-          ⓘ
-        </span>
+        {/* P2 Fase 24 — Disclaimer plusvalía irreal sobre 8%. */}
+        {plusvaliaAnual > 8 && !legacy && (
+          <p className="font-mono text-[11px] mt-2 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● Plusvalía sobre 8% anual no es realista en proyecciones de largo plazo. Promedio histórico Chile: 3-5%.
+          </p>
+        )}
       </div>
     </div>
   );

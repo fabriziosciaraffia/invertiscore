@@ -251,23 +251,35 @@ function IndicadoresRentabilidadContent({
   const plazoLabel = `${plazoAnios} ${plazoAnios === 1 ? "AÑO" : "AÑOS"}`;
   const paybackValue = kpis.paybackAnios ? `Año ${kpis.paybackAnios}` : ">30";
 
+  // P1 Fase 24 — guard NaN/Infinity en KPIs derivados de cálculos iterativos.
+  // calcTIR puede no converger en escenarios extremos; resto puede dar NaN
+  // por divisiones inesperadas.
+  const fmtPct = (v: number) =>
+    Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
+  const fmtMultiplo = (v: number) =>
+    Number.isFinite(v) ? `${v.toFixed(2)}x` : "—";
+  const subSafe = (v: number, normal: string) =>
+    Number.isFinite(v) ? normal : "No converge";
+
   return (
     <div className="flex flex-col gap-2.5">
       {/* 2 hero KPIs arriba */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <KPICard
           label={`TIR @ ${plazoLabel}`}
-          value={`${kpis.tir.toFixed(1)}%`}
-          sub="Retorno total anualizado"
+          value={fmtPct(kpis.tir)}
+          sub={subSafe(kpis.tir, "Retorno total anualizado")}
           tone={tonoTIR(kpis.tir)}
           size="hero"
+          tooltip="Tasa Interna de Retorno: rentabilidad anual proyectada de toda la inversión incluyendo flujo, plusvalía y venta al cierre del horizonte."
         />
         <KPICard
           label="CAP Rate"
-          value={`${kpis.capRate.toFixed(1)}%`}
-          sub="Rendimiento bruto sobre precio"
+          value={fmtPct(kpis.capRate)}
+          sub={subSafe(kpis.capRate, "Rendimiento bruto sobre precio")}
           tone={tonoCapRate(kpis.capRate)}
           size="hero"
+          tooltip="Rendimiento bruto anual del arriendo sobre el precio del depto, sin considerar financiamiento ni costos."
         />
       </div>
 
@@ -275,10 +287,11 @@ function IndicadoresRentabilidadContent({
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         <KPICard
           label={`Cash-on-Cash @ ${plazoLabel}`}
-          value={`${kpis.cashOnCash.toFixed(1)}%`}
-          sub="Flujo / inversión"
+          value={fmtPct(kpis.cashOnCash)}
+          sub={subSafe(kpis.cashOnCash, "Flujo / inversión")}
           tone={tonoCashOnCash(kpis.cashOnCash)}
           size="small"
+          tooltip="Flujo neto anual sobre lo que aportaste de tu bolsillo (pie + cierre + flujos negativos acumulados)."
         />
         <KPICard
           label="Payback (con venta)"
@@ -286,13 +299,15 @@ function IndicadoresRentabilidadContent({
           sub="Año en que recuperas toda la inversión"
           tone={tonoPayback(kpis.paybackAnios)}
           size="small"
+          tooltip="Año desde la compra en que el patrimonio neto acumulado iguala lo que aportaste, contando la venta del depto."
         />
         <KPICard
           label={`Múltiplo @ ${plazoLabel}`}
-          value={`${kpis.multiplo.toFixed(2)}x`}
-          sub="Retorno total / inversión"
+          value={fmtMultiplo(kpis.multiplo)}
+          sub={subSafe(kpis.multiplo, "Retorno total / inversión")}
           tone={tonoMultiplo(kpis.multiplo)}
           size="small"
+          tooltip="Cuánto recibes al final por cada peso aportado. Múltiplo 2x = recibes el doble de lo que pusiste."
         />
       </div>
     </div>
@@ -777,10 +792,11 @@ function VentaRefiContent({
           {/* Selector LTV */}
           <div className="flex items-center gap-3">
             <span
-              className="font-mono uppercase"
+              className="inline-flex items-center gap-1 font-mono uppercase"
               style={{ fontSize: 10, letterSpacing: "1.2px", color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
             >
-              LTV banco
+              <span>LTV banco</span>
+              <InfoTooltip content="Loan-To-Value: porcentaje del valor del depto que el banco financia en el refinanciamiento. Mayor LTV = más liquidez extraída pero mayor deuda." />
             </span>
             <div
               className="grid grid-cols-3 p-0.5 rounded-md flex-1 max-w-[220px]"
@@ -953,7 +969,7 @@ function Capa3Unificado({
               fontWeight: 600,
             }}
           >
-            🔄 Simulación
+            Simulación
           </span>
         </div>
 
@@ -977,10 +993,12 @@ function Capa3Unificado({
 
         <div className="flex justify-end">
           <span
-            className="font-body font-medium inline-flex items-center gap-1"
+            className="font-mono uppercase inline-flex items-center gap-1"
             style={{
-              fontSize: 13,
-              color: "var(--franco-text)",
+              fontSize: 11,
+              letterSpacing: "1.5px",
+              color: "var(--franco-text-secondary)",
+              fontWeight: 500,
             }}
           >
             Explorar escenarios
@@ -1021,7 +1039,7 @@ function Capa3Unificado({
               fontWeight: 600,
             }}
           >
-            🔄 Simulación interactiva
+            Simulación interactiva
           </span>
           <p
             className="font-body m-0"
@@ -2336,8 +2354,11 @@ export function PremiumResults({
   const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
-  const [arriendoGrowth, setArriendoGrowth] = useState(3.5);
-  const [costGrowth, setCostGrowth] = useState(3.0);
+  // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
+  // afectan dynamicProjections pero el user nunca pudo modificarlos. Si se
+  // expone en el futuro, rehacer limpio en SliderSimulacion bajo "Avanzado".
+  const arriendoGrowth = 3.5;
+  const costGrowth = 3.0;
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [refiPct, setRefiPct] = useState(80);
 
@@ -3462,43 +3483,9 @@ export function PremiumResults({
     </div>
   ) : null;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const projectionFields = hasPanelContent ? (
-    <div className="space-y-3">
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[var(--franco-text)]">Horizonte</label>
-          <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">{horizonYears} año{horizonYears > 1 ? "s" : ""}</span>
-        </div>
-        <input type="range" min={1} max={20} value={horizonYears} onChange={(e) => setHorizonYears(Number(e.target.value))} className="mt-1 w-full accent-[var(--franco-text-muted)] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[var(--franco-text-secondary)]">{isMonthlyView ? "Vista mensual" : "Vista anual"}</p>
-      </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[var(--franco-text)]">Plusvalía anual</label>
-          <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">{fmtPct(plusvaliaRate)}</span>
-        </div>
-        <input type="range" min={0} max={8} step={0.5} value={plusvaliaRate} onChange={(e) => setPlusvaliaRate(Number(e.target.value))} className="mt-1 w-full accent-[var(--franco-text-muted)] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[var(--franco-text-secondary)]">Promedio histórico: 3-5% anual</p>
-      </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[var(--franco-text)]">Crecimiento arriendo</label>
-          <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">{fmtPct(arriendoGrowth)}/año</span>
-        </div>
-        <input type="range" min={0} max={6} step={0.5} value={arriendoGrowth} onChange={(e) => setArriendoGrowth(Number(e.target.value))} className="mt-1 w-full accent-[var(--franco-text-muted)] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[var(--franco-text-secondary)]">Promedio histórico: 3-4% anual</p>
-      </div>
-      <div>
-        <div className="flex items-center justify-between">
-          <label className="font-body text-sm font-medium text-[var(--franco-text)]">Crecimiento gastos</label>
-          <span className="font-mono text-sm font-semibold text-[var(--franco-text)]">{fmtPct(costGrowth)}/año</span>
-        </div>
-        <input type="range" min={0} max={6} step={0.5} value={costGrowth} onChange={(e) => setCostGrowth(Number(e.target.value))} className="mt-1 w-full accent-[var(--franco-text-muted)] h-1.5" />
-        <p className="mt-0.5 text-[10px] text-[var(--franco-text-secondary)]">Aplica a GGCC, contribuciones y mantención</p>
-      </div>
-    </div>
-  ) : null;
+  // P5 Fase 24 — projectionFields dead code eliminado. Sliders huérfanos
+  // (Horizonte, Plusvalía, Crecimiento arriendo/gastos) nunca se renderizaron.
+  // Si se requiere exponer simulación avanzada, hacerlo en SliderSimulacion.
 
   // Paneles laterales eliminados (Fase 3). Capa 1+2 usan siempre valores del
   // análisis original; la simulación editable vive en el acordeón Capa 3.
