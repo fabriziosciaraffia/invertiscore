@@ -85,6 +85,17 @@ Ejemplos concretos de alucinación PROHIBIDA detectados en producción:
 
 Regla simple: si el dato no está en el input del caso, no existe para ti. Cuando dudes, omitir es preferible a inventar.
 
+Regla operacional para metros (estricta):
+
+Antes de escribir el nombre de una línea de metro (L1, L2, L7, etc.) o el nombre de una estación, búscalo LITERALMENTE en el bloque de POIs/UBICACIÓN del user prompt. Si no aparece textualmente ahí, NO lo menciones.
+
+Esta regla aplica a:
+- Líneas operativas: no inventes que un depto está cerca de L4 si solo se mencionan L1/L2.
+- Líneas en construcción o proyecto: no menciones L7/L8/L9 si no aparecen en el input.
+- Estaciones específicas: no inventes "Pedro de Valdivia" si el input solo dice "Manuel Montt".
+
+Si quieres referirte a la red de metro de forma genérica está permitido: "el metro de Santiago", "el metro cercano". Pero NUNCA un identificador específico (número de línea o nombre de estación) que no esté en el input.
+
 ## 5. Salud financiera del usuario — escalonado de 3 niveles
 
 El input incluye un objeto \`financingHealth\` con clasificación de pie y tasa en 4 niveles cada uno (optimo / aceptable / mejorable / problematico) y un \`overall\` que es el peor de los dos. Tu profundidad sobre estructura financiera depende del overall:
@@ -233,11 +244,29 @@ El user prompt te pasa variables del caso: \`tipoNegociacion\` ∈ {PASADA, SOBR
 
 Reglas críticas:
 
-REGLA 0 — Diferencia absoluta vs por m².
-- Si \`tieneDiferenciaValida\` es false: PROHIBIDO decir "UF X sobre mercado", "$Y de sobreprecio total". Esos números serían inventados porque el motor no tiene un valor de mercado real para este depto. Usá únicamente el indicador por m² (\`sobreprecioPorM2\`).
-  Correcto: "Tu precio/m² (UF 103) está UF 35 sobre el promedio de la zona (UF 68)."
-  Prohibido: "UF 3.122 sobre mercado", "compraste $15M bajo mercado".
-- Si \`tieneDiferenciaValida\` es true: puedes usar libremente el monto absoluto. Verifica que el por m² y el absoluto sean consistentes antes de escribir.
+REGLA 0 — Diferencia absoluta vs por m² (estricta).
+
+Cuando \`tieneDiferenciaValida\` = false, vmFranco cae al fallback del motor (vmFranco == precio). El motor NO TIENE un valor de mercado real para este depto. Cualquier afirmación sobre el precio absoluto es INVENTADA, incluyendo "alineado con el mercado".
+
+PROHIBIDO cuando tieneDiferenciaValida=false:
+- "el precio está alineado con el mercado"
+- "no hay ventaja ni sobreprecio"
+- "UF X sobre/bajo mercado" (montos absolutos)
+- "precio justo"
+- Cualquier afirmación sobre el precio total vs valor de mercado.
+
+OBLIGATORIO cuando tieneDiferenciaValida=false:
+- Usar SOLO el indicador por m² (\`sobreprecioPorM2\`).
+- Si sobreprecioPorM2 > +5% sobre mediana de zona: reconocer sobreprecio por m² aunque tipoNegociacion diga PRECIO_ALINEADO.
+- Si sobreprecioPorM2 está entre ±5%: "precio/m² alineado con la zona" (no "precio alineado" — solo el ratio).
+- Si sobreprecioPorM2 < -5%: reconocer descuento por m².
+
+Ejemplo concreto:
+- Input: precio UF 3.208, vmFranco UF 3.208 (fallback), tieneDiferenciaValida=false, sobreprecioPorM2 = +18,5% vs zona.
+- INCORRECTO: "El precio está alineado con el mercado."
+- CORRECTO: "El precio/m² (UF 71) está 18,5% sobre la mediana de Santiago centro (UF 60). El motor no tiene un valor de mercado total confiable para este depto, pero el ratio por m² indica sobreprecio sustantivo."
+
+Cuando tieneDiferenciaValida=true: puedes usar libremente el monto absoluto. Verifica que el por m² y el absoluto sean consistentes antes de escribir.
 
 REGLA 1 — Reconocer ventaja o sobreprecio explícitamente.
 - PASADA: "comprarías X% bajo mercado" (etapa=evaluando, ver §1.6) o "compraste X% bajo mercado" (etapa cerrada). Usa la palabra "ventaja", no "pasada", en la narrativa visible al usuario.
@@ -435,6 +464,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     let precioM2Zona = m.precioM2;
     let arriendoZona = input.arriendo;
     let yieldZona = m.rentabilidadBruta;
+    let precioM2ZonaConfiable = false; // true cuando hay dato real de zona (no fallback al m² del depto)
     try {
       const { getMarketDataForComuna } = await import("@/lib/market-data");
       const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
@@ -442,9 +472,21 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precioM2Zona = market.precio_m2_venta_promedio;
         arriendoZona = market.arriendo_promedio;
         yieldZona = Math.round((arriendoZona * 12 / (precioM2Zona * input.superficie * UF_CLP)) * 1000) / 10;
+        precioM2ZonaConfiable = true;
       }
     } catch {
       // use defaults
+    }
+    // Fallback secundario: si market_data no devolvió, usar zone_insight cacheado
+    // (que tiene precioM2.medianaComuna desde scraped_properties — fuente más rica).
+    if (!precioM2ZonaConfiable) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const zi = (analysis as any).zone_insight as { stats?: { precioM2?: { medianaComuna?: number } } } | null | undefined;
+      const medianaComunaUF = zi?.stats?.precioM2?.medianaComuna;
+      if (typeof medianaComunaUF === "number" && medianaComunaUF > 0) {
+        precioM2Zona = medianaComunaUF;
+        precioM2ZonaConfiable = true;
+      }
     }
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
@@ -584,7 +626,10 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // `sobrepreciioPorM2UF`: siempre computable cuando hay precioM2Zona,
     // independiente de que vmFranco sea real o fallback. Deja que la IA hable
     // de sobreprecio/m² sin inventar el absoluto.
-    const sobreprecioPorM2UF = precioM2Zona > 0 && m.precioM2 > 0
+    // Solo computar sobreprecio por m² si la mediana de zona es confiable
+    // (market_data devolvió valor real). Cuando precioM2Zona == m.precioM2
+    // por fallback, decir "sin dato" en vez de pasar 0 al modelo.
+    const sobreprecioPorM2UF = precioM2ZonaConfiable && precioM2Zona > 0 && m.precioM2 > 0
       ? Math.round((m.precioM2 - precioM2Zona) * 10) / 10
       : null;
 
@@ -634,7 +679,6 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     let metroInfo = "";
     if (lat && lng) {
       const nearestActive = findNearestStation(lat, lng, "active");
-      const nearestFuture = findNearestStation(lat, lng, "future");
       if (nearestActive) {
         const distKm = (nearestActive.distance / 1000).toFixed(1);
         metroInfo += `Estación de metro más cercana: ${nearestActive.station.name} (${nearestActive.station.line}) a ${distKm} km. `;
@@ -642,10 +686,11 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         else if (nearestActive.distance < 1000) metroInfo += "Buena cercanía a metro. ";
         else if (nearestActive.distance > 2500) metroInfo += "Lejos de metro, puede afectar demanda de arriendo y plusvalía. ";
       }
-      if (nearestFuture && nearestFuture.distance < 2000) {
-        const distKm = (nearestFuture.distance / 1000).toFixed(1);
-        metroInfo += `Futura estación: ${nearestFuture.station.name} (${nearestFuture.station.line}) a ${distKm} km — potencial de plusvalía adicional cuando se construya.`;
-      }
+      // NOTA: bloque de "Futura estación" desactivado. El dataset
+      // metro-stations.ts tiene estaciones ficticias en categoría "future"
+      // con líneas/coordenadas incorrectas (mismo issue ya documentado en
+      // zone-insight/route.ts). El IA las usaba para inventar narrativa.
+      // Reactivar solo cuando el dataset esté validado contra fuente oficial.
     } else {
       metroInfo = "Sin datos de ubicación exacta para evaluar cercanía a metro.";
     }
@@ -746,10 +791,10 @@ MÉTRICAS DEL MOTOR
 - valorMaximoCompraParaFlujoPositivo: ${fmtUF(results.valorMaximoCompra)}
 
 VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
-- tipoNegociacion: ${tipoNegociacion}
+- tipoNegociacion: ${tieneDiferenciaValida ? tipoNegociacion : "INDETERMINADO_FALLBACK_VMFRANCO (NO usar — vmFranco cae al fallback del motor; aplica REGLA 0 §12 con SOLO el indicador por m²)"}
 - precioCompra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
-- vmFranco: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})
-- diferencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)
+- vmFranco: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← FALLBACK del motor, no es valor de mercado real"}
+- diferencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO por fallback de vmFranco"}
 - tieneDiferenciaValida: ${tieneDiferenciaValida}
 - sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${m.precioM2.toFixed(1)} vs zona ${precioM2Zona.toFixed(1)})` : "sin dato"}
 - precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
