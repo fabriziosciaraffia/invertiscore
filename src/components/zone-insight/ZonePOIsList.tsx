@@ -1,6 +1,7 @@
 "use client";
 
 import type { ZoneInsightData, ZonePOI } from "@/hooks/useZoneInsight";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 type CategoryKey = keyof ZoneInsightData["pois"];
 
@@ -53,7 +54,7 @@ export function ZonePOIsList({ pois }: Props) {
   if (nonEmpty.length === 0) {
     return (
       <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
-        No encontramos atractores urbanos dentro de 2,5 km. Zona de baja densidad.
+        No detectamos transporte, comercio ni servicios cercanos a 2,5 km. Zona residencial periférica.
       </p>
     );
   }
@@ -114,24 +115,26 @@ export function ZonePOIsList({ pois }: Props) {
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       {close && (
-                        <span
-                          className="inline-flex items-center gap-1 font-mono uppercase"
-                          title="A menos de 500 m caminando (menos de 7 min)"
-                          style={{
-                            fontSize: 9,
-                            letterSpacing: "0.06em",
-                            color: "var(--ink-400)",
-                            background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
-                            border: "0.5px solid color-mix(in srgb, var(--ink-400) 28%, transparent)",
-                            borderRadius: 3,
-                            padding: "2px 6px",
-                          }}
-                        >
+                        <span className="inline-flex items-center gap-1">
                           <span
-                            className="zone-pulse-dot inline-block rounded-full"
-                            style={{ width: 5, height: 5, background: "var(--ink-400)" }}
-                          />
-                          Cerca
+                            className="inline-flex items-center gap-1 font-mono uppercase"
+                            style={{
+                              fontSize: 9,
+                              letterSpacing: "0.06em",
+                              color: "var(--ink-400)",
+                              background: "color-mix(in srgb, var(--ink-400) 10%, transparent)",
+                              border: "0.5px solid color-mix(in srgb, var(--ink-400) 28%, transparent)",
+                              borderRadius: 3,
+                              padding: "2px 6px",
+                            }}
+                          >
+                            <span
+                              className="zone-pulse-dot inline-block rounded-full"
+                              style={{ width: 5, height: 5, background: "var(--ink-400)" }}
+                            />
+                            Cerca
+                          </span>
+                          <InfoTooltip content="A menos de 500 m caminando (menos de 7 min)." />
                         </span>
                       )}
                       <span

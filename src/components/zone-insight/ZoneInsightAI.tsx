@@ -1,6 +1,7 @@
 "use client";
 
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 interface Props {
   insight: ZoneInsightData["insight"];
@@ -10,7 +11,14 @@ interface Props {
 export function ZoneInsightAI({ insight, currency }: Props) {
   const headline = currency === "CLP" ? insight.headline_clp : insight.headline_uf;
   const narrative = currency === "CLP" ? insight.narrative_clp : insight.narrative_uf;
-  if (!headline && !narrative) return null;
+  // P1 Fase 23 — IA vacía: dot pattern con disclaimer en vez de null silencioso.
+  if (!headline && !narrative) {
+    return (
+      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Análisis IA de la zona no disponible para este depto. Revisa stats y POIs abajo.
+      </p>
+    );
+  }
 
   return (
     <div
@@ -40,10 +48,11 @@ export function ZoneInsightAI({ insight, currency }: Props) {
       </span>
 
       <p
-        className="font-mono uppercase m-0 mb-2 font-semibold"
+        className="inline-flex items-center gap-1 font-mono uppercase m-0 mb-2 font-semibold"
         style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
       >
-        Drivers de demanda identificados
+        <span>Drivers de demanda identificados</span>
+        <InfoTooltip content="Factores que impulsan la demanda inmobiliaria en la zona: cercanía a transporte, servicios, áreas comerciales y tendencias de la comuna." />
       </p>
       {headline && (
         <p className="font-heading font-bold text-[18px] leading-[1.35] text-[var(--franco-text)] m-0 mb-2">

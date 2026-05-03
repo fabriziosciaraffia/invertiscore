@@ -1,6 +1,7 @@
 "use client";
 
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 function fmtCLP(v: number): string {
   return "$" + Math.round(v).toLocaleString("es-CL");
@@ -34,9 +35,10 @@ interface StatCardProps {
   value: string;
   sub?: string;
   tone?: "default" | "positive" | "warning";
+  tooltip?: string;
 }
 
-function StatCard({ label, value, sub, tone = "default" }: StatCardProps) {
+function StatCard({ label, value, sub, tone = "default", tooltip }: StatCardProps) {
   // Zona NUNCA usa Signal Red (skill Patrón 2 — regla dura). El tone "warning"
   // mapea a Ink 500 intermedio para diferenciarse de "default" sin introducir
   // criticidad cromática. Resuelve TODO previo de Fase 2.
@@ -52,10 +54,11 @@ function StatCard({ label, value, sub, tone = "default" }: StatCardProps) {
       }}
     >
       <p
-        className="font-mono text-[9px] uppercase tracking-[0.06em] m-0 mb-1.5"
+        className="inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] m-0 mb-1.5"
         style={{ color: "var(--franco-text-secondary)" }}
       >
-        {label}
+        <span>{label}</span>
+        {tooltip && <InfoTooltip content={tooltip} />}
       </p>
       <p
         className="font-mono text-[20px] md:text-[22px] font-bold m-0 leading-none"
@@ -114,9 +117,12 @@ export function ZoneStatsCards({
     : undefined;
 
   const oferta = stats.ofertaComparable;
+  // P1 Fase 23: si arriendoUsuario===0 (input incompleto/legacy), no hay base
+  // para mostrar percentil. Evita falso positivo "P0 — bajo el rango".
+  const arriendoSinDefinir = arriendoUsuarioCLP <= 0;
   let percentilTone: "default" | "positive" | "warning" = "default";
   let percentilSub = "";
-  if (oferta) {
+  if (oferta && !arriendoSinDefinir) {
     const rangoMin = fmtMoney(oferta.rangoArriendoMin, currency, valorUF);
     const rangoMax = fmtMoney(oferta.rangoArriendoMax, currency, valorUF);
     if (oferta.percentilTuDepto === 0) {
@@ -147,6 +153,7 @@ export function ZoneStatsCards({
           value={`+${plus.valor}%`}
           sub={plusSub}
           tone={plusTone}
+          tooltip="Rendimiento histórico real de la comuna en los últimos 10 años. Distinto del supuesto conservador (4% anual) que Franco usa para proyectar la venta a futuro."
         />
 
         {precioM2 ? (
@@ -154,9 +161,15 @@ export function ZoneStatsCards({
             label="Precio m²"
             value={fmtM2(precioM2.tuDepto)}
             sub={precioSub}
+            tooltip="Mediana del precio por metro cuadrado en la comuna, calculada con los avisos publicados."
           />
         ) : (
-          <StatCard label="Precio m²" value="—" sub="Sin datos de mercado suficientes" />
+          <StatCard
+            label="Precio m²"
+            value="—"
+            sub="Sin datos de mercado suficientes"
+            tooltip="Mediana del precio por metro cuadrado en la comuna, calculada con los avisos publicados."
+          />
         )}
 
         {oferta ? (
@@ -164,24 +177,32 @@ export function ZoneStatsCards({
             label="Oferta comparable"
             value={String(oferta.totalDeptos)}
             sub={`Deptos en arriendo activo en ${comuna}${oferta.precision !== "exacta" ? " · criterios amplios" : ""}`}
+            tooltip="Cantidad de departamentos en arriendo activo similares al tuyo. Si la precisión es baja, se amplían los criterios de búsqueda."
           />
         ) : (
           <StatCard
             label="Oferta comparable"
             value="—"
             sub="No hay suficientes publicaciones para estimar."
+            tooltip="Cantidad de departamentos en arriendo activo similares al tuyo. Si la precisión es baja, se amplían los criterios de búsqueda."
           />
         )}
 
-        {oferta ? (
+        {oferta && !arriendoSinDefinir ? (
           <StatCard
             label="Arriendo estimado"
             value={`P${oferta.percentilTuDepto}`}
             sub={percentilSub}
             tone={percentilTone}
+            tooltip="Percentil donde cae tu arriendo en la zona. P50 = mediana. P80 = sobre el 80% de los avisos. P20 = bajo el 80%."
           />
         ) : (
-          <StatCard label="Arriendo estimado" value="—" sub="Sin rango comparable disponible." />
+          <StatCard
+            label="Arriendo estimado"
+            value="—"
+            sub={arriendoSinDefinir ? "Sin arriendo definido" : "Sin rango comparable disponible."}
+            tooltip="Percentil donde cae tu arriendo en la zona. P50 = mediana. P80 = sobre el 80% de los avisos. P20 = bajo el 80%."
+          />
         )}
       </div>
 

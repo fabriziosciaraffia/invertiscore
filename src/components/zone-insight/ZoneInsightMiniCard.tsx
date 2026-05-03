@@ -38,7 +38,7 @@ interface Props {
 export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props) {
   const totalPOIs = countPOIs(data);
   const preview = loading && !data
-    ? "Analizando atractores urbanos y demanda de la zona…"
+    ? "Analizando transporte, servicios y demanda de la zona…"
     : pickPreview(data, currency) || "Explora el entorno del depto y los drivers de demanda.";
 
   return (
@@ -85,7 +85,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
             className="font-mono text-[9px] uppercase tracking-[1.5px] font-medium"
             style={{ color: "var(--ink-400)" }}
           >
-            06 · Zona
+            06 · ZONA
           </span>
           <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.2] text-[var(--franco-text)] m-0">
             Lo que no ves a simple vista

@@ -9,6 +9,7 @@ import type {
   AnalisisInput,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
+import { readFrancoVerdict } from "@/lib/results-helpers";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
@@ -1656,6 +1657,14 @@ function DrawerZona({
   return (
     <div className="flex flex-col gap-5">
       <ZoneInsightAI insight={zoneInsight.insight} currency={currency} />
+
+      {/* Mensaje educativo dot Fase 4.8 — diferenciar plusvalía histórica
+          (esta sección) vs proyectada (Drawer 04 Largo Plazo). Resuelve
+          confusión potencial cuando los números no coinciden. */}
+      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● La plusvalía histórica de la comuna refleja el pasado real. Para proyectar tu venta a 10 años, Franco usa un supuesto conservador del 4% anual.
+      </p>
+
       <ZoneStatsCards
         stats={zoneInsight.stats}
         currency={currency}
@@ -1728,7 +1737,7 @@ export function AnalysisDrawer({
     }
     if (activeKey === "riesgos") {
       const score = results.score ?? 0;
-      const veredicto = results.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+      const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
       if (veredicto === "COMPRAR") return "¿Qué cuidar?";
       if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
       return "¿Qué riesgos asume tu negociación?"; // AJUSTA
