@@ -19,7 +19,7 @@ import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/an
 import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import { StateBox } from "@/components/ui/StateBox";
-import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { AnalysisDrawer, extractRiesgos, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
@@ -1692,20 +1692,6 @@ function HeroCard({
 
 type MiniCardSection = "costoMensual" | "negociacion" | "largoPlazo" | "riesgos";
 
-function extractRiesgoCount(content: string | undefined): number {
-  if (!content || typeof content !== "string") return 3;
-  // Count markdown bold segments (**Title.**), typical structure of risk blocks.
-  const boldMatches = content.match(/\*\*[^*]+\*\*/g);
-  if (boldMatches && boldMatches.length >= 2 && boldMatches.length <= 10) return boldMatches.length;
-  // Fallback: numbered or bulleted lines.
-  const bulletMatches = content.match(/(^|\n)\s*(?:\d+\.|•|·|-)\s+/g);
-  if (bulletMatches && bulletMatches.length >= 2 && bulletMatches.length <= 10) return bulletMatches.length;
-  // Fallback: paragraph breaks.
-  const paras = content.split(/\n\s*\n/).filter((p) => p.trim().length > 20);
-  if (paras.length >= 2 && paras.length <= 10) return paras.length;
-  return 3;
-}
-
 function getPunchline(
   section: MiniCardSection,
   data: import("@/lib/types").AISection | import("@/lib/types").AINegociacionSection,
@@ -1802,10 +1788,13 @@ function getPunchline(
     return { value: "—", sub: "Retorno 10 años", color: "var(--franco-text)" };
   }
 
-  // 4. Riesgos — count from IA content
+  // 4. Riesgos — usa el mismo extractRiesgos que el drawer (Fase 22 P2).
+  // Si extractRiesgos devuelve 0, el drawer cae a 3 hardcoded — count debe
+  // reflejar ESO mismo (3) para consistencia visible.
   if (section === "riesgos") {
     const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-    const count = extractRiesgoCount(content);
+    const parsed = extractRiesgos(content || "");
+    const count = parsed.length > 0 ? parsed.length : 3;
     return {
       value: `${count} flancos`,
       sub: "Requieren defensa",
@@ -1875,6 +1864,13 @@ function MiniCard({
             if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
             if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
             return `¿Vale la pena a ${aniosPlazo} años?`;
+          }
+          if (section === "riesgos") {
+            const score = results?.score ?? 0;
+            const veredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+            if (veredicto === "COMPRAR") return "¿Qué cuidar?";
+            if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
+            return "¿Qué riesgos asume tu negociación?";
           }
           return data.pregunta;
         })()}

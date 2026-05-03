@@ -674,11 +674,11 @@ Responde SOLO con un JSON válido con esta estructura exacta:
 
   "riesgos": {
     "pregunta": "¿Qué puede salir mal?",
-    "contenido_clp": "3 riesgos principales, cada uno en 1-2 oraciones, separados por saltos de línea dobles. Cada riesgo empieza con el nombre del riesgo en negrita usando markdown: '**Vacancia larga.** Si el depto queda sin arrendatario 3 meses...'. Usa los datos concretos: si tasa sube 1% dividendo pasa a ${fmtCLP(dividendoSiTasaSube1)}; vacancia cuesta ${fmtCLP(input.arriendo + input.gastos)}/mes; etc. Montos en CLP.",
+    "contenido_clp": "3 riesgos principales, cada uno en 1-2 oraciones, separados por saltos de línea dobles. Cada riesgo empieza con el nombre del riesgo en negrita usando markdown: '**Vacancia larga.** Si el depto queda sin arrendatario 3 meses...'. Usa los datos concretos: si tasa sube 1% dividendo pasa a ${fmtCLP(dividendoSiTasaSube1)}; vacancia cuesta ${fmtCLP(input.arriendo + input.gastos)}/mes; etc. Montos en CLP. Si veredicto es COMPRAR, los riesgos deben describirse con lenguaje de potencial o atención, no de crítico/alarma. Ejemplos: 'podría afectar', 'vale la pena considerar', 'ojo con', 'atención a'. Evita imperativos alarmistas como 'asegúrate de', 'tendrás que', 'obligatorio'. Si veredicto es AJUSTA EL PRECIO o BUSCAR OTRA, mantén lenguaje directo y concreto sobre el impacto numérico.",
     "contenido_uf": "Lo mismo en UF.",
     "cajaAccionable_clp": "Si el usuario decide avanzar, qué flancos concretos debe proteger (fondo de reserva, comparación de tasas bancarias, verificación del edificio, etc). Montos en CLP.",
     "cajaAccionable_uf": "Lo mismo en UF.",
-    "cajaLabel": "Si decides avanzar, protegé estos flancos:"
+    "cajaLabel": "Si decides avanzar, protege estos flancos:"
   }
 }
 

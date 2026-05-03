@@ -1486,7 +1486,7 @@ function DrawerLargoPlazo({
 }
 
 // ─── Riesgos drawer ─────────────────────────────────
-function extractRiesgos(
+export function extractRiesgos(
   content: string
 ): { titulo: string; descripcion: string }[] {
   if (!content || typeof content !== "string") return [];
@@ -1529,20 +1529,36 @@ function DrawerRiesgos({
   currency: "CLP" | "UF";
 }) {
   const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-  const riesgos = useMemo(() => {
-    const parsed = extractRiesgos(content);
-    if (parsed.length > 0) return parsed;
-    return [
-      { titulo: "Subida de tasas", descripcion: "Si las tasas suben, tu dividendo mensual aumenta y el flujo empeora." },
-      { titulo: "Vacancia prolongada", descripcion: "Si el depto queda sin arrendatario, asumes todos los costos sin ingreso." },
-      { titulo: "Plusvalía inferior", descripcion: "Si la zona no crece al ritmo histórico, tu ganancia a 10 años baja." },
-    ];
-  }, [content]);
+  // Flag para distinguir "riesgos del análisis" vs "fallback genérico"
+  // (Fase 22 P1.5.1) — se usa para mostrar disclaimer al user.
+  const parsedRiesgos = useMemo(() => extractRiesgos(content), [content]);
+  const usandoFallback = parsedRiesgos.length === 0;
+  const riesgos = usandoFallback
+    ? [
+        { titulo: "Subida de tasas", descripcion: "Si las tasas suben, tu dividendo mensual aumenta y el flujo empeora." },
+        { titulo: "Vacancia prolongada", descripcion: "Si el depto queda sin arrendatario, asumes todos los costos sin ingreso." },
+        { titulo: "Plusvalía inferior", descripcion: "Si la zona no crece al ritmo histórico, tu ganancia a 10 años baja." },
+      ]
+    : parsedRiesgos;
 
   return (
     <div>
-      <p className="font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-4 m-0">
-        Toda inversión tiene flancos. Los más relevantes para este depto:
+      {/* Disclaimer Fase 22 P1.5.1 — solo cuando se usa fallback hardcoded.
+          Patrón: dot mono 11px text-secondary (mismo que mensajes educativos). */}
+      {usandoFallback && (
+        <p className="font-mono text-[11px] mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+          ● Lista genérica de riesgos típicos. El análisis específico no generó riesgos personalizados.
+        </p>
+      )}
+
+      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-2 m-0">
+        <span>Toda inversión tiene flancos. Los más relevantes para este depto:</span>
+        <InfoTooltip content="Riesgos identificados que pueden afectar la rentabilidad o el flujo de la inversión." />
+      </p>
+
+      {/* Mensaje educativo dot Fase 4.8 — contexto del scope de riesgos. */}
+      <p className="font-mono text-[11px] mt-2 mb-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Estos riesgos vienen de los datos del análisis específico. Para deptos con flujo positivo o zona estable, los flancos pueden ser menores que los listados.
       </p>
 
       <div className="flex flex-col gap-2.5 my-4">
@@ -1569,7 +1585,7 @@ function DrawerRiesgos({
 
       <StateBox
         variant="left-border"
-        state="info"
+        state="attention"
         label={data.cajaLabel || "Si decides avanzar, protege estos flancos:"}
         className="mt-5"
       >
@@ -1709,6 +1725,13 @@ export function AnalysisDrawer({
       if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
       if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
       return `¿Vale la pena a ${aniosPlazo} años?`;
+    }
+    if (activeKey === "riesgos") {
+      const score = results.score ?? 0;
+      const veredicto = results.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+      if (veredicto === "COMPRAR") return "¿Qué cuidar?";
+      if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
+      return "¿Qué riesgos asume tu negociación?"; // AJUSTA
     }
     return section.pregunta;
   })();

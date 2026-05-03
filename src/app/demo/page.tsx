@@ -273,7 +273,7 @@ const DEMO_AI: AIAnalysisV2 = {
     contenido_uf: "**Subida de tasas.** Si la tasa sube 1,5%, el dividendo pasa a UF 15,1 y el flujo negativo crece a UF 8,9/mes. Tu capacidad de ahorro debe absorber ese escenario.\n\n**Vacancia prolongada.** Cada mes sin arrendatario pierdes UF 12,9 (arriendo + GGCC). Una vacancia de 2 meses al año suma UF 0,9/mes al déficit.\n\n**Plusvalía por debajo del supuesto.** Si la plusvalía cae a 2% anual (en vez de 4%), el retorno 10 años baja a 2,1x en lugar de 3,21x — la inversión se sostiene pero con mucho menos margen.",
     cajaAccionable_clp: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~$4.260.000. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
     cajaAccionable_uf: "Fondo de reserva mínimo: 6 meses de dividendo + gastos = ~UF 110. Antes de firmar, revisa 3 bancos para comparar tasas y asegura que las contribuciones y GGCC del edificio estén al día.",
-    cajaLabel: "Si decides avanzar, protegé estos flancos:",
+    cajaLabel: "Si decides avanzar, protege estos flancos:",
   },
 };
 
