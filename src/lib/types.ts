@@ -165,6 +165,7 @@ export interface FullAnalysisResult {
   breakEvenTasa: number;
   valorMaximoCompra: number;
   negociacion?: NegociacionScenario;
+  financingHealth?: import("./financing-health").FinancingHealth;
   resumen: string;
   pros: string[];
   contras: string[];

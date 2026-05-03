@@ -19,6 +19,7 @@ import {
   calificaSubsidio as calificaSubsidioHelper,
   aplicaSubsidio,
 } from "./constants/subsidio";
+import { classifyFinancingHealth } from "./financing-health";
 
 // Dynamic UF value — set via setUFValue() before calling runAnalysis()
 let UF_CLP = 38800;
@@ -50,7 +51,7 @@ const GASTOS_CIERRE_PCT = 0.02; // ~2% of purchase price (notaría, CBR, timbres
 // Helpers
 // =========================================
 
-function calcDividendo(creditoCLP: number, tasaAnual: number, plazoAnos: number): number {
+export function calcDividendo(creditoCLP: number, tasaAnual: number, plazoAnos: number): number {
   if (creditoCLP <= 0) return 0;
   const tasaMensual = tasaAnual / 100 / 12;
   const n = plazoAnos * 12;
@@ -1099,6 +1100,13 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     `${input.enConstruccion || input.antiguedad <= 2 ? "Al ser nueva, los costos de mantención serán bajos por años." : input.antiguedad <= 8 ? "La baja antigüedad reduce riesgos de mantención inesperada." : input.antiguedad > 20 ? "Ojo: la antigüedad puede traer gastos de mantención importantes pronto." : "La antigüedad es moderada."} ` +
     `Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.`;
 
+  const financingHealth = classifyFinancingHealth({
+    pie_pct: input.piePct,
+    tasa_pct: input.tasaInteres,
+    precio_uf: input.precio,
+    plazo_anios: input.plazoCredito,
+  });
+
   return {
     score: clamp(score, 0, 100),
     clasificacion,
@@ -1115,6 +1123,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     breakEvenTasa,
     valorMaximoCompra,
     negociacion,
+    financingHealth,
     resumen,
     pros,
     contras,
