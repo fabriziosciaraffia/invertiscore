@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, Home, Building2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, AlertTriangle, XCircle, Calculator, Home, Building2 } from "lucide-react";
+import type { FrancoVerdict } from "@/lib/types";
 
-type LTRVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+type LTRVerdict = FrancoVerdict;
 type STRVerdict = "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO";
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
 
@@ -80,6 +81,9 @@ const LTR_VERDICT: Record<LTRVerdict, { color: string; bg: string; border: strin
   "COMPRAR": { color: "#B0BEC5", bg: "rgba(176,190,197,0.10)", border: "rgba(176,190,197,0.4)", icon: CheckCircle2, label: "COMPRAR" },
   "AJUSTA EL PRECIO": { color: "#FBBF24", bg: "rgba(251,191,36,0.10)", border: "rgba(251,191,36,0.4)", icon: AlertTriangle, label: "AJUSTA EL PRECIO" },
   "BUSCAR OTRA": { color: "#C8323C", bg: "rgba(200,50,60,0.10)", border: "rgba(200,50,60,0.4)", icon: XCircle, label: "BUSCAR OTRA" },
+  // 4to veredicto: el depto está bien, la matemática del financiamiento no.
+  // Tonos neutros (mismo gris-azul que COMPRAR) + icono Calculator.
+  "RECONSIDERA LA ESTRUCTURA": { color: "#B0BEC5", bg: "rgba(176,190,197,0.10)", border: "rgba(176,190,197,0.4)", icon: Calculator, label: "RECONSIDERA LA ESTRUCTURA" },
 };
 
 const STR_VERDICT: Record<STRVerdict, { color: string; bg: string; border: string; icon: typeof CheckCircle2; label: string }> = {

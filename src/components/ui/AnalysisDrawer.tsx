@@ -5,6 +5,7 @@ import type {
   AIAnalysisV2,
   AISection,
   AINegociacionSection,
+  AIReestructuracionSection,
   FullAnalysisResult,
   AnalisisInput,
 } from "@/lib/types";
@@ -18,7 +19,7 @@ import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
 import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
-export type DrawerKey = "costoMensual" | "negociacion" | "largoPlazo" | "riesgos" | "zona";
+export type DrawerKey = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -44,6 +45,10 @@ const DRAWER_META: Record<
 > = {
   costoMensual: { num: "02", label: "Costo mensual", prev: undefined, next: "negociacion" },
   negociacion: { num: "03", label: "Negociación", prev: "costoMensual", next: "largoPlazo" },
+  // "03+" indica complementariedad — reestructuracion es alternativa a negociar
+  // cuando el problema es financiamiento, no precio. Solo aparece cuando
+  // aiAnalysis.reestructuracion existe.
+  reestructuracion: { num: "03+", label: "Reestructuración", prev: "negociacion", next: "largoPlazo" },
   largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "riesgos" },
   riesgos: { num: "05", label: "Riesgos", prev: "largoPlazo", next: "zona" },
   zona: { num: "06", label: "Zona", prev: "riesgos", next: undefined },
@@ -1596,6 +1601,102 @@ function DrawerRiesgos({
   );
 }
 
+// ─── Reestructuración drawer ────────────────────────
+// Aparece solo cuando aiAnalysis.reestructuracion existe (Nivel 3 del
+// escalonado financingHealth, skill §1.5). Suele venir junto con
+// francoVerdict === "RECONSIDERA LA ESTRUCTURA".
+function DrawerReestructuracion({
+  data,
+  currency,
+  results,
+  valorUF,
+}: {
+  data: AIReestructuracionSection;
+  currency: "CLP" | "UF";
+  results: FullAnalysisResult;
+  valorUF: number;
+}) {
+  const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
+  const est = data.estructuraSugerida;
+
+  // Cuota actual desde el motor para el contraste con la sugerida.
+  const cuotaActual = results.metrics?.dividendo ?? 0;
+  const cuotaSugerida = Math.max(0, cuotaActual - (est.impactoCuotaMensual_clp || 0));
+
+  return (
+    <div>
+      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
+        <span>El depto está bien. Lo que no cierra es la matemática del financiamiento.</span>
+        <InfoTooltip content="Reestructuración del crédito sugerida cuando el problema dominante es pie/tasa/plazo, no el precio del depto." />
+      </p>
+
+      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
+        {content}
+      </div>
+
+      {/* Estructura sugerida — 3 chips numéricos en mono */}
+      <div
+        className="rounded-[8px] p-4 mb-4"
+        style={{
+          background: "var(--franco-elevated)",
+          border: "0.5px solid var(--franco-border)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
+          Estructura sugerida
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Pie
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {est.pieSugerido_pct}%
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Plazo
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {est.plazoSugerido_anios} <span className="text-[14px] font-medium">años</span>
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Tasa objetivo
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {est.tasaObjetivo_pct.toFixed(1).replace(".", ",")}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Bloque conclusivo destacado — KPI ahorro mensual */}
+      {est.impactoCuotaMensual_clp > 0 && (
+        <div
+          className="rounded-r-[8px] p-4 mb-4"
+          style={{
+            borderLeft: "3px solid var(--franco-text)",
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+          }}
+        >
+          <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+            Cuota mensual baja en
+          </p>
+          <p className="font-mono font-bold text-[24px] text-[var(--franco-text)] m-0 leading-tight">
+            {fmtMoney(est.impactoCuotaMensual_clp, currency, valorUF)}
+          </p>
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-1">
+            de {fmtMoney(cuotaActual, currency, valorUF)} a {fmtMoney(cuotaSugerida, currency, valorUF)}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main drawer ────────────────────────────────────
 function ZoneSkeleton() {
   return (
@@ -1700,13 +1801,26 @@ export function AnalysisDrawer({
   comuna,
   arriendoUsuarioCLP,
 }: DrawerProps) {
-  const meta = DRAWER_META[activeKey];
-  // Zone section isn't part of aiAnalysis — use a placeholder pregunta.
+  // Navegación dinámica: cuando reestructuracion existe, se interpone entre
+  // negociacion y largoPlazo. Cuando no existe, la cadena salta directo.
+  const meta = useMemo(() => {
+    const base = DRAWER_META[activeKey];
+    const hasReestructuracion = !!aiAnalysis.reestructuracion;
+    if (!hasReestructuracion) return base;
+    if (activeKey === "negociacion") return { ...base, next: "reestructuracion" as DrawerKey };
+    if (activeKey === "largoPlazo") return { ...base, prev: "reestructuracion" as DrawerKey };
+    return base;
+  }, [activeKey, aiAnalysis.reestructuracion]);
+
+  // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
   const zonaTitle = "Lo que no ves a simple vista";
+  const reestructuracionTitle = "¿Y si cambias la estructura?";
   const section =
     activeKey === "zona"
       ? ({ pregunta: zonaTitle } as { pregunta: string })
-      : aiAnalysis[activeKey];
+      : activeKey === "reestructuracion"
+        ? ({ pregunta: reestructuracionTitle } as { pregunta: string })
+        : aiAnalysis[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -1813,6 +1927,14 @@ export function AnalysisDrawer({
               data={section as AINegociacionSection}
               currency={currency}
               inputData={inputData}
+              results={results}
+              valorUF={valorUF}
+            />
+          )}
+          {activeKey === "reestructuracion" && aiAnalysis.reestructuracion && (
+            <DrawerReestructuracion
+              data={aiAnalysis.reestructuracion}
+              currency={currency}
               results={results}
               valorUF={valorUF}
             />

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   MapPin,
-  RefreshCw, Loader2, Clock,
+  RefreshCw, Loader2, Clock, Calculator,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/analysis";
@@ -1155,6 +1155,16 @@ const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string
     bgInner: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
     borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
   },
+  // 4to veredicto exclusivo de Franco. El depto está bien, la matemática del
+  // financiamiento no. Tonos neutros Ink (sin Signal Red) — distinción por
+  // composición + icono Calculator + tag "AJUSTA EL FINANCIAMIENTO".
+  "RECONSIDERA LA ESTRUCTURA": {
+    color: "var(--franco-text-secondary)",
+    bg: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+    border: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
+    bgInner: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+    borderInner: "color-mix(in srgb, var(--franco-text) 20%, transparent)",
+  },
 };
 
 function getVerdictStyles(veredicto: string) {
@@ -1523,13 +1533,18 @@ function HeroCard({
   const isCompra = veredicto === "COMPRAR";
   const isAjusta = veredicto === "AJUSTA EL PRECIO";
   const isBuscar = veredicto === "BUSCAR OTRA";
+  // 4to veredicto: el depto está bien, la matemática del financiamiento no.
+  // Comparte tratamiento neutro con COMPRAR (badge Ink invertido, sin wash rojo)
+  // pero icono Calculator y tag distinto.
+  const isReconsidera = veredicto === "RECONSIDERA LA ESTRUCTURA";
+  const isInkVerdict = isCompra || isReconsidera; // tratamientos Ink-neutros
 
   // Hero container — bg/border per veredicto (Capa 3 Patrón 1)
   const heroContainerBg = isCompra
     ? "var(--franco-card)"
     : isBuscar
       ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
-      : "color-mix(in srgb, var(--franco-text) 4%, transparent)"; // AJUSTA Ink secundario per skill
+      : "color-mix(in srgb, var(--franco-text) 4%, transparent)"; // AJUSTA + RECONSIDERA = Ink secundario neutro
   const heroContainerBorder = isCompra
     ? "0.5px solid var(--franco-border)"
     : isBuscar
@@ -1537,18 +1552,21 @@ function HeroCard({
       : "0.5px solid color-mix(in srgb, var(--franco-text) 12%, transparent)";
 
   // Divider dashed entre prop-top y parallel-row (dentro de HeroTopStrip)
-  const dividerDashedColor = isCompra
+  const dividerDashedColor = isInkVerdict
     ? "var(--franco-border)"
     : "color-mix(in srgb, var(--signal-red) 20%, transparent)";
 
-  // Badge / pill 3-case (skill Patrón 1):
-  // BUSCAR → Signal Red sólido + white | AJUSTA → outline (bg page + Signal Red text + border) | COMPRAR → Ink invertido
-  const badgeBg = isCompra
+  // Badge / pill 4-case (skill Patrón 1):
+  // BUSCAR → Signal Red sólido + white
+  // AJUSTA → outline (bg page + Signal Red text + border)
+  // COMPRAR → Ink invertido
+  // RECONSIDERA → Ink invertido + icono Calculator (mismo tratamiento que COMPRAR para consistencia neutra)
+  const badgeBg = isInkVerdict
     ? "var(--franco-text)"
     : isAjusta
       ? "var(--franco-bg)"
       : "var(--signal-red)";
-  const badgeText = isCompra
+  const badgeText = isInkVerdict
     ? "var(--franco-bg)"
     : isAjusta
       ? "var(--signal-red)"
@@ -1557,25 +1575,19 @@ function HeroCard({
 
   // Verdict callout banner — bg/border per veredicto
   // - BUSCAR OTRA: wash Signal Red 8%
-  // - AJUSTA EL PRECIO: var(--franco-card) (Hero tiene wash Ink, callout
-  //   destaca con color de Hero base + acentos Signal Red en pill/label)
-  // - COMPRAR: var(--franco-elevated) (Hero ES var(--franco-card), elevated
-  //   crea elevación visible sin tinte cromático)
+  // - AJUSTA EL PRECIO: var(--franco-card)
+  // - COMPRAR / RECONSIDERA: var(--franco-elevated) (sin tinte cromático)
   const calloutBg = isBuscar
     ? "color-mix(in srgb, var(--signal-red) 8%, transparent)"
-    : isCompra
+    : isInkVerdict
       ? "var(--franco-elevated)"
       : "var(--franco-card)"; // AJUSTA
   const calloutBorder = isBuscar
     ? "none"
-    : "0.5px solid var(--franco-border)"; // COMPRAR + AJUSTA con border sutil
+    : "0.5px solid var(--franco-border)";
 
   // Toggle CLP/UF group border (tintado per veredicto)
-  // AJUSTA bumped a Signal Red 35% (era Ink 12% imperceptible). Esto hace al toggle
-  // border de AJUSTA más visible que el de BUSCAR (25%) — la jerarquía global
-  // BUSCAR > AJUSTA se mantiene vía container wash (BUSCAR signal-red 6% vs
-  // AJUSTA Ink 4%).
-  const toggleGroupBorder = isCompra
+  const toggleGroupBorder = isInkVerdict
     ? "var(--franco-border)"
     : isBuscar
       ? "color-mix(in srgb, var(--signal-red) 25%, transparent)"
@@ -1629,7 +1641,13 @@ function HeroCard({
           01 · Veredicto
         </p>
         <h2 className="font-heading font-bold text-[20px] md:text-[24px] leading-[1.25] mb-4 text-[var(--franco-text)] m-0">
-          {isCompra ? "¿Por qué conviene?" : isAjusta ? "¿Conviene si negocias?" : "¿Por qué no conviene?"}
+          {isCompra
+            ? "¿Por qué conviene?"
+            : isAjusta
+              ? "¿Conviene si negocias?"
+              : isReconsidera
+                ? "¿Y si cambias la estructura?"
+                : "¿Por qué no conviene?"}
         </h2>
 
         <div className="font-body text-[14px] md:text-[15px] leading-[1.65] text-[var(--franco-text)] mb-3">
@@ -1644,13 +1662,14 @@ function HeroCard({
           }}
         >
           <span
-            className="font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
+            className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold tracking-[2px] px-2.5 py-1 rounded uppercase shrink-0"
             style={{
               color: badgeText,
               background: badgeBg,
               border: badgeBorder,
             }}
           >
+            {isReconsidera && <Calculator size={12} aria-hidden="true" />}
             {veredicto}
           </span>
           <p className="font-body text-[13px] md:text-[14px] font-medium text-[var(--franco-text)] m-0">
@@ -1670,29 +1689,28 @@ function HeroCard({
 
         <StateBox
           variant="left-border"
-          state={isCompra ? "neutral" : "negative"}
+          state={isInkVerdict ? "neutral" : "negative"}
           className="mt-5"
           style={{
             // - BUSCAR OTRA: wash Signal Red 6%
             // - AJUSTA EL PRECIO: var(--franco-card) (state="negative" preserva
             //   borderLeft Signal Red + label Signal Red vía StateBox internal)
-            // - COMPRAR: var(--franco-elevated) (Hero base es card; elevated
-            //   crea elevación visible sin tinte cromático)
+            // - COMPRAR / RECONSIDERA: var(--franco-elevated) sin tinte cromático
             background: isBuscar
               ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
-              : isCompra
+              : isInkVerdict
                 ? "var(--franco-elevated)"
                 : "var(--franco-card)",
             borderRadius: "0 8px 8px 0",
-            ...(isCompra ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
+            ...(isInkVerdict ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
           }}
         >
-          {isCompra ? (
+          {isInkVerdict ? (
             <p
               className="font-mono text-[10px] uppercase tracking-[2px] mb-2 m-0 font-semibold"
               style={{ color: "var(--franco-text-tertiary)" }}
             >
-              Considera antes de avanzar:
+              {isReconsidera ? "Ajusta el financiamiento:" : "Considera antes de avanzar:"}
             </p>
           ) : (
             <span
@@ -1709,7 +1727,7 @@ function HeroCard({
   );
 }
 
-type MiniCardSection = "costoMensual" | "negociacion" | "largoPlazo" | "riesgos";
+type MiniCardSection = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos";
 
 function getPunchline(
   section: MiniCardSection,
@@ -1912,6 +1930,107 @@ function MiniCard({
   );
 }
 
+// ─── ReestructuracionMiniCard ───────────────────────
+// Wide card que aparece entre el grid 2x2 y la card de Zona cuando
+// aiAnalysis.reestructuracion existe (Nivel 3 del escalonado financingHealth,
+// skill §1.5). Mismo patrón visual que ZoneInsightMiniCard pero icono Calculator
+// y KPI con el ahorro mensual en cuota.
+function ReestructuracionMiniCard({
+  data,
+  currency,
+  valorUF,
+  onClick,
+}: {
+  data: import("@/lib/types").AIReestructuracionSection;
+  currency: "CLP" | "UF";
+  valorUF: number;
+  onClick: () => void;
+}) {
+  const preview = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
+  const ahorro = data.estructuraSugerida.impactoCuotaMensual_clp;
+  const ahorroFmt = currency === "CLP"
+    ? "$" + Math.round(ahorro).toLocaleString("es-CL")
+    : "UF " + (Math.round((ahorro / (valorUF || 1)) * 100) / 100).toFixed(2).replace(".", ",");
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full text-left transition-colors hover:opacity-95 group relative overflow-hidden"
+      style={{
+        background: "linear-gradient(135deg, color-mix(in srgb, var(--franco-text) 5%, transparent) 0%, transparent 60%), var(--franco-card)",
+        border: "1px solid var(--franco-border)",
+        borderRadius: 16,
+        padding: "16px 18px",
+        minHeight: 120,
+      }}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute left-0 right-0 top-0 pointer-events-none"
+        style={{ height: 3, background: "var(--franco-text)" }}
+      />
+      <div className="grid items-center gap-3.5 md:gap-4" style={{ gridTemplateColumns: "44px 1fr auto" }}>
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+          style={{
+            background: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--franco-text) 25%, transparent)",
+            color: "var(--franco-text)",
+          }}
+          aria-hidden="true"
+        >
+          <Calculator size={20} strokeWidth={1.5} />
+        </div>
+
+        <div className="min-w-0 flex flex-col gap-1">
+          <span
+            className="font-mono text-[9px] uppercase tracking-[1.5px] font-medium"
+            style={{ color: "var(--franco-text-secondary)" }}
+          >
+            03+ · Reestructuración
+          </span>
+          <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.2] text-[var(--franco-text)] m-0">
+            ¿Y si cambias la estructura?
+          </h3>
+          <p
+            className="font-body text-[12px] md:text-[12.5px] leading-[1.5] m-0 mt-0.5"
+            style={{
+              color: "color-mix(in srgb, var(--franco-text) 78%, transparent)",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {preview}
+          </p>
+        </div>
+
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <span
+            className="font-mono text-[9px] uppercase tracking-[1px] text-right"
+            style={{ color: "var(--franco-text-secondary)" }}
+          >
+            Cuota baja
+          </span>
+          <span
+            className="font-mono font-bold text-[14px] md:text-[15px] text-[var(--franco-text)]"
+          >
+            −{ahorroFmt}
+          </span>
+          <span
+            className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline mt-1"
+            style={{ color: "color-mix(in srgb, var(--franco-text) 60%, transparent)" }}
+          >
+            Ver detalle →
+          </span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function DashboardAnalysisSection({
   aiAnalysis,
   loading,
@@ -2064,6 +2183,20 @@ function DashboardAnalysisSection({
           valorUF={valorUF}
         />
       </div>
+
+      {/* Card opcional: Reestructuración (entre el grid 2x2 y la Zona).
+          Solo aparece cuando aiAnalysis.reestructuracion existe — Nivel 3 del
+          escalonado financingHealth (skill §1.5). */}
+      {aiAnalysis.reestructuracion && (
+        <div className="mt-3">
+          <ReestructuracionMiniCard
+            data={aiAnalysis.reestructuracion}
+            currency={currency}
+            valorUF={valorUF}
+            onClick={() => setActiveDrawer("reestructuracion")}
+          />
+        </div>
+      )}
 
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (
