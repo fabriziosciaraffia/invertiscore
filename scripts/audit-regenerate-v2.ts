@@ -26,11 +26,18 @@ let runAnalysis: typeof import("../src/lib/analysis").runAnalysis;
 let setUFValue: typeof import("../src/lib/analysis").setUFValue;
 let generateAiAnalysis: typeof import("../src/lib/ai-generation").generateAiAnalysis;
 
-const IDS = [
+// Filtra los IDs por env AUDIT_FILTER_VEREDICTOS (csv) si está seteado.
+// Ej: AUDIT_FILTER_VEREDICTOS="COMPRAR" regenera solo el caso 1.
+const ALL_IDS = [
   { veredicto: "COMPRAR",          id: "2aa47321-ec4c-4d4e-aac5-95689933105a" },
   { veredicto: "AJUSTA EL PRECIO", id: "671ed774-4873-41b2-92b2-66086dd0d841" },
   { veredicto: "BUSCAR OTRA",      id: "860f5607-d469-41f1-a6e8-6288b993fe8c" },
 ];
+
+const filter = process.env.AUDIT_FILTER_VEREDICTOS;
+const IDS = filter
+  ? ALL_IDS.filter((c) => filter.split(",").map((s) => s.trim()).includes(c.veredicto))
+  : ALL_IDS;
 
 const RATE_LIMIT_MS = 3000;
 
