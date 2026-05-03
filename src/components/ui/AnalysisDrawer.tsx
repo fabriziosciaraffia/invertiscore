@@ -9,6 +9,7 @@ import type {
   AnalisisInput,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZoneStatsCards } from "@/components/zone-insight/ZoneStatsCards";
@@ -112,15 +113,47 @@ function DrawerCostoMensual({
   const fmt = (v: number) => fmtMoney(v, currency, valorUF);
 
   // Ítems del grupo "Sale" en orden de magnitud de los fijos primero, variables después.
-  const saleItems: Array<{ name: string; value: number }> = [
-    { name: "Dividendo hipotecario", value: desglose.dividendo },
-    { name: "Gastos comunes", value: desglose.ggccVacancia },
-    { name: "Contribuciones", value: desglose.contribucionesMes },
-    { name: "Vacancia", value: desglose.vacanciaProrrata },
-    { name: "Mantención", value: desglose.mantencion },
-    { name: "Corretaje", value: desglose.corretajeProrrata },
-    { name: "Recambio", value: desglose.recambio },
-    { name: "Administración", value: desglose.administracion },
+  const saleItems: Array<{ name: string; value: number; tooltip: string }> = [
+    {
+      name: "Dividendo hipotecario",
+      value: desglose.dividendo,
+      tooltip: "Cuota mensual del crédito hipotecario (capital + interés).",
+    },
+    {
+      name: "Gastos comunes",
+      value: desglose.ggccVacancia,
+      tooltip: "Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera por períodos de vacancia.",
+    },
+    {
+      name: "Contribuciones",
+      value: desglose.contribucionesMes,
+      tooltip: "Impuesto territorial trimestral del SII, prorrateado a mensual. Lo paga el propietario.",
+    },
+    {
+      name: "Vacancia",
+      value: desglose.vacanciaProrrata,
+      tooltip: "Ingreso perdido por meses sin arrendatario. Se prorratea al mes según el % de vacancia configurado.",
+    },
+    {
+      name: "Mantención",
+      value: desglose.mantencion,
+      tooltip: "Provisión mensual para reparaciones y mantenimiento del depto. Default 0,3-1,5% del precio anual.",
+    },
+    {
+      name: "Corretaje",
+      value: desglose.corretajeProrrata,
+      tooltip: "Comisión del corredor para captar arrendatario, prorrateada al mes.",
+    },
+    {
+      name: "Recambio",
+      value: desglose.recambio,
+      tooltip: "Costo de recambios mayores (electrodomésticos, pinturas, refresh) prorrateado al mes.",
+    },
+    {
+      name: "Gestión del arriendo",
+      value: desglose.administracion,
+      tooltip: "Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). 0% si autogestionas. Distinto de gastos comunes del edificio.",
+    },
   ];
   const maxSale = Math.max(...saleItems.map((s) => s.value), 1);
   const resultLabel = isNeg ? "SALE DE TU BOLSILLO" : "ENTRA A TU BOLSILLO";
@@ -228,7 +261,7 @@ function DrawerCostoMensual({
                 aria-label={`${it.name} ${zero ? "cero" : fmt(it.value)}`}
               >
                 <span
-                  className="font-body"
+                  className="inline-flex items-center gap-1 font-body"
                   style={{
                     fontSize: 12,
                     color: zero
@@ -236,7 +269,8 @@ function DrawerCostoMensual({
                       : "color-mix(in srgb, var(--franco-text) 82%, transparent)",
                   }}
                 >
-                  {it.name}
+                  <span>{it.name}</span>
+                  <InfoTooltip content={it.tooltip} />
                 </span>
                 <div
                   className="relative rounded-[2px]"
@@ -1531,6 +1565,17 @@ export function AnalysisDrawer({
       ? ({ pregunta: zonaTitle } as { pregunta: string })
       : aiAnalysis[activeKey];
 
+  // Override de pregunta para drawer 02 (Costo mensual): variable según el
+  // signo del flujo. La pregunta IA es siempre "¿Qué te cuesta mes a mes?",
+  // confusa cuando el flujo es positivo. Hardcoded por veredicto numérico.
+  const flujoNetoMensual = results.metrics?.flujoNetoMensual ?? 0;
+  const drawerPregunta = (() => {
+    if (activeKey !== "costoMensual") return section.pregunta;
+    if (flujoNetoMensual < -1000) return "¿Cuánto te cuesta mes a mes?";
+    if (flujoNetoMensual > 1000) return "¿Cuánto te queda mes a mes?";
+    return "¿Cómo queda tu flujo mensual?";
+  })();
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1572,7 +1617,7 @@ export function AnalysisDrawer({
                 {meta.num} · {meta.label}
               </p>
               <h2 className="font-heading font-bold text-[20px] md:text-[24px] leading-[1.25] text-[var(--franco-text)] m-0">
-                {section.pregunta}
+                {drawerPregunta}
               </h2>
             </div>
             <button

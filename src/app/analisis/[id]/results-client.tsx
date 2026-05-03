@@ -1823,7 +1823,16 @@ function MiniCard({
         {numero} · {label}
       </p>
       <h3 className="font-heading font-bold text-[18px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
-        {data.pregunta}
+        {(() => {
+          // Override pregunta para Costo Mensual según signo del flujo (Fase 19).
+          if (section === "costoMensual") {
+            const flujo = results?.metrics?.flujoNetoMensual ?? 0;
+            if (flujo < -1000) return "¿Cuánto te cuesta mes a mes?";
+            if (flujo > 1000) return "¿Cuánto te queda mes a mes?";
+            return "¿Cómo queda tu flujo mensual?";
+          }
+          return data.pregunta;
+        })()}
       </h3>
       <p
         className="font-mono text-[22px] font-bold m-0 mb-1 leading-[1.1]"
@@ -2710,7 +2719,7 @@ export function PremiumResults({
       { name: "Vac.", value: wf.vacanciaProrrata },
       { name: "Corr.", value: wf.corretajeProrrata },
       { name: "Rec.", value: wf.recambio },
-      { name: "Admin.", value: wf.administracion },
+      { name: "Gestión", value: wf.administracion },
     ].filter(e => e.value > 0).sort((a, b) => b.value - a.value);
 
     const steps: { name: string; delta: number }[] = [
@@ -2894,7 +2903,7 @@ export function PremiumResults({
       { key: "Vacancia", label: "Vacancia", color: "var(--franco-border)" },
       { key: "Corretaje", label: "Corretaje", color: "var(--franco-text-muted)" },
       { key: "Recambio", label: "Recambio", color: "var(--franco-border)" },
-      { key: "Administracion", label: "Administración", color: "var(--franco-text-muted)" },
+      { key: "Administracion", label: "Gestión del arriendo", color: "var(--franco-text-muted)" },
     ];
     const dataRows = cashflowData.filter(r => r._x > 0);
     if (dataRows.length === 0) return allSeries.filter(s => s.key !== "Administracion");
@@ -3375,7 +3384,7 @@ export function PremiumResults({
           </div>
           <div>
             <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Administración</label>
+              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Gestión del arriendo</label>
               <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjAdminPct}%</span>
             </div>
             <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />

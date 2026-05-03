@@ -400,7 +400,7 @@ function TabArriendo({
             </span>
             <InfoTooltip
               trigger="click"
-              content="Porcentaje del año estimado sin arrendatario (búsqueda de inquilino, transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
+              content="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
             />
           </span>
           <input
@@ -414,11 +414,11 @@ function TabArriendo({
         <label className="block">
           <span className="flex items-center gap-1.5 mb-1.5">
             <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-              Administración (%)
+              Gestión del arriendo (%)
             </span>
             <InfoTooltip
               trigger="click"
-              content="Porcentaje del arriendo que se paga al administrador (corredor que gestiona la propiedad). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
+              content="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
             />
           </span>
           <input

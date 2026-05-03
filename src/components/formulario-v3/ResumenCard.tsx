@@ -17,7 +17,7 @@ const FIELD_LABELS: Record<string, string> = {
   tasaInteres: "Tasa",
   arriendo: "Arriendo",
   vacanciaPct: "Vacancia",
-  adminPct: "Administración",
+  adminPct: "Gestión del arriendo",
   arriendoEstac: "Arriendo estac.",
   arriendoBodega: "Arriendo bodega",
   gastos: "Gastos comunes",
@@ -135,9 +135,9 @@ export function ResumenCard({
           )}
         </div>
         <Cell
-          label="Vacancia · Administración"
+          label="Vacancia · Gestión del arriendo"
           value={`${state.vacanciaPct}% · ${state.adminPct}%`}
-          tooltip="Vacancia: % del año sin arrendatario. Administración: % del arriendo al administrador. Ambos editables en Ajustar."
+          tooltip="Vacancia: % del año sin arrendatario. Gestión del arriendo: % del arriendo al corredor que gestiona. Ambos editables en Ajustar."
           edited={isEdited("vacanciaPct") || isEdited("adminPct")}
         />
         <Cell
