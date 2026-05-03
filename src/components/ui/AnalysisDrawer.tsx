@@ -842,9 +842,19 @@ function DrawerLargoPlazo({
   valorUF: number;
 }) {
   const exit = results.exitScenario;
+  const valorVenta = exit?.valorVenta ?? 0;
+  // P1 Fase 21: análisis legacy sin exit data → fallback explícito.
+  if (!Number.isFinite(valorVenta) || valorVenta <= 0) {
+    return (
+      <div>
+        <p className="font-body text-[14px] leading-[1.65] text-[var(--franco-text-secondary)]">
+          Datos insuficientes para análisis a largo plazo.
+        </p>
+      </div>
+    );
+  }
   const pieCLP = results.metrics?.pieCLP ?? 0;
   const precioCLP = results.metrics?.precioCLP ?? 0;
-  const valorVenta = exit?.valorVenta ?? 0;
   const saldoCredito = exit?.saldoCredito ?? 0;
   const comisionVenta = exit?.comisionVenta ?? 0;
   const gananciaNeta = exit?.gananciaNeta ?? 0; // valorVenta − saldoCredito − comisionVenta
@@ -874,6 +884,8 @@ function DrawerLargoPlazo({
     return "UF " + Math.round(uf).toLocaleString("es-CL");
   };
   const fmtShort = (v: number) => fmtCompact(v, currency, valorUF);
+  // Híbrido CLP abreviado / UF completo (Fase 20.1 → replicado acá Fase 21).
+  const fmtPrecio = (v: number) => (currency === "UF" ? fmtFull(v) : fmtShort(v));
 
   const esPositiva = gananciaSobreTotal >= 0;
   const colorAccent = esPositiva ? "var(--ink-400)" : "var(--signal-red)";
@@ -889,7 +901,10 @@ function DrawerLargoPlazo({
   const plusvaliaCalc = Math.max(valorVenta - vmFrancoCLP, 0);
 
   const maxEjeB3 = Math.max(valorVenta, precioCLP, 1) * 1.05;
-  const pctB3 = (v: number) => (maxEjeB3 > 0 ? (v / maxEjeB3) * 100 : 0);
+  // Math.abs para que filas con value negativo (ej. gananciaNeta < 0 cuando
+  // el saldo del crédito + comisión exceden el valor venta) tengan width
+  // positiva CSS-válida. El signo se conserva en el label/valor.
+  const pctB3 = (v: number) => (maxEjeB3 > 0 ? (Math.abs(v) / maxEjeB3) * 100 : 0);
 
   const b3Rows: Array<{
     key: string;
@@ -903,6 +918,7 @@ function DrawerLargoPlazo({
     fillTextColor: string;
     valueColor: string;
     isNeg: boolean;
+    tooltip?: string;
   }> = [];
 
   // 1. Precio que pagaste
@@ -911,7 +927,7 @@ function DrawerLargoPlazo({
     label: "Precio que pagaste",
     sub: "lo que sale de tu crédito + pie",
     value: precioCLP,
-    fmtValue: "+" + fmtShort(precioCLP),
+    fmtValue: "+" + fmtPrecio(precioCLP),
     fillLeft: 0,
     fillWidth: pctB3(precioCLP),
     fillColor: "rgba(250,250,248,0.45)",
@@ -927,7 +943,7 @@ function DrawerLargoPlazo({
       label: "+ Ventaja (día 1)",
       sub: "compraste bajo mercado",
       value: diferenciaCLP,
-      fmtValue: "+" + fmtShort(diferenciaCLP),
+      fmtValue: "+" + fmtPrecio(diferenciaCLP),
       fillLeft: pctB3(precioCLP),
       fillWidth: pctB3(diferenciaCLP),
       fillColor: "var(--ink-400)",
@@ -942,7 +958,7 @@ function DrawerLargoPlazo({
       label: "− Sobreprecio (día 1)",
       sub: "pagaste sobre mercado",
       value: sobre,
-      fmtValue: "−" + fmtShort(sobre),
+      fmtValue: "−" + fmtPrecio(sobre),
       fillLeft: pctB3(vmFrancoCLP),
       fillWidth: pctB3(sobre),
       fillColor: "var(--signal-red)",
@@ -952,24 +968,28 @@ function DrawerLargoPlazo({
     });
   }
 
-  // 3. Plusvalía (sobre vmFranco)
-  // TODO(franco-design): fillColor migrado a var(--ink-400) (mismo tratamiento
-  // que valores positivos). Plusvalía es valor proyectado, no realizado — el
+  // 3. Plusvalía (sobre vmFranco) — solo si > 0 (P1 Fase 21).
+  // Si plusvaliaCalc === 0 (caso "precio user > vmFranco"), ocultar fila
+  // para evitar "+$0" sin contexto.
+  // TODO(franco-design): plusvalía es valor proyectado, no realizado — el
   // skill sugiere diferenciar proyectados con pattern (diagonales) o stroke
   // hatching. Refactor estructural pendiente para futura ronda.
-  b3Rows.push({
-    key: "plusvalia",
-    label: `+ Plusvalía ${aniosPlazo}a`,
-    sub: "+4% anual sobre valor real",
-    value: plusvaliaCalc,
-    fmtValue: "+" + fmtShort(plusvaliaCalc),
-    fillLeft: pctB3(vmFrancoCLP),
-    fillWidth: pctB3(plusvaliaCalc),
-    fillColor: "var(--ink-400)",
-    fillTextColor: "var(--ink-900)",
-    valueColor: "var(--franco-text)",
-    isNeg: false,
-  });
+  if (plusvaliaCalc > 0) {
+    b3Rows.push({
+      key: "plusvalia",
+      label: `+ Plusvalía ${aniosPlazo} años`,
+      sub: "+4% anual sobre valor real",
+      value: plusvaliaCalc,
+      fmtValue: "+" + fmtPrecio(plusvaliaCalc),
+      fillLeft: pctB3(vmFrancoCLP),
+      fillWidth: pctB3(plusvaliaCalc),
+      fillColor: "var(--ink-400)",
+      fillTextColor: "var(--ink-900)",
+      valueColor: "var(--franco-text)",
+      isNeg: false,
+      tooltip: "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
+    });
+  }
 
   // 4. Deuda
   b3Rows.push({
@@ -977,13 +997,14 @@ function DrawerLargoPlazo({
     label: "− Deuda pendiente",
     sub: "saldo del crédito",
     value: saldoCredito,
-    fmtValue: "−" + fmtShort(saldoCredito),
+    fmtValue: "−" + fmtPrecio(saldoCredito),
     fillLeft: pctB3(valorVenta - saldoCredito),
     fillWidth: pctB3(saldoCredito),
     fillColor: "var(--signal-red)",
     fillTextColor: "var(--ink-100)",
     valueColor: "var(--signal-red)",
     isNeg: true,
+    tooltip: "Saldo del crédito que queda por pagar al banco al momento de vender.",
   });
 
   // 5. Comisión
@@ -992,18 +1013,19 @@ function DrawerLargoPlazo({
     label: "− Comisión venta",
     sub: "2% sobre precio de venta",
     value: comisionVenta,
-    fmtValue: "−" + fmtShort(comisionVenta),
+    fmtValue: "−" + fmtPrecio(comisionVenta),
     fillLeft: pctB3(valorVenta - saldoCredito - comisionVenta),
     fillWidth: pctB3(comisionVenta),
     fillColor: "var(--signal-red)",
     fillTextColor: "var(--ink-100)",
     valueColor: "var(--signal-red)",
     isNeg: true,
+    tooltip: "2% sobre el precio de venta proyectado, cobrado por el corredor que vende la propiedad.",
   });
   const b3Total = {
     key: "total",
     label: "= Al vender recibes",
-    sub: "patrimonio neto",
+    sub: "lo que recibes al cerrar la venta",
     value: gananciaNeta,
     fmtValue: fmtFull(gananciaNeta),
     fillLeft: 0,
@@ -1012,14 +1034,15 @@ function DrawerLargoPlazo({
     fillTextColor: "var(--franco-text)",
     valueColor: "var(--ink-400)",
     isNeg: false,
+    tooltip: "Patrimonio líquido que recibes al cerrar la venta, después de pagar deuda y comisión. No incluye lo que aportaste durante la tenencia.",
   };
 
   // Header del bloque 3 incluye el monto patrimonio abreviado
-  const headerMonto = fmtShort(gananciaNeta);
+  const headerMonto = fmtPrecio(gananciaNeta);
 
   // Copy narrativo (templates estilo brand-voice)
   const b1Intro = `Si vendes en el año ${aniosPlazo}, tu ganancia neta es`;
-  const b1Contexto = `Sale de la diferencia entre los ${fmtShort(gananciaNeta)} que recibes al vender y los ${fmtShort(totalAportado)} que aportaste en total.`;
+  const b1Contexto = `Sale de la diferencia entre los ${fmtPrecio(gananciaNeta)} que recibes al vender y los ${fmtPrecio(totalAportado)} que aportaste en total.`;
   const b2Intro = `La plata que tienes que poner durante los ${aniosPlazo} años de tenencia.`;
   const b3Intro = "El depto valorizado menos lo que debes al banco y los gastos de venta.";
 
@@ -1039,11 +1062,11 @@ function DrawerLargoPlazo({
           {/* Desktop: grid con barra */}
           <div
             className="hidden sm:grid items-center gap-3"
-            style={{ gridTemplateColumns: "130px 1fr 92px" }}
+            style={{ gridTemplateColumns: "minmax(140px, 1.1fr) 1fr 92px" }}
           >
             <div className="flex flex-col gap-[1px]">
               <span
-                className="font-mono uppercase"
+                className="inline-flex items-center gap-1 font-mono uppercase"
                 style={{
                   fontSize: 10,
                   letterSpacing: "0.06em",
@@ -1051,7 +1074,8 @@ function DrawerLargoPlazo({
                   fontWeight: 500,
                 }}
               >
-                {r.label}
+                <span>{r.label}</span>
+                {r.tooltip && <InfoTooltip content={r.tooltip} />}
               </span>
               <span
                 className="font-heading italic"
@@ -1103,7 +1127,7 @@ function DrawerLargoPlazo({
           {/* Mobile: sin barra, línea destacada */}
           <div className="flex sm:hidden items-baseline justify-between gap-3 py-1">
             <span
-              className="font-mono uppercase whitespace-nowrap"
+              className="inline-flex items-center gap-1 font-mono uppercase whitespace-nowrap"
               style={{
                 fontSize: 10,
                 letterSpacing: "0.06em",
@@ -1111,7 +1135,8 @@ function DrawerLargoPlazo({
                 fontWeight: 600,
               }}
             >
-              {r.label}
+              <span>{r.label}</span>
+              {r.tooltip && <InfoTooltip content={r.tooltip} />}
             </span>
             <span
               className="font-mono font-bold whitespace-nowrap"
@@ -1129,13 +1154,13 @@ function DrawerLargoPlazo({
       <div
         key={r.key}
         className="grid items-center gap-3"
-        style={{ gridTemplateColumns: "130px 1fr 92px" }}
+        style={{ gridTemplateColumns: "minmax(140px, 1.1fr) 1fr 92px" }}
         role="img"
         aria-label={`${r.label} ${r.fmtValue}`}
       >
         <div className="flex flex-col gap-[1px]">
           <span
-            className="font-mono uppercase"
+            className="inline-flex items-center gap-1 font-mono uppercase"
             style={{
               fontSize: 10,
               letterSpacing: "0.06em",
@@ -1143,7 +1168,8 @@ function DrawerLargoPlazo({
               fontWeight: 500,
             }}
           >
-            {r.label}
+            <span>{r.label}</span>
+            {r.tooltip && <InfoTooltip content={r.tooltip} />}
           </span>
           <span
             className="font-heading italic"
@@ -1178,7 +1204,7 @@ function DrawerLargoPlazo({
                   className="hidden sm:inline font-mono font-bold whitespace-nowrap"
                   style={{ fontSize: 11, color: r.fillTextColor }}
                 >
-                  {fmtShort(r.value)}
+                  {fmtPrecio(r.value)}
                 </span>
               )}
             </div>
@@ -1252,12 +1278,15 @@ function DrawerLargoPlazo({
           {esPositiva ? "+" : "−"}{fmtFull(Math.abs(gananciaSobreTotal))}
         </p>
 
-        <p
-          className="font-mono font-bold m-0"
-          style={{ fontSize: 14, color: colorAccent, marginTop: 6 }}
-        >
-          {esPositiva ? "+" : "−"}{Math.round(Math.abs(pctSobreTotal))}% sobre lo que pusiste
-        </p>
+        {totalAportado > 0 && (
+          <p
+            className="inline-flex items-center gap-1 font-mono font-bold m-0"
+            style={{ fontSize: 14, color: colorAccent, marginTop: 6 }}
+          >
+            <span>{esPositiva ? "+" : "−"}{Math.round(Math.abs(pctSobreTotal))}% sobre lo que pusiste</span>
+            <InfoTooltip content="Ganancia neta dividida por el total que aportaste (pie + cierre + flujos negativos acumulados). Es la rentabilidad real sobre todo lo que sale de tu bolsillo." />
+          </p>
+        )}
 
         <p
           className="font-body m-0"
@@ -1271,6 +1300,11 @@ function DrawerLargoPlazo({
           {b1Contexto}
         </p>
       </div>
+
+      {/* Mensaje educativo dot Fase 4.8 — supuesto plusvalía */}
+      <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+        ● Franco proyecta plusvalía conservadora de 4% anual sobre el valor de mercado de la zona. Verifica si la comuna ha rendido históricamente más o menos para ajustar tus expectativas.
+      </p>
 
       {/* ─── BLOQUE 2 · TU ESFUERZO TOTAL ─────────────── */}
       <div
@@ -1302,10 +1336,11 @@ function DrawerLargoPlazo({
           <div className="grid items-baseline gap-3" style={{ gridTemplateColumns: "1fr auto" }}>
             <div className="flex flex-col">
               <span
-                className="font-body"
+                className="inline-flex items-center gap-1 font-body"
                 style={{ fontSize: 13, color: "var(--franco-text)" }}
               >
-                Día 1 (pie + cierre)
+                <span>Día 1 (pie + cierre)</span>
+                <InfoTooltip content="Pie del crédito + 2% de gastos de cierre (notario, Conservador de Bienes Raíces, timbres). CBR = oficina pública que registra la propiedad a tu nombre." />
               </span>
               <span
                 className="font-heading italic"
@@ -1326,16 +1361,17 @@ function DrawerLargoPlazo({
           <div className="grid items-baseline gap-3" style={{ gridTemplateColumns: "1fr auto" }}>
             <div className="flex flex-col">
               <span
-                className="font-body"
+                className="inline-flex items-center gap-1 font-body"
                 style={{ fontSize: 13, color: "var(--franco-text)" }}
               >
-                + Aporte mensual × {aniosPlazo} años
+                <span>+ Aporte mensual × {aniosPlazo} años</span>
+                <InfoTooltip content="Suma de los aportes mensuales de tu bolsillo durante el horizonte. Asciende con UF por la inflación." />
               </span>
               <span
                 className="font-heading italic"
                 style={{ fontSize: 11, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
               >
-                ~{fmtShort(aporteMensualPromedio)} × {plazoMeses} meses (asciende con UF)
+                ~{fmtPrecio(aporteMensualPromedio)} × {plazoMeses} meses (asciende con UF)
               </span>
             </div>
             <span
@@ -1431,7 +1467,7 @@ function DrawerLargoPlazo({
             className="font-mono"
             style={{ fontSize: 9, color: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }}
           >
-            {fmtShort(maxEjeB3)}
+            {fmtPrecio(maxEjeB3)}
           </span>
         </div>
       </div>
@@ -1665,6 +1701,14 @@ export function AnalysisDrawer({
       if (absDev <= 0.02) return "¿Vale la pena negociar?";
       if (dev > 0) return "¿Vale la pena seguir negociando?"; // esPasada
       return "¿Cuánto bajar el precio?"; // esSobreprecio
+    }
+    if (activeKey === "largoPlazo") {
+      const exit = results.exitScenario;
+      const gananciaSobreTotal = exit?.gananciaSobreTotal ?? 0;
+      const aniosPlazo = exit?.anios ?? 10;
+      if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
+      if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
+      return `¿Vale la pena a ${aniosPlazo} años?`;
     }
     return section.pregunta;
   })();

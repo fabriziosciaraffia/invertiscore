@@ -1772,6 +1772,7 @@ function getPunchline(
   // 3. Largo plazo — from motor
   if (section === "largoPlazo") {
     const tir = results?.exitScenario?.tir;
+    const aniosPlazo = results?.exitScenario?.anios ?? 10;
     if (typeof tir === "number" && !isNaN(tir)) {
       const tirPct = tir.toFixed(1).replace(".", ",");
       const isNeg = tir < 0;
@@ -1780,7 +1781,9 @@ function getPunchline(
       // en el valor mismo, no en color intermedio.
       return {
         value: `TIR ${tirPct}%`,
-        sub: "Rentabilidad anual a 10 años",
+        sub: isNeg
+          ? `Pérdida anualizada a ${aniosPlazo} años`
+          : `Rentabilidad anual a ${aniosPlazo} años`,
         color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
       };
     }
@@ -1865,6 +1868,13 @@ function MiniCard({
             if (absDev <= 0.02) return "¿Vale la pena negociar?";
             if (dev > 0) return "¿Vale la pena seguir negociando?";
             return "¿Cuánto bajar el precio?";
+          }
+          if (section === "largoPlazo") {
+            const gananciaSobreTotal = results?.exitScenario?.gananciaSobreTotal ?? 0;
+            const aniosPlazo = results?.exitScenario?.anios ?? 10;
+            if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
+            if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
+            return `¿Vale la pena a ${aniosPlazo} años?`;
           }
           return data.pregunta;
         })()}
