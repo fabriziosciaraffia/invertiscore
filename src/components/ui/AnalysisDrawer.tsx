@@ -656,7 +656,7 @@ function DrawerNegociacion({
         <div
           className="hidden sm:grid items-center gap-3 pb-2 mb-1 font-mono uppercase"
           style={{
-            gridTemplateColumns: "140px 1fr 90px 60px",
+            gridTemplateColumns: "minmax(160px, 1.4fr) 1fr 90px 60px",
             fontSize: 9,
             letterSpacing: "0.06em",
             color: "color-mix(in srgb, var(--franco-text) 45%, transparent)",
@@ -686,19 +686,19 @@ function DrawerNegociacion({
                 {/* Desktop: 4 columnas */}
                 <div
                   className="hidden sm:grid items-center gap-3"
-                  style={{ gridTemplateColumns: "140px 1fr 90px 60px" }}
+                  style={{ gridTemplateColumns: "minmax(160px, 1.4fr) 1fr 90px 60px" }}
                 >
                   <div className="flex flex-col min-w-0">
                     <span
-                      className="inline-flex items-center gap-1 font-body font-medium truncate"
+                      className="inline-flex items-center gap-1 font-body font-medium"
                       style={{ fontSize: 13, color: "var(--franco-text)" }}
                     >
                       <span className="truncate">{f.nombre}</span>
                       {f.tooltip && <InfoTooltip content={f.tooltip} />}
                     </span>
                     <span
-                      className="font-heading italic truncate"
-                      style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+                      className="font-heading italic"
+                      style={{ fontSize: 10, lineHeight: 1.3, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
                     >
                       {f.sub}
                     </span>
@@ -748,8 +748,8 @@ function DrawerNegociacion({
                       {f.nombre}
                     </span>
                     <span
-                      className="font-heading italic truncate"
-                      style={{ fontSize: 10, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
+                      className="font-heading italic"
+                      style={{ fontSize: 10, lineHeight: 1.3, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
                     >
                       {f.sub}
                     </span>
