@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { AppNav } from "@/components/chrome/AppNav";
 import { LogoutButton } from "@/components/logout-button";
 import type { Analisis } from "@/lib/types";
+import { readFrancoVerdict } from "@/lib/results-helpers";
 import { User } from "lucide-react";
 
 type LTRVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
@@ -39,7 +40,7 @@ function getSTRScore(item: Analisis): number | null {
 }
 
 function getAnyVerdict(item: Analisis): AnyVerdict {
-  return isShortTerm(item) ? getSTRVerdict(item) : getVerdict(item.score, item.results?.veredicto);
+  return isShortTerm(item) ? getSTRVerdict(item) : getVerdict(item.score, readFrancoVerdict(item.results));
 }
 
 function isShortTerm(item: Analisis): boolean {

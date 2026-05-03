@@ -20,6 +20,7 @@ import {
   aplicaSubsidio,
 } from "./constants/subsidio";
 import { classifyFinancingHealth } from "./financing-health";
+import type { EngineSignal } from "./types";
 
 // Dynamic UF value — set via setUFValue() before calling runAnalysis()
 let UF_CLP = 38800;
@@ -1044,20 +1045,13 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
-  // Veredicto: base por score + overrides por señales fuertes
-  type Veredicto = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
-  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
+  // engineSignal: base por score + overrides por señales fuertes.
+  // Antes era `veredicto`. Ver analysis-voice-franco/SKILL.md §1.7 para el rename.
+  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
 
-  // NOTE: These overrides can make the veredicto badge contradict the score bar visually.
+  // NOTE: These overrides can make the badge contradict the score bar visually.
   // This is intentional: structural signals (extreme flujo, zero break-even) override the composite score.
 
-  // Override a BUSCAR OTRA si hay señales estructurales negativas.
-  // Los umbrales de flujo negativo son RELATIVOS al dividendo mensual para evitar
-  // penalizar deptos caros donde un flujo negativo alto puede ser proporcional al financiamiento.
-  // - cashOnCash < -30%: pierdes >30% de tu pie cada año (ya es relativo)
-  // - breakEvenTasa === -1: no existe tasa que dé break-even (estructural)
-  // - sobreprecio >8% + flujo negativo > 30% del dividendo: combinación letal
-  // - flujo negativo > 50% del dividendo: el aporte de bolsillo supera la mitad del dividendo
   const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
   const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
   if (
@@ -1066,16 +1060,15 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
     (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
   ) {
-    veredicto = "BUSCAR OTRA";
+    engineSignal = "BUSCAR OTRA";
   }
 
-  // Override a COMPRAR si hay señales muy positivas
   if (
     metrics.flujoNetoMensual >= 0 &&
     metrics.rentabilidadNeta >= 4 &&
     (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
   ) {
-    veredicto = "COMPRAR";
+    engineSignal = "COMPRAR";
   }
 
   let resumenEjecutivo: string;
@@ -1111,7 +1104,10 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     score: clamp(score, 0, 100),
     clasificacion,
     clasificacionColor,
-    veredicto,
+    engineSignal,
+    // En esta fase francoVerdict === engineSignal. Diverge en Fase 3 cuando el
+    // refactor de prompts incorpora perfil de usuario (skill §1.7).
+    francoVerdict: engineSignal,
     resumenEjecutivo,
     desglose,
     metrics,

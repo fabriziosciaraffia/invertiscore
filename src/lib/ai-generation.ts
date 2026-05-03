@@ -9,6 +9,7 @@ import {
   calificaSubsidio,
   aplicaSubsidio,
 } from "@/lib/constants/subsidio";
+import { readEngineSignal } from "@/lib/results-helpers";
 
 const anthropic = new Anthropic();
 
@@ -341,7 +342,7 @@ CONTEXTO ESTRUCTURADO DE NEGOCIACIÓN:
       : `>${projYears.length * 12} meses — el flujo NO cruza a positivo en el horizonte de ${projYears.length} años de proyección. El aporte mensual se mantiene durante toda la proyección.`
 }
 - plazoCredito: ${input.plazoCredito} años (${input.plazoCredito * 12} meses) — duración del crédito, NO es lo mismo que mesesDeFlujoNegativo
-- veredictoCategoria: ${(results.veredicto || "").replace(/\\s+/g, "_")}
+- veredictoCategoria: ${(readEngineSignal(results) || "").replace(/\\s+/g, "_")}
 
 INSTRUCCIONES PARA ABORDAR LA DUALIDAD VEREDICTO ↔ NEGOCIACIÓN:
 
@@ -500,7 +501,7 @@ En \`conviene.respuestaDirecta\` y \`conviene.reencuadre\`, DEBES:
         ? Math.round(precioFlujoNeutroUF)
         : Math.round(input.precio * 0.9);
 
-    const veredictoMotor = results.veredicto || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+    const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
     const userPrompt = `Analiza esta inversión inmobiliaria en Chile y responde en JSON con la estructura exacta descrita al final.
 

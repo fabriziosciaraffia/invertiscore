@@ -149,11 +149,19 @@ export interface NegociacionScenario {
   tirAlVmFranco: number;
 }
 
+export type EngineSignal = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+export type FrancoVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+
 export interface FullAnalysisResult {
   score: number;
   clasificacion: string;
   clasificacionColor: string;
-  veredicto: "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+  // Señal del motor (matemática pura del depto). Antes era `veredicto`.
+  // Ver analysis-voice-franco/SKILL.md §1.7.
+  engineSignal: EngineSignal;
+  // Veredicto Franco que muestra la UI. En esta fase es idéntico a engineSignal;
+  // diverge en Fase 3 cuando el refactor de prompts incorpora perfil de usuario.
+  francoVerdict: FrancoVerdict;
   resumenEjecutivo: string;
   desglose: Desglose;
   metrics: AnalysisMetrics;

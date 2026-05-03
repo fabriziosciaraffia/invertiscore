@@ -7,6 +7,7 @@ import { isAdminUser } from "@/lib/admin";
 import type { Analisis, FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+import { readFrancoVerdict } from "@/lib/results-helpers";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -75,7 +76,7 @@ export default async function ComparativaPage({
       precioUF={ltr.precio ?? str.precio ?? 0}
       arriendoLTR={ltrResults?.metrics?.ingresoMensual ?? ltr.arriendo ?? 0}
       ltrScore={ltr.score ?? 0}
-      ltrVeredicto={ltrResults?.veredicto ?? null}
+      ltrVeredicto={readFrancoVerdict(ltrResults) ?? null}
       ltrFlujoMensual={ltrResults?.metrics?.flujoNetoMensual ?? 0}
       ltrRentBruta={ltrResults?.metrics?.rentabilidadBruta ?? 0}
       ltrNOI={(ltrResults?.metrics?.noi ?? 0) / 12}

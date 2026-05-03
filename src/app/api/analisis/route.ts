@@ -7,6 +7,7 @@ import { runAnalysis, setUFValue } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { generateAiAnalysis } from "@/lib/ai-generation";
+import { readFrancoVerdict } from "@/lib/results-helpers";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -113,7 +114,7 @@ export async function POST(request: Request) {
               user.user_metadata?.nombre || user.user_metadata?.full_name || '',
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
-              result.veredicto || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
+              readFrancoVerdict(result) || (result.score >= 70 ? 'COMPRAR' : result.score >= 40 ? 'AJUSTA EL PRECIO' : 'BUSCAR OTRA'),
               data.id,
             );
           } catch (e) {

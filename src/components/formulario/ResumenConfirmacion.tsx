@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
+import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
 
 // Per-source storage + return-URL map. Keep in sync with the form files.
 // v1 = /analisis/nuevo (classic form)
@@ -233,12 +234,16 @@ export function ResumenConfirmacion({
           localStorage.setItem(sourceCfg.guestKey, JSON.stringify(guestValue));
         }
       } catch { /* ignore */ }
+      const engineSignal = readEngineSignal(data.results);
+      const francoVerdict = readFrancoVerdict(data.results);
       posthog?.capture("analysis_created", {
         comuna: apiPayload.comuna,
         tipo: apiPayload.tipo,
         dormitorios: apiPayload.dormitorios,
         score: data.score,
-        veredicto: data.results?.veredicto,
+        engineSignal,
+        francoVerdict,
+        francoOverridesEngine: francoVerdict !== engineSignal,
         is_premium: false,
         source: payload.source ?? "v1",
       });

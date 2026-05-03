@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/analysis";
+import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
@@ -1867,7 +1868,7 @@ function MiniCard({
           }
           if (section === "riesgos") {
             const score = results?.score ?? 0;
-            const veredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+            const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
             if (veredicto === "COMPRAR") return "¿Qué cuidar?";
             if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
             return "¿Qué riesgos asume tu negociación?";
@@ -2370,7 +2371,21 @@ export function PremiumResults({
 
   // PostHog: track analysis view
   useEffect(() => {
-    posthog?.capture('analysis_viewed', { analysis_id: analysisId, comuna, score, veredicto: results?.veredicto, is_owner: !isSharedView && !isSharedLink, is_shared_view: isSharedView || isSharedLink, access_level: accessLevel });
+    const engineSignal = readEngineSignal(results);
+    const francoVerdict = readFrancoVerdict(results);
+    posthog?.capture('analysis_viewed', {
+      analysis_id: analysisId,
+      comuna,
+      score,
+      engineSignal,
+      francoVerdict,
+      // En Fase 3 Franco diverge del motor; este flag deja filtrar overrides
+      // en PostHog sin string comparison.
+      francoOverridesEngine: francoVerdict !== engineSignal,
+      is_owner: !isSharedView && !isSharedLink,
+      is_shared_view: isSharedView || isSharedLink,
+      access_level: accessLevel,
+    });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -3248,7 +3263,7 @@ export function PremiumResults({
       tooltip: "Arriendo mensual estimado o ajustado por el usuario.",
     },
   ];
-  const resolvedVeredicto = results?.veredicto || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+  const resolvedVeredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
   const mainContent = (
     <>
