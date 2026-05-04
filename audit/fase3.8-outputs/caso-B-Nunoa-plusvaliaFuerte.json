@@ -1,0 +1,293 @@
+{
+  "caseDef": {
+    "id": "B-Nunoa-plusvaliaFuerte",
+    "label": "Plusvalía histórica fuerte (3.2% anual)",
+    "notes": "Ñuñoa con dato sesgado posiblemente por boom 2014-2018. Test: ¿IA advierte que el dato incluye eventos del rango?",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5200,
+      "valorMercadoFranco": 5200,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 5,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 920000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Ñuñoa",
+      "dormitorios": 2,
+      "piso": 6,
+      "lat": -33.4533,
+      "lng": -70.5942,
+      "nombre": "Caso B — Ñuñoa"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5200,
+    "valorMercadoFranco": 5200,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 5,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 920000,
+    "gastos": 130000,
+    "comuna": "Ñuñoa",
+    "dormitorios": 2,
+    "piso": 6,
+    "lat": -33.4533,
+    "lng": -70.5942,
+    "nombre": "Caso B — Ñuñoa"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 66,
+    "flujoNetoMensual": -190634,
+    "plusvaliaAnualizada": 3.2,
+    "plusvalia10a": 37,
+    "TIR": 10.63,
+    "aporteMensualPromedioFrontend": 297181.025
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Aportas $191K cada mes sin que el flujo se revierta. Precio alto, zona moderada.",
+    "siendoFrancoHeadline_uf": "Aportas UF 4,8 cada mes sin que el flujo se revierta. Precio alto, zona moderada.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No a este precio. Ñuñoa creció 3.2% anual en la década — plusvalía moderada que no justifica aportar $191K mensuales sin tope. A $5.044.000 UF los números mejoran sustancialmente: TIR sube de 10.6% a 11.7% y reduces el aporte perpetuo.",
+      "respuestaDirecta_uf": "No a este precio. Ñuñoa creció 3.2% anual en la década — plusvalía moderada que no justifica aportar UF 4,8 mensuales sin tope. A UF 5.044 los números mejoran sustancialmente: TIR sube de 10.6% a 11.7% y reduces el aporte perpetuo.",
+      "veredictoFrase_clp": "Negocia a $201.896.188 máximo.",
+      "veredictoFrase_uf": "Negocia a UF 5.044 máximo.",
+      "datosClave": [
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$191K",
+          "valor_uf": "UF 4,8",
+          "subtexto": "Sin tope en 25 años",
+          "color": "red"
+        },
+        {
+          "label": "TIR actual",
+          "valor_clp": "10,6%",
+          "valor_uf": "10,6%",
+          "subtexto": "Mejora a 11,7% negociando",
+          "color": "neutral"
+        },
+        {
+          "label": "Precio objetivo",
+          "valor_clp": "$202M",
+          "valor_uf": "UF 5.044",
+          "subtexto": "3% bajo precio actual",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "El flujo nunca llega a positivo en los 25 años proyectados. Tu única vía de retorno es la venta, apostando a que Ñuñoa supere su histórico 3.2% anual. El arriendo de $920K apenas cubre gastos operacionales — la cuota de $888K sale íntegra de tu bolsillo cada mes. A precio sugerido reduces esa carga y mejoras la TIR un punto porcentual completo.",
+      "reencuadre_uf": "El flujo nunca llega a positivo en los 25 años proyectados. Tu única vía de retorno es la venta, apostando a que Ñuñoa supere su histórico 3.2% anual. El arriendo de UF 23 apenas cubre gastos operacionales — la cuota de UF 22,2 sale íntegra de tu bolsillo cada mes. A precio sugerido reduces esa carga y mejoras la TIR un punto porcentual completo.",
+      "cajaAccionable_clp": "¿Puedes sostener $191K mensuales sin tope claro en la proyección, apostando solo a la venta?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 4,8 mensuales sin tope claro en la proyección, apostando solo a la venta?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $920K no alcanza. Después de gastos comunes ($130K), contribuciones ($27K prorrateadas) y mantención ($70K), te quedan $693K para una cuota de $888K. Aportas $191K de tu bolsillo cada mes durante toda la proyección — el equivalente a $57M adicionales en 25 años.",
+      "contenido_uf": "El arriendo de UF 23 no alcanza. Después de gastos comunes (UF 3,2), contribuciones (UF 0,7 prorrateadas) y mantención (UF 1,7), te quedan UF 17,3 para una cuota de UF 22,2. Aportas UF 4,8 de tu bolsillo cada mes durante toda la proyección — el equivaliente a UF 1.440 adicionales en 25 años.",
+      "cajaAccionable_clp": "¿Tu flujo personal puede absorber $191K extra cada mes sin presión financiera?",
+      "cajaAccionable_uf": "¿Tu flujo personal puede absorber UF 4,8 extra cada mes sin presión financiera?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Hay margen real. El motor no tiene valor de mercado confiable para este depto específico, pero el contexto de Ñuñoa sugiere que $208M está tenso para 60m² en la zona. Bajar a $202M mejora tu TIR de 10.6% a 11.7% y reduce el aporte mensual. La plusvalía moderada de Ñuñoa (3.2% histórico) no justifica pagar precio premium.",
+      "contenido_uf": "Hay margen real. El motor no tiene valor de mercado confiable para este depto específico, pero el contexto de Ñuñoa sugiere que UF 5.200 está tenso para 60m² en la zona. Bajar a UF 5.044 mejora tu TIR de 10.6% a 11.7% y reduce el aporte mensual. La plusvalía moderada de Ñuñoa (3.2% histórico) no justifica pagar precio premium.",
+      "estrategiaSugerida_clp": "Parte en $192M, justifica con la matemática mensual. Si rechazan, sube gradualmente hasta tu techo $202M. Sobre ese precio, los números no cierran para aporte perpetuo.",
+      "estrategiaSugerida_uf": "Parte en UF 4.792, justifica con la matemática mensual. Si rechazan, sube gradualmente hasta tu techo UF 5.044. Sobre ese precio, los números no cierran para aporte perpetuo.",
+      "cajaAccionable_clp": "Ofrece $192M. Tu techo es $202M — sobre eso, no compras.",
+      "cajaAccionable_uf": "Ofrece UF 4.792. Tu techo es UF 5.044 — sobre eso, no compras.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 5.044",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Abre la conversación con margen para subir manteniendo la matemática mensual viable.",
+        "glosaPrimeraOferta_uf": "Abre la conversación con margen para subir manteniendo la matemática mensual viable.",
+        "glosaTecho_clp": "Último precio donde el aporte perpetuo sigue siendo defendible para Ñuñoa.",
+        "glosaTecho_uf": "Último precio donde el aporte perpetuo sigue siendo defendible para Ñuñoa.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "La apuesta es pura plusvalía. Aportarías $36M en 10 años más los $46M iniciales — total $82M de tu bolsillo. Al vender ganarías $183M netos, pero esos mismos $82M en depósito UF al 5% darían $75M, en fondo mutuo al 7% darían $90M. La ventaja inmobiliaria es real pero marginal, y exige sostener el aporte mensual sin falta durante una década.",
+      "contenido_uf": "La apuesta es pura plusvalía. Aportarías UF 897 en 10 años más las UF 1.144 iniciales — total UF 2.041 de tu bolsillo. Al vender ganarías UF 4.564 netos, pero esas mismas UF 2.041 en depósito UF al 5% darían UF 1.862, en fondo mutuo al 7% darían UF 2.251. La ventaja inmobiliaria es real pero marginal, y exige sostener el aporte mensual sin falta durante una década.",
+      "cajaAccionable_clp": "¿Prefieres la ventaja marginal del inmobiliario asumiendo el aporte mensual, o la simplicidad del depósito UF?",
+      "cajaAccionable_uf": "¿Prefieres la ventaja marginal del inmobiliario asumiendo el aporte mensual, o la simplicidad del depósito UF?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses anula el flujo anual. Con margen negativo de $191K mensuales, cualquier período sin arriendo amplifica las pérdidas directamente.\n\nAlza de tasas castiga el dividendo sin palanca. 2 puntos porcentuales adicionales suben la cuota a $1.083K, ampliando tu aporte mensual a $386K.\n\nPlusvalía de Ñuñoa bajo expectativa. La comuna creció 3.2% anual histórico — necesitas que supere ese promedio para justificar el aporte perpetuo.",
+      "contenido_uf": "Vacancia de 2 meses anula el flujo anual. Con margen negativo de UF 4,8 mensuales, cualquier período sin arriendo amplifica las pérdidas directamente.\n\nAlza de tasas castiga el dividendo sin palanca. 2 puntos porcentuales adicionales suben la cuota a UF 27, ampliando tu aporte mensual a UF 9,6.\n\nPlusvalía de Ñuñoa bajo expectativa. La comuna creció 3.2% anual histórico — necesitas que supere ese promedio para justificar el aporte perpetuo.",
+      "cajaAccionable_clp": "Si confías en Ñuñoa y tu flujo permite los $191K mensuales sin presión, negocia el precio y avanza. Pero sé honesto: esta es una apuesta a plusvalía, no una inversión de flujo.",
+      "cajaAccionable_uf": "Si confías en Ñuñoa y tu flujo permite las UF 4,8 mensuales sin presión, negocia el precio y avanza. Pero sé honesto: esta es una apuesta a plusvalía, no una inversión de flujo.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "INDETERMINADO_FALLBACK_VMFRANCO",
+    "tieneDiferenciaValida": false,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "diagnostico": {
+    "flujoMotor": 190634,
+    "aporteMensualPromedioFrontend": 297181.025,
+    "plusvaliaContexto": {
+      "mencionesPlusvalia": 4,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": false,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 190634,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            5044000,
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            920000,
+            888000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            920000,
+            130000,
+            27000,
+            70000,
+            693000,
+            888000,
+            191000,
+            57000000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            208000000,
+            202000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            192000000,
+            202000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            36000000,
+            46000000,
+            82000000,
+            183000000,
+            82000000,
+            75000000,
+            90000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            191000,
+            1083000,
+            386000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        }
+      }
+    },
+    "TIR_motor": 10.63,
+    "TIR_menciones": {
+      "conviene_respuesta": [
+        "TIR sube de 10.6%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 10.6%"
+      ]
+    },
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "veredictoCoherente": true
+  }
+}

@@ -1,0 +1,281 @@
+{
+  "caseDef": {
+    "id": "A-Santiago-plusvaliaNegativa",
+    "label": "Plusvalía histórica negativa (-1.1% anual)",
+    "notes": "Santiago centro. Único caso del dataset con plusvalía negativa. Test: ¿IA contextualiza el negativo o lo presenta plano?",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 3500,
+      "valorMercadoFranco": 3500,
+      "superficie": 50,
+      "superficieTotal": 50,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 650000,
+      "gastos": 100000,
+      "contribuciones": 60000,
+      "provisionMantencion": 55000,
+      "comuna": "Santiago",
+      "dormitorios": 2,
+      "piso": 8,
+      "lat": -33.4488,
+      "lng": -70.6693,
+      "nombre": "Caso A — Santiago"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 60000,
+    "provisionMantencion": 55000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 3500,
+    "valorMercadoFranco": 3500,
+    "superficie": 50,
+    "superficieTotal": 50,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 650000,
+    "gastos": 100000,
+    "comuna": "Santiago",
+    "dormitorios": 2,
+    "piso": 8,
+    "lat": -33.4488,
+    "lng": -70.6693,
+    "nombre": "Caso A — Santiago"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 65,
+    "flujoNetoMensual": -112366,
+    "plusvaliaAnualizada": -1.1,
+    "plusvalia10a": -10,
+    "TIR": 11.09,
+    "aporteMensualPromedioFrontend": 179184.55833333332
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Aportas $112.000 mensuales sin que el flujo se dé vuelta en 20 años.",
+    "siendoFrancoHeadline_uf": "Aportas UF 2,8 mensuales sin que el flujo se dé vuelta en 20 años.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No a este precio. Santiago centro perdió 10% en la década pasada — necesitas un descuento sustantivo para compensar esa tendencia. A $140M pagas demasiado por una apuesta en una comuna que históricamente resta valor.",
+      "respuestaDirecta_uf": "No a este precio. Santiago centro perdió 10% en la década pasada — necesitas un descuento sustantivo para compensar esa tendencia. A UF 3.500 pagas demasiado por una apuesta en una comuna que históricamente resta valor.",
+      "veredictoFrase_clp": "Ajusta el precio o busca en Ñuñoa.",
+      "veredictoFrase_uf": "Ajusta el precio o busca en Ñuñoa.",
+      "datosClave": [
+        {
+          "label": "Flujo mensual",
+          "valor_clp": "-$112.000",
+          "valor_uf": "-UF 2,8",
+          "subtexto": "Aporte indefinido",
+          "color": "red"
+        },
+        {
+          "label": "Plusvalía histórica zona",
+          "valor_clp": "-1,1% anual",
+          "valor_uf": "-1,1% anual",
+          "subtexto": "Decade perdedora",
+          "color": "red"
+        },
+        {
+          "label": "TIR si negocias",
+          "valor_clp": "12,1%",
+          "valor_uf": "12,1%",
+          "subtexto": "Con descuento 9,6%",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "La matemática pura no es terrible — TIR 11,1% supera el depósito UF (5%) y fondos conservadores (7%). Pero Santiago centro es la comuna con peor track record de plusvalía en Santiago: -10% en diez años mientras otras comunas subían. Sin plusvalía, esta inversión depende 100% del flujo mensual que nunca llega a positivo. Estás apostando $21M en diez años a que Santiago centro revierta su tendencia histórica.",
+      "reencuadre_uf": "La matemática pura no es terrible — TIR 11,1% supera el depósito UF (5%) y fondos conservadores (7%). Pero Santiago centro es la comuna con peor track record de plusvalía en Santiago: -10% en diez años mientras otras comunas subían. Sin plusvalía, esta inversión depende 100% del flujo mensual que nunca llega a positivo. Estás apostando UF 537 en diez años a que Santiago centro revierta su tendencia histórica.",
+      "cajaAccionable_clp": "¿Vale la pena apostar $112.000 mensuales indefinidos en la comuna con peor historial de plusvalía?",
+      "cajaAccionable_uf": "¿Vale la pena apostar UF 2,8 mensuales indefinidos en la comuna con peor historial de plusvalía?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $112.000 cada mes durante toda la proyección. El arriendo de $650.000 no alcanza a cubrir el dividendo de $598.000 más gastos operacionales. En diez años habrás puesto $21,5 millones de tu bolsillo — equivalente a medio departamento adicional.",
+      "contenido_uf": "Aportas UF 2,8 cada mes durante toda la proyección. El arriendo de UF 16,2 no alcanza a cubrir el dividendo de UF 14,9 más gastos operacionales. En diez años habrás puesto UF 537 de tu bolsillo — equivalente a medio departamento adicional.",
+      "cajaAccionable_clp": "¿Tienes $112.000 mensuales sin comprometer tu flujo familiar durante años?",
+      "cajaAccionable_uf": "¿Tienes UF 2,8 mensuales sin comprometer tu flujo familiar durante años?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Hay caso sólido para pedir descuento. Santiago centro no justifica precio premium dado su historial de plusvalía negativa. Bajar a $135.892.000 mejora la TIR de 11,1% a 12,1% y reduce el aporte mensual. No es generosidad del vendedor — es alinear el precio con el riesgo real de la zona.",
+      "contenido_uf": "Hay caso sólido para pedir descuento. Santiago centro no justifica precio premium dado su historial de plusvalía negativa. Bajar a UF 3.395 mejora la TIR de 11,1% a 12,1% y reduce el aporte mensual. No es generosidad del vendedor — es alinear el precio con el riesgo real de la zona.",
+      "estrategiaSugerida_clp": "Parte en $129.087.000 (descuento 8%). Si rechaza, sube hasta $135.892.000 — ese es tu techo duro. Argumento: historial de plusvalía de Santiago centro no justifica precio sin descuento.",
+      "estrategiaSugerida_uf": "Parte en UF 3.225 (descuento 8%). Si rechaza, sube hasta UF 3.395 — ese es tu techo duro. Argumento: historial de plusvalía de Santiago centro no justifica precio sin descuento.",
+      "cajaAccionable_clp": "Ofrece $129.087.000. Tu techo es $135.892.000. Por encima, busca en Ñuñoa o La Reina.",
+      "cajaAccionable_uf": "Ofrece UF 3.225. Tu techo es UF 3.395. Por encima, busca en Ñuñoa o La Reina.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 3.395",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Abre con descuento 8% — tienes margen para subir sin perder el caso económico.",
+        "glosaPrimeraOferta_uf": "Abre con descuento 8% — tienes margen para subir sin perder el caso económico.",
+        "glosaTecho_clp": "Último precio donde el aporte mensual baja y mantienes TIR sobre 12%.",
+        "glosaTecho_uf": "Último precio donde el aporte mensual baja y mantienes TIR sobre 12%.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Si Santiago centro revierte su tendencia y crece 4% anual (optimista), ganas $123M netos al vender en 2034. Pero eso requiere que aportes $21,5M durante diez años sin que el flujo mejore. Alternativa menos riesgosa: deposito UF da $50M en diez años sin aporte mensual. La diferencia de $73M es el premio por apostar a que Santiago centro cambie su track record.",
+      "contenido_uf": "Si Santiago centro revierte su tendencia y crece 4% anual (optimista), ganas UF 3.072 netos al vender en 2034. Pero eso requiere que aportes UF 537 durante diez años sin que el flujo mejore. Alternativa menos riesgosa: deposito UF da UF 1.255 en diez años sin aporte mensual. La diferencia de UF 1.817 es el premio por apostar a que Santiago centro cambie su track record.",
+      "cajaAccionable_clp": "¿Confías en que Santiago centro revierta una década de caídas y crezca 4% anual desde 2024?",
+      "cajaAccionable_uf": "¿Confías en que Santiago centro revierta una década de caídas y crezca 4% anual desde 2024?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses te cuesta $1,3 millones extra. Con margen mensual negativo, cualquier mes sin arriendo duplica tu aporte. Presiona el flujo familiar en momento de vacancia.\n\nPlus valía seguir negativa o plana mata el caso. Santiago centro perdió 10% en diez años — si continúa esa tendencia, tu ganancia al vender desaparece y solo quedan los $21,5M aportados.\n\nSubida de tasas aprieta más el dividendo. Alza de 1 punto sube tu dividendo a $662.000 mensuales, empeorando el flujo en $64.000 adicionales por mes.",
+      "contenido_uf": "Vacancia de 2 meses te cuesta UF 32 extra. Con margen mensual negativo, cualquier mes sin arriendo duplica tu aporte. Presiona el flujo familiar en momento de vacancia.\n\nPlusvalía seguir negativa o plana mata el caso. Santiago centro perdió 10% en diez años — si continúa esa tendencia, tu ganancia al vender desaparece y solo quedan las UF 537 aportadas.\n\nSubida de tasas aprieta más el dividendo. Alza de 1 punto sube tu dividendo a UF 16,5 mensuales, empeorando el flujo en UF 1,6 adicionales por mes.",
+      "cajaAccionable_clp": "Si decides avanzar, negocia el precio agresivamente. Sin descuento, esta operación depende de que Santiago centro revierta historia — y la historia de esta comuna no está de tu lado.",
+      "cajaAccionable_uf": "Si decides avanzar, negocia el precio agresivamente. Sin descuento, esta operación depende de que Santiago centro revierta historia — y la historia de esta comuna no está de tu lado.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "INDETERMINADO_FALLBACK_VMFRANCO",
+    "tieneDiferenciaValida": false,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "diagnostico": {
+    "flujoMotor": 112366,
+    "aporteMensualPromedioFrontend": 179184.55833333332,
+    "plusvaliaContexto": {
+      "mencionesPlusvalia": 5,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": true,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 112366,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            140000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            21000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            11200,
+            112000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            112000,
+            650000,
+            59800,
+            598000000000,
+            21500000
+          ],
+          "coincidenConFlujoMotor": [
+            112000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            11200,
+            112000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            13589200,
+            135892000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            129087000,
+            135892000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            123000000,
+            21500000,
+            50000000,
+            73000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            66200,
+            64000,
+            1300000,
+            21500000,
+            662000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        }
+      }
+    },
+    "TIR_motor": 11.09,
+    "TIR_menciones": {
+      "conviene_reencuadre": [
+        "TIR 11,1%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 11,1%"
+      ]
+    },
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "veredictoCoherente": true
+  }
+}

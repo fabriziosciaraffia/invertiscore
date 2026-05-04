@@ -1,0 +1,106 @@
+[
+  {
+    "id": "A-Santiago-plusvaliaNegativa",
+    "label": "Plusvalía histórica negativa (-1.1% anual)",
+    "comuna": "Santiago",
+    "plusvaliaAnualizada": -1.1,
+    "flujoMotor": -112366,
+    "aporteFrontendV11": 112366,
+    "diff_pct": 0,
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": false,
+      "estallido": false,
+      "pandemia": false,
+      "boom": false,
+      "almenosUnEvento": false
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "primerUsoCampo": "riesgos_contenido"
+  },
+  {
+    "id": "B-Nunoa-plusvaliaFuerte",
+    "label": "Plusvalía histórica fuerte (3.2% anual)",
+    "comuna": "Ñuñoa",
+    "plusvaliaAnualizada": 3.2,
+    "flujoMotor": -190634,
+    "aporteFrontendV11": 190634,
+    "diff_pct": 0,
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": false,
+      "estallido": false,
+      "pandemia": false,
+      "boom": false,
+      "almenosUnEvento": false
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 3,
+      "rangoTemporalCitado": true,
+      "estallido": false,
+      "pandemia": false,
+      "boom": true,
+      "almenosUnEvento": true
+    },
+    "primerUsoCampo": "largoPlazo_contenido"
+  },
+  {
+    "id": "C-LasCondes-flujoApretado",
+    "label": "Flujo apretado (cross-section aporte)",
+    "comuna": "Las Condes",
+    "plusvaliaAnualizada": 2.7,
+    "flujoMotor": -543487,
+    "aporteFrontendV11": 543487,
+    "diff_pct": 0,
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 2,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "primerUsoCampo": "conviene_respuesta"
+  },
+  {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "comuna": "Providencia",
+    "plusvaliaAnualizada": 3,
+    "flujoMotor": -215623,
+    "aporteFrontendV11": 215623,
+    "diff_pct": 0,
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 3,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "primerUsoCampo": "conviene_respuesta"
+  }
+]

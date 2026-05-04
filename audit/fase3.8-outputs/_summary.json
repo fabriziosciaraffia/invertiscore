@@ -1,0 +1,507 @@
+[
+  {
+    "id": "A-Santiago-plusvaliaNegativa",
+    "label": "Plusvalía histórica negativa (-1.1% anual)",
+    "comuna": "Santiago",
+    "plusvaliaAnualizada": -1.1,
+    "flujoMotor": -112366,
+    "aporteFrontendPromedio": 179185,
+    "diff_motor_vs_frontend_pct": 59.5,
+    "plusContext": {
+      "mencionesPlusvalia": 5,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": true,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 112366,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            140000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            21000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            11200,
+            112000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            112000,
+            650000,
+            59800,
+            598000000000,
+            21500000
+          ],
+          "coincidenConFlujoMotor": [
+            112000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            11200,
+            112000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            13589200,
+            135892000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            129087000,
+            135892000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            123000000,
+            21500000,
+            50000000,
+            73000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            66200,
+            64000,
+            1300000,
+            21500000,
+            662000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        }
+      }
+    },
+    "tirMatches": {
+      "conviene_reencuadre": [
+        "TIR 11,1%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 11,1%"
+      ]
+    },
+    "veredictoCoherente": true
+  },
+  {
+    "id": "B-Nunoa-plusvaliaFuerte",
+    "label": "Plusvalía histórica fuerte (3.2% anual)",
+    "comuna": "Ñuñoa",
+    "plusvaliaAnualizada": 3.2,
+    "flujoMotor": -190634,
+    "aporteFrontendPromedio": 297181,
+    "diff_motor_vs_frontend_pct": 55.9,
+    "plusContext": {
+      "mencionesPlusvalia": 4,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": false,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 190634,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            5044000,
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            920000,
+            888000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            920000,
+            130000,
+            27000,
+            70000,
+            693000,
+            888000,
+            191000,
+            57000000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            191000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            208000000,
+            202000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            192000000,
+            202000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            36000000,
+            46000000,
+            82000000,
+            183000000,
+            82000000,
+            75000000,
+            90000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            191000,
+            1083000,
+            386000
+          ],
+          "coincidenConFlujoMotor": [
+            191000
+          ],
+          "cantidadCoincide": 1
+        }
+      }
+    },
+    "tirMatches": {
+      "conviene_respuesta": [
+        "TIR sube de 10.6%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 10.6%"
+      ]
+    },
+    "veredictoCoherente": true
+  },
+  {
+    "id": "C-LasCondes-flujoApretado",
+    "label": "Flujo apretado (cross-section aporte mensual)",
+    "comuna": "Las Condes",
+    "plusvaliaAnualizada": 2.7,
+    "flujoMotor": -543487,
+    "aporteFrontendPromedio": 761365,
+    "diff_motor_vs_frontend_pct": 40.1,
+    "plusContext": {
+      "mencionesPlusvalia": 4,
+      "rangoTemporal": false,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": false,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 543487,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            28000000,
+            544000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            1161405,
+            850000,
+            311405,
+            544000,
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000,
+            544000
+          ],
+          "cantidadCoincide": 2
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            18464455,
+            28000000,
+            184644551000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": false,
+          "montos": [],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            544000000000,
+            60000000,
+            118000000,
+            280000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            12400,
+            544000000000,
+            16000000,
+            124000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        }
+      }
+    },
+    "tirMatches": {
+      "negociacion_contenido": [
+        "TIR de 9,2%"
+      ],
+      "largoPlazo_contenido": [
+        "TIR de 9,2%"
+      ]
+    },
+    "veredictoCoherente": true
+  },
+  {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "comuna": "Providencia",
+    "plusvaliaAnualizada": 3,
+    "flujoMotor": -215623,
+    "aporteFrontendPromedio": 325778,
+    "diff_motor_vs_frontend_pct": 51.1,
+    "plusContext": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": true,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 215623,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": false,
+          "montos": [],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            21600,
+            216000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            950000,
+            939000,
+            11000,
+            130000,
+            27000,
+            70000,
+            227000,
+            216000,
+            39000000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            216000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            202856836,
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            193000000,
+            39000000,
+            79000000,
+            95000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            11000,
+            1039860,
+            216000,
+            317000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        }
+      }
+    },
+    "tirMatches": {
+      "conviene_reencuadre": [
+        "TIR sube de 10,5%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 10,5%"
+      ]
+    },
+    "veredictoCoherente": true
+  }
+]

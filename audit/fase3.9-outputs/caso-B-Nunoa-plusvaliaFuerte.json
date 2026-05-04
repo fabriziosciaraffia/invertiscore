@@ -1,0 +1,175 @@
+{
+  "caseDef": {
+    "id": "B-Nunoa-plusvaliaFuerte",
+    "label": "Plusvalía histórica fuerte (3.2% anual)",
+    "notes": "Ñuñoa con dato sesgado por boom 2014-2018.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5200,
+      "valorMercadoFranco": 5200,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 5,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 920000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Ñuñoa",
+      "dormitorios": 2,
+      "piso": 6,
+      "lat": -33.4533,
+      "lng": -70.5942,
+      "nombre": "Caso B — Ñuñoa"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5200,
+    "valorMercadoFranco": 5200,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 5,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 920000,
+    "gastos": 130000,
+    "comuna": "Ñuñoa",
+    "dormitorios": 2,
+    "piso": 6,
+    "lat": -33.4533,
+    "lng": -70.5942,
+    "nombre": "Caso B — Ñuñoa"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "score": 66,
+    "flujoNetoMensual": -190634,
+    "plusvaliaAnualizada": 3.2,
+    "comuna": "Ñuñoa",
+    "aporteMensualFrontend_v11": 190634
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Precio alto para Ñuñoa, flujo negativo sin techo claro durante proyección.",
+    "siendoFrancoHeadline_uf": "Precio alto para Ñuñoa, flujo negativo sin techo claro durante proyección.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No a este precio. Pagarías $190K cada mes sin que el flujo llegue a positivo en los 10 años proyectados. TIR (lo que ganas anualizado al vender) de 10,6% está bien, pero solo recuperas plata al vender. El precio está sobre el rango que justifica la matemática mensual.",
+      "respuestaDirecta_uf": "No a este precio. Pagarías UF 4,8 cada mes sin que el flujo llegue a positivo en los 10 años proyectados. TIR (lo que ganas anualizado al vender) de 10,6% está bien, pero solo recuperas plata al vender. El precio está sobre el rango que justifica la matemática mensual.",
+      "veredictoFrase_clp": "Buena zona y matemática, precio equivocado.",
+      "veredictoFrase_uf": "Buena zona y matemática, precio equivocado.",
+      "datosClave": [
+        {
+          "label": "Flujo neto",
+          "valor_clp": "-$190K/mes",
+          "valor_uf": "-UF 4,8/mes",
+          "subtexto": "Sin cruzar a positivo en 10A",
+          "color": "red"
+        },
+        {
+          "label": "TIR a 10A",
+          "valor_clp": "10,6%",
+          "valor_uf": "10,6%",
+          "subtexto": "Rentabilidad decente al vender",
+          "color": "green"
+        },
+        {
+          "label": "Precio sugerido",
+          "valor_clp": "$201.896.188",
+          "valor_uf": "UF 5.044",
+          "subtexto": "Mejora flujo y TIR",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Ñuñoa creció 3,2% anual entre 2014-2024, mezclando boom 2014-2018 y caída posterior, pero sigue siendo comuna sólida para inversión. El problema no es la zona — es que pagas UF 86,7 por m² sin dato confiable de mercado para comparar. Franco Score 66 indica depto viable, pero el precio actual fuerza aporte indefinido. A UF 5.044 los números mejoran: TIR sube a 11,7% y reduces el aporte mensual.",
+      "reencuadre_uf": "Ñuñoa creció 3,2% anual entre 2014-2024, mezclando boom 2014-2018 y caída posterior, pero sigue siendo comuna sólida para inversión. El problema no es la zona — es que pagas UF 86,7 por m² sin dato confiable de mercado para comparar. Franco Score 66 indica depto viable, pero el precio actual fuerza aporte indefinido. A UF 5.044 los números mejoran: TIR sube a 11,7% y reduces el aporte mensual.",
+      "cajaAccionable_clp": "¿Puedes sostener $190K mensuales sin tope claro en la proyección, sabiendo que el retorno depende solo de la venta?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 4,8 mensuales sin tope claro en la proyección, sabiendo que el retorno depende solo de la venta?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Tu verdadero costo es $190K mensuales durante toda la proyección — no los $888K de dividendo que es el número grueso. El arriendo de $920K cubre el dividendo pero no los gastos operacionales. En 10 años habrás aportado $35,6 millones de tu bolsillo, equivalente a casi un departamento completo dado en cuotas.",
+      "contenido_uf": "Tu verdadero costo es UF 4,8 mensuales durante toda la proyección — no las UF 22,2 de dividendo que es el número grueso. El arriendo de UF 23 cubre el dividendo pero no los gastos operacionales. En 10 años habrás aportado UF 890 de tu bolsillo, equivalente a casi un departamento completo dado en cuotas.",
+      "cajaAccionable_clp": "¿Tu flujo personal permite destinar $190K cada mes a una inversión que no genera ingresos operacionales?",
+      "cajaAccionable_uf": "¿Tu flujo personal permite destinar UF 4,8 cada mes a una inversión que no genera ingresos operacionales?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Absolutamente. Sin dato confiable de valor de mercado, pero la matemática pide aire. Bajar el precio es la única palanca para que el aporte mensual sea manejable. A $201.896.188 tu TIR sube de 10,6% a 11,7% y mejoras el flujo operacional. Justifica el descuento con la matemática: el precio actual no permite que el depto se pague solo en horizonte razonable.",
+      "contenido_uf": "Absolutamente. Sin dato confiable de valor de mercado, pero la matemática pide aire. Bajar el precio es la única palanca para que el aporte mensual sea manejable. A UF 5.044 tu TIR sube de 10,6% a 11,7% y mejoras el flujo operacional. Justifica el descuento con la matemática: el precio actual no permite que el depto se pague solo en horizonte razonable.",
+      "estrategiaSugerida_clp": "Empieza en $191.809.384 con argumento de flujo operacional. Puedes subir hasta $201.896.188 si insiste — ahí la matemática todavía funciona.",
+      "estrategiaSugerida_uf": "Empieza en UF 4.792 con argumento de flujo operacional. Puedes subir hasta UF 5.044 si insiste — ahí la matemática todavía funciona.",
+      "cajaAccionable_clp": "Ofrece $191.809.384. Si rechaza, tu techo es $201.896.188.",
+      "cajaAccionable_uf": "Ofrece UF 4.792. Si rechaza, tu techo es UF 5.044.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 5.044",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo.",
+        "glosaPrimeraOferta_uf": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo.",
+        "glosaTecho_clp": "Es el último precio donde el aporte mensual sigue siendo sostenible y la TIR mejora sustantivamente.",
+        "glosaTecho_uf": "Es el último precio donde el aporte mensual sigue siendo sostenible y la TIR mejora sustantivamente.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Si el precio baja a tu rango sugerido, sí. TIR 11,7% supera depósito UF al 5% ($74,6M vs $182,7M al vender) y fondos mutuos al 7% ($90M). Pero esos instrumentos no exigen $190K mensuales ni asumen vacancia. La apuesta es que Ñuñoa mantenga su trayectoria de plusvalía moderada y que puedas sostener el aporte sin presión durante años.",
+      "contenido_uf": "Si el precio baja a tu rango sugerido, sí. TIR 11,7% supera depósito UF al 5% (UF 1.863 vs UF 4.564 al vender) y fondos mutuos al 7% (UF 2.251). Pero esos instrumentos no exigen UF 4,8 mensuales ni asumen vacancia. La apuesta es que Ñuñoa mantenga su trayectoria de plusvalía moderada y que puedas sostener el aporte sin presión durante años.",
+      "cajaAccionable_clp": "Estás apostando a que Ñuñoa siga creciendo y a que tu capacidad de aporte se mantenga estable durante una década.",
+      "cajaAccionable_uf": "Estás apostando a que Ñuñoa siga creciendo y a que tu capacidad de aporte se mantenga estable durante una década.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses anula el flujo del año. Con margen de solo $60K entre arriendo y gastos totales, una vacancia típica te deja en números rojos ese periodo.\n\nAlza de tasas castiga el dividendo sin clemencia. Si las tasas suben 2 puntos porcentuales, tu dividendo salta de $888K a $1,08M mensuales, empeorando dramáticamente el aporte.\n\nPlusvalía de Ñuñoa no es garantía estructural. La comuna creció 3,2% anual histórico pero ese rango carga boom y caída. Si la plusvalía se estanca en 2-2,5% anual, la venta a 10 años no compensa lo aportado mensualmente.",
+      "contenido_uf": "Vacancia de 2 meses anula el flujo del año. Con margen de solo UF 1,5 entre arriendo y gastos totales, una vacancia típica te deja en números rojos ese periodo.\n\nAlza de tasas castiga el dividendo sin clemencia. Si las tasas suben 2 puntos porcentuales, tu dividendo salta de UF 22,2 a UF 27 mensuales, empeorando dramáticamente el aporte.\n\nPlusvalía de Ñuñoa no es garantía estructural. La comuna creció 3,2% anual histórico pero ese rango carga boom y caída. Si la plusvalía se estanca en 2-2,5% anual, la venta a 10 años no compensa lo aportado mensualmente.",
+      "cajaAccionable_clp": "Si confías en tu capacidad de aporte y en que Ñuñoa mantenga su atractivo, negocia agresivamente el precio. Sin esa ventaja inicial, esta operación depende de que todo salga perfecto durante una década.",
+      "cajaAccionable_uf": "Si confías en tu capacidad de aporte y en que Ñuñoa mantenga su atractivo, negocia agresivamente el precio. Sin esa ventaja inicial, esta operación depende de que todo salga perfecto durante una década.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diagnostico": {
+    "primerUsoCampo": "largoPlazo_contenido",
+    "primerUsoTextoSnippet": "Si el precio baja a tu rango sugerido, sí. TIR 11,7% supera depósito UF al 5% ($74,6M vs $182,7M al vender) y fondos mutuos al 7% ($90M). Pero esos instrumentos no exigen $190K mensuales ni asumen vacancia. La apuesta es que Ñuñoa mantenga su trayectoria de plusvalía moderada y que puedas sostener e",
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": false,
+      "estallido": false,
+      "pandemia": false,
+      "boom": false,
+      "almenosUnEvento": false
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 3,
+      "rangoTemporalCitado": true,
+      "estallido": false,
+      "pandemia": false,
+      "boom": true,
+      "almenosUnEvento": true
+    },
+    "aporteMensualFrontendV11": 190634,
+    "flujoMotorAnio1": 190634,
+    "diff_motor_vs_frontend_pct": 0
+  }
+}

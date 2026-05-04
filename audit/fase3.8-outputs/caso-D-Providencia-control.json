@@ -1,0 +1,284 @@
+{
+  "caseDef": {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "notes": "UF 5.500 / 60m² / arriendo $950K. Comparable con outputs Fase 3.7.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5500,
+      "valorMercadoFranco": 5500,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 4,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 950000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Providencia",
+      "dormitorios": 2,
+      "piso": 5,
+      "lat": -33.4283,
+      "lng": -70.6182,
+      "nombre": "Caso D — Providencia"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5500,
+    "valorMercadoFranco": 5500,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 4,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 950000,
+    "gastos": 130000,
+    "comuna": "Providencia",
+    "dormitorios": 2,
+    "piso": 5,
+    "lat": -33.4283,
+    "lng": -70.6182,
+    "nombre": "Caso D — Providencia"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 66,
+    "flujoNetoMensual": -215623,
+    "plusvaliaAnualizada": 3,
+    "plusvalia10a": 34,
+    "TIR": 10.52,
+    "aporteMensualPromedioFrontend": 325777.8416666667
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Los números piden $7M menos para que funcione.",
+    "siendoFrancoHeadline_uf": "Los números piden UF 165 menos para que funcione.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "Este depto tiene buena base pero el precio está alto. En Providencia a 100m del metro Manuel Montt, es sólido. El problema: pagas sobre valor de zona y eso genera aporte mensual indefinido. TIR (rentabilidad anual al vender) del 10,5% es decente, pero el flujo nunca cruza a positivo en la proyección.",
+      "respuestaDirecta_uf": "Este depto tiene buena base pero el precio está alto. En Providencia a 100m del metro Manuel Montt, es sólido. El problema: pagas sobre valor de zona y eso genera aporte mensual indefinido. TIR (rentabilidad anual al vender) del 10,5% es decente, pero el flujo nunca cruza a positivo en la proyección.",
+      "veredictoFrase_clp": "Buen activo a precio equivocado.",
+      "veredictoFrase_uf": "Buen activo a precio equivocado.",
+      "datosClave": [
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$216.000",
+          "valor_uf": "UF 5,4",
+          "subtexto": "durante toda la proyección",
+          "color": "red"
+        },
+        {
+          "label": "TIR a 10 años",
+          "valor_clp": "10,5%",
+          "valor_uf": "10,5%",
+          "subtexto": "vs 7% fondos mutuos",
+          "color": "green"
+        },
+        {
+          "label": "Precio objetivo",
+          "valor_clp": "$213.544.045",
+          "valor_uf": "UF 5.335",
+          "subtexto": "sube TIR a 11,5%",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "La matemática es clara: el motor da Franco Score 66 porque la rentabilidad está pero el flujo no funciona. Tu precio/m² está sobre la zona y eso fuerza aporte sin tope. A $213.544.045 los números mejoran sustantivamente: TIR sube de 10,5% a 11,5%. El activo es correcto — 4 años, 60m², metro a 100m — pero el precio actual castiga el flujo mensual.",
+      "reencuadre_uf": "La matemática es clara: el motor da Franco Score 66 porque la rentabilidad está pero el flujo no funciona. Tu precio/m² está sobre la zona y eso fuerza aporte sin tope. A UF 5.335 los números mejoran sustantivamente: TIR sube de 10,5% a 11,5%. El activo es correcto — 4 años, 60m², metro a 100m — pero el precio actual castiga el flujo mensual.",
+      "cajaAccionable_clp": "¿Puedes sostener $216.000 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 5,4 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $950.000 no alcanza a cubrir el dividendo de $939.000. Queda margen positivo de $11.000, pero los gastos comunes ($130.000), contribuciones prorrateadas ($27.000) y provisión de mantenimiento ($70.000) suman $227.000. Resultado: aportas $216.000 cada mes de tu bolsillo. En 10 años son $39M acumulados.",
+      "contenido_uf": "El arriendo de UF 23,7 no alcanza a cubrir el dividendo de UF 23,5. Queda margen positivo de UF 0,2, pero los gastos comunes (UF 3,2), contribuciones prorrateadas (UF 0,7) y provisión de mantenimiento (UF 1,7) suman UF 5,6. Resultado: aportas UF 5,4 cada mes de tu bolsillo. En 10 años son UF 976 acumulados.",
+      "cajaAccionable_clp": "¿Tu flujo personal permite $216.000 extra cada mes durante años sin presión?",
+      "cajaAccionable_uf": "¿Tu flujo personal permite UF 5,4 extra cada mes durante años sin presión?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Pagas sobre el valor real de la zona y eso es exactamente por lo que hay que negociar. El motor sugiere $213.544.045 — sube TIR de 10,5% a 11,5% y mejora el flujo mensual. Tu estructura financiera está bien (20% pie, tasa 4,1%), así que la palanca es el precio. Providencia con metro a 100m justifica pagar sobre la mediana, pero no tanto.",
+      "contenido_uf": "Pagas sobre el valor real de la zona y eso es exactamente por lo que hay que negociar. El motor sugiere UF 5.335 — sube TIR de 10,5% a 11,5% y mejora el flujo mensual. Tu estructura financiera está bien (20% pie, tasa 4,1%), así que la palanca es el precio. Providencia con metro a 100m justifica pagar sobre la mediana, pero no tanto.",
+      "estrategiaSugerida_clp": "Parte en $202.856.836, justifica con comparables de la zona. Tu techo es $213.544.045 — sobre ese número la matemática deja de funcionar.",
+      "estrategiaSugerida_uf": "Parte en UF 5.068, justifica con comparables de la zona. Tu techo es UF 5.335 — sobre ese número la matemática deja de funcionar.",
+      "cajaAccionable_clp": "Ofrece UF 5.068. Tu techo es UF 5.335. Por encima, no compras.",
+      "cajaAccionable_uf": "Ofrece UF 5.068. Tu techo es UF 5.335. Por encima, no compras.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 5.335",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Ancla el rango bajo con margen para subir sin perder el caso económico.",
+        "glosaPrimeraOferta_uf": "Ancla el rango bajo con margen para subir sin perder el caso económico.",
+        "glosaTecho_clp": "Último precio donde mantienes TIR sobre 11% y el flujo mejora sustantivamente.",
+        "glosaTecho_uf": "Último precio donde mantienes TIR sobre 11% y el flujo mejora sustantivamente.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "A 10 años ganas $193M netos al vender (incluye los $39M que aportaste). Un depósito UF al 5% te daría $79M, un fondo mutuo al 7% unos $95M. La diferencia: el depto exige aporte mensual indefinido y asume riesgo de vacancia, el fondo es pasivo. Providencia creció 3% anual histórico — moderado pero estable. La apuesta es que esa tendencia se mantiene.",
+      "contenido_uf": "A 10 años ganas UF 4.828 netos al vender (incluye las UF 976 que aportaste). Un depósito UF al 5% te daría UF 1.971, un fondo mutuo al 7% unas UF 2.380. La diferencia: el depto exige aporte mensual indefinido y asume riesgo de vacancia, el fondo es pasivo. Providencia creció 3% anual histórico — moderado pero estable. La apuesta es que esa tendencia se mantiene.",
+      "cajaAccionable_clp": "¿Confías en que Providencia mantenga su trayectoria de plusvalía moderada pero estable durante 10 años?",
+      "cajaAccionable_uf": "¿Confías en que Providencia mantenga su trayectoria de plusvalía moderada pero estable durante 10 años?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 6 semanas borra el año positivo. Con margen de solo $11.000 entre arriendo y dividendo, cualquier período sin inquilino te sumerge más en números rojos.\n\nAlza de tasas castiga el dividendo directo. 1 punto porcentual adicional sube el dividendo a $1.039.860 — tu aporte mensual pasaría de $216.000 a $317.000.\n\nPlusvalía 3% anual no justifica el aporte indefinido. Si Providencia no acelera su crecimiento histórico, la matemática de aportar sin tope durante años se vuelve cuestionable.",
+      "contenido_uf": "Vacancia de 6 semanas borra el año positivo. Con margen de solo UF 0,2 entre arriendo y dividendo, cualquier período sin inquilino te sumerge más en números rojos.\n\nAlza de tasas castiga el dividendo directo. 1 punto porcentual adicional sube el dividendo a UF 26,0 — tu aporte mensual pasaría de UF 5,4 a UF 7,9.\n\nPlusvalía 3% anual no justifica el aporte indefinido. Si Providencia no acelera su crecimiento histórico, la matemática de aportar sin tope durante años se vuelve cuestionable.",
+      "cajaAccionable_clp": "Si negocias hasta UF 5.335 y tu flujo permite el aporte mensual sin presión, esta operación tiene fundamento. La proximidad al metro ya hace parte del valor. El resto es disciplina para sostener el aporte y paciencia para la plusvalía.",
+      "cajaAccionable_uf": "Si negocias hasta UF 5.335 y tu flujo permite el aporte mensual sin presión, esta operación tiene fundamento. La proximidad al metro ya hace parte del valor. El resto es disciplina para sostener el aporte y paciencia para la plusvalía.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "INDETERMINADO_FALLBACK_VMFRANCO",
+    "tieneDiferenciaValida": false,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "diagnostico": {
+    "flujoMotor": 215623,
+    "aporteMensualPromedioFrontend": 325777.8416666667,
+    "plusvaliaContexto": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporal": true,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": true,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 215623,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": false,
+          "montos": [],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            21600,
+            216000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            950000,
+            939000,
+            11000,
+            130000,
+            27000,
+            70000,
+            227000,
+            216000,
+            39000000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            216000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": true,
+          "montos": [
+            202856836,
+            213544045
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            193000000,
+            39000000,
+            79000000,
+            95000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            11000,
+            1039860,
+            216000,
+            317000
+          ],
+          "coincidenConFlujoMotor": [
+            216000
+          ],
+          "cantidadCoincide": 1
+        }
+      }
+    },
+    "TIR_motor": 10.52,
+    "TIR_menciones": {
+      "conviene_reencuadre": [
+        "TIR sube de 10,5%"
+      ],
+      "negociacion_contenido": [
+        "TIR de 10,5%"
+      ]
+    },
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "veredictoCoherente": true
+  }
+}

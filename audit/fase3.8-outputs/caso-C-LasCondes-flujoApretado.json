@@ -1,0 +1,287 @@
+{
+  "caseDef": {
+    "id": "C-LasCondes-flujoApretado",
+    "label": "Flujo apretado (cross-section aporte mensual)",
+    "notes": "UF 6.800 / 55m² / arriendo $850K. Test: ¿el aporte mensual coincide entre header / costo / negociación / largo plazo?",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 6800,
+      "valorMercadoFranco": 7500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 850000,
+      "gastos": 150000,
+      "contribuciones": 100000,
+      "provisionMantencion": 80000,
+      "comuna": "Las Condes",
+      "dormitorios": 2,
+      "piso": 7,
+      "lat": -33.415,
+      "lng": -70.58,
+      "nombre": "Caso C — Las Condes"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 100000,
+    "provisionMantencion": 80000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 6800,
+    "valorMercadoFranco": 7500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 850000,
+    "gastos": 150000,
+    "comuna": "Las Condes",
+    "dormitorios": 2,
+    "piso": 7,
+    "lat": -33.415,
+    "lng": -70.58,
+    "nombre": "Caso C — Las Condes"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "score": 45,
+    "flujoNetoMensual": -543487,
+    "plusvaliaAnualizada": 2.7,
+    "plusvalia10a": 31,
+    "TIR": 9.15,
+    "aporteMensualPromedioFrontend": 761364.8916666667
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Comprarías $28M bajo mercado, pero seguirías aportando $544.000 mensuales sin tope claro.",
+    "siendoFrancoHeadline_uf": "Comprarías UF 700 bajo mercado, pero seguirías aportando UF 13,6 mensuales sin tope claro.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Aunque el precio está $28M bajo mercado, aportarías $544.000 mensuales durante toda la proyección sin que el flujo llegue a positivo. Las Condes creció solo 2,7% anual en la última década — apostar a recuperación de plusvalía es la apuesta central, no un colchón.",
+      "respuestaDirecta_uf": "No conviene. Aunque el precio está UF 700 bajo mercado, aportarías UF 13,6 mensuales durante toda la proyección sin que el flujo llegue a positivo. Las Condes creció solo 2,7% anual en la última década — apostar a recuperación de plusvalía es la apuesta central, no un colchón.",
+      "veredictoFrase_clp": "El descuento no compensa el aporte indefinido.",
+      "veredictoFrase_uf": "El descuento no compensa el aporte indefinido.",
+      "datosClave": [
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$544.000",
+          "valor_uf": "UF 13,6",
+          "subtexto": "Sin tope en proyección",
+          "color": "red"
+        },
+        {
+          "label": "Ventaja de compra",
+          "valor_clp": "$28M",
+          "valor_uf": "UF 700",
+          "subtexto": "9,3% bajo mercado",
+          "color": "green"
+        },
+        {
+          "label": "TIR a 10 años",
+          "valor_clp": "9,2%",
+          "valor_uf": "9,2%",
+          "subtexto": "Bajo estándares actuales",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "El problema no es el precio — está 9,3% bajo mercado según el motor. El problema es que en Las Condes necesitas plusvalía superior al 4% anual para justificar aportar $544.000 cada mes indefinidamente. La zona creció 2,7% anual histórico. Ñuñoa o La Reina te dan deptos similares con mejor equilibrio flujo/plusvalía.",
+      "reencuadre_uf": "El problema no es el precio — está UF 700 bajo mercado según el motor. El problema es que en Las Condes necesitas plusvalía superior al 4% anual para justificar aportar UF 13,6 cada mes indefinidamente. La zona creció 2,7% anual histórico. Ñuñoa o La Reina te dan deptos similares con mejor equilibrio flujo/plusvalía.",
+      "cajaAccionable_clp": "¿Puedes sostener $544.000 al mes sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 13,6 al mes sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Tu dividendo de $1.161.405 supera el arriendo de $850.000 por $311.405. Sumando gastos comunes, contribuciones y mantención, el déficit mensual es $544.000. Esos $544.000 no son pérdida — son el costo de oportunidad de no haberlos puesto en depósito UF al 5% o fondo mutuo al 7%.",
+      "contenido_uf": "Tu dividendo de UF 29 supera el arriendo de UF 21,2 por UF 7,8. Sumando gastos comunes, contribuciones y mantención, el déficit mensual es UF 13,6. Esas UF 13,6 no son pérdida — son el costo de oportunidad de no haberlas puesto en depósito UF al 5% o fondo mutuo al 7%.",
+      "cajaAccionable_clp": "¿Tu flujo mensual permite $544.000 extra sin presión durante años sin tope claro?",
+      "cajaAccionable_uf": "¿Tu flujo mensual permite UF 13,6 extra sin presión durante años sin tope claro?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Estás comprando $28M bajo mercado — el descuento ya está incorporado. Pero la matemática mensual pide más aire. Bajar a $184.644.551 mejora la TIR de 9,2% a 20,2% y reduce el aporte mensual sustantivamente. No es por mercado, es por sostenibilidad de flujo.",
+      "contenido_uf": "Estás comprando UF 700 bajo mercado — el descuento ya está incorporado. Pero la matemática mensual pide más aire. Bajar a UF 4.613 mejora la TIR de 9,2% a 20,2% y reduce el aporte mensual sustantivamente. No es por mercado, es por sostenibilidad de flujo.",
+      "estrategiaSugerida_clp": "Explica que necesitas bajar el precio para que tu flujo mensual sea sostenible, no porque cuestiones el valor de mercado. El vendedor ya sabe que está dando descuento.",
+      "estrategiaSugerida_uf": "Explica que necesitas bajar el precio para que tu flujo mensual sea sostenible, no porque cuestiones el valor de mercado. El vendedor ya sabe que está dando descuento.",
+      "cajaAccionable_clp": "Ofrece $175.398.314. Tu techo es $184.644.551. Por encima, busca otra propiedad.",
+      "cajaAccionable_uf": "Ofrece UF 4.382. Tu techo es UF 4.613. Por encima, busca otra propiedad.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.613",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Abre con margen para subir manteniendo el caso matemático del flujo mensual.",
+        "glosaPrimeraOferta_uf": "Abre con margen para subir manteniendo el caso matemático del flujo mensual.",
+        "glosaTecho_clp": "Último precio donde el aporte mensual baja sustantivamente vs precio actual.",
+        "glosaTecho_uf": "Último precio donde el aporte mensual baja sustantivamente vs precio actual.",
+        "glosaWalkAway_clp": "Aunque bajen más, los riesgos de flujo indefinido invalidan la inversión.",
+        "glosaWalkAway_uf": "Aunque bajen más, los riesgos de flujo indefinido invalidan la inversión."
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "TIR de 9,2% vs depósito UF 5% o fondo mutuo 7%. Suena bien hasta que consideras el esfuerzo: $544.000 mensuales indefinidos, riesgo de vacancia, mantención y gestión. Un depósito UF de $60M te daría $118M sin esfuerzo ni riesgo vs los $280M que proyecta esta inversión con aporte constante. La diferencia no justifica la complejidad.",
+      "contenido_uf": "TIR de 9,2% vs depósito UF 5% o fondo mutuo 7%. Suena bien hasta que consideras el esfuerzo: UF 13,6 mensuales indefinidas, riesgo de vacancia, mantención y gestión. Un depósito UF de UF 1.500 te daría UF 2.950 sin esfuerzo ni riesgo vs las UF 6.980 que proyecta esta inversión con aporte constante. La diferencia no justifica la complejidad.",
+      "cajaAccionable_clp": "¿Prefieres TIR 9,2% con aporte indefinido o 5% sin esfuerzo ni riesgo de vacancia?",
+      "cajaAccionable_uf": "¿Prefieres TIR 9,2% con aporte indefinido o 5% sin esfuerzo ni riesgo de vacancia?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses empeora el déficit anual. Con margen negativo de $544.000 mensuales, una vacancia normal te deja $1.6M más en rojo ese año.\n\nAlza de tasas castiga el dividendo sin mejorar el arriendo. 1 punto porcentual adicional sube el dividendo $124.000 mensuales, profundizando el déficit.\n\nPlusvalía 2,7% histórica no justifica el aporte indefinido. Necesitas más del 4% anual para que la venta a 10 años compense lo aportado mensualmente.",
+      "contenido_uf": "Vacancia de 2 meses empeora el déficit anual. Con margen negativo de UF 13,6 mensuales, una vacancia normal te deja UF 40 más en rojo ese año.\n\nAlza de tasas castiga el dividendo sin mejorar el arriendo. 1 punto porcentual adicional sube el dividendo UF 3,1 mensuales, profundizando el déficit.\n\nPlusvalía 2,7% histórica no justifica el aporte indefinido. Necesitas más del 4% anual para que la venta a 10 años compense lo aportado mensualmente.",
+      "cajaAccionable_clp": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.",
+      "cajaAccionable_uf": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "PASADA",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "BUSCAR OTRA",
+    "fhOverall": "aceptable"
+  },
+  "diagnostico": {
+    "flujoMotor": 543487,
+    "aporteMensualPromedioFrontend": 761364.8916666667,
+    "plusvaliaContexto": {
+      "mencionesPlusvalia": 4,
+      "rangoTemporal": false,
+      "estallido2019": false,
+      "pandemia": false,
+      "cicloVsEstructural": false,
+      "pasadoNoGarantiza": false
+    },
+    "coherenciaAporte": {
+      "flujoMotorReferencia": 543487,
+      "tolerancia": "5%",
+      "secciones": {
+        "conviene_respuesta": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            28000000,
+            544000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "conviene_reencuadre": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "conviene_caja": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "costoMensual_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            1161405,
+            850000,
+            311405,
+            544000,
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000,
+            544000
+          ],
+          "cantidadCoincide": 2
+        },
+        "costoMensual_caja": {
+          "tieneMonto": true,
+          "montos": [
+            544000
+          ],
+          "coincidenConFlujoMotor": [
+            544000
+          ],
+          "cantidadCoincide": 1
+        },
+        "negociacion_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            18464455,
+            28000000,
+            184644551000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "negociacion_estrategia": {
+          "tieneMonto": false,
+          "montos": [],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "largoPlazo_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            544000000000,
+            60000000,
+            118000000,
+            280000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        },
+        "riesgos_contenido": {
+          "tieneMonto": true,
+          "montos": [
+            54400,
+            12400,
+            544000000000,
+            16000000,
+            124000000000
+          ],
+          "coincidenConFlujoMotor": [],
+          "cantidadCoincide": 0
+        }
+      }
+    },
+    "TIR_motor": 9.15,
+    "TIR_menciones": {
+      "negociacion_contenido": [
+        "TIR de 9,2%"
+      ],
+      "largoPlazo_contenido": [
+        "TIR de 9,2%"
+      ]
+    },
+    "veredictoMotor": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "veredictoCoherente": true
+  }
+}

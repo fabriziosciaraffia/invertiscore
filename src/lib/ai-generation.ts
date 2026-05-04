@@ -409,6 +409,28 @@ Ejemplo correcto del formato (3 bloques separados por \\n\\n):
 
 Importante: en el JSON de salida, los \\n\\n deben aparecer como saltos de línea reales en el string, no como literal "\\\\n\\\\n".
 
+REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v11).
+El dataset de plusvalía cubre 2014-2024. El rango incluye tres eventos que sesgan los números según zona y NUNCA pueden ignorarse:
+- Estallido social 2019: deprimió comunas céntricas y premium (oficinas, comercio).
+- Pandemia 2020-2021: aceleró éxodo de oficinas, golpeó residencial denso.
+- Boom 2014-2018: infló comunas en proceso de densificación (Ñuñoa, Maipú, San Miguel).
+
+REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene\`, \`largoPlazo\`, \`riesgos\`), debes glosar el rango con caveat. Después del primer uso puedes citar el número pelado.
+
+Ejemplos válidos (cada uno menciona al menos 1 evento del rango):
+- "Providencia creció 3% anual entre 2014-2024 — el rango incluye estallido y pandemia, que afectan la lectura."
+- "Santiago centro perdió 10% en la década, aunque el dato carga estallido 2019 y vacío post-pandemia."
+- "Ñuñoa promedió 3.2% anual 2014-2024, mezclando boom 2014-2018 y caída posterior."
+
+Ejemplos INVÁLIDOS:
+- "Plusvalía histórica de 3% anual" (sin contexto del rango ni eventos)
+- "Las Condes creció solo 2.7% en la década" (cita rango pero no nombra eventos)
+- "X% anual histórico" (% pelado sin caveat)
+
+PROHIBIDO presentar el % como tendencia limpia o predictor estructural. La frase "histórico no garantiza futuro" no basta — debes nombrar ≥1 evento del rango (estallido / pandemia / boom).
+
+PROHIBIDO INVENTAR: no atribuyas eventos específicos a comunas individuales si no están en este prompt o en datos verificados. Mantente en los 3 eventos genéricos del rango.
+
 ## 13. Schema JSON de output
 
 Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen duplicados (uno con montos en CLP, otro con montos en UF). Campos sin sufijo son únicos.

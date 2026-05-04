@@ -991,8 +991,10 @@ function DrawerLargoPlazo({
   const pctSobreTotal = exit?.porcentajeGananciaSobreTotal
     ?? (totalAportado > 0 ? (gananciaSobreTotal / totalAportado) * 100 : 0);
 
-  const plazoMeses = aniosPlazo * 12;
-  const aporteMensualPromedio = plazoMeses > 0 ? flujoMensualAcum / plazoMeses : 0;
+  // Fase 3.9 v11 — usar flujo año 1 para coherencia cross-section (header /
+  // costo mensual / IA citan el aporte año 1, no el promedio del horizonte).
+  // El total acumulado (flujoMensualAcum) sigue siendo el dato de derecha.
+  const aporteMensualAnio1 = Math.abs(results.metrics?.flujoNetoMensual ?? 0);
 
   // Helpers de formato
   const fmtFull = (v: number) => {
@@ -1475,6 +1477,8 @@ function DrawerLargoPlazo({
           </div>
 
           {/* Fila 2 — Aporte mensual */}
+          {/* Fase 3.9 v11: sub-label muestra flujo año 1 (mismo número que IA + header
+              cita en el resto del análisis). Total acumulado se mantiene en columna der. */}
           <div className="grid items-baseline gap-3" style={{ gridTemplateColumns: "1fr auto" }}>
             <div className="flex flex-col">
               <span
@@ -1482,13 +1486,13 @@ function DrawerLargoPlazo({
                 style={{ fontSize: 13, color: "var(--franco-text)" }}
               >
                 <span>+ Aporte mensual × {aniosPlazo} años</span>
-                <InfoTooltip content="Suma de los aportes mensuales de tu bolsillo durante el horizonte. Asciende con UF por la inflación." />
+                <InfoTooltip content={`Aporte mensual del primer año: ${fmtFull(aporteMensualAnio1)}. Asciende con UF en años siguientes; el total acumulado en ${aniosPlazo} años aparece a la derecha.`} />
               </span>
               <span
                 className="font-heading italic"
                 style={{ fontSize: 11, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
               >
-                ~{fmtPrecio(aporteMensualPromedio)} × {plazoMeses} meses (asciende con UF)
+                {fmtPrecio(aporteMensualAnio1)} mensual hoy · asciende con UF
               </span>
             </div>
             <span

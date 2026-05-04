@@ -1,0 +1,175 @@
+{
+  "caseDef": {
+    "id": "C-LasCondes-flujoApretado",
+    "label": "Flujo apretado (cross-section aporte)",
+    "notes": "UF 6.800 / 55m² / arriendo $850K.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 6800,
+      "valorMercadoFranco": 7500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 850000,
+      "gastos": 150000,
+      "contribuciones": 100000,
+      "provisionMantencion": 80000,
+      "comuna": "Las Condes",
+      "dormitorios": 2,
+      "piso": 7,
+      "lat": -33.415,
+      "lng": -70.58,
+      "nombre": "Caso C — Las Condes"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 100000,
+    "provisionMantencion": 80000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 6800,
+    "valorMercadoFranco": 7500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 850000,
+    "gastos": 150000,
+    "comuna": "Las Condes",
+    "dormitorios": 2,
+    "piso": 7,
+    "lat": -33.415,
+    "lng": -70.58,
+    "nombre": "Caso C — Las Condes"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "score": 45,
+    "flujoNetoMensual": -543487,
+    "plusvaliaAnualizada": 2.7,
+    "comuna": "Las Condes",
+    "aporteMensualFrontend_v11": 543487
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Comprando $28M bajo mercado, pero aportando $91M en 10 años sin que el flujo mejore.",
+    "siendoFrancoHeadline_uf": "Comprando UF 700 bajo mercado, pero aportando UF 2.280 en 10 años sin que el flujo mejore.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Aunque comprarías $28M bajo mercado (ventaja real del 9.3%), el flujo negativo de $543K mensuales nunca mejora. En 10 años habrás aportado $91M de tu bolsillo — más que el precio total del depto. La ganancia solo viene al vender, asumiendo que la plusvalía de Las Condes (2.7% anual histórico entre 2014-2024, incluyendo estallido y pandemia) se mantenga.",
+      "respuestaDirecta_uf": "No conviene. Aunque comprarías UF 700 bajo mercado (ventaja real del 9.3%), el flujo negativo de UF 13,6 mensuales nunca mejora. En 10 años habrás aportado UF 2.280 de tu bolsillo — más que el precio total del depto. La ganancia solo viene al vender, asumiendo que la plusvalía de Las Condes (2.7% anual histórico entre 2014-2024, incluyendo estallido y pandemia) se mantenga.",
+      "veredictoFrase_clp": "Buscar otra propiedad es lo más sensato.",
+      "veredictoFrase_uf": "Buscar otra propiedad es lo más sensato.",
+      "datosClave": [
+        {
+          "label": "Ventaja de compra",
+          "valor_clp": "$28M bajo mercado",
+          "valor_uf": "UF 700 bajo mercado",
+          "subtexto": "9.3% descuento real",
+          "color": "green"
+        },
+        {
+          "label": "Aporte acumulado 10A",
+          "valor_clp": "$91M",
+          "valor_uf": "UF 2.280",
+          "subtexto": "Sin cruce a positivo",
+          "color": "red"
+        },
+        {
+          "label": "TIR proyectada",
+          "valor_clp": "9.2%",
+          "valor_uf": "9.2%",
+          "subtexto": "Depende solo de venta",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "La matemática es brutal: pagas $272M pero aportas otros $91M durante 10 años. En total, $363M por un activo que necesita crecer 4% anual para justificar la inversión. Las Condes históricamente creció 2.7% — el riesgo de que tu capital rinda menos que un depósito UF es real. La ventaja de compra es atractiva, pero no compensa la sangría mensual indefinida.",
+      "reencuadre_uf": "La matemática es brutal: pagas UF 6.800 pero aportas otras UF 2.280 durante 10 años. En total, UF 9.080 por un activo que necesita crecer 4% anual para justificar la inversión. Las Condes históricamente creció 2.7% — el riesgo de que tu capital rinda menos que un depósito UF es real. La ventaja de compra es atractiva, pero no compensa la sangría mensual indefinida.",
+      "cajaAccionable_clp": "¿Puedes sostener $543K mensuales indefinidamente sin que el arriendo cubra jamás el dividendo?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 13,6 mensuales indefinidamente sin que el arriendo cubra jamás el dividendo?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $543K cada mes de tu bolsillo. El arriendo de $850K no alcanza para cubrir el dividendo de $1.161K — te faltan $311K solo ahí, antes de gastos. Los $232K de gastos comunes, contribuciones y mantención terminan de hundir el flujo. Esta brecha nunca se cierra en la proyección.",
+      "contenido_uf": "Aportas UF 13,6 cada mes de tu bolsillo. El arriendo de UF 21,2 no alcanza para cubrir el dividendo de UF 29 — te faltan UF 7,8 solo ahí, antes de gastos. Los UF 5,8 de gastos comunes, contribuciones y mantención terminan de hundir el flujo. Esta brecha nunca se cierra en la proyección.",
+      "cajaAccionable_clp": "¿Tu flujo personal puede absorber $543K mensuales por tiempo indefinido?",
+      "cajaAccionable_uf": "¿Tu flujo personal puede absorber UF 13,6 mensuales por tiempo indefinido?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Comprando $28M bajo mercado ya tienes ventaja real. Pero la matemática mensual pide aire desesperadamente. Bajar a UF 4.613 mejora el flujo pero sigue siendo negativo — reduces el aporte de $543K a $350K mensuales. El vendedor puede rechazar: está vendiendo 32% bajo su precio actual.",
+      "contenido_uf": "Comprando UF 700 bajo mercado ya tienes ventaja real. Pero la matemática mensual pide aire desesperadamente. Bajar a UF 4.613 mejora el flujo pero sigue siendo negativo — reduces el aporte de UF 13,6 a UF 8,7 mensuales. El vendedor puede rechazar: está vendiendo 32% bajo su precio actual.",
+      "estrategiaSugerida_clp": "Parte en UF 4.382 con margen para subir a UF 4.613. Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.",
+      "estrategiaSugerida_uf": "Parte en UF 4.382 con margen para subir a UF 4.613. Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.",
+      "cajaAccionable_clp": "Ofrece UF 4.382. Tu techo es UF 4.613. Sobre ese precio, busca otra propiedad.",
+      "cajaAccionable_uf": "Ofrece UF 4.382. Tu techo es UF 4.613. Sobre ese precio, busca otra propiedad.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.613",
+      "precios": {
+        "glosaPrimeraOferta_clp": "Abre la conversación con margen sustancial para subir sin perder viabilidad económica.",
+        "glosaPrimeraOferta_uf": "Abre la conversación con margen sustancial para subir sin perder viabilidad económica.",
+        "glosaTecho_clp": "Es el último precio donde el aporte mensual baja a $350K y mantiene algo de viabilidad.",
+        "glosaTecho_uf": "Es el último precio donde el aporte mensual baja a UF 8,7 y mantiene algo de viabilidad.",
+        "glosaWalkAway_clp": "Aunque bajen el precio, los riesgos estructurales del flujo negativo indefinido invalidan la inversión.",
+        "glosaWalkAway_uf": "Aunque bajen el precio, los riesgos estructurales del flujo negativo indefinido invalidan la inversión."
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Tu inversión total (precio + aportes) sería $363M para recuperar $280M netos al vender. TIR 9.2% vs depósito UF 5% parece atractivo, pero ignora el esfuerzo: 120 cuotas mensuales de $543K sin descanso. Un depósito UF con $60M iniciales te daría $97M sin tocar tu flujo mensual. La diferencia no justifica el esfuerzo y la iliquidez de 10 años.",
+      "contenido_uf": "Tu inversión total (precio + aportes) sería UF 9.080 para recuperar UF 6.980 netos al vender. TIR 9.2% vs depósito UF 5% parece atractivo, pero ignora el esfuerzo: 120 cuotas mensuales de UF 13,6 sin descanso. Un depósito UF con UF 1.500 iniciales te daría UF 2.440 sin tocar tu flujo mensual. La diferencia no justifica el esfuerzo y la iliquidez de 10 años.",
+      "cajaAccionable_clp": "¿Vale comprometer $543K mensuales durante 10 años para ganar $182M más que un depósito UF?",
+      "cajaAccionable_uf": "¿Vale comprometer UF 13,6 mensuales durante 10 años para ganar UF 4.540 más que un depósito UF?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 3 meses te cuesta $2.5M extra. Sin arriendo, tu aporte salta a $1.393K mensuales — insostenible para la mayoría de bolsillos.\n\nPlusvalía de Las Condes bajo expectativas. La comuna creció 2.7% anual histórico 2014-2024 mezclando boom y caída post-estallido. Necesitas 4% anual para justificar la inversión — el margen de error es estrecho.\n\nSubida de tasas castiga el dividendo. 1 punto adicional sube el dividendo a $1.285K, empeorando el flujo negativo en $124K mensuales.",
+      "contenido_uf": "Vacancia de 3 meses te cuesta UF 64 extra. Sin arriendo, tu aporte salta a UF 34,8 mensuales — insostenible para la mayoría de bolsillos.\n\nPlusvalía de Las Condes bajo expectativas. La comuna creció 2.7% anual histórico 2014-2024 mezclando boom y caída post-estallido. Necesitas 4% anual para justificar la inversión — el margen de error es estrecho.\n\nSubida de tasas castiga el dividendo. 1 punto adicional sube el dividendo a UF 32,1, empeorando el flujo negativo en UF 3,1 mensuales.",
+      "cajaAccionable_clp": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión.",
+      "cajaAccionable_uf": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "diagnostico": {
+    "primerUsoCampo": "conviene_respuesta",
+    "primerUsoTextoSnippet": "No conviene. Aunque comprarías $28M bajo mercado (ventaja real del 9.3%), el flujo negativo de $543K mensuales nunca mejora. En 10 años habrás aportado $91M de tu bolsillo — más que el precio total del depto. La ganancia solo viene al vender, asumiendo que la plusvalía de Las Condes (2.7% anual hist",
+    "caveatPrimerUso": {
+      "mencionesPlusvalia": 1,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "caveatGlobal": {
+      "mencionesPlusvalia": 2,
+      "rangoTemporalCitado": true,
+      "estallido": true,
+      "pandemia": true,
+      "boom": false,
+      "almenosUnEvento": true
+    },
+    "aporteMensualFrontendV11": 543487,
+    "flujoMotorAnio1": 543487,
+    "diff_motor_vs_frontend_pct": 0
+  }
+}
