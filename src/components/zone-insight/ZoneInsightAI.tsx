@@ -11,6 +11,7 @@ interface Props {
 export function ZoneInsightAI({ insight, currency }: Props) {
   const headline = currency === "CLP" ? insight.headline_clp : insight.headline_uf;
   const narrative = currency === "CLP" ? insight.narrative_clp : insight.narrative_uf;
+  const accion = (insight.accion || "").trim();
   // P1 Fase 23 — IA vacía: dot pattern con disclaimer en vez de null silencioso.
   if (!headline && !narrative) {
     return (
@@ -66,6 +67,41 @@ export function ZoneInsightAI({ insight, currency }: Props) {
         >
           {narrative}
         </p>
+      )}
+      {/* Fase 6 — bloque acción concreta. Vive dentro del mismo container del
+          AI Insight (no card aparte). Si accion está vacío (ej. cache v1
+          pre-Fase 5), el bloque no se renderiza ni el separador. */}
+      {accion && (
+        <div
+          style={{
+            marginTop: 18,
+            paddingTop: 14,
+            borderTop: "0.5px solid color-mix(in srgb, var(--franco-text) 12%, transparent)",
+          }}
+        >
+          <p
+            className="font-mono uppercase m-0"
+            style={{
+              fontSize: 11,
+              fontWeight: 500,
+              letterSpacing: "0.06em",
+              color: "color-mix(in srgb, var(--franco-text) 70%, transparent)",
+              marginBottom: 6,
+            }}
+          >
+            Acción concreta
+          </p>
+          <p
+            className="font-body m-0"
+            style={{
+              fontSize: 14,
+              lineHeight: 1.55,
+              color: "var(--franco-text)",
+            }}
+          >
+            {accion}
+          </p>
+        </div>
       )}
     </div>
   );

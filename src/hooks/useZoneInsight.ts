@@ -41,6 +41,8 @@ export interface ZoneInsightData {
     preview_uf: string;
     narrative_clp: string;
     narrative_uf: string;
+    // Fase 5 backend: persistido en cache. Caches v1 lo reciben backfilled como "".
+    accion?: string;
   };
   valorUF?: number;
 }
