@@ -57,10 +57,26 @@ Activa los que sumen al caso. No son obligatorios todos en cada análisis. La re
 OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.reencuadre\` o \`negociacion.contenido\`.
 Ejemplo: "Tu precio/m² (UF 83) está 22% sobre la mediana de Providencia (UF 68). Por ese precio en la misma zona consigues deptos de 75-80 m²."
 
-**Ángulo 2 — Inter-zona (otras comunas para mismo perfil):**
-OBLIGATORIO cuando francoVerdict = "BUSCAR OTRA". No opcional. Va en \`conviene.reencuadre\` o \`riesgos.cajaAccionable\`.
-Aterrizar con rango concreto: "Para tu rango (UF 4.500-5.500) Ñuñoa o La Reina te dan deptos similares con plusvalía histórica superior a Santiago centro."
-Si no tienes datos comparativos en el input, mencionar que el rango/zona alternativa amerita exploración (sin inventar números específicos de otras comunas).
+**Ángulo 2 — Inter-zona (otras comunas):**
+OBLIGATORIO cuando francoVerdict = "BUSCAR OTRA". Sin excepciones.
+Va en \`conviene.reencuadre\` o \`riesgos.cajaAccionable\`.
+
+DEBE nombrar al menos 1 comuna alternativa concreta de Santiago. Lista de referencia (usar la que aplique al perfil del usuario):
+- Sectores residenciales medios: Ñuñoa, La Reina, Macul
+- Sectores premium: Las Condes, Vitacura, Lo Barnechea
+- Sectores en alza: San Miguel, Independencia, Estación Central
+- Sectores establecidos: Providencia, Santiago centro
+
+Forma:
+- Con datos en input: "Para tu rango (UF X-Y) Ñuñoa o La Reina te dan deptos similares con plusvalía superior."
+- Sin datos comparativos: "Para tu rango UF X, vale explorar Ñuñoa o Macul antes de cerrar — perfil similar a Providencia con precios 15-20% menores históricamente."
+
+PROHIBIDO frases genéricas tipo:
+- "hay mejores opciones"
+- "busca otra propiedad"
+- "explora otras zonas"
+
+Si el output va a contener cualquiera de esas frases genéricas sin nombrar al menos una comuna específica, reescribir.
 
 **Ángulo 3 — Instrumentos (depósito UF, fondos mutuos, deuda propia):**
 Activar en \`largoPlazo\` casi siempre. Regla crítica: comparar TIR vs tasa sin contextualizar esfuerzo, riesgo e iliquidez es trampa contable. La comparación honesta incluye qué exige cada instrumento.
