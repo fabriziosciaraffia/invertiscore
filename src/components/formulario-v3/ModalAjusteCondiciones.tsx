@@ -397,7 +397,7 @@ function TabArriendo({
               Vacancia (%)
             </span>
             <InfoTooltip
-                content="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
+              content="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta mes a mes del arriendo proyectado para reflejar flujo realista."
             />
           </span>
           <input
@@ -414,7 +414,7 @@ function TabArriendo({
               Gestión del arriendo (%)
             </span>
             <InfoTooltip
-                content="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
+              content="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Se descuenta mes a mes del arriendo bruto. Default 0% asume autogestión. Típico mercado: 7-10% si delega."
             />
           </span>
           <input

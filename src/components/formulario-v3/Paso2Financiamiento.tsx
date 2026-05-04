@@ -367,7 +367,7 @@ export function Paso2Financiamiento({
                 Pie
               </label>
               <InfoTooltip
-                    content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
+                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito hipotecario. Pago al contado para unidades usadas, en cuotas para unidades nuevas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -378,7 +378,7 @@ export function Paso2Financiamiento({
             type="range"
             min={10}
             max={50}
-            step={5}
+            step={1}
             value={piePct}
             onChange={(e) => trackEdit("piePct", e.target.value)}
             className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
@@ -400,7 +400,7 @@ export function Paso2Financiamiento({
                 Pie
               </label>
               <InfoTooltip
-                    content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
+                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito hipotecario. Pago al contado para unidades usadas, en cuotas para unidades nuevas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -447,7 +447,7 @@ export function Paso2Financiamiento({
               type="range"
               min={10}
               max={50}
-              step={5}
+              step={1}
               value={piePct}
               onChange={(e) => trackEdit("piePct", e.target.value)}
               className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
@@ -589,12 +589,17 @@ export function Paso2Financiamiento({
 
             <div className="grid grid-cols-2 gap-3">
               {/* Plazo slider — patrón idéntico al slider Pie Usado (auditoría C.1)
-                  + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 5). */}
+                  + ModalAjusteCondiciones · TabFinanciamiento (range 10-30 step 1). */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
-                    Plazo
-                  </label>
+                  <span className="flex items-center gap-1.5">
+                    <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
+                      Plazo
+                    </label>
+                    <InfoTooltip
+                      content="Plazo del crédito hipotecario en años. A mayor plazo, menor dividendo mensual pero mayor costo total en intereses."
+                    />
+                  </span>
                   <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">
                     {plazo} años
                   </span>
@@ -603,7 +608,7 @@ export function Paso2Financiamiento({
                   type="range"
                   min={10}
                   max={30}
-                  step={5}
+                  step={1}
                   value={plazo}
                   onChange={(e) => trackEdit("plazoCredito", e.target.value)}
                   className="w-full h-1.5 bg-[var(--franco-border)] rounded-full accent-[var(--franco-text)] cursor-pointer"
@@ -621,9 +626,14 @@ export function Paso2Financiamiento({
                   (text decimal regex /^\d*[.,]?\d*$/). Sufijo % inline mismo
                   pattern que Superficie m² (Paso 1). */}
               <div>
-                <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)] block mb-1.5">
-                  Tasa
-                </label>
+                <span className="flex items-center gap-1.5 mb-1.5">
+                  <label className="font-body text-[11px] font-medium text-[var(--franco-text-secondary)]">
+                    Tasa
+                  </label>
+                  <InfoTooltip
+                    content="Tasa anual del crédito hipotecario. Default refleja la tasa promedio de mercado actual. Ajusta si tienes una pre-aprobación con tasa distinta."
+                  />
+                </span>
                 <div className="relative">
                   <input
                     type="text"

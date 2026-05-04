@@ -112,25 +112,25 @@ export function ResumenCard({
         <Cell
           label="Plazo"
           value={`${plazo} años`}
-          tooltip="Plazo del crédito hipotecario en años."
+          tooltip="Plazo del crédito hipotecario en años. Editable en Ajustar."
           edited={isEdited("plazoCredito")}
         />
         <Cell
           label="Tasa"
           value={`${tasa}%`}
-          tooltip="Tasa anual del crédito hipotecario."
+          tooltip="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas al Subsidio a la Tasa (Ley 21.748), puede bajar ~0,6 puntos. Editable en Ajustar."
           edited={isEdited("tasaInteres")}
         />
         <Cell
           label="Dividendo"
           value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
-          tooltip="Cuota mensual del crédito hipotecario. Calculada con precio, pie, plazo y tasa."
+          tooltip="Cuota mensual del crédito hipotecario. Calculada con precio, pie, plazo y tasa. Editable en Ajustar."
         />
         <div>
           <Cell
             label="Arriendo estimado"
             value={arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
-            tooltip="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Editable en Ajustar."
+            tooltip="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta. Editable en Ajustar."
             edited={isEdited("arriendo")}
           />
           {sampleSize > 0 && (
@@ -144,25 +144,25 @@ export function ResumenCard({
         <Cell
           label="Vacancia"
           value={`${state.vacanciaPct}%`}
-          tooltip="% del año estimado sin arrendatario."
+          tooltip="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta mes a mes del arriendo proyectado para reflejar flujo realista. Editable en Ajustar."
           edited={isEdited("vacanciaPct")}
         />
         <Cell
           label="Gestión arriendo"
           value={`${state.adminPct}%`}
-          tooltip="Comisión del corredor que gestiona el arriendo. 0% si autogestionas."
+          tooltip="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Se descuenta mes a mes del arriendo bruto. Default 0% asume autogestión. Típico mercado: 7-10% si delega. Editable en Ajustar."
           edited={isEdited("adminPct")}
         />
         <Cell
           label="Gastos comunes"
           value={gastos > 0 ? `${fmtCLP(gastos)}/mes` : "—"}
-          tooltip="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Editable en Ajustar."
+          tooltip="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Edita si conoces el valor real. Editable en Ajustar."
           edited={isEdited("gastos")}
         />
         <Cell
           label="Contribuciones"
           value={contribuciones > 0 ? `${fmtCLP(contribuciones)}/trim` : "—"}
-          tooltip="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente."
+          tooltip="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente. Editable en Ajustar."
           edited={isEdited("contribuciones")}
         />
       </div>
