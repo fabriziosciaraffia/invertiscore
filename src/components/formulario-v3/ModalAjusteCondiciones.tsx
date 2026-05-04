@@ -67,17 +67,33 @@ export function ModalAjusteCondiciones({
   };
   ufCLP: number;
 }) {
+  // Cantidades en Paso 1 — necesarias para prefill de arriendos extras.
+  const nEstac = Number(state.estacionamientos) || 0;
+  const nBodega = Number(state.bodegas) || 0;
+
   // Snapshot de inicio para detectar cambios dentro del modal.
   // Tanto `startSnapshot` como `local` se re-capturan en cada `open=true`,
   // garantizando que ediciones canceladas no se arrastren a la próxima apertura.
+  //
+  // Prefill estac/bodega: si la propiedad tiene la unidad pero el state viene
+  // vacío, sembramos defaults de mercado (40k/estac, 15k/bodega) en el snapshot.
+  // Snapshot y local arrancan con el mismo prefill → no se marca como editado
+  // si el user lo acepta sin tocar. Si guarda, el prefill persiste al wizard.
+  // Si edita o pone 0, su intención prevalece.
   const baselineSnapshot = {
     plazoCredito: state.plazoCredito,
     tasaInteres: state.tasaInteres,
     arriendo: state.arriendo,
     vacanciaPct: state.vacanciaPct,
     adminPct: state.adminPct,
-    arriendoEstac: state.arriendoEstac,
-    arriendoBodega: state.arriendoBodega,
+    arriendoEstac:
+      !state.arriendoEstac && nEstac > 0
+        ? String(40000 * nEstac)
+        : state.arriendoEstac,
+    arriendoBodega:
+      !state.arriendoBodega && nBodega > 0
+        ? String(15000 * nBodega)
+        : state.arriendoBodega,
     gastos: state.gastos,
     contribuciones: state.contribuciones,
   };
@@ -448,13 +464,25 @@ function TabArriendo({
         </label>
       )}
 
-      {/* Bloque 2 — Total mensual (solo si la propiedad tiene extras) */}
+      {/* Bloque 2 — Total mensual (solo si la propiedad tiene extras).
+          Patrón 3 caja resultado conclusiva (variante Ink — informativo, no
+          crítico): border-left Ink primario 3px + wash Ink 3% + esquinas izq
+          cuadradas. Estructura tipográfica: label + KPI prominente + breakdown. */}
       {hasExtras && (
-        <div className="border-t border-[var(--franco-border)] pt-3">
+        <div
+          className="mt-2 p-3 rounded-r-lg"
+          style={{
+            borderLeft: "3px solid var(--franco-text)",
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+          }}
+        >
           <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-1">
-            Total mensual · {fmtCLP(totalArriendo)}
+            Total mensual
           </p>
-          <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0">
+          <p className="font-mono text-[18px] font-bold text-[var(--franco-text)] m-0 mb-1.5 leading-tight">
+            {fmtCLP(totalArriendo)}
+          </p>
+          <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0 leading-snug">
             {breakdownParts.join(" + ")}
           </p>
         </div>
