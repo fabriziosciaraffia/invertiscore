@@ -148,7 +148,7 @@ export function ResumenCard({
           edited={isEdited("vacanciaPct")}
         />
         <Cell
-          label="Gestión del arriendo"
+          label="Gestión arriendo"
           value={`${state.adminPct}%`}
           tooltip="Comisión del corredor que gestiona el arriendo. 0% si autogestionas."
           edited={isEdited("adminPct")}
