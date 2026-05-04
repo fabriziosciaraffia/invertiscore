@@ -105,15 +105,21 @@ export function ResumenCard({
         </button>
       </div>
 
-      {/* Grid de valores: 3 cols desktop, 2 cols mobile. 6 celdas, 2 filas balanceadas.
-          Orden por fila — fila 1: Plazo·Tasa, Dividendo, Arriendo (+leyenda).
-          Fila 2: Vacancia·Admin, Gastos comunes, Contribuciones. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+      {/* Grid de valores: 4 cols desktop, 2 cols mobile. 8 celdas, 2 filas.
+          Fila 1: Plazo, Tasa, Dividendo, Arriendo estimado (+leyenda).
+          Fila 2: Vacancia, Gestión del arriendo, Gastos comunes, Contribuciones. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
         <Cell
-          label="Plazo · Tasa"
-          value={`${plazo} años · ${tasa}%`}
-          tooltip="Plazo: años de duración del crédito. Tasa: tasa anual de interés. Ambos editables en Ajustar."
-          edited={isEdited("plazoCredito") || isEdited("tasaInteres")}
+          label="Plazo"
+          value={`${plazo} años`}
+          tooltip="Plazo del crédito hipotecario en años."
+          edited={isEdited("plazoCredito")}
+        />
+        <Cell
+          label="Tasa"
+          value={`${tasa}%`}
+          tooltip="Tasa anual del crédito hipotecario."
+          edited={isEdited("tasaInteres")}
         />
         <Cell
           label="Dividendo"
@@ -136,19 +142,16 @@ export function ResumenCard({
           )}
         </div>
         <Cell
-          label={
-            <>
-              <span className="inline-flex items-center gap-1">
-                Vacancia <InfoTooltip content="% del año sin arrendatario." />
-              </span>
-              {" · "}
-              <span className="inline-flex items-center gap-1">
-                Gestión <InfoTooltip content="% del arriendo al corredor que gestiona la propiedad." />
-              </span>
-            </>
-          }
-          value={`${state.vacanciaPct}% · ${state.adminPct}%`}
-          edited={isEdited("vacanciaPct") || isEdited("adminPct")}
+          label="Vacancia"
+          value={`${state.vacanciaPct}%`}
+          tooltip="% del año estimado sin arrendatario."
+          edited={isEdited("vacanciaPct")}
+        />
+        <Cell
+          label="Gestión del arriendo"
+          value={`${state.adminPct}%`}
+          tooltip="Comisión del corredor que gestiona el arriendo. 0% si autogestionas."
+          edited={isEdited("adminPct")}
         />
         <Cell
           label="Gastos comunes"
