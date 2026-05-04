@@ -19,75 +19,93 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
+
+  // Reposicionamiento dinámico: rAF loop mientras el bubble está montado.
+  // Captura cambios de scroll, resize y animaciones CSS (transform/translate)
+  // del wizard que no disparan eventos DOM. Comparación de rect-key evita
+  // setState innecesarios cuando nada cambió.
   useEffect(() => {
     if (!triggerRef.current || !bubbleRef.current) return;
 
-    const trigger = triggerRef.current.getBoundingClientRect();
-    const bubble = bubbleRef.current;
-    const bw = bubble.offsetWidth;
-    const bh = bubble.offsetHeight;
-    const margin = 12;
-    const gap = 8;
-    const vw = window.innerWidth;
+    let rafId = 0;
+    let lastKey = "";
 
-    // Try top-center first
-    let top = trigger.top - bh - gap;
-    let left = trigger.left + trigger.width / 2 - bw / 2;
-
-    // Clamp horizontal so it stays on screen
-    if (left < margin) left = margin;
-    if (left + bw > vw - margin) left = vw - margin - bw;
-
-    // Arrow points down to trigger
-    let side: "bottom" | "left" | "right" = "bottom";
-    const arrowLeft = trigger.left + trigger.width / 2 - left;
-
-    // If no room above, try right
-    if (top < margin) {
-      top = trigger.top + trigger.height / 2 - bh / 2;
-      left = trigger.right + gap;
-      side = "left";
-
-      // If no room right either, go left of trigger
-      if (left + bw > vw - margin) {
-        left = trigger.left - bw - gap;
-        side = "right";
+    const compute = () => {
+      const triggerEl = triggerRef.current;
+      const bubble = bubbleRef.current;
+      if (!triggerEl || !bubble) {
+        rafId = requestAnimationFrame(compute);
+        return;
       }
-    }
 
-    if (side === "bottom") {
-      // Arrow at bottom center, pointing down toward trigger
-      const clampedArrowLeft = Math.max(8, Math.min(arrowLeft, bw - 8));
-      setArrowStyle({
-        position: "absolute",
-        bottom: -4,
-        left: clampedArrowLeft,
-        transform: "translateX(-50%) rotate(45deg)",
-      });
-    } else if (side === "left") {
-      // Arrow on left side pointing left toward trigger
-      setArrowStyle({
-        position: "absolute",
-        left: -4,
-        top: "50%",
-        transform: "translateY(-50%) rotate(45deg)",
-      });
-    } else {
-      // Arrow on right side pointing right toward trigger
-      setArrowStyle({
-        position: "absolute",
-        right: -4,
-        top: "50%",
-        transform: "translateY(-50%) rotate(45deg)",
-      });
-    }
+      const trigger = triggerEl.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const bw = bubble.offsetWidth;
+      const bh = bubble.offsetHeight;
+      const key = `${trigger.top}|${trigger.left}|${trigger.width}|${trigger.height}|${bw}|${bh}|${vw}`;
 
-    setStyle({
-      position: "fixed",
-      top,
-      left,
-      opacity: 1,
-    });
+      if (key !== lastKey) {
+        lastKey = key;
+        const margin = 12;
+        const gap = 8;
+
+        // Try top-center first
+        let top = trigger.top - bh - gap;
+        let left = trigger.left + trigger.width / 2 - bw / 2;
+
+        // Clamp horizontal so it stays on screen
+        if (left < margin) left = margin;
+        if (left + bw > vw - margin) left = vw - margin - bw;
+
+        // Arrow points down to trigger
+        let side: "bottom" | "left" | "right" = "bottom";
+        const arrowLeft = trigger.left + trigger.width / 2 - left;
+
+        // If no room above, try right
+        if (top < margin) {
+          top = trigger.top + trigger.height / 2 - bh / 2;
+          left = trigger.right + gap;
+          side = "left";
+
+          // If no room right either, go left of trigger
+          if (left + bw > vw - margin) {
+            left = trigger.left - bw - gap;
+            side = "right";
+          }
+        }
+
+        if (side === "bottom") {
+          const clampedArrowLeft = Math.max(8, Math.min(arrowLeft, bw - 8));
+          setArrowStyle({
+            position: "absolute",
+            bottom: -4,
+            left: clampedArrowLeft,
+            transform: "translateX(-50%) rotate(45deg)",
+          });
+        } else if (side === "left") {
+          setArrowStyle({
+            position: "absolute",
+            left: -4,
+            top: "50%",
+            transform: "translateY(-50%) rotate(45deg)",
+          });
+        } else {
+          setArrowStyle({
+            position: "absolute",
+            right: -4,
+            top: "50%",
+            transform: "translateY(-50%) rotate(45deg)",
+          });
+        }
+
+        setStyle({ position: "fixed", top, left, opacity: 1 });
+      }
+
+      rafId = requestAnimationFrame(compute);
+    };
+
+    rafId = requestAnimationFrame(compute);
+    return () => cancelAnimationFrame(rafId);
   }, [triggerRef]);
 
   // Close on outside click/touch + ESC
@@ -129,16 +147,34 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
 interface InfoTooltipProps {
   content: string;
   /**
-   * Trigger mode: "hover" (default — abre con hover y click, mantiene
-   * comportamiento legacy) o "click" (solo click, mejor en mobile).
+   * Trigger mode:
+   * - "auto" (default): hover+click en dispositivos hover-capable, solo click
+   *   en touch. Detecta vía matchMedia("(hover: hover) and (pointer: fine)").
+   * - "click": solo click, en cualquier dispositivo.
+   * - "hover": fuerza hover+click incluso en touch (legacy, evita usar — provoca
+   *   parpadeo en iOS porque mouseenter sintetizado dispara antes que click).
    */
-  trigger?: "hover" | "click";
+  trigger?: "auto" | "hover" | "click";
 }
 
-export function InfoTooltip({ content, trigger = "hover" }: InfoTooltipProps) {
+export function InfoTooltip({ content, trigger = "auto" }: InfoTooltipProps) {
   const [open, setOpen] = useState(false);
+  const [hoverCapable, setHoverCapable] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const id = useId();
+
+  // Auto-detect hover capability. Initial false evita registrar handlers
+  // de hover en touch durante el primer render (donde mouseenter sintetizado
+  // de iOS dispararía el bug). En desktop, el effect corre tras el paint y
+  // hover empieza a funcionar; gap es de unos ms.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    setHoverCapable(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setHoverCapable(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // Singleton: cuando este abre, cerrar todos los demas. Cuando recibe el
   // evento abierto por otro, este se cierra.
@@ -171,14 +207,14 @@ export function InfoTooltip({ content, trigger = "hover" }: InfoTooltipProps) {
     }
   }
 
-  // Hover handlers: solo en mode "hover" (default). En "click" se ignoran.
-  const hoverHandlers =
-    trigger === "hover"
-      ? {
-          onMouseEnter: handleOpen,
-          onMouseLeave: () => setOpen(false),
-        }
-      : {};
+  const useHover = trigger === "hover" || (trigger === "auto" && hoverCapable);
+
+  const hoverHandlers = useHover
+    ? {
+        onMouseEnter: handleOpen,
+        onMouseLeave: () => setOpen(false),
+      }
+    : {};
 
   return (
     <span className="inline-flex">

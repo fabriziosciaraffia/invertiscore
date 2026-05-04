@@ -180,7 +180,7 @@ function Cell({
     <div>
       <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
         <span>{label}</span>
-        {tooltip && <InfoTooltip trigger="click" content={tooltip} />}
+        {tooltip && <InfoTooltip content={tooltip} />}
       </p>
       <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
         {value}

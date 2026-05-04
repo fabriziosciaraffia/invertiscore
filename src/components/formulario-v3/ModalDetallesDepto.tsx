@@ -130,7 +130,6 @@ export function ModalDetallesDepto({
                 Antigüedad
               </span>
               <InfoTooltip
-                trigger="click"
                 content="Afecta la proyección de plusvalía. Deptos sobre 30 años suelen apreciarse menos que nuevos en la misma zona."
               />
             </span>

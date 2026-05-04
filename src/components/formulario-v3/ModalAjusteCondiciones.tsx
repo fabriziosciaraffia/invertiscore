@@ -325,7 +325,6 @@ function TabFinanciamiento({
             Tasa de interés anual (%)
           </span>
           <InfoTooltip
-            trigger="click"
             content="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas al Subsidio a la Tasa (Ley 21.748), puede bajar ~0,6 puntos."
           />
         </span>
@@ -379,7 +378,6 @@ function TabArriendo({
             Arriendo mensual ($)
           </span>
           <InfoTooltip
-            trigger="click"
             content="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta."
           />
         </span>
@@ -399,8 +397,7 @@ function TabArriendo({
               Vacancia (%)
             </span>
             <InfoTooltip
-              trigger="click"
-              content="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
+                content="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta del ingreso de arriendo proyectado para reflejar flujo realista."
             />
           </span>
           <input
@@ -417,8 +414,7 @@ function TabArriendo({
               Gestión del arriendo (%)
             </span>
             <InfoTooltip
-              trigger="click"
-              content="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
+                content="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Default 0% asume autogestión. Típico mercado: 7-10% si delega."
             />
           </span>
           <input
@@ -437,8 +433,7 @@ function TabArriendo({
               Arriendo estacionamiento ($/mes)
             </span>
             <InfoTooltip
-              trigger="click"
-              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia de un arriendo real cercano."
+                content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia de un arriendo real cercano."
             />
           </span>
           <MoneyInput
@@ -456,8 +451,7 @@ function TabArriendo({
               Arriendo bodega ($/mes)
             </span>
             <InfoTooltip
-              trigger="click"
-              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia distinta."
+                content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia distinta."
             />
           </span>
           <MoneyInput
@@ -495,7 +489,6 @@ function TabGastos({
             Gastos comunes ($/mes)
           </span>
           <InfoTooltip
-            trigger="click"
             content="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Edita si conoces el valor real."
           />
         </span>
@@ -517,7 +510,6 @@ function TabGastos({
             Contribuciones (trimestral, $)
           </span>
           <InfoTooltip
-            trigger="click"
             content="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente."
           />
         </span>

@@ -102,7 +102,6 @@ export function Paso1Propiedad({
               Ubicación en el mapa
             </label>
             <InfoTooltip
-              trigger="click"
               content="La ubicación afecta el cálculo de comparables, cercanía a metro y servicios cercanos."
             />
           </div>
@@ -124,7 +123,6 @@ export function Paso1Propiedad({
               Tipo
             </label>
             <InfoTooltip
-              trigger="click"
               content="Nuevo: en venta directa por inmobiliaria. Usado: vendido por particular o corredor."
             />
           </div>
@@ -160,7 +158,6 @@ export function Paso1Propiedad({
               Superficie útil
             </label>
             <InfoTooltip
-              trigger="click"
               content="Superficie del depto en m², según el aviso o plano."
             />
           </div>

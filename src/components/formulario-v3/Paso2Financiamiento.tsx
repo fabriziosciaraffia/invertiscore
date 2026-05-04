@@ -149,7 +149,6 @@ export function Paso2Financiamiento({
             Precio de compra
           </label>
           <InfoTooltip
-            trigger="click"
             content="Ingresa el precio de venta del departamento en UF. La conversión a CLP se calcula automáticamente."
           />
         </div>
@@ -271,8 +270,7 @@ export function Paso2Financiamiento({
               Estado del proyecto
             </label>
             <InfoTooltip
-              trigger="click"
-              content="Inmediata: proyecto terminado, entrega inmediata. Futura: compra antes de entrega (en verde o en blanco), pagas cuotas hasta la entrega."
+                content="Inmediata: proyecto terminado, entrega inmediata. Futura: compra antes de entrega (en verde o en blanco), pagas cuotas hasta la entrega."
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -369,8 +367,7 @@ export function Paso2Financiamiento({
                 Pie
               </label>
               <InfoTooltip
-                trigger="click"
-                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
+                    content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -403,8 +400,7 @@ export function Paso2Financiamiento({
                 Pie
               </label>
               <InfoTooltip
-                trigger="click"
-                content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
+                    content="Porcentaje del precio de venta que pagas con recursos propios, sin crédito. Puede ser al contado o pactado en cuotas."
               />
             </div>
             <span className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
@@ -475,8 +471,7 @@ export function Paso2Financiamiento({
                     Cuotas del pie
                   </label>
                   <InfoTooltip
-                    trigger="click"
-                    content="Número de cuotas en que pagarás el pie."
+                            content="Número de cuotas en que pagarás el pie."
                   />
                 </span>
                 <input
@@ -501,8 +496,7 @@ export function Paso2Financiamiento({
                     Cuota mensual (UF)
                   </label>
                   <InfoTooltip
-                    trigger="click"
-                    content="Se calcula automáticamente según el monto del pie y el número de cuotas."
+                            content="Se calcula automáticamente según el monto del pie y el número de cuotas."
                   />
                 </span>
                 <div className="flex items-center px-3 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-[var(--franco-text-secondary)] h-10">
