@@ -150,7 +150,7 @@ export function ModalDetallesDepto({
 
       <div className="mt-5">
         <StateBox variant="left-border" state="info">
-          Los arriendos sugeridos (depto, estacionamiento y bodega) los verás en el paso 3, calculados según tu zona. Podrás ajustarlos si tienes información distinta.
+          Los precios de arriendo sugeridos (depto, estacionamiento y bodega) los verás en el paso 3, calculados según tu zona. Podrás ajustarlos si tienes información distinta.
         </StateBox>
       </div>
     </Modal>
