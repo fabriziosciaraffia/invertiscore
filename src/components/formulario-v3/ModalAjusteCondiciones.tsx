@@ -370,8 +370,21 @@ function TabArriendo({
   const arriendoTier = arriendoReady
     ? calcTier(parseDecimalLocale(local.arriendo), suggestion ?? 0)
     : null;
+
+  // Total = depto + estac + bodega. Refleja lo que el motor calcula como
+  // ingresoMensual (analysis.ts:calcIngresoMensual). Valores vacíos = 0.
+  const arriendoNum = Number(local.arriendo) || 0;
+  const estacNum = Number(local.arriendoEstac) || 0;
+  const bodegaNum = Number(local.arriendoBodega) || 0;
+  const totalArriendo = arriendoNum + estacNum + bodegaNum;
+  const hasExtras = nEstac > 0 || nBodega > 0;
+  const breakdownParts: string[] = [`Depto ${fmtCLP(arriendoNum)}`];
+  if (nEstac > 0) breakdownParts.push(`estacionamiento ${fmtCLP(estacNum)}`);
+  if (nBodega > 0) breakdownParts.push(`bodega ${fmtCLP(bodegaNum)}`);
+
   return (
     <div className="flex flex-col gap-4">
+      {/* Bloque 1 — Arriendo mensual + extras (estac/bodega) juntos */}
       <label className="block">
         <span className="flex items-center gap-1.5 mb-1.5">
           <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
@@ -390,6 +403,62 @@ function TabArriendo({
         <Suggest sugerido={suggestion} sampleSize={sampleSize} />
         <ArriendoAlert tier={arriendoTier} />
       </label>
+      {nEstac > 0 && (
+        <label className="block">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Arriendo estacionamiento ($/mes)
+            </span>
+            <InfoTooltip
+              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia de un arriendo real cercano."
+            />
+          </span>
+          <MoneyInput
+            className={inputBase}
+            placeholder={(40000 * nEstac).toLocaleString("es-CL")}
+            value={local.arriendoEstac}
+            onChange={(raw) => setLocal("arriendoEstac", raw)}
+          />
+          <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● Se suma al arriendo total mensual.
+          </p>
+        </label>
+      )}
+      {nBodega > 0 && (
+        <label className="block">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Arriendo bodega ($/mes)
+            </span>
+            <InfoTooltip
+              content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia distinta."
+            />
+          </span>
+          <MoneyInput
+            className={inputBase}
+            placeholder={(15000 * nBodega).toLocaleString("es-CL")}
+            value={local.arriendoBodega}
+            onChange={(raw) => setLocal("arriendoBodega", raw)}
+          />
+          <p className="font-mono text-[11px] mt-1 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
+            ● Se suma al arriendo total mensual.
+          </p>
+        </label>
+      )}
+
+      {/* Bloque 2 — Total mensual (solo si la propiedad tiene extras) */}
+      {hasExtras && (
+        <div className="border-t border-[var(--franco-border)] pt-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-1">
+            Total mensual · {fmtCLP(totalArriendo)}
+          </p>
+          <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0">
+            {breakdownParts.join(" + ")}
+          </p>
+        </div>
+      )}
+
+      {/* Bloque 3 — Vacancia + Gestión */}
       <div className="grid grid-cols-2 gap-3">
         <label className="block">
           <span className="flex items-center gap-1.5 mb-1.5">
@@ -426,42 +495,6 @@ function TabArriendo({
           <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">{local.adminPct}%</span>
         </label>
       </div>
-      {nEstac > 0 && (
-        <label className="block">
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-              Arriendo estacionamiento ($/mes)
-            </span>
-            <InfoTooltip
-                content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia de un arriendo real cercano."
-            />
-          </span>
-          <MoneyInput
-            className={inputBase}
-            placeholder={(40000 * nEstac).toLocaleString("es-CL")}
-            value={local.arriendoEstac}
-            onChange={(raw) => setLocal("arriendoEstac", raw)}
-          />
-        </label>
-      )}
-      {nBodega > 0 && (
-        <label className="block">
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-              Arriendo bodega ($/mes)
-            </span>
-            <InfoTooltip
-                content="Sugerencia automática según valores típicos de la zona. Edítalo si tienes referencia distinta."
-            />
-          </span>
-          <MoneyInput
-            className={inputBase}
-            placeholder={(15000 * nBodega).toLocaleString("es-CL")}
-            value={local.arriendoBodega}
-            onChange={(raw) => setLocal("arriendoBodega", raw)}
-          />
-        </label>
-      )}
     </div>
   );
 }

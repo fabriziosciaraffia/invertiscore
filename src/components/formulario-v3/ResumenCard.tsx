@@ -5,6 +5,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   calcDividendo,
   fmtCLP,
+  fmtCLPShort,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -59,6 +60,11 @@ export function ResumenCard({
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
 
   const arriendo = Number(state.arriendo) || 0;
+  const arriendoEstac = Number(state.arriendoEstac) || 0;
+  const arriendoBodega = Number(state.arriendoBodega) || 0;
+  const arriendoTotal = arriendo + arriendoEstac + arriendoBodega;
+  const hasArriendoExtras = arriendoEstac > 0 || arriendoBodega > 0;
+
   const gastos = Number(state.gastos) || 0;
   const contribuciones = Number(state.contribuciones) || 0;
 
@@ -128,11 +134,27 @@ export function ResumenCard({
         />
         <div>
           <Cell
-            label="Arriendo estimado"
-            value={arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
-            tooltip="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta. Editable en Ajustar."
-            edited={isEdited("arriendo")}
+            label={hasArriendoExtras ? "Arriendo total" : "Arriendo estimado"}
+            value={
+              hasArriendoExtras
+                ? arriendoTotal > 0 ? `${fmtCLP(arriendoTotal)}/mes` : "—"
+                : arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"
+            }
+            tooltip={
+              hasArriendoExtras
+                ? "Suma del arriendo del depto, estacionamiento y bodega. La sugerencia base se calcula con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Editable en Ajustar."
+                : "Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta. Editable en Ajustar."
+            }
+            edited={isEdited("arriendo") || isEdited("arriendoEstac") || isEdited("arriendoBodega")}
           />
+          {hasArriendoExtras && (
+            <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+              ● Incluye
+              {arriendoEstac > 0 ? ` ${fmtCLPShort(arriendoEstac)} estac` : ""}
+              {arriendoEstac > 0 && arriendoBodega > 0 ? " ·" : ""}
+              {arriendoBodega > 0 ? ` ${fmtCLPShort(arriendoBodega)} bodega` : ""}
+            </p>
+          )}
           {sampleSize > 0 && (
             <p
               className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]"
