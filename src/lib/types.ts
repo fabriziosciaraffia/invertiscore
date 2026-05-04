@@ -268,6 +268,34 @@ export interface AINegociacionSection extends AISection {
   precioSugerido: string;
   estrategiaSugerida_clp?: string;
   estrategiaSugerida_uf?: string;
+  // Fase 3.6 v9 — anclas discretas calculadas por el motor. La IA glosa, no
+  // recalcula. Opcional para backward-compat con cache pre-v9 (fallback al
+  // bloque de estrategiaSugerida).
+  precios?: AINegociacionPrecios;
+}
+
+export interface AINegociacionPrecios {
+  primeraOferta_uf: number;
+  primeraOferta_clp: number;
+  techo_uf: number;
+  techo_clp: number;
+  walkAway: AINegociacionWalkAway | null;
+  // Glosas IA por slot — 1-2 frases que explican POR QUÉ ese precio.
+  // _clp/_uf son idénticos cuando no contienen montos.
+  glosaPrimeraOferta_clp?: string;
+  glosaPrimeraOferta_uf?: string;
+  glosaTecho_clp?: string;
+  glosaTecho_uf?: string;
+  glosaWalkAway_clp?: string;
+  glosaWalkAway_uf?: string;
+}
+
+export interface AINegociacionWalkAway {
+  // null cuando el walk-away NO es un precio sino una decisión binaria
+  // ("buscar otra propiedad"). En ese caso `razon` lleva la explicación.
+  precio_uf: number | null;
+  precio_clp: number | null;
+  razon: string;
 }
 
 // Sección opcional que aparece solo cuando Franco activa el Nivel 3 del

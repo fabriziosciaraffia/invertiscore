@@ -1,0 +1,212 @@
+{
+  "caseDef": {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "notes": "UF 4.800 / 55m² = UF 87/m² (mediana Ñuñoa ~UF 75/m²). vmFranco UF 4.500 simula leve SOBREPRECIO.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 4800,
+      "valorMercadoFranco": 4500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 750000,
+      "gastos": 120000,
+      "contribuciones": 75000,
+      "provisionMantencion": 65000,
+      "comuna": "Ñuñoa",
+      "dormitorios": 2,
+      "piso": 6,
+      "lat": -33.4533,
+      "lng": -70.5942,
+      "nombre": "Caso B"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 75000,
+    "provisionMantencion": 65000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 4800,
+    "valorMercadoFranco": 4500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 750000,
+    "gastos": 120000,
+    "comuna": "Ñuñoa",
+    "dormitorios": 2,
+    "piso": 6,
+    "lat": -33.4533,
+    "lng": -70.5942,
+    "nombre": "Caso B"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 56,
+    "flujoNetoMensual": -263565
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 4147,
+    "primeraOfertaCLP": 165991969,
+    "techoUF": 4365,
+    "techoCLP": 174717855,
+    "walkAway": {
+      "precio_uf": 4365,
+      "precio_clp": 174717855,
+      "razon": "no comprar sobre el techo"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Pagas 6.7% sobre valor real en una zona que crece apenas 3% anual.",
+    "siendoFrancoHeadline_uf": "Pagas 6.7% sobre valor real en una zona que crece apenas 3% anual.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No al precio actual. Pagarías $12.008.100 sobre valor real por un depto que te exigiría $263.565 cada mes sin tope. Ñuñoa creció solo 3.2% anual histórico — insuficiente para justificar 7 años de aporte sin retorno. A UF 4.365 o menos, cambia el panorama: TIR sube de 7.5% a 10.7% y el sobreprecio desaparece.",
+      "respuestaDirecta_uf": "No al precio actual. Pagarías UF 300 sobre valor real por un depto que te exigiría UF 6,6 cada mes sin tope. Ñuñoa creció solo 3.2% anual histórico — insuficiente para justificar 7 años de aporte sin retorno. A UF 4.365 o menos, cambia el panorama: TIR sube de 7.5% a 10.7% y el sobreprecio desaparece.",
+      "veredictoFrase_clp": "Negocia o pasa — pagar sobre mercado con flujo indefinido es apostar mal.",
+      "veredictoFrase_uf": "Negocia o pasa — pagar sobre mercado con flujo indefinido es apostar mal.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio actual",
+          "valor_clp": "6.7% ($12M)",
+          "valor_uf": "6.7% (UF 300)",
+          "subtexto": "sobre valor de mercado",
+          "color": "red"
+        },
+        {
+          "label": "Flujo mensual",
+          "valor_clp": "-$263.565",
+          "valor_uf": "-UF 6,6",
+          "subtexto": "nunca cruza a positivo",
+          "color": "red"
+        },
+        {
+          "label": "TIR negociado",
+          "valor_clp": "10.7%",
+          "valor_uf": "10.7%",
+          "subtexto": "a UF 4.365",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "La matemática es clara: pagar $192M por algo que vale $180M, para aportar $263K cada mes durante más de 20 años. Ñuñoa históricamente da 3.2% anual de plusvalía — está lejos de los 5-6% que necesitas para que funcione. El metro a 400 metros es ventaja real, pero no justifica el sobreprecio. A UF 4.365 el caso se vuelve defendible: eliminas el sobreprecio y subes la rentabilidad 3.2 puntos porcentuales.",
+      "reencuadre_uf": "La matemática es clara: pagar UF 4.800 por algo que vale UF 4.500, para aportar UF 6,6 cada mes durante más de 20 años. Ñuñoa históricamente da 3.2% anual de plusvalía — está lejos de los 5-6% que necesitas para que funcione. El metro a 400 metros es ventaja real, pero no justifica el sobreprecio. A UF 4.365 el caso se vuelve defendible: eliminas el sobreprecio y subes la rentabilidad 3.2 puntos porcentuales.",
+      "cajaAccionable_clp": "¿Estás dispuesto a aportar $263.565 cada mes durante 20+ años apostando a que Ñuñoa acelere su plusvalía histórica?",
+      "cajaAccionable_uf": "¿Estás dispuesto a aportar UF 6,6 cada mes durante 20+ años apostando a que Ñuñoa acelere su plusvalía histórica?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $750.000 no alcanza a cubrir tu dividendo de $819.815. La diferencia de $263.565 sale de tu bolsillo cada mes, más los $190.000 de gastos comunes, contribuciones y mantención. En total, el depto te cuesta $453.565 mensuales — es el equivalente al arriendo de un depto de 90 m² en la misma zona.",
+      "contenido_uf": "El arriendo de UF 18,7 no alcanza a cubrir tu dividendo de UF 20,5. La diferencia de UF 6,6 sale de tu bolsillo cada mes, más los UF 4,7 de gastos comunes, contribuciones y mantención. En total, el depto te cuesta UF 11,3 mensuales — es el equivalente al arriendo de un depto de 90 m² en la misma zona.",
+      "cajaAccionable_clp": "¿Tu flujo personal sostiene $263.565 adicionales al mes sin fecha de corte definida?",
+      "cajaAccionable_uf": "¿Tu flujo personal sostiene UF 6,6 adicionales al mes sin fecha de corte definida?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Pagarías 6.7% sobre valor real — hay margen obligatorio para negociar. Ñuñoa no es mercado especulativo donde los precios justifican cualquier sobreprecio. Es comuna residencial consolidada que crece a ritmo moderado. El vendedor sabe que el depto está caro; tu única duda debería ser hasta dónde bajar el precio, no si negociar.",
+      "contenido_uf": "Pagarías 6.7% sobre valor real — hay margen obligatorio para negociar. Ñuñoa no es mercado especulativo donde los precios justifican cualquier sobreprecio. Es comuna residencial consolidada que crece a ritmo moderado. El vendedor sabe que el depto está caro; tu única duda debería ser hasta dónde bajar el precio, no si negociar.",
+      "estrategiaSugerida_clp": "Partir en UF 4.147 es realista considerando el sobreprecio actual. Subir hasta UF 4.365 máximo — ahí eliminas el sobreprecio y mejoras la TIR (rentabilidad anual de tu inversión) a 10.7%.",
+      "estrategiaSugerida_uf": "Partir en UF 4.147 es realista considerando el sobreprecio actual. Subir hasta UF 4.365 máximo — ahí eliminas el sobreprecio y mejoras la TIR (rentabilidad anual de tu inversión) a 10.7%.",
+      "cajaAccionable_clp": "Empieza en UF 4.147. Si rechaza, tu techo es UF 4.365 — no pagues más por este depto.",
+      "cajaAccionable_uf": "Empieza en UF 4.147. Si rechaza, tu techo es UF 4.365 — no pagues más por este depto.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.365",
+      "precios": {
+        "primeraOferta_uf": 4147,
+        "primeraOferta_clp": 165991969,
+        "techo_uf": 4365,
+        "techo_clp": 174717855,
+        "walkAway": {
+          "precio_uf": 4365,
+          "precio_clp": 174717855,
+          "razon": "no comprar sobre el techo"
+        },
+        "glosaPrimeraOferta_clp": "Descuenta el sobreprecio desde el inicio",
+        "glosaPrimeraOferta_uf": "Descuenta el sobreprecio desde el inicio",
+        "glosaTecho_clp": "Elimina sobreprecio, sube TIR a 10.7%",
+        "glosaTecho_uf": "Elimina sobreprecio, sube TIR a 10.7%",
+        "glosaWalkAway_clp": "Sobre UF 4.365 sigues pagando caro",
+        "glosaWalkAway_uf": "Sobre UF 4.365 sigues pagando caro"
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Al precio negociado (UF 4.365) podrías ganar $151M al vender en 10 años, pero aportando $46M de tu bolsillo durante el período. La ganancia neta real sería $105M. Un depósito UF al 5% te daría $69M sin esfuerzo mensual; un fondo mutuo diversificado al 7% te daría $83M. Los $22-36M adicionales del depto compensan 10 años de gestión mensual, riesgo de vacancia y baja liquidez.",
+      "contenido_uf": "Al precio negociado (UF 4.365) podrías ganar UF 3.775 al vender en 10 años, pero aportando UF 1.159 de tu bolsillo durante el período. La ganancia neta real sería UF 2.616. Un depósito UF al 5% te daría UF 1.720 sin esfuerzo mensual; un fondo mutuo diversificado al 7% te daría UF 2.077. Las UF 539-896 adicionales del depto compensan 10 años de gestión mensual, riesgo de vacancia y baja liquidez.",
+      "cajaAccionable_clp": "¿Los $22-36M extra del depto vs instrumentos pasivos justifican 10 años de gestión activa y aporte mensual?",
+      "cajaAccionable_uf": "¿Las UF 539-896 extra del depto vs instrumentos pasivos justifican 10 años de gestión activa y aporte mensual?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses borra tu flujo anual. Con margen negativo de $263K mensuales, quedarte sin inquilino 8 semanas te cuesta $526K extra ese año — no hay colchón.\n\nAlza de tasas castiga duramente el dividendo. Si la tasa sube 1 punto porcentual, tu dividendo aumenta $87K mensuales, empeorando el flujo a -$351K/mes.\n\nPlusvalía 3.2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.",
+      "contenido_uf": "Vacancia de 2 meses borra tu flujo anual. Con margen negativo de UF 6,6 mensuales, quedarte sin inquilino 8 semanas te cuesta UF 13,2 extra ese año — no hay colchón.\n\nAlza de tasas castiga duramente el dividendo. Si la tasa sube 1 punto porcentual, tu dividendo aumenta UF 2,2 mensuales, empeorando el flujo a -UF 8,8/mes.\n\nPlusvalía 3.2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.",
+      "cajaAccionable_clp": "Si negocias a UF 4.365 y confías en que Ñuñoa puede superar su histórico de plusvalía, esta operación tiene sentido financiero. El metro cerca es ventaja real. Pero si el precio no baja del actual, mejor pasar — pagar sobre mercado con flujo indefinido es apostar mal.",
+      "cajaAccionable_uf": "Si negocias a UF 4.365 y confías en que Ñuñoa puede superar su histórico de plusvalía, esta operación tiene sentido financiero. El metro cerca es ventaja real. Pero si el precio no baja del actual, mejor pasar — pagar sobre mercado con flujo indefinido es apostar mal.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Pagas 6.7% sobre valor real en una zona que crece apenas 3% anual.\",\n  \"siendoFrancoHeadline_uf\": \"Pagas 6.7% sobre valor real en una zona que crece apenas 3% anual.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n  \n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No al precio actual. Pagarías $12.008.100 sobre valor real por un depto que te exigiría $263.565 cada mes sin tope. Ñuñoa creció solo 3.2% anual histórico — insuficiente para justificar 7 años de aporte sin retorno. A UF 4.365 o menos, cambia el panorama: TIR sube de 7.5% a 10.7% y el sobreprecio desaparece.\",\n    \"respuestaDirecta_uf\": \"No al precio actual. Pagarías UF 300 sobre valor real por un depto que te exigiría UF 6,6 cada mes sin tope. Ñuñoa creció solo 3.2% anual histórico — insuficiente para justificar 7 años de aporte sin retorno. A UF 4.365 o menos, cambia el panorama: TIR sube de 7.5% a 10.7% y el sobreprecio desaparece.\",\n    \"veredictoFrase_clp\": \"Negocia o pasa — pagar sobre mercado con flujo indefinido es apostar mal.\",\n    \"veredictoFrase_uf\": \"Negocia o pasa — pagar sobre mercado con flujo indefinido es apostar mal.\",\n    \"datosClave\": [\n      { \"label\": \"Sobreprecio actual\", \"valor_clp\": \"6.7% ($12M)\", \"valor_uf\": \"6.7% (UF 300)\", \"subtexto\": \"sobre valor de mercado\", \"color\": \"red\" },\n      { \"label\": \"Flujo mensual\", \"valor_clp\": \"-$263.565\", \"valor_uf\": \"-UF 6,6\", \"subtexto\": \"nunca cruza a positivo\", \"color\": \"red\" },\n      { \"label\": \"TIR negociado\", \"valor_clp\": \"10.7%\", \"valor_uf\": \"10.7%\", \"subtexto\": \"a UF 4.365\", \"color\": \"accent\" }\n    ],\n    \"reencuadre_clp\": \"La matemática es clara: pagar $192M por algo que vale $180M, para aportar $263K cada mes durante más de 20 años. Ñuñoa históricamente da 3.2% anual de plusvalía — está lejos de los 5-6% que necesitas para que funcione. El metro a 400 metros es ventaja real, pero no justifica el sobreprecio. A UF 4.365 el caso se vuelve defendible: eliminas el sobreprecio y subes la rentabilidad 3.2 puntos porcentuales.\",\n    \"reencuadre_uf\": \"La matemática es clara: pagar UF 4.800 por algo que vale UF 4.500, para aportar UF 6,6 cada mes durante más de 20 años. Ñuñoa históricamente da 3.2% anual de plusvalía — está lejos de los 5-6% que necesitas para que funcione. El metro a 400 metros es ventaja real, pero no justifica el sobreprecio. A UF 4.365 el caso se vuelve defendible: eliminas el sobreprecio y subes la rentabilidad 3.2 puntos porcentuales.\",\n    \"cajaAccionable_clp\": \"¿Estás dispuesto a aportar $263.565 cada mes durante 20+ años apostando a que Ñuñoa acelere su plusvalía histórica?\",\n    \"cajaAccionable_uf\": \"¿Estás dispuesto a aportar UF 6,6 cada mes durante 20+ años apostando a que Ñuñoa acelere su plusvalía histórica?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n  \n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"El arriendo de $750.000 no alcanza a cubrir tu dividendo de $819.815. La diferencia de $263.565 sale de tu bolsillo cada mes, más los $190.000 de gastos comunes, contribuciones y mantención. En total, el depto te cuesta $453.565 mensuales — es el equivalente al arriendo de un depto de 90 m² en la misma zona.\",\n    \"contenido_uf\": \"El arriendo de UF 18,7 no alcanza a cubrir tu dividendo de UF 20,5. La diferencia de UF 6,6 sale de tu bolsillo cada mes, más los UF 4,7 de gastos comunes, contribuciones y mantención. En total, el depto te cuesta UF 11,3 mensuales — es el equivalente al arriendo de un depto de 90 m² en la misma zona.\",\n    \"cajaAccionable_clp\": \"¿Tu flujo personal sostiene $263.565 adicionales al mes sin fecha de corte definida?\",\n    \"cajaAccionable_uf\": \"¿Tu flujo personal sostiene UF 6,6 adicionales al mes sin fecha de corte definida?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n  \n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"Pagarías 6.7% sobre valor real — hay margen obligatorio para negociar. Ñuñoa no es mercado especulativo donde los precios justifican cualquier sobreprecio. Es comuna residencial consolidada que crece a ritmo moderado. El vendedor sabe que el depto está caro; tu única duda debería ser hasta dónde bajar el precio, no si negociar.\",\n    \"contenido_uf\": \"Pagarías 6.7% sobre valor real — hay margen obligatorio para negociar. Ñuñoa no es mercado especulativo donde los precios justifican cualquier sobreprecio. Es comuna residencial consolidada que crece a ritmo moderado. El vendedor sabe que el depto está caro; tu única duda debería ser hasta dónde bajar el precio, no si negociar.\",\n    \"estrategiaSugerida_clp\": \"Partir en UF 4.147 es realista considerando el sobreprecio actual. Subir hasta UF 4.365 máximo — ahí eliminas el sobreprecio y mejoras la TIR (rentabilidad anual de tu inversión) a 10.7%.\",\n    \"estrategiaSugerida_uf\": \"Partir en UF 4.147 es realista considerando el sobreprecio actual. Subir hasta UF 4.365 máximo — ahí eliminas el sobreprecio y mejoras la TIR (rentabilidad anual de tu inversión) a 10.7%.\",\n    \"cajaAccionable_clp\": \"Empieza en UF 4.147. Si rechaza, tu techo es UF 4.365 — no pagues más por este depto.\",\n    \"cajaAccionable_uf\": \"Empieza en UF 4.147. Si rechaza, tu techo es UF 4.365 — no pagues más por este depto.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 4.365\",\n    \"precios\": {\n      \"glosaPrimeraOferta_clp\": \"Descuenta el sobreprecio desde el inicio\",\n      \"glosaPrimeraOferta_uf\": \"Descuenta el sobreprecio desde el inicio\",\n      \"glosaTecho_clp\": \"Elimina sobreprecio, sube TIR a 10.7%\",\n      \"glosaTecho_uf\": \"Elimina sobreprecio, sube TIR a 10.7%\",\n      \"glosaWalkAway_clp\": \"Sobre UF 4.365 sigues pagando caro\",\n      \"glosaWalkAway_uf\": \"Sobre UF 4.365 sigues pagando caro\"\n    }\n  },\n  \n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"Al precio negociado (UF 4.365) podrías ganar $151M al vender en 10 años, pero aportando $46M de tu bolsillo durante el período. La ganancia neta real sería $105M. Un depósito UF al 5% te daría $69M sin esfuerzo mensual; un fondo mutuo diversificado al 7% te daría $83M. Los $22-36M adicionales del depto compensan 10 años de gestión mensual, riesgo de vacancia y baja liquidez.\",\n    \"contenido_uf\": \"Al precio negociado (UF 4.365) podrías ganar UF 3.775 al vender en 10 años, pero aportando UF 1.159 de tu bolsillo durante el período. La ganancia neta real sería UF 2.616. Un depósito UF al 5% te daría UF 1.720 sin esfuerzo mensual; un fondo mutuo diversificado al 7% te daría UF 2.077. Las UF 539-896 adicionales del depto compensan 10 años de gestión mensual, riesgo de vacancia y baja liquidez.\",\n    \"cajaAccionable_clp\": \"¿Los $22-36M extra del depto vs instrumentos pasivos justifican 10 años de gestión activa y aporte mensual?\",\n    \"cajaAccionable_uf\": \"¿Las UF 539-896 extra del depto vs instrumentos pasivos justifican 10 años de gestión activa y aporte mensual?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n  \n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses borra tu flujo anual. Con margen negativo de $263K mensuales, quedarte sin inquilino 8 semanas te cuesta $526K extra ese año — no hay colchón.\\n\\nAlza de tasas castiga duramente el dividendo. Si la tasa sube 1 punto porcentual, tu dividendo aumenta $87K mensuales, empeorando el flujo a -$351K/mes.\\n\\nPlusvalía 3.2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.\",\n    \"contenido_uf\": \"Vacancia de 2 meses borra tu flujo anual. Con margen negativo de UF 6,6 mensuales, quedarte sin inquilino 8 semanas te cuesta UF 13,2 extra ese año — no hay colchón.\\n\\nAlza de tasas castiga duramente el dividendo. Si la tasa sube 1 punto porcentual, tu dividendo aumenta UF 2,2 mensuales, empeorando el flujo a -UF 8,8/mes.\\n\\nPlusvalía 3.2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.\",\n    \"cajaAccionable_clp\": \"Si negocias a UF 4.365 y confías en que Ñuñoa puede superar su histórico de plusvalía, esta operación tiene sentido financiero. El metro cerca es ventaja real. Pero si el precio no baja del actual, mejor pasar — pagar sobre mercado con flujo indefinido es apostar mal.\",\n    \"cajaAccionable_uf\": \"Si negocias a UF 4.365 y confías en que Ñuñoa puede superar su histórico de plusvalía, esta operación tiene sentido financiero. El metro cerca es ventaja real. Pero si el precio no baja del actual, mejor pasar — pagar sobre mercado con flujo indefinido es apostar mal.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido": "UF 4.365",
+    "precioSugerido_eq_techo": true,
+    "precios_presentes": true,
+    "glosaPrimera_presente": true,
+    "glosaTecho_presente": true,
+    "glosaWalk_presente": true,
+    "caja_contiene_primeraOferta_o_techo": true,
+    "ries_chars": 510,
+    "ries_doble_newline": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses borra tu flujo anual",
+        "descripcion": "Con margen negativo de $263K mensuales, quedarte sin inquilino 8 semanas te cuesta $526K extra ese año — no hay colchón.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga duramente el dividendo",
+        "descripcion": "Si la tasa sube 1 punto porcentual, tu dividendo aumenta $87K mensuales, empeorando el flujo a -$351K/mes.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía 3",
+        "descripcion": "2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ],
+    "tir_glosada_primer_uso": false
+  }
+}

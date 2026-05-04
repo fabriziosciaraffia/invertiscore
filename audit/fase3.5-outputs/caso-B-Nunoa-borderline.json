@@ -1,0 +1,205 @@
+{
+  "caseDef": {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "notes": "UF 4.800 / 55m² = UF 87/m² (mediana Ñuñoa ~UF 75/m²). vmFranco UF 4.500 simula leve SOBREPRECIO.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 4800,
+      "valorMercadoFranco": 4500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 750000,
+      "gastos": 120000,
+      "contribuciones": 75000,
+      "provisionMantencion": 65000,
+      "comuna": "Ñuñoa",
+      "dormitorios": 2,
+      "piso": 6,
+      "lat": -33.4533,
+      "lng": -70.5942,
+      "nombre": "Caso B — Ñuñoa borderline"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 75000,
+    "provisionMantencion": 65000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 4800,
+    "valorMercadoFranco": 4500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 750000,
+    "gastos": 120000,
+    "comuna": "Ñuñoa",
+    "dormitorios": 2,
+    "piso": 6,
+    "lat": -33.4533,
+    "lng": -70.5942,
+    "nombre": "Caso B — Ñuñoa borderline"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 56,
+    "flujoNetoMensual": -263565,
+    "precioSugerido": {
+      "precioSugeridoUF": 4365,
+      "precioSugeridoCLP": 174717855,
+      "tirAlSugerido": 10.74,
+      "precioLimiteUF": 5006.3,
+      "precioLimiteCLP": 200387170,
+      "tirAlLimite": 6,
+      "tirAlVmFranco": 9.72
+    },
+    "financingHealth": {
+      "pie": {
+        "level": "aceptable",
+        "actual_pct": 20,
+        "recommended_pct": 25,
+        "impact_message": "subir el pie a 25% baja la cuota en $51.238 al mes"
+      },
+      "tasa": {
+        "level": "optimo",
+        "actual_pct": 4.1,
+        "recommended_pct": 4.1,
+        "market_avg_pct": 4.1,
+        "spread_bps": 0
+      },
+      "overall": "aceptable"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Pagas $12 millones sobre mercado en un depto que nunca genera flujo positivo.",
+    "siendoFrancoHeadline_uf": "Pagas UF 300 sobre mercado en un depto que nunca genera flujo positivo.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene al precio actual de $192.129.600. Pagarías $12 millones sobre el valor real de mercado y el flujo jamás cruza a positivo — aportas $264K cada mes sin tope claro en la proyección. La única ganancia viene al vender, apostando a plusvalía futura.",
+      "respuestaDirecta_uf": "No conviene al precio actual de UF 4.800. Pagarías UF 300 sobre el valor real de mercado y el flujo jamás cruza a positivo — aportas UF 6,6 cada mes sin tope claro en la proyección. La única ganancia viene al vender, apostando a plusvalía futura.",
+      "veredictoFrase_clp": "Sobreprecio grave con matemática que no cierra.",
+      "veredictoFrase_uf": "Sobreprecio grave con matemática que no cierra.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio",
+          "valor_clp": "$12.008.100",
+          "valor_uf": "UF 300",
+          "subtexto": "6.7% sobre mercado",
+          "color": "red"
+        },
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$264K",
+          "valor_uf": "UF 6,6",
+          "subtexto": "sin límite de tiempo",
+          "color": "red"
+        },
+        {
+          "label": "Precio objetivo",
+          "valor_clp": "$174.717.855",
+          "valor_uf": "UF 4.320",
+          "subtexto": "TIR sube a 10.7%",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Ñuñoa creció 3.2% anual en la década — plusvalía moderada, no espectacular. A UF 4.320 (10% menos) la TIR mejora de 7.5% a 10.7% y sigues comprando cerca del valor real. El descuento no es capricho — es matemática básica para que los números funcionen mínimamente.",
+      "reencuadre_uf": "Ñuñoa creció 3.2% anual en la década — plusvalía moderada, no espectacular. A UF 4.320 (10% menos) la TIR mejora de 7.5% a 10.7% y sigues comprando cerca del valor real. El descuento no es capricho — es matemática básica para que los números funcionen mínimamente.",
+      "cajaAccionable_clp": "¿Puedes sostener $264K al mes sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 6,6 al mes sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $750K no cubre tu dividendo de $820K — aportas $264K mensuales de tu bolsillo durante toda la proyección. En 10 años habrás puesto $46.379.162 adicionales al pie inicial. Es como comprar dos departamentos: uno con crédito, otro en cuotas.",
+      "contenido_uf": "El arriendo de UF 18,7 no cubre tu dividendo de UF 20,5 — aportas UF 6,6 mensuales de tu bolsillo durante toda la proyección. En 10 años habrás puesto UF 1.158 adicionales al pie inicial. Es como comprar dos departamentos: uno con crédito, otro en cuotas.",
+      "cajaAccionable_clp": "¿Tu flujo personal permite $264K extra cada mes indefinidamente?",
+      "cajaAccionable_uf": "¿Tu flujo personal permite UF 6,6 extra cada mes indefinidamente?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Doble alerta: pagas sobre mercado y la rentabilidad no funciona ni así. Negociar no es opcional — es supervivencia matemática. A UF 4.320 los números mejoran sustantialmente (TIR sube 3.2 puntos porcentuales) y te acercas al valor real de mercado.",
+      "contenido_uf": "Doble alerta: pagas sobre mercado y la rentabilidad no funciona ni así. Negociar no es opcional — es supervivencia matemática. A UF 4.320 los números mejoran sustancialmente (TIR sube 3.2 puntos porcentuales) y te acercas al valor real de mercado.",
+      "estrategiaSugerida_clp": "Ofrece UF 4.200, acepta hasta UF 4.320. Más arriba, la matemática sigue siendo dolorosa. Si no negocia, mejor pasar — hay mejores oportunidades en el mercado.",
+      "estrategiaSugerida_uf": "Ofrece UF 4.200, acepta hasta UF 4.320. Más arriba, la matemática sigue siendo dolorosa. Si no negocia, mejor pasar — hay mejores oportunidades en el mercado.",
+      "cajaAccionable_clp": "Ofrece UF 4.200, cierra hasta UF 4.320. Si rechaza, tienes luz verde para buscar otra propiedad.",
+      "cajaAccionable_uf": "Ofrece UF 4.200, cierra hasta UF 4.320. Si rechaza, tienes luz verde para buscar otra propiedad.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.320"
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "La apuesta es pura plusvalía. Invertir $42.268.512 inicial + $46.379.162 de aportes = $88.647.674 totales para obtener $151.206.022 al vender en 10 años. Comparado con depósito UF al 5% ($68.850.952) o fondo mutuo conservador al 7% ($83.148.561), real estate da más pero exige aporte mensual indefinido y asume riesgo de vacancia.",
+      "contenido_uf": "La apuesta es pura plusvalía. Invertir UF 1.056 inicial + UF 1.158 de aportes = UF 2.214 totales para obtener UF 3.777 al vender en 10 años. Comparado con depósito UF al 5% (UF 1.720) o fondo mutuo conservador al 7% (UF 2.077), real estate da más pero exige aporte mensual indefinido y asume riesgo de vacancia.",
+      "cajaAccionable_clp": "¿Prefieres aportar $264K cada mes apostando a plusvalía inmobiliaria o poner ese flujo en instrumentos sin mantención?",
+      "cajaAccionable_uf": "¿Prefieres aportar UF 6,6 cada mes apostando a plusvalía inmobiliaria o poner ese flujo en instrumentos sin mantención?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2-3 meses duplica tu pérdida anual — no tienes margen de error. Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en $88K.",
+      "contenido_uf": "Vacancia de 2-3 meses duplica tu pérdida anual — no tienes margen de error. Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en UF 2,2.",
+      "cajaAccionable_clp": "Si confías en la trayectoria de Ñuñoa y tu flujo permite $264K indefinidos sin presión, negocia agresivamente el precio. Sin descuento significativo, hay mejores oportunidades esperando.",
+      "cajaAccionable_uf": "Si confías en la trayectoria de Ñuñoa y tu flujo permite UF 6,6 indefinidos sin presión, negocia agresivamente el precio. Sin descuento significativo, hay mejores oportunidades esperando.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Pagas $12 millones sobre mercado en un depto que nunca genera flujo positivo.\",\n  \"siendoFrancoHeadline_uf\": \"Pagas UF 300 sobre mercado en un depto que nunca genera flujo positivo.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No conviene al precio actual de $192.129.600. Pagarías $12 millones sobre el valor real de mercado y el flujo jamás cruza a positivo — aportas $264K cada mes sin tope claro en la proyección. La única ganancia viene al vender, apostando a plusvalía futura.\",\n    \"respuestaDirecta_uf\": \"No conviene al precio actual de UF 4.800. Pagarías UF 300 sobre el valor real de mercado y el flujo jamás cruza a positivo — aportas UF 6,6 cada mes sin tope claro en la proyección. La única ganancia viene al vender, apostando a plusvalía futura.\",\n    \"veredictoFrase_clp\": \"Sobreprecio grave con matemática que no cierra.\",\n    \"veredictoFrase_uf\": \"Sobreprecio grave con matemática que no cierra.\",\n    \"datosClave\": [\n      { \"label\": \"Sobreprecio\", \"valor_clp\": \"$12.008.100\", \"valor_uf\": \"UF 300\", \"subtexto\": \"6.7% sobre mercado\", \"color\": \"red\" },\n      { \"label\": \"Aporte mensual\", \"valor_clp\": \"$264K\", \"valor_uf\": \"UF 6,6\", \"subtexto\": \"sin límite de tiempo\", \"color\": \"red\" },\n      { \"label\": \"Precio objetivo\", \"valor_clp\": \"$174.717.855\", \"valor_uf\": \"UF 4.320\", \"subtexto\": \"TIR sube a 10.7%\", \"color\": \"accent\" }\n    ],\n    \"reencuadre_clp\": \"Ñuñoa creció 3.2% anual en la década — plusvalía moderada, no espectacular. A UF 4.320 (10% menos) la TIR mejora de 7.5% a 10.7% y sigues comprando cerca del valor real. El descuento no es capricho — es matemática básica para que los números funcionen mínimamente.\",\n    \"reencuadre_uf\": \"Ñuñoa creció 3.2% anual en la década — plusvalía moderada, no espectacular. A UF 4.320 (10% menos) la TIR mejora de 7.5% a 10.7% y sigues comprando cerca del valor real. El descuento no es capricho — es matemática básica para que los números funcionen mínimamente.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $264K al mes sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 6,6 al mes sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"El arriendo de $750K no cubre tu dividendo de $820K — aportas $264K mensuales de tu bolsillo durante toda la proyección. En 10 años habrás puesto $46.379.162 adicionales al pie inicial. Es como comprar dos departamentos: uno con crédito, otro en cuotas.\",\n    \"contenido_uf\": \"El arriendo de UF 18,7 no cubre tu dividendo de UF 20,5 — aportas UF 6,6 mensuales de tu bolsillo durante toda la proyección. En 10 años habrás puesto UF 1.158 adicionales al pie inicial. Es como comprar dos departamentos: uno con crédito, otro en cuotas.\",\n    \"cajaAccionable_clp\": \"¿Tu flujo personal permite $264K extra cada mes indefinidamente?\",\n    \"cajaAccionable_uf\": \"¿Tu flujo personal permite UF 6,6 extra cada mes indefinidamente?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"Doble alerta: pagas sobre mercado y la rentabilidad no funciona ni así. Negociar no es opcional — es supervivencia matemática. A UF 4.320 los números mejoran sustantialmente (TIR sube 3.2 puntos porcentuales) y te acercas al valor real de mercado.\",\n    \"contenido_uf\": \"Doble alerta: pagas sobre mercado y la rentabilidad no funciona ni así. Negociar no es opcional — es supervivencia matemática. A UF 4.320 los números mejoran sustancialmente (TIR sube 3.2 puntos porcentuales) y te acercas al valor real de mercado.\",\n    \"estrategiaSugerida_clp\": \"Ofrece UF 4.200, acepta hasta UF 4.320. Más arriba, la matemática sigue siendo dolorosa. Si no negocia, mejor pasar — hay mejores oportunidades en el mercado.\",\n    \"estrategiaSugerida_uf\": \"Ofrece UF 4.200, acepta hasta UF 4.320. Más arriba, la matemática sigue siendo dolorosa. Si no negocia, mejor pasar — hay mejores oportunidades en el mercado.\",\n    \"cajaAccionable_clp\": \"Ofrece UF 4.200, cierra hasta UF 4.320. Si rechaza, tienes luz verde para buscar otra propiedad.\",\n    \"cajaAccionable_uf\": \"Ofrece UF 4.200, cierra hasta UF 4.320. Si rechaza, tienes luz verde para buscar otra propiedad.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 4.320\"\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"La apuesta es pura plusvalía. Invertir $42.268.512 inicial + $46.379.162 de aportes = $88.647.674 totales para obtener $151.206.022 al vender en 10 años. Comparado con depósito UF al 5% ($68.850.952) o fondo mutuo conservador al 7% ($83.148.561), real estate da más pero exige aporte mensual indefinido y asume riesgo de vacancia.\",\n    \"contenido_uf\": \"La apuesta es pura plusvalía. Invertir UF 1.056 inicial + UF 1.158 de aportes = UF 2.214 totales para obtener UF 3.777 al vender en 10 años. Comparado con depósito UF al 5% (UF 1.720) o fondo mutuo conservador al 7% (UF 2.077), real estate da más pero exige aporte mensual indefinido y asume riesgo de vacancia.\",\n    \"cajaAccionable_clp\": \"¿Prefieres aportar $264K cada mes apostando a plusvalía inmobiliaria o poner ese flujo en instrumentos sin mantención?\",\n    \"cajaAccionable_uf\": \"¿Prefieres aportar UF 6,6 cada mes apostando a plusvalía inmobiliaria o poner ese flujo en instrumentos sin mantención?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2-3 meses duplica tu pérdida anual — no tienes margen de error. Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en $88K.\",\n    \"contenido_uf\": \"Vacancia de 2-3 meses duplica tu pérdida anual — no tienes margen de error. Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en UF 2,2.\",\n    \"cajaAccionable_clp\": \"Si confías en la trayectoria de Ñuñoa y tu flujo permite $264K indefinidos sin presión, negocia agresivamente el precio. Sin descuento significativo, hay mejores oportunidades esperando.\",\n    \"cajaAccionable_uf\": \"Si confías en la trayectoria de Ñuñoa y tu flujo permite UF 6,6 indefinidos sin presión, negocia agresivamente el precio. Sin descuento significativo, hay mejores oportunidades esperando.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido_str": "UF 4.320",
+    "precioSugerido_motor_uf": 4365,
+    "precioSugerido_motor_clp": 174717855,
+    "neg_menciona_TIR": true,
+    "neg_menciona_flujo_cruza": false,
+    "neg_menciona_pp_o_pct": true,
+    "neg_compara_actual_vs_sugerido": true,
+    "neg_menciona_techo": false,
+    "neg_menciona_oferta": true,
+    "neg_menciona_walkaway": false,
+    "neg_caja_contiene_precioSugerido": true,
+    "ries_chars": 272,
+    "ries_doble_newline_count": 0,
+    "ries_bullet_count": 0,
+    "ries_bold_count": 0,
+    "ries_oraciones_aprox": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2-3 meses duplica tu pérdida anual — no tienes m",
+        "descripcion": "Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en $88K.",
+        "descripcionTruncadoEn220": true
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

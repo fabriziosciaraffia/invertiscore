@@ -1,0 +1,210 @@
+{
+  "caseDef": {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados",
+    "notes": "UF 2.500 / 40m² = UF 62/m² + antiguedad 12 + arriendo justo. Tensiona riesgos.contenido.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 2500,
+      "valorMercadoFranco": 2200,
+      "superficie": 40,
+      "superficieTotal": 40,
+      "antiguedad": 12,
+      "piePct": 18,
+      "tasaInteres": 4.5,
+      "arriendo": 420000,
+      "gastos": 90000,
+      "contribuciones": 45000,
+      "provisionMantencion": 50000,
+      "comuna": "Estación Central",
+      "dormitorios": 1,
+      "piso": 14,
+      "vacanciaMeses": 2,
+      "lat": -33.457,
+      "lng": -70.68,
+      "nombre": "Caso C — Estación Central riesgos"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 45000,
+    "provisionMantencion": 50000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 2,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 2500,
+    "valorMercadoFranco": 2200,
+    "superficie": 40,
+    "superficieTotal": 40,
+    "antiguedad": 12,
+    "piePct": 18,
+    "tasaInteres": 4.5,
+    "arriendo": 420000,
+    "gastos": 90000,
+    "comuna": "Estación Central",
+    "dormitorios": 1,
+    "piso": 14,
+    "lat": -33.457,
+    "lng": -70.68,
+    "nombre": "Caso C — Estación Central riesgos"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "score": 53,
+    "flujoNetoMensual": -203590,
+    "precioSugerido": {
+      "precioSugeridoUF": 2134,
+      "precioSugeridoCLP": 85417618,
+      "tirAlSugerido": 9.41,
+      "precioLimiteUF": null,
+      "precioLimiteCLP": null,
+      "tirAlLimite": null,
+      "tirAlVmFranco": 8.31
+    },
+    "financingHealth": {
+      "pie": {
+        "level": "mejorable",
+        "actual_pct": 18,
+        "recommended_pct": 25,
+        "impact_message": "subir el pie a 25% baja la cuota en $38.934 al mes"
+      },
+      "tasa": {
+        "level": "aceptable",
+        "actual_pct": 4.5,
+        "recommended_pct": 4.1,
+        "market_avg_pct": 4.1,
+        "spread_bps": 40,
+        "impact_message": "bajar la tasa a 4,20% reduce la cuota en $13.859 al mes"
+      },
+      "overall": "mejorable"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "BUSCAR OTRA",
+    "fhOverall": "mejorable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Pagas $12.008.100 sobre valor real por flujo negativo de $203.590 mensuales.",
+    "siendoFrancoHeadline_uf": "Pagas UF 300 sobre valor real por flujo negativo de UF 5,1 mensuales.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Pagarías $12.008.100 sobre el valor de mercado y el flujo mensual nunca se vuelve positivo. Franco Score 53 clasifica esta operación como Regular por la combinación de sobreprecio y rentabilidad débil. Estación Central creció apenas 2,2% anual la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón.",
+      "respuestaDirecta_uf": "No conviene. Pagarías UF 300 sobre el valor de mercado y el flujo mensual nunca se vuelve positivo. Franco Score 53 clasifica esta operación como Regular por la combinación de sobreprecio y rentabilidad débil. Estación Central creció apenas 2,2% anual la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón.",
+      "veredictoFrase_clp": "Hay mejores oportunidades por $100.067.500 en el mercado.",
+      "veredictoFrase_uf": "Hay mejores oportunidades por UF 2.500 en el mercado.",
+      "datosClave": [
+        {
+          "label": "Flujo mensual",
+          "valor_clp": "-$203.590",
+          "valor_uf": "-UF 5,1",
+          "subtexto": "No cruza a positivo",
+          "color": "red"
+        },
+        {
+          "label": "Sobreprecio",
+          "valor_clp": "-$12.008.100",
+          "valor_uf": "-UF 300",
+          "subtexto": "13,6% sobre mercado",
+          "color": "red"
+        },
+        {
+          "label": "TIR",
+          "valor_clp": "3,5%",
+          "valor_uf": "3,5%",
+          "subtexto": "Bajo depósito a plazo",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Con $100.067.500 en Ñuñoa o La Reina consigues deptos similares con mejor perfil financiero. La matemática actual te exige aportar $203.590 cada mes durante toda la proyección — no es inversión, es subsidio mensual. El único retorno vendría al vender después de 10 años, asumiendo que Estación Central mejore su trayectoria histórica de crecimiento.",
+      "reencuadre_uf": "Con UF 2.500 en Ñuñoa o La Reina consigues deptos similares con mejor perfil financiero. La matemática actual te exige aportar UF 5,1 cada mes durante toda la proyección — no es inversión, es subsidio mensual. El único retorno vendría al vender después de 10 años, asumiendo que Estación Central mejore su trayectoria histórica de crecimiento.",
+      "cajaAccionable_clp": "¿Puedes sostener $203.590 mensuales sin tope claro solo apostando a la plusvalía de Estación Central?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 5,1 mensuales sin tope claro solo apostando a la plusvalía de Estación Central?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $420.000 no cubre el dividendo de $456.090 ni los gastos. Resultado: aportas $203.590 cada mes de tu bolsillo. El problema no es temporal — con la plusvalía histórica de 2,2% anual de Estación Central, el flujo no cruza a positivo en el horizonte proyectado.",
+      "contenido_uf": "El arriendo de UF 10,5 no cubre el dividendo de UF 11,4 ni los gastos. Resultado: aportas UF 5,1 cada mes de tu bolsillo. El problema no es temporal — con la plusvalía histórica de 2,2% anual de Estación Central, el flujo no cruza a positivo en el horizonte proyectado.",
+      "cajaAccionable_clp": "¿Tu flujo personal tolera $203.590 mensuales adicionales sin fecha de corte?",
+      "cajaAccionable_uf": "¿Tu flujo personal tolera UF 5,1 mensuales adicionales sin fecha de corte?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Pagarías $12.008.100 sobre mercado — negociar es obligatorio, no opcional. A UF 2.250 (descuento 10%) la TIR sube de 3,5% a 9,4%. Sin embargo, aun con ese precio el flujo mensual seguirá siendo negativo. La negociación mejora la matemática pero no resuelve el problema estructural del caso.",
+      "contenido_uf": "Pagarías UF 300 sobre mercado — negociar es obligatorio, no opcional. A UF 2.250 (descuento 10%) la TIR sube de 3,5% a 9,4%. Sin embargo, aun con ese precio el flujo mensual seguirá siendo negativo. La negociación mejora la matemática pero no resuelve el problema estructural del caso.",
+      "estrategiaSugerida_clp": "Ofrece UF 2.200 (valor real según el motor). Si acepta UF 2.250, puede funcionar por la TIR. Pero honestamente hay mejores opciones en el mercado por $85.417.618.",
+      "estrategiaSugerida_uf": "Ofrece UF 2.200 (valor real según el motor). Si acepta UF 2.250, puede funcionar por la TIR. Pero honestamente hay mejores opciones en el mercado por UF 2.250.",
+      "cajaAccionable_clp": "Tu techo es UF 2.250 ($90.060.675). Por encima, no compras.",
+      "cajaAccionable_uf": "Tu techo es UF 2.250. Por encima, no compras.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 2.250"
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "A 10 años ganarías $68.122.268 netos vendiendo la propiedad, pero habrás aportado $34.561.306 de tu bolsillo durante el período. Un depósito UF al 5% te daría $32.599.883 sin aporte mensual ni riesgo de vacancia. La ventaja real de $35.562.385 compensa el esfuerzo y riesgo, pero solo si Estación Central mejora su trayectoria histórica.",
+      "contenido_uf": "A 10 años ganarías UF 1.700 netos vendiendo la propiedad, pero habrás aportado UF 863 de tu bolsillo durante el período. Un depósito UF al 5% te daría UF 814 sin aporte mensual ni riesgo de vacancia. La ventaja real de UF 886 compensa el esfuerzo y riesgo, pero solo si Estación Central mejora su trayectoria histórica.",
+      "cajaAccionable_clp": "¿Confías en que Estación Central crezca más de 2,2% anual para justificar $203.590 mensuales durante toda la proyección?",
+      "cajaAccionable_uf": "¿Confías en que Estación Central crezca más de 2,2% anual para justificar UF 5,1 mensuales durante toda la proyección?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses elimina los arriendos del año entero — no hay margen de error con flujo ya negativo. Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a $503.892 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único retorno real viene de vender perdiendo dinero.",
+      "contenido_uf": "Vacancia de 2 meses elimina los arriendos del año entero — no hay margen de error con flujo ya negativo. Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a UF 12,6 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único retorno real viene de vender perdiendo dinero.",
+      "cajaAccionable_clp": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.",
+      "cajaAccionable_uf": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Pagas $12.008.100 sobre valor real por flujo negativo de $203.590 mensuales.\",\n  \"siendoFrancoHeadline_uf\": \"Pagas UF 300 sobre valor real por flujo negativo de UF 5,1 mensuales.\",\n  \"francoVerdict\": \"BUSCAR OTRA\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No conviene. Pagarías $12.008.100 sobre el valor de mercado y el flujo mensual nunca se vuelve positivo. Franco Score 53 clasifica esta operación como Regular por la combinación de sobreprecio y rentabilidad débil. Estación Central creció apenas 2,2% anual la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón.\",\n    \"respuestaDirecta_uf\": \"No conviene. Pagarías UF 300 sobre el valor de mercado y el flujo mensual nunca se vuelve positivo. Franco Score 53 clasifica esta operación como Regular por la combinación de sobreprecio y rentabilidad débil. Estación Central creció apenas 2,2% anual la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón.\",\n    \"veredictoFrase_clp\": \"Hay mejores oportunidades por $100.067.500 en el mercado.\",\n    \"veredictoFrase_uf\": \"Hay mejores oportunidades por UF 2.500 en el mercado.\",\n    \"datosClave\": [\n      { \"label\": \"Flujo mensual\", \"valor_clp\": \"-$203.590\", \"valor_uf\": \"-UF 5,1\", \"subtexto\": \"No cruza a positivo\", \"color\": \"red\" },\n      { \"label\": \"Sobreprecio\", \"valor_clp\": \"-$12.008.100\", \"valor_uf\": \"-UF 300\", \"subtexto\": \"13,6% sobre mercado\", \"color\": \"red\" },\n      { \"label\": \"TIR\", \"valor_clp\": \"3,5%\", \"valor_uf\": \"3,5%\", \"subtexto\": \"Bajo depósito a plazo\", \"color\": \"accent\" }\n    ],\n    \"reencuadre_clp\": \"Con $100.067.500 en Ñuñoa o La Reina consigues deptos similares con mejor perfil financiero. La matemática actual te exige aportar $203.590 cada mes durante toda la proyección — no es inversión, es subsidio mensual. El único retorno vendría al vender después de 10 años, asumiendo que Estación Central mejore su trayectoria histórica de crecimiento.\",\n    \"reencuadre_uf\": \"Con UF 2.500 en Ñuñoa o La Reina consigues deptos similares con mejor perfil financiero. La matemática actual te exige aportar UF 5,1 cada mes durante toda la proyección — no es inversión, es subsidio mensual. El único retorno vendría al vender después de 10 años, asumiendo que Estación Central mejore su trayectoria histórica de crecimiento.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $203.590 mensuales sin tope claro solo apostando a la plusvalía de Estación Central?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 5,1 mensuales sin tope claro solo apostando a la plusvalía de Estación Central?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"El arriendo de $420.000 no cubre el dividendo de $456.090 ni los gastos. Resultado: aportas $203.590 cada mes de tu bolsillo. El problema no es temporal — con la plusvalía histórica de 2,2% anual de Estación Central, el flujo no cruza a positivo en el horizonte proyectado.\",\n    \"contenido_uf\": \"El arriendo de UF 10,5 no cubre el dividendo de UF 11,4 ni los gastos. Resultado: aportas UF 5,1 cada mes de tu bolsillo. El problema no es temporal — con la plusvalía histórica de 2,2% anual de Estación Central, el flujo no cruza a positivo en el horizonte proyectado.\",\n    \"cajaAccionable_clp\": \"¿Tu flujo personal tolera $203.590 mensuales adicionales sin fecha de corte?\",\n    \"cajaAccionable_uf\": \"¿Tu flujo personal tolera UF 5,1 mensuales adicionales sin fecha de corte?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"Pagarías $12.008.100 sobre mercado — negociar es obligatorio, no opcional. A UF 2.250 (descuento 10%) la TIR sube de 3,5% a 9,4%. Sin embargo, aun con ese precio el flujo mensual seguirá siendo negativo. La negociación mejora la matemática pero no resuelve el problema estructural del caso.\",\n    \"contenido_uf\": \"Pagarías UF 300 sobre mercado — negociar es obligatorio, no opcional. A UF 2.250 (descuento 10%) la TIR sube de 3,5% a 9,4%. Sin embargo, aun con ese precio el flujo mensual seguirá siendo negativo. La negociación mejora la matemática pero no resuelve el problema estructural del caso.\",\n    \"estrategiaSugerida_clp\": \"Ofrece UF 2.200 (valor real según el motor). Si acepta UF 2.250, puede funcionar por la TIR. Pero honestamente hay mejores opciones en el mercado por $85.417.618.\",\n    \"estrategiaSugerida_uf\": \"Ofrece UF 2.200 (valor real según el motor). Si acepta UF 2.250, puede funcionar por la TIR. Pero honestamente hay mejores opciones en el mercado por UF 2.250.\",\n    \"cajaAccionable_clp\": \"Tu techo es UF 2.250 ($90.060.675). Por encima, no compras.\",\n    \"cajaAccionable_uf\": \"Tu techo es UF 2.250. Por encima, no compras.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 2.250\"\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"A 10 años ganarías $68.122.268 netos vendiendo la propiedad, pero habrás aportado $34.561.306 de tu bolsillo durante el período. Un depósito UF al 5% te daría $32.599.883 sin aporte mensual ni riesgo de vacancia. La ventaja real de $35.562.385 compensa el esfuerzo y riesgo, pero solo si Estación Central mejora su trayectoria histórica.\",\n    \"contenido_uf\": \"A 10 años ganarías UF 1.700 netos vendiendo la propiedad, pero habrás aportado UF 863 de tu bolsillo durante el período. Un depósito UF al 5% te daría UF 814 sin aporte mensual ni riesgo de vacancia. La ventaja real de UF 886 compensa el esfuerzo y riesgo, pero solo si Estación Central mejora su trayectoria histórica.\",\n    \"cajaAccionable_clp\": \"¿Confías en que Estación Central crezca más de 2,2% anual para justificar $203.590 mensuales durante toda la proyección?\",\n    \"cajaAccionable_uf\": \"¿Confías en que Estación Central crezca más de 2,2% anual para justificar UF 5,1 mensuales durante toda la proyección?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses elimina los arriendos del año entero — no hay margen de error con flujo ya negativo. Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a $503.892 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único retorno real viene de vender perdiendo dinero.\",\n    \"contenido_uf\": \"Vacancia de 2 meses elimina los arriendos del año entero — no hay margen de error con flujo ya negativo. Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a UF 12,6 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único retorno real viene de vender perdiendo dinero.\",\n    \"cajaAccionable_clp\": \"Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.\",\n    \"cajaAccionable_uf\": \"Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido_str": "UF 2.250",
+    "precioSugerido_motor_uf": 2134,
+    "precioSugerido_motor_clp": 85417618,
+    "neg_menciona_TIR": true,
+    "neg_menciona_flujo_cruza": false,
+    "neg_menciona_pp_o_pct": true,
+    "neg_compara_actual_vs_sugerido": true,
+    "neg_menciona_techo": true,
+    "neg_menciona_oferta": true,
+    "neg_menciona_walkaway": false,
+    "neg_caja_contiene_precioSugerido": true,
+    "ries_chars": 369,
+    "ries_doble_newline_count": 0,
+    "ries_bullet_count": 0,
+    "ries_bold_count": 0,
+    "ries_oraciones_aprox": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses elimina los arriendos del año entero — n",
+        "descripcion": "Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a $503.892 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único re",
+        "descripcionTruncadoEn220": true
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir",
+      "no cruza a positivo",
+      "flujo no cruza",
+      "bps"
+    ]
+  }
+}

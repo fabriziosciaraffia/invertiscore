@@ -821,6 +821,13 @@ function DrawerNegociacion({
         </p>
       </div>
 
+      {/* Fase 3.6 v9 — Plan de negociación (3 slots discretos).
+          Solo se renderiza si data.precios viene del motor v9. Cache pre-v9 cae
+          al bloque "Estrategia sugerida" arriba como fallback. */}
+      {data.precios && (
+        <PlanNegociacion precios={data.precios} currency={currency} />
+      )}
+
       {/* data.cajaAccionable (IA) si existe — mantener el guión editorial */}
       {(currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf) && (
         <StateBox
@@ -831,6 +838,110 @@ function DrawerNegociacion({
           {currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf}
         </StateBox>
       )}
+    </div>
+  );
+}
+
+// ─── Fase 3.6 v9 — Plan de negociación (3 slots) ──────────────────────────
+// Patrón 2 (zona): Ink neutro, sin Signal Red. Slots apilados con border-left
+// Ink secundario. Cada slot: label mono uppercase + precio mono bold + glosa.
+function PlanNegociacion({
+  precios,
+  currency,
+}: {
+  precios: NonNullable<AINegociacionSection["precios"]>;
+  currency: "CLP" | "UF";
+}) {
+  const fmtPrecio = (clp: number, uf: number) => {
+    if (currency === "UF") return `UF ${Math.round(uf).toLocaleString("es-CL")}`;
+    return "$" + Math.round(clp).toLocaleString("es-CL");
+  };
+
+  const glosaPrimera = (currency === "CLP" ? precios.glosaPrimeraOferta_clp : precios.glosaPrimeraOferta_uf) || "";
+  const glosaTecho = (currency === "CLP" ? precios.glosaTecho_clp : precios.glosaTecho_uf) || "";
+  const glosaWalk = (currency === "CLP" ? precios.glosaWalkAway_clp : precios.glosaWalkAway_uf) || "";
+
+  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string }> = [
+    {
+      label: "Primera oferta",
+      valor: fmtPrecio(precios.primeraOferta_clp, precios.primeraOferta_uf),
+      glosa: glosaPrimera || "Con qué número partir.",
+    },
+    {
+      label: "Techo",
+      valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
+      glosa: glosaTecho || "Hasta dónde subir si rechazan.",
+    },
+  ];
+
+  if (precios.walkAway) {
+    if (precios.walkAway.precio_uf === null) {
+      slots.push({
+        label: "Walk-away",
+        valor: "Buscar otra propiedad",
+        glosa: glosaWalk || precios.walkAway.razon,
+      });
+    } else if (precios.walkAway.precio_clp !== null) {
+      slots.push({
+        label: "Walk-away",
+        valor: fmtPrecio(precios.walkAway.precio_clp, precios.walkAway.precio_uf),
+        glosa: glosaWalk || precios.walkAway.razon,
+      });
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2.5">
+      <p
+        className="font-mono uppercase m-0 mb-1"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.06em",
+          color: "var(--franco-text-secondary)",
+          fontWeight: 600,
+        }}
+      >
+        Plan de negociación
+      </p>
+      {slots.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            borderRadius: "0 8px 8px 0",
+            padding: "12px 16px",
+          }}
+        >
+          <div className="flex items-baseline justify-between mb-1.5">
+            <span
+              className="font-mono uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.06em",
+                color: "var(--franco-text-secondary)",
+                fontWeight: 500,
+              }}
+            >
+              {s.label}
+            </span>
+            <span
+              className="font-mono font-bold whitespace-nowrap"
+              style={{ fontSize: 14, color: "var(--franco-text)" }}
+            >
+              {s.valor}
+            </span>
+          </div>
+          {s.glosa && (
+            <p
+              className="font-body m-0"
+              style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
+            >
+              {s.glosa}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -1492,12 +1603,57 @@ function DrawerLargoPlazo({
 }
 
 // ─── Riesgos drawer ─────────────────────────────────
+// Fase 3.6 v9 — truncado limpio con ellipsis. Reemplaza slice(0, n) que cortaba
+// mid-word/mid-sentence sin "…". Busca último espacio o cierre de oración antes
+// del límite y agrega ellipsis solo si realmente truncó.
+function truncateClean(str: string, max: number): string {
+  if (!str) return "";
+  if (str.length <= max) return str.trim();
+  const slice = str.slice(0, max);
+  // 1ª preferencia: cortar en último ". ", "! ", "? "
+  const sentenceEnd = Math.max(
+    slice.lastIndexOf(". "),
+    slice.lastIndexOf("! "),
+    slice.lastIndexOf("? "),
+  );
+  if (sentenceEnd > max * 0.5) {
+    return slice.slice(0, sentenceEnd + 1).trim() + "…";
+  }
+  // 2ª preferencia: último espacio
+  const wordEnd = slice.lastIndexOf(" ");
+  if (wordEnd > max * 0.5) {
+    return slice.slice(0, wordEnd).trim() + "…";
+  }
+  // Último recurso: cortar al límite duro
+  return slice.trim() + "…";
+}
+
 export function extractRiesgos(
   content: string
 ): { titulo: string; descripcion: string }[] {
   if (!content || typeof content !== "string") return [];
-  // Split markdown bold segments like "**Titulo.** resto..."
-  // Strategy: find matches of `**...**` and take that as title, then text until next `**`.
+
+  // Fase 3.6 v9 — primero intentar split por doble newline (formato v9 §R8).
+  const dobleSalto = content
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter((b) => b.length > 20);
+  if (dobleSalto.length >= 2) {
+    return dobleSalto.slice(0, 3).map((block, i) => {
+      // Primera oración como título (separada por ". " o ".\n").
+      const firstSentenceMatch = block.match(/^([^.!?]+[.!?])/);
+      const titulo = firstSentenceMatch
+        ? truncateClean(firstSentenceMatch[1].replace(/[.:]$/, "").trim(), 60)
+        : truncateClean(block, 60) || `Riesgo ${i + 1}`;
+      const rest = firstSentenceMatch
+        ? block.slice(firstSentenceMatch[0].length).trim()
+        : "";
+      const descripcion = truncateClean(rest || block, 220);
+      return { titulo, descripcion };
+    });
+  }
+
+  // Fallback compat — cache pre-v9 con **bold** o bullets.
   const boldMatches = Array.from(content.matchAll(/\*\*([^*]+)\*\*/g));
   if (boldMatches.length >= 2) {
     const results: { titulo: string; descripcion: string }[] = [];
@@ -1508,21 +1664,23 @@ export function extractRiesgos(
       const end = i + 1 < boldMatches.length ? boldMatches[i + 1].index! : content.length;
       const desc = content.slice(start, end).trim();
       if (desc.length > 10) {
-        results.push({ titulo: titleRaw, descripcion: desc.slice(0, 220) });
+        results.push({ titulo: truncateClean(titleRaw, 60), descripcion: truncateClean(desc, 220) });
       }
     }
     if (results.length > 0) return results.slice(0, 3);
   }
 
-  // Fallback: split by double newline or numbered list
   const blocks = content
-    .split(/\n\s*\n|\n\s*(?:\d+\.|•|·|-)\s+/)
+    .split(/\n\s*(?:\d+\.|•|·|-)\s+/)
     .map((b) => b.trim())
     .filter((b) => b.length > 20);
   return blocks.slice(0, 3).map((block, i) => {
     const firstSentence = block.split(/[.:]/)[0];
-    const titulo = firstSentence.trim().slice(0, 60) || `Riesgo ${i + 1}`;
-    const descripcion = block.replace(firstSentence, "").replace(/^[.:]\s*/, "").trim().slice(0, 220) || block.slice(0, 220);
+    const titulo = truncateClean(firstSentence.trim(), 60) || `Riesgo ${i + 1}`;
+    const descripcion = truncateClean(
+      block.replace(firstSentence, "").replace(/^[.:]\s*/, "").trim() || block,
+      220
+    );
     return { titulo, descripcion };
   });
 }

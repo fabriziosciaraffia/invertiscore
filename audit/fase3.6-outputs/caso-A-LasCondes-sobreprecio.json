@@ -1,0 +1,212 @@
+{
+  "caseDef": {
+    "id": "A-LasCondes-sobreprecio",
+    "label": "Premium con sobreprecio claro",
+    "notes": "UF 7.500 / 70m² = UF 107/m² (mediana LC ~UF 90/m²). vmFranco UF 6.300 simula SOBREPRECIO ~+19%.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 7500,
+      "valorMercadoFranco": 6300,
+      "superficie": 70,
+      "superficieTotal": 70,
+      "antiguedad": 5,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 1300000,
+      "gastos": 180000,
+      "contribuciones": 110000,
+      "provisionMantencion": 90000,
+      "comuna": "Las Condes",
+      "dormitorios": 2,
+      "piso": 8,
+      "lat": -33.415,
+      "lng": -70.58,
+      "nombre": "Caso A"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 110000,
+    "provisionMantencion": 90000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 7500,
+    "valorMercadoFranco": 6300,
+    "superficie": 70,
+    "superficieTotal": 70,
+    "antiguedad": 5,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 1300000,
+    "gastos": 180000,
+    "comuna": "Las Condes",
+    "dormitorios": 2,
+    "piso": 8,
+    "lat": -33.415,
+    "lng": -70.58,
+    "nombre": "Caso A"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 64,
+    "flujoNetoMensual": -285128
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 5805,
+    "primeraOfertaCLP": 232356735,
+    "techoUF": 6111,
+    "techoCLP": 244604997,
+    "walkAway": {
+      "precio_uf": 6111,
+      "precio_clp": 244604997,
+      "razon": "no comprar sobre el techo"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Las Condes: sobre precio y flujo negativo indefinido — hay que negociar.",
+    "siendoFrancoHeadline_uf": "Las Condes: sobre precio y flujo negativo indefinido — hay que negociar.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No a este precio. Pagarías $48M sobre valor real (19% de sobreprecio) y el flujo nunca llega a positivo en la proyección. El arriendo de $1.300.000 no alcanza para cubrir el dividendo de $1.280.962, pero el margen es tan ajustado que cualquier gasto extra te deja en rojo. La matemática mejora significativamente si negocias: a $245M la TIR sube de 6,3% a 13,8%.",
+      "respuestaDirecta_uf": "No a este precio. Pagarías UF 1.200 sobre valor real (19% de sobreprecio) y el flujo nunca llega a positivo en la proyección. El arriendo de UF 32,5 no alcanza para cubrir el dividendo de UF 32, pero el margen es tan ajustado que cualquier gasto extra te deja en rojo. La matemática mejora significativamente si negocias: a UF 6.750 la TIR sube de 6,3% a 13,8%.",
+      "veredictoFrase_clp": "Hay depto, pero a $245M — no a $300M.",
+      "veredictoFrase_uf": "Hay depto, pero a UF 6.750 — no a UF 7.500.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio actual",
+          "valor_clp": "$48M",
+          "valor_uf": "UF 1.200",
+          "subtexto": "19% sobre valor real",
+          "color": "red"
+        },
+        {
+          "label": "TIR rentabilidad",
+          "valor_clp": "6,3%",
+          "valor_uf": "6,3%",
+          "subtexto": "sube a 13,8% si negocias",
+          "color": "accent"
+        },
+        {
+          "label": "Flujo mensual",
+          "valor_clp": "-$285.128",
+          "valor_uf": "-UF 7,1",
+          "subtexto": "nunca cruza a positivo",
+          "color": "red"
+        }
+      ],
+      "reencuadre_clp": "La ubicación es sólida — metro a 300m en Las Condes tiene demanda estable. El problema es el precio: el vendedor está pidiendo $300M por algo que vale $252M. Además, Las Condes creció solo 2,7% anual en la última década — apostar a plusvalía superior es especulativo, no conservador. Sin embargo, la estructura financiera funciona: pie 20% con tasa 4,1% está bien calibrada. La palanca de mejora está en el precio de compra, no en tu financiamiento.",
+      "reencuadre_uf": "La ubicación es sólida — metro a 300m en Las Condes tiene demanda estable. El problema es el precio: el vendedor está pidiendo UF 7.500 por algo que vale UF 6.300. Además, Las Condes creció solo 2,7% anual en la última década — apostar a plusvalía superior es especulativo, no conservador. Sin embargo, la estructura financiera funciona: pie 20% con tasa 4,1% está bien calibrada. La palanca de mejora está en el precio de compra, no en tu financiamiento.",
+      "cajaAccionable_clp": "¿Estás dispuesto a negociar agresivamente, o prefieres buscar otra opción en el mismo rango?",
+      "cajaAccionable_uf": "¿Estás dispuesto a negociar agresivamente, o prefieres buscar otra opción en el mismo rango?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $285.128 cada mes sin tope en la proyección — el arriendo nunca alcanza a cubrir completamente el dividendo más gastos. Durante 10 años sumarían $54M de tu bolsillo, equivalente a otro departamento de 2 ambientes. El único retorno viene al vender, apostando a que la plusvalía compense lo aportado mensualmente.",
+      "contenido_uf": "Aportas UF 7,1 cada mes sin tope en la proyección — el arriendo nunca alcanza a cubrir completamente el dividendo más gastos. Durante 10 años sumarían UF 1.360 de tu bolsillo, equivalente a otro departamento de 2 ambientes. El único retorno viene al vender, apostando a que la plusvalía compense lo aportado mensualmente.",
+      "cajaAccionable_clp": "¿Puedes sostener $285K mensuales sin tope claro en la proyección?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 7,1 mensuales sin tope claro en la proyección?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Hay margen evidente: pagas $48M sobre valor real. El vendedor partió con precio inflado — típico de Las Condes donde propietarios sobrevaloran sus activos. La diferencia entre pagar $300M vs $245M es la diferencia entre TIR 6,3% (mediocre) y 13,8% (sólida). Tu posición de negociación es fuerte: tienes los números reales del mercado.",
+      "contenido_uf": "Hay margen evidente: pagas UF 1.200 sobre valor real. El vendedor partió con precio inflado — típico de Las Condes donde propietarios sobrevaloran sus activos. La diferencia entre pagar UF 7.500 vs UF 6.750 es la diferencia entre TIR 6,3% (mediocre) y 13,8% (sólida). Tu posición de negociación es fuerte: tienes los números reales del mercado.",
+      "estrategiaSugerida_clp": "El sobreprecio de 19% te da poder de fuego para una contraoferta agresiva. Partir 23% bajo precio pedido no es irrespetuoso — es coherente con el valor real del activo.",
+      "estrategiaSugerida_uf": "El sobreprecio de 19% te da poder de fuego para una contraoferta agresiva. Partir 23% bajo precio pedido no es irrespetuoso — es coherente con el valor real del activo.",
+      "cajaAccionable_clp": "Ofrece $232M. Tu techo es $245M — ahí los números funcionan y la TIR llega a 13,8%.",
+      "cajaAccionable_uf": "Ofrece UF 5.805. Tu techo es UF 6.111 — ahí los números funcionan y la TIR llega a 13,8%.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 6.111",
+      "precios": {
+        "primeraOferta_uf": 5805,
+        "primeraOferta_clp": 232356735,
+        "techo_uf": 6111,
+        "techo_clp": 244604997,
+        "walkAway": {
+          "precio_uf": 6111,
+          "precio_clp": 244604997,
+          "razon": "no comprar sobre el techo"
+        },
+        "glosaPrimeraOferta_clp": "Partir agresivo pero justificado por sobreprecio actual",
+        "glosaPrimeraOferta_uf": "Partir agresivo pero justificado por sobreprecio actual",
+        "glosaTecho_clp": "Precio donde TIR sube a 13,8% y funciona la matemática",
+        "glosaTecho_uf": "Precio donde TIR sube a 13,8% y funciona la matemática",
+        "glosaWalkAway_clp": "No comprar sobre el techo — buscar otra propiedad",
+        "glosaWalkAway_uf": "No comprar sobre el techo — buscar otra propiedad"
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Si negocias el precio, sí. A $245M proyectas una ganancia neta de $194M al vender en 10 años, después de aportar $54M durante ese período. Comparado con alternativas: un depósito UF al 5% te daría $108M y un fondo mutuo al 7% unos $130M — ambos sin aporte mensual ni riesgo de vacancia. La ventaja del depto es la ganancia potencial superior, pero exige disciplina mensual y confianza en la plusvalía de Las Condes.",
+      "contenido_uf": "Si negocias el precio, sí. A UF 6.111 proyectas una ganancia neta de UF 4.850 al vender en 10 años, después de aportar UF 1.360 durante ese período. Comparado con alternativas: un depósito UF al 5% te daría UF 2.690 y un fondo mutuo al 7% unos UF 3.250 — ambos sin aporte mensual ni riesgo de vacancia. La ventaja del depto es la ganancia potencial superior, pero exige disciplina mensual y confianza en la plusvalía de Las Condes.",
+      "cajaAccionable_clp": "¿Confías en que Las Condes mantenga o supere su plusvalía histórica de 2,7% anual durante la próxima década?",
+      "cajaAccionable_uf": "¿Confías en que Las Condes mantenga o supere su plusvalía histórica de 2,7% anual durante la próxima década?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses elimina el margen del año completo. Con flujo mensual de solo $19K positivos (arriendo menos dividendo), una vacancia típica te pone $570K en rojo ese año.\n\nAlza de tasas castiga proporcionalmente más tu flujo ajustado. Si la tasa sube 2 puntos porcentuales, el dividendo aumenta $281K mensuales — tu flujo pasa de -$285K a -$566K mensuales.\n\nPlusvalía de 2,7% anual podría no repetirse. Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.",
+      "contenido_uf": "Vacancia de 2 meses elimina el margen del año completo. Con flujo mensual de solo UF 0,5 positivos (arriendo menos dividendo), una vacancia típica te pone UF 14,2 en rojo ese año.\n\nAlza de tasas castiga proporcionalmente más tu flujo ajustado. Si la tasa sube 2 puntos porcentuales, el dividendo aumenta UF 7,0 mensuales — tu flujo pasa de -UF 7,1 a -UF 14,1 mensuales.\n\nPlusvalía de 2,7% anual podría no repetirse. Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.",
+      "cajaAccionable_clp": "Si negocias a $245M y puedes sostener el aporte mensual sin presión, esta operación tiene lógica. El metro a 300m y Las Condes estable son fundamentos sólidos. Pero al precio actual es una mala compra — pasa o negocia sin concesiones.",
+      "cajaAccionable_uf": "Si negocias a UF 6.111 y puedes sostener el aporte mensual sin presión, esta operación tiene lógica. El metro a 300m y Las Condes estable son fundamentos sólidos. Pero al precio actual es una mala compra — pasa o negocia sin concesiones.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Las Condes: sobre precio y flujo negativo indefinido — hay que negociar.\",\n  \"siendoFrancoHeadline_uf\": \"Las Condes: sobre precio y flujo negativo indefinido — hay que negociar.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No a este precio. Pagarías $48M sobre valor real (19% de sobreprecio) y el flujo nunca llega a positivo en la proyección. El arriendo de $1.300.000 no alcanza para cubrir el dividendo de $1.280.962, pero el margen es tan ajustado que cualquier gasto extra te deja en rojo. La matemática mejora significativamente si negocias: a $245M la TIR sube de 6,3% a 13,8%.\",\n    \"respuestaDirecta_uf\": \"No a este precio. Pagarías UF 1.200 sobre valor real (19% de sobreprecio) y el flujo nunca llega a positivo en la proyección. El arriendo de UF 32,5 no alcanza para cubrir el dividendo de UF 32, pero el margen es tan ajustado que cualquier gasto extra te deja en rojo. La matemática mejora significativamente si negocias: a UF 6.750 la TIR sube de 6,3% a 13,8%.\",\n    \"veredictoFrase_clp\": \"Hay depto, pero a $245M — no a $300M.\",\n    \"veredictoFrase_uf\": \"Hay depto, pero a UF 6.750 — no a UF 7.500.\",\n    \"datosClave\": [\n      { \"label\": \"Sobreprecio actual\", \"valor_clp\": \"$48M\", \"valor_uf\": \"UF 1.200\", \"subtexto\": \"19% sobre valor real\", \"color\": \"red\" },\n      { \"label\": \"TIR rentabilidad\", \"valor_clp\": \"6,3%\", \"valor_uf\": \"6,3%\", \"subtexto\": \"sube a 13,8% si negocias\", \"color\": \"accent\" },\n      { \"label\": \"Flujo mensual\", \"valor_clp\": \"-$285.128\", \"valor_uf\": \"-UF 7,1\", \"subtexto\": \"nunca cruza a positivo\", \"color\": \"red\" }\n    ],\n    \"reencuadre_clp\": \"La ubicación es sólida — metro a 300m en Las Condes tiene demanda estable. El problema es el precio: el vendedor está pidiendo $300M por algo que vale $252M. Además, Las Condes creció solo 2,7% anual en la última década — apostar a plusvalía superior es especulativo, no conservador. Sin embargo, la estructura financiera funciona: pie 20% con tasa 4,1% está bien calibrada. La palanca de mejora está en el precio de compra, no en tu financiamiento.\",\n    \"reencuadre_uf\": \"La ubicación es sólida — metro a 300m en Las Condes tiene demanda estable. El problema es el precio: el vendedor está pidiendo UF 7.500 por algo que vale UF 6.300. Además, Las Condes creció solo 2,7% anual en la última década — apostar a plusvalía superior es especulativo, no conservador. Sin embargo, la estructura financiera funciona: pie 20% con tasa 4,1% está bien calibrada. La palanca de mejora está en el precio de compra, no en tu financiamiento.\",\n    \"cajaAccionable_clp\": \"¿Estás dispuesto a negociar agresivamente, o prefieres buscar otra opción en el mismo rango?\",\n    \"cajaAccionable_uf\": \"¿Estás dispuesto a negociar agresivamente, o prefieres buscar otra opción en el mismo rango?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"Aportas $285.128 cada mes sin tope en la proyección — el arriendo nunca alcanza a cubrir completamente el dividendo más gastos. Durante 10 años sumarían $54M de tu bolsillo, equivalente a otro departamento de 2 ambientes. El único retorno viene al vender, apostando a que la plusvalía compense lo aportado mensualmente.\",\n    \"contenido_uf\": \"Aportas UF 7,1 cada mes sin tope en la proyección — el arriendo nunca alcanza a cubrir completamente el dividendo más gastos. Durante 10 años sumarían UF 1.360 de tu bolsillo, equivalente a otro departamento de 2 ambientes. El único retorno viene al vender, apostando a que la plusvalía compense lo aportado mensualmente.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $285K mensuales sin tope claro en la proyección?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 7,1 mensuales sin tope claro en la proyección?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"Hay margen evidente: pagas $48M sobre valor real. El vendedor partió con precio inflado — típico de Las Condes donde propietarios sobrevaloran sus activos. La diferencia entre pagar $300M vs $245M es la diferencia entre TIR 6,3% (mediocre) y 13,8% (sólida). Tu posición de negociación es fuerte: tienes los números reales del mercado.\",\n    \"contenido_uf\": \"Hay margen evidente: pagas UF 1.200 sobre valor real. El vendedor partió con precio inflado — típico de Las Condes donde propietarios sobrevaloran sus activos. La diferencia entre pagar UF 7.500 vs UF 6.750 es la diferencia entre TIR 6,3% (mediocre) y 13,8% (sólida). Tu posición de negociación es fuerte: tienes los números reales del mercado.\",\n    \"estrategiaSugerida_clp\": \"El sobreprecio de 19% te da poder de fuego para una contraoferta agresiva. Partir 23% bajo precio pedido no es irrespetuoso — es coherente con el valor real del activo.\",\n    \"estrategiaSugerida_uf\": \"El sobreprecio de 19% te da poder de fuego para una contraoferta agresiva. Partir 23% bajo precio pedido no es irrespetuoso — es coherente con el valor real del activo.\",\n    \"cajaAccionable_clp\": \"Ofrece $232M. Tu techo es $245M — ahí los números funcionan y la TIR llega a 13,8%.\",\n    \"cajaAccionable_uf\": \"Ofrece UF 5.805. Tu techo es UF 6.111 — ahí los números funcionan y la TIR llega a 13,8%.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 6.111\",\n    \"precios\": {\n      \"glosaPrimeraOferta_clp\": \"Partir agresivo pero justificado por sobreprecio actual\",\n      \"glosaPrimeraOferta_uf\": \"Partir agresivo pero justificado por sobreprecio actual\",\n      \"glosaTecho_clp\": \"Precio donde TIR sube a 13,8% y funciona la matemática\",\n      \"glosaTecho_uf\": \"Precio donde TIR sube a 13,8% y funciona la matemática\",\n      \"glosaWalkAway_clp\": \"No comprar sobre el techo — buscar otra propiedad\",\n      \"glosaWalkAway_uf\": \"No comprar sobre el techo — buscar otra propiedad\"\n    }\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"Si negocias el precio, sí. A $245M proyectas una ganancia neta de $194M al vender en 10 años, después de aportar $54M durante ese período. Comparado con alternativas: un depósito UF al 5% te daría $108M y un fondo mutuo al 7% unos $130M — ambos sin aporte mensual ni riesgo de vacancia. La ventaja del depto es la ganancia potencial superior, pero exige disciplina mensual y confianza en la plusvalía de Las Condes.\",\n    \"contenido_uf\": \"Si negocias el precio, sí. A UF 6.111 proyectas una ganancia neta de UF 4.850 al vender en 10 años, después de aportar UF 1.360 durante ese período. Comparado con alternativas: un depósito UF al 5% te daría UF 2.690 y un fondo mutuo al 7% unos UF 3.250 — ambos sin aporte mensual ni riesgo de vacancia. La ventaja del depto es la ganancia potencial superior, pero exige disciplina mensual y confianza en la plusvalía de Las Condes.\",\n    \"cajaAccionable_clp\": \"¿Confías en que Las Condes mantenga o supere su plusvalía histórica de 2,7% anual durante la próxima década?\",\n    \"cajaAccionable_uf\": \"¿Confías en que Las Condes mantenga o supere su plusvalía histórica de 2,7% anual durante la próxima década?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses elimina el margen del año completo. Con flujo mensual de solo $19K positivos (arriendo menos dividendo), una vacancia típica te pone $570K en rojo ese año.\\n\\nAlza de tasas castiga proporcionalmente más tu flujo ajustado. Si la tasa sube 2 puntos porcentuales, el dividendo aumenta $281K mensuales — tu flujo pasa de -$285K a -$566K mensuales.\\n\\nPlusvalía de 2,7% anual podría no repetirse. Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.\",\n    \"contenido_uf\": \"Vacancia de 2 meses elimina el margen del año completo. Con flujo mensual de solo UF 0,5 positivos (arriendo menos dividendo), una vacancia típica te pone UF 14,2 en rojo ese año.\\n\\nAlza de tasas castiga proporcionalmente más tu flujo ajustado. Si la tasa sube 2 puntos porcentuales, el dividendo aumenta UF 7,0 mensuales — tu flujo pasa de -UF 7,1 a -UF 14,1 mensuales.\\n\\nPlusvalía de 2,7% anual podría no repetirse. Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.\",\n    \"cajaAccionable_clp\": \"Si negocias a $245M y puedes sostener el aporte mensual sin presión, esta operación tiene lógica. El metro a 300m y Las Condes estable son fundamentos sólidos. Pero al precio actual es una mala compra — pasa o negocia sin concesiones.\",\n    \"cajaAccionable_uf\": \"Si negocias a UF 6.111 y puedes sostener el aporte mensual sin presión, esta operación tiene lógica. El metro a 300m y Las Condes estable son fundamentos sólidos. Pero al precio actual es una mala compra — pasa o negocia sin concesiones.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido": "UF 6.111",
+    "precioSugerido_eq_techo": true,
+    "precios_presentes": true,
+    "glosaPrimera_presente": true,
+    "glosaTecho_presente": true,
+    "glosaWalk_presente": true,
+    "caja_contiene_primeraOferta_o_techo": false,
+    "ries_chars": 543,
+    "ries_doble_newline": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses elimina el margen del año completo",
+        "descripcion": "Con flujo mensual de solo $19K positivos (arriendo menos dividendo), una vacancia típica te pone $570K en rojo ese año.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga proporcionalmente más tu flujo ajustad",
+        "descripcion": "Si la tasa sube 2 puntos porcentuales, el dividendo aumenta $281K mensuales — tu flujo pasa de -$285K a -$566K mensuales.",
+        "truncado": true
+      },
+      {
+        "titulo": "Plusvalía de 2,7% anual podría no repetirse",
+        "descripcion": "Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ],
+    "tir_glosada_primer_uso": false
+  }
+}

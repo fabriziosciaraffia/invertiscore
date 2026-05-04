@@ -1,0 +1,205 @@
+{
+  "caseDef": {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "notes": "UF 5.500 / 60m² = UF 91.7/m² (Providencia ≈ alineado). vmFranco = precio → PRECIO_ALINEADO.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5500,
+      "valorMercadoFranco": 5500,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 4,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 950000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Providencia",
+      "dormitorios": 2,
+      "piso": 5,
+      "lat": -33.4283,
+      "lng": -70.6182,
+      "nombre": "Caso D — Providencia control"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5500,
+    "valorMercadoFranco": 5500,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 4,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 950000,
+    "gastos": 130000,
+    "comuna": "Providencia",
+    "dormitorios": 2,
+    "piso": 5,
+    "lat": -33.4283,
+    "lng": -70.6182,
+    "nombre": "Caso D — Providencia control"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 66,
+    "flujoNetoMensual": -215623,
+    "precioSugerido": {
+      "precioSugeridoUF": 5335,
+      "precioSugeridoCLP": 213544045,
+      "tirAlSugerido": 11.54,
+      "precioLimiteUF": 6252,
+      "precioLimiteCLP": 250248804,
+      "tirAlLimite": 6,
+      "tirAlVmFranco": 10.52
+    },
+    "financingHealth": {
+      "pie": {
+        "level": "aceptable",
+        "actual_pct": 20,
+        "recommended_pct": 25,
+        "impact_message": "subir el pie a 25% baja la cuota en $58.711 al mes"
+      },
+      "tasa": {
+        "level": "optimo",
+        "actual_pct": 4.1,
+        "recommended_pct": 4.1,
+        "market_avg_pct": 4.1,
+        "spread_bps": 0
+      },
+      "overall": "aceptable"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "INDETERMINADO_FALLBACK_VMFRANCO",
+    "tieneDiferenciaValida": false,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Depto sólido en ubicación excelente, pero pides $6.6M de descuento para números sostenibles.",
+    "siendoFrancoHeadline_uf": "Depto sólido en ubicación excelente, pero pides UF 550 de descuento para números sostenibles.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "La ubicación es excelente — metro a una cuadra, Providencia consolidada. Pero a $220M necesitas aportar $215K cada mes sin tope. El motor no cruza el flujo en el horizonte, así que tu retorno depende 100% de la venta futura. A $213M (UF 4.950) los números mejoran: TIR sube de 10,5% a 11,5%.",
+      "respuestaDirecta_uf": "La ubicación es excelente — metro a una cuadra, Providencia consolidada. Pero a UF 5.500 necesitas aportar UF 5,4 cada mes sin tope. El motor no cruza el flujo en el horizonte, así que tu retorno depende 100% de la venta futura. A UF 4.950 los números mejoran: TIR sube de 10,5% a 11,5%.",
+      "veredictoFrase_clp": "Buena inversión al precio correcto — que no es el actual.",
+      "veredictoFrase_uf": "Buena inversión al precio correcto — que no es el actual.",
+      "datosClave": [
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$215.623",
+          "valor_uf": "UF 5,4",
+          "subtexto": "sin tope en proyección",
+          "color": "red"
+        },
+        {
+          "label": "TIR actual",
+          "valor_clp": "10,5%",
+          "valor_uf": "10,5%",
+          "subtexto": "vs 11,5% con descuento",
+          "color": "accent"
+        },
+        {
+          "label": "Distancia metro",
+          "valor_clp": "100 m",
+          "valor_uf": "100 m",
+          "subtexto": "Manuel Montt L1",
+          "color": "green"
+        }
+      ],
+      "reencuadre_clp": "Providencia creció 3% anual en la última década — plusvalía moderada pero estable. El depto está a precio que no cierra hoy pero la apuesta es sólida: metro a 100 metros, comuna que mantiene valor. El problema no es la zona ni el activo. Es el precio que pide una fe ciega en que la plusvalía compense 20 años de aporte mensual sin respiro.",
+      "reencuadre_uf": "Providencia creció 3% anual en la última década — plusvalía moderada pero estable. El depto está a precio que no cierra hoy pero la apuesta es sólida: metro a 100 metros, comuna que mantiene valor. El problema no es la zona ni el activo. Es el precio que pide una fe ciega en que la plusvalía compense 20 años de aporte mensual sin respiro.",
+      "cajaAccionable_clp": "¿Puedes sostener $215K mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 5,4 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $950K no cubre tu dividendo de $939K — margen microscópico de $11K que los gastos comunes ($130K) y mantención ($70K) borran fácilmente. Tu aporte neto: $215K cada mes. En 10 años sumas $39M de tu bolsillo, equivalente a 18% del precio actual del depto.",
+      "contenido_uf": "El arriendo de UF 23,7 no cubre tu dividendo de UF 23,5 — margen microscópico de UF 0,2 que los gastos comunes (UF 3,2) y mantención (UF 1,7) borran fácilmente. Tu aporte neto: UF 5,4 cada mes. En 10 años sumas UF 977 de tu bolsillo, equivalente a 18% del precio actual del depto.",
+      "cajaAccionable_clp": "¿Tu flujo personal permite $215K extra al mes durante años sin certeza de cuándo se revierte?",
+      "cajaAccionable_uf": "¿Tu flujo personal permite UF 5,4 extra al mes durante años sin certeza de cuándo se revierte?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "El motor sugiere UF 4.950 (descuento 10%) para mejorar la TIR de 10,5% a 11,5%. Aun así, el flujo sigue negativo — solo reduces el aporte mensual. La negociación no arregla la estructura fundamental: este depto funciona por plusvalía, no por flujo. Es una apuesta a la valorización de Providencia durante la próxima década.",
+      "contenido_uf": "El motor sugiere UF 4.950 (descuento 10%) para mejorar la TIR de 10,5% a 11,5%. Aun así, el flujo sigue negativo — solo reduces el aporte mensual. La negociación no arregla la estructura fundamental: este depto funciona por plusvalía, no por flujo. Es una apuesta a la valorización de Providencia durante la próxima década.",
+      "estrategiaSugerida_clp": "Ofrece $213M (UF 4.950). Es 10% bajo el precio actual pero sigue siendo flujo negativo. Si no acepta, tienes mejores opciones en el mercado a ese rango de precios.",
+      "estrategiaSugerida_uf": "Ofrece UF 4.950. Es 10% bajo el precio actual pero sigue siendo flujo negativo. Si no acepta, tienes mejores opciones en el mercado a ese rango de precios.",
+      "cajaAccionable_clp": "Ofrece $213M (UF 4.950). Si rechaza, pide 15 días para evaluar alternativas.",
+      "cajaAccionable_uf": "Ofrece UF 4.950. Si rechaza, pide 15 días para evaluar alternativas.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.950"
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "En 10 años, el motor proyecta $325M de valor (4% anual). Ganancia neta: $193M después de aporte y costos. Pero un depósito UF al 5% te daría $79M sin aporte mensual, y un fondo al 7% te daría $95M. La diferencia ($98M adicionales con el depto) es tu premio por apostar a Providencia, asumir riesgo de vacancia y mantener el inmueble. Providencia con metro a 100 metros justifica esa apuesta.",
+      "contenido_uf": "En 10 años, el motor proyecta UF 8.143 de valor (4% anual). Ganancia neta: UF 4.826 después de aporte y costos. Pero un depósito UF al 5% te daría UF 1.970 sin aporte mensual, y un fondo al 7% te daría UF 2.380. La diferencia (UF 2.446 adicionales con el depto) es tu premio por apostar a Providencia, asumir riesgo de vacancia y mantener el inmueble. Providencia con metro a 100 metros justifica esa apuesta.",
+      "cajaAccionable_clp": "¿Confías en que Providencia se valorice 4% anual durante 10 años, compensando $39M de aportes de tu bolsillo?",
+      "cajaAccionable_uf": "¿Confías en que Providencia se valorice 4% anual durante 10 años, compensando UF 977 de aportes de tu bolsillo?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses borra 10 meses de margen. Con arriendo de $950K vs dividendo de $939K, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a $1.040K — el arriendo ya no cubre y tu aporte mensual salta de $215K a $305K. Gastos comunes fuera de control: edificio de 4 años puede tener sorpresas estructurales o de administración que disparen los GGCC por encima de los $130K proyectados.",
+      "contenido_uf": "Vacancia de 2 meses borra 10 meses de margen. Con arriendo de UF 23,7 vs dividendo de UF 23,5, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a UF 26 — el arriendo ya no cubre y tu aporte mensual salta de UF 5,4 a UF 7,6. Gastos comunes fuera de control: edificio de 4 años puede tener sorpresas estructurales o de administración que disparen los GGCC por encima de UF 3,2 proyectados.",
+      "cajaAccionable_clp": "Es un depto que puede funcionar, pero solo si tienes disciplina financiera y paciencia para 10 años de aporte sin certezas. El metro a 100 metros es real, la plusvalía de Providencia es histórica. Pero no te cuentes la historia de que es flujo positivo — es pura apuesta a valorización.",
+      "cajaAccionable_uf": "Es un depto que puede funcionar, pero solo si tienes disciplina financiera y paciencia para 10 años de aporte sin certezas. El metro a 100 metros es real, la plusvalía de Providencia es histórica. Pero no te cuentes la historia de que es flujo positivo — es pura apuesta a valorización.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Depto sólido en ubicación excelente, pero pides $6.6M de descuento para números sostenibles.\",\n  \"siendoFrancoHeadline_uf\": \"Depto sólido en ubicación excelente, pero pides UF 550 de descuento para números sostenibles.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"La ubicación es excelente — metro a una cuadra, Providencia consolidada. Pero a $220M necesitas aportar $215K cada mes sin tope. El motor no cruza el flujo en el horizonte, así que tu retorno depende 100% de la venta futura. A $213M (UF 4.950) los números mejoran: TIR sube de 10,5% a 11,5%.\",\n    \"respuestaDirecta_uf\": \"La ubicación es excelente — metro a una cuadra, Providencia consolidada. Pero a UF 5.500 necesitas aportar UF 5,4 cada mes sin tope. El motor no cruza el flujo en el horizonte, así que tu retorno depende 100% de la venta futura. A UF 4.950 los números mejoran: TIR sube de 10,5% a 11,5%.\",\n    \"veredictoFrase_clp\": \"Buena inversión al precio correcto — que no es el actual.\",\n    \"veredictoFrase_uf\": \"Buena inversión al precio correcto — que no es el actual.\",\n    \"datosClave\": [\n      { \"label\": \"Aporte mensual\", \"valor_clp\": \"$215.623\", \"valor_uf\": \"UF 5,4\", \"subtexto\": \"sin tope en proyección\", \"color\": \"red\" },\n      { \"label\": \"TIR actual\", \"valor_clp\": \"10,5%\", \"valor_uf\": \"10,5%\", \"subtexto\": \"vs 11,5% con descuento\", \"color\": \"accent\" },\n      { \"label\": \"Distancia metro\", \"valor_clp\": \"100 m\", \"valor_uf\": \"100 m\", \"subtexto\": \"Manuel Montt L1\", \"color\": \"green\" }\n    ],\n    \"reencuadre_clp\": \"Providencia creció 3% anual en la última década — plusvalía moderada pero estable. El depto está a precio que no cierra hoy pero la apuesta es sólida: metro a 100 metros, comuna que mantiene valor. El problema no es la zona ni el activo. Es el precio que pide una fe ciega en que la plusvalía compense 20 años de aporte mensual sin respiro.\",\n    \"reencuadre_uf\": \"Providencia creció 3% anual en la última década — plusvalía moderada pero estable. El depto está a precio que no cierra hoy pero la apuesta es sólida: metro a 100 metros, comuna que mantiene valor. El problema no es la zona ni el activo. Es el precio que pide una fe ciega en que la plusvalía compense 20 años de aporte mensual sin respiro.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $215K mensuales sin tope claro en la proyección? El retorno depende solo de la venta.\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 5,4 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"El arriendo de $950K no cubre tu dividendo de $939K — margen microscópico de $11K que los gastos comunes ($130K) y mantención ($70K) borran fácilmente. Tu aporte neto: $215K cada mes. En 10 años sumas $39M de tu bolsillo, equivalente a 18% del precio actual del depto.\",\n    \"contenido_uf\": \"El arriendo de UF 23,7 no cubre tu dividendo de UF 23,5 — margen microscópico de UF 0,2 que los gastos comunes (UF 3,2) y mantención (UF 1,7) borran fácilmente. Tu aporte neto: UF 5,4 cada mes. En 10 años sumas UF 977 de tu bolsillo, equivalente a 18% del precio actual del depto.\",\n    \"cajaAccionable_clp\": \"¿Tu flujo personal permite $215K extra al mes durante años sin certeza de cuándo se revierte?\",\n    \"cajaAccionable_uf\": \"¿Tu flujo personal permite UF 5,4 extra al mes durante años sin certeza de cuándo se revierte?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"El motor sugiere UF 4.950 (descuento 10%) para mejorar la TIR de 10,5% a 11,5%. Aun así, el flujo sigue negativo — solo reduces el aporte mensual. La negociación no arregla la estructura fundamental: este depto funciona por plusvalía, no por flujo. Es una apuesta a la valorización de Providencia durante la próxima década.\",\n    \"contenido_uf\": \"El motor sugiere UF 4.950 (descuento 10%) para mejorar la TIR de 10,5% a 11,5%. Aun así, el flujo sigue negativo — solo reduces el aporte mensual. La negociación no arregla la estructura fundamental: este depto funciona por plusvalía, no por flujo. Es una apuesta a la valorización de Providencia durante la próxima década.\",\n    \"estrategiaSugerida_clp\": \"Ofrece $213M (UF 4.950). Es 10% bajo el precio actual pero sigue siendo flujo negativo. Si no acepta, tienes mejores opciones en el mercado a ese rango de precios.\",\n    \"estrategiaSugerida_uf\": \"Ofrece UF 4.950. Es 10% bajo el precio actual pero sigue siendo flujo negativo. Si no acepta, tienes mejores opciones en el mercado a ese rango de precios.\",\n    \"cajaAccionable_clp\": \"Ofrece $213M (UF 4.950). Si rechaza, pide 15 días para evaluar alternativas.\",\n    \"cajaAccionable_uf\": \"Ofrece UF 4.950. Si rechaza, pide 15 días para evaluar alternativas.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 4.950\"\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"En 10 años, el motor proyecta $325M de valor (4% anual). Ganancia neta: $193M después de aporte y costos. Pero un depósito UF al 5% te daría $79M sin aporte mensual, y un fondo al 7% te daría $95M. La diferencia ($98M adicionales con el depto) es tu premio por apostar a Providencia, asumir riesgo de vacancia y mantener el inmueble. Providencia con metro a 100 metros justifica esa apuesta.\",\n    \"contenido_uf\": \"En 10 años, el motor proyecta UF 8.143 de valor (4% anual). Ganancia neta: UF 4.826 después de aporte y costos. Pero un depósito UF al 5% te daría UF 1.970 sin aporte mensual, y un fondo al 7% te daría UF 2.380. La diferencia (UF 2.446 adicionales con el depto) es tu premio por apostar a Providencia, asumir riesgo de vacancia y mantener el inmueble. Providencia con metro a 100 metros justifica esa apuesta.\",\n    \"cajaAccionable_clp\": \"¿Confías en que Providencia se valorice 4% anual durante 10 años, compensando $39M de aportes de tu bolsillo?\",\n    \"cajaAccionable_uf\": \"¿Confías en que Providencia se valorice 4% anual durante 10 años, compensando UF 977 de aportes de tu bolsillo?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses borra 10 meses de margen. Con arriendo de $950K vs dividendo de $939K, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a $1.040K — el arriendo ya no cubre y tu aporte mensual salta de $215K a $305K. Gastos comunes fuera de control: edificio de 4 años puede tener sorpresas estructurales o de administración que disparen los GGCC por encima de los $130K proyectados.\",\n    \"contenido_uf\": \"Vacancia de 2 meses borra 10 meses de margen. Con arriendo de UF 23,7 vs dividendo de UF 23,5, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a UF 26 — el arriendo ya no cubre y tu aporte mensual salta de UF 5,4 a UF 7,6. Gastos comunes fuera de control: edificio de 4 años puede tener sorpresas estructurales o de administración que disparen los GGCC por encima de UF 3,2 proyectados.\",\n    \"cajaAccionable_clp\": \"Es un depto que puede funcionar, pero solo si tienes disciplina financiera y paciencia para 10 años de aporte sin certezas. El metro a 100 metros es real, la plusvalía de Providencia es histórica. Pero no te cuentes la historia de que es flujo positivo — es pura apuesta a valorización.\",\n    \"cajaAccionable_uf\": \"Es un depto que puede funcionar, pero solo si tienes disciplina financiera y paciencia para 10 años de aporte sin certezas. El metro a 100 metros es real, la plusvalía de Providencia es histórica. Pero no te cuentes la historia de que es flujo positivo — es pura apuesta a valorización.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido_str": "UF 4.950",
+    "precioSugerido_motor_uf": 5335,
+    "precioSugerido_motor_clp": 213544045,
+    "neg_menciona_TIR": true,
+    "neg_menciona_flujo_cruza": false,
+    "neg_menciona_pp_o_pct": true,
+    "neg_compara_actual_vs_sugerido": false,
+    "neg_menciona_techo": false,
+    "neg_menciona_oferta": true,
+    "neg_menciona_walkaway": false,
+    "neg_caja_contiene_precioSugerido": true,
+    "ries_chars": 472,
+    "ries_doble_newline_count": 0,
+    "ries_bullet_count": 0,
+    "ries_bold_count": 0,
+    "ries_oraciones_aprox": 3,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses borra 10 meses de margen",
+        "descripcion": "Con arriendo de $950K vs dividendo de $939K, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a $1.040K — el arriendo ya no cubre y tu",
+        "descripcionTruncadoEn220": true
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

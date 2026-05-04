@@ -1,0 +1,178 @@
+[
+  {
+    "id": "A-LasCondes-sobreprecio",
+    "label": "Premium con sobreprecio claro",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "anclas": {
+      "primeraOfertaUF": 5805,
+      "techoUF": 6111,
+      "walkAway": 6111
+    },
+    "metricas": {
+      "precioSugerido": "UF 6.111",
+      "precioSugerido_eq_techo": true,
+      "precios_presentes": true,
+      "glosaPrimera_presente": true,
+      "glosaTecho_presente": true,
+      "glosaWalk_presente": true,
+      "caja_contiene_primeraOferta_o_techo": false,
+      "ries_chars": 543,
+      "ries_doble_newline": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses elimina el margen del año completo",
+          "descripcion": "Con flujo mensual de solo $19K positivos (arriendo menos dividendo), una vacancia típica te pone $570K en rojo ese año.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga proporcionalmente más tu flujo ajustad",
+          "descripcion": "Si la tasa sube 2 puntos porcentuales, el dividendo aumenta $281K mensuales — tu flujo pasa de -$285K a -$566K mensuales.",
+          "truncado": true
+        },
+        {
+          "titulo": "Plusvalía de 2,7% anual podría no repetirse",
+          "descripcion": "Las Condes no es Providencia o Ñuñoa — su crecimiento histórico es bajo y depende más de factores macro que de renovación urbana local.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ],
+      "tir_glosada_primer_uso": false
+    }
+  },
+  {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "anclas": {
+      "primeraOfertaUF": 4147,
+      "techoUF": 4365,
+      "walkAway": 4365
+    },
+    "metricas": {
+      "precioSugerido": "UF 4.365",
+      "precioSugerido_eq_techo": true,
+      "precios_presentes": true,
+      "glosaPrimera_presente": true,
+      "glosaTecho_presente": true,
+      "glosaWalk_presente": true,
+      "caja_contiene_primeraOferta_o_techo": true,
+      "ries_chars": 510,
+      "ries_doble_newline": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses borra tu flujo anual",
+          "descripcion": "Con margen negativo de $263K mensuales, quedarte sin inquilino 8 semanas te cuesta $526K extra ese año — no hay colchón.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga duramente el dividendo",
+          "descripcion": "Si la tasa sube 1 punto porcentual, tu dividendo aumenta $87K mensuales, empeorando el flujo a -$351K/mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía 3",
+          "descripcion": "2% histórica no sostiene la apuesta. Necesitas que Ñuñoa acelere a 5%+ anual para justificar 20 años de aporte. Si la comuna sigue su ritmo histórico, vendes perdiendo dinero real.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ],
+      "tir_glosada_primer_uso": false
+    }
+  },
+  {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados",
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "anclas": {
+      "primeraOfertaUF": 2027,
+      "techoUF": 2134,
+      "walkAway": "veredicto motor: buscar otra propiedad"
+    },
+    "metricas": {
+      "precioSugerido": "UF 2.134",
+      "precioSugerido_eq_techo": true,
+      "precios_presentes": true,
+      "glosaPrimera_presente": true,
+      "glosaTecho_presente": true,
+      "glosaWalk_presente": false,
+      "caja_contiene_primeraOferta_o_techo": false,
+      "ries_chars": 499,
+      "ries_doble_newline": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses anula el arriendo equivalente a $840K de",
+          "descripcion": "Con flujo ya negativo en $204K mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.",
+          "truncado": true
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo duramente",
+          "descripcion": "1 punto porcentual adicional sube tu cuota de $456K a $504K mensuales — empeora el flujo negativo en $48K más por mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía histórica 2,2% no sostiene la matemática",
+          "descripcion": "La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ],
+      "tir_glosada_primer_uso": true
+    }
+  },
+  {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "anclas": {
+      "primeraOfertaUF": 5068,
+      "techoUF": 5335,
+      "walkAway": 5335
+    },
+    "metricas": {
+      "precioSugerido": "UF 5.335",
+      "precioSugerido_eq_techo": true,
+      "precios_presentes": true,
+      "glosaPrimera_presente": true,
+      "glosaTecho_presente": true,
+      "glosaWalk_presente": true,
+      "caja_contiene_primeraOferta_o_techo": true,
+      "ries_chars": 475,
+      "ries_doble_newline": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses duplica el aporte anual",
+          "descripcion": "Con margen actual de $215K mensuales negativos, quedarte sin inquilino por 60 días te cuesta $2,8M extra ese año.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo sin tope",
+          "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $1.145.526 mensuales, empeorando el flujo en $200K/mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía 3% anual puede no sostenerse",
+          "descripcion": "Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ],
+      "tir_glosada_primer_uso": true
+    }
+  }
+]

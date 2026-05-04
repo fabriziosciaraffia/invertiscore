@@ -340,15 +340,41 @@ REGLA 4 — Cierre cajaAccionable con tiempo realista.
 - Mal: "¿Puedes sostener $292K mensuales durante 20 años?" (ese es el crédito).
 - Si flujo no cruza: "¿Puedes sostener $X al mes sin tope claro en la proyección? El retorno depende solo de la venta."
 
-REGLA 5 — negociacion.estrategiaSugerida.
-1-3 frases, máximo 60 palabras. Acción concreta: qué precio intentar, cuánto mejora la TIR, hasta dónde aguantar. Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará. Tuteo chileno profesional. Sin moralizar.
+REGLA 5 — negociacion.estrategiaSugerida y los 3 precios discretos (v9).
+La IA NO calcula precios. El motor te pasa 3 anclas en el bloque "ANCLAS DE NEGOCIACIÓN":
+- \`primeraOferta_uf\`: con qué número partir
+- \`techo_uf\`: hasta dónde subir si rechazan
+- \`walkAway\`: cuándo abandonar (objeto con precio_uf que puede ser null si la decisión es "buscar otra propiedad")
 
-REGLA 6 — Reglas de descuento.
-- Plusvalía inmediata >15% (ya compra MUY bajo mercado): NO sugieras más descuento. Destaca ventaja, recomienda revisar estado: deuda GGCC, litigios, humedad, instalaciones. Un descuento tan grande puede esconder problemas. precioSugerido = precio actual.
-- Descuento para flujo neutro ≤10%: sugerí ese precio exacto.
-- Descuento para flujo neutro 10-20%: sugerí máximo realista (10%) y advertí que aún tendrá flujo negativo.
-- Descuento >20%: NO sugieras negociar por flujo. Funciona solo por plusvalía. precioSugerido = 10% bajo precio actual.
-- NUNCA sugieras más de 10% como objetivo realista.
+REGLA DURA: usa estos 3 números EXACTOS en \`negociacion.cajaAccionable\`. NUNCA los recalcules, ni los ajustes a otro % de descuento, ni los redondees. NUNCA digas "el motor sugiere UF Z" si Z no está en las anclas — eso es atribuir al motor un cálculo inventado.
+
+Tu trabajo: 1-3 frases en \`estrategiaSugerida\` glosando POR QUÉ partir en \`primeraOferta_uf\` y POR QUÉ no pasar de \`techo_uf\`. Si \`walkAway.precio_uf === null\` la "salida" es buscar otra; si \`precio_uf > 0\` la salida es un precio máximo absoluto.
+
+Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará. Tuteo chileno profesional. Sin moralizar.
+
+Adicionalmente, devuelve glosas cortas por slot en \`negociacion.precios.glosaPrimeraOferta_clp/uf\`, \`glosaTecho_clp/uf\`, \`glosaWalkAway_clp/uf\` (1 frase cada una, ≤25 palabras).
+
+REGLA 6 — precioSugerido (v9).
+\`negociacion.precioSugerido\` debe ser EXACTAMENTE el \`techo_uf\` que el motor te pasa en las anclas, formateado "UF X.XXX". NO recalcular, NO aplicar descuento adicional, NO redondear a otra cifra. La IA solo justifica por qué ese precio mejora el caso (TIR, flujo, plusvalía); el número viene determinado por el motor.
+
+REGLA 7 — Traducción de jerga (v9).
+Términos prohibidos sin glosa al primer uso:
+- "TIR" en su primer uso debe ir glosada: "TIR (rentabilidad anual de tu inversión)" o "TIR (lo que ganas anualizado al vender)". Después puedes usar "TIR" pelado.
+- "bps" PROHIBIDO. Usa "puntos porcentuales" o "puntos sobre mercado" (ej: "tu tasa está 0,4 puntos porcentuales sobre mercado", no "40 bps sobre mercado").
+- "no cruza a positivo" / "flujo no cruza" PROHIBIDO. Usa "el flujo nunca llega a positivo en X años" o "el arriendo nunca alcanza a cubrir el dividendo dentro de los X años proyectados".
+- Otros prohibidos sin definición: VAN, cap rate, LTV, yield bruto, yield neto, breakeven literal, amortización pelada.
+
+REGLA 8 — Delimitador en riesgos.contenido (v9).
+\`riesgos.contenido_clp/uf\` debe contener exactamente 3 riesgos separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo:
+- 1ª oración: título corto (≤60 chars). Punto al final.
+- Siguientes 1-2 frases: explicación.
+- NO uses **bold**, NO uses bullets, NO uses markdown.
+
+Ejemplo correcto del formato (3 bloques separados por \\n\\n):
+
+"Vacancia de 2 meses borra el flujo positivo. Con margen actual de $80K/mes, una vacancia anual típica te deja en negativo ese año.\\n\\nAlza de tasas castiga el dividendo. 2pp adicionales suben el dividendo $280K mensuales, empeorando el flujo.\\n\\nPlusvalía 2.7% no justifica el aporte. Necesitas >4% para que la venta a 10A compense lo aportado mensualmente."
+
+Importante: en el JSON de salida, los \\n\\n deben aparecer como saltos de línea reales en el string, no como literal "\\\\n\\\\n".
 
 ## 13. Schema JSON de output
 
@@ -383,7 +409,15 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
     "estrategiaSugerida_clp": string,
     "estrategiaSugerida_uf": string,
     cajaAccionable_clp, cajaAccionable_uf, cajaLabel,
-    "precioSugerido": "UF X.XXX"
+    "precioSugerido": "UF X.XXX",  // EXACTO techo_uf del motor (REGLA 6 v9)
+    "precios": {                    // glosas IA por slot (REGLA 5 v9)
+      "glosaPrimeraOferta_clp": string,  // 1 frase ≤25 palabras
+      "glosaPrimeraOferta_uf": string,
+      "glosaTecho_clp": string,
+      "glosaTecho_uf": string,
+      "glosaWalkAway_clp": string,        // si walkAway === null en anclas, devolver ""
+      "glosaWalkAway_uf": string
+    }
   },
 
   "reestructuracion": {  // OPCIONAL — solo si Nivel 3 (§5)
@@ -421,7 +455,7 @@ Largos por campo:
   Ejemplo INCORRECTO (pregunta retórica sin número): "¿Hasta dónde estás dispuesto a llegar?"
 - reestructuracion.contenido: 3-5 frases.
 - largoPlazo.contenido: 3-5 frases — incluye comparación con instrumentos honesta.
-- riesgos.contenido: 3 riesgos, 1-2 frases cada uno. Sin **bold** (renderer no lo respeta).
+- riesgos.contenido: 3 riesgos separados por \\n\\n (doble salto de línea). Ver REGLA 8 §12 para formato exacto. Cada riesgo: 1ª oración título ≤60 chars + 1-2 frases explicación. Sin **bold**, sin bullets, sin markdown.
 - riesgos.cajaAccionable: 1-2 frases con posición personal de Franco (cierre obligatorio §9).
 
 CLP/UF — cuándo duplicar:
@@ -770,6 +804,50 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
+    // ─── Fase 3.6 v9 — 3 anclas discretas de negociación ─────────────────
+    // El techo viene del motor (no de la heurística previa de ai-generation).
+    // primeraOferta = techo * 0.95 redondeado a UF entera.
+    // walkAway depende del veredicto motor.
+    const techoUF = neg?.precioSugeridoUF
+      ? Math.round(neg.precioSugeridoUF)
+      : precioSugeridoUF;
+    const techoCLP = Math.round(techoUF * UF_CLP);
+    const primeraOfertaUF = Math.round(techoUF * 0.95);
+    const primeraOfertaCLP = Math.round(primeraOfertaUF * UF_CLP);
+    let walkAwayAncla: { precio_uf: number | null; precio_clp: number | null; razon: string } | null;
+    if (veredictoMotor === "BUSCAR OTRA") {
+      walkAwayAncla = {
+        precio_uf: null,
+        precio_clp: null,
+        razon: "veredicto motor: buscar otra propiedad",
+      };
+    } else if (veredictoMotor === "AJUSTA EL PRECIO") {
+      walkAwayAncla = {
+        precio_uf: techoUF,
+        precio_clp: techoCLP,
+        razon: "no comprar sobre el techo",
+      };
+    } else {
+      // COMPRAR o RECONSIDERA → no hay condición de salida discreta
+      walkAwayAncla = null;
+    }
+    const anclasJsonPara_motor = {
+      primeraOferta_uf: primeraOfertaUF,
+      primeraOferta_clp: primeraOfertaCLP,
+      techo_uf: techoUF,
+      techo_clp: techoCLP,
+      walkAway: walkAwayAncla,
+    };
+    const anclasBloque = `
+ANCLAS DE NEGOCIACIÓN (REGLA 5 v9 — usar EXACTOS, no recalcular):
+- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})
+- techo_uf: ${techoUF} (${fmtCLP(techoCLP)})
+- walkAway: ${walkAwayAncla === null
+        ? "null (no hay condición de salida — veredicto COMPRAR sin condiciones)"
+        : walkAwayAncla.precio_uf === null
+          ? `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`
+          : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}`;
+
     // Bloque opcional de subsidio — datos puros, sin instrucciones (las reglas
     // viven en el system prompt + nota de compliance al final).
     const subsidioBloque = (() => {
@@ -881,8 +959,9 @@ ${metroInfo}
 ${plusvaliaHistoricaInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
 ${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}
+${anclasBloque}
 
-negociacion.precioSugerido (este caso): "${fmtUF(precioSugeridoUF)}"
+negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
 
 Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arriba.`;
 
@@ -902,6 +981,25 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     } catch (e) {
       console.error("Error parsing AI response:", e, "raw:", text.slice(0, 500));
       return null;
+    }
+
+    // ─── Fase 3.6 v9 — merge anclas deterministas + glosas IA ─────────────
+    // El motor manda precios EXACTOS. La IA solo aporta glosas. Si la IA
+    // devolvió precios distintos (drift) o no devolvió `precios`, sobreescribir
+    // con las anclas y mantener solo glosas como string libre.
+    if (aiResult?.negociacion) {
+      const iaGlosas = aiResult.negociacion.precios || {};
+      aiResult.negociacion.precios = {
+        ...anclasJsonPara_motor,
+        glosaPrimeraOferta_clp: String(iaGlosas.glosaPrimeraOferta_clp || ""),
+        glosaPrimeraOferta_uf: String(iaGlosas.glosaPrimeraOferta_uf || iaGlosas.glosaPrimeraOferta_clp || ""),
+        glosaTecho_clp: String(iaGlosas.glosaTecho_clp || ""),
+        glosaTecho_uf: String(iaGlosas.glosaTecho_uf || iaGlosas.glosaTecho_clp || ""),
+        glosaWalkAway_clp: String(iaGlosas.glosaWalkAway_clp || ""),
+        glosaWalkAway_uf: String(iaGlosas.glosaWalkAway_uf || iaGlosas.glosaWalkAway_clp || ""),
+      };
+      // precioSugerido = techo formateado, ignorar lo que diga la IA
+      aiResult.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
     }
 
     await supabase

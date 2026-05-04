@@ -1,0 +1,213 @@
+{
+  "caseDef": {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados",
+    "notes": "UF 2.500 / 40m² + antiguedad 12. Tensiona riesgos.contenido y jerga (bps).",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 2500,
+      "valorMercadoFranco": 2200,
+      "superficie": 40,
+      "superficieTotal": 40,
+      "antiguedad": 12,
+      "piePct": 18,
+      "tasaInteres": 4.5,
+      "arriendo": 420000,
+      "gastos": 90000,
+      "contribuciones": 45000,
+      "provisionMantencion": 50000,
+      "comuna": "Estación Central",
+      "dormitorios": 1,
+      "piso": 14,
+      "vacanciaMeses": 2,
+      "lat": -33.457,
+      "lng": -70.68,
+      "nombre": "Caso C"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 45000,
+    "provisionMantencion": 50000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 2,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 2500,
+    "valorMercadoFranco": 2200,
+    "superficie": 40,
+    "superficieTotal": 40,
+    "antiguedad": 12,
+    "piePct": 18,
+    "tasaInteres": 4.5,
+    "arriendo": 420000,
+    "gastos": 90000,
+    "comuna": "Estación Central",
+    "dormitorios": 1,
+    "piso": 14,
+    "lat": -33.457,
+    "lng": -70.68,
+    "nombre": "Caso C"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "score": 53,
+    "flujoNetoMensual": -203590
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 2027,
+    "primeraOfertaCLP": 81134729,
+    "techoUF": 2134,
+    "techoCLP": 85417618,
+    "walkAway": {
+      "precio_uf": null,
+      "precio_clp": null,
+      "razon": "veredicto motor: buscar otra propiedad"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "BUSCAR OTRA",
+    "fhOverall": "mejorable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Pagas $12M sobre mercado en una comuna con plusvalía débil.",
+    "siendoFrancoHeadline_uf": "Pagas UF 300 sobre mercado en una comuna con plusvalía débil.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Pagarías $12M sobre valor de mercado en una comuna que creció solo 2,2% anual histórico. El flujo nunca llega a positivo en 20 años — aportas $204K al mes sin tope claro. La matemática no cierra ni rebajando a $85M (precio sugerido).",
+      "respuestaDirecta_uf": "No conviene. Pagarías UF 300 sobre valor de mercado en una comuna que creció solo 2,2% anual histórico. El flujo nunca llega a positivo en 20 años — aportas UF 5,1 al mes sin tope claro. La matemática no cierra ni rebajando a UF 2.134 (precio sugerido).",
+      "veredictoFrase_clp": "Busca otra propiedad — este caso combina sobreprecio con rentabilidad deficiente.",
+      "veredictoFrase_uf": "Busca otra propiedad — este caso combina sobreprecio con rentabilidad deficiente.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio vs mercado",
+          "valor_clp": "$12M",
+          "valor_uf": "UF 300",
+          "subtexto": "13,6% sobre valor real",
+          "color": "red"
+        },
+        {
+          "label": "TIR a 10 años",
+          "valor_clp": "3,5%",
+          "valor_uf": "3,5%",
+          "subtexto": "vs depósito UF 5%",
+          "color": "red"
+        },
+        {
+          "label": "Explora otras comunas",
+          "valor_clp": "Ñuñoa, San Miguel",
+          "valor_uf": "Ñuñoa, San Miguel",
+          "subtexto": "mejor relación precio-potencial",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Estación Central creció 2,2% anualizado en la década pasada — por debajo de la inflación UF. Apostar a recuperación de plusvalía es especulativo cuando hay opciones más sólidas. Para tu rango ($85M-$100M) Ñuñoa o San Miguel te dan deptos similares con mejor trayectoria histórica de plusvalía.",
+      "reencuadre_uf": "Estación Central creció 2,2% anualizado en la década pasada — por debajo de la inflación UF. Apostar a recuperación de plusvalía es especulativo cuando hay opciones más sólidas. Para tu rango (UF 2.100-2.500) Ñuñoa o San Miguel te dan deptos similares con mejor trayectoria histórica de plusvalía.",
+      "cajaAccionable_clp": "¿Vale la pena pagar $12M de más en una zona estancada cuando con $85M consigues mejor rentabilidad en comunas con plusvalía probada?",
+      "cajaAccionable_uf": "¿Vale la pena pagar UF 300 de más en una zona estancada cuando con UF 2.100 consigues mejor rentabilidad en comunas con plusvalía probada?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $204K cada mes durante toda la proyección sin que el flujo se dé vuelta. En 10 años habrás puesto $34M de tu bolsillo adicional al pie. La única vía de retorno es vender con plusvalía — apostarle a que Estación Central despegue después de una década estancada.",
+      "contenido_uf": "Aportas UF 5,1 cada mes durante toda la proyección sin que el flujo se dé vuelta. En 10 años habrás puesto UF 864 de tu bolsillo adicional al pie. La única vía de retorno es vender con plusvalía — apostarle a que Estación Central despegue después de una década estancada.",
+      "cajaAccionable_clp": "¿Puedes sostener $204K al mes sin tope claro en la proyección, confiando solo en la venta futura?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 5,1 al mes sin tope claro en la proyección, confiando solo en la venta futura?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "El precio actual de $100M está $12M sobre mercado. Incluso rebajando a $85M (precio sugerido), la TIR (rentabilidad anual de tu inversión) sube a 9,4% pero el flujo sigue negativo indefinidamente. Es una mejora insuficiente para un caso que combina sobreprecio inicial con rentabilidad débil estructural.",
+      "contenido_uf": "El precio actual de UF 2.500 está UF 300 sobre mercado. Incluso rebajando a UF 2.134 (precio sugerido), la TIR (rentabilidad anual de tu inversión) sube a 9,4% pero el flujo sigue negativo indefinidamente. Es una mejora insuficiente para un caso que combina sobreprecio inicial con rentabilidad débil estructural.",
+      "estrategiaSugerida_clp": "Partir en $81M (descuento sustantivo) para testear si hay flexibilidad real. Techo absoluto $85M — por encima no mejora lo suficiente la matemática.",
+      "estrategiaSugerida_uf": "Partir en UF 2.027 (descuento sustantivo) para testear si hay flexibilidad real. Techo absoluto UF 2.134 — por encima no mejora lo suficiente la matemática.",
+      "cajaAccionable_clp": "Ofrece $81M. Tu techo es $85M. Si rechaza, probablemente es mejor pasar — hay mejores oportunidades en el mercado.",
+      "cajaAccionable_uf": "Ofrece UF 2.027. Tu techo es UF 2.134. Si rechaza, probablemente es mejor pasar — hay mejores oportunidades en el mercado.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 2.134",
+      "precios": {
+        "primeraOferta_uf": 2027,
+        "primeraOferta_clp": 81134729,
+        "techo_uf": 2134,
+        "techo_clp": 85417618,
+        "walkAway": {
+          "precio_uf": null,
+          "precio_clp": null,
+          "razon": "veredicto motor: buscar otra propiedad"
+        },
+        "glosaPrimeraOferta_clp": "Descuento agresivo para compensar sobreprecio inicial y plusvalía débil de la zona.",
+        "glosaPrimeraOferta_uf": "Descuento agresivo para compensar sobreprecio inicial y plusvalía débil de la zona.",
+        "glosaTecho_clp": "Máximo que mejora TIR a 9,4%, pero flujo sigue negativo indefinidamente.",
+        "glosaTecho_uf": "Máximo que mejora TIR a 9,4%, pero flujo sigue negativo indefinidamente.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Poniendo $20M inicial + $34M de aportes mensuales obtienes $68M de ganancia al vender en 10 años. Comparación honesta: $20M en depósito UF al 5% da $33M sin esfuerzo mensual. $20M en fondo mutuo al 7% da $39M. Tu ventaja real son solo $29M adicionales por asumir vacancia, mantención y aporte mensual durante una década.",
+      "contenido_uf": "Poniendo UF 500 inicial + UF 864 de aportes mensuales obtienes UF 1.702 de ganancia al vender en 10 años. Comparación honesta: UF 500 en depósito UF al 5% da UF 814 sin esfuerzo mensual. UF 500 en fondo mutuo al 7% da UF 983. Tu ventaja real son solo UF 719 adicionales por asumir vacancia, mantención y aporte mensual durante una década.",
+      "cajaAccionable_clp": "La apuesta central es que Estación Central revierte su estancamiento histórico y crece más que otras zonas disponibles a precio similar.",
+      "cajaAccionable_uf": "La apuesta central es que Estación Central revierte su estancamiento histórico y crece más que otras zonas disponibles a precio similar.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses anula el arriendo equivalente a $840K del año. Con flujo ya negativo en $204K mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.\n\nAlza de tasas castiga el dividendo duramente. 1 punto porcentual adicional sube tu cuota de $456K a $504K mensuales — empeora el flujo negativo en $48K más por mes.\n\nPlusvalía histórica 2,2% no sostiene la matemática. La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.",
+      "contenido_uf": "Vacancia de 2 meses anula el arriendo equivalente a UF 21 del año. Con flujo ya negativo en UF 5,1 mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.\n\nAlza de tasas castiga el dividendo duramente. 1 punto porcentual adicional sube tu cuota de UF 11,4 a UF 12,6 mensuales — empeora el flujo negativo en UF 1,2 más por mes.\n\nPlusvalía histórica 2,2% no sostiene la matemática. La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.",
+      "cajaAccionable_clp": "Honestamente, este depto combina los problemas que más duelen: sobreprecio inicial, zona con plusvalía débil y flujo que no mejora. Hay mejores oportunidades esperándote — no te aferres a esta por motivos emocionales.",
+      "cajaAccionable_uf": "Honestamente, este depto combina los problemas que más duelen: sobreprecio inicial, zona con plusvalía débil y flujo que no mejora. Hay mejores oportunidades esperándote — no te aferres a esta por motivos emocionales.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Pagas $12M sobre mercado en una comuna con plusvalía débil.\",\n  \"siendoFrancoHeadline_uf\": \"Pagas UF 300 sobre mercado en una comuna con plusvalía débil.\",\n  \"francoVerdict\": \"BUSCAR OTRA\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No conviene. Pagarías $12M sobre valor de mercado en una comuna que creció solo 2,2% anual histórico. El flujo nunca llega a positivo en 20 años — aportas $204K al mes sin tope claro. La matemática no cierra ni rebajando a $85M (precio sugerido).\",\n    \"respuestaDirecta_uf\": \"No conviene. Pagarías UF 300 sobre valor de mercado en una comuna que creció solo 2,2% anual histórico. El flujo nunca llega a positivo en 20 años — aportas UF 5,1 al mes sin tope claro. La matemática no cierra ni rebajando a UF 2.134 (precio sugerido).\",\n    \"veredictoFrase_clp\": \"Busca otra propiedad — este caso combina sobreprecio con rentabilidad deficiente.\",\n    \"veredictoFrase_uf\": \"Busca otra propiedad — este caso combina sobreprecio con rentabilidad deficiente.\",\n    \"datosClave\": [\n      { \"label\": \"Sobreprecio vs mercado\", \"valor_clp\": \"$12M\", \"valor_uf\": \"UF 300\", \"subtexto\": \"13,6% sobre valor real\", \"color\": \"red\" },\n      { \"label\": \"TIR a 10 años\", \"valor_clp\": \"3,5%\", \"valor_uf\": \"3,5%\", \"subtexto\": \"vs depósito UF 5%\", \"color\": \"red\" },\n      { \"label\": \"Explora otras comunas\", \"valor_clp\": \"Ñuñoa, San Miguel\", \"valor_uf\": \"Ñuñoa, San Miguel\", \"subtexto\": \"mejor relación precio-potencial\", \"color\": \"accent\" }\n    ],\n    \"reencuadre_clp\": \"Estación Central creció 2,2% anualizado en la década pasada — por debajo de la inflación UF. Apostar a recuperación de plusvalía es especulativo cuando hay opciones más sólidas. Para tu rango ($85M-$100M) Ñuñoa o San Miguel te dan deptos similares con mejor trayectoria histórica de plusvalía.\",\n    \"reencuadre_uf\": \"Estación Central creció 2,2% anualizado en la década pasada — por debajo de la inflación UF. Apostar a recuperación de plusvalía es especulativo cuando hay opciones más sólidas. Para tu rango (UF 2.100-2.500) Ñuñoa o San Miguel te dan deptos similares con mejor trayectoria histórica de plusvalía.\",\n    \"cajaAccionable_clp\": \"¿Vale la pena pagar $12M de más en una zona estancada cuando con $85M consigues mejor rentabilidad en comunas con plusvalía probada?\",\n    \"cajaAccionable_uf\": \"¿Vale la pena pagar UF 300 de más en una zona estancada cuando con UF 2.100 consigues mejor rentabilidad en comunas con plusvalía probada?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"Aportas $204K cada mes durante toda la proyección sin que el flujo se dé vuelta. En 10 años habrás puesto $34M de tu bolsillo adicional al pie. La única vía de retorno es vender con plusvalía — apostarle a que Estación Central despegue después de una década estancada.\",\n    \"contenido_uf\": \"Aportas UF 5,1 cada mes durante toda la proyección sin que el flujo se dé vuelta. En 10 años habrás puesto UF 864 de tu bolsillo adicional al pie. La única vía de retorno es vender con plusvalía — apostarle a que Estación Central despegue después de una década estancada.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $204K al mes sin tope claro en la proyección, confiando solo en la venta futura?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 5,1 al mes sin tope claro en la proyección, confiando solo en la venta futura?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"El precio actual de $100M está $12M sobre mercado. Incluso rebajando a $85M (precio sugerido), la TIR (rentabilidad anual de tu inversión) sube a 9,4% pero el flujo sigue negativo indefinidamente. Es una mejora insuficiente para un caso que combina sobreprecio inicial con rentabilidad débil estructural.\",\n    \"contenido_uf\": \"El precio actual de UF 2.500 está UF 300 sobre mercado. Incluso rebajando a UF 2.134 (precio sugerido), la TIR (rentabilidad anual de tu inversión) sube a 9,4% pero el flujo sigue negativo indefinidamente. Es una mejora insuficiente para un caso que combina sobreprecio inicial con rentabilidad débil estructural.\",\n    \"estrategiaSugerida_clp\": \"Partir en $81M (descuento sustantivo) para testear si hay flexibilidad real. Techo absoluto $85M — por encima no mejora lo suficiente la matemática.\",\n    \"estrategiaSugerida_uf\": \"Partir en UF 2.027 (descuento sustantivo) para testear si hay flexibilidad real. Techo absoluto UF 2.134 — por encima no mejora lo suficiente la matemática.\",\n    \"cajaAccionable_clp\": \"Ofrece $81M. Tu techo es $85M. Si rechaza, probablemente es mejor pasar — hay mejores oportunidades en el mercado.\",\n    \"cajaAccionable_uf\": \"Ofrece UF 2.027. Tu techo es UF 2.134. Si rechaza, probablemente es mejor pasar — hay mejores oportunidades en el mercado.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 2.134\",\n    \"precios\": {\n      \"glosaPrimeraOferta_clp\": \"Descuento agresivo para compensar sobreprecio inicial y plusvalía débil de la zona.\",\n      \"glosaPrimeraOferta_uf\": \"Descuento agresivo para compensar sobreprecio inicial y plusvalía débil de la zona.\",\n      \"glosaTecho_clp\": \"Máximo que mejora TIR a 9,4%, pero flujo sigue negativo indefinidamente.\",\n      \"glosaTecho_uf\": \"Máximo que mejora TIR a 9,4%, pero flujo sigue negativo indefinidamente.\",\n      \"glosaWalkAway_clp\": \"\",\n      \"glosaWalkAway_uf\": \"\"\n    }\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"Poniendo $20M inicial + $34M de aportes mensuales obtienes $68M de ganancia al vender en 10 años. Comparación honesta: $20M en depósito UF al 5% da $33M sin esfuerzo mensual. $20M en fondo mutuo al 7% da $39M. Tu ventaja real son solo $29M adicionales por asumir vacancia, mantención y aporte mensual durante una década.\",\n    \"contenido_uf\": \"Poniendo UF 500 inicial + UF 864 de aportes mensuales obtienes UF 1.702 de ganancia al vender en 10 años. Comparación honesta: UF 500 en depósito UF al 5% da UF 814 sin esfuerzo mensual. UF 500 en fondo mutuo al 7% da UF 983. Tu ventaja real son solo UF 719 adicionales por asumir vacancia, mantención y aporte mensual durante una década.\",\n    \"cajaAccionable_clp\": \"La apuesta central es que Estación Central revierte su estancamiento histórico y crece más que otras zonas disponibles a precio similar.\",\n    \"cajaAccionable_uf\": \"La apuesta central es que Estación Central revierte su estancamiento histórico y crece más que otras zonas disponibles a precio similar.\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses anula el arriendo equivalente a $840K del año. Con flujo ya negativo en $204K mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.\\n\\nAlza de tasas castiga el dividendo duramente. 1 punto porcentual adicional sube tu cuota de $456K a $504K mensuales — empeora el flujo negativo en $48K más por mes.\\n\\nPlusvalía histórica 2,2% no sostiene la matemática. La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.\",\n    \"contenido_uf\": \"Vacancia de 2 meses anula el arriendo equivalente a UF 21 del año. Con flujo ya negativo en UF 5,1 mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.\\n\\nAlza de tasas castiga el dividendo duramente. 1 punto porcentual adicional sube tu cuota de UF 11,4 a UF 12,6 mensuales — empeora el flujo negativo en UF 1,2 más por mes.\\n\\nPlusvalía histórica 2,2% no sostiene la matemática. La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.\",\n    \"cajaAccionable_clp\": \"Honestamente, este depto combina los problemas que más duelen: sobreprecio inicial, zona con plusvalía débil y flujo que no mejora. Hay mejores oportunidades esperándote — no te aferres a esta por motivos emocionales.\",\n    \"cajaAccionable_uf\": \"Honestamente, este depto combina los problemas que más duelen: sobreprecio inicial, zona con plusvalía débil y flujo que no mejora. Hay mejores oportunidades esperándote — no te aferres a esta por motivos emocionales.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido": "UF 2.134",
+    "precioSugerido_eq_techo": true,
+    "precios_presentes": true,
+    "glosaPrimera_presente": true,
+    "glosaTecho_presente": true,
+    "glosaWalk_presente": false,
+    "caja_contiene_primeraOferta_o_techo": false,
+    "ries_chars": 499,
+    "ries_doble_newline": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses anula el arriendo equivalente a $840K de",
+        "descripcion": "Con flujo ya negativo en $204K mensuales, una vacancia típica profundiza las pérdidas anuales significativamente.",
+        "truncado": true
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo duramente",
+        "descripcion": "1 punto porcentual adicional sube tu cuota de $456K a $504K mensuales — empeora el flujo negativo en $48K más por mes.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía histórica 2,2% no sostiene la matemática",
+        "descripcion": "La zona necesita crecer >4% anual para justificar el aporte mensual indefinido que exige este caso.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ],
+    "tir_glosada_primer_uso": true
+  }
+}

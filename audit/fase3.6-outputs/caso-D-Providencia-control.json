@@ -1,0 +1,212 @@
+{
+  "caseDef": {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "notes": "UF 5.500 / 60m². vmFranco = precio. PRECIO_ALINEADO.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5500,
+      "valorMercadoFranco": 5500,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 4,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 950000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Providencia",
+      "dormitorios": 2,
+      "piso": 5,
+      "lat": -33.4283,
+      "lng": -70.6182,
+      "nombre": "Caso D"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5500,
+    "valorMercadoFranco": 5500,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 4,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 950000,
+    "gastos": 130000,
+    "comuna": "Providencia",
+    "dormitorios": 2,
+    "piso": 5,
+    "lat": -33.4283,
+    "lng": -70.6182,
+    "nombre": "Caso D"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 66,
+    "flujoNetoMensual": -215623
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 5068,
+    "primeraOfertaCLP": 202856836,
+    "techoUF": 5335,
+    "techoCLP": 213544045,
+    "walkAway": {
+      "precio_uf": 5335,
+      "precio_clp": 213544045,
+      "razon": "no comprar sobre el techo"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "INDETERMINADO_FALLBACK_VMFRANCO",
+    "tieneDiferenciaValida": false,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Operación viable si negocias a $213.544.045. A precio pedido necesitas $39M de aporte en 10 años.",
+    "siendoFrancoHeadline_uf": "Operación viable si negocias a UF 5.335. A precio pedido necesitas UF 977 de aporte en 10 años.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "El depto es sólido pero necesita negociación de precio. A $220M pagas $215K extra cada mes durante toda la proyección. A $213M (descuento 3%) el aporte baja y la TIR (rentabilidad anual de tu inversión) mejora de 10,5% a 11,5%. Providencia con metro a 100m mantiene plusvalía estable del 3% anual histórico.",
+      "respuestaDirecta_uf": "El depto es sólido pero necesita negociación de precio. A UF 5.500 pagas UF 5,4 extra cada mes durante toda la proyección. A UF 5.335 (descuento 3%) el aporte baja y la TIR (rentabilidad anual de tu inversión) mejora de 10,5% a 11,5%. Providencia con metro a 100m mantiene plusvalía estable del 3% anual histórico.",
+      "veredictoFrase_clp": "Comprar sí, pero solo si consigues bajar el precio a $213M.",
+      "veredictoFrase_uf": "Comprar sí, pero solo si consigues bajar el precio a UF 5.335.",
+      "datosClave": [
+        {
+          "label": "TIR al negociar",
+          "valor_clp": "11,5%",
+          "valor_uf": "11,5%",
+          "subtexto": "vs 10,5% a precio pedido",
+          "color": "accent"
+        },
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$215.623",
+          "valor_uf": "UF 5,4",
+          "subtexto": "durante toda la proyección",
+          "color": "red"
+        },
+        {
+          "label": "Plusvalía histórica",
+          "valor_clp": "3% anual",
+          "valor_uf": "3% anual",
+          "subtexto": "Providencia 2014-2024",
+          "color": "green"
+        }
+      ],
+      "reencuadre_clp": "La matemática del caso depende de que consigas descuento. Sin negociación, aportas $39M de tu bolsillo en 10 años para obtener $193M al vender — rentable, pero con esfuerzo alto. A $213M el aporte baja y mejoras tu posición 1 punto porcentual de TIR. El motor no tiene valor de mercado confiable para este depto, pero la ubicación (Manuel Montt a 100m) y la plusvalía histórica de Providencia respaldan la operación si logras el precio correcto.",
+      "reencuadre_uf": "La matemática del caso depende de que consigas descuento. Sin negociación, aportas UF 977 de tu bolsillo en 10 años para obtener UF 4.827 al vender — rentable, pero con esfuerzo alto. A UF 5.335 el aporte baja y mejoras tu posición 1 punto porcentual de TIR. El motor no tiene valor de mercado confiable para este depto, pero la ubicación (Manuel Montt a 100m) y la plusvalía histórica de Providencia respaldan la operación si logras el precio correcto.",
+      "cajaAccionable_clp": "¿Puedes sostener $215.623 mensuales sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 5,4 mensuales sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $215.623 cada mes durante toda la proyección. El arriendo de $950.000 no alcanza a cubrir tu dividendo de $939.372 más gastos operativos. Este es un caso de inversión pura: no esperes flujo positivo mensual, la ganancia viene al vender después de años de aporte constante.",
+      "contenido_uf": "Aportas UF 5,4 cada mes durante toda la proyección. El arriendo de UF 23,7 no alcanza a cubrir tu dividendo de UF 23,5 más gastos operativos. Este es un caso de inversión pura: no esperes flujo positivo mensual, la ganancia viene al vender después de años de aporte constante.",
+      "cajaAccionable_clp": "¿Tu flujo personal puede manejar $215.623 extra cada mes durante años sin afectar tu estabilidad?",
+      "cajaAccionable_uf": "¿Tu flujo personal puede manejar UF 5,4 extra cada mes durante años sin afectar tu estabilidad?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "El precio pedido no tiene ventaja ni desventaja clara vs mercado — el motor no logra establecer valor real. Pero la matemática interna pide descuento: bajar a $213M mejora tu TIR 1 punto porcentual y optimiza el flujo mensual. Tu palanca es que este precio sigue siendo razonable para el vendedor mientras mejora sustancialmente tu posición.",
+      "contenido_uf": "El precio pedido no tiene ventaja ni desventaja clara vs mercado — el motor no logra establecer valor real. Pero la matemática interna pide descuento: bajar a UF 5.335 mejora tu TIR 1 punto porcentual y optimiza el flujo mensual. Tu palanca es que este precio sigue siendo razonable para el vendedor mientras mejora sustancialmente tu posición.",
+      "estrategiaSugerida_clp": "Parte en $202M con argumento de flujo: necesitas que los números cierren para tu perfil de riesgo. Tu techo real es $213M — ahí la operación mejora sin ser irracional para el vendedor.",
+      "estrategiaSugerida_uf": "Parte en UF 5.068 con argumento de flujo: necesitas que los números cierren para tu perfil de riesgo. Tu techo real es UF 5.335 — ahí la operación mejora sin ser irracional para el vendedor.",
+      "cajaAccionable_clp": "Empieza en $202.856.836, cierra hasta $213.544.045. Por encima de UF 5.335, no compras.",
+      "cajaAccionable_uf": "Empieza en UF 5.068, cierra hasta UF 5.335. Por encima de UF 5.335, no compras.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 5.335",
+      "precios": {
+        "primeraOferta_uf": 5068,
+        "primeraOferta_clp": 202856836,
+        "techo_uf": 5335,
+        "techo_clp": 213544045,
+        "walkAway": {
+          "precio_uf": 5335,
+          "precio_clp": 213544045,
+          "razon": "no comprar sobre el techo"
+        },
+        "glosaPrimeraOferta_clp": "Argumento: necesitas que el flujo mensual sea sostenible para tu perfil.",
+        "glosaPrimeraOferta_uf": "Argumento: necesitas que el flujo mensual sea sostenible para tu perfil.",
+        "glosaTecho_clp": "Límite donde la TIR mejora sustancialmente sin ser irracional para él.",
+        "glosaTecho_uf": "Límite donde la TIR mejora sustancialmente sin ser irracional para él.",
+        "glosaWalkAway_clp": "Si no acepta UF 5.335, buscar otra oportunidad más alineada.",
+        "glosaWalkAway_uf": "Si no acepta UF 5.335, buscar otra oportunidad más alineada."
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Sí, si tienes disciplina para el aporte mensual. Tu ganancia proyectada es $193M vs $39M aportados — TIR 10,5% que supera depósito UF (5%) y compite con fondos mutuos (7%). Pero la diferencia clave es el esfuerzo: depósito y fondos no exigen aporte mensual durante una década. Providencia históricamente mantiene plusvalía del 3% anual, lo que respalda la apuesta de largo plazo.",
+      "contenido_uf": "Sí, si tienes disciplina para el aporte mensual. Tu ganancia proyectada es UF 4.827 vs UF 977 aportados — TIR 10,5% que supera depósito UF (5%) y compite con fondos mutuos (7%). Pero la diferencia clave es el esfuerzo: depósito y fondos no exigen aporte mensual durante una década. Providencia históricamente mantiene plusvalía del 3% anual, lo que respalda la apuesta de largo plazo.",
+      "cajaAccionable_clp": "La apuesta que estás haciendo: cambiar $39M en aportes durante 10 años por $193M al vender, asumiendo que Providencia mantiene su tracción histórica.",
+      "cajaAccionable_uf": "La apuesta que estás haciendo: cambiar UF 977 en aportes durante 10 años por UF 4.827 al vender, asumiendo que Providencia mantiene su tracción histórica.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses duplica el aporte anual. Con margen actual de $215K mensuales negativos, quedarte sin inquilino por 60 días te cuesta $2,8M extra ese año.\n\nAlza de tasas castiga el dividendo sin tope. 2 puntos porcentuales adicionales suben el dividendo a $1.145.526 mensuales, empeorando el flujo en $200K/mes.\n\nPlusvalía 3% anual puede no sostenerse. Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.",
+      "contenido_uf": "Vacancia de 2 meses duplica el aporte anual. Con margen actual de UF 5,4 mensuales negativos, quedarte sin inquilino por 60 días te cuesta UF 70 extra ese año.\n\nAlza de tasas castiga el dividendo sin tope. 2 puntos porcentuales adicionales suben el dividendo a UF 28,6 mensuales, empeorando el flujo en UF 5/mes.\n\nPlusvalía 3% anual puede no sostenerse. Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.",
+      "cajaAccionable_clp": "Si confías en la estabilidad de Providencia como zona residencial premium y tu flujo personal permite el aporte sin presión, esta operación tiene fundamentos sólidos. El riesgo central es que te falte paciencia financiera para sostener 10 años de aportes esperando la venta.",
+      "cajaAccionable_uf": "Si confías en la estabilidad de Providencia como zona residencial premium y tu flujo personal permite el aporte sin presión, esta operación tiene fundamentos sólidos. El riesgo central es que te falte paciencia financiera para sostener 10 años de aportes esperando la venta.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "{\n  \"siendoFrancoHeadline_clp\": \"Operación viable si negocias a $213.544.045. A precio pedido necesitas $39M de aporte en 10 años.\",\n  \"siendoFrancoHeadline_uf\": \"Operación viable si negocias a UF 5.335. A precio pedido necesitas UF 977 de aporte en 10 años.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n\n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"El depto es sólido pero necesita negociación de precio. A $220M pagas $215K extra cada mes durante toda la proyección. A $213M (descuento 3%) el aporte baja y la TIR (rentabilidad anual de tu inversión) mejora de 10,5% a 11,5%. Providencia con metro a 100m mantiene plusvalía estable del 3% anual histórico.\",\n    \"respuestaDirecta_uf\": \"El depto es sólido pero necesita negociación de precio. A UF 5.500 pagas UF 5,4 extra cada mes durante toda la proyección. A UF 5.335 (descuento 3%) el aporte baja y la TIR (rentabilidad anual de tu inversión) mejora de 10,5% a 11,5%. Providencia con metro a 100m mantiene plusvalía estable del 3% anual histórico.\",\n    \"veredictoFrase_clp\": \"Comprar sí, pero solo si consigues bajar el precio a $213M.\",\n    \"veredictoFrase_uf\": \"Comprar sí, pero solo si consigues bajar el precio a UF 5.335.\",\n    \"datosClave\": [\n      { \n        \"label\": \"TIR al negociar\",\n        \"valor_clp\": \"11,5%\",\n        \"valor_uf\": \"11,5%\",\n        \"subtexto\": \"vs 10,5% a precio pedido\",\n        \"color\": \"accent\"\n      },\n      {\n        \"label\": \"Aporte mensual\",\n        \"valor_clp\": \"$215.623\",\n        \"valor_uf\": \"UF 5,4\",\n        \"subtexto\": \"durante toda la proyección\",\n        \"color\": \"red\"\n      },\n      {\n        \"label\": \"Plusvalía histórica\",\n        \"valor_clp\": \"3% anual\",\n        \"valor_uf\": \"3% anual\",\n        \"subtexto\": \"Providencia 2014-2024\",\n        \"color\": \"green\"\n      }\n    ],\n    \"reencuadre_clp\": \"La matemática del caso depende de que consigas descuento. Sin negociación, aportas $39M de tu bolsillo en 10 años para obtener $193M al vender — rentable, pero con esfuerzo alto. A $213M el aporte baja y mejoras tu posición 1 punto porcentual de TIR. El motor no tiene valor de mercado confiable para este depto, pero la ubicación (Manuel Montt a 100m) y la plusvalía histórica de Providencia respaldan la operación si logras el precio correcto.\",\n    \"reencuadre_uf\": \"La matemática del caso depende de que consigas descuento. Sin negociación, aportas UF 977 de tu bolsillo en 10 años para obtener UF 4.827 al vender — rentable, pero con esfuerzo alto. A UF 5.335 el aporte baja y mejoras tu posición 1 punto porcentual de TIR. El motor no tiene valor de mercado confiable para este depto, pero la ubicación (Manuel Montt a 100m) y la plusvalía histórica de Providencia respaldan la operación si logras el precio correcto.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $215.623 mensuales sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 5,4 mensuales sin tope claro en la proyección sabiendo que el retorno depende solo de la venta?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n\n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"Aportas $215.623 cada mes durante toda la proyección. El arriendo de $950.000 no alcanza a cubrir tu dividendo de $939.372 más gastos operativos. Este es un caso de inversión pura: no esperes flujo positivo mensual, la ganancia viene al vender después de años de aporte constante.\",\n    \"contenido_uf\": \"Aportas UF 5,4 cada mes durante toda la proyección. El arriendo de UF 23,7 no alcanza a cubrir tu dividendo de UF 23,5 más gastos operativos. Este es un caso de inversión pura: no esperes flujo positivo mensual, la ganancia viene al vender después de años de aporte constante.\",\n    \"cajaAccionable_clp\": \"¿Tu flujo personal puede manejar $215.623 extra cada mes durante años sin afectar tu estabilidad?\",\n    \"cajaAccionable_uf\": \"¿Tu flujo personal puede manejar UF 5,4 extra cada mes durante años sin afectar tu estabilidad?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n\n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"El precio pedido no tiene ventaja ni desventaja clara vs mercado — el motor no logra establecer valor real. Pero la matemática interna pide descuento: bajar a $213M mejora tu TIR 1 punto porcentual y optimiza el flujo mensual. Tu palanca es que este precio sigue siendo razonable para el vendedor mientras mejora sustancialmente tu posición.\",\n    \"contenido_uf\": \"El precio pedido no tiene ventaja ni desventaja clara vs mercado — el motor no logra establecer valor real. Pero la matemática interna pide descuento: bajar a UF 5.335 mejora tu TIR 1 punto porcentual y optimiza el flujo mensual. Tu palanca es que este precio sigue siendo razonable para el vendedor mientras mejora sustancialmente tu posición.\",\n    \"estrategiaSugerida_clp\": \"Parte en $202M con argumento de flujo: necesitas que los números cierren para tu perfil de riesgo. Tu techo real es $213M — ahí la operación mejora sin ser irracional para el vendedor.\",\n    \"estrategiaSugerida_uf\": \"Parte en UF 5.068 con argumento de flujo: necesitas que los números cierren para tu perfil de riesgo. Tu techo real es UF 5.335 — ahí la operación mejora sin ser irracional para el vendedor.\",\n    \"cajaAccionable_clp\": \"Empieza en $202.856.836, cierra hasta $213.544.045. Por encima de UF 5.335, no compras.\",\n    \"cajaAccionable_uf\": \"Empieza en UF 5.068, cierra hasta UF 5.335. Por encima de UF 5.335, no compras.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 5.335\",\n    \"precios\": {\n      \"glosaPrimeraOferta_clp\": \"Argumento: necesitas que el flujo mensual sea sostenible para tu perfil.\",\n      \"glosaPrimeraOferta_uf\": \"Argumento: necesitas que el flujo mensual sea sostenible para tu perfil.\",\n      \"glosaTecho_clp\": \"Límite donde la TIR mejora sustancialmente sin ser irracional para él.\",\n      \"glosaTecho_uf\": \"Límite donde la TIR mejora sustancialmente sin ser irracional para él.\",\n      \"glosaWalkAway_clp\": \"Si no acepta UF 5.335, buscar otra oportunidad más alineada.\",\n      \"glosaWalkAway_uf\": \"Si no acepta UF 5.335, buscar otra oportunidad más alineada.\"\n    }\n  },\n\n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"Sí, si tienes disciplina para el aporte mensual. Tu ganancia proyectada es $193M vs $39M aportados — TIR 10,5% que supera depósito UF (5%) y compite con fondos mutuos (7%). Pero la diferencia clave es el esfuerzo: depósito y fondos no exigen aporte mensual durante una década. Providencia históricamente mantiene plusvalía del 3% anual, lo que respalda la apuesta de largo plazo.\",\n    \"contenido_uf\": \"Sí, si tienes disciplina para el aporte mensual. Tu ganancia proyectada es UF 4.827 vs UF 977 aportados — TIR 10,5% que supera depósito UF (5%) y compite con fondos mutuos (7%). Pero la diferencia clave es el esfuerzo: depósito y fondos no exigen aporte mensual durante una década. Providencia históricamente mantiene plusvalía del 3% anual, lo que respalda la apuesta de largo plazo.\",\n    \"cajaAccionable_clp\": \"La apuesta que estás haciendo: cambiar $39M en aportes durante 10 años por $193M al vender, asumiendo que Providencia mantiene su tracción histórica.\",\n    \"cajaAccionable_uf\": \"La apuesta que estás haciendo: cambiar UF 977 en aportes durante 10 años por UF 4.827 al vender, asumiendo que Providencia mantiene su tracción histórica.\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n\n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses duplica el aporte anual. Con margen actual de $215K mensuales negativos, quedarte sin inquilino por 60 días te cuesta $2,8M extra ese año.\\n\\nAlza de tasas castiga el dividendo sin tope. 2 puntos porcentuales adicionales suben el dividendo a $1.145.526 mensuales, empeorando el flujo en $200K/mes.\\n\\nPlusvalía 3% anual puede no sostenerse. Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.\",\n    \"contenido_uf\": \"Vacancia de 2 meses duplica el aporte anual. Con margen actual de UF 5,4 mensuales negativos, quedarte sin inquilino por 60 días te cuesta UF 70 extra ese año.\\n\\nAlza de tasas castiga el dividendo sin tope. 2 puntos porcentuales adicionales suben el dividendo a UF 28,6 mensuales, empeorando el flujo en UF 5/mes.\\n\\nPlusvalía 3% anual puede no sostenerse. Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.\",\n    \"cajaAccionable_clp\": \"Si confías en la estabilidad de Providencia como zona residencial premium y tu flujo personal permite el aporte sin presión, esta operación tiene fundamentos sólidos. El riesgo central es que te falte paciencia financiera para sostener 10 años de aportes esperando la venta.\",\n    \"cajaAccionable_uf\": \"Si confías en la estabilidad de Providencia como zona residencial premium y tu flujo personal permite el aporte sin presión, esta operación tiene fundamentos sólidos. El riesgo central es que te falte paciencia financiera para sostener 10 años de aportes esperando la venta.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}",
+  "metricas": {
+    "precioSugerido": "UF 5.335",
+    "precioSugerido_eq_techo": true,
+    "precios_presentes": true,
+    "glosaPrimera_presente": true,
+    "glosaTecho_presente": true,
+    "glosaWalk_presente": true,
+    "caja_contiene_primeraOferta_o_techo": true,
+    "ries_chars": 475,
+    "ries_doble_newline": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses duplica el aporte anual",
+        "descripcion": "Con margen actual de $215K mensuales negativos, quedarte sin inquilino por 60 días te cuesta $2,8M extra ese año.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo sin tope",
+        "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $1.145.526 mensuales, empeorando el flujo en $200K/mes.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía 3% anual puede no sostenerse",
+        "descripcion": "Si Providencia crece solo 1-2% anual vs el 3% histórico, tu TIR cae y el esfuerzo de aporte no se justifica al vender.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ],
+    "tir_glosada_primer_uso": true
+  }
+}

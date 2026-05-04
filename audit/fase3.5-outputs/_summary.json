@@ -1,0 +1,155 @@
+[
+  {
+    "id": "A-LasCondes-sobreprecio",
+    "label": "Premium con sobreprecio claro",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "precioSugeridoMotor": 6111,
+    "precioSugeridoIA": "UF 6.750",
+    "metricas": {
+      "precioSugerido_str": "UF 6.750",
+      "precioSugerido_motor_uf": 6111,
+      "precioSugerido_motor_clp": 244604997,
+      "neg_menciona_TIR": true,
+      "neg_menciona_flujo_cruza": false,
+      "neg_menciona_pp_o_pct": true,
+      "neg_compara_actual_vs_sugerido": true,
+      "neg_menciona_techo": true,
+      "neg_menciona_oferta": true,
+      "neg_menciona_walkaway": false,
+      "neg_caja_contiene_precioSugerido": true,
+      "ries_chars": 401,
+      "ries_doble_newline_count": 0,
+      "ries_bullet_count": 0,
+      "ries_bold_count": 0,
+      "ries_oraciones_aprox": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses elimina el flujo positivo marginal que t",
+          "descripcion": "000+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a $1.562.081, empeorando el flujo en $281.119 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indef",
+          "descripcionTruncadoEn220": true
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir",
+        "no cruza a positivo",
+        "flujo no cruza"
+      ]
+    }
+  },
+  {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "precioSugeridoMotor": 4365,
+    "precioSugeridoIA": "UF 4.320",
+    "metricas": {
+      "precioSugerido_str": "UF 4.320",
+      "precioSugerido_motor_uf": 4365,
+      "precioSugerido_motor_clp": 174717855,
+      "neg_menciona_TIR": true,
+      "neg_menciona_flujo_cruza": false,
+      "neg_menciona_pp_o_pct": true,
+      "neg_compara_actual_vs_sugerido": true,
+      "neg_menciona_techo": false,
+      "neg_menciona_oferta": true,
+      "neg_menciona_walkaway": false,
+      "neg_caja_contiene_precioSugerido": true,
+      "ries_chars": 272,
+      "ries_doble_newline_count": 0,
+      "ries_bullet_count": 0,
+      "ries_bold_count": 0,
+      "ries_oraciones_aprox": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2-3 meses duplica tu pérdida anual — no tienes m",
+          "descripcion": "Si Ñuñoa crece menos del 3.2% histórico, los números se desarman porque toda la ganancia viene de plusvalía. Las tasas pueden subir: cada punto porcentual adicional eleva tu cuota mensual en $88K.",
+          "descripcionTruncadoEn220": true
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados",
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "precioSugeridoMotor": 2134,
+    "precioSugeridoIA": "UF 2.250",
+    "metricas": {
+      "precioSugerido_str": "UF 2.250",
+      "precioSugerido_motor_uf": 2134,
+      "precioSugerido_motor_clp": 85417618,
+      "neg_menciona_TIR": true,
+      "neg_menciona_flujo_cruza": false,
+      "neg_menciona_pp_o_pct": true,
+      "neg_compara_actual_vs_sugerido": true,
+      "neg_menciona_techo": true,
+      "neg_menciona_oferta": true,
+      "neg_menciona_walkaway": false,
+      "neg_caja_contiene_precioSugerido": true,
+      "ries_chars": 369,
+      "ries_doble_newline_count": 0,
+      "ries_bullet_count": 0,
+      "ries_bold_count": 0,
+      "ries_oraciones_aprox": 2,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses elimina los arriendos del año entero — n",
+          "descripcion": "Tu tasa al 4,5% está 40 bps sobre mercado, si sube a 5,5% el dividendo llega a $503.892 mensuales agrandando el déficit. Estación Central lleva una década con crecimiento mediocre — si esa tendencia continúa, el único re",
+          "descripcionTruncadoEn220": true
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir",
+        "no cruza a positivo",
+        "flujo no cruza",
+        "bps"
+      ]
+    }
+  },
+  {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "precioSugeridoMotor": 5335,
+    "precioSugeridoIA": "UF 4.950",
+    "metricas": {
+      "precioSugerido_str": "UF 4.950",
+      "precioSugerido_motor_uf": 5335,
+      "precioSugerido_motor_clp": 213544045,
+      "neg_menciona_TIR": true,
+      "neg_menciona_flujo_cruza": false,
+      "neg_menciona_pp_o_pct": true,
+      "neg_compara_actual_vs_sugerido": false,
+      "neg_menciona_techo": false,
+      "neg_menciona_oferta": true,
+      "neg_menciona_walkaway": false,
+      "neg_caja_contiene_precioSugerido": true,
+      "ries_chars": 472,
+      "ries_doble_newline_count": 0,
+      "ries_bullet_count": 0,
+      "ries_bold_count": 0,
+      "ries_oraciones_aprox": 3,
+      "ries_parser_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses borra 10 meses de margen",
+          "descripcion": "Con arriendo de $950K vs dividendo de $939K, cualquier período sin inquilino te obliga a cubrir la cuota completa de tu bolsillo. Tasas al alza: subida de 1pp aumenta tu dividendo a $1.040K — el arriendo ya no cubre y tu",
+          "descripcionTruncadoEn220": true
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  }
+]

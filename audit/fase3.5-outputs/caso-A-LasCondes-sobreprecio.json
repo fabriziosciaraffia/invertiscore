@@ -1,0 +1,207 @@
+{
+  "caseDef": {
+    "id": "A-LasCondes-sobreprecio",
+    "label": "Premium con sobreprecio claro",
+    "notes": "UF 7.500 / 70m² = UF 107/m² (mediana LC ~UF 90/m²). vmFranco UF 6.300 simula SOBREPRECIO ~+19%.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 7500,
+      "valorMercadoFranco": 6300,
+      "superficie": 70,
+      "superficieTotal": 70,
+      "antiguedad": 5,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 1300000,
+      "gastos": 180000,
+      "contribuciones": 110000,
+      "provisionMantencion": 90000,
+      "comuna": "Las Condes",
+      "dormitorios": 2,
+      "piso": 8,
+      "lat": -33.415,
+      "lng": -70.58,
+      "nombre": "Caso A — LasCondes sobreprecio"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 110000,
+    "provisionMantencion": 90000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 7500,
+    "valorMercadoFranco": 6300,
+    "superficie": 70,
+    "superficieTotal": 70,
+    "antiguedad": 5,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 1300000,
+    "gastos": 180000,
+    "comuna": "Las Condes",
+    "dormitorios": 2,
+    "piso": 8,
+    "lat": -33.415,
+    "lng": -70.58,
+    "nombre": "Caso A — LasCondes sobreprecio"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 64,
+    "flujoNetoMensual": -285128,
+    "precioSugerido": {
+      "precioSugeridoUF": 6111,
+      "precioSugeridoCLP": 244604997,
+      "tirAlSugerido": 13.8,
+      "precioLimiteUF": 7558.6,
+      "precioLimiteCLP": 302548082,
+      "tirAlLimite": 6,
+      "tirAlVmFranco": 12.74
+    },
+    "financingHealth": {
+      "pie": {
+        "level": "aceptable",
+        "actual_pct": 20,
+        "recommended_pct": 25,
+        "impact_message": "subir el pie a 25% baja la cuota en $80.060 al mes"
+      },
+      "tasa": {
+        "level": "optimo",
+        "actual_pct": 4.1,
+        "recommended_pct": 4.1,
+        "market_avg_pct": 4.1,
+        "spread_bps": 0
+      },
+      "overall": "aceptable"
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Las Condes a precio de barrio alto, rentabilidad de sector medio.",
+    "siendoFrancoHeadline_uf": "Las Condes a precio de barrio alto, rentabilidad de sector medio.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene al precio actual. Pagarías $48.032.400 sobre valor real en Las Condes y el flujo no cruza a positivo nunca — aportas $285.128 cada mes sin tope en la proyección. La TIR 6,3% apenas supera un depósito a plazo, pero exige aporte indefinido.",
+      "respuestaDirecta_uf": "No conviene al precio actual. Pagarías UF 1.200 sobre valor real en Las Condes y el flujo no cruza a positivo nunca — aportas UF 7,1 cada mes sin tope en la proyección. La TIR 6,3% apenas supera un depósito a plazo, pero exige aporte indefinido.",
+      "veredictoFrase_clp": "Precio inflado, flujo que no mejora, rentabilidad mediocre.",
+      "veredictoFrase_uf": "Precio inflado, flujo que no mejora, rentabilidad mediocre.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio vs mercado",
+          "valor_clp": "$48.032.400",
+          "valor_uf": "UF 1.200",
+          "subtexto": "19% sobre valor real",
+          "color": "red"
+        },
+        {
+          "label": "Aporte mensual indefinido",
+          "valor_clp": "$285.128",
+          "valor_uf": "UF 7,1",
+          "subtexto": "no cruza a positivo",
+          "color": "red"
+        },
+        {
+          "label": "TIR mejorada con descuento",
+          "valor_clp": "13,8%",
+          "valor_uf": "13,8%",
+          "subtexto": "a UF 6.750 vs 6,3% actual",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Las Condes creció solo 2,7% anual en la década pasada — por debajo del promedio de Santiago. Tu apuesta central es que esa trayectoria tibia se acelere, porque la rentabilidad por flujo no existe. A precio actual necesitas plusvalía >4% anual para justificar los $285.128 mensuales indefinidos que aportas de tu bolsillo.",
+      "reencuadre_uf": "Las Condes creció solo 2,7% anual en la década pasada — por debajo del promedio de Santiago. Tu apuesta central es que esa trayectoria tibia se acelere, porque la rentabilidad por flujo no existe. A precio actual necesitas plusvalía >4% anual para justificar las UF 7,1 mensuales indefinidas que aportas de tu bolsillo.",
+      "cajaAccionable_clp": "¿Puedes sostener $285.128 al mes sin tope claro, apostando a que Las Condes cambie su patrón de crecimiento histórico?",
+      "cajaAccionable_uf": "¿Puedes sostener UF 7,1 al mes sin tope claro, apostando a que Las Condes cambie su patrón de crecimiento histórico?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $1.300.000 no alcanza a cubrir tu dividendo de $1.280.962 más gastos operacionales. Resultado: $285.128 negativos cada mes, sin horizonte de mejora. En 10 años habrás aportado $54.418.907 de tu bolsillo — casi el valor de otro departamento igual.",
+      "contenido_uf": "El arriendo de UF 32,5 no alcanza a cubrir tu dividendo de UF 32 más gastos operacionales. Resultado: UF 7,1 negativas cada mes, sin horizonte de mejora. En 10 años habrás aportado UF 1.360 de tu bolsillo — casi el valor de otro departamento igual.",
+      "cajaAccionable_clp": "¿Tu presupuesto familiar absorbe $285.128 extra cada mes durante años, o necesitas que esta inversión se pague sola?",
+      "cajaAccionable_uf": "¿Tu presupuesto familiar absorbe UF 7,1 extra cada mes durante años, o necesitas que esta inversión se pague sola?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Hay margen y urgencia. Pagarías $48.032.400 sobre valor real — eso justifica una negociación dura. A UF 6.750 la TIR salta de 6,3% a 13,8% y el flujo mejora sustancialmente, aunque sigue negativo. El vendedor está pidiendo 19% más de lo que vale la propiedad.",
+      "contenido_uf": "Hay margen y urgencia. Pagarías UF 1.200 sobre valor real — eso justifica una negociación dura. A UF 6.750 la TIR salta de 6,3% a 13,8% y el flujo mejora sustancialmente, aunque sigue negativo. El vendedor está pidiendo 19% más de lo que vale la propiedad.",
+      "estrategiaSugerida_clp": "Ofrece UF 6.500, argumenta comparables de zona. Si acepta reunirse, tu techo es UF 6.750 — ahí los números empiezan a funcionar. Por encima sigues pagando sobreprecio.",
+      "estrategiaSugerida_uf": "Ofrece UF 6.500, argumenta comparables de zona. Si acepta reunirse, tu techo es UF 6.750 — ahí los números empiezan a funcionar. Por encima sigues pagando sobreprecio.",
+      "cajaAccionable_clp": "Ofrece UF 6.500. Si rechaza, sube hasta UF 6.750 máximo.",
+      "cajaAccionable_uf": "Ofrece UF 6.500. Si rechaza, sube hasta UF 6.750 máximo.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 6.750"
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Honestamente, un depósito UF al 5% te da $107.579.613 en 10 años sin aportes mensuales ni riesgo de vacancia. Este depto, aún con descuento a UF 6.750, te exige $285.128 mensuales indefinidos y dependes de que Las Condes recupere dinámica de plusvalía. Las tasas altas castigan fuertemente el flujo — si suben 2pp tu dividendo llega a $1.562.081.",
+      "contenido_uf": "Honestamente, un depósito UF al 5% te da UF 2.688 en 10 años sin aportes mensuales ni riesgo de vacancia. Este depto, aún con descuento a UF 6.750, te exige UF 7,1 mensuales indefinidas y dependes de que Las Condes recupere dinámica de plusvalía. Las tasas altas castigan fuertemente el flujo — si suben 2pp tu dividendo llega a UF 39.",
+      "cajaAccionable_clp": "La apuesta real: ¿Las Condes va a crecer >4% anual la próxima década vs 2,7% histórico?",
+      "cajaAccionable_uf": "La apuesta real: ¿Las Condes va a crecer >4% anual la próxima década vs 2,7% histórico?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses elimina el flujo positivo marginal que tendrías con arriendo — tu pérdida anual se dispara a $600.000+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a $1.562.081, empeorando el flujo en $281.119 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indefinido — si sigue tibia, la inversión no cierra nunca por flujo.",
+      "contenido_uf": "Vacancia de 2 meses elimina el flujo positivo marginal que tendrías con arriendo — tu pérdida anual se dispara a UF 15+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a UF 39, empeorando el flujo en UF 7 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indefinido — si sigue tibia, la inversión no cierra nunca por flujo.",
+      "cajaAccionable_clp": "Si no puedes bajar el precio a UF 6.750 o menos, pasa. Las Condes tiene oferta abundante y este precio refleja optimismo que la zona no ha validado históricamente.",
+      "cajaAccionable_uf": "Si no puedes bajar el precio a UF 6.750 o menos, pasa. Las Condes tiene oferta abundante y este precio refleja optimismo que la zona no ha validado históricamente.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "rawText": "```json\n{\n  \"siendoFrancoHeadline_clp\": \"Las Condes a precio de barrio alto, rentabilidad de sector medio.\",\n  \"siendoFrancoHeadline_uf\": \"Las Condes a precio de barrio alto, rentabilidad de sector medio.\",\n  \"francoVerdict\": \"AJUSTA EL PRECIO\",\n  \n  \"conviene\": {\n    \"pregunta\": \"¿Conviene o no conviene?\",\n    \"respuestaDirecta_clp\": \"No conviene al precio actual. Pagarías $48.032.400 sobre valor real en Las Condes y el flujo no cruza a positivo nunca — aportas $285.128 cada mes sin tope en la proyección. La TIR 6,3% apenas supera un depósito a plazo, pero exige aporte indefinido.\",\n    \"respuestaDirecta_uf\": \"No conviene al precio actual. Pagarías UF 1.200 sobre valor real en Las Condes y el flujo no cruza a positivo nunca — aportas UF 7,1 cada mes sin tope en la proyección. La TIR 6,3% apenas supera un depósito a plazo, pero exige aporte indefinido.\",\n    \"veredictoFrase_clp\": \"Precio inflado, flujo que no mejora, rentabilidad mediocre.\",\n    \"veredictoFrase_uf\": \"Precio inflado, flujo que no mejora, rentabilidad mediocre.\",\n    \"datosClave\": [\n      {\n        \"label\": \"Sobreprecio vs mercado\",\n        \"valor_clp\": \"$48.032.400\",\n        \"valor_uf\": \"UF 1.200\",\n        \"subtexto\": \"19% sobre valor real\",\n        \"color\": \"red\"\n      },\n      {\n        \"label\": \"Aporte mensual indefinido\",\n        \"valor_clp\": \"$285.128\",\n        \"valor_uf\": \"UF 7,1\",\n        \"subtexto\": \"no cruza a positivo\",\n        \"color\": \"red\"\n      },\n      {\n        \"label\": \"TIR mejorada con descuento\",\n        \"valor_clp\": \"13,8%\",\n        \"valor_uf\": \"13,8%\",\n        \"subtexto\": \"a UF 6.750 vs 6,3% actual\",\n        \"color\": \"accent\"\n      }\n    ],\n    \"reencuadre_clp\": \"Las Condes creció solo 2,7% anual en la década pasada — por debajo del promedio de Santiago. Tu apuesta central es que esa trayectoria tibia se acelere, porque la rentabilidad por flujo no existe. A precio actual necesitas plusvalía >4% anual para justificar los $285.128 mensuales indefinidos que aportas de tu bolsillo.\",\n    \"reencuadre_uf\": \"Las Condes creció solo 2,7% anual en la década pasada — por debajo del promedio de Santiago. Tu apuesta central es que esa trayectoria tibia se acelere, porque la rentabilidad por flujo no existe. A precio actual necesitas plusvalía >4% anual para justificar las UF 7,1 mensuales indefinidas que aportas de tu bolsillo.\",\n    \"cajaAccionable_clp\": \"¿Puedes sostener $285.128 al mes sin tope claro, apostando a que Las Condes cambie su patrón de crecimiento histórico?\",\n    \"cajaAccionable_uf\": \"¿Puedes sostener UF 7,1 al mes sin tope claro, apostando a que Las Condes cambie su patrón de crecimiento histórico?\",\n    \"cajaLabel\": \"Antes de seguir, decide:\"\n  },\n  \n  \"costoMensual\": {\n    \"pregunta\": \"¿Qué te cuesta mes a mes?\",\n    \"contenido_clp\": \"El arriendo de $1.300.000 no alcanza a cubrir tu dividendo de $1.280.962 más gastos operacionales. Resultado: $285.128 negativos cada mes, sin horizonte de mejora. En 10 años habrás aportado $54.418.907 de tu bolsillo — casi el valor de otro departamento igual.\",\n    \"contenido_uf\": \"El arriendo de UF 32,5 no alcanza a cubrir tu dividendo de UF 32 más gastos operacionales. Resultado: UF 7,1 negativas cada mes, sin horizonte de mejora. En 10 años habrás aportado UF 1.360 de tu bolsillo — casi el valor de otro departamento igual.\",\n    \"cajaAccionable_clp\": \"¿Tu presupuesto familiar absorbe $285.128 extra cada mes durante años, o necesitas que esta inversión se pague sola?\",\n    \"cajaAccionable_uf\": \"¿Tu presupuesto familiar absorbe UF 7,1 extra cada mes durante años, o necesitas que esta inversión se pague sola?\",\n    \"cajaLabel\": \"Hazte esta pregunta:\"\n  },\n  \n  \"negociacion\": {\n    \"pregunta\": \"¿Hay margen para negociar?\",\n    \"contenido_clp\": \"Hay margen y urgencia. Pagarías $48.032.400 sobre valor real — eso justifica una negociación dura. A UF 6.750 la TIR salta de 6,3% a 13,8% y el flujo mejora sustancialmente, aunque sigue negativo. El vendedor está pidiendo 19% más de lo que vale la propiedad.\",\n    \"contenido_uf\": \"Hay margen y urgencia. Pagarías UF 1.200 sobre valor real — eso justifica una negociación dura. A UF 6.750 la TIR salta de 6,3% a 13,8% y el flujo mejora sustancialmente, aunque sigue negativo. El vendedor está pidiendo 19% más de lo que vale la propiedad.\",\n    \"estrategiaSugerida_clp\": \"Ofrece UF 6.500, argumenta comparables de zona. Si acepta reunirse, tu techo es UF 6.750 — ahí los números empiezan a funcionar. Por encima sigues pagando sobreprecio.\",\n    \"estrategiaSugerida_uf\": \"Ofrece UF 6.500, argumenta comparables de zona. Si acepta reunirse, tu techo es UF 6.750 — ahí los números empiezan a funcionar. Por encima sigues pagando sobreprecio.\",\n    \"cajaAccionable_clp\": \"Ofrece UF 6.500. Si rechaza, sube hasta UF 6.750 máximo.\",\n    \"cajaAccionable_uf\": \"Ofrece UF 6.500. Si rechaza, sube hasta UF 6.750 máximo.\",\n    \"cajaLabel\": \"Guión para la contraoferta:\",\n    \"precioSugerido\": \"UF 6.750\"\n  },\n  \n  \"largoPlazo\": {\n    \"pregunta\": \"¿Vale la pena a 10 años?\",\n    \"contenido_clp\": \"Honestamente, un depósito UF al 5% te da $107.579.613 en 10 años sin aportes mensuales ni riesgo de vacancia. Este depto, aún con descuento a UF 6.750, te exige $285.128 mensuales indefinidos y dependes de que Las Condes recupere dinámica de plusvalía. Las tasas altas castigan fuertemente el flujo — si suben 2pp tu dividendo llega a $1.562.081.\",\n    \"contenido_uf\": \"Honestamente, un depósito UF al 5% te da UF 2.688 en 10 años sin aportes mensuales ni riesgo de vacancia. Este depto, aún con descuento a UF 6.750, te exige UF 7,1 mensuales indefinidas y dependes de que Las Condes recupere dinámica de plusvalía. Las tasas altas castigan fuertemente el flujo — si suben 2pp tu dividendo llega a UF 39.\",\n    \"cajaAccionable_clp\": \"La apuesta real: ¿Las Condes va a crecer >4% anual la próxima década vs 2,7% histórico?\",\n    \"cajaAccionable_uf\": \"La apuesta real: ¿Las Condes va a crecer >4% anual la próxima década vs 2,7% histórico?\",\n    \"cajaLabel\": \"La apuesta que estás haciendo:\"\n  },\n  \n  \"riesgos\": {\n    \"pregunta\": \"¿Qué puede salir mal?\",\n    \"contenido_clp\": \"Vacancia de 2 meses elimina el flujo positivo marginal que tendrías con arriendo — tu pérdida anual se dispara a $600.000+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a $1.562.081, empeorando el flujo en $281.119 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indefinido — si sigue tibia, la inversión no cierra nunca por flujo.\",\n    \"contenido_uf\": \"Vacancia de 2 meses elimina el flujo positivo marginal que tendrías con arriendo — tu pérdida anual se dispara a UF 15+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a UF 39, empeorando el flujo en UF 7 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indefinido — si sigue tibia, la inversión no cierra nunca por flujo.\",\n    \"cajaAccionable_clp\": \"Si no puedes bajar el precio a UF 6.750 o menos, pasa. Las Condes tiene oferta abundante y este precio refleja optimismo que la zona no ha validado históricamente.\",\n    \"cajaAccionable_uf\": \"Si no puedes bajar el precio a UF 6.750 o menos, pasa. Las Condes tiene oferta abundante y este precio refleja optimismo que la zona no ha validado históricamente.\",\n    \"cajaLabel\": \"Si decides avanzar, protege estos flancos:\"\n  }\n}\n```",
+  "metricas": {
+    "precioSugerido_str": "UF 6.750",
+    "precioSugerido_motor_uf": 6111,
+    "precioSugerido_motor_clp": 244604997,
+    "neg_menciona_TIR": true,
+    "neg_menciona_flujo_cruza": false,
+    "neg_menciona_pp_o_pct": true,
+    "neg_compara_actual_vs_sugerido": true,
+    "neg_menciona_techo": true,
+    "neg_menciona_oferta": true,
+    "neg_menciona_walkaway": false,
+    "neg_caja_contiene_precioSugerido": true,
+    "ries_chars": 401,
+    "ries_doble_newline_count": 0,
+    "ries_bullet_count": 0,
+    "ries_bold_count": 0,
+    "ries_oraciones_aprox": 2,
+    "ries_parser_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses elimina el flujo positivo marginal que t",
+        "descripcion": "000+. Alzas de tasas castigan brutal: 2pp adicionales suben tu dividendo a $1.562.081, empeorando el flujo en $281.119 mensuales. Las Condes viene creciendo 2,7% anual cuando necesitas >4% para justificar el aporte indef",
+        "descripcionTruncadoEn220": true
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir",
+      "no cruza a positivo",
+      "flujo no cruza"
+    ]
+  }
+}
