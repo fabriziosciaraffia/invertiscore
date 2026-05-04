@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   calcDividendo,
@@ -135,9 +136,18 @@ export function ResumenCard({
           )}
         </div>
         <Cell
-          label="Vacancia · Gestión del arriendo"
+          label={
+            <>
+              <span className="inline-flex items-center gap-1">
+                Vacancia <InfoTooltip content="% del año sin arrendatario." />
+              </span>
+              {" · "}
+              <span className="inline-flex items-center gap-1">
+                Gestión <InfoTooltip content="% del arriendo al corredor que gestiona la propiedad." />
+              </span>
+            </>
+          }
           value={`${state.vacanciaPct}% · ${state.adminPct}%`}
-          tooltip="Vacancia: % del año sin arrendatario. Gestión del arriendo: % del arriendo al corredor que gestiona. Ambos editables en Ajustar."
           edited={isEdited("vacanciaPct") || isEdited("adminPct")}
         />
         <Cell
@@ -171,7 +181,7 @@ function Cell({
   edited = false,
   tooltip,
 }: {
-  label: string;
+  label: ReactNode;
   value: string;
   edited?: boolean;
   tooltip?: string;

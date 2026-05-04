@@ -17,7 +17,15 @@ interface TooltipBubbleProps {
 
 function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
-  const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0 });
+  // Inicializar fuera de flujo evita que el primer paint ponga el bubble en
+  // body flow (block, ~60px alto) y dispare scrollbar flicker / layout shift
+  // hasta que el primer rAF lo reposicione.
+  const [style, setStyle] = useState<React.CSSProperties>({
+    position: "fixed",
+    top: -9999,
+    left: -9999,
+    opacity: 0,
+  });
   const [arrowStyle, setArrowStyle] = useState<React.CSSProperties>({});
 
   // Reposicionamiento dinámico: rAF loop mientras el bubble está montado.
