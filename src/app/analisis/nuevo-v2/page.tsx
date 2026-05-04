@@ -12,6 +12,7 @@ import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
 import { Paso1Propiedad } from "@/components/formulario-v3/Paso1Propiedad";
 import { Paso2Financiamiento } from "@/components/formulario-v3/Paso2Financiamiento";
 import { Paso3Modalidad, type TierInfo } from "@/components/formulario-v3/Paso3Modalidad";
+import { useAirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import {
   DEFAULT_STATE,
   antiguedadToNumber,
@@ -67,6 +68,17 @@ export default function NuevoAnalisisV3Page() {
     arriendo: null, gastos: null, contribuciones: null, precioM2UF: null,
     precioM2SampleSize: null,
     sampleSize: 0, radiusUsed: null, totalInRadius: 0, nearbyProperties: [],
+  });
+
+  // ─── AirROI prefetch — solo cuando modalidad ∈ {str, both} (Ronda 2b) ──
+  // El hook es no-op si !enabled. Cache server-side 90 días en el endpoint.
+  const airRoi = useAirRoiSuggestion({
+    enabled: state.modalidad === "str" || state.modalidad === "both",
+    direccion: state.direccion,
+    dormitorios: Number(state.dormitorios) || 2,
+    banos: Number(state.banos) || 1,
+    capacidadHuespedes: Number(state.capacidadHuespedes) || 2,
+    ufClp: ufCLP,
   });
 
   // ─── Mount: migrate v2 draft, load v3 draft, fetch UF + tasa + tier ──
@@ -611,6 +623,7 @@ export default function NuevoAnalisisV3Page() {
                   gastos: suggestions.gastos,
                   contribuciones: suggestions.contribuciones,
                 }}
+                airRoi={airRoi}
                 onAnalizar={handleAnalizar}
                 submitting={submitting}
                 submitError={submitError}

@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Check, X } from "lucide-react";
-// Ronda 2a: STR/AMBAS desbloqueado. UI específica STR (inputs operativos)
-// llega en Ronda 2b.
+// Ronda 2b: inputs STR críticos inline (modoGestion + edificioPermiteAirbnb).
+// Resto de campos operativos viven en Modal Ajustar (Ronda 2c).
 import { StateBox } from "@/components/ui/StateBox";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { ResumenCard } from "./ResumenCard";
 import { ModalAjusteCondiciones } from "./ModalAjusteCondiciones";
 import {
@@ -13,6 +14,7 @@ import {
   type Modalidad,
   type WizardV3State,
 } from "./wizardV3State";
+import type { AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 
 const OPCIONES: { key: "ltr" | "str" | "both"; label: string; sub: string; star?: boolean }[] = [
   { key: "ltr", label: "Renta larga", sub: "Arriendo tradicional a 1+ año" },
@@ -33,6 +35,7 @@ export function Paso3Modalidad({
   ufCLP,
   tierInfo,
   suggestions,
+  airRoi,
   onAnalizar,
   submitting,
   submitError,
@@ -47,6 +50,7 @@ export function Paso3Modalidad({
     gastos: number | null;
     contribuciones: number | null;
   };
+  airRoi: AirRoiSuggestion;
   onAnalizar: () => void;
   submitting: boolean;
   submitError: string;
@@ -192,8 +196,14 @@ export function Paso3Modalidad({
             state={state}
             ufCLP={ufCLP}
             sampleSize={state.sampleSize}
+            airRoi={airRoi}
             onAjustar={() => setAjustarOpen(true)}
           />
+
+          {/* ── Sección "Operación Airbnb" — solo STR/AMBAS (Ronda 2b) ── */}
+          {(mod === "str" || mod === "both") && (
+            <OperacionAirbnbSection state={state} setState={setState} />
+          )}
 
           {/* Costo tier-aware */}
           {tierInfo && <CostoCard tierInfo={tierInfo} />}
@@ -264,6 +274,101 @@ function tierCopy(info: TierInfo): { costo: string; plan: string; color: string 
   if (info.tier === "premium" && info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)" };
   if (info.tier === "free") return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)" };
   return { costo: "Análisis gratuito (modo invitado)", plan: "INVITADO", color: "var(--franco-text)" };
+}
+
+// ─── Sección "Operación Airbnb" (Ronda 2b) ──
+// Inputs críticos inline en Paso 3 cuando modalidad ∈ {str, both}. Resto de
+// campos operativos (comisión exacta, costos electricidad/agua/wifi/insumos,
+// mantención, amoblamiento) viven en Modal Ajustar (Ronda 2c).
+function OperacionAirbnbSection({
+  state,
+  setState,
+}: {
+  state: WizardV3State;
+  setState: (patch: Partial<WizardV3State>) => void;
+}) {
+  const inputClass =
+    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-body text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
+  return (
+    <div className="flex flex-col gap-4 pt-4 border-t border-[var(--franco-border)]">
+      <div className="flex items-center gap-1.5">
+        <h3 className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0">
+          Operación Airbnb
+        </h3>
+        <InfoTooltip content="Estos datos definen cómo operarás el Airbnb. El resto (costos operativos, amoblamiento, comisión exacta) podés ajustarlos en 'Ajustar condiciones'." />
+      </div>
+
+      {/* Modo de gestión — toggle 2 cols */}
+      <div>
+        <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
+          Modo de gestión
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["auto", "administrador"] as const).map((m) => {
+            const active = state.modoGestion === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setState({ modoGestion: m })}
+                className={`text-left px-3 py-2.5 rounded-lg transition-colors ${
+                  active
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                }`}
+              >
+                <p className="font-body text-[13px] font-medium m-0 mb-0.5">
+                  {m === "auto" ? "Auto-gestión" : "Administrador"}
+                </p>
+                <p className="font-mono text-[10px] m-0 leading-snug opacity-80">
+                  {m === "auto"
+                    ? "Tú gestionas. Comisión Airbnb 3%."
+                    : "Operador profesional. Comisión 20% por defecto."}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+        {state.modoGestion === "administrador" && (
+          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
+            Podés ajustar la comisión exacta en &ldquo;Ajustar condiciones&rdquo;.
+          </p>
+        )}
+      </div>
+
+      {/* Edificio permite Airbnb */}
+      <div>
+        <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
+          ¿Tu edificio permite Airbnb?
+        </label>
+        <select
+          className={`${inputClass} appearance-none pr-8`}
+          value={state.edificioPermiteAirbnb}
+          onChange={(e) =>
+            setState({
+              edificioPermiteAirbnb: e.target.value as WizardV3State["edificioPermiteAirbnb"],
+            })
+          }
+        >
+          <option value="si">Sí permite</option>
+          <option value="no">No permite</option>
+          <option value="no_seguro">No estoy seguro</option>
+        </select>
+        {state.edificioPermiteAirbnb === "no" && (
+          <div className="mt-2">
+            <StateBox variant="left-border" state="negative">
+              Algunos edificios prohíben Airbnb en su reglamento. Verifica antes de invertir — esto puede invalidar el modelo de negocio.
+            </StateBox>
+          </div>
+        )}
+        {state.edificioPermiteAirbnb === "no_seguro" && (
+          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
+            Te conviene revisar el reglamento de copropiedad antes de comprar.
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // Suppress unused export warning

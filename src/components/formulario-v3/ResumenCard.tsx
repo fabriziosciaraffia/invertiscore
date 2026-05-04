@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import type { AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import {
   calcDividendo,
   fmtCLP,
@@ -46,11 +47,14 @@ export function ResumenCard({
   state,
   ufCLP,
   sampleSize,
+  airRoi,
   onAjustar,
 }: {
   state: WizardV3State;
   ufCLP: number;
   sampleSize: number;
+  /** Estimación AirROI — solo se renderiza cuando modalidad ∈ {str, both}. */
+  airRoi?: AirRoiSuggestion;
   onAjustar: () => void;
 }) {
   const precioUF = Number(state.precio) || 0;
@@ -132,37 +136,17 @@ export function ResumenCard({
           value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
           tooltip="Cuota mensual del crédito hipotecario. Calculada con precio, pie, plazo y tasa. Editable en Ajustar."
         />
-        <div>
-          <Cell
-            label={hasArriendoExtras ? "Arriendo total" : "Arriendo estimado"}
-            value={
-              hasArriendoExtras
-                ? arriendoTotal > 0 ? `${fmtCLP(arriendoTotal)}/mes` : "—"
-                : arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"
-            }
-            tooltip={
-              hasArriendoExtras
-                ? "Suma del arriendo del depto, estacionamiento y bodega. La sugerencia base se calcula con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Editable en Ajustar."
-                : "Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta. Editable en Ajustar."
-            }
-            edited={isEdited("arriendo") || isEdited("arriendoEstac") || isEdited("arriendoBodega")}
-          />
-          {hasArriendoExtras && (
-            <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-              ● Incluye
-              {arriendoEstac > 0 ? ` ${fmtCLPShort(arriendoEstac)} estac` : ""}
-              {arriendoEstac > 0 && arriendoBodega > 0 ? " ·" : ""}
-              {arriendoBodega > 0 ? ` ${fmtCLPShort(arriendoBodega)} bodega` : ""}
-            </p>
-          )}
-          {sampleSize > 0 && (
-            <p
-              className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]"
-            >
-              ● Basado en {sampleSize} deptos similares
-            </p>
-          )}
-        </div>
+        <ArriendoCell
+          modalidad={state.modalidad}
+          arriendo={arriendo}
+          arriendoEstac={arriendoEstac}
+          arriendoBodega={arriendoBodega}
+          arriendoTotal={arriendoTotal}
+          hasArriendoExtras={hasArriendoExtras}
+          sampleSize={sampleSize}
+          airRoi={airRoi}
+          isEdited={isEdited}
+        />
         <Cell
           label="Vacancia"
           value={`${state.vacanciaPct}%`}
@@ -229,6 +213,156 @@ function Cell({
           </span>
         )}
       </p>
+    </div>
+  );
+}
+
+// ─── Cell adaptativo de arriendo según modalidad (Ronda 2b) ──
+// LTR → "Arriendo estimado" (o "Arriendo total" cuando hay extras estac/bodega)
+// STR → "Ingreso bruto estimado" con valor AirROI
+// AMBAS → 2 valores apilados verticalmente: Arriendo largo + Ingreso Airbnb
+function ArriendoCell({
+  modalidad,
+  arriendo,
+  arriendoEstac,
+  arriendoBodega,
+  arriendoTotal,
+  hasArriendoExtras,
+  sampleSize,
+  airRoi,
+  isEdited,
+}: {
+  modalidad: WizardV3State["modalidad"];
+  arriendo: number;
+  arriendoEstac: number;
+  arriendoBodega: number;
+  arriendoTotal: number;
+  hasArriendoExtras: boolean;
+  sampleSize: number;
+  airRoi?: AirRoiSuggestion;
+  isEdited: (field: string) => boolean;
+}) {
+  const airRoiLoading = airRoi?.isLoading === true;
+  const airRoiValue = airRoi?.ingresoBrutoMensual ?? 0;
+  const airRoiSampleSize = airRoi?.sampleSize ?? 0;
+  const airRoiSource = airRoi?.source;
+  const airRoiError = airRoi?.error;
+
+  // ── Modalidad STR: reemplazar "Arriendo estimado" por "Ingreso bruto" ──
+  if (modalidad === "str") {
+    return (
+      <div>
+        <Cell
+          label="Ingreso bruto estimado"
+          value={
+            airRoiLoading
+              ? "—"
+              : airRoiValue > 0
+                ? `${fmtCLP(airRoiValue)}/mes`
+                : "—"
+          }
+          tooltip="Estimación del ingreso bruto mensual de Airbnb basada en datos AirROI (ADR × ocupación esperada × días). No incluye comisión plataforma ni costos operativos. Editable en Ajustar."
+        />
+        {airRoiLoading && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
+            Estimando con AirROI…
+          </p>
+        )}
+        {!airRoiLoading && airRoiError && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+            ● No pudimos estimar tu ingreso. Continúa y lo verás en el análisis.
+          </p>
+        )}
+        {!airRoiLoading && !airRoiError && airRoiValue > 0 && airRoiSource === "comparables" && airRoiSampleSize > 0 && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+            ● Basado en {airRoiSampleSize} listings Airbnb similares
+          </p>
+        )}
+        {!airRoiLoading && !airRoiError && airRoiValue > 0 && airRoiSource === "calculator_direct" && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+            ● Estimación directa AirROI (sin comparables en zona)
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Modalidad AMBAS: dos valores apilados (Arriendo largo + Ingreso Airbnb) ──
+  if (modalidad === "both") {
+    const arriendoEditedAmbas =
+      isEdited("arriendo") || isEdited("arriendoEstac") || isEdited("arriendoBodega");
+    return (
+      <div>
+        <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
+          <span>Arriendo largo</span>
+          <InfoTooltip content="Arriendo mensual estimado para renta tradicional (LTR). Editable en Ajustar." />
+        </p>
+        <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
+          {hasArriendoExtras
+            ? arriendoTotal > 0 ? `${fmtCLP(arriendoTotal)}/mes` : "—"
+            : arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
+          {arriendoEditedAmbas && (
+            <span
+              className="ml-1.5 font-mono text-[10px] text-[#C8323C]"
+              aria-label="Ajustado manualmente"
+            >
+              ●
+            </span>
+          )}
+        </p>
+        <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mt-2 mb-0.5">
+          <span>Ingreso Airbnb</span>
+          <InfoTooltip content="Ingreso bruto mensual estimado por AirROI (ADR × ocupación)." />
+        </p>
+        <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
+          {airRoiLoading
+            ? "—"
+            : airRoiValue > 0 ? `${fmtCLP(airRoiValue)}/mes` : "—"}
+        </p>
+        {airRoiLoading && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
+            Estimando AirROI…
+          </p>
+        )}
+        {!airRoiLoading && airRoiError && (
+          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+            ● Airbnb no estimable, lo verás en el análisis.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // ── Modalidad LTR (default) — comportamiento pre-Ronda 2b ──
+  return (
+    <div>
+      <Cell
+        label={hasArriendoExtras ? "Arriendo total" : "Arriendo estimado"}
+        value={
+          hasArriendoExtras
+            ? arriendoTotal > 0 ? `${fmtCLP(arriendoTotal)}/mes` : "—"
+            : arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"
+        }
+        tooltip={
+          hasArriendoExtras
+            ? "Suma del arriendo del depto, estacionamiento y bodega. La sugerencia base se calcula con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Editable en Ajustar."
+            : "Sugerencia calculada con la mediana de arriendos publicados de propiedades similares (mismos dormitorios, ±30% superficie) en la zona. Edítalo si tienes referencia distinta. Editable en Ajustar."
+        }
+        edited={isEdited("arriendo") || isEdited("arriendoEstac") || isEdited("arriendoBodega")}
+      />
+      {hasArriendoExtras && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+          ● Incluye
+          {arriendoEstac > 0 ? ` ${fmtCLPShort(arriendoEstac)} estac` : ""}
+          {arriendoEstac > 0 && arriendoBodega > 0 ? " ·" : ""}
+          {arriendoBodega > 0 ? ` ${fmtCLPShort(arriendoBodega)} bodega` : ""}
+        </p>
+      )}
+      {sampleSize > 0 && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+          ● Basado en {sampleSize} deptos similares
+        </p>
+      )}
     </div>
   );
 }

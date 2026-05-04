@@ -2515,6 +2515,25 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
+  // ─── Banner partial-failure (Ronda 2b) ──
+  // Cuando el wizard v3 hizo modalidad="both" y solo LTR se creó (STR falló por
+  // crédito o AirROI), dejó un flag en sessionStorage. Lo leemos UNA VEZ al
+  // montar y mostramos un StateBox dismissible al tope de la página. Limpiamos
+  // el flag al leer para evitar que se repita en navegaciones futuras.
+  const [bothPartial, setBothPartial] = useState<{ failed: "ltr" | "str"; error: string } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("franco_both_partial");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { ok?: string; failed?: string; error?: string };
+      // Solo mostrar si esta página (LTR) corresponde al lado que sí funcionó.
+      if (parsed.ok === "ltr" && parsed.failed === "str") {
+        setBothPartial({ failed: "str", error: parsed.error || "El análisis de renta corta falló." });
+      }
+      sessionStorage.removeItem("franco_both_partial");
+    } catch { /* ignore */ }
+  }, []);
+
   useEffect(() => {
     const mq = window.matchMedia("(hover: none)");
     setIsTouchDevice(mq.matches);
@@ -3625,6 +3644,33 @@ export function PremiumResults({
   return (
     <>
       <div className="min-w-0">
+        {bothPartial && (
+          <div className="max-w-5xl mx-auto px-4 md:px-6 pt-4">
+            <div className="flex items-start gap-3 rounded-r-lg p-4 relative"
+              style={{
+                borderLeft: "3px solid #C8323C",
+                background: "color-mix(in srgb, #C8323C 6%, transparent)",
+              }}
+            >
+              <div className="flex-1 min-w-0">
+                <p className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold m-0 mb-1" style={{ color: "#C8323C" }}>
+                  Análisis Airbnb no se generó
+                </p>
+                <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
+                  {bothPartial.error} Puedes reintentarlo desde el dashboard.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBothPartial(null)}
+                aria-label="Cerrar mensaje"
+                className="shrink-0 inline-flex items-center justify-center w-6 h-6 rounded text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] transition-colors"
+              >
+                <span className="font-body text-[16px] leading-none">×</span>
+              </button>
+            </div>
+          </div>
+        )}
         {mainContent}
       </div>
       <ProCTABanner
