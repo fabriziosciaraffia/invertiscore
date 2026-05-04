@@ -489,7 +489,7 @@ function TabGastos({
             Gastos comunes ($/mes)
           </span>
           <InfoTooltip
-            content="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Edita si conoces el valor real."
+            content="Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia)."
           />
         </span>
         <MoneyInput

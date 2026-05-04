@@ -128,7 +128,7 @@ function DrawerCostoMensual({
     {
       name: "Gastos comunes",
       value: desglose.ggccVacancia,
-      tooltip: "Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera por períodos de vacancia.",
+      tooltip: "Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia).",
     },
     {
       name: "Contribuciones",

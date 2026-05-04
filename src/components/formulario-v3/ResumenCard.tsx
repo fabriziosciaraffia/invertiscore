@@ -156,7 +156,7 @@ export function ResumenCard({
         <Cell
           label="Gastos comunes"
           value={gastos > 0 ? `${fmtCLP(gastos)}/mes` : "—"}
-          tooltip="Pago mensual a la administración del edificio. Lo paga el arrendatario, pero se considera en la proyección por períodos de vacancia. Edita si conoces el valor real. Editable en Ajustar."
+          tooltip="Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia). Editable en Ajustar."
           edited={isEdited("gastos")}
         />
         <Cell

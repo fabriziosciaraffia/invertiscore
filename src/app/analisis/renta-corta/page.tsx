@@ -62,7 +62,7 @@ const TIPS: Record<string, string> = {
   agua: "Consumo de agua mensual promedio.",
   wifi: "Internet fijo mensual. Esencial para Airbnb.",
   insumos: "Sábanas, toallas, amenities, café, papel higiénico, etc.",
-  gastosComunes: "Gasto común mensual del edificio.",
+  gastosComunes: "Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia).",
   mantencion: "Reposición de artículos, reparaciones menores, reemplazo de equipamiento.",
   amoblamiento: "Incluye muebles, electrodomésticos, decoración, ropa de cama, menaje de cocina.",
   contribuciones: "Impuesto territorial. Se paga 4 veces al año.",

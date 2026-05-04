@@ -55,7 +55,7 @@ const TIPS: Record<string, string> = {
   bodega: "Bodegas incluidas en la compra.",
   precio: "Precio de venta publicado o acordado.",
   arriendo: "Arriendo esperado de mercado para este departamento.",
-  gastos: "Gasto común mensual estimado.",
+  gastos: "Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia).",
   contribuciones: "Las contribuciones se pagan 4 veces al año. Este valor es una estimación basada en la normativa del SII. El avalúo fiscal real puede variar — consúltalo en sii.cl con el ROL de la propiedad.",
   tasaInteres: "Tasa de interés anual del crédito hipotecario.",
   plazoCredito: "Duración del crédito hipotecario en años.",
