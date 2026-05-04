@@ -229,14 +229,16 @@ export function ModalAjusteCondiciones({
             Cancelar
           </button>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSaveAndExit}
-              className="font-body font-medium text-[13px] px-4 py-2 rounded-lg text-[var(--franco-text)] hover:bg-[color-mix(in_srgb,var(--franco-text)_4%,transparent)] transition-colors"
-              style={{ border: "0.5px solid var(--franco-border)" }}
-            >
-              Guardar y salir
-            </button>
+            {!isLastTab && (
+              <button
+                type="button"
+                onClick={handleSaveAndExit}
+                className="font-body font-medium text-[13px] px-4 py-2 rounded-lg text-[var(--franco-text)] hover:bg-[color-mix(in_srgb,var(--franco-text)_4%,transparent)] transition-colors"
+                style={{ border: "0.5px solid var(--franco-border)" }}
+              >
+                Guardar y salir
+              </button>
+            )}
             <button
               type="button"
               onClick={handleNext}
