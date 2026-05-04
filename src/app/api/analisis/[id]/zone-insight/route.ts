@@ -59,6 +59,10 @@ interface ZoneInsightResponse {
     preview_uf: string;
     narrative_clp: string;
     narrative_uf: string;
+    // Fase 5 v2 — campo agregado al schema. El cliente actual NO lo renderiza
+    // (ZoneInsightAI.tsx / ZoneInsightMiniCard.tsx leen headline/preview/narrative).
+    // Queda persistido en cache para coordinar UI por separado.
+    accion: string;
   };
   valorUF: number;
 }
@@ -329,61 +333,110 @@ async function fetchOfertaComparableCascade(
 }
 
 // ─── AI insight generator ───────────────────────────
-const INSIGHT_SYSTEM_PROMPT = `Eres un asistente que escribe para Franco, plataforma chilena de análisis inmobiliario.
+// ─────────────────────────────────────────────────────────────────────────────
+// INSIGHT_SYSTEM_PROMPT v2 (Fase 5)
+// Hereda doctrina del skill analysis-voice-franco: asesor no narrador, framework
+// D→C→R→A, interpretación obligatoria de stats. Conserva reglas defensivas que
+// funcionaban en v1 (chileno neutro, no jerga, no metros futuros). Agrega campo
+// `accion` imperativa al schema de respuesta.
+// ─────────────────────────────────────────────────────────────────────────────
+const INSIGHT_SYSTEM_PROMPT = `Eres Franco. Asesor inmobiliario chileno. Le hablas a un inversionista que está evaluando un departamento — no le vendes, no narras la pantalla, no recitas la tabla. Lees los datos por él y le dices qué significan.
 
-Tu tarea: generar un párrafo narrativo de 3-5 frases sobre los drivers de demanda que tiene un depto según los atractores urbanos cercanos.
+REGLA 0 — ASESOR, NO NARRADOR
+Antes de escribir cada frase, pregúntate: ¿esto se reemplaza por una tabla sin pérdida de información? Si la respuesta es sí, no lo escribas. Tu valor es interpretar, no listar.
 
-REGLAS:
-1. Español chileno NEUTRO. No usar voseo ("tenés", "bajá", "decidí"). Usar "tú" y formas chilenas: "tienes", "baja", "decide", "protege", "evalúa".
-2. Tono profesional pero cercano. No paternalista. No alarmista.
-3. Mencionar solo los atractores más relevantes (top 4-5) por distancia e importancia.
-4. Conectar los atractores con tipos de demanda concretos:
-   - Metro cercano (<500m) → transporte, demanda general de arriendo, vacancia baja
-   - Clínicas grandes (<1000m) → turismo médico (pacientes de regiones) y residentes médicos
-   - Universidades (<1500m) → demanda estudiantil estable 1-4 años
-   - Colegios top (<1500m) → demanda familiar
-   - Parques (<800m) → calidad de vida, sostén de precio
-   - Malls (<1000m) → densidad comercial, valoración de ubicación
-   - Zonas de negocios (<1500m) → demanda ejecutiva, arriendos altos
-5. Cerrar con una síntesis sobre cómo esta mezcla afecta el arriendo (vacancia baja, precio sostenible, resiliencia ante cambios de mercado).
-6. Longitud: 4-6 frases.
-7. NO uses lenguaje anti-corredor ni vendedor. NO exageres.
-8. NO uses "che", "dale", "ponele", "cachai", "bacán", "weón".
-9. NUNCA inventes ni menciones estaciones de metro futuras, líneas en construcción (L7, L8, L9), ni proyectos urbanos planificados. Solo menciona infraestructura que ya está operativa y que aparece en los datos que te paso. Si no tienes información sobre proyectos futuros, no los inventes.
+Narrador (prohibido): "El Metro Tobalaba a 180m garantiza conectividad directa. El Costanera Center a 850m densifica la oferta comercial."
+Asesor (esperado): "El mix Tobalaba + El Golf explica que estés en P78 de arriendo: pagas la prima de una zona ya validada."
 
-SOBRE EL PREVIEW:
-- El campo "preview" es una frase corta (12-18 palabras, máximo 2 líneas) que sintetiza el POR QUÉ analítico, no lista datos concretos.
-- Ejemplo bueno: "La mezcla de metro, universidades y clínicas diversifica la demanda y sostiene el precio."
-- Ejemplo malo: "Metro a 245m, Parque Bustamante a 149m, INACAP a 900m." (eso es datos, no análisis.)
-- Usa lenguaje de consultor inmobiliario, no vendedor.
+REGLA 1 — INTERPRETA STATS, NO LOS RECITES
+Cuando el contexto financiero te dé números, traduce cada uno a una lectura cualitativa con estos umbrales:
 
-SOBRE narrative_clp Y narrative_uf:
-Los dos deben ser DISTINTOS cuando hay montos concretos útiles al análisis. Solo son idénticos si el insight es puramente cualitativo.
+precioM2.diffPct (precio m² del depto vs mediana de la comuna):
+  ≤ -3% → "bajo la mediana"
+  -3% a +3% → "en línea con la mediana"
+  +3% a +8% → "sobre la mediana"
+  > +8% → "muy sobre la mediana — sobreprecio"
 
-narrative_clp:
-- Menciona montos en pesos chilenos cuando aporten (percentiles de arriendo, diferencias de precio m², proyecciones).
-- Formato: "$950.000", "$92.000.000", "$640.000–$1.347.000".
+percentilTuDepto (percentil del arriendo dentro del rango local):
+  P0–P25 → "barato para la zona"
+  P25–P75 → "rango medio"
+  P75–P90 → "caro para la zona"
+  > P90 → "muy caro para la zona"
 
-narrative_uf:
-- Mismos montos expresados en UF. Formato: "UF 25,3", "UF 2.450", "UF 17,0–UF 35,8".
-- Debe ser coherente con narrative_clp: si uno menciona un monto, el otro lo menciona en la moneda opuesta.
+plusvaliaAnual:
+  < 3% → "débil vs Santiago (~4% promedio)"
+  3–5% → "en línea con Santiago"
+  > 5% → "fuerte"
 
-CUÁNDO MENCIONAR MONTOS:
-- Siempre que aporten contexto financiero concreto (arriendo estimado vs. rango comparable, diferencia vs mediana m², plusvalía a X años).
-- NO fuerces montos si el insight es puramente cualitativo ("zona con alta conectividad") → ahí los dos narratives pueden ser idénticos.
-- NO inventes montos que no estén en el input.
+Prohibido recitar el número sin interpretarlo. Si el narrative menciona "+8.2%" o "P81", debe seguir con la lectura cualitativa. Si los datos contradicen un cierre optimista, escribe el cierre que dice la verdad — no el que vende.
 
-EJEMPLOS:
+REGLA 2 — FRAMEWORK D→C→R→A
+El narrative debe construirse como: Dato → Contexto → Riesgo o ventaja. La Acción concreta NO va en el narrative — va en el campo \`accion\` separado.
 
-Cualitativo (ambos iguales):
-  narrative_clp: "La combinación de metro, universidades y clínicas genera demanda diversa que reduce la vacancia."
-  narrative_uf:  "La combinación de metro, universidades y clínicas genera demanda diversa que reduce la vacancia."
+REGLA 3 — \`accion\` ES IMPERATIVA Y ESPECÍFICA
+Verbo en imperativo. Apunta a verificación, negociación o decisión concreta. Tope 140 caracteres. NO depende de unidad (no se duplica en UF).
 
-Con montos (distintos):
-  narrative_clp: "El arriendo estimado de $950.000 se ubica en el percentil 58 del rango local ($640.000–$1.347.000), posicionado para competir sin castigar precio."
-  narrative_uf:  "El arriendo estimado de UF 25,3 se ubica en el percentil 58 del rango local (UF 17,0–UF 35,8), posicionado para competir sin castigar precio."
+OK: "Antes de firmar, pide comparables de los últimos 3 meses en el mismo edificio."
+OK: "Negocia a la baja: estás pagando ~8% sobre mediana sin justificación visible."
+OK: "Verifica que la línea de metro esté operativa antes de pagar la prima de cercanía."
+NO: "Considera todos los factores antes de decidir."
+NO: "Evalúa si esta inversión calza con tu perfil."
+NO: "Analiza con detalle los pros y contras."
 
-Respondes SOLO con el JSON solicitado, sin texto adicional ni backticks.`;
+REGLA 4 — \`narrative\` ≤ 4 FRASES
+Tope duro: 4 frases. Si llegas a 5, sobra una. La densidad importa más que la extensión.
+
+REGLA 5 — VOCABULARIO PROHIBIDO
+No uses estas palabras o construcciones (son tono de corredor, no de Franco):
+- "ecosistema"
+- "ubicación estratégica" / "ubicación privilegiada"
+- "establece base sólida" / "posición sólida"
+- "compite desde una posición"
+- "valoración que el mercado otorga"
+- "respiro verde"
+- "arriendos resilientes"
+- "polo consolidado" / "polo emergente"
+- "diversifica inquilinos potenciales"
+- "se posiciona como opción atractiva"
+- "ofrece" + sustantivo abstracto ("ofrece tranquilidad", "ofrece calidad de vida")
+
+REGLA 6 — REGISTRO Y FORMA (heredado v1, conservado)
+- Español chileno neutro. Tuteo: "tú", "tienes", "evalúa". NO voseo ("tenés", "bajá", "decidí").
+- NO jerga: "che", "dale", "cachai", "weón", "bacán", "ponele".
+- Tono Franco directo. No paternalista, no alarmista, no vendedor.
+- Solo menciona POIs presentes en el input. NUNCA inventes estaciones de metro futuras (L7, L8, L9), líneas en construcción ni proyectos urbanos planificados.
+
+REGLA 7 — \`headline\` Y \`preview\` SIGUEN LA MISMA DOCTRINA
+- headline_clp: 6-10 palabras. Agrega un ángulo, no titula la zona genéricamente.
+  NO: "Metro y mix comercial impulsan demanda premium."
+  OK: "Pagas prima por El Golf, no por el depto."
+- preview_clp: 12-18 palabras (máximo 2 líneas). Frase analítica que explica el POR QUÉ, no lista datos.
+  NO: "Metro a 180m, Bustamante a 410m, Costanera a 850m."
+  OK: "La mezcla Metro + El Golf valida el percentil 78 de arriendo, pero no garantiza retorno."
+
+FORMATO DE MONTOS
+- CLP: "$1.500.000" — separador de miles con punto.
+- UF: "UF 38,7" (decimal con coma) o "UF 1.250" (>=100).
+- Rango: "$950.000–$1.700.000" / "UF 24,5–UF 43,8".
+
+VERSIONES CLP vs UF
+- Los campos *_clp y *_uf son IDÉNTICOS si el contenido no menciona montos.
+- Si el contenido menciona montos, *_clp los expresa en pesos y *_uf en UF (mismo orden, mismas frases, solo cambia la unidad).
+- \`accion\` NO tiene versión UF: es una sola frase, no depende de unidad.
+
+ESQUEMA DE RESPUESTA (JSON, 7 campos)
+
+{
+  "headline_clp": "...",
+  "headline_uf":  "...",
+  "preview_clp":  "...",
+  "preview_uf":   "...",
+  "narrative_clp": "3-4 frases con estructura D→C→R. Si hay montos, en pesos.",
+  "narrative_uf":  "Mismas 3-4 frases con montos en UF. Idéntica si no hay montos.",
+  "accion": "1 frase imperativa específica (≤140 chars)."
+}
+
+Respondes SOLO con el JSON, sin texto adicional ni backticks.`;
 
 interface InsightAIContext {
   arriendoCLP: number;
@@ -397,7 +450,7 @@ async function generateInsightAI(
   comuna: string,
   pois: ZoneInsightPois,
   ctx: InsightAIContext,
-): Promise<{ headline_clp: string; headline_uf: string; preview_clp: string; preview_uf: string; narrative_clp: string; narrative_uf: string }> {
+): Promise<{ headline_clp: string; headline_uf: string; preview_clp: string; preview_uf: string; narrative_clp: string; narrative_uf: string; accion: string }> {
   const flatTop: Array<{ tipo: string; nombre: string; distancia: number }> = [];
   (Object.keys(pois) as Array<keyof ZoneInsightPois>).forEach((bucket) => {
     pois[bucket].slice(0, 3).forEach((p) => flatTop.push({ tipo: bucket, nombre: p.nombre, distancia: p.distancia }));
@@ -443,12 +496,13 @@ ${top.length === 0 ? "(ninguno dentro de 2,5 km — comuna periférica)" : top.m
 
 Genera tu respuesta como JSON exactamente con esta forma:
 {
-  "headline_clp": "Frase corta de 6-10 palabras que resume el insight.",
-  "headline_uf":  "Igual que headline_clp si no hay montos.",
-  "preview_clp": "Frase analítica 12-18 palabras (máximo 2 líneas), estilo editorial, explica el POR QUÉ, no lista datos.",
-  "preview_uf":  "Igual que preview_clp si no hay montos.",
-  "narrative_clp": "4-6 frases en chileno neutro. Puedes incluir montos concretos en pesos cuando aporten al análisis (usa solo los del contexto financiero).",
-  "narrative_uf":  "Mismas 4-6 frases pero con los montos en UF. Si narrative_clp no menciona montos, esta versión es idéntica."
+  "headline_clp": "6-10 palabras. Agrega un ángulo, no titula la zona genéricamente.",
+  "headline_uf":  "Igual que headline_clp si no contiene montos.",
+  "preview_clp":  "12-18 palabras. Frase analítica, estilo editorial, explica el POR QUÉ, no lista datos.",
+  "preview_uf":   "Igual que preview_clp si no contiene montos.",
+  "narrative_clp": "3-4 frases con estructura D→C→R (Dato→Contexto→Riesgo/ventaja). Interpreta los stats, no los recites. Si hay montos, en pesos.",
+  "narrative_uf":  "Mismas 3-4 frases con montos en UF. Idéntica si narrative_clp no contiene montos.",
+  "accion": "1 frase imperativa específica (≤140 chars). Verifica/negocia/decide algo concreto."
 }`;
 
   try {
@@ -468,6 +522,7 @@ Genera tu respuesta como JSON exactamente con esta forma:
       preview_uf: String(parsed.preview_uf || parsed.preview_clp || ""),
       narrative_clp: String(parsed.narrative_clp || ""),
       narrative_uf: String(parsed.narrative_uf || parsed.narrative_clp || ""),
+      accion: String(parsed.accion || ""),
     };
   } catch (e) {
     console.error("zone-insight: AI generation failed", e);
@@ -478,6 +533,7 @@ Genera tu respuesta como JSON exactamente con esta forma:
       preview_uf: "",
       narrative_clp: "",
       narrative_uf: "",
+      accion: "",
     };
   }
 }
@@ -505,13 +561,17 @@ export async function GET(
     // Cache hit — unless forced.
     if (!force && row.zone_insight && typeof row.zone_insight === "object") {
       const cached = row.zone_insight as ZoneInsightResponse & {
-        insight: { preview_clp?: string; preview_uf?: string };
+        insight: { preview_clp?: string; preview_uf?: string; accion?: string };
       };
       // Backfill preview fields if cache was generated before they existed.
       if (cached.insight && !cached.insight.preview_clp) {
         const n = cached.insight.narrative_clp || "";
         cached.insight.preview_clp = n ? n.slice(0, 140).trim() + (n.length > 140 ? "…" : "") : "";
         cached.insight.preview_uf = cached.insight.preview_clp;
+      }
+      // Fase 5 — backfill accion para caches v1 (campo agregado en v2).
+      if (cached.insight && typeof cached.insight.accion !== "string") {
+        cached.insight.accion = "";
       }
       return NextResponse.json(cached);
     }

@@ -1,0 +1,83 @@
+{
+  "caso": "A",
+  "label": "Providencia premium",
+  "comuna": "Providencia",
+  "contextoEnviado": {
+    "precioUF": 5500,
+    "superficie": 60,
+    "dormitorios": 2,
+    "arriendoCLP": 1500000,
+    "plusvaliaAnual": 5.5,
+    "precioM2": {
+      "tuDepto": 91.7,
+      "medianaComuna": 95,
+      "diffPct": -3.5
+    },
+    "oferta": {
+      "rangoArriendoMin": 950000,
+      "rangoArriendoMax": 1700000,
+      "percentilTuDepto": 78
+    },
+    "pois": [
+      {
+        "tipo": "metro",
+        "nombre": "Tobalaba",
+        "distancia": 180
+      },
+      {
+        "tipo": "parques",
+        "nombre": "Parque Bustamante",
+        "distancia": 410
+      },
+      {
+        "tipo": "clinicas",
+        "nombre": "Clínica Indisa",
+        "distancia": 620
+      },
+      {
+        "tipo": "malls",
+        "nombre": "Costanera Center",
+        "distancia": 850
+      },
+      {
+        "tipo": "universidades",
+        "nombre": "Universidad del Desarrollo",
+        "distancia": 1100
+      },
+      {
+        "tipo": "colegios",
+        "nombre": "Colegio Saint George",
+        "distancia": 1300
+      },
+      {
+        "tipo": "negocios",
+        "nombre": "Distrito Financiero El Golf",
+        "distancia": 950
+      },
+      {
+        "tipo": "institutos",
+        "nombre": "INACAP Providencia",
+        "distancia": 1400
+      }
+    ]
+  },
+  "userPromptUsado": "Comuna: Providencia\nTipo: análisis LTR (arriendo de largo plazo)\n\nAtractores cercanos (los más relevantes por distancia):\n- METRO: Tobalaba (180 m)\n- PARQUES: Parque Bustamante (410 m)\n- CLINICAS: Clínica Indisa (620 m)\n- MALLS: Costanera Center (850 m)\n- NEGOCIOS: Distrito Financiero El Golf (950 m)\n- UNIVERSIDADES: Universidad del Desarrollo (1100 m)\n- COLEGIOS: Colegio Saint George (1300 m)\n- INSTITUTOS: INACAP Providencia (1400 m)\n\nContexto financiero del depto (usar solo montos presentes acá):\n- Arriendo estimado: $1.500.000 / UF 38,7\n- Rango comparable arriendo: $950.000–$1.700.000 / UF 24,5–UF 43,8\n- Percentil de tu arriendo dentro del rango: P78\n- Precio m² tu depto: UF 91,7 (mediana Providencia: UF 95,0, -3,5%)\n- Plusvalía histórica anualizada Providencia: 5.5%\n\nGenera tu respuesta como JSON exactamente con esta forma:\n{\n  \"headline_clp\": \"Frase corta de 6-10 palabras que resume el insight.\",\n  \"headline_uf\":  \"Igual que headline_clp si no hay montos.\",\n  \"preview_clp\": \"Frase analítica 12-18 palabras (máximo 2 líneas), estilo editorial, explica el POR QUÉ, no lista datos.\",\n  \"preview_uf\":  \"Igual que preview_clp si no hay montos.\",\n  \"narrative_clp\": \"4-6 frases en chileno neutro. Puedes incluir montos concretos en pesos cuando aporten al análisis (usa solo los del contexto financiero).\",\n  \"narrative_uf\":  \"Mismas 4-6 frases pero con los montos en UF. Si narrative_clp no menciona montos, esta versión es idéntica.\"\n}",
+  "output": {
+    "headline_clp": "Metro y mix comercial impulsan demanda premium",
+    "headline_uf": "Metro y mix comercial impulsan demanda premium",
+    "preview_clp": "La convergencia de transporte, negocios y servicios médicos diversifica inquilinos y sostiene arriendos altos.",
+    "preview_uf": "La convergencia de transporte, negocios y servicios médicos diversifica inquilinos y sostiene arriendos altos.",
+    "narrative_clp": "La proximidad al Metro Tobalaba (180m) garantiza conectividad directa que atrae tanto ejecutivos del Distrito El Golf como profesionales médicos vinculados a Clínica Indisa. El Costanera Center a 850m densifica la oferta comercial, mientras que la Universidad del Desarrollo e INACAP aportan demanda estudiantil constante. Esta mezcla de perfiles —desde ejecutivos hasta estudiantes y turismo médico— diversifica las fuentes de demanda y reduce la dependencia de un solo segmento. El arriendo estimado de $1.500.000 se posiciona en el percentil 78 del rango comparable ($950.000–$1.700.000), reflejando la prima que el mercado paga por esta ubicación estratégica. La convergencia de estos atractores genera un ecosistema que mantiene baja vacancia y arriendos resilientes ante fluctuaciones sectoriales.",
+    "narrative_uf": "La proximidad al Metro Tobalaba (180m) garantiza conectividad directa que atrae tanto ejecutivos del Distrito El Golf como profesionales médicos vinculados a Clínica Indisa. El Costanera Center a 850m densifica la oferta comercial, mientras que la Universidad del Desarrollo e INACAP aportan demanda estudiantil constante. Esta mezcla de perfiles —desde ejecutivos hasta estudiantes y turismo médico— diversifica las fuentes de demanda y reduce la dependencia de un solo segmento. El arriendo estimado de UF 38,7 se posiciona en el percentil 78 del rango comparable (UF 24,5–UF 43,8), reflejando la prima que el mercado paga por esta ubicación estratégica. La convergencia de estos atractores genera un ecosistema que mantiene baja vacancia y arriendos resilientes ante fluctuaciones sectoriales."
+  },
+  "rawText": "{\n  \"headline_clp\": \"Metro y mix comercial impulsan demanda premium\",\n  \"headline_uf\": \"Metro y mix comercial impulsan demanda premium\",\n  \"preview_clp\": \"La convergencia de transporte, negocios y servicios médicos diversifica inquilinos y sostiene arriendos altos.\",\n  \"preview_uf\": \"La convergencia de transporte, negocios y servicios médicos diversifica inquilinos y sostiene arriendos altos.\",\n  \"narrative_clp\": \"La proximidad al Metro Tobalaba (180m) garantiza conectividad directa que atrae tanto ejecutivos del Distrito El Golf como profesionales médicos vinculados a Clínica Indisa. El Costanera Center a 850m densifica la oferta comercial, mientras que la Universidad del Desarrollo e INACAP aportan demanda estudiantil constante. Esta mezcla de perfiles —desde ejecutivos hasta estudiantes y turismo médico— diversifica las fuentes de demanda y reduce la dependencia de un solo segmento. El arriendo estimado de $1.500.000 se posiciona en el percentil 78 del rango comparable ($950.000–$1.700.000), reflejando la prima que el mercado paga por esta ubicación estratégica. La convergencia de estos atractores genera un ecosistema que mantiene baja vacancia y arriendos resilientes ante fluctuaciones sectoriales.\",\n  \"narrative_uf\": \"La proximidad al Metro Tobalaba (180m) garantiza conectividad directa que atrae tanto ejecutivos del Distrito El Golf como profesionales médicos vinculados a Clínica Indisa. El Costanera Center a 850m densifica la oferta comercial, mientras que la Universidad del Desarrollo e INACAP aportan demanda estudiantil constante. Esta mezcla de perfiles —desde ejecutivos hasta estudiantes y turismo médico— diversifica las fuentes de demanda y reduce la dependencia de un solo segmento. El arriendo estimado de UF 38,7 se posiciona en el percentil 78 del rango comparable (UF 24,5–UF 43,8), reflejando la prima que el mercado paga por esta ubicación estratégica. La convergencia de estos atractores genera un ecosistema que mantiene baja vacancia y arriendos resilientes ante fluctuaciones sectoriales.\"\n}",
+  "metricas": {
+    "headline_clp_words": 7,
+    "preview_clp_words": 14,
+    "narrative_clp_words": 113,
+    "narrative_clp_sentences": 5,
+    "narratives_iguales": false,
+    "headlines_iguales": true,
+    "previews_iguales": true
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "caso": "C",
+  "label": "Independencia económico",
+  "comuna": "Independencia",
+  "contextoEnviado": {
+    "precioUF": 2800,
+    "superficie": 45,
+    "dormitorios": 1,
+    "arriendoCLP": 480000,
+    "plusvaliaAnual": 3,
+    "precioM2": {
+      "tuDepto": 62.2,
+      "medianaComuna": 57.5,
+      "diffPct": 8.2
+    },
+    "oferta": {
+      "rangoArriendoMin": 320000,
+      "rangoArriendoMax": 560000,
+      "percentilTuDepto": 81
+    },
+    "pois": [
+      {
+        "tipo": "metro",
+        "nombre": "Cementerios",
+        "distancia": 380
+      },
+      {
+        "tipo": "universidades",
+        "nombre": "Universidad de Chile Campus Norte",
+        "distancia": 750
+      },
+      {
+        "tipo": "clinicas",
+        "nombre": "Hospital San José",
+        "distancia": 920
+      },
+      {
+        "tipo": "metro",
+        "nombre": "Hospitales",
+        "distancia": 1050
+      },
+      {
+        "tipo": "colegios",
+        "nombre": "Colegio Hispanoamericano",
+        "distancia": 850
+      },
+      {
+        "tipo": "parques",
+        "nombre": "Parque Los Reyes",
+        "distancia": 1300
+      }
+    ]
+  },
+  "userPromptUsado": "Comuna: Independencia\nTipo: análisis LTR (arriendo de largo plazo)\n\nAtractores cercanos (los más relevantes por distancia):\n- METRO: Cementerios (380 m)\n- UNIVERSIDADES: Universidad de Chile Campus Norte (750 m)\n- COLEGIOS: Colegio Hispanoamericano (850 m)\n- CLINICAS: Hospital San José (920 m)\n- METRO: Hospitales (1050 m)\n- PARQUES: Parque Los Reyes (1300 m)\n\nContexto financiero del depto (usar solo montos presentes acá):\n- Arriendo estimado: $480.000 / UF 12,4\n- Rango comparable arriendo: $320.000–$560.000 / UF 8,2–UF 14,4\n- Percentil de tu arriendo dentro del rango: P81\n- Precio m² tu depto: UF 62,2 (mediana Independencia: UF 57,5, +8,2%)\n- Plusvalía histórica anualizada Independencia: 3%\n\nGenera tu respuesta como JSON exactamente con esta forma:\n{\n  \"headline_clp\": \"Frase corta de 6-10 palabras que resume el insight.\",\n  \"headline_uf\":  \"Igual que headline_clp si no hay montos.\",\n  \"preview_clp\": \"Frase analítica 12-18 palabras (máximo 2 líneas), estilo editorial, explica el POR QUÉ, no lista datos.\",\n  \"preview_uf\":  \"Igual que preview_clp si no hay montos.\",\n  \"narrative_clp\": \"4-6 frases en chileno neutro. Puedes incluir montos concretos en pesos cuando aporten al análisis (usa solo los del contexto financiero).\",\n  \"narrative_uf\":  \"Mismas 4-6 frases pero con los montos en UF. Si narrative_clp no menciona montos, esta versión es idéntica.\"\n}",
+  "output": {
+    "headline_clp": "Metro y universidad sostienen demanda diversificada",
+    "headline_uf": "Metro y universidad sostienen demanda diversificada",
+    "preview_clp": "La proximidad al metro y campus universitario genera flujo constante que diversifica inquilinos potenciales.",
+    "preview_uf": "La proximidad al metro y campus universitario genera flujo constante que diversifica inquilinos potenciales.",
+    "narrative_clp": "La cercanía a Metro Cementerios y el Campus Norte de la Universidad de Chile establece una base sólida de demanda mixta entre estudiantes y profesionales que valoran la conectividad. El Hospital San José agrega un componente de demanda médica, mientras que el acceso a dos líneas de metro (Cementerios y Hospitales) amplía significativamente las opciones de movilidad. El arriendo estimado de $480.000 se posiciona en el percentil 81 del rango local ($320.000–$560.000), reflejando la valoración que el mercado otorga a estos atractores urbanos. Esta combinación de infraestructura educativa, sanitaria y de transporte genera estabilidad en la ocupación, reduciendo los períodos de vacancia y sosteniendo un precio competitivo pero no excesivo para la zona.",
+    "narrative_uf": "La cercanía a Metro Cementerios y el Campus Norte de la Universidad de Chile establece una base sólida de demanda mixta entre estudiantes y profesionales que valoran la conectividad. El Hospital San José agrega un componente de demanda médica, mientras que el acceso a dos líneas de metro (Cementerios y Hospitales) amplía significativamente las opciones de movilidad. El arriendo estimado de UF 12,4 se posiciona en el percentil 81 del rango local (UF 8,2–UF 14,4), reflejando la valoración que el mercado otorga a estos atractores urbanos. Esta combinación de infraestructura educativa, sanitaria y de transporte genera estabilidad en la ocupación, reduciendo los períodos de vacancia y sosteniendo un precio competitivo pero no excesivo para la zona."
+  },
+  "rawText": "{\n  \"headline_clp\": \"Metro y universidad sostienen demanda diversificada\",\n  \"headline_uf\": \"Metro y universidad sostienen demanda diversificada\",\n  \"preview_clp\": \"La proximidad al metro y campus universitario genera flujo constante que diversifica inquilinos potenciales.\",\n  \"preview_uf\": \"La proximidad al metro y campus universitario genera flujo constante que diversifica inquilinos potenciales.\",\n  \"narrative_clp\": \"La cercanía a Metro Cementerios y el Campus Norte de la Universidad de Chile establece una base sólida de demanda mixta entre estudiantes y profesionales que valoran la conectividad. El Hospital San José agrega un componente de demanda médica, mientras que el acceso a dos líneas de metro (Cementerios y Hospitales) amplía significativamente las opciones de movilidad. El arriendo estimado de $480.000 se posiciona en el percentil 81 del rango local ($320.000–$560.000), reflejando la valoración que el mercado otorga a estos atractores urbanos. Esta combinación de infraestructura educativa, sanitaria y de transporte genera estabilidad en la ocupación, reduciendo los períodos de vacancia y sosteniendo un precio competitivo pero no excesivo para la zona.\",\n  \"narrative_uf\": \"La cercanía a Metro Cementerios y el Campus Norte de la Universidad de Chile establece una base sólida de demanda mixta entre estudiantes y profesionales que valoran la conectividad. El Hospital San José agrega un componente de demanda médica, mientras que el acceso a dos líneas de metro (Cementerios y Hospitales) amplía significativamente las opciones de movilidad. El arriendo estimado de UF 12,4 se posiciona en el percentil 81 del rango local (UF 8,2–UF 14,4), reflejando la valoración que el mercado otorga a estos atractores urbanos. Esta combinación de infraestructura educativa, sanitaria y de transporte genera estabilidad en la ocupación, reduciendo los períodos de vacancia y sosteniendo un precio competitivo pero no excesivo para la zona.\"\n}",
+  "metricas": {
+    "headline_clp_words": 6,
+    "preview_clp_words": 14,
+    "narrative_clp_words": 113,
+    "narrative_clp_sentences": 4,
+    "narratives_iguales": false,
+    "headlines_iguales": true,
+    "previews_iguales": true
+  }
+}

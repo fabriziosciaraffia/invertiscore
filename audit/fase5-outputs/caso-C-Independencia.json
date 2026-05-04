@@ -1,0 +1,78 @@
+{
+  "caso": "C",
+  "label": "Independencia económico",
+  "comuna": "Independencia",
+  "contextoEnviado": {
+    "precioUF": 2800,
+    "superficie": 45,
+    "dormitorios": 1,
+    "arriendoCLP": 480000,
+    "plusvaliaAnual": 3,
+    "precioM2": {
+      "tuDepto": 62.2,
+      "medianaComuna": 57.5,
+      "diffPct": 8.2
+    },
+    "oferta": {
+      "rangoArriendoMin": 320000,
+      "rangoArriendoMax": 560000,
+      "percentilTuDepto": 81
+    },
+    "pois": [
+      {
+        "tipo": "metro",
+        "nombre": "Cementerios",
+        "distancia": 380
+      },
+      {
+        "tipo": "universidades",
+        "nombre": "Universidad de Chile Campus Norte",
+        "distancia": 750
+      },
+      {
+        "tipo": "clinicas",
+        "nombre": "Hospital San José",
+        "distancia": 920
+      },
+      {
+        "tipo": "metro",
+        "nombre": "Hospitales",
+        "distancia": 1050
+      },
+      {
+        "tipo": "colegios",
+        "nombre": "Colegio Hispanoamericano",
+        "distancia": 850
+      },
+      {
+        "tipo": "parques",
+        "nombre": "Parque Los Reyes",
+        "distancia": 1300
+      }
+    ]
+  },
+  "userPromptUsado": "Comuna: Independencia\nTipo: análisis LTR (arriendo de largo plazo)\n\nAtractores cercanos (los más relevantes por distancia):\n- METRO: Cementerios (380 m)\n- UNIVERSIDADES: Universidad de Chile Campus Norte (750 m)\n- COLEGIOS: Colegio Hispanoamericano (850 m)\n- CLINICAS: Hospital San José (920 m)\n- METRO: Hospitales (1050 m)\n- PARQUES: Parque Los Reyes (1300 m)\n\nContexto financiero del depto (usar solo montos presentes acá):\n- Arriendo estimado: $480.000 / UF 12,4\n- Rango comparable arriendo: $320.000–$560.000 / UF 8,2–UF 14,4\n- Percentil de tu arriendo dentro del rango: P81\n- Precio m² tu depto: UF 62,2 (mediana Independencia: UF 57,5, +8,2%)\n- Plusvalía histórica anualizada Independencia: 3%\n\nGenera tu respuesta como JSON exactamente con esta forma:\n{\n  \"headline_clp\": \"6-10 palabras. Agrega un ángulo, no titula la zona genéricamente.\",\n  \"headline_uf\":  \"Igual que headline_clp si no contiene montos.\",\n  \"preview_clp\":  \"12-18 palabras. Frase analítica, estilo editorial, explica el POR QUÉ, no lista datos.\",\n  \"preview_uf\":   \"Igual que preview_clp si no contiene montos.\",\n  \"narrative_clp\": \"3-4 frases con estructura D→C→R (Dato→Contexto→Riesgo/ventaja). Interpreta los stats, no los recites. Si hay montos, en pesos.\",\n  \"narrative_uf\":  \"Mismas 3-4 frases con montos en UF. Idéntica si narrative_clp no contiene montos.\",\n  \"accion\": \"1 frase imperativa específica (≤140 chars). Verifica/negocia/decide algo concreto.\"\n}",
+  "output": {
+    "headline_clp": "Metro Cementerios no justifica el P81 de arriendo",
+    "headline_uf": "Metro Cementerios no justifica el P81 de arriendo",
+    "preview_clp": "Pagas caro para la zona sin ventajas claras que expliquen el sobreprecio del percentil 81.",
+    "preview_uf": "Pagas caro para la zona sin ventajas claras que expliquen el sobreprecio del percentil 81.",
+    "narrative_clp": "Estás en P81 de arriendo ($480.000 vs rango $320.000–$560.000) pagando muy sobre la mediana comunal (+8,2%). Metro Cementerios a 380m y Campus Norte a 750m crean demanda estudiantil, pero no justifican este percentil alto. La plusvalía de 3% anual está en línea con Santiago, sin embargo el sobreprecio actual no se respalda en atractores premium que diferencien claramente esta ubicación.",
+    "narrative_uf": "Estás en P81 de arriendo (UF 12,4 vs rango UF 8,2–UF 14,4) pagando muy sobre la mediana comunal (+8,2%). Metro Cementerios a 380m y Campus Norte a 750m crean demanda estudiantil, pero no justifican este percentil alto. La plusvalía de 3% anual está en línea con Santiago, sin embargo el sobreprecio actual no se respalda en atractores premium que diferencien claramente esta ubicación.",
+    "accion": "Negocia a la baja: pides P60-P70 del rango local considerando que no hay ventajas premium visibles."
+  },
+  "rawText": "{\n  \"headline_clp\": \"Metro Cementerios no justifica el P81 de arriendo\",\n  \"headline_uf\": \"Metro Cementerios no justifica el P81 de arriendo\",\n  \"preview_clp\": \"Pagas caro para la zona sin ventajas claras que expliquen el sobreprecio del percentil 81.\",\n  \"preview_uf\": \"Pagas caro para la zona sin ventajas claras que expliquen el sobreprecio del percentil 81.\",\n  \"narrative_clp\": \"Estás en P81 de arriendo ($480.000 vs rango $320.000–$560.000) pagando muy sobre la mediana comunal (+8,2%). Metro Cementerios a 380m y Campus Norte a 750m crean demanda estudiantil, pero no justifican este percentil alto. La plusvalía de 3% anual está en línea con Santiago, sin embargo el sobreprecio actual no se respalda en atractores premium que diferencien claramente esta ubicación.\",\n  \"narrative_uf\": \"Estás en P81 de arriendo (UF 12,4 vs rango UF 8,2–UF 14,4) pagando muy sobre la mediana comunal (+8,2%). Metro Cementerios a 380m y Campus Norte a 750m crean demanda estudiantil, pero no justifican este percentil alto. La plusvalía de 3% anual está en línea con Santiago, sin embargo el sobreprecio actual no se respalda en atractores premium que diferencien claramente esta ubicación.\",\n  \"accion\": \"Negocia a la baja: pides P60-P70 del rango local considerando que no hay ventajas premium visibles.\"\n}",
+  "metricas": {
+    "headline_clp_words": 8,
+    "preview_clp_words": 15,
+    "narrative_clp_words": 60,
+    "narrative_clp_sentences": 3,
+    "accion_chars": 99,
+    "accion_starts_with_imperative": true,
+    "narratives_iguales": false,
+    "headlines_iguales": true,
+    "previews_iguales": true,
+    "vocab_prohibido_hits": [],
+    "narrative_max_4_frases": true
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "caso": "B",
+  "label": "Quinta Normal medio",
+  "comuna": "Quinta Normal",
+  "contextoEnviado": {
+    "precioUF": 3200,
+    "superficie": 50,
+    "dormitorios": 2,
+    "arriendoCLP": 620000,
+    "plusvaliaAnual": 3.5,
+    "precioM2": {
+      "tuDepto": 64,
+      "medianaComuna": 62,
+      "diffPct": 3.2
+    },
+    "oferta": {
+      "rangoArriendoMin": 420000,
+      "rangoArriendoMax": 720000,
+      "percentilTuDepto": 72
+    },
+    "pois": [
+      {
+        "tipo": "metro",
+        "nombre": "Cumming",
+        "distancia": 350
+      },
+      {
+        "tipo": "parques",
+        "nombre": "Parque Quinta Normal",
+        "distancia": 480
+      },
+      {
+        "tipo": "universidades",
+        "nombre": "Universidad de Santiago de Chile",
+        "distancia": 1250
+      },
+      {
+        "tipo": "colegios",
+        "nombre": "Colegio Calicanto",
+        "distancia": 800
+      },
+      {
+        "tipo": "clinicas",
+        "nombre": "Hospital San Juan de Dios",
+        "distancia": 1100
+      },
+      {
+        "tipo": "institutos",
+        "nombre": "DUOC UC Padre Alonso de Ovalle",
+        "distancia": 1900
+      }
+    ]
+  },
+  "userPromptUsado": "Comuna: Quinta Normal\nTipo: análisis LTR (arriendo de largo plazo)\n\nAtractores cercanos (los más relevantes por distancia):\n- METRO: Cumming (350 m)\n- PARQUES: Parque Quinta Normal (480 m)\n- COLEGIOS: Colegio Calicanto (800 m)\n- CLINICAS: Hospital San Juan de Dios (1100 m)\n- UNIVERSIDADES: Universidad de Santiago de Chile (1250 m)\n- INSTITUTOS: DUOC UC Padre Alonso de Ovalle (1900 m)\n\nContexto financiero del depto (usar solo montos presentes acá):\n- Arriendo estimado: $620.000 / UF 16,0\n- Rango comparable arriendo: $420.000–$720.000 / UF 10,8–UF 18,6\n- Percentil de tu arriendo dentro del rango: P72\n- Precio m² tu depto: UF 64,0 (mediana Quinta Normal: UF 62,0, +3,2%)\n- Plusvalía histórica anualizada Quinta Normal: 3.5%\n\nGenera tu respuesta como JSON exactamente con esta forma:\n{\n  \"headline_clp\": \"Frase corta de 6-10 palabras que resume el insight.\",\n  \"headline_uf\":  \"Igual que headline_clp si no hay montos.\",\n  \"preview_clp\": \"Frase analítica 12-18 palabras (máximo 2 líneas), estilo editorial, explica el POR QUÉ, no lista datos.\",\n  \"preview_uf\":  \"Igual que preview_clp si no hay montos.\",\n  \"narrative_clp\": \"4-6 frases en chileno neutro. Puedes incluir montos concretos en pesos cuando aporten al análisis (usa solo los del contexto financiero).\",\n  \"narrative_uf\":  \"Mismas 4-6 frases pero con los montos en UF. Si narrative_clp no menciona montos, esta versión es idéntica.\"\n}",
+  "output": {
+    "headline_clp": "Metro y universidades sostienen demanda estable",
+    "headline_uf": "Metro y universidades sostienen demanda estable",
+    "preview_clp": "La cercanía a transporte y educación superior diversifica inquilinos y reduce vacancia estacional.",
+    "preview_uf": "La cercanía a transporte y educación superior diversifica inquilinos y reduce vacancia estacional.",
+    "narrative_clp": "La proximidad al metro Cumming posiciona este departamento como una opción atractiva para profesionales que valoran la conectividad directa al centro y otras comunas. La Universidad de Santiago de Chile a 1.250 metros genera una demanda estudiantil constante, mientras que el Hospital San Juan de Dios aporta inquilinos del sector salud que buscan cercanía laboral. El Parque Quinta Normal ofrece un respiro verde que mejora la calidad de vida y sostiene la valoración del entorno. Con un arriendo estimado de $620.000 ubicado en el percentil 72 del rango local, esta propiedad compite desde una posición sólida que equilibra accesibilidad para inquilinos con rentabilidad para el propietario.",
+    "narrative_uf": "La proximidad al metro Cumming posiciona este departamento como una opción atractiva para profesionales que valoran la conectividad directa al centro y otras comunas. La Universidad de Santiago de Chile a 1.250 metros genera una demanda estudiantil constante, mientras que el Hospital San Juan de Dios aporta inquilinos del sector salud que buscan cercanía laboral. El Parque Quinta Normal ofrece un respiro verde que mejora la calidad de vida y sostiene la valoración del entorno. Con un arriendo estimado de UF 16,0 ubicado en el percentil 72 del rango local, esta propiedad compite desde una posición sólida que equilibra accesibilidad para inquilinos con rentabilidad para el propietario."
+  },
+  "rawText": "{\n  \"headline_clp\": \"Metro y universidades sostienen demanda estable\",\n  \"headline_uf\": \"Metro y universidades sostienen demanda estable\",\n  \"preview_clp\": \"La cercanía a transporte y educación superior diversifica inquilinos y reduce vacancia estacional.\",\n  \"preview_uf\": \"La cercanía a transporte y educación superior diversifica inquilinos y reduce vacancia estacional.\",\n  \"narrative_clp\": \"La proximidad al metro Cumming posiciona este departamento como una opción atractiva para profesionales que valoran la conectividad directa al centro y otras comunas. La Universidad de Santiago de Chile a 1.250 metros genera una demanda estudiantil constante, mientras que el Hospital San Juan de Dios aporta inquilinos del sector salud que buscan cercanía laboral. El Parque Quinta Normal ofrece un respiro verde que mejora la calidad de vida y sostiene la valoración del entorno. Con un arriendo estimado de $620.000 ubicado en el percentil 72 del rango local, esta propiedad compite desde una posición sólida que equilibra accesibilidad para inquilinos con rentabilidad para el propietario.\",\n  \"narrative_uf\": \"La proximidad al metro Cumming posiciona este departamento como una opción atractiva para profesionales que valoran la conectividad directa al centro y otras comunas. La Universidad de Santiago de Chile a 1.250 metros genera una demanda estudiantil constante, mientras que el Hospital San Juan de Dios aporta inquilinos del sector salud que buscan cercanía laboral. El Parque Quinta Normal ofrece un respiro verde que mejora la calidad de vida y sostiene la valoración del entorno. Con un arriendo estimado de UF 16,0 ubicado en el percentil 72 del rango local, esta propiedad compite desde una posición sólida que equilibra accesibilidad para inquilinos con rentabilidad para el propietario.\"\n}",
+  "metricas": {
+    "headline_clp_words": 6,
+    "preview_clp_words": 13,
+    "narrative_clp_words": 106,
+    "narrative_clp_sentences": 4,
+    "narratives_iguales": false,
+    "headlines_iguales": true,
+    "previews_iguales": true
+  }
+}
