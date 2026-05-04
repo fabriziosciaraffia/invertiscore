@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Loader2, Check, X } from "lucide-react";
+// Ronda 2a: STR/AMBAS desbloqueado. UI específica STR (inputs operativos)
+// llega en Ronda 2b.
 import { StateBox } from "@/components/ui/StateBox";
 import { ResumenCard } from "./ResumenCard";
 import { ModalAjusteCondiciones } from "./ModalAjusteCondiciones";
@@ -14,7 +16,7 @@ import {
 
 const OPCIONES: { key: "ltr" | "str" | "both"; label: string; sub: string; star?: boolean }[] = [
   { key: "ltr", label: "Renta larga", sub: "Arriendo tradicional a 1+ año" },
-  { key: "str", label: "Renta corta", sub: "Airbnb / nochetro" },
+  { key: "str", label: "Renta corta", sub: "Airbnb / corta estadía" },
   { key: "both", label: "Comparar ambas", sub: "LTR vs STR lado a lado", star: true },
 ];
 
@@ -50,7 +52,6 @@ export function Paso3Modalidad({
   submitError: string;
 }) {
   const [ajustarOpen, setAjustarOpen] = useState(false);
-  const [mostrandoProximamente, setMostrandoProximamente] = useState<"str" | "both" | null>(null);
 
   // Banner introductorio: dismiss persiste por sesión (sessionStorage,
   // se limpia al cerrar la pestaña). Mount-only check.
@@ -76,32 +77,7 @@ export function Paso3Modalidad({
   const mod = state.modalidad;
 
   function selectModalidad(key: "ltr" | "str" | "both") {
-    if (key === "str" || key === "both") {
-      setMostrandoProximamente(key);
-      return;
-    }
     setState({ modalidad: key });
-  }
-
-  // ─── Pantalla "próximamente" para STR/AMBAS ──
-  if (mostrandoProximamente) {
-    return (
-      <div className="flex flex-col items-center justify-center text-center gap-4 py-8">
-        <h2 className="font-heading text-xl font-bold text-[var(--franco-text)] m-0">
-          {mostrandoProximamente === "str" ? "Renta corta" : "Comparar ambas"} — próximamente
-        </h2>
-        <p className="font-body text-[14px] text-[var(--franco-text-secondary)] max-w-sm m-0">
-          STR estará disponible próximamente. Por ahora, elige LTR para analizar arriendo tradicional.
-        </p>
-        <button
-          type="button"
-          onClick={() => setMostrandoProximamente(null)}
-          className="mt-2 font-body text-[13px] font-medium text-signal-red hover:underline"
-        >
-          ← Volver a elegir
-        </button>
-      </div>
-    );
   }
 
   // Label compacto para el chip post-selección (LTR / STR / AMBAS)
@@ -230,7 +206,7 @@ export function Paso3Modalidad({
           <button
             type="button"
             onClick={onAnalizar}
-            disabled={submitting || mod !== "ltr"}
+            disabled={submitting || !mod}
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {submitting ? (

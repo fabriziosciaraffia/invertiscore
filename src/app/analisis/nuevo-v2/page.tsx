@@ -278,11 +278,22 @@ export default function NuevoAnalisisV3Page() {
     }
   }
 
-  // ─── Submit (LTR) ──
+  // ─── Submit (bifurcación LTR / STR / AMBAS — Ronda 2a) ──
+  // Modalidad LTR: POST /api/analisis (gratis, no consume créditos).
+  // Modalidad STR: POST /api/analisis/short-term (consume 1 crédito).
+  // Modalidad AMBAS: Promise.allSettled de ambos. No atómico — si STR falla
+  //   por falta de crédito, LTR sí se crea y user va a results LTR con flag
+  //   de partial en sessionStorage para que el destino muestre toast.
   async function handleAnalizar() {
     setSubmitError("");
     setSubmitting(true);
     try {
+      const mod = state.modalidad;
+      if (!mod) {
+        throw new Error("Elige una modalidad para continuar");
+      }
+
+      // ─── Helpers compartidos ──
       // Parser que respeta el 0 explícito (studios, sin estac, sin bodega)
       // pero usa fallback si el campo está vacío / inválido. Crítico para el
       // caso B4 de la auditoría: `Number("0") || fallback` era falsy y
@@ -294,6 +305,7 @@ export default function NuevoAnalisisV3Page() {
       };
       const supUtil = parseDecimalLocale(state.superficieUtil);
       const precioUF = parseNum(state.precio);
+      const precioCompraCLP = Math.round(precioUF * ufCLP);
       const nEstac = parseIntSafe(state.estacionamientos, 0);
       const nBodega = parseIntSafe(state.bodegas, 0);
       const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
@@ -311,7 +323,8 @@ export default function NuevoAnalisisV3Page() {
       const gastos = Number(state.gastos) || 0;
       const contribuciones = Number(state.contribuciones) || 0;
 
-      const payload = {
+      // ─── Payload LTR (idéntico a v3 pre-bifurcación) ──
+      const ltrPayload = {
         nombre,
         comuna: state.comuna,
         ciudad: state.ciudad || "Santiago",
@@ -370,32 +383,160 @@ export default function NuevoAnalisisV3Page() {
         },
       };
 
-      const res = await fetch("/api/analisis", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Error al crear el análisis");
-      }
-      const data = await res.json();
-
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-        if (!isLoggedIn) {
-          localStorage.setItem(GUEST_LS_KEY, JSON.stringify({ ids: [data.id], timestamp: Date.now() }));
-        }
-      } catch { /* ignore */ }
-
-      posthog?.capture("wizard_v3_analysis_created", {
+      // ─── Payload STR (Ronda 2a — usa defaults del state cuando UI no
+      // expone aún el input. Inputs específicos STR llegan en Ronda 2b.) ──
+      // Convenciones del endpoint /api/analisis/short-term:
+      //   - body.piePct y body.tasaInteres en %, el endpoint divide por 100
+      //   - body.comisionAdministrador en decimal (0.20 = 20%)
+      //   - body.precioCompra en CLP, body.precioCompraUF en UF
+      const strPayload = {
+        // Identificación + propiedad
+        direccion: state.direccion || "",
         comuna: state.comuna,
-        modalidad: "ltr",
-        tipo: state.tipoPropiedad,
-        editedFieldsCount: state.editedFields.length,
-      });
+        ciudad: state.ciudad || "Santiago",
+        tipoPropiedad: state.tipoPropiedad,
+        lat: state.lat,
+        lng: state.lng,
+        dormitorios: parseIntSafe(state.dormitorios, 2),
+        banos: parseIntSafe(state.banos, 1),
+        superficieUtil: supUtil,
+        capacidadHuespedes: parseIntSafe(state.capacidadHuespedes, 2),
 
-      router.push(`/analisis/${data.id}`);
+        // Financiamiento (compartido con LTR)
+        precioCompra: precioCompraCLP,
+        precioCompraUF: precioUF,
+        piePct: Number(state.piePct),
+        tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
+        plazoCredito: Number(state.plazoCredito),
+
+        // Operación Airbnb
+        modoGestion: state.modoGestion,
+        comisionAdministrador: state.modoGestion === "administrador"
+          ? (parseDecimalLocale(state.comisionAdminPct) / 100)
+          : 0.20,
+        edificioPermiteAirbnb: state.edificioPermiteAirbnb,
+
+        // Costos operativos mensuales
+        costoElectricidad: Number(state.costoElectricidad) || 0,
+        costoAgua: Number(state.costoAgua) || 0,
+        costoWifi: Number(state.costoWifi) || 0,
+        costoInsumos: Number(state.costoInsumos) || 0,
+        gastosComunes: gastos,
+        mantencion: Number(state.mantencionMensual) || 0,
+        contribuciones,
+
+        // Inversión inicial
+        estaAmoblado: state.estaAmoblado,
+        costoAmoblamiento: Number(state.costoAmoblamiento) || 0,
+
+        // Comparativa
+        arriendoLargoMensual: arriendo,
+      };
+
+      // ─── Sub-funciones de POST (const arrow para strict-mode ES5) ──
+      type AnalisisRow = { id: string };
+      const postLTR = async (): Promise<AnalisisRow> => {
+        const res = await fetch("/api/analisis", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(ltrPayload),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Error al crear el análisis LTR");
+        }
+        return res.json();
+      };
+      const postSTR = async (): Promise<AnalisisRow> => {
+        const res = await fetch("/api/analisis/short-term", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(strPayload),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "Error al crear el análisis STR");
+        }
+        return res.json();
+      };
+
+      // ─── Cleanup compartido (draft, guest LS, posthog) ──
+      const cleanup = (ids: string[], modKey: string) => {
+        try {
+          localStorage.removeItem(DRAFT_KEY);
+          if (!isLoggedIn && ids.length > 0) {
+            localStorage.setItem(GUEST_LS_KEY, JSON.stringify({ ids, timestamp: Date.now() }));
+          }
+        } catch { /* ignore */ }
+        posthog?.capture("wizard_v3_analysis_created", {
+          comuna: state.comuna,
+          modalidad: modKey,
+          tipo: state.tipoPropiedad,
+          editedFieldsCount: state.editedFields.length,
+        });
+      };
+
+      // ─── Bifurcación por modalidad ──
+      if (mod === "ltr") {
+        const data = await postLTR();
+        cleanup([data.id], "ltr");
+        router.push(`/analisis/${data.id}`);
+        return;
+      }
+
+      if (mod === "str") {
+        const data = await postSTR();
+        cleanup([data.id], "str");
+        router.push(`/analisis/renta-corta/${data.id}`);
+        return;
+      }
+
+      // mod === "both" — Promise.allSettled, no atómico
+      const [ltrRes, strRes] = await Promise.allSettled([postLTR(), postSTR()]);
+      const ltrOk = ltrRes.status === "fulfilled";
+      const strOk = strRes.status === "fulfilled";
+
+      if (ltrOk && strOk) {
+        cleanup([ltrRes.value.id, strRes.value.id], "both");
+        router.push(`/analisis/comparativa?ltr=${ltrRes.value.id}&str=${strRes.value.id}`);
+        return;
+      }
+      if (ltrOk && !strOk) {
+        const errMsg = strRes.status === "rejected"
+          ? (strRes.reason instanceof Error ? strRes.reason.message : String(strRes.reason))
+          : "STR falló";
+        try {
+          sessionStorage.setItem(
+            "franco_both_partial",
+            JSON.stringify({ ok: "ltr", failed: "str", error: errMsg }),
+          );
+        } catch { /* ignore */ }
+        cleanup([ltrRes.value.id], "both-partial-ltr");
+        router.push(`/analisis/${ltrRes.value.id}`);
+        return;
+      }
+      if (!ltrOk && strOk) {
+        const errMsg = ltrRes.status === "rejected"
+          ? (ltrRes.reason instanceof Error ? ltrRes.reason.message : String(ltrRes.reason))
+          : "LTR falló";
+        try {
+          sessionStorage.setItem(
+            "franco_both_partial",
+            JSON.stringify({ ok: "str", failed: "ltr", error: errMsg }),
+          );
+        } catch { /* ignore */ }
+        cleanup([strRes.value.id], "both-partial-str");
+        router.push(`/analisis/renta-corta/${strRes.value.id}`);
+        return;
+      }
+      // Ambos fallaron
+      const ltrErr = ltrRes.status === "rejected"
+        ? (ltrRes.reason instanceof Error ? ltrRes.reason.message : String(ltrRes.reason))
+        : "LTR falló";
+      const strErr = strRes.status === "rejected"
+        ? (strRes.reason instanceof Error ? strRes.reason.message : String(strRes.reason))
+        : "STR falló";
+      throw new Error(`Ambos análisis fallaron — LTR: ${ltrErr}. STR: ${strErr}`);
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Error inesperado");
       setSubmitting(false);

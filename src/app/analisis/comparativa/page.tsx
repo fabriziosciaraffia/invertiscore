@@ -47,6 +47,15 @@ export default async function ComparativaPage({
     redirect(user ? "/dashboard" : "/");
   }
 
+  // Validación de IDs cruzados (Ronda 2a): ?ltr= debe ser análisis LTR
+  // (no marcado como "short-term") y ?str= debe ser STR. Si están cruzados,
+  // los datos en columnas quedarían incoherentes — mejor redirigir.
+  const ltrType = (ltrRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
+  const strType = (strRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
+  if (ltrType === "short-term" || strType !== "short-term") {
+    redirect(user ? "/dashboard" : "/");
+  }
+
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
   const ltrResults = (ltr.results ?? null) as FullAnalysisResult | null;

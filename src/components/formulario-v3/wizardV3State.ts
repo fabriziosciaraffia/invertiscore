@@ -23,6 +23,9 @@ export interface WizardV3State {
   arriendoEstac: string;
   arriendoBodega: string;
   antiguedad: "0-2" | "3-5" | "6-10" | "11-20" | "20+";
+  /** Capacidad de huéspedes — usado por motor STR (matching AirROI). Visible
+   * siempre en el modal Detalles, irrelevante para LTR. */
+  capacidadHuespedes: string;
 
   // Paso 1 — condicional (solo tipo=nuevo)
   estadoVenta: "inmediata" | "futura";
@@ -46,13 +49,32 @@ export interface WizardV3State {
   plazoCredito: string;
   tasaInteres: string;
 
-  // Paso 3
+  // Paso 3 (LTR + común)
   modalidad: Modalidad;
-  arriendo: string;                  // CLP
-  gastos: string;                    // CLP
-  contribuciones: string;            // CLP (trimestral)
-  vacanciaPct: string;
-  adminPct: string;
+  arriendo: string;                  // CLP — para STR es referencia LTR (arriendoLargoMensual)
+  gastos: string;                    // CLP — gastos comunes (común LTR/STR)
+  contribuciones: string;            // CLP (trimestral) — común LTR/STR
+  vacanciaPct: string;               // LTR
+  adminPct: string;                  // LTR — comisión gestión LTR
+
+  // Paso 3 — STR-only (Ronda 2a: state + defaults; UI en Ronda 2b)
+  /** Modo de gestión Airbnb. */
+  modoGestion: "auto" | "administrador";
+  /** Comisión administrador en %, default 20. Convertir a decimal al submit. */
+  comisionAdminPct: string;
+  /** Costos operativos mensuales Airbnb (CLP). */
+  costoElectricidad: string;
+  costoAgua: string;
+  costoWifi: string;
+  costoInsumos: string;
+  /** Mantención mensual (CLP) — STR captura, LTR la calcula. */
+  mantencionMensual: string;
+  /** Toggle amoblado. Si true, costoAmoblamiento se ignora (no se invierte). */
+  estaAmoblado: boolean;
+  /** Inversión inicial amoblamiento (CLP). */
+  costoAmoblamiento: string;
+  /** Permite Airbnb el reglamento del edificio. */
+  edificioPermiteAirbnb: "si" | "no" | "no_seguro";
 
   // Tracking + metadata
   editedFields: string[];            // claves ajustadas manualmente en modal
@@ -76,6 +98,7 @@ export const DEFAULT_STATE: WizardV3State = {
   arriendoEstac: "",
   arriendoBodega: "",
   antiguedad: "3-5",
+  capacidadHuespedes: "2",
   estadoVenta: "inmediata",
   fechaEntregaMes: "",
   fechaEntregaAnio: "",
@@ -92,6 +115,16 @@ export const DEFAULT_STATE: WizardV3State = {
   contribuciones: "",
   vacanciaPct: "5",
   adminPct: "0",
+  modoGestion: "auto",
+  comisionAdminPct: "20",
+  costoElectricidad: "35000",
+  costoAgua: "8000",
+  costoWifi: "22000",
+  costoInsumos: "20000",
+  mantencionMensual: "11000",
+  estaAmoblado: false,
+  costoAmoblamiento: "3500000",
+  edificioPermiteAirbnb: "no_seguro",
   editedFields: [],
   sampleSize: 0,
   radiusUsed: null,

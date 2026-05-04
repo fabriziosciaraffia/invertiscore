@@ -26,6 +26,7 @@ export function ModalDetallesDepto({
     estacionamientos: state.estacionamientos,
     bodegas: state.bodegas,
     antiguedad: state.antiguedad,
+    capacidadHuespedes: state.capacidadHuespedes,
   });
 
   function handleSave() {
@@ -120,6 +121,23 @@ export function ModalDetallesDepto({
             <option value="3">3+ bodegas</option>
           </select>
         </Field>
+        <Field
+          label="Capacidad de huéspedes"
+          tooltip="Cantidad máxima de personas que pueden alojarse. Se usa para estimar ingresos en análisis de Renta Corta (Airbnb)."
+        >
+          <select
+            className={`${inputClass} appearance-none pr-8`}
+            value={local.capacidadHuespedes}
+            onChange={(e) => setLocal({ ...local, capacidadHuespedes: e.target.value })}
+          >
+            <option value="1">1 huésped</option>
+            <option value="2">2 huéspedes</option>
+            <option value="3">3 huéspedes</option>
+            <option value="4">4 huéspedes</option>
+            <option value="5">5 huéspedes</option>
+            <option value="6">6+ huéspedes</option>
+          </select>
+        </Field>
       </div>
 
       {state.tipoPropiedad === "usado" && (
@@ -157,12 +175,21 @@ export function ModalDetallesDepto({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, tooltip }: { label: string; children: React.ReactNode; tooltip?: string }) {
   return (
     <label className="block">
-      <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-        {label}
-      </span>
+      {tooltip ? (
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            {label}
+          </span>
+          <InfoTooltip content={tooltip} />
+        </span>
+      ) : (
+        <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+          {label}
+        </span>
+      )}
       {children}
     </label>
   );
