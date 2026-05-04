@@ -1,0 +1,220 @@
+{
+  "caseDef": {
+    "id": "F-LasCondes-bajoMercado-flujoApretado",
+    "label": "Bajo mercado con flujo apretado",
+    "notes": "UF 6.800 / 55m² / arriendo $850K. vmFranco UF 7.500. Arriendo bajo vs cuota → flujo apretado. Modo esperado: optimizar_flujo.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 6800,
+      "valorMercadoFranco": 7500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 850000,
+      "gastos": 150000,
+      "contribuciones": 100000,
+      "provisionMantencion": 80000,
+      "comuna": "Las Condes",
+      "dormitorios": 2,
+      "piso": 7,
+      "lat": -33.415,
+      "lng": -70.58,
+      "nombre": "Caso F"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 100000,
+    "provisionMantencion": 80000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 6800,
+    "valorMercadoFranco": 7500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 850000,
+    "gastos": 150000,
+    "comuna": "Las Condes",
+    "dormitorios": 2,
+    "piso": 7,
+    "lat": -33.415,
+    "lng": -70.58,
+    "nombre": "Caso F"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "score": 45,
+    "flujoNetoMensual": -543487,
+    "modo": "optimizar_flujo",
+    "razon": "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos."
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 4382,
+    "primeraOfertaCLP": 175398314,
+    "techoUF": 4613,
+    "techoCLP": 184644551,
+    "walkAway": {
+      "precio_uf": null,
+      "precio_clp": null,
+      "razon": "El motor recomienda no comprar esta propiedad."
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "PASADA",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "BUSCAR OTRA",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Compras $28M bajo mercado pero pierdes $543K cada mes sin tope claro.",
+    "siendoFrancoHeadline_uf": "Compras UF 700 bajo mercado pero pierdes UF 13,6 cada mes sin tope claro.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Aunque compras $28M bajo mercado, vas a aportar $543K cada mes durante toda la proyección sin que el flujo llegue nunca a positivo. En 10 años habrás puesto $91M de tu bolsillo para sostener esta inversión.",
+      "respuestaDirecta_uf": "No conviene. Aunque compras UF 700 bajo mercado, vas a aportar UF 13,6 cada mes durante toda la proyección sin que el flujo llegue nunca a positivo. En 10 años habrás puesto UF 2.281 de tu bolsillo para sostener esta inversión.",
+      "veredictoFrase_clp": "Busca otra propiedad — este depto te sale más caro que un depósito a plazo.",
+      "veredictoFrase_uf": "Busca otra propiedad — este depto te sale más caro que un depósito a plazo.",
+      "datosClave": [
+        {
+          "label": "Ventaja de compra",
+          "valor_clp": "$28M bajo mercado",
+          "valor_uf": "UF 700 bajo mercado",
+          "subtexto": "9.3% descuento real",
+          "color": "green"
+        },
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$543K indefinido",
+          "valor_uf": "UF 13,6 indefinido",
+          "subtexto": "El flujo nunca cruza",
+          "color": "red"
+        },
+        {
+          "label": "TIR proyectada",
+          "valor_clp": "9.2% a 10 años",
+          "valor_uf": "9.2% a 10 años",
+          "subtexto": "vs depósito 5%",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Las Condes creció solo 2.7% anual en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón. Para tu rango de UF 6.800, Ñuñoa o La Reina te dan departamentos similares con plusvalía superior y flujos más manejables históricamente.",
+      "reencuadre_uf": "Las Condes creció solo 2.7% anual en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón. Para tu rango de UF 6.800, Ñuñoa o La Reina te dan departamentos similares con plusvalía superior y flujos más manejables históricamente.",
+      "cajaAccionable_clp": "¿Puedes sostener $543K al mes sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 13,6 al mes sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Cada mes entran $850K de arriendo pero salen $1.393K entre dividendo, gastos comunes y provisiones. La diferencia de $543K sale de tu bolsillo, mes tras mes, durante toda la proyección. No hay luz al final del túnel — el arriendo de Las Condes para 55 m² no alcanza a cubrir el dividendo que genera tu crédito.",
+      "contenido_uf": "Cada mes entran UF 21,2 de arriendo pero salen UF 34,8 entre dividendo, gastos comunes y provisiones. La diferencia de UF 13,6 sale de tu bolsillo, mes tras mes, durante toda la proyección. No hay luz al final del túnel — el arriendo de Las Condes para 55 m² no alcanza a cubrir el dividendo que genera tu crédito.",
+      "cajaAccionable_clp": "¿Tu flujo personal permite desangrar $543K cada mes indefinidamente?",
+      "cajaAccionable_uf": "¿Tu flujo personal permite desangrar UF 13,6 cada mes indefinidamente?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Ya estás comprando bajo mercado (ventaja real). Pero la matemática mensual no cierra con las tasas actuales. Bajar a UF 4.613 mejora la posición — la TIR salta de 9.2% a 20.2% y reduces el sangrado mensual. La ventaja de compra es un bono, no un salvavidas para el flujo operacional.",
+      "contenido_uf": "Ya estás comprando bajo mercado (ventaja real). Pero la matemática mensual no cierra con las tasas actuales. Bajar a UF 4.613 mejora la posición — la TIR salta de 9.2% a 20.2% y reduces el sangrado mensual. La ventaja de compra es un bono, no un salvavidas para el flujo operacional.",
+      "estrategiaSugerida_clp": "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos. Partir en UF 4.382, llegar hasta UF 4.613 máximo.",
+      "estrategiaSugerida_uf": "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos. Partir en UF 4.382, llegar hasta UF 4.613 máximo.",
+      "cajaAccionable_clp": "Ofrece UF 4.382. Tu techo es UF 4.613. Por encima, el motor recomienda no comprar.",
+      "cajaAccionable_uf": "Ofrece UF 4.382. Tu techo es UF 4.613. Por encima, el motor recomienda no comprar.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.613",
+      "precios": {
+        "primeraOferta_uf": 4382,
+        "primeraOferta_clp": 175398314,
+        "techo_uf": 4613,
+        "techo_clp": 184644551,
+        "walkAway": {
+          "precio_uf": null,
+          "precio_clp": null,
+          "razon": "El motor recomienda no comprar esta propiedad."
+        },
+        "glosaPrimeraOferta_clp": "Ancla el rango bajo: si rechaza, todavía tienes margen para llegar al techo económico.",
+        "glosaPrimeraOferta_uf": "Ancla el rango bajo: si rechaza, todavía tienes margen para llegar al techo económico.",
+        "glosaTecho_clp": "Es el último precio donde la TIR supera 15% y mantienes ventaja vs comparables.",
+        "glosaTecho_uf": "Es el último precio donde la TIR supera 15% y mantienes ventaja vs comparables.",
+        "glosaWalkAway_clp": "Aunque bajen el precio, los riesgos de flujo indefinido invalidan la inversión.",
+        "glosaWalkAway_uf": "Aunque bajen el precio, los riesgos de flujo indefinido invalidan la inversión."
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "En 10 años ganarías $279M netos al vender, pero habrás aportado $91M de tu bolsillo para llegar ahí. Comparado con un depósito UF al 5% ($97M) o fondo mutuo al 7% ($117M), el depto gana por margen amplio. Pero exige disciplina mensual que ningún instrumento financiero pide — $543K cada mes durante 10 años sin fallar.",
+      "contenido_uf": "En 10 años ganarías UF 6.977 netas al vender, pero habrás aportado UF 2.281 de tu bolsillo para llegar ahí. Comparado con un depósito UF al 5% (UF 2.436) o fondo mutuo al 7% (UF 2.942), el depto gana por margen amplio. Pero exige disciplina mensual que ningún instrumento financiero pide — UF 13,6 cada mes durante 10 años sin fallar.",
+      "cajaAccionable_clp": "Si Las Condes no acelera su plusvalía sobre el 2.7% histórico, los $91M aportados no se justifican.",
+      "cajaAccionable_uf": "Si Las Condes no acelera su plusvalía sobre el 2.7% histórico, las UF 2.281 aportadas no se justifican.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses duplica la pérdida anual. Con flujo negativo de $543K/mes, una vacancia típica te lleva a aportar $1.4M en vez de $650K ese año.\n\nAlza de tasas castiga el dividendo sin límite. 2 puntos porcentuales adicionales suben el dividendo a $1.416K mensuales, empeorando el flujo a $716K negativos.\n\nPlusvalía 2.7% no justifica el aporte indefinido. Las Condes necesita superar su histórico para que los $91M en 10 años tengan sentido vs instrumentos sin esfuerzo mensual.",
+      "contenido_uf": "Vacancia de 2 meses duplica la pérdida anual. Con flujo negativo de UF 13,6/mes, una vacancia típica te lleva a aportar UF 35 en vez de UF 16,3 ese año.\n\nAlza de tasas castiga el dividendo sin límite. 2 puntos porcentuales adicionales suben el dividendo a UF 35,4 mensuales, empeorando el flujo a UF 17,9 negativos.\n\nPlusvalía 2.7% no justifica el aporte indefinido. Las Condes necesita superar su histórico para que las UF 2.281 en 10 años tengan sentido vs instrumentos sin esfuerzo mensual.",
+      "cajaAccionable_clp": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión.",
+      "cajaAccionable_uf": "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros, está bien — pero no te cuentes la historia de que es buena inversión.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "metricas": {
+    "modoMotor": "optimizar_flujo",
+    "razonMotor": "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.",
+    "bajoMercado": true,
+    "flujoNeto": -543487,
+    "precioSugerido": "UF 4.613",
+    "sugerido_eq_actual": false,
+    "sugerido_eq_techo": true,
+    "walkAway_presente": true,
+    "walkAway_solo_BUSCAR_OTRA": true,
+    "walkAway_razon_capitalizada": true,
+    "glosaPrimera": "Ancla el rango bajo: si rechaza, todavía tienes margen para llegar al techo económico.",
+    "glosaTecho": "Es el último precio donde la TIR supera 15% y mantienes ventaja vs comparables.",
+    "glosaWalk": "Aunque bajen el precio, los riesgos de flujo indefinido invalidan la inversión.",
+    "glosa_primera_criptica": false,
+    "glosa_techo_criptica": false,
+    "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+    "ries_doble_newline": 2,
+    "ries_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses duplica la pérdida anual",
+        "descripcion": "Con flujo negativo de $543K/mes, una vacancia típica te lleva a aportar $1.4M en vez de $650K ese año.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo sin límite",
+        "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $1.416K mensuales, empeorando el flujo a $716K negativos.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía 2",
+        "descripcion": "7% no justifica el aporte indefinido. Las Condes necesita superar su histórico para que los $91M en 10 años tengan sentido vs instrumentos sin esfuerzo mensual.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

@@ -1,0 +1,221 @@
+{
+  "caseDef": {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados / BUSCAR OTRA",
+    "notes": "UF 2.500 / 40m². Modo esperado: alinear_mercado. walkAway: precio_uf=null.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 2500,
+      "valorMercadoFranco": 2200,
+      "superficie": 40,
+      "superficieTotal": 40,
+      "antiguedad": 12,
+      "piePct": 18,
+      "tasaInteres": 4.5,
+      "arriendo": 420000,
+      "gastos": 90000,
+      "contribuciones": 45000,
+      "provisionMantencion": 50000,
+      "comuna": "Estación Central",
+      "dormitorios": 1,
+      "piso": 14,
+      "vacanciaMeses": 2,
+      "lat": -33.457,
+      "lng": -70.68,
+      "nombre": "Caso C"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 45000,
+    "provisionMantencion": 50000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 2,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 2500,
+    "valorMercadoFranco": 2200,
+    "superficie": 40,
+    "superficieTotal": 40,
+    "antiguedad": 12,
+    "piePct": 18,
+    "tasaInteres": 4.5,
+    "arriendo": 420000,
+    "gastos": 90000,
+    "comuna": "Estación Central",
+    "dormitorios": 1,
+    "piso": 14,
+    "lat": -33.457,
+    "lng": -70.68,
+    "nombre": "Caso C"
+  },
+  "motor": {
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "score": 53,
+    "flujoNetoMensual": -203590,
+    "modo": "alinear_mercado",
+    "razon": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática."
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 2027,
+    "primeraOfertaCLP": 81134729,
+    "techoUF": 2134,
+    "techoCLP": 85417618,
+    "walkAway": {
+      "precio_uf": null,
+      "precio_clp": null,
+      "razon": "El motor recomienda no comprar esta propiedad."
+    }
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "BUSCAR OTRA",
+    "fhOverall": "mejorable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Flujo negativo de $203.590 mensuales sin cruce en horizonte: mejor buscar otra opción.",
+    "siendoFrancoHeadline_uf": "Flujo negativo de UF -5,1 mensuales sin cruce en horizonte: mejor buscar otra opción.",
+    "francoVerdict": "BUSCAR OTRA",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No conviene. Pagarías 13,6% sobre el valor real de Estación Central ($12.008.100 de sobreprecio) para un flujo que nunca se vuelve positivo. Aportar $203.590 cada mes durante toda la proyección suma $61M en 25 años — más de la mitad del valor actual del depto.",
+      "respuestaDirecta_uf": "No conviene. Pagarías 13,6% sobre el valor real de Estación Central (UF 300 de sobreprecio) para un flujo que nunca se vuelve positivo. Aportar UF -5,1 cada mes durante toda la proyección suma UF 1.530 en 25 años — más de la mitad del valor actual del depto.",
+      "veredictoFrase_clp": "Sobreprecio + flujo permanentemente negativo = mal negocio.",
+      "veredictoFrase_uf": "Sobreprecio + flujo permanentemente negativo = mal negocio.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio vs zona",
+          "valor_clp": "$12.008.100",
+          "valor_uf": "UF 300",
+          "subtexto": "13,6% sobre valor real",
+          "color": "red"
+        },
+        {
+          "label": "Flujo mensual",
+          "valor_clp": "-$203.590",
+          "valor_uf": "UF -5,1",
+          "subtexto": "Nunca cruza a positivo",
+          "color": "red"
+        },
+        {
+          "label": "TIR proyectada",
+          "valor_clp": "3,5%",
+          "valor_uf": "3,5%",
+          "subtexto": "Bajo depósito UF (5%)",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Estación Central tiene plusvalía histórica de 2,2% anual — apenas sobre inflación. Con esa trayectoria, necesitas comprar bajo mercado para compensar el aporte constante. Aquí pagas sobre mercado por un activo de zona lenta. En tu rango ($80M-$100M), San Miguel o Ñuñoa te dan deptos similares con mejor perfil de plusvalía y precios más alineados.",
+      "reencuadre_uf": "Estación Central tiene plusvalía histórica de 2,2% anual — apenas sobre inflación. Con esa trayectoria, necesitas comprar bajo mercado para compensar el aporte constante. Aquí pagas sobre mercado por un activo de zona lenta. En tu rango (UF 2.000-2.500), San Miguel o Ñuñoa te dan deptos similares con mejor perfil de plusvalía y precios más alineados.",
+      "cajaAccionable_clp": "¿Puedes sostener $203.590 mensuales indefinidamente para un retorno de 3,5% anual?",
+      "cajaAccionable_uf": "¿Puedes sostener UF -5,1 mensuales indefinidamente para un retorno de 3,5% anual?",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "El arriendo de $420.000 no cubre ni siquiera el dividendo de $456.090. Sumando gastos comunes ($90.000) y provisión ($50.000), tu aporte neto es $203.590 mensuales. En 10 años habrás puesto $34.561.306 adicionales de tu bolsillo — casi el 35% del valor actual del depto.",
+      "contenido_uf": "El arriendo de UF 10,5 no cubre ni siquiera el dividendo de UF 11,4. Sumando gastos comunes (UF 2,2) y provisión (UF 1,2), tu aporte neto es UF -5,1 mensuales. En 10 años habrás puesto UF 863 adicionales de tu bolsillo — casi el 35% del valor actual del depto.",
+      "cajaAccionable_clp": "¿Tu flujo personal puede absorber $203.590 extra cada mes sin fecha de corte?",
+      "cajaAccionable_uf": "¿Tu flujo personal puede absorber UF -5,1 extra cada mes sin fecha de corte?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Pagas sobre mercado, y esa es exactamente la razón para negociar agresivamente. Bajar a UF 2.134 mejora la TIR de 3,5% a 9,4% — sigue siendo flujo negativo, pero al menos la matemática de largo plazo funciona. Sin embargo, incluso con ese descuento, el flujo mensual seguiría negativo durante toda la proyección.",
+      "contenido_uf": "Pagas sobre mercado, y esa es exactamente la razón para negociar agresivamente. Bajar a UF 2.134 mejora la TIR de 3,5% a 9,4% — sigue siendo flujo negativo, pero al menos la matemática de largo plazo funciona. Sin embargo, incluso con ese descuento, el flujo mensual seguiría negativo durante toda la proyección.",
+      "estrategiaSugerida_clp": "Ofrece UF 2.027 como arranque. Si rechaza, tu techo absoluto es UF 2.134 — sobre ese precio ni la TIR justifica el esfuerzo mensual.",
+      "estrategiaSugerida_uf": "Ofrece UF 2.027 como arranque. Si rechaza, tu techo absoluto es UF 2.134 — sobre ese precio ni la TIR justifica el esfuerzo mensual.",
+      "cajaAccionable_clp": "Empieza en UF 2.027, cierra hasta UF 2.134. Sobre ese precio, no compres.",
+      "cajaAccionable_uf": "Empieza en UF 2.027, cierra hasta UF 2.134. Sobre ese precio, no compres.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 2.134",
+      "precios": {
+        "primeraOferta_uf": 2027,
+        "primeraOferta_clp": 81134729,
+        "techo_uf": 2134,
+        "techo_clp": 85417618,
+        "walkAway": {
+          "precio_uf": null,
+          "precio_clp": null,
+          "razon": "El motor recomienda no comprar esta propiedad."
+        },
+        "glosaPrimeraOferta_clp": "Ancla agresiva justificada por sobreprecio: tienes 14% de margen para subir.",
+        "glosaPrimeraOferta_uf": "Ancla agresiva justificada por sobreprecio: tienes 14% de margen para subir.",
+        "glosaTecho_clp": "Último precio donde la TIR alcanza 9,4% y justifica el aporte permanente.",
+        "glosaTecho_uf": "Último precio donde la TIR alcanza 9,4% y justifica el aporte permanente.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "TIR de 3,5% vs depósito UF al 5% o fondo mutuo al 7% sin aporte mensual. Para igualar un depósito UF, necesitarías aportar $0 al mes — aquí aportas $203.590. Para igualar un fondo conservador, la comparación es aún peor. La única ventaja es que recuperas $68M al vender en 10 años, pero el costo es $34M de aportes durante el período.",
+      "contenido_uf": "TIR de 3,5% vs depósito UF al 5% o fondo mutuo al 7% sin aporte mensual. Para igualar un depósito UF, necesitarías aportar UF 0 al mes — aquí aportas UF -5,1. Para igualar un fondo conservador, la comparación es aún peor. La única ventaja es que recuperas UF 1.703 al vender en 10 años, pero el costo es UF 863 de aportes durante el período.",
+      "cajaAccionable_clp": "¿Prefieres aportar $203.590 mensuales para una TIR de 3,5%, o poner esa plata en instrumentos sin aporte que rinden más?",
+      "cajaAccionable_uf": "¿Prefieres aportar UF -5,1 mensuales para una TIR de 3,5%, o poner esa plata en instrumentos sin aporte que rinden más?",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses te cuesta $840.000 adicionales. Con flujo ya negativo en $203.590, una vacancia anual típica agrava el aporte a $273.590 durante esos meses.\n\nAlza de tasas castiga el dividendo sin mejorar el arriendo. 2 puntos porcentuales adicionales suben el dividendo a $554.044 mensuales, empeorando el flujo a -$301.544.\n\nPlusvalía de Estación Central históricamente baja. 2,2% anual apenas cubre inflación — necesitas que la zona acelere para justificar el aporte constante.",
+      "contenido_uf": "Vacancia de 2 meses te cuesta UF 21 adicionales. Con flujo ya negativo en UF -5,1, una vacancia anual típica agrava el aporte a UF -6,8 durante esos meses.\n\nAlza de tasas castiga el dividendo sin mejorar el arriendo. 2 puntos porcentuales adicionales suben el dividendo a UF 13,8 mensuales, empeorando el flujo a UF -7,5.\n\nPlusvalía de Estación Central históricamente baja. 2,2% anual apenas cubre inflación — necesitas que la zona acelere para justificar el aporte constante.",
+      "cajaAccionable_clp": "Este caso combina sobreprecio, flujo negativo permanente y zona de plusvalía lenta. Incluso negociando bien, sigues dependiendo de que Estación Central mejore su performance histórica. Mejor buscar en San Miguel o Ñuñoa — perfil similar con matemática más sana.",
+      "cajaAccionable_uf": "Este caso combina sobreprecio, flujo negativo permanente y zona de plusvalía lenta. Incluso negociando bien, sigues dependiendo de que Estación Central mejore su performance histórica. Mejor buscar en San Miguel o Ñuñoa — perfil similar con matemática más sana.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "metricas": {
+    "modoMotor": "alinear_mercado",
+    "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+    "bajoMercado": false,
+    "flujoNeto": -203590,
+    "precioSugerido": "UF 2.134",
+    "sugerido_eq_actual": false,
+    "sugerido_eq_techo": true,
+    "walkAway_presente": true,
+    "walkAway_solo_BUSCAR_OTRA": true,
+    "walkAway_razon_capitalizada": true,
+    "glosaPrimera": "Ancla agresiva justificada por sobreprecio: tienes 14% de margen para subir.",
+    "glosaTecho": "Último precio donde la TIR alcanza 9,4% y justifica el aporte permanente.",
+    "glosaWalk": "",
+    "glosa_primera_criptica": false,
+    "glosa_techo_criptica": false,
+    "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+    "ries_doble_newline": 2,
+    "ries_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses te cuesta $840",
+        "descripcion": "000 adicionales. Con flujo ya negativo en $203.590, una vacancia anual típica agrava el aporte a $273.590 durante esos meses.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo sin mejorar el arriendo",
+        "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $554.044 mensuales, empeorando el flujo a -$301.544.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía de Estación Central históricamente baja",
+        "descripcion": "2,2% anual apenas cubre inflación — necesitas que la zona acelere para justificar el aporte constante.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

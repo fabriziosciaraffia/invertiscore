@@ -340,22 +340,55 @@ REGLA 4 — Cierre cajaAccionable con tiempo realista.
 - Mal: "¿Puedes sostener $292K mensuales durante 20 años?" (ese es el crédito).
 - Si flujo no cruza: "¿Puedes sostener $X al mes sin tope claro en la proyección? El retorno depende solo de la venta."
 
-REGLA 5 — negociacion.estrategiaSugerida y los 3 precios discretos (v9).
+REGLA 5 — negociacion.estrategiaSugerida y los 3 precios discretos (v10).
 La IA NO calcula precios. El motor te pasa 3 anclas en el bloque "ANCLAS DE NEGOCIACIÓN":
-- \`primeraOferta_uf\`: con qué número partir
+- \`primeraOferta_uf\`: con qué número partir (puede ser igual al techo si el modo es "cerrar_actual")
 - \`techo_uf\`: hasta dónde subir si rechazan
-- \`walkAway\`: cuándo abandonar (objeto con precio_uf que puede ser null si la decisión es "buscar otra propiedad")
+- \`walkAway\`: null cuando techo ya cumple esa función. Si NO null y \`precio_uf === null\`, la salida es "buscar otra propiedad" (veredicto BUSCAR OTRA)
 
-REGLA DURA: usa estos 3 números EXACTOS en \`negociacion.cajaAccionable\`. NUNCA los recalcules, ni los ajustes a otro % de descuento, ni los redondees. NUNCA digas "el motor sugiere UF Z" si Z no está en las anclas — eso es atribuir al motor un cálculo inventado.
+REGLA DURA: usa estos números EXACTOS en \`negociacion.cajaAccionable\`. NUNCA los recalcules, ni los ajustes a otro % de descuento, ni los redondees. NUNCA digas "el motor sugiere UF Z" si Z no está en las anclas — eso es atribuir al motor un cálculo inventado.
 
-Tu trabajo: 1-3 frases en \`estrategiaSugerida\` glosando POR QUÉ partir en \`primeraOferta_uf\` y POR QUÉ no pasar de \`techo_uf\`. Si \`walkAway.precio_uf === null\` la "salida" es buscar otra; si \`precio_uf > 0\` la salida es un precio máximo absoluto.
+Tu trabajo: 1-3 frases en \`estrategiaSugerida\` + 1 glosa por slot en \`negociacion.precios.glosa*_clp/uf\`. Cada glosa ≤25 palabras. Tuteo chileno profesional. Sin moralizar.
 
-Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará. Tuteo chileno profesional. Sin moralizar.
+GLOSAS CON OBJETIVO DEL NIVEL (no descripción del número):
 
-Adicionalmente, devuelve glosas cortas por slot en \`negociacion.precios.glosaPrimeraOferta_clp/uf\`, \`glosaTecho_clp/uf\`, \`glosaWalkAway_clp/uf\` (1 frase cada una, ≤25 palabras).
+\`glosaPrimeraOferta\`: explica el OBJETIVO de partir en este número. Por qué este precio es el "abrir conversación".
+- BIEN: "Abre la conversación con margen para subir sin perder el caso económico."
+- BIEN: "Ancla el rango bajo: si rechazan, todavía tienes 5% de margen para llegar al techo."
+- MAL: "Reconoce ventaja pero pide aire operacional." (no explica QUÉ buscas)
+- MAL: "Partir agresivo justificado por sobreprecio." (describe el número, no el objetivo)
+- Cuando primeraOferta == techo (modo cerrar_actual): "Cierra al precio actual — ya estás bajo mercado y la matemática cierra."
 
-REGLA 6 — precioSugerido (v9).
-\`negociacion.precioSugerido\` debe ser EXACTAMENTE el \`techo_uf\` que el motor te pasa en las anclas, formateado "UF X.XXX". NO recalcular, NO aplicar descuento adicional, NO redondear a otra cifra. La IA solo justifica por qué ese precio mejora el caso (TIR, flujo, plusvalía); el número viene determinado por el motor.
+\`glosaTecho\`: explica POR QUÉ este es el máximo. Qué se rompe sobre este precio.
+- BIEN: "Es el último precio donde tu aporte mensual sigue bajo $250K y mantienes ventaja vs comparables."
+- BIEN: "Sobre este número la TIR cae bajo 8% y el flujo deja de cerrar a 10 años."
+- MAL: "Matemática mejora, ventaja se mantiene." (genérica, no dice QUÉ se rompe sobre)
+
+\`glosaWalkAway\`: SOLO cuando \`walkAway !== null\`. Explica POR QUÉ ya no tiene sentido.
+- BIEN (precio_uf null, BUSCAR OTRA): "Aunque bajen el precio, los riesgos estructurales de la zona invalidan la inversión."
+- MAL: "El motor recomienda no comprar." (eso ya está en razon — no repitas el veredicto)
+- Si walkAway === null en las anclas, devuelve "" en glosaWalkAway_clp/uf.
+
+Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará en \`estrategiaSugerida\`.
+
+REGLA 6 — precioSugerido y modos del sugerido (v10).
+\`negociacion.precioSugerido\` debe ser EXACTAMENTE el \`techo_uf\` que el motor te pasa en las anclas, formateado "UF X.XXX". NO recalcular, NO aplicar descuento adicional, NO redondear a otra cifra.
+
+El motor también te pasa \`modoSugerido\` y \`razonSugerido\`. Tu glosa de \`negociacion.contenido\` y \`estrategiaSugerida\` DEBE reflejar el modo:
+
+modoSugerido = "cerrar_actual" (precioSugerido == precio actual):
+- NO sugieras bajar más. NO inventes margen de negociación.
+- contenido y estrategia deben decir explícitamente: "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento."
+- cajaAccionable: "Cierra a tu precio actual. No hay caso para negociar a la baja."
+- glosaPrimeraOferta = glosaTecho ≈ "Cierra al precio actual."
+
+modoSugerido = "optimizar_flujo" (bajo mercado pero flujo apretado):
+- Explica que el descuento NO es por mercado sino por matemática propia.
+- contenido: "El precio está bien vs mercado, pero tu aporte mensual es alto. Bajar a precioSugerido vuelve la matemática mensual sostenible."
+- glosa: "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos."
+
+modoSugerido = "alinear_mercado" (sobre mercado o cerca):
+- Lógica habitual: justifica con comparables + mejora de flujo (TIR, etc.).
 
 REGLA 7 — Traducción de jerga (v9).
 Términos prohibidos sin glosa al primer uso:
@@ -804,31 +837,36 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
-    // ─── Fase 3.6 v9 — 3 anclas discretas de negociación ─────────────────
-    // El techo viene del motor (no de la heurística previa de ai-generation).
-    // primeraOferta = techo * 0.95 redondeado a UF entera.
-    // walkAway depende del veredicto motor.
+    // ─── Fase 3.7 v10 — 3 anclas discretas + modo del motor ──────────────
+    // Techo viene del motor (siempre). primeraOferta:
+    //   - modo "cerrar_actual" → primeraOferta = techo (no se sugiere descuento)
+    //   - resto → techo * 0.95 redondeado a UF entera
+    // walkAway: oculto si = techo (excepto BUSCAR OTRA con precio_uf null).
+    const modoSugerido: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado" =
+      neg?.modo || "alinear_mercado";
+    const razonSugerido: string = neg?.razon || "";
     const techoUF = neg?.precioSugeridoUF
       ? Math.round(neg.precioSugeridoUF)
       : precioSugeridoUF;
     const techoCLP = Math.round(techoUF * UF_CLP);
-    const primeraOfertaUF = Math.round(techoUF * 0.95);
+    const primeraOfertaUF = modoSugerido === "cerrar_actual"
+      ? techoUF
+      : Math.round(techoUF * 0.95);
     const primeraOfertaCLP = Math.round(primeraOfertaUF * UF_CLP);
     let walkAwayAncla: { precio_uf: number | null; precio_clp: number | null; razon: string } | null;
     if (veredictoMotor === "BUSCAR OTRA") {
       walkAwayAncla = {
         precio_uf: null,
         precio_clp: null,
-        razon: "veredicto motor: buscar otra propiedad",
+        razon: "El motor recomienda no comprar esta propiedad.",
       };
-    } else if (veredictoMotor === "AJUSTA EL PRECIO") {
-      walkAwayAncla = {
-        precio_uf: techoUF,
-        precio_clp: techoCLP,
-        razon: "no comprar sobre el techo",
-      };
+    } else if (veredictoMotor === "AJUSTA EL PRECIO" && modoSugerido !== "cerrar_actual") {
+      // Solo se incluye walkAway-precio cuando NO es cerrar_actual y NO es BUSCAR.
+      // Cuando precio_uf == techo, el walkAway es redundante con techo, así que lo
+      // omitimos a nivel ancla — frontend NO renderiza slot redundante.
+      walkAwayAncla = null;
     } else {
-      // COMPRAR o RECONSIDERA → no hay condición de salida discreta
+      // COMPRAR / RECONSIDERA / cerrar_actual → no hay condición de salida discreta
       walkAwayAncla = null;
     }
     const anclasJsonPara_motor = {
@@ -839,11 +877,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       walkAway: walkAwayAncla,
     };
     const anclasBloque = `
-ANCLAS DE NEGOCIACIÓN (REGLA 5 v9 — usar EXACTOS, no recalcular):
-- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})
+ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
+- modoSugerido: "${modoSugerido}"
+- razonSugerido: "${razonSugerido}"
+- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === techoUF ? " ← IGUAL al techo (modo cerrar_actual: no sugerir descuento)" : ""}
 - techo_uf: ${techoUF} (${fmtCLP(techoCLP)})
 - walkAway: ${walkAwayAncla === null
-        ? "null (no hay condición de salida — veredicto COMPRAR sin condiciones)"
+        ? `null (${veredictoMotor === "BUSCAR OTRA" ? "—" : "el techo ya es el límite duro, no duplicar"})`
         : walkAwayAncla.precio_uf === null
           ? `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`
           : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}`;

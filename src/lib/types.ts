@@ -147,6 +147,12 @@ export interface NegociacionScenario {
   precioLimiteCLP: number | null;
   tirAlLimite: number | null;
   tirAlVmFranco: number;
+  // Fase 3.7 v10 — modo del sugerido. Define qué argumento usar en la glosa IA
+  // y si la card "Sugerido" muestra un descuento o señala "cerrar al actual".
+  modo?: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";
+  // Razón canónica del motor (sin LLM). La IA puede glosar con este texto como
+  // base — no inventa la razón.
+  razon?: string;
 }
 
 // El motor produce solo 3 señales matemáticas. Solo Franco puede emitir el

@@ -930,15 +930,80 @@ export function tirForPrice(input: AnalisisInput, precioUF: number): number {
   return ex.tir;
 }
 
+// Fase 3.7 v10 — umbral del aporte mensual considerado "viable" en la matemática
+// del usuario. Si el flujo neto mensual es positivo, o el aporte (negativo) no
+// supera el 20% del arriendo, se considera viable. Sobre 20% el aporte es
+// significativo y justifica negociar para mejorar la matemática propia, aunque
+// el precio ya esté bajo mercado.
+const UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO = 0.20;
+
+// Busca el precio que lleva el flujo neto mensual al UMBRAL_FLUJO_VIABLE.
+// Retorna null si no encuentra precio razonable dentro del rango.
+function calcPrecioFlujoViable(
+  input: AnalisisInput,
+  metrics: { flujoNetoMensual: number },
+): number | null {
+  const arriendo = input.arriendo || 0;
+  const target = -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
+  if (metrics.flujoNetoMensual >= target) return input.precio;
+  // Bisección: bajar precio hasta que flujoNetoMensual >= target.
+  let lo = input.precio * 0.5;
+  let hi = input.precio;
+  let mejor: number | null = null;
+  for (let i = 0; i < 18; i++) {
+    const mid = (lo + hi) / 2;
+    const cloneM = calcMetrics({ ...input, precio: mid });
+    if (cloneM.flujoNetoMensual >= target) {
+      mejor = mid;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  return mejor !== null ? Math.round(mejor * 10) / 10 : null;
+}
+
 function calcNegociacionScenario(
   input: AnalisisInput,
-  tirActual: number
+  tirActual: number,
+  metrics: { flujoNetoMensual: number },
 ): NegociacionScenario {
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
-  // Fórmula corregida: sugerido es 3% bajo el menor entre precio y vmFranco.
-  // Garantiza que precioSugerido < precioCompra siempre.
-  const baseSugerido = Math.min(input.precio, vmFrancoUF);
-  const precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
+  const arriendo = input.arriendo || 0;
+  const flujoViable = metrics.flujoNetoMensual >= -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
+  const bajoMercado = input.precio < vmFrancoUF * 0.98;  // 2% holgura para evitar "borderline alineado"
+
+  // Fase 3.7 v10 — 3 modos
+  let precioSugeridoUF: number;
+  let modo: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado";
+  let razon: string;
+  if (bajoMercado && flujoViable) {
+    // Modo 1 — cerrar al precio actual: ya estás bajo mercado y la matemática cierra.
+    precioSugeridoUF = Math.round(input.precio * 10) / 10;
+    modo = "cerrar_actual";
+    razon = "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento.";
+  } else if (bajoMercado && !flujoViable) {
+    // Modo 2 — optimizar flujo: el precio es bueno vs mercado pero el aporte es alto.
+    const precioFlujoViable = calcPrecioFlujoViable(input, metrics);
+    if (precioFlujoViable !== null && precioFlujoViable < input.precio) {
+      precioSugeridoUF = Math.round(precioFlujoViable * 10) / 10;
+      modo = "optimizar_flujo";
+      razon = "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.";
+    } else {
+      // No se encuentra precio que vuelva el flujo viable — caer a alinear_mercado.
+      const baseSugerido = Math.min(input.precio, vmFrancoUF);
+      precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
+      modo = "alinear_mercado";
+      razon = "El precio sugerido alinea con comparables y mejora marginalmente tu matemática.";
+    }
+  } else {
+    // Modo 3 — alinear mercado: el precio está sobre o cerca del valor real.
+    const baseSugerido = Math.min(input.precio, vmFrancoUF);
+    precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
+    modo = "alinear_mercado";
+    razon = "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.";
+  }
+
   const tirAlSugerido = tirForPrice(input, precioSugeridoUF);
   const tirAlVmFranco = tirForPrice(input, vmFrancoUF);
 
@@ -975,6 +1040,8 @@ function calcNegociacionScenario(
     precioLimiteCLP: precioLimiteUF ? Math.round(precioLimiteUF * UF_CLP) : null,
     tirAlLimite,
     tirAlVmFranco,
+    modo,
+    razon,
   };
 }
 
@@ -983,7 +1050,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const cashflowYear1 = calcCashflowYear1(input, metrics);
   const projections = calcProjections(input, metrics, 20);
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
-  const negociacion = calcNegociacionScenario(input, exitScenario.tir);
+  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
   const score = calcScoreFromMetrics(input, metrics);
   const sensitivity = calcSensitivity(input, score, metrics);

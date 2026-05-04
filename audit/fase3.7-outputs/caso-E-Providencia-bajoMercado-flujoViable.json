@@ -1,0 +1,212 @@
+{
+  "caseDef": {
+    "id": "E-Providencia-bajoMercado-flujoViable",
+    "label": "Bajo mercado con flujo viable",
+    "notes": "UF 5.500 / 60m² / arriendo $1.100K. vmFranco UF 6.200 (precio bajo mercado). Arriendo alto → flujo viable. Modo esperado: cerrar_actual.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 5500,
+      "valorMercadoFranco": 6200,
+      "superficie": 60,
+      "superficieTotal": 60,
+      "antiguedad": 4,
+      "piePct": 25,
+      "tasaInteres": 4.1,
+      "arriendo": 1100000,
+      "gastos": 130000,
+      "contribuciones": 80000,
+      "provisionMantencion": 70000,
+      "comuna": "Providencia",
+      "dormitorios": 2,
+      "piso": 5,
+      "lat": -33.4283,
+      "lng": -70.6182,
+      "nombre": "Caso E"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 80000,
+    "provisionMantencion": 70000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 5500,
+    "valorMercadoFranco": 6200,
+    "superficie": 60,
+    "superficieTotal": 60,
+    "antiguedad": 4,
+    "piePct": 25,
+    "tasaInteres": 4.1,
+    "arriendo": 1100000,
+    "gastos": 130000,
+    "comuna": "Providencia",
+    "dormitorios": 2,
+    "piso": 5,
+    "lat": -33.4283,
+    "lng": -70.6182,
+    "nombre": "Caso E"
+  },
+  "motor": {
+    "engineSignal": "COMPRAR",
+    "francoVerdict": "COMPRAR",
+    "score": 77,
+    "flujoNetoMensual": -25662,
+    "modo": "cerrar_actual",
+    "razon": "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento."
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 5500,
+    "primeraOfertaCLP": 220148500,
+    "techoUF": 5500,
+    "techoCLP": 220148500,
+    "walkAway": null
+  },
+  "diag": {
+    "tipoNegociacion": "PASADA",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "COMPRAR",
+    "fhOverall": "optimo"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Excelente ventaja de compra pero aporte mensual indefinido — ganancia real viene al vender.",
+    "siendoFrancoHeadline_uf": "Excelente ventaja de compra pero aporte mensual indefinido — ganancia real viene al vender.",
+    "francoVerdict": "COMPRAR",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "Sí conviene, pero con los ojos abiertos. Comprarías $28M bajo mercado (11,3% de ventaja) en Providencia a 100m del metro. La TIR del 13,9% supera cualquier instrumento tradicional. Pero el flujo nunca cruza a positivo — aportarás $26K cada mes durante toda la proyección sin que el arriendo cubra el dividendo.",
+      "respuestaDirecta_uf": "Sí conviene, pero con los ojos abiertos. Comprarías UF 700 bajo mercado (11,3% de ventaja) en Providencia a 100m del metro. La TIR del 13,9% supera cualquier instrumento tradicional. Pero el flujo nunca cruza a positivo — aportarás UF 0,6 cada mes durante toda la proyección sin que el arriendo cubra el dividendo.",
+      "veredictoFrase_clp": "Buena inversión para perfil que puede sostener aporte mensual sin presión.",
+      "veredictoFrase_uf": "Buena inversión para perfil que puede sostener aporte mensual sin presión.",
+      "datosClave": [
+        {
+          "label": "Ventaja de compra",
+          "valor_clp": "$28M bajo mercado",
+          "valor_uf": "UF 700 bajo mercado",
+          "subtexto": "11,3% descuento real",
+          "color": "green"
+        },
+        {
+          "label": "TIR a 10 años",
+          "valor_clp": "13,9%",
+          "valor_uf": "13,9%",
+          "subtexto": "vs depósito UF 5%",
+          "color": "green"
+        },
+        {
+          "label": "Aporte mensual",
+          "valor_clp": "$26K indefinido",
+          "valor_uf": "UF 0,6 indefinido",
+          "subtexto": "Flujo no cruza",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "La estructura está perfectamente calibrada: 25% de pie a 25 años con tasa 4,1% es óptima para el mercado actual. La matemática funciona porque compraste bien, no porque el arriendo sea generoso. Providencia creció 3% anualizado en la década pasada — apostar a que mantenga ese ritmo es razonable pero no garantizado.",
+      "reencuadre_uf": "La estructura está perfectamente calibrada: 25% de pie a 25 años con tasa 4,1% es óptima para el mercado actual. La matemática funciona porque compraste bien, no porque el arriendo sea generoso. Providencia creció 3% anualizado en la década pasada — apostar a que mantenga ese ritmo es razonable pero no garantizado.",
+      "cajaAccionable_clp": "¿Puedes sostener $26K mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 0,6 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Entran $1.100K de arriendo, salen $881K de dividendo más $73K de gastos operacionales. Tu bolsillo aporta $26K cada mes para cerrar la ecuación. Es un monto manejable pero permanente — el arriendo nunca alcanza a cubrir todos los costos en la proyección.",
+      "contenido_uf": "Entran UF 27,5 de arriendo, salen UF 22 de dividendo más UF 1,8 de gastos operacionales. Tu bolsillo aporta UF 0,6 cada mes para cerrar la ecuación. Es un monto manejable pero permanente — el arriendo nunca alcanza a cubrir todos los costos en la proyección.",
+      "cajaAccionable_clp": "¿Tu flujo personal absorbe $26K extra cada mes sin afectar tu calidad de vida?",
+      "cajaAccionable_uf": "¿Tu flujo personal absorbe UF 0,6 extra cada mes sin afectar tu calidad de vida?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Ya estás comprando $28M bajo mercado y la matemática cierra perfectamente. Pedir descuento adicional no tiene fundamento técnico — la ventaja del 11,3% ya hace el trabajo pesado. Tu estructura financiera es óptima y el precio refleja valor real de Providencia metro-adyacente.",
+      "contenido_uf": "Ya estás comprando UF 700 bajo mercado y la matemática cierra perfectamente. Pedir descuento adicional no tiene fundamento técnico — la ventaja del 11,3% ya hace el trabajo pesado. Tu estructura financiera es óptima y el precio refleja valor real de Providencia metro-adyacente.",
+      "estrategiaSugerida_clp": "Cierra al precio actual. No hay caso para negociar a la baja — tienes ventaja sustantiva y números sólidos.",
+      "estrategiaSugerida_uf": "Cierra al precio actual. No hay caso para negociar a la baja — tienes ventaja sustantiva y números sólidos.",
+      "cajaAccionable_clp": "Cierra en UF 5.500 — ya tienes $28M de ventaja.",
+      "cajaAccionable_uf": "Cierra en UF 5.500 — ya tienes UF 700 de ventaja.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 5.500",
+      "precios": {
+        "primeraOferta_uf": 5500,
+        "primeraOferta_clp": 220148500,
+        "techo_uf": 5500,
+        "techo_clp": 220148500,
+        "walkAway": null,
+        "glosaPrimeraOferta_clp": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+        "glosaPrimeraOferta_uf": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+        "glosaTecho_clp": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+        "glosaTecho_uf": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Tu ganancia neta al vender en 10 años sería $242M vs los $60M que inviertes inicialmente — multiplicador de 4x. Comparado con depósito UF al 5% ($97M) o fondo mutuo al 7% ($117M), esta operación duplica el retorno. Pero esos instrumentos no exigen aporte mensual ni asumen riesgo de vacancia o mantención.",
+      "contenido_uf": "Tu ganancia neta al vender en 10 años sería UF 6.040 vs las UF 1.485 que inviertes inicialmente — multiplicador de 4x. Comparado con depósito UF al 5% (UF 2.420) o fondo mutuo al 7% (UF 2.922), esta operación duplica el retorno. Pero esos instrumentos no exigen aporte mensual ni asumen riesgo de vacancia o mantención.",
+      "cajaAccionable_clp": "Si confías en Providencia y tienes paciencia para los $26K mensuales, los números cierran a largo plazo.",
+      "cajaAccionable_uf": "Si confías en Providencia y tienes paciencia para las UF 0,6 mensuales, los números cierran a largo plazo.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses elimina ganancia anual. Con margen actual de solo $26K/mes, cualquier período sin arriendo te deja sustancialmente en negativo ese año.\n\nAlza de tasas castiga el dividendo sin alivio. 1pp adicional sube tu cuota a $975K mensuales, empeorando el flujo en $94K cada mes.\n\nPlusvalía del 3% anual no está garantizada. Si Providencia crece menos que el promedio histórico, tu TIR del 13,9% se desploma — toda la rentabilidad depende de la venta final.",
+      "contenido_uf": "Vacancia de 2 meses elimina ganancia anual. Con margen actual de solo UF 0,6/mes, cualquier período sin arriendo te deja sustancialmente en negativo ese año.\n\nAlza de tasas castiga el dividendo sin alivio. 1pp adicional sube tu cuota a UF 24,4 mensuales, empeorando el flujo en UF 2,4 cada mes.\n\nPlusvalía del 3% anual no está garantizada. Si Providencia crece menos que el promedio histórico, tu TIR del 13,9% se desploma — toda la rentabilidad depende de la venta final.",
+      "cajaAccionable_clp": "Si tienes disciplina financiera para el aporte mensual y confianza en la trayectoria de Providencia, esta operación tiene fundamento sólido. La ventaja de compra ya hace parte del trabajo pesado.",
+      "cajaAccionable_uf": "Si tienes disciplina financiera para el aporte mensual y confianza en la trayectoria de Providencia, esta operación tiene fundamento sólido. La ventaja de compra ya hace parte del trabajo pesado.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "metricas": {
+    "modoMotor": "cerrar_actual",
+    "razonMotor": "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento.",
+    "bajoMercado": true,
+    "flujoNeto": -25662,
+    "precioSugerido": "UF 5.500",
+    "sugerido_eq_actual": true,
+    "sugerido_eq_techo": true,
+    "walkAway_presente": false,
+    "walkAway_solo_BUSCAR_OTRA": true,
+    "walkAway_razon_capitalizada": true,
+    "glosaPrimera": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+    "glosaTecho": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+    "glosaWalk": "",
+    "glosa_primera_criptica": false,
+    "glosa_techo_criptica": false,
+    "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+    "ries_doble_newline": 2,
+    "ries_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses elimina ganancia anual",
+        "descripcion": "Con margen actual de solo $26K/mes, cualquier período sin arriendo te deja sustancialmente en negativo ese año.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo sin alivio",
+        "descripcion": "1pp adicional sube tu cuota a $975K mensuales, empeorando el flujo en $94K cada mes.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía del 3% anual no está garantizada",
+        "descripcion": "Si Providencia crece menos que el promedio histórico, tu TIR del 13,9% se desploma — toda la rentabilidad depende de la venta final.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

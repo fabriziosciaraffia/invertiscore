@@ -1,0 +1,314 @@
+[
+  {
+    "id": "A-LasCondes-sobreprecio",
+    "label": "Premium con sobreprecio claro",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "modoMotor": "alinear_mercado",
+    "anclas": {
+      "primeraOfertaUF": 5805,
+      "techoUF": 6111,
+      "walkAway": "null"
+    },
+    "metricas": {
+      "modoMotor": "alinear_mercado",
+      "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+      "bajoMercado": false,
+      "flujoNeto": -285128,
+      "precioSugerido": "UF 6.111",
+      "sugerido_eq_actual": false,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": false,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Ancla el rango bajo con margen sustantivo para negociar hacia el techo.",
+      "glosaTecho": "Sobre este precio la TIR cae bajo 8% y sigues subsidiando al vendedor.",
+      "glosaWalk": "",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses anula tu flujo del año",
+          "descripcion": "Con margen negativo de $285K/mes, perder el inquilino 60 días significa aportar $855K adicionales ese período.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga duramente el dividendo",
+          "descripcion": "Si suben 2 puntos porcentuales, tu dividendo pasa de $1.281K a $1.562K mensuales — $281K más de aporte cada mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía 2,7% histórica no justifica el aporte indefinido",
+          "descripcion": "Necesitas que Las Condes acelere significativamente vs su trayectoria para compensar los $54M que pondrás en 10 años.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "modoMotor": "alinear_mercado",
+    "anclas": {
+      "primeraOfertaUF": 4147,
+      "techoUF": 4365,
+      "walkAway": "null"
+    },
+    "metricas": {
+      "modoMotor": "alinear_mercado",
+      "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+      "bajoMercado": false,
+      "flujoNeto": -263565,
+      "precioSugerido": "UF 4.365",
+      "sugerido_eq_actual": false,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": false,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo económico.",
+      "glosaTecho": "Sobre este número la TIR cae bajo 10% y vuelves a pagar sobreprecio injustificado.",
+      "glosaWalk": "",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses anula cualquier flujo positivo futuro",
+          "descripcion": "Con aporte mensual de $264K, una vacancia típica te cuesta $800K adicionales ese año.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo sin alivio",
+          "descripcion": "2 puntos adicionales suben el dividendo a $1M mensual, empeorando el flujo en $180K extra por mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía 3,2% histórica puede no repetirse",
+          "descripcion": "Si Ñuñoa crece solo 2% anual, la ganancia al vender no compensa los $46M aportados durante 10 años.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "C-EstCentral-riesgos",
+    "label": "Riesgos cargados / BUSCAR OTRA",
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "modoMotor": "alinear_mercado",
+    "anclas": {
+      "primeraOfertaUF": 2027,
+      "techoUF": 2134,
+      "walkAway": "El motor recomienda no comprar esta propiedad."
+    },
+    "metricas": {
+      "modoMotor": "alinear_mercado",
+      "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+      "bajoMercado": false,
+      "flujoNeto": -203590,
+      "precioSugerido": "UF 2.134",
+      "sugerido_eq_actual": false,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": true,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Ancla agresiva justificada por sobreprecio: tienes 14% de margen para subir.",
+      "glosaTecho": "Último precio donde la TIR alcanza 9,4% y justifica el aporte permanente.",
+      "glosaWalk": "",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses te cuesta $840",
+          "descripcion": "000 adicionales. Con flujo ya negativo en $203.590, una vacancia anual típica agrava el aporte a $273.590 durante esos meses.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo sin mejorar el arriendo",
+          "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $554.044 mensuales, empeorando el flujo a -$301.544.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía de Estación Central históricamente baja",
+          "descripcion": "2,2% anual apenas cubre inflación — necesitas que la zona acelere para justificar el aporte constante.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "D-Providencia-control",
+    "label": "Control canónico",
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "modoMotor": "alinear_mercado",
+    "anclas": {
+      "primeraOfertaUF": 5068,
+      "techoUF": 5335,
+      "walkAway": "null"
+    },
+    "metricas": {
+      "modoMotor": "alinear_mercado",
+      "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+      "bajoMercado": false,
+      "flujoNeto": -215623,
+      "precioSugerido": "UF 5.335",
+      "sugerido_eq_actual": false,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": false,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Abre con margen para subir sin romper tu límite matemático.",
+      "glosaTecho": "Último precio donde el aporte mensual sigue siendo manejable y la TIR mejora.",
+      "glosaWalk": "",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 6 semanas borra el flujo positivo del año",
+          "descripcion": "Con margen actual de solo $11K mensuales, cualquier vacancia te deja pagando dividendo completo de tu bolsillo ese período.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas empeora el aporte mensual",
+          "descripcion": "2 puntos adicionales suben el dividendo a $1.145K mensuales, agrandando tu aporte a $325K al mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía del 3% histórico no justifica el esfuerzo",
+          "descripcion": "Si Providencia crece menos de 4% anual, tu ganancia neta a 10 años será inferior a instrumentos más simples.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "E-Providencia-bajoMercado-flujoViable",
+    "label": "Bajo mercado con flujo viable",
+    "engineSignal": "COMPRAR",
+    "francoVerdict": "COMPRAR",
+    "modoMotor": "cerrar_actual",
+    "anclas": {
+      "primeraOfertaUF": 5500,
+      "techoUF": 5500,
+      "walkAway": "null"
+    },
+    "metricas": {
+      "modoMotor": "cerrar_actual",
+      "razonMotor": "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento.",
+      "bajoMercado": true,
+      "flujoNeto": -25662,
+      "precioSugerido": "UF 5.500",
+      "sugerido_eq_actual": true,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": false,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+      "glosaTecho": "Cierra al precio actual — ya estás bajo mercado y la matemática cierra.",
+      "glosaWalk": "",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses elimina ganancia anual",
+          "descripcion": "Con margen actual de solo $26K/mes, cualquier período sin arriendo te deja sustancialmente en negativo ese año.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo sin alivio",
+          "descripcion": "1pp adicional sube tu cuota a $975K mensuales, empeorando el flujo en $94K cada mes.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía del 3% anual no está garantizada",
+          "descripcion": "Si Providencia crece menos que el promedio histórico, tu TIR del 13,9% se desploma — toda la rentabilidad depende de la venta final.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  },
+  {
+    "id": "F-LasCondes-bajoMercado-flujoApretado",
+    "label": "Bajo mercado con flujo apretado",
+    "engineSignal": "BUSCAR OTRA",
+    "francoVerdict": "BUSCAR OTRA",
+    "modoMotor": "optimizar_flujo",
+    "anclas": {
+      "primeraOfertaUF": 4382,
+      "techoUF": 4613,
+      "walkAway": "El motor recomienda no comprar esta propiedad."
+    },
+    "metricas": {
+      "modoMotor": "optimizar_flujo",
+      "razonMotor": "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.",
+      "bajoMercado": true,
+      "flujoNeto": -543487,
+      "precioSugerido": "UF 4.613",
+      "sugerido_eq_actual": false,
+      "sugerido_eq_techo": true,
+      "walkAway_presente": true,
+      "walkAway_solo_BUSCAR_OTRA": true,
+      "walkAway_razon_capitalizada": true,
+      "glosaPrimera": "Ancla el rango bajo: si rechaza, todavía tienes margen para llegar al techo económico.",
+      "glosaTecho": "Es el último precio donde la TIR supera 15% y mantienes ventaja vs comparables.",
+      "glosaWalk": "Aunque bajen el precio, los riesgos de flujo indefinido invalidan la inversión.",
+      "glosa_primera_criptica": false,
+      "glosa_techo_criptica": false,
+      "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+      "ries_doble_newline": 2,
+      "ries_blocks": [
+        {
+          "titulo": "Vacancia de 2 meses duplica la pérdida anual",
+          "descripcion": "Con flujo negativo de $543K/mes, una vacancia típica te lleva a aportar $1.4M en vez de $650K ese año.",
+          "truncado": false
+        },
+        {
+          "titulo": "Alza de tasas castiga el dividendo sin límite",
+          "descripcion": "2 puntos porcentuales adicionales suben el dividendo a $1.416K mensuales, empeorando el flujo a $716K negativos.",
+          "truncado": false
+        },
+        {
+          "titulo": "Plusvalía 2",
+          "descripcion": "7% no justifica el aporte indefinido. Las Condes necesita superar su histórico para que los $91M en 10 años tengan sentido vs instrumentos sin esfuerzo mensual.",
+          "truncado": false
+        }
+      ],
+      "jerga_hits": [
+        "TIR",
+        "tir"
+      ]
+    }
+  }
+]

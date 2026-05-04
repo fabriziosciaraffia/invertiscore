@@ -1,0 +1,212 @@
+{
+  "caseDef": {
+    "id": "B-Nunoa-borderline",
+    "label": "Borderline cerca del techo",
+    "notes": "UF 4.800 / 55m². vmFranco UF 4.500. Modo esperado: alinear_mercado.",
+    "etapa": "evaluando",
+    "input": {
+      "precio": 4800,
+      "valorMercadoFranco": 4500,
+      "superficie": 55,
+      "superficieTotal": 55,
+      "antiguedad": 6,
+      "piePct": 20,
+      "tasaInteres": 4.1,
+      "arriendo": 750000,
+      "gastos": 120000,
+      "contribuciones": 75000,
+      "provisionMantencion": 65000,
+      "comuna": "Ñuñoa",
+      "dormitorios": 2,
+      "piso": 6,
+      "lat": -33.4533,
+      "lng": -70.5942,
+      "nombre": "Caso B"
+    }
+  },
+  "input": {
+    "ciudad": "Santiago",
+    "tipo": "Departamento",
+    "estadoVenta": "inmediata",
+    "banos": 1,
+    "estacionamiento": "no",
+    "precioEstacionamiento": 0,
+    "bodega": false,
+    "tipoRenta": "larga",
+    "arriendoEstacionamiento": 0,
+    "arriendoBodega": 0,
+    "contribuciones": 75000,
+    "provisionMantencion": 65000,
+    "plazoCredito": 25,
+    "vacanciaMeses": 1,
+    "cuotasPie": 0,
+    "montoCuota": 0,
+    "enConstruccion": false,
+    "precio": 4800,
+    "valorMercadoFranco": 4500,
+    "superficie": 55,
+    "superficieTotal": 55,
+    "antiguedad": 6,
+    "piePct": 20,
+    "tasaInteres": 4.1,
+    "arriendo": 750000,
+    "gastos": 120000,
+    "comuna": "Ñuñoa",
+    "dormitorios": 2,
+    "piso": 6,
+    "lat": -33.4533,
+    "lng": -70.5942,
+    "nombre": "Caso B"
+  },
+  "motor": {
+    "engineSignal": "AJUSTA EL PRECIO",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "score": 56,
+    "flujoNetoMensual": -263565,
+    "modo": "alinear_mercado",
+    "razon": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática."
+  },
+  "anclasMotor": {
+    "primeraOfertaUF": 4147,
+    "primeraOfertaCLP": 165991969,
+    "techoUF": 4365,
+    "techoCLP": 174717855,
+    "walkAway": null
+  },
+  "diag": {
+    "tipoNegociacion": "SOBREPRECIO",
+    "tieneDiferenciaValida": true,
+    "sobreprecioPorM2UF": null,
+    "flujoCruzaEnHorizonte": false,
+    "veredictoMotor": "AJUSTA EL PRECIO",
+    "fhOverall": "aceptable"
+  },
+  "ai_analysis": {
+    "siendoFrancoHeadline_clp": "Pagas $12M sobre mercado por un flujo que no se cierra nunca.",
+    "siendoFrancoHeadline_uf": "Pagas UF 300 sobre mercado por un flujo que no se cierra nunca.",
+    "francoVerdict": "AJUSTA EL PRECIO",
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "respuestaDirecta_clp": "No a este precio. Pagarías $12M sobre el valor real (UF 4.800 vs UF 4.500 de mercado) y el flujo nunca llega a positivo en la proyección. Aportas $264K cada mes durante toda la vida del crédito sin que el arriendo cubra el dividendo jamás. Es apostar a plusvalía pura pagando sobreprecio.",
+      "respuestaDirecta_uf": "No a este precio. Pagarías UF 300 sobre el valor real (UF 4.800 vs UF 4.500 de mercado) y el flujo nunca llega a positivo en la proyección. Aportas UF 6,6 cada mes durante toda la vida del crédito sin que el arriendo cubra el dividendo jamás. Es apostar a plusvalía pura pagando sobreprecio.",
+      "veredictoFrase_clp": "Negociar es obligatorio — el precio actual no cierra la matemática.",
+      "veredictoFrase_uf": "Negociar es obligatorio — el precio actual no cierra la matemática.",
+      "datosClave": [
+        {
+          "label": "Sobreprecio vs mercado",
+          "valor_clp": "$12.008.100",
+          "valor_uf": "UF 300",
+          "subtexto": "Pagas 6,7% sobre valor real",
+          "color": "red"
+        },
+        {
+          "label": "Aporte mensual indefinido",
+          "valor_clp": "$264.000",
+          "valor_uf": "UF 6,6",
+          "subtexto": "Flujo nunca cruza a positivo",
+          "color": "red"
+        },
+        {
+          "label": "TIR si negocias a UF 4.365",
+          "valor_clp": "10,7%",
+          "valor_uf": "10,7%",
+          "subtexto": "Salta 3,2 puntos vs precio actual",
+          "color": "accent"
+        }
+      ],
+      "reencuadre_clp": "Ñuñoa tiene plusvalía moderada (3,2% anual histórico) pero no para justificar este sobreprecio. Tu estructura financiera está bien calibrada: 20% de pie a 4,1% es coherente con el mercado. El problema es pagar $192M por algo que vale $180M. A precio de mercado (UF 4.500) el flujo sigue siendo negativo pero la TIR mejora sustancialmente. Por debajo de UF 4.365 los números empiezan a tener sentido.",
+      "reencuadre_uf": "Ñuñoa tiene plusvalía moderada (3,2% anual histórico) pero no para justificar este sobreprecio. Tu estructura financiera está bien calibrada: 20% de pie a 4,1% es coherente con el mercado. El problema es pagar UF 4.800 por algo que vale UF 4.500. A precio de mercado el flujo sigue siendo negativo pero la TIR mejora sustancialmente. Por debajo de UF 4.365 los números empiezan a tener sentido.",
+      "cajaAccionable_clp": "¿Puedes sostener $264K mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 6,6 mensuales sin tope claro en la proyección? El retorno depende solo de la venta.",
+      "cajaLabel": "Antes de seguir, decide:"
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "contenido_clp": "Aportas $264K cada mes de tu bolsillo porque el arriendo de $750K no alcanza a cubrir el dividendo de $820K más gastos operacionales. En 10 años habrás aportado $46M sin que el flujo se revierta. La única vía de retorno es vender la propiedad con plusvalía suficiente para compensar todo lo invertido mensualmente.",
+      "contenido_uf": "Aportas UF 6,6 cada mes de tu bolsillo porque el arriendo de UF 18,7 no alcanza a cubrir el dividendo de UF 20,5 más gastos operacionales. En 10 años habrás aportado UF 1.158 sin que el flujo se revierta. La única vía de retorno es vender la propiedad con plusvalía suficiente para compensar todo lo invertido mensualmente.",
+      "cajaAccionable_clp": "¿Tu flujo personal puede absorber $264K mensuales durante años sin fecha de alivio?",
+      "cajaAccionable_uf": "¿Tu flujo personal puede absorber UF 6,6 mensuales durante años sin fecha de alivio?",
+      "cajaLabel": "Hazte esta pregunta:"
+    },
+    "negociacion": {
+      "pregunta": "¿Hay margen para negociar?",
+      "contenido_clp": "Pagas sobre mercado, y eso es exactamente por lo que hay que negociar. El valor real está en UF 4.500 pero incluso ahí el flujo sigue siendo negativo. A UF 4.365 la TIR sube de 7,5% a 10,7% y por fin empiezas a tener un caso de inversión defendible. La matemática te obliga a pedir descuento — no es opcional.",
+      "contenido_uf": "Pagas sobre mercado, y eso es exactamente por lo que hay que negociar. El valor real está en UF 4.500 pero incluso ahí el flujo sigue siendo negativo. A UF 4.365 la TIR sube de 7,5% a 10,7% y por fin empiezas a tener un caso de inversión defendible. La matemática te obliga a pedir descuento — no es opcional.",
+      "estrategiaSugerida_clp": "Ancla agresivo en UF 4.147 justificado por el sobreprecio actual. Si rechazan, puedes subir hasta UF 4.365 manteniendo un caso económico sólido con TIR 10,7%. Por encima de ese techo, pasa.",
+      "estrategiaSugerida_uf": "Ancla agresivo en UF 4.147 justificado por el sobreprecio actual. Si rechazan, puedes subir hasta UF 4.365 manteniendo un caso económico sólido con TIR 10,7%. Por encima de ese techo, pasa.",
+      "cajaAccionable_clp": "Empieza en UF 4.147, cierra hasta UF 4.365. Tu techo es UF 4.365 — por encima, no compras.",
+      "cajaAccionable_uf": "Empieza en UF 4.147, cierra hasta UF 4.365. Tu techo es UF 4.365 — por encima, no compras.",
+      "cajaLabel": "Guión para la contraoferta:",
+      "precioSugerido": "UF 4.365",
+      "precios": {
+        "primeraOferta_uf": 4147,
+        "primeraOferta_clp": 165991969,
+        "techo_uf": 4365,
+        "techo_clp": 174717855,
+        "walkAway": null,
+        "glosaPrimeraOferta_clp": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo económico.",
+        "glosaPrimeraOferta_uf": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo económico.",
+        "glosaTecho_clp": "Sobre este número la TIR cae bajo 10% y vuelves a pagar sobreprecio injustificado.",
+        "glosaTecho_uf": "Sobre este número la TIR cae bajo 10% y vuelves a pagar sobreprecio injustificado.",
+        "glosaWalkAway_clp": "",
+        "glosaWalkAway_uf": ""
+      }
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "contenido_clp": "Solo si negocias. A precio actual, ganas $151M al vender en 10 años pero habrás aportado $46M de tu bolsillo — rentabilidad neta real menor. Un depósito UF al 5% te daría $69M sin aporte mensual ni riesgo de vacancia. Un fondo mutuo al 7% llegaría a $83M. La ventaja del depto es apalancamiento y plusvalía de Ñuñoa (3,2% histórico), pero solo si compras a precio correcto.",
+      "contenido_uf": "Solo si negocias. A precio actual, ganas UF 3.777 al vender en 10 años pero habrás aportado UF 1.158 de tu bolsillo — rentabilidad neta real menor. Un depósito UF al 5% te daría UF 1.720 sin aporte mensual ni riesgo de vacancia. Un fondo mutuo al 7% llegaría a UF 2.077. La ventaja del depto es apalancamiento y plusvalía de Ñuñoa (3,2% histórico), pero solo si compras a precio correcto.",
+      "cajaAccionable_clp": "Si negocias exitosamente, apostar a que Ñuñoa mantenga su trayectoria de plusvalía moderada pero estable.",
+      "cajaAccionable_uf": "Si negocias exitosamente, apostar a que Ñuñoa mantenga su trayectoria de plusvalía moderada pero estable.",
+      "cajaLabel": "La apuesta que estás haciendo:"
+    },
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "contenido_clp": "Vacancia de 2 meses anula cualquier flujo positivo futuro. Con aporte mensual de $264K, una vacancia típica te cuesta $800K adicionales ese año.\n\nAlza de tasas castiga el dividendo sin alivio. 2 puntos adicionales suben el dividendo a $1M mensual, empeorando el flujo en $180K extra por mes.\n\nPlusvalía 3,2% histórica puede no repetirse. Si Ñuñoa crece solo 2% anual, la ganancia al vender no compensa los $46M aportados durante 10 años.",
+      "contenido_uf": "Vacancia de 2 meses anula cualquier flujo positivo futuro. Con aporte mensual de UF 6,6, una vacancia típica te cuesta UF 20 adicionales ese año.\n\nAlza de tasas castiga el dividendo sin alivio. 2 puntos adicionales suben el dividendo a UF 25 mensual, empeorando el flujo en UF 4,5 extra por mes.\n\nPlusvalía 3,2% histórica puede no repetirse. Si Ñuñoa crece solo 2% anual, la ganancia al vender no compensa las UF 1.158 aportadas durante 10 años.",
+      "cajaAccionable_clp": "Si decides avanzar, hazlo solo con precio negociado y reserva de 6 meses de gastos. Sin descuento sustancial, esta inversión depende de que todo salga perfecto durante una década.",
+      "cajaAccionable_uf": "Si decides avanzar, hazlo solo con precio negociado y reserva de 6 meses de gastos. Sin descuento sustancial, esta inversión depende de que todo salga perfecto durante una década.",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:"
+    }
+  },
+  "metricas": {
+    "modoMotor": "alinear_mercado",
+    "razonMotor": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+    "bajoMercado": false,
+    "flujoNeto": -263565,
+    "precioSugerido": "UF 4.365",
+    "sugerido_eq_actual": false,
+    "sugerido_eq_techo": true,
+    "walkAway_presente": false,
+    "walkAway_solo_BUSCAR_OTRA": true,
+    "walkAway_razon_capitalizada": true,
+    "glosaPrimera": "Ancla el rango bajo: si rechazan, todavía tienes margen para llegar al techo económico.",
+    "glosaTecho": "Sobre este número la TIR cae bajo 10% y vuelves a pagar sobreprecio injustificado.",
+    "glosaWalk": "",
+    "glosa_primera_criptica": false,
+    "glosa_techo_criptica": false,
+    "modo_es_cerrar_actual_si_bajo_mercado_y_flujo_viable": true,
+    "ries_doble_newline": 2,
+    "ries_blocks": [
+      {
+        "titulo": "Vacancia de 2 meses anula cualquier flujo positivo futuro",
+        "descripcion": "Con aporte mensual de $264K, una vacancia típica te cuesta $800K adicionales ese año.",
+        "truncado": false
+      },
+      {
+        "titulo": "Alza de tasas castiga el dividendo sin alivio",
+        "descripcion": "2 puntos adicionales suben el dividendo a $1M mensual, empeorando el flujo en $180K extra por mes.",
+        "truncado": false
+      },
+      {
+        "titulo": "Plusvalía 3,2% histórica puede no repetirse",
+        "descripcion": "Si Ñuñoa crece solo 2% anual, la ganancia al vender no compensa los $46M aportados durante 10 años.",
+        "truncado": false
+      }
+    ],
+    "jerga_hits": [
+      "TIR",
+      "tir"
+    ]
+  }
+}

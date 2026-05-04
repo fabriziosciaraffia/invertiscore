@@ -226,27 +226,34 @@ export async function buildLtrPrompts(
 
   const veredictoMotor = (results as any).engineSignal || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
 
-  // ─── Fase 3.6 v9 — anclas discretas (paralelo a ai-generation.ts) ──────
+  // ─── Fase 3.7 v10 — anclas + modo del motor (paralelo a ai-generation.ts) ──
+  const modoSugerido: "cerrar_actual" | "optimizar_flujo" | "alinear_mercado" =
+    (neg as any)?.modo || "alinear_mercado";
+  const razonSugerido: string = (neg as any)?.razon || "";
   const techoUF = neg?.precioSugeridoUF
     ? Math.round(neg.precioSugeridoUF)
     : precioSugeridoUF;
   const techoCLP = Math.round(techoUF * UF_CLP);
-  const primeraOfertaUF = Math.round(techoUF * 0.95);
+  const primeraOfertaUF = modoSugerido === "cerrar_actual"
+    ? techoUF
+    : Math.round(techoUF * 0.95);
   const primeraOfertaCLP = Math.round(primeraOfertaUF * UF_CLP);
   let walkAwayAncla: { precio_uf: number | null; precio_clp: number | null; razon: string } | null;
   if (veredictoMotor === "BUSCAR OTRA") {
-    walkAwayAncla = { precio_uf: null, precio_clp: null, razon: "veredicto motor: buscar otra propiedad" };
-  } else if (veredictoMotor === "AJUSTA EL PRECIO") {
-    walkAwayAncla = { precio_uf: techoUF, precio_clp: techoCLP, razon: "no comprar sobre el techo" };
+    walkAwayAncla = { precio_uf: null, precio_clp: null, razon: "El motor recomienda no comprar esta propiedad." };
   } else {
+    // AJUSTA EL PRECIO con techo == walkAway → redundante, oculto.
+    // COMPRAR / RECONSIDERA / cerrar_actual → sin condición de salida.
     walkAwayAncla = null;
   }
   const anclasBloque = `
-ANCLAS DE NEGOCIACIÓN (REGLA 5 v9 — usar EXACTOS, no recalcular):
-- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})
+ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
+- modoSugerido: "${modoSugerido}"
+- razonSugerido: "${razonSugerido}"
+- primeraOferta_uf: ${primeraOfertaUF} (${fmtCLP(primeraOfertaCLP)})${primeraOfertaUF === techoUF ? " ← IGUAL al techo (modo cerrar_actual: no sugerir descuento)" : ""}
 - techo_uf: ${techoUF} (${fmtCLP(techoCLP)})
 - walkAway: ${walkAwayAncla === null
-      ? "null (no hay condición de salida — veredicto COMPRAR sin condiciones)"
+      ? `null (${veredictoMotor === "BUSCAR OTRA" ? "—" : "el techo ya es el límite duro, no duplicar"})`
       : walkAwayAncla.precio_uf === null
         ? `{ precio_uf: null, razon: "${walkAwayAncla.razon}" } — la salida es buscar otra propiedad`
         : `{ precio_uf: ${walkAwayAncla.precio_uf} (${fmtCLP(walkAwayAncla.precio_clp!)}), razon: "${walkAwayAncla.razon}" }`}`;
