@@ -2772,8 +2772,8 @@ export function PremiumResults({
     return calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
-      ggcc: inputData.gastos,
-      contribuciones: inputData.contribuciones,
+      ggcc: m.gastos ?? inputData.gastos,
+      contribuciones: m.contribuciones ?? inputData.contribuciones,
       mantencion: m.provisionMantencionAjustada ?? 0,
       vacanciaMeses: inputData.vacanciaMeses ?? 1,
       usaAdministrador: inputData.usaAdministrador,
@@ -2837,13 +2837,16 @@ export function PremiumResults({
       };
 
       let arriendoAct = scenArriendo;
-      let gastosAct = inputData.gastos;
-      let contribAct = inputData.contribuciones;
+      let gastosAct = m.gastos ?? inputData.gastos;
+      let contribAct = m.contribuciones ?? inputData.contribuciones;
       let flujoAcumH = 0;
       let flujoMes1 = 0;
 
       for (let anio = 1; anio <= h; anio++) {
-        const mantBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(inputData.antiguedad + anio)) / 12);
+        // Mantención sigue la fórmula del motor (precio × rate(antig+año) / 12).
+        // Antes la rama `inputData.provisionMantencion ||` usaba el snapshot
+        // mutado año-1 como CONSTANTE, divergente del motor año a año.
+        const mantBase = Math.round((precioCLP * getMantencionRate(inputData.antiguedad + anio)) / 12);
         const mant = Math.round(mantBase * Math.pow(1 + cfg.gastosGr / 100, anio - 1));
         const fl = calcFlujoDesglose({
           arriendo: arriendoAct,
@@ -2894,8 +2897,8 @@ export function PremiumResults({
     const wf = calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
-      ggcc: inputData.gastos,
-      contribuciones: inputData.contribuciones,
+      ggcc: m.gastos ?? inputData.gastos,
+      contribuciones: m.contribuciones ?? inputData.contribuciones,
       mantencion: m.provisionMantencionAjustada ?? 0,
       vacanciaMeses: inputData.vacanciaMeses,
       usaAdministrador: inputData.usaAdministrador,
@@ -2977,7 +2980,6 @@ export function PremiumResults({
     if (!m || !results || !inputData) return [];
 
     const totalMonths = horizonYears * 12;
-    const precioCLPBase = inputData.provisionMantencion ? 0 : m.precioCLP;
 
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
@@ -2989,14 +2991,17 @@ export function PremiumResults({
 
     let acumulado = 0;
     let arriendoActual = inputData.arriendo;
-    let gastosActual = inputData.gastos ?? 0;
-    let contribucionesActual = inputData.contribuciones;
+    let gastosActual = m.gastos ?? inputData.gastos ?? 0;
+    let contribucionesActual = m.contribuciones ?? inputData.contribuciones;
     const costGrowthDec = costGrowth / 100;
 
     function getMantencionForMonth(mes: number): number {
+      // Fórmula canónica del motor (precio × rate(antig+año) / 12). Antes la
+      // rama `inputData.provisionMantencion ||` mantenía el valor año-1 como
+      // CONSTANTE, divergente del motor.
       const anioProyeccion = Math.ceil(mes / 12);
       const antiguedadActual = inputData!.antiguedad + anioProyeccion;
-      const mantencionBase = inputData!.provisionMantencion || Math.round((precioCLPBase * getMantencionRate(antiguedadActual)) / 12);
+      const mantencionBase = Math.round((m!.precioCLP * getMantencionRate(antiguedadActual)) / 12);
       return Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
     }
 
@@ -3178,8 +3183,8 @@ export function PremiumResults({
     const flujoAcumByMonth: number[] = [0]; // index 0 = T0
     {
       let arriendoAct = inputData.arriendo;
-      let gastosAct = inputData.gastos ?? 0;
-      let contribucionesAct = inputData.contribuciones;
+      let gastosAct = m.gastos ?? inputData.gastos ?? 0;
+      let contribucionesAct = m.contribuciones ?? inputData.contribuciones;
       let acum = 0;
       const esPreEntregaFlow = mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata";
       for (let mo = 1; mo <= horizonYears * 12; mo++) {
@@ -3201,7 +3206,9 @@ export function PremiumResults({
         } else {
           const anioProyeccion = Math.ceil(mo / 12);
           const antiguedadActual = inputData.antiguedad + anioProyeccion;
-          const mantencionBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
+          // Fórmula canónica del motor; antes `inputData.provisionMantencion ||`
+          // mantenía el snapshot año-1 como constante (fork residual Sesión A).
+          const mantencionBase = Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
           const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anioProyeccion - 1));
           const fd = calcFlujoDesglose({
             arriendo: arriendoAct,

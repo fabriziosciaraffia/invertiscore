@@ -204,13 +204,16 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
 
   const precioCLP = precioTotal * ufClp;
 
-  // Defaults para campos en 0 (sin mutar input). Ver
-  // audit/sesionA-diagnostico/diagnostico.md — eliminar la mutación de
-  // input.provisionMantencion fue el origen del fork sim↔motor en results-client.
+  // Defaults para campos en 0 — calculados en variables locales SIN mutar
+  // input. Ver Sesión B1 + audit/sesionA-diagnostico/diagnostico.md
+  // (hallazgo colateral #5). Antes calcMetrics mutaba input.contribuciones,
+  // input.gastos y input.provisionMantencion; hoy esos valores se exponen
+  // en el output (metrics.*) para que clientes y server los lean ahí.
   const provisionMantencionAjustada = input.provisionMantencion
     || Math.round((precioCLP * getMantencionRate(input.antiguedad)) / 12);
-  if (!input.contribuciones) input.contribuciones = estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
-  if (!input.gastos) input.gastos = Math.round(input.superficie * 1200);
+  const contribucionesValor = input.contribuciones
+    || estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
+  const gastosValor = input.gastos || Math.round(input.superficie * 1200);
 
   const piePct = input.piePct / 100;
   const pieCLP = precioCLP * piePct;
@@ -224,8 +227,8 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   const flujo = calcFlujoDesglose({
     arriendo: ingresoMensual,
     dividendo,
-    ggcc: input.gastos,
-    contribuciones: input.contribuciones,
+    ggcc: gastosValor,
+    contribuciones: contribucionesValor,
     mantencion: provisionMantencionAjustada,
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
@@ -269,8 +272,8 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   const plusvaliaUsuarioPct = vmUsuarioCLP > 0 ? ((vmUsuarioCLP - precioCLP) / vmUsuarioCLP) * 100 : 0;
 
   // Precios de equilibrio
-  const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
-  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, input.gastos, input.contribuciones * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
+  const precioFlujoNeutroCLP = calcPrecioParaFlujo(0, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
+  const precioFlujoPositivoCLP = calcPrecioParaFlujo(50000, ingresoMensual, gastosValor, contribucionesValor * 4, input.vacanciaMeses / 12 * 100, input.usaAdministrador ? (input.comisionAdministrador ?? 7) : 0, input.piePct, input.tasaInteres, input.plazoCredito);
   const descuentoParaNeutro = precioCLP > 0 && precioFlujoNeutroCLP > 0 ? ((precioCLP - precioFlujoNeutroCLP) / precioCLP) * 100 : 0;
 
   return {
@@ -288,6 +291,8 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     ingresoMensual,
     egresosMensuales,
     provisionMantencionAjustada,
+    contribuciones: contribucionesValor,
+    gastos: gastosValor,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
@@ -332,8 +337,8 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
   const flujo = calcFlujoDesglose({
     arriendo: metrics.ingresoMensual,
     dividendo: metrics.dividendo,
-    ggcc: input.gastos,
-    contribuciones: input.contribuciones,
+    ggcc: metrics.gastos,
+    contribuciones: metrics.contribuciones,
     mantencion,
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
@@ -414,8 +419,8 @@ export function calcProjections(args: {
   const mesesPreEntrega = calcMesesHastaEntrega(input);
 
   let arriendoActual = metrics.ingresoMensual;
-  let gastosActual = input.gastos;
-  let contribucionesActual = input.contribuciones;
+  let gastosActual = metrics.gastos;
+  let contribucionesActual = metrics.contribuciones;
   // Plusvalía starts from Franco's market value (real data, captures "la pasada")
   const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * ufClp;
   let valorPropiedad = vmFrancoCLP;
@@ -576,8 +581,8 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
   const refi = calcFlujoDesglose({
     arriendo: proy.arriendoMensual,
     dividendo: nuevoDividendo,
-    ggcc: input.gastos,
-    contribuciones: input.contribuciones,
+    ggcc: metrics.gastos,
+    contribuciones: metrics.contribuciones,
     mantencion: metrics.provisionMantencionAjustada,
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
@@ -913,7 +918,7 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
     contras.push(`Cada mes tendrás que poner ${fmtP(metrics.flujoNetoMensual)} de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.`);
   if (input.antiguedad > 15)
     contras.push(`Con ${input.antiguedad} años de antigüedad, es probable que pronto aparezcan gastos de mantención mayores (fachada, ascensores, impermeabilización). Pregunta por el fondo de reserva del edificio.`);
-  if (metrics.ingresoMensual > 0 && input.gastos > metrics.ingresoMensual * 0.25)
+  if (metrics.ingresoMensual > 0 && metrics.gastos > metrics.ingresoMensual * 0.25)
     contras.push("Los gastos comunes son altos (>25% del arriendo). Aunque los paga el arrendatario, GGCC altos dificultan arrendar y aumentan tu costo durante vacancia.");
   if (metrics.cashOnCash < 0) {
     if (metrics.flujoNetoMensual >= 0) {

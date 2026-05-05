@@ -962,8 +962,8 @@ ${financingHealthBloque}
 
 OPERACIÓN MENSUAL
 - arriendo: ${fmtCLP(input.arriendo)}/mes (${fmtUF(input.arriendo / UF_CLP)}/mes)
-- gastosComunes: ${fmtCLP(input.gastos)}/mes (paga arrendatario, solo cuenta en vacancia)
-- contribuciones: ${fmtCLP(input.contribuciones)}/trimestre
+- gastosComunes: ${fmtCLP(m.gastos ?? input.gastos)}/mes (paga arrendatario, solo cuenta en vacancia)
+- contribuciones: ${fmtCLP(m.contribuciones ?? input.contribuciones)}/trimestre
 - provisionMantencion: ${fmtCLP(m.provisionMantencionAjustada ?? input.provisionMantencion)}/mes
 - administracion: ${input.usaAdministrador ? `comisión ${input.comisionAdministrador ?? 7}% sobre arriendo = ${fmtCLP(Math.round(input.arriendo * (input.comisionAdministrador ?? 7) / 100))}/mes` : "sin administrador"}
 - flujoMensualNeto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " — negativo" : ""}
