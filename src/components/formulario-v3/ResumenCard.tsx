@@ -7,6 +7,7 @@ import {
   calcDividendo,
   fmtCLP,
   fmtCLPShort,
+  fmtUF,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -25,6 +26,16 @@ const FIELD_LABELS: Record<string, string> = {
   arriendoBodega: "Arriendo bodega",
   gastos: "Gastos comunes",
   contribuciones: "Contribuciones",
+  // STR/AMBAS — Ronda 2c
+  modoGestion: "Modo gestión",
+  comisionAdminPct: "Comisión administrador",
+  costoElectricidad: "Electricidad",
+  costoAgua: "Agua",
+  costoWifi: "WiFi",
+  costoInsumos: "Insumos",
+  mantencionMensual: "Mantención",
+  estaAmoblado: "Amoblado",
+  costoAmoblamiento: "Costo de amoblar",
 };
 
 function formatEditedFooter(keys: string[]): string {
@@ -62,6 +73,7 @@ export function ResumenCard({
   const plazo = Number(state.plazoCredito) || 25;
   const tasa = Number(state.tasaInteres) || 4.72;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
+  const pieUF = precioUF * piePct / 100;
 
   const arriendo = Number(state.arriendo) || 0;
   const arriendoEstac = Number(state.arriendoEstac) || 0;
@@ -74,6 +86,43 @@ export function ResumenCard({
 
   const hasAjustes = state.editedFields.length > 0;
   const isEdited = (field: string) => state.editedFields.includes(field);
+
+  // ── Modalidad helpers ──
+  const mod = state.modalidad;
+  const isLTR = !mod || mod === "ltr";
+  const isSTR = mod === "str";
+  const isAMBAS = mod === "both";
+  const showOpAirbnb = isSTR || isAMBAS;
+  const showArriendoLargo = isLTR || isAMBAS;
+
+  // ── Display values ──
+  const precioDisplay = precioUF > 0 ? fmtUF(precioUF) : "—";
+  const pieDisplay = precioUF > 0
+    ? `${piePct}% · ${fmtUF(pieUF)}`
+    : `${piePct}%`;
+  const plazoTasaDisplay = `${plazo}a · ${tasa}%`;
+  const dividendoDisplay = dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—";
+
+  const modoGestionLabel = state.modoGestion === "auto" ? "Auto-gestión" : "Administrador";
+  const comisionDisplay = state.modoGestion === "auto"
+    ? "3%"
+    : `${state.comisionAdminPct}%`;
+  const comisionTooltip = state.modoGestion === "auto"
+    ? "Comisión que cobra Airbnb por reserva en auto-gestión."
+    : "Comisión del operador profesional. Default 20%, ajustable en 'Ajustar condiciones'.";
+  const ocupacionDisplay = airRoi && airRoi.ocupacionReferencia > 0
+    ? `${Math.round(airRoi.ocupacionReferencia * 100)}%`
+    : "—";
+
+  // Tooltips contextuales por modalidad
+  const gastosTooltip = isAMBAS
+    ? "Gasto mensual del edificio. En LTR lo asume el arrendatario; en Airbnb se prorratea al costo por noche."
+    : showOpAirbnb
+      ? "Gasto mensual del edificio. En Airbnb se prorratea al costo por noche."
+      : "Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia). Editable en Ajustar.";
+  const contribTooltip = showOpAirbnb
+    ? "Impuesto territorial trimestral. Aplica igual independiente del tipo de renta."
+    : "Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente. Editable en Ajustar.";
 
   return (
     <div
@@ -88,7 +137,7 @@ export function ResumenCard({
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] font-semibold m-0">
+          <h3 className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] font-semibold m-0">
             Datos del análisis
           </h3>
           {hasAjustes && (
@@ -115,63 +164,111 @@ export function ResumenCard({
         </button>
       </div>
 
-      {/* Grid de valores: 4 cols desktop, 2 cols mobile. 8 celdas, 2 filas.
-          Fila 1: Plazo, Tasa, Dividendo, Arriendo estimado (+leyenda).
-          Fila 2: Vacancia, Gestión del arriendo, Gastos comunes, Contribuciones. */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+      {/* ─── Subsecciones jerárquicas (Ronda 2c.1) ───
+          LTR: 01 General · 02 Arriendo largo · 03 Gastos fijos
+          STR: 01 General · 02 Operación Airbnb · 03 Gastos fijos
+          AMBAS: 01 General · 02 Arriendo largo · 03 Operación Airbnb · 04 Gastos fijos
+          Grid SIEMPRE 4 cols con celdas vacías cuando faltan campos. */}
+
+      {/* 01 · General — común a las 3 modalidades */}
+      <SubSection number="01" title="General">
         <Cell
-          label="Plazo"
-          value={`${plazo} años`}
-          tooltip="Plazo del crédito hipotecario en años. Editable en Ajustar."
-          edited={isEdited("plazoCredito")}
+          label="Precio"
+          value={precioDisplay}
+          tooltip="Precio de compra del departamento. Editable en pasos previos."
+          edited={isEdited("precio")}
         />
         <Cell
-          label="Tasa"
-          value={`${tasa}%`}
-          tooltip="Tasa anual del crédito hipotecario. Hoy en Chile fluctúa entre 4% y 5,5% UF. Si calificas al Subsidio a la Tasa (Ley 21.748), puede bajar ~0,6 puntos. Editable en Ajustar."
-          edited={isEdited("tasaInteres")}
+          label="Pie"
+          value={pieDisplay}
+          tooltip="Porcentaje del precio que pagas con recursos propios, sin crédito hipotecario."
+          edited={isEdited("piePct")}
+        />
+        <Cell
+          label="Plazo · Tasa"
+          value={plazoTasaDisplay}
+          tooltip="Plazo del crédito en años · Tasa anual del crédito hipotecario. Editable en Ajustar."
+          edited={isEdited("plazoCredito") || isEdited("tasaInteres")}
         />
         <Cell
           label="Dividendo"
-          value={dividendo > 0 ? `${fmtCLP(dividendo)}/mes` : "—"}
+          value={dividendoDisplay}
           tooltip="Cuota mensual del crédito hipotecario. Calculada con precio, pie, plazo y tasa. Editable en Ajustar."
         />
-        <ArriendoCell
-          modalidad={state.modalidad}
-          arriendo={arriendo}
-          arriendoEstac={arriendoEstac}
-          arriendoBodega={arriendoBodega}
-          arriendoTotal={arriendoTotal}
-          hasArriendoExtras={hasArriendoExtras}
-          sampleSize={sampleSize}
-          airRoi={airRoi}
-          isEdited={isEdited}
-        />
-        <Cell
-          label="Vacancia"
-          value={`${state.vacanciaPct}%`}
-          tooltip="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta mes a mes del arriendo proyectado para reflejar flujo realista. Editable en Ajustar."
-          edited={isEdited("vacanciaPct")}
-        />
-        <Cell
-          label="Gestión arriendo"
-          value={`${state.adminPct}%`}
-          tooltip="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Se descuenta mes a mes del arriendo bruto. Default 0% asume autogestión. Típico mercado: 7-10% si delega. Editable en Ajustar."
-          edited={isEdited("adminPct")}
-        />
+      </SubSection>
+
+      {/* 02 · Arriendo largo — solo LTR / AMBAS */}
+      {showArriendoLargo && (
+        <SubSection number={isAMBAS ? "02" : "02"} title="Arriendo largo">
+          <ArriendoLargoCell
+            arriendo={arriendo}
+            arriendoEstac={arriendoEstac}
+            arriendoBodega={arriendoBodega}
+            arriendoTotal={arriendoTotal}
+            hasArriendoExtras={hasArriendoExtras}
+            sampleSize={sampleSize}
+            isEdited={isEdited}
+          />
+          <Cell
+            label="Vacancia"
+            value={`${state.vacanciaPct}%`}
+            tooltip="Porcentaje del año estimado sin arrendatario (búsqueda y transición). Default 5% ≈ 18 días/año. Se descuenta mes a mes del arriendo proyectado para reflejar flujo realista. Editable en Ajustar."
+            edited={isEdited("vacanciaPct")}
+          />
+          <Cell
+            label="Gestión arriendo"
+            value={`${state.adminPct}%`}
+            tooltip="Comisión del corredor que gestiona el arriendo (publicación, cobranza, contacto arrendatario). Se descuenta mes a mes del arriendo bruto. Default 0% asume autogestión. Típico mercado: 7-10% si delega. Editable en Ajustar."
+            edited={isEdited("adminPct")}
+          />
+          <EmptyCell />
+        </SubSection>
+      )}
+
+      {/* Operación Airbnb — solo STR / AMBAS. Numeración: 02 en STR, 03 en AMBAS. */}
+      {showOpAirbnb && (
+        <SubSection number={isAMBAS ? "03" : "02"} title="Operación Airbnb">
+          <IngresoBrutoCell airRoi={airRoi} />
+          <Cell
+            label="Ocupación"
+            value={airRoi?.isLoading ? "—" : ocupacionDisplay}
+            tooltip="Porcentaje de noches ocupadas estimado por AirROI. Base del escenario neutro del análisis."
+          />
+          <Cell
+            label="Modo gestión"
+            value={modoGestionLabel}
+            tooltip="Define quién opera el Airbnb. Auto-gestión: tú manejas reservas, check-in, limpieza y atención al huésped directamente. Administrador: operador profesional que gestiona el listing y se encarga de toda la operación día a día por una comisión sobre el ingreso bruto."
+            edited={isEdited("modoGestion")}
+          />
+          <Cell
+            label="Comisión"
+            value={comisionDisplay}
+            tooltip={comisionTooltip}
+            edited={isEdited("comisionAdminPct")}
+          />
+        </SubSection>
+      )}
+
+      {/* Gastos fijos — siempre. Numeración: 03 en LTR/STR, 04 en AMBAS. */}
+      <SubSection
+        number={isAMBAS ? "04" : "03"}
+        title="Gastos fijos"
+      >
         <Cell
           label="Gastos comunes"
           value={gastos > 0 ? `${fmtCLP(gastos)}/mes` : "—"}
-          tooltip="Cuota mensual a la administración del edificio. Lo paga el arrendatario, pero lo asumes tú cuando el depto está sin arrendar (período de vacancia). Editable en Ajustar."
+          tooltip={gastosTooltip}
           edited={isEdited("gastos")}
         />
         <Cell
           label="Contribuciones"
           value={contribuciones > 0 ? `${fmtCLP(contribuciones)}/trim` : "—"}
-          tooltip="Impuesto territorial trimestral del SII. Lo paga el propietario del inmueble. Franco lo calcula automáticamente. Editable en Ajustar."
+          tooltip={contribTooltip}
           edited={isEdited("contribuciones")}
         />
-      </div>
+        <EmptyCell />
+        <EmptyCell />
+      </SubSection>
 
       {/* Footer nota: solo cuando hay ajustes manuales. Enumera las claves
           editadas con labels legibles (Fase 14a — antes solo conteo). */}
@@ -182,6 +279,37 @@ export function ResumenCard({
       )}
     </div>
   );
+}
+
+// ─── Subsección con border-left + título numerado (Ronda 2c.1) ──
+// Patrón Capa 3 design-system-franco — variante Ink para bloques informativos
+// jerárquicos. Border 2px + padding-left 14px. Grid SIEMPRE 4 cols.
+function SubSection({
+  number,
+  title,
+  children,
+}: {
+  number: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="pl-3.5"
+      style={{ borderLeft: "2px solid var(--franco-text-secondary)" }}
+    >
+      <h4 className="font-mono text-[12px] font-medium uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] m-0 mb-3">
+        {number} · {title}
+      </h4>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-3">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function EmptyCell() {
+  return <div aria-hidden="true" />;
 }
 
 function Cell({
@@ -217,123 +345,25 @@ function Cell({
   );
 }
 
-// ─── Cell adaptativo de arriendo según modalidad (Ronda 2b) ──
-// LTR → "Arriendo estimado" (o "Arriendo total" cuando hay extras estac/bodega)
-// STR → "Ingreso bruto estimado" con valor AirROI
-// AMBAS → 2 valores apilados verticalmente: Arriendo largo + Ingreso Airbnb
-function ArriendoCell({
-  modalidad,
+// ─── Cell de Arriendo largo (LTR + AMBAS Arriendo largo subsec) ──
+// Reusa la lógica de Ronda 2b — total con extras estac/bodega + microcopies.
+function ArriendoLargoCell({
   arriendo,
   arriendoEstac,
   arriendoBodega,
   arriendoTotal,
   hasArriendoExtras,
   sampleSize,
-  airRoi,
   isEdited,
 }: {
-  modalidad: WizardV3State["modalidad"];
   arriendo: number;
   arriendoEstac: number;
   arriendoBodega: number;
   arriendoTotal: number;
   hasArriendoExtras: boolean;
   sampleSize: number;
-  airRoi?: AirRoiSuggestion;
   isEdited: (field: string) => boolean;
 }) {
-  const airRoiLoading = airRoi?.isLoading === true;
-  const airRoiValue = airRoi?.ingresoBrutoMensual ?? 0;
-  const airRoiSampleSize = airRoi?.sampleSize ?? 0;
-  const airRoiSource = airRoi?.source;
-  const airRoiError = airRoi?.error;
-
-  // ── Modalidad STR: reemplazar "Arriendo estimado" por "Ingreso bruto" ──
-  if (modalidad === "str") {
-    return (
-      <div>
-        <Cell
-          label="Ingreso bruto estimado"
-          value={
-            airRoiLoading
-              ? "—"
-              : airRoiValue > 0
-                ? `${fmtCLP(airRoiValue)}/mes`
-                : "—"
-          }
-          tooltip="Estimación del ingreso bruto mensual de Airbnb basada en datos AirROI (ADR × ocupación esperada × días). No incluye comisión plataforma ni costos operativos. Editable en Ajustar."
-        />
-        {airRoiLoading && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
-            Estimando con AirROI…
-          </p>
-        )}
-        {!airRoiLoading && airRoiError && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-            ● No pudimos estimar tu ingreso. Continúa y lo verás en el análisis.
-          </p>
-        )}
-        {!airRoiLoading && !airRoiError && airRoiValue > 0 && airRoiSource === "comparables" && airRoiSampleSize > 0 && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-            ● Basado en {airRoiSampleSize} listings Airbnb similares
-          </p>
-        )}
-        {!airRoiLoading && !airRoiError && airRoiValue > 0 && airRoiSource === "calculator_direct" && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-            ● Estimación directa AirROI (sin comparables en zona)
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // ── Modalidad AMBAS: dos valores apilados (Arriendo largo + Ingreso Airbnb) ──
-  if (modalidad === "both") {
-    const arriendoEditedAmbas =
-      isEdited("arriendo") || isEdited("arriendoEstac") || isEdited("arriendoBodega");
-    return (
-      <div>
-        <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-0.5">
-          <span>Arriendo largo</span>
-          <InfoTooltip content="Arriendo mensual estimado para renta tradicional (LTR). Editable en Ajustar." />
-        </p>
-        <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
-          {hasArriendoExtras
-            ? arriendoTotal > 0 ? `${fmtCLP(arriendoTotal)}/mes` : "—"
-            : arriendo > 0 ? `${fmtCLP(arriendo)}/mes` : "—"}
-          {arriendoEditedAmbas && (
-            <span
-              className="ml-1.5 font-mono text-[10px] text-[#C8323C]"
-              aria-label="Ajustado manualmente"
-            >
-              ●
-            </span>
-          )}
-        </p>
-        <p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mt-2 mb-0.5">
-          <span>Ingreso Airbnb</span>
-          <InfoTooltip content="Ingreso bruto mensual estimado por AirROI (ADR × ocupación)." />
-        </p>
-        <p className="font-mono text-[14px] font-semibold m-0 leading-tight text-[var(--franco-text)]">
-          {airRoiLoading
-            ? "—"
-            : airRoiValue > 0 ? `${fmtCLP(airRoiValue)}/mes` : "—"}
-        </p>
-        {airRoiLoading && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
-            Estimando AirROI…
-          </p>
-        )}
-        {!airRoiLoading && airRoiError && (
-          <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-            ● Airbnb no estimable, lo verás en el análisis.
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // ── Modalidad LTR (default) — comportamiento pre-Ronda 2b ──
   return (
     <div>
       <Cell
@@ -361,6 +391,44 @@ function ArriendoCell({
       {sampleSize > 0 && (
         <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
           ● Basado en {sampleSize} deptos similares
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Cell de Ingreso bruto (STR + AMBAS Operación Airbnb subsec) ──
+function IngresoBrutoCell({ airRoi }: { airRoi?: AirRoiSuggestion }) {
+  const isLoading = airRoi?.isLoading === true;
+  const value = airRoi?.ingresoBrutoMensual ?? 0;
+  const sampleSize = airRoi?.sampleSize ?? 0;
+  const source = airRoi?.source;
+  const error = airRoi?.error;
+  return (
+    <div>
+      <Cell
+        label="Ingreso bruto"
+        value={isLoading ? "—" : value > 0 ? `${fmtCLP(value)}/mes` : "—"}
+        tooltip="Estimación del ingreso bruto mensual de Airbnb basada en datos AirROI (ADR × ocupación esperada × días). No incluye comisión plataforma ni costos operativos. Editable en Ajustar."
+      />
+      {isLoading && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
+          Estimando con AirROI…
+        </p>
+      )}
+      {!isLoading && error && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+          ● No pudimos estimar tu ingreso. Lo verás en el análisis.
+        </p>
+      )}
+      {!isLoading && !error && value > 0 && source === "comparables" && sampleSize > 0 && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+          ● Basado en {sampleSize} listings similares
+        </p>
+      )}
+      {!isLoading && !error && value > 0 && source === "calculator_direct" && (
+        <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
+          ● Estimación directa AirROI
         </p>
       )}
     </div>

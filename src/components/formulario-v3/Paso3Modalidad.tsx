@@ -36,6 +36,7 @@ export function Paso3Modalidad({
   tierInfo,
   suggestions,
   airRoi,
+  onEditarPaso2,
   onAnalizar,
   submitting,
   submitError,
@@ -51,6 +52,8 @@ export function Paso3Modalidad({
     contribuciones: number | null;
   };
   airRoi: AirRoiSuggestion;
+  /** Navegación cross-step desde Modal Ajustar (link "Editar en Paso 2"). */
+  onEditarPaso2?: () => void;
   onAnalizar: () => void;
   submitting: boolean;
   submitError: string;
@@ -236,6 +239,7 @@ export function Paso3Modalidad({
           onSave={setState}
           suggestions={suggestions}
           ufCLP={ufCLP}
+          onEditarPaso2={onEditarPaso2}
         />
       )}
     </div>
@@ -295,7 +299,7 @@ function OperacionAirbnbSection({
         <h3 className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0">
           Operación Airbnb
         </h3>
-        <InfoTooltip content="Estos datos definen cómo operarás el Airbnb. El resto (costos operativos, amoblamiento, comisión exacta) podés ajustarlos en 'Ajustar condiciones'." />
+        <InfoTooltip content="Estos datos definen cómo operarás el Airbnb. El resto (costos operativos, amoblamiento, comisión exacta) puedes ajustarlos en 'Ajustar condiciones'." />
       </div>
 
       {/* Modo de gestión — toggle 2 cols */}
@@ -331,7 +335,7 @@ function OperacionAirbnbSection({
         </div>
         {state.modoGestion === "administrador" && (
           <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
-            Podés ajustar la comisión exacta en &ldquo;Ajustar condiciones&rdquo;.
+            Puedes ajustar la comisión exacta en &ldquo;Ajustar condiciones&rdquo;.
           </p>
         )}
       </div>

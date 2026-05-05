@@ -168,6 +168,30 @@ html {
   display: none;
 }
 
+/* Scrollbar minimalista para modales — thin track + thumb estilizado.
+ * scrollbar-gutter: stable reserva espacio cuando no hay overflow para
+ * evitar layout shift al aparecer/desaparecer. Las arrows nativas del
+ * browser se mantienen (deuda visual menor — fix en ronda futura). */
+.scrollbar-modal {
+  scrollbar-width: thin;
+  scrollbar-color: var(--franco-border) transparent;
+  scrollbar-gutter: stable;
+}
+.scrollbar-modal::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scrollbar-modal::-webkit-scrollbar-thumb {
+  background-color: var(--franco-border);
+  border-radius: 3px;
+}
+.scrollbar-modal::-webkit-scrollbar-thumb:hover {
+  background-color: var(--franco-text-tertiary);
+}
+.scrollbar-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 /* Hide number input spinners globally */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {

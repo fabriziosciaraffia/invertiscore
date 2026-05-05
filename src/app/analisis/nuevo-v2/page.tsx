@@ -624,6 +624,7 @@ export default function NuevoAnalisisV3Page() {
                   contribuciones: suggestions.contribuciones,
                 }}
                 airRoi={airRoi}
+                onEditarPaso2={() => { setSlideDir("right"); setStep(2); }}
                 onAnalizar={handleAnalizar}
                 submitting={submitting}
                 submitError={submitError}

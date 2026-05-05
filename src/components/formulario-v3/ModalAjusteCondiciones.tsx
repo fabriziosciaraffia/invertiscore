@@ -11,6 +11,7 @@ import { StateBox } from "@/components/ui/StateBox";
 import {
   calcDividendo,
   fmtCLP,
+  fmtUF,
   parseDecimalLocale,
   type WizardV3State,
 } from "./wizardV3State";
@@ -32,18 +33,51 @@ function calcTier(user: number, market: number) {
   return { tier, direction, pctStr };
 }
 
-type TabKey = "financiamiento" | "arriendo" | "gastos";
+type TabKey = "financiamiento" | "arriendo" | "operacion-airbnb" | "gastos";
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "financiamiento", label: "Financiamiento" },
-  { key: "arriendo", label: "Arriendo" },
-  { key: "gastos", label: "Gastos fijos" },
-];
+// Tabs dinámicos según modalidad (Ronda 2c).
+// LTR: Financiamiento · Arriendo · Gastos fijos
+// STR: Financiamiento · Operación Airbnb · Gastos fijos
+// AMBAS: Financiamiento · Arriendo (LTR) · Operación Airbnb (STR) · Gastos fijos
+const TABS_BY_MODALIDAD: Record<"ltr" | "str" | "both", { key: TabKey; label: string }[]> = {
+  ltr: [
+    { key: "financiamiento", label: "Financiamiento" },
+    { key: "arriendo", label: "Arriendo" },
+    { key: "gastos", label: "Gastos fijos" },
+  ],
+  str: [
+    { key: "financiamiento", label: "Financiamiento" },
+    { key: "operacion-airbnb", label: "Operación Airbnb" },
+    { key: "gastos", label: "Gastos fijos" },
+  ],
+  both: [
+    { key: "financiamiento", label: "Financiamiento" },
+    { key: "arriendo", label: "Arriendo (LTR)" },
+    { key: "operacion-airbnb", label: "Operación Airbnb (STR)" },
+    { key: "gastos", label: "Gastos fijos" },
+  ],
+};
 
-// Claves que cada tab trackea como "editable"
+// Claves que cada tab trackea como "editable" (footer "AJUSTADO" badge).
+// arriendoLargo no tiene tab propio — vive en Arriendo (LTR) cuando AMBAS,
+// en Operación Airbnb cuando STR; en ambos casos `arriendo` es la key trackeada.
 const TAB_FIELDS: Record<TabKey, (keyof WizardV3State)[]> = {
   financiamiento: ["plazoCredito", "tasaInteres"],
   arriendo: ["arriendo", "vacanciaPct", "adminPct", "arriendoEstac", "arriendoBodega"],
+  "operacion-airbnb": [
+    "modoGestion",
+    "comisionAdminPct",
+    "costoElectricidad",
+    "costoAgua",
+    "costoWifi",
+    "costoInsumos",
+    "mantencionMensual",
+    "estaAmoblado",
+    "costoAmoblamiento",
+    // Solo en modo STR puro este tab edita arriendo (referencia LTR);
+    // en AMBAS lo trackea el tab "arriendo" y aquí no se renderiza.
+    "arriendo",
+  ],
   gastos: ["gastos", "contribuciones"],
 };
 
@@ -54,6 +88,7 @@ export function ModalAjusteCondiciones({
   onSave,
   suggestions,
   ufCLP,
+  onEditarPaso2,
 }: {
   open: boolean;
   onClose: () => void;
@@ -66,10 +101,21 @@ export function ModalAjusteCondiciones({
     contribuciones: number | null;
   };
   ufCLP: number;
+  /** Callback para "Editar en Paso 2" desde Tab Financiamiento. Si no se
+   * provee, el bloque read-only no muestra el link. */
+  onEditarPaso2?: () => void;
 }) {
   // Cantidades en Paso 1 — necesarias para prefill de arriendos extras.
   const nEstac = Number(state.estacionamientos) || 0;
   const nBodega = Number(state.bodegas) || 0;
+
+  // Modalidad activa — controla qué tabs se muestran (Ronda 2c).
+  const modalidadKey: "ltr" | "str" | "both" = state.modalidad === "str"
+    ? "str"
+    : state.modalidad === "both"
+      ? "both"
+      : "ltr";
+  const TABS = TABS_BY_MODALIDAD[modalidadKey];
 
   // Snapshot de inicio para detectar cambios dentro del modal.
   // Tanto `startSnapshot` como `local` se re-capturan en cada `open=true`,
@@ -96,11 +142,29 @@ export function ModalAjusteCondiciones({
         : state.arriendoBodega,
     gastos: state.gastos,
     contribuciones: state.contribuciones,
+    // Operación Airbnb (Ronda 2c) — tracked en STR/AMBAS
+    modoGestion: state.modoGestion,
+    comisionAdminPct: state.comisionAdminPct,
+    costoElectricidad: state.costoElectricidad,
+    costoAgua: state.costoAgua,
+    costoWifi: state.costoWifi,
+    costoInsumos: state.costoInsumos,
+    mantencionMensual: state.mantencionMensual,
+    estaAmoblado: state.estaAmoblado,
+    costoAmoblamiento: state.costoAmoblamiento,
   };
   const [startSnapshot, setStartSnapshot] = useResetOnOpen(open, baselineSnapshot);
   const [local, setLocal] = useResetOnOpen(open, baselineSnapshot);
   void setStartSnapshot; // disponible por si se necesita re-pinear snapshot
   const [activeTab, setActiveTab] = useState<TabKey>("financiamiento");
+
+  // Si el tab activo no existe en la modalidad actual (ej. user cambió de LTR
+  // a STR mientras tab="arriendo"), redirigir al primero de la lista.
+  useEffect(() => {
+    if (!TABS.find((t) => t.key === activeTab)) {
+      setActiveTab(TABS[0].key);
+    }
+  }, [TABS, activeTab]);
 
   // Keys que cambiaron respecto al snapshot inicial
   const dirtyKeys = useMemo(() => {
@@ -138,6 +202,14 @@ export function ModalAjusteCondiciones({
   const isLastTab = activeTab === TABS[TABS.length - 1].key;
   const isDirty = dirtyKeys.size > 0;
 
+  // Handler "Editar en Paso 2" — confirma si hay cambios sin guardar antes
+  // de cerrar el modal y navegar atrás (Ronda 2c.2).
+  function handleEditarPaso2() {
+    if (isDirty && !window.confirm("¿Descartar cambios y volver al Paso 2?")) return;
+    onEditarPaso2?.();
+    onClose();
+  }
+
   // Esc: confirmar si hay cambios; si no, cerrar directo.
   useEffect(() => {
     if (!open) return;
@@ -174,7 +246,7 @@ export function ModalAjusteCondiciones({
           <X className="w-4 h-4" />
         </button>
       </div>
-      <div className="flex items-center gap-1 px-4 pb-0">
+      <div className="flex items-center gap-1 px-4 pb-0 overflow-x-hidden">
         {TABS.map((t) => {
           const active = t.key === activeTab;
           const dirty = tabHasChanges(t.key);
@@ -206,21 +278,29 @@ export function ModalAjusteCondiciones({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center px-3 sm:px-4 py-6 sm:py-10 overflow-y-auto"
+      className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center px-3 sm:px-4 py-6 sm:py-10"
       style={{ background: "rgba(0,0,0,0.55)" }}
-      /* Backdrop click NO cierra: el modal tiene cambios potencialmente sin guardar. */
+      /* Backdrop click NO cierra: el modal tiene cambios potencialmente sin guardar.
+         Backdrop sin overflow — el scroll vive dentro del card body para que el
+         scrollbar aparezca pegado al borde derecho del modal y no del viewport. */
       role="dialog"
       aria-modal="true"
     >
       <div
-        className="w-full max-w-lg rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-xl overflow-hidden"
+        className="w-full max-w-lg max-h-[calc(100vh-3rem)] sm:max-h-[calc(100vh-5rem)] flex flex-col rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {header}
+        <div className="shrink-0">{header}</div>
 
-        <div className="px-5 py-5">
+        <div className="flex-1 overflow-y-auto scrollbar-modal px-5 py-5">
           {activeTab === "financiamiento" && (
-            <TabFinanciamiento local={local} setLocal={patch} state={state} ufCLP={ufCLP} />
+            <TabFinanciamiento
+              local={local}
+              setLocal={patch}
+              state={state}
+              ufCLP={ufCLP}
+              onEditarPaso2={onEditarPaso2 ? handleEditarPaso2 : undefined}
+            />
           )}
           {activeTab === "arriendo" && (
             <TabArriendo
@@ -231,12 +311,19 @@ export function ModalAjusteCondiciones({
               sampleSize={suggestions.arriendoSampleSize}
             />
           )}
+          {activeTab === "operacion-airbnb" && (
+            <TabOperacionAirbnb
+              local={local}
+              setLocal={patch}
+              modalidadKey={modalidadKey}
+            />
+          )}
           {activeTab === "gastos" && (
             <TabGastos local={local} setLocal={patch} suggestions={suggestions} />
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 px-5 py-4 border-t border-[var(--franco-border)]">
+        <div className="shrink-0 flex items-center justify-between gap-3 px-5 py-4 border-t border-[var(--franco-border)]">
           <button
             type="button"
             onClick={onClose}
@@ -281,6 +368,16 @@ type LocalState = {
   arriendoBodega: string;
   gastos: string;
   contribuciones: string;
+  // Operación Airbnb — Ronda 2c
+  modoGestion: "auto" | "administrador";
+  comisionAdminPct: string;
+  costoElectricidad: string;
+  costoAgua: string;
+  costoWifi: string;
+  costoInsumos: string;
+  mantencionMensual: string;
+  estaAmoblado: boolean;
+  costoAmoblamiento: string;
 };
 
 const inputBase =
@@ -310,21 +407,71 @@ function Suggest({
 }
 
 function TabFinanciamiento({
-  local, setLocal, state, ufCLP,
+  local, setLocal, state, ufCLP, onEditarPaso2,
 }: {
   local: LocalState;
   setLocal: <K extends keyof LocalState>(k: K, v: LocalState[K]) => void;
   state: WizardV3State;
   ufCLP: number;
+  /** Handler "Editar en Paso 2" — ya viene wrappeado con confirm en el modal. */
+  onEditarPaso2?: () => void;
 }) {
   const precioUF = Number(state.precio) || 0;
   const piePct = Number(state.piePct) || 20;
   const plazo = Number(local.plazoCredito) || 25;
   const tasa = parseDecimalLocale(local.tasaInteres) || 4.72;
   const dividendo = calcDividendo(precioUF, piePct, plazo, tasa, ufCLP);
+  const pieUF = precioUF * piePct / 100;
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── Precio + Pie read-only (Ronda 2c.2) ──
+          Bloque informativo arriba del tab para que el usuario vea los
+          valores definidos en pasos previos sin tener que volver. Si quiere
+          editarlos, link "Editar en Paso 2" cierra modal y navega. */}
+      {precioUF > 0 && (
+        <div
+          className="rounded-lg p-3"
+          style={{ background: "color-mix(in srgb, var(--franco-text) 3%, transparent)" }}
+        >
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] m-0 mb-1">
+                Precio
+              </p>
+              <p className="font-mono text-[14px] font-medium text-[var(--franco-text)] m-0 leading-tight">
+                {fmtUF(precioUF)}
+              </p>
+              <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0 mt-0.5">
+                ≈ {fmtCLP(precioUF * ufCLP)}
+              </p>
+            </div>
+            <div>
+              <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] m-0 mb-1">
+                Pie
+              </p>
+              <p className="font-mono text-[14px] font-medium text-[var(--franco-text)] m-0 leading-tight">
+                {piePct}% · {fmtUF(pieUF)}
+              </p>
+              <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] m-0 mt-0.5">
+                ≈ {fmtCLP(pieUF * ufCLP)}
+              </p>
+            </div>
+          </div>
+          {onEditarPaso2 && (
+            <div className="mt-3 pt-3 border-t border-[var(--franco-border)]">
+              <button
+                type="button"
+                onClick={onEditarPaso2}
+                className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2 transition-colors"
+              >
+                Editar en Paso 2 →
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       <label className="block">
         <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
           Plazo del crédito (años)
@@ -525,6 +672,223 @@ function TabArriendo({
           <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">{local.adminPct}%</span>
         </label>
       </div>
+    </div>
+  );
+}
+
+// ─── Tab Operación Airbnb (STR / AMBAS) — Ronda 2c ──
+// Campos: comisión admin (slider, condicional a modoGestion="admin"),
+// costos operativos (4 inputs), mantención, amoblamiento toggle + monto,
+// arriendoLargo (solo en modo STR puro — en AMBAS lo edita el tab Arriendo LTR).
+function TabOperacionAirbnb({
+  local, setLocal, modalidadKey,
+}: {
+  local: LocalState;
+  setLocal: <K extends keyof LocalState>(k: K, v: LocalState[K]) => void;
+  modalidadKey: "ltr" | "str" | "both";
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ── Modo de gestión ── */}
+      <div>
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Modo de gestión
+          </span>
+          <InfoTooltip content="Auto-gestión: tú operas el Airbnb, comisión 3% Airbnb. Administrador: operador profesional con comisión 15-30%." />
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          {(["auto", "administrador"] as const).map((m) => {
+            const active = local.modoGestion === m;
+            return (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setLocal("modoGestion", m)}
+                className={`text-left px-3 py-2.5 rounded-lg transition-colors ${
+                  active
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                }`}
+              >
+                <p className="font-body text-[13px] font-medium m-0 mb-0.5">
+                  {m === "auto" ? "Auto-gestión" : "Administrador"}
+                </p>
+                <p className="font-mono text-[10px] m-0 leading-snug opacity-80">
+                  {m === "auto" ? "Comisión Airbnb 3%." : "Comisión 15-30%."}
+                </p>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Comisión admin (solo si modoGestion="administrador") ── */}
+      {local.modoGestion === "administrador" && (
+        <label className="block">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Comisión administrador (%)
+            </span>
+            <InfoTooltip content="Porcentaje del ingreso bruto que cobra el operador profesional. Rango habitual 15-25% en Santiago." />
+          </span>
+          <input
+            type="range" min={10} max={30} step={1}
+            value={local.comisionAdminPct}
+            onChange={(e) => setLocal("comisionAdminPct", e.target.value)}
+            className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+          />
+          <span className="font-mono text-[11px] text-[var(--franco-text-secondary)]">{local.comisionAdminPct}%</span>
+        </label>
+      )}
+
+      {/* ── Costos operativos mensuales ── */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0 mb-1">
+          Costos operativos mensuales
+        </p>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mb-2 leading-snug">
+          Costos del propietario que no se traspasan al huésped. Defaults estimados para departamento 2D1B en Santiago.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Electricidad ($)
+              </span>
+              <InfoTooltip content="Cuenta de luz mensual. Default $35.000 según promedio consumo Airbnb 2D1B Santiago." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={local.costoElectricidad}
+              onChange={(raw) => setLocal("costoElectricidad", raw)}
+            />
+          </label>
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Agua ($)
+              </span>
+              <InfoTooltip content="Cuenta de agua mensual. Default $8.000." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={local.costoAgua}
+              onChange={(raw) => setLocal("costoAgua", raw)}
+            />
+          </label>
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                WiFi / Cable ($)
+              </span>
+              <InfoTooltip content="Plan internet mensual. Default $22.000 (fibra estándar)." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={local.costoWifi}
+              onChange={(raw) => setLocal("costoWifi", raw)}
+            />
+          </label>
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Insumos ($)
+              </span>
+              <InfoTooltip content="Reposición de amenities, limpieza, lavandería. Default $20.000." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={local.costoInsumos}
+              onChange={(raw) => setLocal("costoInsumos", raw)}
+            />
+          </label>
+        </div>
+      </div>
+
+      {/* ── Mantención mensual ── */}
+      <label className="block">
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            Mantención ($/mes)
+          </span>
+          <InfoTooltip content="Reparaciones menores y mantenimiento mensual. Default $11.000." />
+        </span>
+        <MoneyInput
+          className={inputBase}
+          value={local.mantencionMensual}
+          onChange={(raw) => setLocal("mantencionMensual", raw)}
+        />
+      </label>
+
+      {/* ── Amoblado (toggle + monto) ── */}
+      <div>
+        <span className="flex items-center gap-1.5 mb-1.5">
+          <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+            ¿Está amoblado?
+          </span>
+          <InfoTooltip content="Si el depto ya viene amoblado, no se considera inversión inicial. Si no, se calcula el costo de amoblar para Airbnb." />
+        </span>
+        <div className="grid grid-cols-2 gap-2">
+          {(["si", "no"] as const).map((opt) => {
+            const isAmob = opt === "si";
+            const active = local.estaAmoblado === isAmob;
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setLocal("estaAmoblado", isAmob)}
+                className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                  active
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                }`}
+              >
+                {isAmob ? "Sí, ya amoblado" : "No, falta amoblar"}
+              </button>
+            );
+          })}
+        </div>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
+          {local.estaAmoblado
+            ? "Ya tienes el depto amoblado. No se descuenta inversión inicial."
+            : "Se calcula inversión inicial para amoblar."}
+        </p>
+        {!local.estaAmoblado && (
+          <label className="block mt-3">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Costo de amoblar (CLP único)
+              </span>
+              <InfoTooltip content="Inversión única para amoblar. Default $3.500.000 para 2D1B estándar Airbnb. Se descuenta del flujo año 1." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={local.costoAmoblamiento}
+              onChange={(raw) => setLocal("costoAmoblamiento", raw)}
+            />
+          </label>
+        )}
+      </div>
+
+      {/* ── Arriendo largo de referencia (solo modo STR puro) ──
+          En AMBAS este campo lo edita el tab "Arriendo (LTR)" — evitar
+          duplicación que confunde y desincroniza. */}
+      {modalidadKey === "str" && (
+        <label className="block">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              Arriendo largo de referencia ($/mes)
+            </span>
+            <InfoTooltip content="Arriendo tradicional mensual estimado. Se usa para comparar STR vs LTR. Si dejas vacío, Franco lo estima de mercado." />
+          </span>
+          <MoneyInput
+            className={inputBase}
+            value={local.arriendo}
+            onChange={(raw) => setLocal("arriendo", raw)}
+          />
+        </label>
+      )}
     </div>
   );
 }

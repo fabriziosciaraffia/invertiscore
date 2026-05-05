@@ -6,6 +6,8 @@ import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
 export interface AirRoiSuggestion {
   /** Ingreso bruto mensual estimado en CLP (annual / 12). */
   ingresoBrutoMensual: number;
+  /** Ocupación de referencia 0-1 (0.42 = 42%). De `median_occupancy` o `estimated_occupancy`. */
+  ocupacionReferencia: number;
   /** N comparables Airbnb usados en la estimación (0 si AirROI usó calculator_direct). */
   sampleSize: number;
   /** "comparables" → sample real; "calculator_direct" → estimación directa AirROI sin comparables. */
@@ -17,6 +19,7 @@ export interface AirRoiSuggestion {
 
 const EMPTY: AirRoiSuggestion = {
   ingresoBrutoMensual: 0,
+  ocupacionReferencia: 0,
   sampleSize: 0,
   source: null,
   isLoading: false,
@@ -105,8 +108,18 @@ export function useAirRoiSuggestion(params: {
 
         const sampleSize = isDirect ? 0 : ("comparables_count" in data ? data.comparables_count : 0);
 
+        // Ocupación de referencia (0-1). Endpoint la devuelve en
+        // `estimated_occupancy` (calculator_direct) o `median_occupancy`
+        // (comparables). El motor STR usa este número en escenario base.
+        const ocupacionReferencia = isDirect && "estimated_occupancy" in data
+          ? data.estimated_occupancy
+          : "median_occupancy" in data
+            ? data.median_occupancy
+            : 0;
+
         setState({
           ingresoBrutoMensual,
+          ocupacionReferencia,
           sampleSize,
           source: isDirect ? "calculator_direct" : "comparables",
           isLoading: false,
