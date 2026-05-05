@@ -124,6 +124,11 @@ export interface AnalysisMetrics {
   // antigua de input.provisionMantencion en calcMetrics. Ver
   // audit/sesionA-diagnostico/diagnostico.md.
   provisionMantencionAjustada: number;
+  // Total de cuotas del pie pagadas durante construcción cuando aplica (entrega
+  // futura con cuotasPie > 0). Calculado por calcMetrics, expuesto para que
+  // chart Patrimonio (Card 09) y sim KPIs (Card 08) puedan repartirlas año a
+  // año en aporteAcum y sumarlas en inversionInicial. 0 cuando no aplica.
+  cuotasPieTotal: number;
   // Plusvalía inmediata
   valorMercadoFrancoUF?: number;       // para cálculos (datos reales)
   valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)

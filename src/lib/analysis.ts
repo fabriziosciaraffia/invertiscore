@@ -286,6 +286,7 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     ingresoMensual,
     egresosMensuales,
     provisionMantencionAjustada,
+    cuotasPieTotal: Math.round(cuotasPieTotal),
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),

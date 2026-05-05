@@ -338,7 +338,32 @@ function GraficoPatrimonioContent({
     const pieCLP = metrics.pieCLP ?? 0;
     const precioCLP = metrics.precioCLP ?? 0;
     const creditoInicial = Math.max(precioCLP - pieCLP, 0);
-    const inversionInicial = pieCLP + Math.round(precioCLP * 0.02);
+    const gastosCierre = Math.round(precioCLP * 0.02);
+
+    // Patrimonio teórico = Valor − Deuda. SIN comisión 2% (esa va sólo en
+    // Card 10 "Si vendes"). Card 09 muestra patrimonio del activo, no
+    // liquidación. Ver audit/sesionA-auditoria-sim/ — fix H6.
+
+    // Valor depto a0 usa vmFrancoCLP (alineado con motor calcProjections que
+    // arranca de vmFrancoCLP). Antes a0 usaba precioCLP, generando salto/caída
+    // artificial entre a0 y a1 cuando vmFranco ≠ precio. Fix H1.
+    const vmFrancoUF = metrics.valorMercadoFrancoUF ?? 0;
+    const vmFrancoCLP = vmFrancoUF > 0 ? vmFrancoUF * valorUF : precioCLP;
+
+    // Cuotas pie: si la operación es entrega futura con pie en cuotas, las
+    // cuotas se reparten año a año durante construcción. Fix H5.
+    const totalCuotas = inputData.cuotasPie > 0 ? inputData.cuotasPie : 0;
+    const montoCuota = inputData.montoCuota > 0 ? inputData.montoCuota : 0;
+    const enCuotasPie = totalCuotas > 0 && montoCuota > 0;
+
+    // Aporte inicial al firmar = pieCLP + 2% gastos cierre. Si todo el pie
+    // está en cuotas, el "pieCLP" mostrado a0 sigue siendo el total — pero
+    // las cuotas pendientes se irán materializando en aporteAcum_ai. Para
+    // mantener coherencia con motor.cashOnCash (que cuenta pieCLP +
+    // cuotasPieTotal en capitalInvertido), en a∞ aporteAcum llega a
+    // pieCLP + 2% + cuotasPieTotal. Si totalCuotas=0, sin cambio vs antes.
+    const inversionInicial = pieCLP + gastosCierre;
+
     const rows: Array<{
       anio: number;
       aporteAcum: number;
@@ -348,12 +373,12 @@ function GraficoPatrimonioContent({
       deudaPendiente: number;
     }> = [];
 
-    // Año 0 — día de cierre
+    // Año 0 — día de cierre. Patrimonio teórico = vmFranco − créditoInicial.
     rows.push({
       anio: 0,
       aporteAcum: inversionInicial,
-      valorDepto: precioCLP,
-      patrimonioNeto: precioCLP - creditoInicial - Math.round(precioCLP * 0.02),
+      valorDepto: vmFrancoCLP,
+      patrimonioNeto: vmFrancoCLP - creditoInicial,
       flujoAcumulado: 0,
       deudaPendiente: creditoInicial,
     });
@@ -362,19 +387,23 @@ function GraficoPatrimonioContent({
     for (let i = 1; i <= plazoAnios; i++) {
       const p = projections[i - 1];
       if (!p) break;
-      const aporteAcum = inversionInicial + Math.abs(Math.min(0, p.flujoAcumulado));
-      const comision = Math.round(p.valorPropiedad * 0.02);
+      // Cuotas pie pagadas hasta el año i (1 cuota/mes, máximo totalCuotas).
+      const cuotasPagadasHastaI = enCuotasPie
+        ? Math.min(totalCuotas, i * 12) * montoCuota
+        : 0;
+      const aporteAcum =
+        inversionInicial + cuotasPagadasHastaI + Math.abs(Math.min(0, p.flujoAcumulado));
       rows.push({
         anio: i,
         aporteAcum,
         valorDepto: p.valorPropiedad,
-        patrimonioNeto: p.valorPropiedad - p.saldoCredito - comision,
+        patrimonioNeto: p.valorPropiedad - p.saldoCredito,
         flujoAcumulado: p.flujoAcumulado,
         deudaPendiente: p.saldoCredito,
       });
     }
     return rows;
-  }, [projections, metrics, plazoAnios]);
+  }, [projections, metrics, plazoAnios, valorUF, inputData]);
 
   // Año de entrega si es venta en blanco
   const entregaAnio = useMemo(() => {
@@ -520,7 +549,7 @@ function GraficoPatrimonioContent({
               className="font-mono uppercase"
               style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
             >
-              Patrimonio al año {plazoAnios}
+              Patrimonio teórico al año {plazoAnios}
             </span>
             <span className="font-body" style={{ fontSize: 12, color: "var(--franco-text-secondary)" }}>
               vs {fmtMoney(last.aporteAcum, currency, valorUF)} aportados

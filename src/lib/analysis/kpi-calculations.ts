@@ -38,8 +38,13 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   const placeholderInput: AnalisisInput = (input ?? {}) as any;
   const exit = calcExitScenario(placeholderInput, metrics, projections, effectivePlazo);
 
+  // inversionInicial = pieCLP + 2% gastos cierre + cuotasPieTotal (cuando aplica
+  // entrega futura con pie en cuotas). Coherente con motor.cashOnCash que ya
+  // las cuenta como capital invertido. Si entrega inmediata, cuotasPieTotal=0.
   const inversionInicial =
-    metrics.pieCLP + Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
+    metrics.pieCLP +
+    Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT) +
+    (metrics.cuotasPieTotal ?? 0);
 
   // Cap Rate sale del motor y no depende del slider.
   const capRate = metrics.capRate ?? 0;
