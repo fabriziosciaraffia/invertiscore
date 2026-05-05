@@ -356,12 +356,12 @@ function GraficoPatrimonioContent({
     const montoCuota = inputData.montoCuota > 0 ? inputData.montoCuota : 0;
     const enCuotasPie = totalCuotas > 0 && montoCuota > 0;
 
-    // Aporte inicial al firmar = pieCLP + 2% gastos cierre. Si todo el pie
-    // está en cuotas, el "pieCLP" mostrado a0 sigue siendo el total — pero
-    // las cuotas pendientes se irán materializando en aporteAcum_ai. Para
-    // mantener coherencia con motor.cashOnCash (que cuenta pieCLP +
-    // cuotasPieTotal en capitalInvertido), en a∞ aporteAcum llega a
-    // pieCLP + 2% + cuotasPieTotal. Si totalCuotas=0, sin cambio vs antes.
+    // Inversión inicial visual del chart = pieCLP + 2% gastos cierre.
+    // Atención: aporteAcum del chart sigue una semántica distinta a la del
+    // motor (capitalInvertido = pieCLP + gastosCompra, sin doble conteo de
+    // cuotas). Aquí, fix H5: las cuotas pagadas durante construcción se
+    // distribuyen año a año en aporteAcum para mostrar el avance del
+    // desembolso. No mezclar este número con capitalInvertido / cashOnCash.
     const inversionInicial = pieCLP + gastosCierre;
 
     const rows: Array<{

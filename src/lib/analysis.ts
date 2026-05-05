@@ -248,11 +248,13 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   const todosGastosAnuales = (flujo.ggccVacancia + flujo.contribucionesMes + flujo.mantencion + flujo.vacanciaProrrata + flujo.corretajeProrrata + flujo.recambio + flujo.administracion) * 12;
   const rentabilidadNeta = precioCLP > 0 ? ((rentaAnual - todosGastosAnuales) / precioCLP) * 100 : 0;
 
-  // Cash-on-Cash: pie + closing costs + pre-delivery installments
-  const mesesPreEntrega = calcMesesHastaEntrega(input);
-  const cuotasPieTotal = mesesPreEntrega > 0 ? (input.cuotasPie > 0 ? input.cuotasPie : mesesPreEntrega) * (input.montoCuota > 0 ? input.montoCuota : (pieCLP / (input.cuotasPie || mesesPreEntrega))) : 0;
+  // Cash-on-Cash y payback: capital invertido = pie + gastos de cierre.
+  // Las cuotas de pie durante construcción NO se suman aparte porque YA forman
+  // parte del pie (caso típico depto blanco/verde Chile: el pie se paga en
+  // cuotas durante la obra). Sumarlas inflaba ~2x el capital invertido y
+  // distorsionaba cashOnCash y mesesPaybackPie. Modelo A — Item 9 auditoría.
   const gastosCompra = Math.round(precioCLP * GASTOS_CIERRE_PCT);
-  const capitalInvertido = pieCLP + cuotasPieTotal + gastosCompra;
+  const capitalInvertido = pieCLP + gastosCompra;
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -286,7 +288,6 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     ingresoMensual,
     egresosMensuales,
     provisionMantencionAjustada,
-    cuotasPieTotal: Math.round(cuotasPieTotal),
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
