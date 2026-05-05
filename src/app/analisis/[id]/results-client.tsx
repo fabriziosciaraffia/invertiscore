@@ -40,8 +40,12 @@ import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historic
 import type { YearProjection, AnalysisMetrics } from "@/lib/types";
 
 
-// Module-level UF value, updated from server prop on mount
-let UF_CLP = 38800;
+// El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
+// pasa explícitamente a los formateadores y al motor. Antes existía un
+// módulo-level `UF_CLP = 38800` mutado en runtime que NUNCA se propagaba al
+// motor de `lib/analysis.ts`, causando divergencia entre el snapshot guardado
+// (UF server) y los recálculos en cliente (UF default 38800). Ver
+// audit/sesionA-residual-2/diagnostico.md.
 
 const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
 
@@ -111,8 +115,8 @@ function fmtUF(n: number): string {
   return "UF " + Number(int).toLocaleString("es-CL") + "," + dec;
 }
 
-function fmtMoney(n: number, currency: "CLP" | "UF"): string {
-  if (currency === "UF") return fmtUF(n / UF_CLP);
+function fmtMoney(n: number, currency: "CLP" | "UF", ufClp: number): string {
+  if (currency === "UF") return fmtUF(n / ufClp);
   return fmtCLP(n);
 }
 
@@ -126,9 +130,9 @@ function fmtPct(n: number, decimals: number = 1): string {
   return n.toFixed(decimals).replace(".", ",") + "%";
 }
 
-function fmtAxisMoney(n: number, currency: "CLP" | "UF"): string {
+function fmtAxisMoney(n: number, currency: "CLP" | "UF", ufClp: number): string {
   if (currency === "UF") {
-    const uf = n / UF_CLP;
+    const uf = n / ufClp;
     if (Math.abs(uf) >= 1_000) return "UF " + (uf / 1_000).toFixed(0) + "K";
     if (Math.abs(uf) >= 100) return "UF " + Math.round(uf);
     if (Math.abs(uf) >= 1) return "UF " + uf.toFixed(1).replace(".", ",");
@@ -387,7 +391,7 @@ function GraficoPatrimonioContent({
   const ganancia = last ? last.patrimonioNeto - last.aporteAcum : 0;
   const gananciaPct = last && last.aporteAcum > 0 ? (ganancia / last.aporteAcum) * 100 : 0;
 
-  const tickFormatter = (v: number) => fmtAxisMoney(v, currency);
+  const tickFormatter = (v: number) => fmtAxisMoney(v, currency, valorUF);
 
   return (
     <div className="flex flex-col gap-4">
@@ -409,7 +413,7 @@ function GraficoPatrimonioContent({
                 if (!active || !payload || payload.length === 0) return null;
                 const row = payload[0]?.payload as (typeof chartData)[number] | undefined;
                 if (!row) return null;
-                const fmt = (n: number) => fmtMoney(n, currency);
+                const fmt = (n: number) => fmtMoney(n, currency, valorUF);
                 return (
                   <div
                     className="rounded-lg px-3 py-2.5 shadow-lg"
@@ -519,7 +523,7 @@ function GraficoPatrimonioContent({
               Patrimonio al año {plazoAnios}
             </span>
             <span className="font-body" style={{ fontSize: 12, color: "var(--franco-text-secondary)" }}>
-              vs {fmtMoney(last.aporteAcum, currency)} aportados
+              vs {fmtMoney(last.aporteAcum, currency, valorUF)} aportados
             </span>
           </div>
           {/* Der: valor mono bold + delta mono pequeño */}
@@ -528,13 +532,13 @@ function GraficoPatrimonioContent({
               className="font-mono font-bold whitespace-nowrap"
               style={{ fontSize: 22, color: "var(--franco-text)", lineHeight: 1 }}
             >
-              {fmtMoney(last.patrimonioNeto, currency)}
+              {fmtMoney(last.patrimonioNeto, currency, valorUF)}
             </span>
             <span
               className="font-mono whitespace-nowrap"
               style={{ fontSize: 11, color: ganancia >= 0 ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
             >
-              {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
+              {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency, valorUF)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
             </span>
           </div>
         </div>
@@ -601,7 +605,7 @@ function VentaRefiContent({
     };
   }, [projections, metrics, plazoAnios, ltv]);
 
-  const fmt = (n: number) => fmtMoney(n, currency);
+  const fmt = (n: number) => fmtMoney(n, currency, valorUF);
 
   // Entrega futura: si el horizonte elegido está antes de la entrega, no aplica venta/refi
   const mesesPreEntrega = useMemo(() => {
@@ -2303,7 +2307,7 @@ function SectionCard({ title, description, icon: Icon, children }: {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl, inputData }: {
+function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl, inputData, valorUF }: {
   m: ReturnType<typeof normalizeMetrics>;
   zoneData: MarketDataRow[] | null | undefined;
   comuna?: string;
@@ -2312,6 +2316,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
   mapQuery: string;
   googleMapUrl: string;
   inputData?: import("@/lib/types").AnalisisInput;
+  valorUF: number;
 }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const zonaRadio = (inputData as any)?.zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number; arriendoPrecioM2?: number; sampleSizeArriendo?: number; sampleSizeVenta?: number; radioMetros?: number } | undefined;
@@ -2329,7 +2334,7 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
 
   if (hasRadioData) {
     avgArriendoZona = zonaRadio.arriendoPromedio || 0;
-    avgM2Zona = zonaRadio.precioM2VentaCLP ? Math.round(zonaRadio.precioM2VentaCLP / UF_CLP * 10) / 10 : 0;
+    avgM2Zona = zonaRadio.precioM2VentaCLP ? Math.round(zonaRadio.precioM2VentaCLP / valorUF * 10) / 10 : 0;
     totalPubs = Math.max(zonaRadio.sampleSizeArriendo || 0, zonaRadio.sampleSizeVenta || 0);
     sourceLabel = `Basado en ${totalPubs} comparables en radio de ${zonaRadio.radioMetros || 800}m.`;
   } else if (zoneData && zoneData.length > 0) {
@@ -2344,13 +2349,13 @@ function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, goo
   // Yield zona: derive from the same values shown in the ARRIENDO and PRECIO/M² cards
   // so that if tuyo == zona for both, rent. bruta also matches exactly
   const superficie = inputData?.superficie || 50;
-  const precioTotalZonaCLP = avgM2Zona * superficie * UF_CLP;
+  const precioTotalZonaCLP = avgM2Zona * superficie * valorUF;
   const yieldZona = precioTotalZonaCLP > 0 && avgArriendoZona > 0
     ? (avgArriendoZona * 12) / precioTotalZonaCLP * 100
     : (m.rentabilidadBruta ?? 0) * 0.9;
 
-  const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * UF_CLP;
-  const zonaPrecioM2 = currency === "UF" ? avgM2Zona : avgM2Zona * UF_CLP;
+  const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * valorUF;
+  const zonaPrecioM2 = currency === "UF" ? avgM2Zona : avgM2Zona * valorUF;
 
   const cards = [
     {
@@ -2458,7 +2463,7 @@ export function PremiumResults({
   freeFlujo: number;
   freePrecioM2: number;
   resumenEjecutivo: string;
-  ufValue?: number;
+  ufValue: number;
   zoneData?: MarketDataRow[] | null;
   aiAnalysisInitial?: unknown;
   nombre?: string;
@@ -2477,8 +2482,6 @@ export function PremiumResults({
   isLoggedIn?: boolean;
 }) {
   const posthog = usePostHog();
-  // Update module-level UF value from server
-  if (ufValue) UF_CLP = ufValue;
   const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -2730,9 +2733,9 @@ export function PremiumResults({
   const anosParaVerFlujo = Math.ceil(mesesParaVerFlujo / 12);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fmt = useCallback((n: number) => fmtMoney(n, currency), [currency]);
+  const fmt = useCallback((n: number) => fmtMoney(n, currency, ufValue), [currency, ufValue]);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency), [currency]);
+  const fmtAxis = useCallback((n: number) => fmtAxisMoney(n, currency, ufValue), [currency, ufValue]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const flujoBreakdown = useMemo(() => {
@@ -2760,8 +2763,9 @@ export function PremiumResults({
       metrics: m,
       plazoVenta: 30,
       plusvaliaAnual: plusvaliaRate / 100,
+      ufClp: ufValue,
     });
-  }, [results, m, inputData, plusvaliaRate]);
+  }, [results, m, inputData, plusvaliaRate, ufValue]);
 
   // Dynamic refinance scenario based on horizon + refiPct
   // dynamicRefi removed — refi section now calculates directly from projData
@@ -2772,7 +2776,7 @@ export function PremiumResults({
   const sensScenarios = useMemo(() => {
     if (!results || !m || !inputData) return null;
 
-    const precioCLP = inputData.precio * UF_CLP;
+    const precioCLP = inputData.precio * ufValue;
     const pieCLP = precioCLP * (inputData.piePct / 100);
     const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
     const nMeses = inputData.plazoCredito * 12;
@@ -3123,7 +3127,7 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const projData = useMemo((): PatrimonioRow[] => {
     if (!results || !m || !inputData) return [];
-    const precioCLP = inputData.precio * UF_CLP;
+    const precioCLP = inputData.precio * ufValue;
     const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
     const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
       ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
@@ -3134,7 +3138,7 @@ export function PremiumResults({
     const plusvaliaMensual = Math.pow(1 + plusvaliaDec, 1 / 12) - 1;
 
     // Fix #1: usar valor de mercado Franco como base de plusvalía
-    const valorMercadoFrancoCLP = m.valorMercadoFrancoUF ? m.valorMercadoFrancoUF * UF_CLP : null;
+    const valorMercadoFrancoCLP = m.valorMercadoFrancoUF ? m.valorMercadoFrancoUF * ufValue : null;
     const valorBase = valorMercadoFrancoCLP || precioCLP;
 
     // Fix #2: gastos de cierre (~2% del precio de compra)
@@ -3336,13 +3340,13 @@ export function PremiumResults({
     },
     {
       label: "PRECIO",
-      value: currency === "UF" ? fmtUF(precioUF) : fmtCLP(precioUF * UF_CLP),
+      value: currency === "UF" ? fmtUF(precioUF) : fmtCLP(precioUF * ufValue),
     },
     {
       label: "$/M²",
       value: currency === "UF"
         ? `UF ${(Math.round(freePrecioM2 * 100) / 100).toLocaleString("es-CL")}/m²`
-        : fmtCLP(freePrecioM2 * UF_CLP),
+        : fmtCLP(freePrecioM2 * ufValue),
       tooltip: "Precio por metro cuadrado. Útil para comparar contra el promedio de la comuna independiente del tamaño del depto.",
     },
     {
@@ -3359,7 +3363,7 @@ export function PremiumResults({
       label: "ARRIENDO",
       value: arriendoCLP > 0
         ? (currency === "UF"
-          ? `UF ${(Math.round((arriendoCLP / UF_CLP) * 100) / 100).toLocaleString("es-CL")}/mes`
+          ? `UF ${(Math.round((arriendoCLP / ufValue) * 100) / 100).toLocaleString("es-CL")}/mes`
           : `${fmtCLP(arriendoCLP)}/mes`)
         : "—",
       tooltip: "Arriendo mensual estimado o ajustado por el usuario.",
@@ -3411,7 +3415,7 @@ export function PremiumResults({
             onRetry={generateAiManually}
             results={results}
             inputData={inputData}
-            valorUF={UF_CLP}
+            valorUF={ufValue}
             analysisId={analysisId}
             comuna={comuna}
           />
@@ -3431,7 +3435,7 @@ export function PremiumResults({
                 metrics={m}
                 inputData={inputData}
                 currency={currency}
-                valorUF={UF_CLP}
+                valorUF={ufValue}
               />
             )}
           </SimulationProvider>

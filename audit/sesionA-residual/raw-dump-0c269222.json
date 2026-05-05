@@ -1,0 +1,878 @@
+{
+  "id": "0c269222-3ccb-4cba-969c-cc86ab30982a",
+  "user_id": "d8c34e34-27e3-4fab-8a2d-74f32d2233c0",
+  "nombre": "Depto 2D1B Santiago",
+  "comuna": "Santiago",
+  "ciudad": "Santiago",
+  "direccion": "Tarapacá 1331, 8331162 Santiago, Región Metropolitana, Chile",
+  "tipo": "Departamento",
+  "dormitorios": 2,
+  "banos": 1,
+  "superficie": 50,
+  "antiguedad": 4,
+  "precio": 3745,
+  "arriendo": 460000,
+  "gastos": 90000,
+  "contribuciones": 104296,
+  "score": 41,
+  "desglose": {
+    "flujoCaja": 20.284902173913046,
+    "plusvalia": 57,
+    "eficiencia": 50,
+    "rentabilidad": 37.73
+  },
+  "resumen": "El arriendo genera $460.000 al mes y los costos totales (dividendo + gastos + mantención) suman $784.827. Falta cubrir $324.827 al mes de tu bolsillo. La rentabilidad bruta es de 3.7% y la rentabilidad operativa (CAP rate) es 2.9%. La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones. La baja antigüedad reduce riesgos de mantención inesperada. Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.",
+  "created_at": "2026-05-05T13:41:52.382199+00:00",
+  "results": {
+    "pros": [
+      "Con pocos años de uso, la mantención debiera ser baja. Los gastos grandes (ascensores, fachada) aún están lejos."
+    ],
+    "score": 41,
+    "contras": [
+      "La rentabilidad operativa (CAP rate 2.9%) está bajo el promedio. Podrías ajustar el precio de compra o buscar una propiedad más rentable en la zona.",
+      "Cada mes tendrás que poner $324.827 de tu bolsillo para cubrir los costos. Asegúrate de tener ese flujo disponible de forma estable.",
+      "Tu pie está rentando negativo (-11.8% anual). El arriendo no alcanza a cubrir los costos. La inversión depende 100% de la plusvalía futura."
+    ],
+    "metrics": {
+      "noi": 4322292,
+      "pieCLP": 30100063,
+      "capRate": 2.87,
+      "precioM2": 74.9,
+      "dividendo": 642852,
+      "precioCLP": 150500315,
+      "cashOnCash": -11.77,
+      "subsidioTasa": {
+        "aplicado": false,
+        "califica": false,
+        "tasaConSubsidio": 3.5
+      },
+      "ingresoMensual": 460000,
+      "mesesPaybackPie": 999,
+      "egresosMensuales": 784827,
+      "flujoNetoMensual": -324827,
+      "rentabilidadNeta": 2.54,
+      "rentabilidadBruta": 3.67,
+      "descuentoParaNeutro": 41.1,
+      "precioFlujoNeutroUF": 2205.39,
+      "precioFlujoNeutroCLP": 88628050,
+      "valorMercadoFrancoUF": 3745,
+      "precioFlujoPositivoUF": 1914.11,
+      "valorMercadoUsuarioUF": 3745,
+      "precioFlujoPositivoCLP": 76922383,
+      "plusvaliaInmediataFranco": 0,
+      "plusvaliaInmediataUsuario": 0,
+      "plusvaliaInmediataFrancoPct": 0,
+      "provisionMantencionAjustada": 60544,
+      "plusvaliaInmediataUsuarioPct": 0
+    },
+    "resumen": "El arriendo genera $460.000 al mes y los costos totales (dividendo + gastos + mantención) suman $784.827. Falta cubrir $324.827 al mes de tu bolsillo. La rentabilidad bruta es de 3.7% y la rentabilidad operativa (CAP rate) es 2.9%. La rentabilidad está bajo el promedio — vale la pena ajustar el precio o buscar otras opciones. La baja antigüedad reduce riesgos de mantención inesperada. Antes de decidir, verifica los gastos comunes reales y el estado de la administración del edificio.",
+    "desglose": {
+      "flujoCaja": 20.284902173913046,
+      "plusvalia": 57,
+      "eficiencia": 50,
+      "rentabilidad": 37.73
+    },
+    "negociacion": {
+      "modo": "alinear_mercado",
+      "razon": "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.",
+      "tirAlLimite": 6,
+      "tirAlSugerido": 7.92,
+      "tirAlVmFranco": 6.95,
+      "precioLimiteUF": 3862,
+      "precioLimiteCLP": 155202194,
+      "precioSugeridoUF": 3632.7,
+      "precioSugeridoCLP": 145987315
+    },
+    "projections": [
+      {
+        "anio": 1,
+        "flujoAnual": -3923892,
+        "saldoCredito": 117581774,
+        "flujoAcumulado": -3923892,
+        "patrimonioNeto": 38938554,
+        "valorPropiedad": 156520328,
+        "arriendoMensual": 460000
+      },
+      {
+        "anio": 2,
+        "flujoAnual": -4481616,
+        "saldoCredito": 114645249,
+        "flujoAcumulado": -8405508,
+        "patrimonioNeto": 48135892,
+        "valorPropiedad": 162781141,
+        "arriendoMensual": 476100
+      },
+      {
+        "anio": 3,
+        "flujoAnual": -4590114,
+        "saldoCredito": 111585733,
+        "flujoAcumulado": -12995622,
+        "patrimonioNeto": 57706653,
+        "valorPropiedad": 169292386,
+        "arriendoMensual": 492763
+      },
+      {
+        "anio": 4,
+        "flujoAnual": -4700961,
+        "saldoCredito": 108398076,
+        "flujoAcumulado": -17696583,
+        "patrimonioNeto": 67666006,
+        "valorPropiedad": 176064082,
+        "arriendoMensual": 510010
+      },
+      {
+        "anio": 5,
+        "flujoAnual": -4814201,
+        "saldoCredito": 105076909,
+        "flujoAcumulado": -22510784,
+        "patrimonioNeto": 78029736,
+        "valorPropiedad": 183106645,
+        "arriendoMensual": 527861
+      },
+      {
+        "anio": 6,
+        "flujoAnual": -4929868,
+        "saldoCredito": 101616641,
+        "flujoAcumulado": -27440652,
+        "patrimonioNeto": 88814270,
+        "valorPropiedad": 190430911,
+        "arriendoMensual": 546336
+      },
+      {
+        "anio": 7,
+        "flujoAnual": -5407363,
+        "saldoCredito": 98011447,
+        "flujoAcumulado": -32848015,
+        "patrimonioNeto": 100036701,
+        "valorPropiedad": 198048147,
+        "arriendoMensual": 565457
+      },
+      {
+        "anio": 8,
+        "flujoAnual": -5538774,
+        "saldoCredito": 94255255,
+        "flujoAcumulado": -38386789,
+        "patrimonioNeto": 111714818,
+        "valorPropiedad": 205970073,
+        "arriendoMensual": 585248
+      },
+      {
+        "anio": 9,
+        "flujoAnual": -5673046,
+        "saldoCredito": 90341743,
+        "flujoAcumulado": -44059835,
+        "patrimonioNeto": 123867133,
+        "valorPropiedad": 214208876,
+        "arriendoMensual": 605732
+      },
+      {
+        "anio": 10,
+        "flujoAnual": -5810223,
+        "saldoCredito": 86264321,
+        "flujoAcumulado": -49870058,
+        "patrimonioNeto": 136512911,
+        "valorPropiedad": 222777231,
+        "arriendoMensual": 626933
+      },
+      {
+        "anio": 11,
+        "flujoAnual": -5950363,
+        "saldoCredito": 82016123,
+        "flujoAcumulado": -55820421,
+        "patrimonioNeto": 149672198,
+        "valorPropiedad": 231688320,
+        "arriendoMensual": 648875
+      },
+      {
+        "anio": 12,
+        "flujoAnual": -6718475,
+        "saldoCredito": 77589997,
+        "flujoAcumulado": -62538896,
+        "patrimonioNeto": 163365856,
+        "valorPropiedad": 240955853,
+        "arriendoMensual": 671586
+      },
+      {
+        "anio": 13,
+        "flujoAnual": -6883445,
+        "saldoCredito": 72978492,
+        "flujoAcumulado": -69422341,
+        "patrimonioNeto": 177615596,
+        "valorPropiedad": 250594087,
+        "arriendoMensual": 695092
+      },
+      {
+        "anio": 14,
+        "flujoAnual": -7052067,
+        "saldoCredito": 68173842,
+        "flujoAcumulado": -76474407,
+        "patrimonioNeto": 192444009,
+        "valorPropiedad": 260617851,
+        "arriendoMensual": 719420
+      },
+      {
+        "anio": 15,
+        "flujoAnual": -7224414,
+        "saldoCredito": 63167958,
+        "flujoAcumulado": -83698822,
+        "patrimonioNeto": 207874606,
+        "valorPropiedad": 271042565,
+        "arriendoMensual": 744599
+      },
+      {
+        "anio": 16,
+        "flujoAnual": -7400550,
+        "saldoCredito": 57952413,
+        "flujoAcumulado": -91099372,
+        "patrimonioNeto": 223931855,
+        "valorPropiedad": 281884267,
+        "arriendoMensual": 770660
+      },
+      {
+        "anio": 17,
+        "flujoAnual": -8063585,
+        "saldoCredito": 52518424,
+        "flujoAcumulado": -99162957,
+        "patrimonioNeto": 240641214,
+        "valorPropiedad": 293159638,
+        "arriendoMensual": 797634
+      },
+      {
+        "anio": 18,
+        "flujoAnual": -8262039,
+        "saldoCredito": 46856842,
+        "flujoAcumulado": -107424996,
+        "patrimonioNeto": 258029181,
+        "valorPropiedad": 304886024,
+        "arriendoMensual": 825551
+      },
+      {
+        "anio": 19,
+        "flujoAnual": -8464896,
+        "saldoCredito": 40958136,
+        "flujoAcumulado": -115889892,
+        "patrimonioNeto": 276123329,
+        "valorPropiedad": 317081465,
+        "arriendoMensual": 854445
+      },
+      {
+        "anio": 20,
+        "flujoAnual": -8672285,
+        "saldoCredito": 34812374,
+        "flujoAcumulado": -124562176,
+        "patrimonioNeto": 294952350,
+        "valorPropiedad": 329764723,
+        "arriendoMensual": 884351
+      }
+    ],
+    "sensitivity": [
+      {
+        "delta": -2,
+        "variable": "Tasa interés",
+        "variacion": "+1%",
+        "nuevoFlujo": -393561,
+        "nuevoScore": 39
+      },
+      {
+        "delta": 2,
+        "variable": "Tasa interés",
+        "variacion": "-1%",
+        "nuevoFlujo": -259839,
+        "nuevoScore": 43
+      },
+      {
+        "delta": 4,
+        "variable": "Arriendo",
+        "variacion": "+10%",
+        "nuevoFlujo": -283045,
+        "nuevoScore": 45
+      },
+      {
+        "delta": -4,
+        "variable": "Arriendo",
+        "variacion": "-10%",
+        "nuevoFlujo": -366611,
+        "nuevoScore": 37
+      },
+      {
+        "delta": -1,
+        "variable": "Vacancia",
+        "variacion": "+1 mes",
+        "nuevoFlujo": -370660,
+        "nuevoScore": 40
+      },
+      {
+        "delta": -4,
+        "variable": "Vacancia",
+        "variacion": "+2 meses",
+        "nuevoFlujo": -416494,
+        "nuevoScore": 37
+      }
+    ],
+    "engineSignal": "BUSCAR OTRA",
+    "exitScenario": {
+      "tir": 6.95,
+      "anios": 10,
+      "valorVenta": 222777231,
+      "gananciaNeta": 132057365,
+      "retornoTotal": 82187307,
+      "saldoCredito": 86264321,
+      "comisionVenta": 4455545,
+      "totalAportado": 82980127,
+      "flujoAcumulado": -49870058,
+      "inversionInicial": 33110069,
+      "gananciaSobreTotal": 49077238,
+      "multiplicadorCapital": 0.99,
+      "porcentajeGananciaSobreTotal": 59.14,
+      "flujoMensualAcumuladoNegativo": 49870058
+    },
+    "breakEvenTasa": -1,
+    "cashflowYear1": [
+      {
+        "mes": 0,
+        "gastos": 0,
+        "ingreso": 0,
+        "vacancia": 0,
+        "acumulado": 0,
+        "corretaje": 0,
+        "dividendo": 0,
+        "flujoNeto": 0,
+        "mantencion": 0,
+        "egresoTotal": 0,
+        "administracion": 0,
+        "contribuciones": 0
+      },
+      {
+        "mes": 1,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -324827,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 2,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -649654,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 3,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -974481,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 4,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -1299308,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 5,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -1624135,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 6,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -1948962,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 7,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -2273789,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 8,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -2598616,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 9,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -2923443,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 10,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -3248270,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 11,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -3573097,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      },
+      {
+        "mes": 12,
+        "gastos": 4500,
+        "ingreso": 460000,
+        "vacancia": 23000,
+        "acumulado": -3897924,
+        "corretaje": 19166,
+        "dividendo": 642852,
+        "flujoNeto": -324827,
+        "mantencion": 60544,
+        "egresoTotal": 784827,
+        "administracion": 0,
+        "contribuciones": 34765
+      }
+    ],
+    "clasificacion": "Débil",
+    "francoVerdict": "BUSCAR OTRA",
+    "financingHealth": {
+      "pie": {
+        "level": "aceptable",
+        "actual_pct": 20,
+        "impact_message": "subir el pie a 25% baja la cuota en $40.178 al mes",
+        "recommended_pct": 25
+      },
+      "tasa": {
+        "level": "optimo",
+        "actual_pct": 4.11,
+        "spread_bps": 1,
+        "market_avg_pct": 4.1,
+        "recommended_pct": 4.1
+      },
+      "overall": "aceptable"
+    },
+    "resumenEjecutivo": "Necesitas poner $324.827 de tu bolsillo cada mes. El arriendo cubre el 59% de los costos. Evalúa si puedes mantener ese aporte mensual y si la plusvalía lo justifica.",
+    "refinanceScenario": {
+      "nuevoAvaluo": 183106645,
+      "nuevoCredito": 146485316,
+      "nuevoDividendo": 782128,
+      "nuevoFlujoNeto": -402463,
+      "capitalLiberado": 41408407
+    },
+    "valorMaximoCompra": 2151,
+    "clasificacionColor": "orange"
+  },
+  "input_data": {
+    "piso": 0,
+    "tipo": "Departamento",
+    "banos": 1,
+    "bodega": false,
+    "ciudad": "Santiago",
+    "comuna": "Santiago",
+    "gastos": 90000,
+    "nombre": "Depto 2D1B Santiago",
+    "piePct": 20,
+    "precio": 3745,
+    "arriendo": 460000,
+    "esStudio": false,
+    "cuotasPie": 0,
+    "direccion": "Tarapacá 1331, 8331162 Santiago, Región Metropolitana, Chile",
+    "tipoRenta": "larga",
+    "zonaRadio": {
+      "lat": -33.4476779,
+      "lng": -70.6538851,
+      "radioMetros": 750,
+      "sampleSizeVenta": 0,
+      "arriendoPrecioM2": null,
+      "arriendoPromedio": 460000,
+      "precioM2VentaCLP": null,
+      "sampleSizeArriendo": 37
+    },
+    "antiguedad": 4,
+    "montoCuota": 0,
+    "superficie": 50,
+    "dormitorios": 2,
+    "estadoVenta": "inmediata",
+    "tasaInteres": 4.11,
+    "plazoCredito": 25,
+    "vacanciaMeses": 0.6,
+    "arriendoBodega": 0,
+    "contribuciones": 104296,
+    "enConstruccion": false,
+    "cantidadBodegas": 0,
+    "estacionamiento": "no",
+    "superficieTotal": 50,
+    "usaAdministrador": false,
+    "valorMercadoFranco": 3745,
+    "provisionMantencion": 60544,
+    "precioEstacionamiento": 0,
+    "arriendoEstacionamiento": 0,
+    "cantidadEstacionamientos": 0
+  },
+  "is_premium": false,
+  "creator_name": "Fabrizio Sciaraffia",
+  "ai_analysis": {
+    "riesgos": {
+      "pregunta": "¿Qué puede salir mal?",
+      "cajaLabel": "Si decides avanzar, protege estos flancos:",
+      "contenido_uf": "Vacancia de 3 meses duplica el aporte anual. Con margen negativo de UF 8,1 mensuales, una vacancia típica te cuesta UF 35 adicionales ese año.\n\nAlza de tasas castiga el flujo indefinidamente. Si suben 2 puntos porcentuales, tu dividendo pasa de UF 16 a UF 19,5 — el aporte mensual escala a UF 11,6 sin tope de tiempo.\n\nPlusvalía negativa anula la estrategia completa. Santiago centro necesita crecer 6%+ anual para compensar tus aportes. Históricamente viene perdiendo 1.1% anual — apostar a reversión es especulativo.",
+      "contenido_clp": "Vacancia de 3 meses duplica el aporte anual. Con margen negativo de $324K mensuales, una vacancia típica te cuesta $1.4M adicionales ese año.\n\nAlza de tasas castiga el flujo indefinidamente. Si suben 2 puntos porcentuales, tu dividendo pasa de $642K a $783K — el aporte mensual escala a $465K sin tope de tiempo.\n\nPlusvalía negativa anula la estrategia completa. Santiago centro necesita crecer 6%+ anual para compensar tus aportes. Históricamente viene perdiendo 1.1% anual — apostar a reversión es especulativo.",
+      "cajaAccionable_uf": "Si decides avanzar contra el análisis, hazlo por motivos no financieros (te gustó la ubicación, quieres vivir ahí). Pero no te cuentes la historia de que es buena inversión — es buena ubicación al precio y momento equivocados.",
+      "cajaAccionable_clp": "Si decides avanzar contra el análisis, hazlo por motivos no financieros (te gustó la ubicación, quieres vivir ahí). Pero no te cuentes la historia de que es buena inversión — es buena ubicación al precio y momento equivocados."
+    },
+    "conviene": {
+      "pregunta": "¿Conviene o no conviene?",
+      "cajaLabel": "Antes de seguir, decide:",
+      "datosClave": [
+        {
+          "color": "red",
+          "label": "Aporte mensual",
+          "subtexto": "Sin fecha de término",
+          "valor_uf": "UF 8,1",
+          "valor_clp": "$324.827"
+        },
+        {
+          "color": "red",
+          "label": "Franco Score",
+          "subtexto": "Clasificación débil",
+          "valor_uf": "41/100",
+          "valor_clp": "41/100"
+        },
+        {
+          "color": "accent",
+          "label": "TIR a 10 años",
+          "subtexto": "Bajo mercado",
+          "valor_uf": "7.0%",
+          "valor_clp": "7.0%"
+        }
+      ],
+      "reencuadre_uf": "Para tu rango de UF 3.745, vale explorar Ñuñoa o San Miguel antes de cerrar — perfil similar a Santiago centro con plusvalía histórica superior. Ñuñoa promedió 3.2% anual 2014-2024, mezclando boom 2014-2018 y caída posterior, pero sin el castigo sistemático del centro. Tu inversión inicial de UF 824 podría generar flujo neutro o positivo en otras comunas del rango.",
+      "reencuadre_clp": "Para tu rango de UF 3.745, vale explorar Ñuñoa o San Miguel antes de cerrar — perfil similar a Santiago centro con plusvalía histórica superior. Ñuñoa promedió 3.2% anual 2014-2024, mezclando boom 2014-2018 y caída posterior, pero sin el castigo sistemático del centro. Tu inversión inicial de $33M podría generar flujo neutro o positivo en otras comunas del rango.",
+      "cajaAccionable_uf": "¿Puedes sostener UF 8,1 mensuales sin tope claro en la proyección apostando a la recuperación de Santiago centro?",
+      "veredictoFrase_uf": "Mejor pasar — hay opciones más sólidas para tu capital.",
+      "cajaAccionable_clp": "¿Puedes sostener $324K mensuales sin tope claro en la proyección apostando a la recuperación de Santiago centro?",
+      "veredictoFrase_clp": "Mejor pasar — hay opciones más sólidas para tu capital.",
+      "respuestaDirecta_uf": "No conviene. Aportas UF 8,1 cada mes durante toda la proyección sin que el flujo se dé vuelta. Santiago centro perdió 10% en la década 2014-2024 — mezclando boom inicial y caída post-estallido social. La matemática te pide aporte indefinido apostando a que una comuna que viene perdiendo valor se recupere sustantivamente.",
+      "respuestaDirecta_clp": "No conviene. Aportas $324K cada mes durante toda la proyección sin que el flujo se dé vuelta. Santiago centro perdió 10% en la década 2014-2024 — mezclando boom inicial y caída post-estallido social. La matemática te pide aporte indefinido apostando a que una comuna que viene perdiendo valor se recupere sustantivamente."
+    },
+    "largoPlazo": {
+      "pregunta": "¿Vale la pena a 10 años?",
+      "cajaLabel": "La apuesta que estás haciendo:",
+      "contenido_uf": "Honestamente, no. Inviertes UF 824 inicial + UF 1.241 de aportes = UF 2.065 para una ganancia neta de UF 3.286 al vender. Un depósito UF al 5% te daría UF 1.342 sin riesgo ni aporte mensual. La diferencia de UF 1.944 no justifica 10 años de aporte indefinido más riesgo de vacancia y mantención.",
+      "contenido_clp": "Honestamente, no. Inviertes $33M inicial + $49.8M de aportes = $82.8M para una ganancia neta de $132M al vender. Un depósito UF al 5% te daría $53.9M sin riesgo ni aporte mensual. La diferencia de $78M no justifica 10 años de aporte indefinido más riesgo de vacancia y mantención.",
+      "cajaAccionable_uf": "La apuesta central es que Santiago centro se recupere después de una década perdiendo valor. Sin evidencia sólida de esa recuperación, mejor diversificar el capital.",
+      "cajaAccionable_clp": "La apuesta central es que Santiago centro se recupere después de una década perdiendo valor. Sin evidencia sólida de esa recuperación, mejor diversificar el capital."
+    },
+    "negociacion": {
+      "precios": {
+        "techo_uf": 3633,
+        "walkAway": {
+          "razon": "El motor recomienda no comprar esta propiedad.",
+          "precio_uf": null,
+          "precio_clp": null
+        },
+        "techo_clp": 145999371,
+        "glosaTecho_uf": "Último precio donde la TIR se mantiene sobre 7% sin colapsar completamente.",
+        "glosaTecho_clp": "Último precio donde la TIR se mantiene sobre 7% sin colapsar completamente.",
+        "glosaWalkAway_uf": "El motor recomienda no comprar esta propiedad — buscar otra opción.",
+        "primeraOferta_uf": 3451,
+        "glosaWalkAway_clp": "El motor recomienda no comprar esta propiedad — buscar otra opción.",
+        "primeraOferta_clp": 138685337,
+        "glosaPrimeraOferta_uf": "Abre la conversación con margen sustantivo — partes 8% bajo el actual.",
+        "glosaPrimeraOferta_clp": "Abre la conversación con margen sustantivo — partes 8% bajo el actual."
+      },
+      "pregunta": "¿Hay margen para negociar?",
+      "cajaLabel": "Guión para la contraoferta:",
+      "contenido_uf": "Incluso con descuento del 10% a UF 3.633, sigues aportando UF 6,2 mensuales. El problema no es solo el precio — es la matemática estructural de Santiago centro. La zona necesita plusvalía de 6%+ anual para justificar el aporte indefinido, pero viene perdiendo 1.1% anual en la década.",
+      "contenido_clp": "Incluso con descuento del 10% a $146M (UF 3.633), sigues aportando $250K mensuales. El problema no es solo el precio — es la matemática estructural de Santiago centro. La zona necesita plusvalía de 6%+ anual para justificar el aporte indefinido, pero viene perdiendo 1.1% anual en la década.",
+      "precioSugerido": "UF 3.633",
+      "cajaAccionable_uf": "Tu techo es UF 3.633. Por encima, no compras — la matemática se rompe completamente.",
+      "cajaAccionable_clp": "Tu techo es UF 3.633 ($146M). Por encima, no compras — la matemática se rompe completamente.",
+      "estrategiaSugerida_uf": "Si insistes en este depto, parte en UF 3.451 y cierra máximo en UF 3.633. Sobre ese techo la TIR cae bajo 7% y el aporte se vuelve insostenible.",
+      "estrategiaSugerida_clp": "Si insistes en este depto, parte en UF 3.451 y cierra máximo en UF 3.633. Sobre ese techo la TIR cae bajo 7% y el aporte se vuelve insostenible."
+    },
+    "costoMensual": {
+      "pregunta": "¿Qué te cuesta mes a mes?",
+      "cajaLabel": "Hazte esta pregunta:",
+      "contenido_uf": "Tu cuota de UF 16 supera el arriendo de UF 11,4 por UF 4,6, más contribuciones y mantención suman otras UF 3,5. Total: aportas UF 8,1 de tu bolsillo cada mes. En 10 años acumulas UF 1.241 de aporte — equivalente a otro departamento completo dado en cuotas mensuales.",
+      "contenido_clp": "Tu cuota de $642K supera el arriendo de $460K por $182K, más contribuciones y mantención suman otros $142K. Total: aportas $324K de tu bolsillo cada mes. En 10 años acumulas $49.8M de aporte — equivalente a otro departamento completo dado en cuotas mensuales.",
+      "cajaAccionable_uf": "¿Tu flujo personal permite UF 8,1 adicionales al mes sin presión durante años indefinidos?",
+      "cajaAccionable_clp": "¿Tu flujo personal permite $324K adicionales al mes sin presión durante años indefinidos?"
+    },
+    "francoVerdict": "BUSCAR OTRA",
+    "siendoFrancoHeadline_uf": "Santiago centro con aporte indefinido de UF 8,1 mensuales no es inversión inteligente.",
+    "siendoFrancoHeadline_clp": "Santiago centro con aporte indefinido de $324K mensuales no es inversión inteligente."
+  },
+  "zone_insight": {
+    "pois": {
+      "malls": [],
+      "metro": [
+        {
+          "lat": -33.4448711,
+          "lng": -70.6548709,
+          "linea": "L1",
+          "nombre": "La Moneda",
+          "distancia": 325
+        },
+        {
+          "lat": -33.4513929,
+          "lng": -70.6505616,
+          "linea": "L3",
+          "nombre": "Parque Almagro",
+          "distancia": 515
+        },
+        {
+          "lat": -33.443867,
+          "lng": -70.6506654,
+          "linea": "L1",
+          "nombre": "Universidad de Chile",
+          "distancia": 518
+        },
+        {
+          "lat": -33.4461853,
+          "lng": -70.6604458,
+          "linea": "L1",
+          "nombre": "Los Héroes",
+          "distancia": 631
+        },
+        {
+          "lat": -33.4529746,
+          "lng": -70.6585851,
+          "linea": "L2",
+          "nombre": "Toesca",
+          "distancia": 733
+        },
+        {
+          "lat": -33.4424649,
+          "lng": -70.6447442,
+          "linea": "L1",
+          "nombre": "Santa Lucía",
+          "distancia": 1027
+        },
+        {
+          "lat": -33.4374154,
+          "lng": -70.6512777,
+          "linea": "L3",
+          "nombre": "Plaza de Armas",
+          "distancia": 1167
+        },
+        {
+          "lat": -33.4382499,
+          "lng": -70.6598961,
+          "linea": "L2",
+          "nombre": "Santa Ana",
+          "distancia": 1187
+        },
+        {
+          "lat": -33.447702,
+          "lng": -70.6671366,
+          "linea": "L1",
+          "nombre": "República",
+          "distancia": 1229
+        },
+        {
+          "lat": -33.4608472,
+          "lng": -70.6568466,
+          "linea": "L2",
+          "nombre": "Parque O'Higgins",
+          "distancia": 1490
+        },
+        {
+          "lat": -33.4366322,
+          "lng": -70.6441329,
+          "linea": "L5",
+          "nombre": "Bellas Artes",
+          "distancia": 1526
+        },
+        {
+          "lat": -33.4582698,
+          "lng": -70.6430769,
+          "linea": "L3",
+          "nombre": "Matta",
+          "distancia": 1547
+        },
+        {
+          "lat": -33.4397617,
+          "lng": -70.6398924,
+          "linea": "L1",
+          "nombre": "Universidad Católica",
+          "distancia": 1569
+        },
+        {
+          "lat": -33.4328384,
+          "lng": -70.6530774,
+          "linea": "L2",
+          "nombre": "Puente Cal y Canto",
+          "distancia": 1652
+        },
+        {
+          "lat": -33.4391444,
+          "lng": -70.668534,
+          "linea": "L5",
+          "nombre": "Cumming",
+          "distancia": 1658
+        }
+      ],
+      "trenes": [],
+      "parques": [
+        {
+          "lat": -33.435031,
+          "lng": -70.641713,
+          "comuna": "Santiago",
+          "nombre": "Parque Forestal",
+          "distancia": 1804
+        }
+      ],
+      "clinicas": [
+        {
+          "lat": -33.442305223461155,
+          "lng": -70.6405187579885,
+          "comuna": "Santiago",
+          "nombre": "Clínica UC Christus",
+          "distancia": 1377
+        }
+      ],
+      "colegios": [],
+      "negocios": [
+        {
+          "lat": -33.44074663438647,
+          "lng": -70.65078508971384,
+          "comuna": "Santiago",
+          "nombre": "Centro Financiero Santiago",
+          "distancia": 823
+        }
+      ],
+      "institutos": [],
+      "universidades": [
+        {
+          "lat": -33.444559,
+          "lng": -70.6509552,
+          "comuna": "Santiago",
+          "nombre": "UC Casa Central",
+          "distancia": 441
+        },
+        {
+          "lat": -33.45036552336299,
+          "lng": -70.66189492394017,
+          "comuna": "Providencia",
+          "nombre": "UDP Facultad Comunicaciones",
+          "distancia": 801
+        },
+        {
+          "lat": -33.4533144,
+          "lng": -70.6677687,
+          "comuna": "Santiago",
+          "nombre": "U. Andrés Bello República",
+          "distancia": 1432
+        }
+      ]
+    },
+    "stats": {
+      "precioM2": {
+        "diffPct": 26.1,
+        "tuDepto": 74.9,
+        "medianaComuna": 59.42
+      },
+      "ofertaComparable": {
+        "precision": "exacta",
+        "totalDeptos": 90,
+        "percentilTuDepto": 58,
+        "rangoArriendoMax": 520000,
+        "rangoArriendoMin": 370000
+      },
+      "plusvaliaHistorica": {
+        "valor": -10,
+        "anualizada": -1.1,
+        "promedioSantiago": 35
+      }
+    },
+    "insight": {
+      "accion": "Calcula rentabilidad solo por arriendo: sin plusvalía, necesitas yield alto para justificar la inversión.",
+      "preview_uf": "La proximidad a UC y Metro justifica demanda, pero el m² está 26% sobre mediana sin retorno histórico.",
+      "headline_uf": "Santiago centro: pagas sobreprecio por ubicación estudiantil",
+      "preview_clp": "La proximidad a UC y Metro justifica demanda, pero el m² está 26% sobre mediana sin retorno histórico.",
+      "headline_clp": "Santiago centro: pagas sobreprecio por ubicación estudiantil",
+      "narrative_uf": "El arriendo de UF 11,4 está en rango medio (P58) para la zona, lo que confirma demanda estable por la concentración universitaria. UC a 441m y tres estaciones de metro en 500m explican por qué el m² está 26% sobre la mediana de Santiago. El mix estudiantil garantiza ocupación, pero la plusvalía negativa (-1,1% anual) convierte esto en un negocio de flujo puro, no de apreciación. La rentabilidad depende completamente del arriendo, sin respaldo en valor del activo.",
+      "narrative_clp": "El arriendo de $460.000 está en rango medio (P58) para la zona, lo que confirma demanda estable por la concentración universitaria. UC a 441m y tres estaciones de metro en 500m explican por qué el m² está 26% sobre la mediana de Santiago. El mix estudiantil garantiza ocupación, pero la plusvalía negativa (-1,1% anual) convierte esto en un negocio de flujo puro, no de apreciación. La rentabilidad depende completamente del arriendo, sin respaldo en valor del activo."
+    },
+    "valorUF": 40187
+  }
+}

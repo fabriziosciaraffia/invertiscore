@@ -22,16 +22,13 @@ import {
 import { classifyFinancingHealth } from "./financing-health";
 import type { EngineSignal } from "./types";
 
-// Dynamic UF value — set via setUFValue() before calling runAnalysis()
-let UF_CLP = 38800;
+// El valor de la UF se pasa explícitamente como parámetro a cada función que
+// lo necesita. Antes existía un módulo-level `UF_CLP` mutable vía `setUFValue`,
+// pero ese patrón causaba un bug: el cliente nunca propagaba la UF al motor,
+// produciendo divergencia entre snapshots persistidos (UF server) y
+// recálculos en runtime (UF default 38800). Ver
+// audit/sesionA-residual-2/diagnostico.md.
 
-export function setUFValue(value: number) {
-  UF_CLP = value;
-}
-
-export function getUFCLP(): number {
-  return UF_CLP;
-}
 export function getMantencionRate(antiguedad: number): number {
   if (antiguedad <= 2) return 0.003;
   if (antiguedad <= 5) return 0.005;
@@ -198,14 +195,14 @@ function calcPrecioParaFlujo(
   return disponibleParaDividendo / (financiamiento * factorAmort);
 }
 
-function calcMetrics(input: AnalisisInput): AnalysisMetrics {
+function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
   if (input.estacionamiento === "opcional" && input.precioEstacionamiento > 0) {
     precioTotal += input.precioEstacionamiento;
   }
 
-  const precioCLP = precioTotal * UF_CLP;
+  const precioCLP = precioTotal * ufClp;
 
   // Defaults para campos en 0 (sin mutar input). Ver
   // audit/sesionA-diagnostico/diagnostico.md — eliminar la mutación de
@@ -262,8 +259,8 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
   // Plusvalía inmediata — Franco (datos reales, para cálculos) y Usuario (referencial)
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
   const vmUsuarioUF = input.valorMercadoUsuario || input.precio;
-  const vmFrancoCLP = vmFrancoUF * UF_CLP;
-  const vmUsuarioCLP = vmUsuarioUF * UF_CLP;
+  const vmFrancoCLP = vmFrancoUF * ufClp;
+  const vmUsuarioCLP = vmUsuarioUF * ufClp;
   const plusvaliaFranco = vmFrancoCLP - precioCLP;
   const plusvaliaFrancoPct = vmFrancoCLP > 0 ? ((vmFrancoCLP - precioCLP) / vmFrancoCLP) * 100 : 0;
   const plusvaliaUsuario = vmUsuarioCLP - precioCLP;
@@ -296,9 +293,9 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     plusvaliaInmediataUsuario: Math.round(plusvaliaUsuario),
     plusvaliaInmediataUsuarioPct: Math.round(plusvaliaUsuarioPct * 10) / 10,
     precioFlujoNeutroCLP: Math.round(precioFlujoNeutroCLP),
-    precioFlujoNeutroUF: Math.round(precioFlujoNeutroCLP / UF_CLP * 100) / 100,
+    precioFlujoNeutroUF: Math.round(precioFlujoNeutroCLP / ufClp * 100) / 100,
     precioFlujoPositivoCLP: Math.round(precioFlujoPositivoCLP),
-    precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / UF_CLP * 100) / 100,
+    precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / ufClp * 100) / 100,
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
     subsidioTasa: (() => {
       const califica = calificaSubsidioHelper(input.tipo, input.precio);
@@ -401,14 +398,15 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
 export function calcProjections(args: {
   input: AnalisisInput;
   metrics: AnalysisMetrics;
-  plazoVenta?: number;     // años a proyectar (default 20, motor histórico)
-  plusvaliaAnual?: number; // decimal: 0.04 = 4%/año (default PLUSVALIA_ANUAL)
+  ufClp: number;            // valor de la UF en CLP usado para precioCLP/valor mercado
+  plazoVenta?: number;      // años a proyectar (default 20, motor histórico)
+  plusvaliaAnual?: number;  // decimal: 0.04 = 4%/año (default PLUSVALIA_ANUAL)
 }): YearProjection[] {
-  const { input, metrics } = args;
+  const { input, metrics, ufClp } = args;
   const plazoVenta = args.plazoVenta ?? 20;
   const plusvaliaAnual = args.plusvaliaAnual ?? PLUSVALIA_ANUAL;
 
-  const precioCLP = input.precio * UF_CLP;
+  const precioCLP = input.precio * ufClp;
   const creditoCLP = precioCLP * (1 - input.piePct / 100);
 
   const mesesPreEntrega = calcMesesHastaEntrega(input);
@@ -417,7 +415,7 @@ export function calcProjections(args: {
   let gastosActual = input.gastos;
   let contribucionesActual = input.contribuciones;
   // Plusvalía starts from Franco's market value (real data, captures "la pasada")
-  const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * UF_CLP;
+  const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * ufClp;
   let valorPropiedad = vmFrancoCLP;
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
@@ -599,7 +597,7 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
 // =========================================
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: AnalysisMetrics): SensitivityRow[] {
+function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: AnalysisMetrics, ufClp: number): SensitivityRow[] {
   const rows: SensitivityRow[] = [];
 
   const variations: { variable: string; field: keyof AnalisisInput; delta: number; label: string }[] = [
@@ -621,8 +619,8 @@ function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: 
       (modified as Record<string, unknown>)[v.field] = (input[v.field] as number) + v.delta;
     }
 
-    const newMetrics = calcMetrics(modified);
-    const newScore = calcScoreFromMetrics(modified, newMetrics);
+    const newMetrics = calcMetrics(modified, ufClp);
+    const newScore = calcScoreFromMetrics(modified, newMetrics, ufClp);
 
     rows.push({
       variable: v.variable,
@@ -640,14 +638,14 @@ function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: 
 // Break-even & Max Purchase
 // =========================================
 
-function calcBreakEvenTasa(input: AnalisisInput, currentMetrics: AnalysisMetrics): number {
+function calcBreakEvenTasa(input: AnalisisInput, currentMetrics: AnalysisMetrics, ufClp: number): number {
   // If flow is already negative, search downward to find where flow = 0
   // If flow is positive, search upward
   if (currentMetrics.flujoNetoMensual <= 0) {
     // Already negative: search downward from current rate
     for (let tasa = input.tasaInteres; tasa >= 0; tasa -= 0.05) {
       const modified = { ...input, tasaInteres: tasa };
-      const m = calcMetrics(modified);
+      const m = calcMetrics(modified, ufClp);
       if (m.flujoNetoMensual >= 0) return Math.round(tasa * 100) / 100;
     }
     return -1; // Flow is negative even at 0% rate
@@ -655,20 +653,20 @@ function calcBreakEvenTasa(input: AnalisisInput, currentMetrics: AnalysisMetrics
     // Positive: search upward for where flow becomes negative
     for (let tasa = input.tasaInteres; tasa <= 15; tasa += 0.05) {
       const modified = { ...input, tasaInteres: tasa };
-      const m = calcMetrics(modified);
+      const m = calcMetrics(modified, ufClp);
       if (m.flujoNetoMensual <= 0) return Math.round(tasa * 100) / 100;
     }
     return 15;
   }
 }
 
-function calcValorMaximoCompra(input: AnalisisInput, metrics: AnalysisMetrics): number {
+function calcValorMaximoCompra(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number): number {
   // NOI / target CAP rate = max property value in CLP, then convert to UF
   const targetCapRate = 0.05; // 5% target
   const noi = metrics.noi;
   if (noi <= 0) return 0;
   const maxCLP = noi / targetCapRate;
-  return Math.round(maxCLP / UF_CLP);
+  return Math.round(maxCLP / ufClp);
 }
 
 // =========================================
@@ -783,7 +781,7 @@ function calcEficienciaScore(precioM2: number, yieldBruto: number, zonaRadio: an
   return Math.round(preciScore * 0.5 + yieldScore * 0.5);
 }
 
-function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): number {
+function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number): number {
   // Rentabilidad (30%): based on rentabilidad bruta calibrated for Chilean market
   let rentabilidad: number;
   const yb = metrics.rentabilidadBruta;
@@ -822,7 +820,7 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics): n
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const zonaRadio = (input as any)?.zonaRadio;
   const zonaRadioForEficiencia = zonaRadio ? {
-    precioM2VentaUF: zonaRadio.precioM2VentaCLP ? zonaRadio.precioM2VentaCLP / UF_CLP : 0,
+    precioM2VentaUF: zonaRadio.precioM2VentaCLP ? zonaRadio.precioM2VentaCLP / ufClp : 0,
     yieldPromedio: zonaRadio.yieldPromedio || 0,
   } : null;
   const eficiencia = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEficiencia);
@@ -946,10 +944,10 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
 export { calcMetrics, calcScoreFromMetrics };
 
 // TIR para un precio alternativo (UF). Recomputa métricas/proyecciones/exit.
-export function tirForPrice(input: AnalisisInput, precioUF: number): number {
+export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: number): number {
   const clone: AnalisisInput = { ...input, precio: precioUF };
-  const m = calcMetrics(clone);
-  const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20 });
+  const m = calcMetrics(clone, ufClp);
+  const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp });
   const ex = calcExitScenario(clone, m, projs, 10);
   return ex.tir;
 }
@@ -966,6 +964,7 @@ const UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO = 0.20;
 function calcPrecioFlujoViable(
   input: AnalisisInput,
   metrics: { flujoNetoMensual: number },
+  ufClp: number,
 ): number | null {
   const arriendo = input.arriendo || 0;
   const target = -arriendo * UMBRAL_FLUJO_VIABLE_PCT_ARRIENDO;
@@ -976,7 +975,7 @@ function calcPrecioFlujoViable(
   let mejor: number | null = null;
   for (let i = 0; i < 18; i++) {
     const mid = (lo + hi) / 2;
-    const cloneM = calcMetrics({ ...input, precio: mid });
+    const cloneM = calcMetrics({ ...input, precio: mid }, ufClp);
     if (cloneM.flujoNetoMensual >= target) {
       mejor = mid;
       lo = mid;
@@ -991,6 +990,7 @@ function calcNegociacionScenario(
   input: AnalisisInput,
   tirActual: number,
   metrics: { flujoNetoMensual: number },
+  ufClp: number,
 ): NegociacionScenario {
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
   const arriendo = input.arriendo || 0;
@@ -1008,7 +1008,7 @@ function calcNegociacionScenario(
     razon = "Ya estás bajo mercado y la matemática cierra. No hay caso para pedir descuento.";
   } else if (bajoMercado && !flujoViable) {
     // Modo 2 — optimizar flujo: el precio es bueno vs mercado pero el aporte es alto.
-    const precioFlujoViable = calcPrecioFlujoViable(input, metrics);
+    const precioFlujoViable = calcPrecioFlujoViable(input, metrics, ufClp);
     if (precioFlujoViable !== null && precioFlujoViable < input.precio) {
       precioSugeridoUF = Math.round(precioFlujoViable * 10) / 10;
       modo = "optimizar_flujo";
@@ -1028,8 +1028,8 @@ function calcNegociacionScenario(
     razon = "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.";
   }
 
-  const tirAlSugerido = tirForPrice(input, precioSugeridoUF);
-  const tirAlVmFranco = tirForPrice(input, vmFrancoUF);
+  const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp);
+  const tirAlVmFranco = tirForPrice(input, vmFrancoUF, ufClp);
 
   // Precio límite: buscar por bisección el precio donde TIR cae a 6%.
   let precioLimiteUF: number | null = null;
@@ -1041,7 +1041,7 @@ function calcNegociacionScenario(
     let hi = Math.max(input.precio * 1.5, vmFrancoUF * 1.5);
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
-      const tir = tirForPrice(input, mid);
+      const tir = tirForPrice(input, mid, ufClp);
       if (tir > 6) lo = mid;
       else hi = mid;
       if (Math.abs(tir - 6) < 0.1) {
@@ -1058,10 +1058,10 @@ function calcNegociacionScenario(
 
   return {
     precioSugeridoUF,
-    precioSugeridoCLP: Math.round(precioSugeridoUF * UF_CLP),
+    precioSugeridoCLP: Math.round(precioSugeridoUF * ufClp),
     tirAlSugerido,
     precioLimiteUF,
-    precioLimiteCLP: precioLimiteUF ? Math.round(precioLimiteUF * UF_CLP) : null,
+    precioLimiteCLP: precioLimiteUF ? Math.round(precioLimiteUF * ufClp) : null,
     tirAlLimite,
     tirAlVmFranco,
     modo,
@@ -1069,17 +1069,17 @@ function calcNegociacionScenario(
   };
 }
 
-export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
-  const metrics = calcMetrics(input);
+export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisResult {
+  const metrics = calcMetrics(input, ufClp);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
-  const projections = calcProjections({ input, metrics, plazoVenta: 20 });
+  const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
-  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics);
+  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics, ufClp);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
-  const score = calcScoreFromMetrics(input, metrics);
-  const sensitivity = calcSensitivity(input, score, metrics);
-  const breakEvenTasa = calcBreakEvenTasa(input, metrics);
-  const valorMaximoCompra = calcValorMaximoCompra(input, metrics);
+  const score = calcScoreFromMetrics(input, metrics, ufClp);
+  const sensitivity = calcSensitivity(input, score, metrics, ufClp);
+  const breakEvenTasa = calcBreakEvenTasa(input, metrics, ufClp);
+  const valorMaximoCompra = calcValorMaximoCompra(input, metrics, ufClp);
   const { clasificacion, color: clasificacionColor } = getClasificacion(score);
   const pros = generatePros(input, metrics);
   const contras = generateContras(input, metrics);
@@ -1121,7 +1121,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const zonaRadioR = (input as any)?.zonaRadio;
   const zonaRadioForEfR = zonaRadioR ? {
-    precioM2VentaUF: zonaRadioR.precioM2VentaCLP ? zonaRadioR.precioM2VentaCLP / UF_CLP : 0,
+    precioM2VentaUF: zonaRadioR.precioM2VentaCLP ? zonaRadioR.precioM2VentaCLP / ufClp : 0,
     yieldPromedio: zonaRadioR.yieldPromedio || 0,
   } : null;
   const eficienciaScore = calcEficienciaScore(metrics.precioM2, metrics.rentabilidadBruta, zonaRadioForEfR);
@@ -1189,7 +1189,7 @@ export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
     tasa_pct: input.tasaInteres,
     precio_uf: input.precio,
     plazo_anios: input.plazoCredito,
-  });
+  }, ufClp);
 
   return {
     score: clamp(score, 0, 100),

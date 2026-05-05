@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
-import { runAnalysis, setUFValue } from "@/lib/analysis";
+import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { generateAiAnalysis } from "@/lib/ai-generation";
@@ -44,11 +44,11 @@ export async function POST(request: Request) {
 
     const body: AnalisisInput = await request.json();
 
-    // Set dynamic UF value before analysis
+    // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
+    // ver audit/sesionA-residual-2/diagnostico.md).
     const ufValue = await getUFValue();
-    setUFValue(ufValue);
 
-    const result = runAnalysis(body);
+    const result = runAnalysis(body, ufValue);
 
     // Guest: use service role to bypass RLS (user_id will be null)
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

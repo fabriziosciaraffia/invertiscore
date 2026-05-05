@@ -398,8 +398,8 @@ function DrawerNegociacion({
     if (neg) return neg;
     const baseSugerido = Math.min(inputData.precio, vmFrancoUF);
     const precioSugUF = Math.round(baseSugerido * 0.97 * 10) / 10;
-    const tirSug = tirForPrice(inputData, precioSugUF);
-    const tirVm = tirForPrice(inputData, vmFrancoUF);
+    const tirSug = tirForPrice(inputData, precioSugUF, valorUF);
+    const tirVm = tirForPrice(inputData, vmFrancoUF, valorUF);
     // Precio límite por bisección simple solo si la TIR actual es > 6
     let precioLimUF: number | null = null;
     let tirLim: number | null = null;
@@ -410,7 +410,7 @@ function DrawerNegociacion({
       let hi = Math.max(inputData.precio * 1.5, vmFrancoUF * 1.5);
       for (let i = 0; i < 18; i++) {
         const mid = (lo + hi) / 2;
-        const t = tirForPrice(inputData, mid);
+        const t = tirForPrice(inputData, mid, valorUF);
         if (t > 6) lo = mid; else hi = mid;
         if (Math.abs(t - 6) < 0.1) {
           precioLimUF = Math.round(mid * 10) / 10;

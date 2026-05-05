@@ -1,4 +1,4 @@
-import { calcDividendo, getUFCLP } from "./analysis";
+import { calcDividendo } from "./analysis";
 
 // Doctrina: ver C:/Users/fabri/.claude/skills/analysis-voice-franco/SKILL.md §1.5.
 // El motor produce señales numéricas (4 niveles); la presentación al usuario las
@@ -69,10 +69,9 @@ function fmtCLP(n: number): string {
   return "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 }
 
-export function classifyFinancingHealth(input: ClassifyFinancingHealthInput): FinancingHealth {
+export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufClp: number): FinancingHealth {
   const { pie_pct, tasa_pct, precio_uf, plazo_anios } = input;
 
-  const ufClp = getUFCLP();
   const precioCLP = precio_uf * ufClp;
   const creditoActualCLP = precioCLP * (1 - pie_pct / 100);
   const dividendoActual = calcDividendo(creditoActualCLP, tasa_pct, plazo_anios);

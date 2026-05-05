@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import type { AnalisisInput } from "@/lib/types";
-import { runAnalysis, setUFValue } from "@/lib/analysis";
+import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
@@ -85,11 +85,10 @@ export async function POST(request: Request) {
       };
     }
 
-    // Set dynamic UF value before analysis
+    // Pasar UF actual explícitamente al motor.
     const ufValue = await getUFValue();
-    setUFValue(ufValue);
 
-    const result = runAnalysis(safeInput);
+    const result = runAnalysis(safeInput, ufValue);
 
     const { error } = await supabase
       .from("analisis")
