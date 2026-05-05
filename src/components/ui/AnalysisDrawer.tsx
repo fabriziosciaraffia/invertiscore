@@ -106,7 +106,7 @@ function DrawerCostoMensual({
     dividendo: results.metrics?.dividendo ?? 0,
     ggcc: inputData.gastos ?? 0,
     contribuciones: inputData.contribuciones ?? 0,
-    mantencion: inputData.provisionMantencion ?? 0,
+    mantencion: results.metrics?.provisionMantencionAjustada ?? inputData.provisionMantencion ?? 0,
     vacanciaMeses: inputData.vacanciaMeses ?? 0,
     usaAdministrador: inputData.usaAdministrador,
     comisionAdministrador: inputData.comisionAdministrador,

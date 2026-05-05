@@ -123,6 +123,7 @@ const DEMO_RESULTS: FullAnalysisResult = {
     precioCLP: PRECIO_CLP,
     ingresoMensual: ARRIENDO,
     egresosMensuales: Math.abs(FLUJO_NETO) + ARRIENDO,
+    provisionMantencionAjustada: Math.round(PRECIO_CLP * 0.005 / 12),
   },
   cashflowYear1: Array.from({ length: 12 }, (_, i) => ({
     mes: i + 1,

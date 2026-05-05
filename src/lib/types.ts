@@ -118,6 +118,12 @@ export interface AnalysisMetrics {
   precioCLP: number;
   ingresoMensual: number;
   egresosMensuales: number;
+  // Mantención mensual usada en cálculos año-1 (snapshot). Si el usuario declaró
+  // input.provisionMantencion > 0, ese valor manda; si no, se infiere de
+  // (precioCLP × getMantencionRate(antiguedad)) / 12. Reemplaza la mutación
+  // antigua de input.provisionMantencion en calcMetrics. Ver
+  // audit/sesionA-diagnostico/diagnostico.md.
+  provisionMantencionAjustada: number;
   // Plusvalía inmediata
   valorMercadoFrancoUF?: number;       // para cálculos (datos reales)
   valorMercadoUsuarioUF?: number;      // referencial (estimación usuario)

@@ -207,8 +207,11 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
 
   const precioCLP = precioTotal * UF_CLP;
 
-  // Auto-calculate defaults for fields left at 0
-  if (!input.provisionMantencion) input.provisionMantencion = Math.round((precioCLP * getMantencionRate(input.antiguedad)) / 12);
+  // Defaults para campos en 0 (sin mutar input). Ver
+  // audit/sesionA-diagnostico/diagnostico.md — eliminar la mutación de
+  // input.provisionMantencion fue el origen del fork sim↔motor en results-client.
+  const provisionMantencionAjustada = input.provisionMantencion
+    || Math.round((precioCLP * getMantencionRate(input.antiguedad)) / 12);
   if (!input.contribuciones) input.contribuciones = estimarContribuciones(precioCLP, input.enConstruccion || input.antiguedad <= 2);
   if (!input.gastos) input.gastos = Math.round(input.superficie * 1200);
 
@@ -226,7 +229,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     dividendo,
     ggcc: input.gastos,
     contribuciones: input.contribuciones,
-    mantencion: input.provisionMantencion,
+    mantencion: provisionMantencionAjustada,
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
     comisionAdministrador: input.comisionAdministrador,
@@ -285,6 +288,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
     precioCLP,
     ingresoMensual,
     egresosMensuales,
+    provisionMantencionAjustada,
     valorMercadoFrancoUF: Math.round(vmFrancoUF * 10) / 10,
     valorMercadoUsuarioUF: Math.round(vmUsuarioUF * 10) / 10,
     plusvaliaInmediataFranco: Math.round(plusvaliaFranco),
@@ -309,7 +313,7 @@ function calcMetrics(input: AnalisisInput): AnalysisMetrics {
 // =========================================
 
 function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): MonthlyCashflow[] {
-  const mantencion = input.provisionMantencion;
+  const mantencion = metrics.provisionMantencionAjustada;
 
   // Determine months until delivery (entrega futura)
   const mesesPreEntrega = calcMesesHastaEntrega(input);
@@ -383,7 +387,27 @@ function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): Mont
 // Multi-year Projections
 // =========================================
 
-function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYears: number = 20): YearProjection[] {
+/**
+ * Proyecta ingresos, egresos, flujo y valor de la propiedad año a año.
+ *
+ * Esta es la fuente única de verdad para los time-series del análisis. Se llama
+ * desde el motor (runAnalysis, tirForPrice) y desde la simulación cliente con
+ * sliders de plazo y plusvalía. La firma con objeto permite que la simulación
+ * pase su propio horizonte y plusvalía sin redeclarar la lógica.
+ *
+ * Ver audit/sesionA-diagnostico/diagnostico.md para el contexto del fork
+ * `dynamicProjections` que esta API reemplaza.
+ */
+export function calcProjections(args: {
+  input: AnalisisInput;
+  metrics: AnalysisMetrics;
+  plazoVenta?: number;     // años a proyectar (default 20, motor histórico)
+  plusvaliaAnual?: number; // decimal: 0.04 = 4%/año (default PLUSVALIA_ANUAL)
+}): YearProjection[] {
+  const { input, metrics } = args;
+  const plazoVenta = args.plazoVenta ?? 20;
+  const plusvaliaAnual = args.plusvaliaAnual ?? PLUSVALIA_ANUAL;
+
   const precioCLP = input.precio * UF_CLP;
   const creditoCLP = precioCLP * (1 - input.piePct / 100);
 
@@ -400,7 +424,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
 
   const projections: YearProjection[] = [];
 
-  for (let anio = 1; anio <= maxYears; anio++) {
+  for (let anio = 1; anio <= plazoVenta; anio++) {
     const mesInicio = (anio - 1) * 12 + 1;
     const mesFin = anio * 12;
 
@@ -435,7 +459,7 @@ function calcProjections(input: AnalisisInput, metrics: AnalysisMetrics, maxYear
 
     flujoAcumulado += flujoAnual;
     // Plusvalía always from purchase date
-    valorPropiedad *= (1 + PLUSVALIA_ANUAL);
+    valorPropiedad *= (1 + plusvaliaAnual);
     // Mortgage only counts from delivery
     const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
     const saldo = mesesCredito > 0
@@ -554,7 +578,7 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
     dividendo: nuevoDividendo,
     ggcc: input.gastos,
     contribuciones: input.contribuciones,
-    mantencion: input.provisionMantencion,
+    mantencion: metrics.provisionMantencionAjustada,
     vacanciaMeses: input.vacanciaMeses,
     usaAdministrador: input.usaAdministrador,
     comisionAdministrador: input.comisionAdministrador,
@@ -925,7 +949,7 @@ export { calcMetrics, calcScoreFromMetrics };
 export function tirForPrice(input: AnalisisInput, precioUF: number): number {
   const clone: AnalisisInput = { ...input, precio: precioUF };
   const m = calcMetrics(clone);
-  const projs = calcProjections(clone, m, 20);
+  const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20 });
   const ex = calcExitScenario(clone, m, projs, 10);
   return ex.tir;
 }
@@ -1048,7 +1072,7 @@ function calcNegociacionScenario(
 export function runAnalysis(input: AnalisisInput): FullAnalysisResult {
   const metrics = calcMetrics(input);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
-  const projections = calcProjections(input, metrics, 20);
+  const projections = calcProjections({ input, metrics, plazoVenta: 20 });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
   const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);

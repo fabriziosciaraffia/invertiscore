@@ -14,7 +14,7 @@ import {
   RefreshCw, Loader2, Clock, Calculator,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
-import { calcFlujoDesglose, getMantencionRate, calcExitScenario } from "@/lib/analysis";
+import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections } from "@/lib/analysis";
 import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
@@ -2737,101 +2737,31 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const flujoBreakdown = useMemo(() => {
     if (!m || !inputData) return null;
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
     return calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
       ggcc: inputData.gastos,
       contribuciones: inputData.contribuciones,
-      mantencion,
+      mantencion: m.provisionMantencionAjustada ?? 0,
       vacanciaMeses: inputData.vacanciaMeses ?? 1,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
     });
   }, [m, inputData]);
 
-  // Recalculate projections when plusvaliaRate changes
+  // Capa 3 — Simulación. Recompute projections cuando cambian sliders.
+  // Antes (Sesión A) era un clon inline divergente de calcProjections; hoy
+  // delega al motor (lib/analysis.ts) para garantizar coherencia con la TIR
+  // principal en defaults. Ver audit/sesionA-fix/ y el diagnóstico previo.
   const dynamicProjections = useMemo(() => {
     if (!results || !m || !inputData) return results?.projections ?? [];
-    const precioCLP = inputData.precio * UF_CLP;
-    const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
-    const mesesPreEntrega = inputData.estadoVenta !== "inmediata" && inputData.fechaEntrega
-      ? (() => { const [a, me] = inputData.fechaEntrega!.split("-").map(Number); const now = new Date(); const ent = new Date(a, me - 1); return Math.max(0, Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30))); })()
-      : 0;
-    let arriendoActual = inputData.arriendo;
-    let gastosActual = inputData.gastos;
-    let contribucionesActual = inputData.contribuciones;
-    // Match motor: arranca desde valor de mercado Franco (si existe) para que
-    // Capa 3 con plazo=10 y plusvalía=4% coincida con la TIR de Capa 1.
-    const vmFrancoUF = (inputData as AnalisisInput & { valorMercadoFranco?: number }).valorMercadoFranco || inputData.precio;
-    let valorPropiedad = vmFrancoUF * UF_CLP;
-    let flujoAcumulado = 0;
-    const plusvaliaDec = plusvaliaRate / 100;
-    const costGrowthDec = costGrowth / 100;
-
-    const calcSaldo = (mesActual: number) => {
-      const tasaMensual = inputData.tasaInteres / 100 / 12;
-      const n = inputData.plazoCredito * 12;
-      if (tasaMensual === 0) return creditoCLP * (1 - mesActual / n);
-      const div = (creditoCLP * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n));
-      return creditoCLP * Math.pow(1 + tasaMensual, mesActual) - div * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual);
-    };
-
-    const projs = [];
-    const INFLACION_UF = 0.03; // match del motor analysis.ts
-    for (let anio = 1; anio <= 30; anio++) {
-      const mesInicio = (anio - 1) * 12 + 1;
-      const mesFin = anio * 12;
-
-      // Mantención crece por antigüedad + inflación de costos
-      const antiguedadActual = inputData.antiguedad + anio;
-      const mantencionBase = inputData.provisionMantencion || Math.round((precioCLP * getMantencionRate(antiguedadActual)) / 12);
-      const mantencion = Math.round(mantencionBase * Math.pow(1 + costGrowthDec, anio - 1));
-
-      // Dividendo (UF fijo) crece con inflación UF ~3% en CLP — match motor
-      const dividendoAnio = Math.round(m.dividendo * Math.pow(1 + INFLACION_UF, anio - 1));
-
-      // Usar función centralizada
-      const flujoMes = calcFlujoDesglose({
-        arriendo: arriendoActual,
-        dividendo: dividendoAnio,
-        ggcc: gastosActual,
-        contribuciones: contribucionesActual,
-        mantencion,
-        vacanciaMeses: inputData.vacanciaMeses ?? 1,
-        usaAdministrador: inputData.usaAdministrador,
-        comisionAdministrador: inputData.comisionAdministrador,
-      });
-
-      let flujoAnual = 0;
-      for (let mo = mesInicio; mo <= mesFin; mo++) {
-        if (mo <= mesesPreEntrega) {
-          // Pre-entrega: sin flujo operativo (cuotas pie son inversión de capital, no flujo)
-        } else {
-          flujoAnual += flujoMes.flujoNeto;
-        }
-      }
-      flujoAcumulado += flujoAnual;
-      valorPropiedad *= (1 + plusvaliaDec);
-      const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
-      const saldo = mesesCredito > 0 ? Math.max(0, calcSaldo(mesesCredito)) : creditoCLP;
-      projs.push({
-        anio,
-        arriendoMensual: Math.round(arriendoActual),
-        flujoAnual: Math.round(flujoAnual),
-        flujoAcumulado: Math.round(flujoAcumulado),
-        valorPropiedad: Math.round(valorPropiedad),
-        saldoCredito: Math.round(saldo),
-        patrimonioNeto: Math.round(valorPropiedad - saldo),
-      });
-      if (mesFin > mesesPreEntrega) {
-        arriendoActual *= (1 + arriendoGrowth / 100);
-        gastosActual *= (1 + costGrowthDec);
-        contribucionesActual *= (1 + costGrowthDec);
-      }
-    }
-    return projs;
-  }, [results, m, inputData, plusvaliaRate, arriendoGrowth, costGrowth]);
+    return calcProjections({
+      input: inputData,
+      metrics: m,
+      plazoVenta: 30,
+      plusvaliaAnual: plusvaliaRate / 100,
+    });
+  }, [results, m, inputData, plusvaliaRate]);
 
   // Dynamic refinance scenario based on horizon + refiPct
   // dynamicRefi removed — refi section now calculates directly from projData
@@ -2928,13 +2858,12 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const waterfallData = useMemo(() => {
     if (!m || !inputData) return [];
-    const mantencion = inputData.provisionMantencion || Math.round((m.precioCLP * getMantencionRate(inputData.antiguedad)) / 12);
     const wf = calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
       ggcc: inputData.gastos,
       contribuciones: inputData.contribuciones,
-      mantencion,
+      mantencion: m.provisionMantencionAjustada ?? 0,
       vacanciaMeses: inputData.vacanciaMeses,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
