@@ -5,8 +5,15 @@ import { cookies } from "next/headers";
 import { getUFValue } from "@/lib/uf";
 import { calcShortTerm } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
-import { consumeCredit } from "@/lib/access";
+import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+
+function createPaymentsAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 import type { AirbnbData, ShortTermInputs } from "@/lib/engines/short-term-engine";
 import type {
   AirbnbEstimateData,
@@ -160,35 +167,59 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const isGuest = !user;
-    const isAdmin = isAdminUser(user?.email);
-
-    // 1b. Credit check — guests and admins skip, others need credits or subscription
-    if (!isGuest && !isAdmin && user) {
-      const adminDb = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    // Solo usuarios registrados crean análisis (Backlog #3).
+    if (!user) {
+      return NextResponse.json(
+        { error: "Debes iniciar sesión para crear un análisis" },
+        { status: 401 },
       );
-      const { data: creditData } = await adminDb
-        .from("user_credits")
-        .select("credits, subscription_status")
+    }
+
+    const isAdmin = isAdminUser(user.email);
+
+    // 2. Parse body (antes que charge para leer prepaidChargeId)
+    const body = await request.json();
+    const prepaidChargeId: string | undefined = body?.prepaidChargeId;
+
+    // 1b. Cobro de crédito (welcome / paid / subscription). Admin bypass.
+    // Si viene prepaidChargeId (flujo AMBAS), validamos contra payments en
+    // vez de cobrar de nuevo. Ver /api/credits/charge.
+    let prepaidNeedClaim = false;
+
+    if (prepaidChargeId) {
+      const paymentsAdmin = createPaymentsAdminClient();
+      const { data: charge } = await paymentsAdmin
+        .from("payments")
+        .select("payment_data, consumed_at")
+        .eq("commerce_order", prepaidChargeId)
         .eq("user_id", user.id)
-        .single();
+        .eq("status", "paid")
+        .maybeSingle();
 
-      const hasAccess =
-        creditData?.subscription_status === "active" ||
-        (creditData?.credits ?? 0) > 0;
-
-      if (!hasAccess) {
+      if (!charge) {
         return NextResponse.json(
-          { error: "Necesitas un crédito Pro para este análisis" },
+          { error: "Charge inválido o no encontrado" },
           { status: 403 },
         );
       }
-    }
 
-    // 2. Parse body
-    const body = await request.json();
+      if (charge.consumed_at === null) {
+        prepaidNeedClaim = true; // somos los primeros, claim post-insert
+      } else {
+        const intent = (charge.payment_data as { intent?: string } | null)?.intent;
+        if (intent !== "both") {
+          return NextResponse.json(
+            { error: "Charge ya consumido" },
+            { status: 403 },
+          );
+        }
+      }
+    } else if (!isAdmin) {
+      const charge = await chargeAnalysisCredit(user.id, null);
+      if (!charge.ok) {
+        return NextResponse.json({ error: charge.message }, { status: 403 });
+      }
+    }
 
     // 3. Fetch UF
     const ufValue = await getUFValue();
@@ -275,23 +306,14 @@ export async function POST(request: Request) {
     const francoScore = calcFrancoScoreSTR(scoreInputs);
 
     // 7. Insert in Supabase (same table as LTR)
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (isGuest && !serviceRoleKey) {
-      return NextResponse.json(
-        { error: "Regístrate gratis para guardar tu análisis" },
-        { status: 401 },
-      );
-    }
-    const dbClient = isGuest
-      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey!)
-      : supabase;
+    const dbClient = supabase;
 
     const nombre = `Renta Corta - ${body.direccion || body.comuna}`;
 
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
         nombre,
         comuna: body.comuna,
         ciudad: body.ciudad || "Santiago",
@@ -327,9 +349,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Consume credit after successful insert (admin & guests skip)
-    if (!isGuest && !isAdmin && user && data?.id) {
-      await consumeCredit(user.id, data.id);
+    // 8. Marcar análisis como premium tras cobro exitoso (o admin bypass).
+    // Backlog #3: TODOS los análisis del registrado son premium completos —
+    // el welcome credit otorga el mismo nivel que un crédito comprado.
+    if (data?.id) {
+      await dbClient.from("analisis").update({ is_premium: true }).eq("id", data.id);
+      data.is_premium = true;
+
+      // Claim del prepaid charge si nosotros llegamos primero (flujo AMBAS).
+      // .is('consumed_at', null) garantiza idempotencia ante el segundo POST.
+      if (prepaidChargeId && prepaidNeedClaim) {
+        const paymentsAdmin = createPaymentsAdminClient();
+        await paymentsAdmin
+          .from("payments")
+          .update({
+            consumed_at: new Date().toISOString(),
+            consumed_by_analysis_id: data.id,
+          })
+          .eq("commerce_order", prepaidChargeId)
+          .is("consumed_at", null);
+      }
     }
 
     // 9. Return the inserted row

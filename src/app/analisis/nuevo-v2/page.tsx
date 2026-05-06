@@ -446,12 +446,16 @@ export default function NuevoAnalisisV3Page() {
       };
 
       // ─── Sub-funciones de POST (const arrow para strict-mode ES5) ──
+      // chargeId opcional: para flujo AMBAS el wizard pre-cobra UNA vez vía
+      // /api/credits/charge y pasa el id a ambos endpoints. Para flujo single
+      // (LTR sólo o STR sólo) no se pasa y el endpoint cobra él mismo.
       type AnalisisRow = { id: string };
-      const postLTR = async (): Promise<AnalisisRow> => {
+      const postLTR = async (chargeId?: string): Promise<AnalisisRow> => {
+        const payload = chargeId ? { ...ltrPayload, prepaidChargeId: chargeId } : ltrPayload;
         const res = await fetch("/api/analisis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(ltrPayload),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -459,11 +463,12 @@ export default function NuevoAnalisisV3Page() {
         }
         return res.json();
       };
-      const postSTR = async (): Promise<AnalisisRow> => {
+      const postSTR = async (chargeId?: string): Promise<AnalisisRow> => {
+        const payload = chargeId ? { ...strPayload, prepaidChargeId: chargeId } : strPayload;
         const res = await fetch("/api/analisis/short-term", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(strPayload),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
@@ -503,8 +508,25 @@ export default function NuevoAnalisisV3Page() {
         return;
       }
 
-      // mod === "both" — Promise.allSettled, no atómico
-      const [ltrRes, strRes] = await Promise.allSettled([postLTR(), postSTR()]);
+      // mod === "both" — Promise.allSettled, no atómico.
+      // Pre-cobramos 1 crédito en /api/credits/charge para que AMBAS = 1 crédito
+      // (decisión Ronda 2a). Luego pasamos el chargeId a ambos endpoints; el
+      // primero que llega claim-ea, el segundo prosigue sin re-cobrar gracias
+      // a payment_data.intent='both'. Si el cobro falla, abortamos sin POST.
+      const chargeRes = await fetch("/api/credits/charge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: "both" }),
+      });
+      if (!chargeRes.ok) {
+        const err = await chargeRes.json().catch(() => ({}));
+        setSubmitError(err.error || "No se pudo cobrar el crédito");
+        setSubmitting(false);
+        return;
+      }
+      const { chargeId } = (await chargeRes.json()) as { chargeId: string };
+
+      const [ltrRes, strRes] = await Promise.allSettled([postLTR(chargeId), postSTR(chargeId)]);
       const ltrOk = ltrRes.status === "fulfilled";
       const strOk = strRes.status === "fulfilled";
 

@@ -8,6 +8,15 @@ import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { generateAiAnalysis } from "@/lib/ai-generation";
 import { readFrancoVerdict } from "@/lib/results-helpers";
+import { chargeAnalysisCredit } from "@/lib/access";
+import { isAdminUser } from "@/lib/admin";
+
+function createPaymentsAdminClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -40,9 +49,58 @@ export async function POST(request: Request) {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const isGuest = !user;
+    // Solo usuarios registrados crean análisis (Backlog #3).
+    if (!user) {
+      return NextResponse.json(
+        { error: "Debes iniciar sesión para crear un análisis" },
+        { status: 401 },
+      );
+    }
 
-    const body: AnalisisInput = await request.json();
+    const body: AnalisisInput & { prepaidChargeId?: string } = await request.json();
+    const prepaidChargeId = body.prepaidChargeId;
+
+    // Cobro de crédito antes del trabajo costoso. Admin bypass.
+    // Si viene prepaidChargeId (flujo AMBAS), validamos contra payments en
+    // vez de cobrar de nuevo. Ver /api/credits/charge.
+    const isAdmin = isAdminUser(user.email);
+    let prepaidNeedClaim = false;
+
+    if (prepaidChargeId) {
+      const paymentsAdmin = createPaymentsAdminClient();
+      const { data: charge } = await paymentsAdmin
+        .from("payments")
+        .select("payment_data, consumed_at")
+        .eq("commerce_order", prepaidChargeId)
+        .eq("user_id", user.id)
+        .eq("status", "paid")
+        .maybeSingle();
+
+      if (!charge) {
+        return NextResponse.json(
+          { error: "Charge inválido o no encontrado" },
+          { status: 403 },
+        );
+      }
+
+      if (charge.consumed_at === null) {
+        prepaidNeedClaim = true; // somos los primeros, claim post-insert
+      } else {
+        // Ya consumido: solo permitido si era flujo AMBAS (segundo análisis).
+        const intent = (charge.payment_data as { intent?: string } | null)?.intent;
+        if (intent !== "both") {
+          return NextResponse.json(
+            { error: "Charge ya consumido" },
+            { status: 403 },
+          );
+        }
+      }
+    } else if (!isAdmin) {
+      const charge = await chargeAnalysisCredit(user.id, null);
+      if (!charge.ok) {
+        return NextResponse.json({ error: charge.message }, { status: 403 });
+      }
+    }
 
     // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
     // ver audit/sesionA-residual-2/diagnostico.md).
@@ -50,19 +108,12 @@ export async function POST(request: Request) {
 
     const result = runAnalysis(body, ufValue);
 
-    // Guest: use service role to bypass RLS (user_id will be null)
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (isGuest && !serviceRoleKey) {
-      return NextResponse.json({ error: "Regístrate gratis para guardar tu análisis" }, { status: 401 });
-    }
-    const dbClient = isGuest
-      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceRoleKey!)
-      : supabase;
+    const dbClient = supabase;
 
     const { data, error } = await dbClient
       .from("analisis")
       .insert({
-        user_id: user?.id ?? null,
+        user_id: user.id,
         nombre: body.nombre,
         comuna: body.comuna,
         ciudad: body.ciudad,
@@ -94,12 +145,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // Marcar análisis como premium tras cobro exitoso (o admin bypass).
+    // Backlog #3: TODOS los análisis del registrado son premium completos
+    // — el welcome credit otorga el mismo nivel que un crédito comprado.
+    if (data?.id) {
+      await dbClient.from("analisis").update({ is_premium: true }).eq("id", data.id);
+      data.is_premium = true;
+
+      // Claim del prepaid charge si nosotros llegamos primero (flujo AMBAS).
+      // .is('consumed_at', null) garantiza idempotencia: si el otro endpoint
+      // del mismo flow both ya marcó, este UPDATE no hace nada.
+      if (prepaidChargeId && prepaidNeedClaim) {
+        const paymentsAdmin = createPaymentsAdminClient();
+        await paymentsAdmin
+          .from("payments")
+          .update({
+            consumed_at: new Date().toISOString(),
+            consumed_by_analysis_id: data.id,
+          })
+          .eq("commerce_order", prepaidChargeId)
+          .is("consumed_at", null);
+      }
+    }
+
     // Background: generate AI analysis, luego mandar email cuando esté listo
     // (o cuando falle — no bloqueamos la notificación por error IA, el page
     // puede recuperar la IA vía polling /ai-status). No await: el response
     // al cliente se devuelve inmediato.
-    // No credit consumption here — primer análisis. El /ai endpoint sigue
-    // manejando créditos para regeneración on-demand.
     if (data?.id) {
       (async () => {
         try {
@@ -107,7 +179,7 @@ export async function POST(request: Request) {
         } catch (e) {
           console.error("Background AI generation failed:", e);
         }
-        if (user?.email) {
+        if (user.email) {
           try {
             await sendAnalysisReadyEmail(
               user.email,
