@@ -15,14 +15,22 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  // Check if user needs onboarding
-  const { data: creditsRow } = await supabase
-    .from("user_credits")
-    .select("onboarding_completed")
-    .eq("user_id", user.id)
-    .single();
+  // Check if user needs onboarding. Backlog #3 + UX fix #1: si el user ya
+  // tiene ≥1 análisis está onboardeado de facto, aunque la flag onboarding_completed
+  // no se haya seteado (ej: ruta /analisis/nuevo-v2 sin pasar antes por /dashboard).
+  const [{ data: creditsRow }, { count: analisisCount }] = await Promise.all([
+    supabase
+      .from("user_credits")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("analisis")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id),
+  ]);
 
-  const needsOnboarding = !creditsRow?.onboarding_completed;
+  const needsOnboarding = !creditsRow?.onboarding_completed && (analisisCount ?? 0) === 0;
 
   if (needsOnboarding) {
     return <OnboardingClient />;

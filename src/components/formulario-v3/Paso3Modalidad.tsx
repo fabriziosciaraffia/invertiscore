@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Check, X } from "lucide-react";
+import Link from "next/link";
+import { Loader2, Check, X, ArrowRight } from "lucide-react";
 // Ronda 2b: inputs STR críticos inline (modoGestion + edificioPermiteAirbnb).
 // Resto de campos operativos viven en Modal Ajustar (Ronda 2c).
 import { StateBox } from "@/components/ui/StateBox";
@@ -26,7 +27,22 @@ export interface TierInfo {
   tier: "guest" | "free" | "premium" | "subscriber";
   isAdmin: boolean;
   credits: number;
+  /** UX fix #2a: welcome credit aún disponible (no consumido). Cuando false
+   * y no hay credits/subscription/admin, el wizard bloquea el submit. */
+  welcomeAvailable?: boolean;
   email: string | null;
+}
+
+/** UX fix #2: indica si el user tiene capacidad para crear un análisis.
+ * Usado por Paso3 para gobernar el costo card / paywall y el estado del CTA,
+ * y por el wizard como guard defensivo en handleAnalizar. */
+export function canAnalyzeFromTier(info: TierInfo | null): boolean {
+  if (!info) return false;
+  if (info.isAdmin) return true;
+  if (info.tier === "subscriber") return true;
+  if (info.credits > 0) return true;
+  if (info.welcomeAvailable) return true;
+  return false;
 }
 
 export function Paso3Modalidad({
@@ -215,19 +231,26 @@ export function Paso3Modalidad({
             <StateBox variant="left-border" state="negative">{submitError}</StateBox>
           )}
 
-          {/* CTA */}
-          <button
-            type="button"
-            onClick={onAnalizar}
-            disabled={submitting || !mod}
-            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
-            ) : (
-              <>Analizar ahora →</>
-            )}
-          </button>
+          {/* CTA — bloqueado cuando no hay créditos disponibles (paywall arriba). */}
+          {(() => {
+            const canAnalyze = canAnalyzeFromTier(tierInfo);
+            return (
+              <button
+                type="button"
+                onClick={onAnalizar}
+                disabled={submitting || !mod || !canAnalyze}
+                className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+              >
+                {submitting ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
+                ) : !canAnalyze ? (
+                  <>Necesitas un crédito</>
+                ) : (
+                  <>Analizar ahora →</>
+                )}
+              </button>
+            );
+          })()}
         </div>
       )}
 
@@ -247,15 +270,56 @@ export function Paso3Modalidad({
 }
 
 function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
-  const { costo, plan, color } = tierCopy(tierInfo);
+  const copy = tierCopy(tierInfo);
+  // Estado SIN CRÉDITOS: card paywall con border Signal Red + CTA /pricing
+  // (Capa 1 — uso #1 CTA primario, uso #2 cifra crítica negativa).
+  if (!copy.canAnalyze) {
+    return (
+      <div
+        className="rounded-xl p-4 flex flex-col gap-3"
+        style={{
+          border: "1px solid var(--franco-sc-bad-border)",
+          background: "var(--franco-sc-bad-bg)",
+        }}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
+              Costo
+            </p>
+            <p className="font-body text-[13px] font-medium m-0" style={{ color: "var(--signal-red)" }}>
+              {copy.costo}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
+              Plan actual
+            </p>
+            <p className="font-mono text-[12px] font-semibold m-0 tracking-wide" style={{ color: "var(--signal-red)" }}>
+              {copy.plan}
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/pricing"
+          className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
+          style={{ color: "var(--signal-red)" }}
+        >
+          Ver planes
+          <ArrowRight size={12} />
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-start justify-between gap-4">
       <div>
         <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1">
           Costo
         </p>
-        <p className="font-body text-[13px] font-medium m-0" style={{ color }}>
-          {costo}
+        <p className="font-body text-[13px] font-medium m-0" style={{ color: copy.color }}>
+          {copy.costo}
         </p>
       </div>
       <div className="text-right shrink-0">
@@ -263,21 +327,24 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
           Plan actual
         </p>
         <p className="font-mono text-[12px] font-semibold text-[var(--franco-text)] m-0 tracking-wide">
-          {plan}
+          {copy.plan}
         </p>
       </div>
     </div>
   );
 }
 
-function tierCopy(info: TierInfo): { costo: string; plan: string; color: string } {
+function tierCopy(info: TierInfo): { costo: string; plan: string; color: string; canAnalyze: boolean } {
   // Capa 1 binario: tier ya queda señalado por plan acronym (FRANCOMENSUAL, PRO,
-  // GRATUITO, INVITADO, ADMIN). Color colapsado a Ink primario sin amarillo/verde.
-  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)" };
-  if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)" };
-  if (info.tier === "premium" && info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)" };
-  if (info.tier === "free") return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)" };
-  return { costo: "Análisis gratuito (modo invitado)", plan: "INVITADO", color: "var(--franco-text)" };
+  // GRATUITO, INVITADO, ADMIN, SIN CRÉDITOS). Color colapsado a Ink primario.
+  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)", canAnalyze: true };
+  if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)", canAnalyze: true };
+  if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)", canAnalyze: true };
+  if (info.welcomeAvailable) return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true };
+  // Sin créditos disponibles (welcome consumido + sin créditos comprados +
+  // sin suscripción + no admin). UX fix #2: en vez de dejar que el submit
+  // pegue contra el 403 del backend, bloqueamos en el cliente con paywall.
+  return { costo: "Sin créditos disponibles. Compra uno para continuar.", plan: "SIN CRÉDITOS", color: "var(--signal-red)", canAnalyze: false };
 }
 
 // ─── Sección "Operación Airbnb" (Ronda 2b) ──

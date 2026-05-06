@@ -83,11 +83,17 @@ export async function chargeAnalysisCredit(
 
   // Welcome credit (primer análisis del registrado): UPDATE condicional.
   // La cláusula .eq('welcome_credit_used', false) garantiza que solo una
-  // request gane la carrera si dos llegan simultáneas.
+  // request gane la carrera si dos llegan simultáneas. También marcamos
+  // onboarding_completed=true (UX fix #1b): si el user usa el welcome via
+  // análisis está onboardeado de facto — no debería volver a OnboardingClient.
   if (!row.welcome_credit_used) {
     const { data: claimed } = await supabase
       .from("user_credits")
-      .update({ welcome_credit_used: true, updated_at: new Date().toISOString() })
+      .update({
+        welcome_credit_used: true,
+        onboarding_completed: true,
+        updated_at: new Date().toISOString(),
+      })
       .eq("user_id", userId)
       .eq("welcome_credit_used", false)
       .select()

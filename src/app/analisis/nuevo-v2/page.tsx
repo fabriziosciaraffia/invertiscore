@@ -11,7 +11,7 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
 import { Paso1Propiedad } from "@/components/formulario-v3/Paso1Propiedad";
 import { Paso2Financiamiento } from "@/components/formulario-v3/Paso2Financiamiento";
-import { Paso3Modalidad, type TierInfo } from "@/components/formulario-v3/Paso3Modalidad";
+import { Paso3Modalidad, type TierInfo, canAnalyzeFromTier } from "@/components/formulario-v3/Paso3Modalidad";
 import { useAirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import {
   DEFAULT_STATE,
@@ -298,6 +298,16 @@ export default function NuevoAnalisisV3Page() {
   //   de partial en sessionStorage para que el destino muestre toast.
   async function handleAnalizar() {
     setSubmitError("");
+
+    // Guard sin créditos (UX fix #2c): el botón ya queda disabled vía Paso3,
+    // este check defensivo evita que un POST llegue al backend si por algún
+    // motivo (race con tierInfo aún no cargado, doble click) escapa al disable.
+    // Mantiene al user en Paso 3 con el paywall card visible.
+    if (!canAnalyzeFromTier(tierInfo)) {
+      setSubmitError("Necesitas un crédito para crear un análisis");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const mod = state.modalidad;

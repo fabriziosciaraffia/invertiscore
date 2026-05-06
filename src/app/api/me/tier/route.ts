@@ -13,24 +13,32 @@ export async function GET() {
         tier: "guest" as const,
         isAdmin: false,
         credits: 0,
+        welcomeAvailable: false,
         email: null,
       });
     }
 
-    const [tier, creditsRow] = await Promise.all([
+    // welcomeAvailable se deriva de welcome_credit_used (UX fix #2a):
+    // tier="free" no distingue welcome-disponible vs welcome-usado. El wizard
+    // necesita esa señal para mostrar el paywall correcto en Paso 3.
+    const [tier, creditsInfo] = await Promise.all([
       getUserAccessLevel(user.id),
       supabase
         .from("user_credits")
-        .select("credits")
+        .select("credits, welcome_credit_used")
         .eq("user_id", user.id)
         .maybeSingle()
-        .then((r) => r.data?.credits ?? 0),
+        .then((r) => ({
+          credits: r.data?.credits ?? 0,
+          welcomeAvailable: !(r.data?.welcome_credit_used ?? false),
+        })),
     ]);
 
     return NextResponse.json({
       tier,
       isAdmin: isAdminUser(user.email),
-      credits: creditsRow,
+      credits: creditsInfo.credits,
+      welcomeAvailable: creditsInfo.welcomeAvailable,
       email: user.email ?? null,
     });
   } catch {
@@ -38,6 +46,7 @@ export async function GET() {
       tier: "guest" as const,
       isAdmin: false,
       credits: 0,
+      welcomeAvailable: false,
       email: null,
     });
   }
