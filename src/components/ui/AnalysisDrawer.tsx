@@ -963,12 +963,17 @@ function DrawerLargoPlazo({
   currency,
   results,
   valorUF,
+  inputData,
 }: {
   data: AISection;
   currency: "CLP" | "UF";
   results: FullAnalysisResult;
   valorUF: number;
+  inputData: AnalisisInput;
 }) {
+  // Modelo B3: la plusvalía solo se acumula desde la entrega. Para depto en
+  // construcción, los tooltips lo explicitan.
+  const entregaFutura = inputData.estadoVenta === "futura";
   const exit = results.exitScenario;
   const valorVenta = exit?.valorVenta ?? 0;
   // P1 Fase 21: análisis legacy sin exit data → fallback explícito.
@@ -1117,7 +1122,9 @@ function DrawerLargoPlazo({
       fillTextColor: "var(--ink-900)",
       valueColor: "var(--franco-text)",
       isNeg: false,
-      tooltip: "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
+      tooltip: entregaFutura
+        ? "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna. En depto en construcción, la plusvalía cuenta solo desde la entrega."
+        : "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
     });
   }
 
@@ -2118,6 +2125,7 @@ export function AnalysisDrawer({
               currency={currency}
               results={results}
               valorUF={valorUF}
+              inputData={inputData}
             />
           )}
           {activeKey === "riesgos" && (

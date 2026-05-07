@@ -421,9 +421,13 @@ export function calcProjections(args: {
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = metrics.gastos;
   let contribucionesActual = metrics.contribuciones;
-  // Plusvalía starts from Franco's market value (real data, captures "la pasada")
+  // Plusvalía base: valor de mercado Franco (no precio de compra) — captura
+  // "la pasada" cuando el usuario compra bajo mercado. Modelo B3 (sesión
+  // B3-fix H3): pre-entrega no compoundéa plusvalía ni acumula deuda. Recién
+  // a partir del año de entrega arranca el reloj: en a_entrega exponente=0;
+  // en a_entrega+1 exponente=1.
   const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * ufClp;
-  let valorPropiedad = vmFrancoCLP;
+  const aniosEntrega = Math.ceil(mesesPreEntrega / 12);
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
 
@@ -463,13 +467,24 @@ export function calcProjections(args: {
     }
 
     flujoAcumulado += flujoAnual;
-    // Plusvalía always from purchase date
-    valorPropiedad *= (1 + plusvaliaAnual);
-    // Mortgage only counts from delivery
+
+    // Modelo B3 liquidable: plusvalía solo desde entrega. Antes de escritura
+    // el comprador no puede liquidar — el "valor" honesto es vmFranco fijo.
+    const aniosPostEntrega = Math.max(0, anio - aniosEntrega);
+    const valorPropiedad = vmFrancoCLP * Math.pow(1 + plusvaliaAnual, aniosPostEntrega);
+
+    // Crédito: el banco no disbursa hasta escritura. Pre-entrega → deuda 0.
+    // Año que termina exactamente en escritura → crédito recién entregado,
+    // sin pagos. Resto → amortizado por mesesCredito mes a mes.
     const mesesCredito = Math.max(0, mesFin - mesesPreEntrega);
-    const saldo = mesesCredito > 0
-      ? Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito))
-      : creditoCLP;
+    let saldo: number;
+    if (mesFin < mesesPreEntrega) {
+      saldo = 0;
+    } else if (mesesCredito === 0) {
+      saldo = creditoCLP;
+    } else {
+      saldo = Math.max(0, saldoCredito(creditoCLP, input.tasaInteres, input.plazoCredito, mesesCredito));
+    }
     const patrimonioNeto = valorPropiedad - saldo;
 
     projections.push({

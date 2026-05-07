@@ -243,9 +243,11 @@ function SimulationTag() {
 function IndicadoresRentabilidadContent({
   projections,
   metrics,
+  inputData,
 }: {
   projections: YearProjection[];
   metrics: AnalysisMetrics;
+  inputData?: AnalisisInput;
 }) {
   const { plazoAnios, plusvaliaAnual } = useSimulation();
   const kpis = useMemo(
@@ -254,6 +256,15 @@ function IndicadoresRentabilidadContent({
   );
   const plazoLabel = `${plazoAnios} ${plazoAnios === 1 ? "AÑO" : "AÑOS"}`;
   const paybackValue = kpis.paybackAnios ? `Año ${kpis.paybackAnios}` : ">30";
+
+  // Modelo B3: la plusvalía solo se acumula desde la entrega. Para depto en
+  // construcción, el tooltip de TIR explica el supuesto.
+  const entregaFutura = inputData?.estadoVenta === "futura";
+  const tirTooltipBase =
+    "Tasa Interna de Retorno: rentabilidad anual proyectada de toda la inversión incluyendo flujo, plusvalía y venta al cierre del horizonte.";
+  const tirTooltip = entregaFutura
+    ? `${tirTooltipBase} En depto en construcción, la plusvalía cuenta solo desde la entrega.`
+    : tirTooltipBase;
 
   // P1 Fase 24 — guard NaN/Infinity en KPIs derivados de cálculos iterativos.
   // calcTIR puede no converger en escenarios extremos; resto puede dar NaN
@@ -275,7 +286,7 @@ function IndicadoresRentabilidadContent({
           sub={subSafe(kpis.tir, "Retorno total anualizado")}
           tone={tonoTIR(kpis.tir)}
           size="hero"
-          tooltip="Tasa Interna de Retorno: rentabilidad anual proyectada de toda la inversión incluyendo flujo, plusvalía y venta al cierre del horizonte."
+          tooltip={tirTooltip}
         />
         <KPICard
           label="CAP Rate"
@@ -373,14 +384,19 @@ function GraficoPatrimonioContent({
       deudaPendiente: number;
     }> = [];
 
-    // Año 0 — día de cierre. Patrimonio teórico = vmFranco − créditoInicial.
+    // Año 0 — día de cierre. Patrimonio teórico = vmFranco − deuda activa.
+    // Modelo B3 liquidable (sesión B3-fix H3): para entrega futura el banco
+    // no ha disbursado el crédito todavía → deuda a0 = 0, patrimonio = vmFranco.
+    // Para inmediata, escritura es hoy → deuda a0 = creditoInicial.
+    const isEntregaFutura = inputData.estadoVenta === "futura";
+    const deudaA0 = isEntregaFutura ? 0 : creditoInicial;
     rows.push({
       anio: 0,
       aporteAcum: inversionInicial,
       valorDepto: vmFrancoCLP,
-      patrimonioNeto: vmFrancoCLP - creditoInicial,
+      patrimonioNeto: vmFrancoCLP - deudaA0,
       flujoAcumulado: 0,
-      deudaPendiente: creditoInicial,
+      deudaPendiente: deudaA0,
     });
 
     // Años 1..plazoAnios
@@ -1112,7 +1128,7 @@ function Capa3Unificado({
       {/* Sub-sección 08 · INDICADORES */}
       <div style={{ padding: "1.25rem" }}>
         {sectionHeader("08", "Indicadores", "Rendimiento y métricas")}
-        <IndicadoresRentabilidadContent projections={projections} metrics={metrics} />
+        <IndicadoresRentabilidadContent projections={projections} metrics={metrics} inputData={inputData} />
       </div>
       <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
