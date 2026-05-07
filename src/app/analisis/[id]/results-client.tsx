@@ -6,11 +6,9 @@ import {
   Bar, Line, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartsTooltip, ResponsiveContainer, ComposedChart, ReferenceLine,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
-  MapPin,
   RefreshCw, Loader2, Clock, Calculator,
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
@@ -20,10 +18,14 @@ import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
 import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import { StateBox } from "@/components/ui/StateBox";
-import { AnalysisDrawer, extractRiesgos, type DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
+// Ronda 4a.1: leaf components extraídos a src/components/analysis/.
+import { normalizeMetrics, fmtCLP, parseUFString } from "@/components/analysis/utils";
+import { DatoCard } from "@/components/analysis/DatoCard";
+import { MiniCard } from "@/components/analysis/MiniCard";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
@@ -70,43 +72,7 @@ const RADAR_TOOLTIPS: Record<string, string> = {
   "Eficiencia": "Comparación de tu precio por m² y yield bruto contra publicaciones reales en un radio de 1,5 km. Peso: 20%",
 };
 
-// Compatibilidad con análisis guardados con nombres viejos (yieldBruto, yieldNeto)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalizeMetrics(metrics: any): import("@/lib/types").AnalysisMetrics | null {
-  if (!metrics) return null;
-  return {
-    ...metrics,
-    rentabilidadBruta: metrics.rentabilidadBruta ?? metrics.yieldBruto ?? 0,
-    rentabilidadNeta: metrics.rentabilidadNeta ?? metrics.yieldNeto ?? 0,
-    capRate: metrics.capRate ?? 0,
-    cashOnCash: metrics.cashOnCash ?? 0,
-    precioM2: metrics.precioM2 ?? 0,
-    mesesPaybackPie: metrics.mesesPaybackPie ?? 999,
-    dividendo: metrics.dividendo ?? 0,
-    flujoNetoMensual: metrics.flujoNetoMensual ?? 0,
-    noi: metrics.noi ?? 0,
-    pieCLP: metrics.pieCLP ?? 0,
-    precioCLP: metrics.precioCLP ?? 0,
-    ingresoMensual: metrics.ingresoMensual ?? 0,
-    egresosMensuales: metrics.egresosMensuales ?? 0,
-    valorMercadoFrancoUF: metrics.valorMercadoFrancoUF ?? metrics.valorMercadoUF ?? 0,
-    valorMercadoUsuarioUF: metrics.valorMercadoUsuarioUF ?? metrics.valorMercadoUF ?? 0,
-    plusvaliaInmediataFranco: metrics.plusvaliaInmediataFranco ?? metrics.plusvaliaInmediata ?? 0,
-    plusvaliaInmediataFrancoPct: metrics.plusvaliaInmediataFrancoPct ?? metrics.plusvaliaInmediataPct ?? 0,
-    plusvaliaInmediataUsuario: metrics.plusvaliaInmediataUsuario ?? metrics.plusvaliaInmediata ?? 0,
-    plusvaliaInmediataUsuarioPct: metrics.plusvaliaInmediataUsuarioPct ?? metrics.plusvaliaInmediataPct ?? 0,
-    precioFlujoNeutroCLP: metrics.precioFlujoNeutroCLP ?? 0,
-    precioFlujoNeutroUF: metrics.precioFlujoNeutroUF ?? 0,
-    precioFlujoPositivoCLP: metrics.precioFlujoPositivoCLP ?? 0,
-    precioFlujoPositivoUF: metrics.precioFlujoPositivoUF ?? 0,
-    descuentoParaNeutro: metrics.descuentoParaNeutro ?? 0,
-  };
-}
-
-function fmtCLP(n: number): string {
-  return "$" + Math.round(n).toLocaleString("es-CL");
-}
-
+// Ronda 4a.1: normalizeMetrics, fmtCLP, fmtPct, parseUFString → src/components/analysis/utils.ts
 function fmtUF(n: number): string {
   const rounded = Math.round(n * 10) / 10;
   if (Number.isInteger(rounded)) {
@@ -125,10 +91,6 @@ function fmtM(n: number): string {
   if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(".", ",") + "M";
   if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000).toLocaleString("es-CL") + "K";
   return "$" + Math.round(n).toLocaleString("es-CL");
-}
-
-function fmtPct(n: number, decimals: number = 1): string {
-  return n.toFixed(decimals).replace(".", ",") + "%";
 }
 
 function fmtAxisMoney(n: number, currency: "CLP" | "UF", ufClp: number): string {
@@ -167,79 +129,7 @@ function hasAiV2(ai: any): ai is import("@/lib/types").AIAnalysisV2 {
     && typeof ai.conviene.respuestaDirecta_clp === "string";
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function CollapsibleSection({ title, subtitle, helpText, defaultOpen = false, badge, children }: {
-  title: string;
-  subtitle?: string;
-  helpText?: string;
-  defaultOpen?: boolean;
-  badge?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  return (
-    <div className="bg-[var(--franco-card)] rounded-xl border border-[var(--franco-border)] mb-3 overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex justify-between items-center p-4 px-5 text-left gap-3"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-body text-[15px] font-medium text-[var(--franco-text)]">{title}</span>
-            {badge}
-          </div>
-          {subtitle && <p className="font-body text-xs text-[var(--franco-text-secondary)] mt-0.5">{subtitle}</p>}
-        </div>
-        <span className={`font-body text-lg text-[var(--franco-text-secondary)] transition-transform duration-200 shrink-0 ${open ? "rotate-180" : ""}`}>↓</span>
-      </button>
-
-      {open && (
-        <div className="px-5 pb-5">
-          {helpText && (
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] leading-snug p-2.5 px-3.5 bg-[var(--franco-card)] rounded-lg mb-3.5">{helpText}</p>
-          )}
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function MetricRow({ label, value, color, tooltip }: { label: string; value: string; color?: string; tooltip?: string }) {
-  return (
-    <div className="flex justify-between items-center py-2.5 border-b border-[var(--franco-border)]">
-      <span className="font-body text-[13px] text-[var(--franco-text)] flex items-center gap-1">
-        {label}
-        {tooltip && <InfoTooltip content={tooltip} />}
-      </span>
-      <span className={`font-mono text-sm font-medium ${color || "text-[var(--franco-text)]"}`}>{value}</span>
-    </div>
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SimulationTag() {
-  return (
-    <span
-      className="font-mono uppercase whitespace-nowrap"
-      style={{
-        fontSize: 9,
-        letterSpacing: "1.2px",
-        padding: "3px 8px",
-        borderRadius: 3,
-        background: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
-        color: "var(--franco-text)",
-        border: "0.5px solid color-mix(in srgb, var(--franco-text) 25%, transparent)",
-        fontWeight: 600,
-      }}
-    >
-      🔄 Simulación
-    </span>
-  );
-}
+// Ronda 4a.1: CollapsibleSection, MetricRow, SimulationTag → src/components/analysis/.
 
 function IndicadoresRentabilidadContent({
   projections,
@@ -1170,17 +1060,7 @@ const VERDICT_TOOLTIPS: Record<string, string> = {
 
 const FRANCO_SCORE_TOOLTIP = "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA EL PRECIO. Bajo 50: BUSCAR OTRA.";
 
-// Tooltips de las 3 DatoCards del Hero. Lookup por label (los labels son
-// hardcoded por buildHeroDatosClave). Si una label nueva aparece sin entry,
-// el card se renderiza sin tooltip (degradación graceful).
-const DATO_TOOLTIPS: Record<string, string> = {
-  "Aporte mensual": "Lo que sale de tu bolsillo cada mes porque el arriendo no cubre los costos (dividendo + gastos + contribuciones + mantención).",
-  "Te sobra mensual": "Excedente mensual: el arriendo cubre todos los costos y queda saldo a tu favor.",
-  "Precio sugerido": "Precio recomendado por Franco para que la inversión tenga sentido financiero. Útil como punto de partida para negociar.",
-  "Ventaja": "Diferencia favorable entre el precio que pagas y el valor de mercado del depto en la zona. Compras bajo mercado.",
-  "Sobreprecio": "Diferencia desfavorable: estás pagando más que el valor de mercado en la zona.",
-  "Precio alineado": "Tu precio de compra coincide con el valor de mercado de la zona (±2% de diferencia).",
-};
+// Ronda 4a.1: DATO_TOOLTIPS → co-locado en src/components/analysis/DatoCard.tsx.
 
 // ─── AI Analysis Section (v2) ────────────────────────
 const VERDICT_STYLES: Record<string, { color: string; bg: string; border: string; bgInner: string; borderInner: string }> = {
@@ -1221,14 +1101,7 @@ function getVerdictStyles(veredicto: string) {
   return VERDICT_STYLES[veredicto] || VERDICT_STYLES["AJUSTA EL PRECIO"];
 }
 
-// Parse UF string ("UF 4.664" / "UF 3,200") → numeric value in UF
-function parseUFString(s: string | undefined | null): number {
-  if (!s) return 0;
-  const m = s.match(/[\d.,]+/);
-  if (!m) return 0;
-  const clean = m[0].replace(/\./g, "").replace(",", ".");
-  return parseFloat(clean) || 0;
-}
+// Ronda 4a.1: parseUFString → src/components/analysis/utils.ts.
 
 // Build the 3 DatoCards for the Hero using real motor data.
 // Keeps the IA-generated subtexts as fallback, but values come from the engine
@@ -1348,57 +1221,7 @@ function buildHeroDatosClave(
   return [aporteCard, precioCard, retornoCard];
 }
 
-function DatoCard({ dato, currency }: { dato: import("@/lib/types").DatoClave; currency: "CLP" | "UF" }) {
-  const isAccent = dato.color === "accent";
-  const valor = currency === "CLP" ? dato.valor_clp : dato.valor_uf;
-
-  const colorClass = (
-    {
-      red: "text-signal-red",
-      green: "text-[var(--franco-positive)]",
-      neutral: "text-[var(--franco-text)]",
-      accent: "text-[var(--franco-text)]",
-    } as Record<string, string>
-  )[dato.color] || "text-[var(--franco-text)]";
-
-  // Featured (accent) card: bg elevated + border 1.5px Signal Red — se siente
-  // elevada respecto a las cards normales. Normal: bg card + border 0.5px
-  // transparent (sin border visible, layout reservation only).
-  const borderClass = isAccent
-    ? "border-[1.5px] border-signal-red"
-    : "border-[0.5px] border-transparent";
-  const bgClass = isAccent
-    ? "bg-[var(--franco-elevated)]"
-    : "bg-[var(--franco-card)]";
-  const labelClass = isAccent
-    ? "text-signal-red font-medium"
-    : "text-[var(--franco-text-secondary)]";
-
-  const tooltip = DATO_TOOLTIPS[dato.label];
-
-  return (
-    <div className={`${bgClass} rounded-xl p-4 ${borderClass}`}>
-      <p className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-[1.5px] mb-1.5 ${labelClass}`}>
-        <span>{dato.label}</span>
-        {tooltip && <InfoTooltip content={tooltip} />}
-      </p>
-      <p className={`font-mono text-[22px] font-semibold m-0 ${colorClass}`}>
-        {valor}
-      </p>
-      {dato.subtexto && (
-        dato.isLabel ? (
-          <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mt-1 m-0">
-            {dato.subtexto}
-          </p>
-        ) : (
-          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1 m-0">
-            {dato.subtexto}
-          </p>
-        )
-      )}
-    </div>
-  );
-}
+// Ronda 4a.1: DatoCard → src/components/analysis/DatoCard.tsx.
 
 // ─── Dashboard layout (hero + 2×2 grid + drawer) ────
 function HeroTopStrip({
@@ -1789,208 +1612,10 @@ function HeroCard({
   );
 }
 
-type MiniCardSection = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos";
+// Ronda 4a.1: MiniCardSection + getPunchline + MiniCard → src/components/analysis/MiniCard.tsx.
+// El bloque eliminado abarcaba desde el `type MiniCardSection` hasta el cierre
+// del componente MiniCard (~200 LOC). Ver Edit log de la ronda.
 
-function getPunchline(
-  section: MiniCardSection,
-  data: import("@/lib/types").AISection | import("@/lib/types").AINegociacionSection,
-  currency: "CLP" | "UF",
-  results: import("@/lib/types").FullAnalysisResult | null | undefined,
-  valorUF: number
-): { value: string; sub: string; color: string } {
-  // 1. Costo mensual — from motor
-  if (section === "costoMensual") {
-    const flujo = results?.metrics?.flujoNetoMensual;
-    if (typeof flujo === "number" && !isNaN(flujo)) {
-      const absV = Math.abs(flujo);
-      const formatted = currency === "CLP"
-        ? "$" + Math.round(absV).toLocaleString("es-CL")
-        : "UF " + (Math.round((absV / (valorUF || 1)) * 100) / 100).toFixed(2).replace(".", ",");
-      const isNeg = flujo < 0;
-      return {
-        value: `${isNeg ? "-" : "+"}${formatted}`,
-        sub: isNeg ? "Sale de tu bolsillo" : "Entra a tu bolsillo",
-        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
-      };
-    }
-    return { value: "—", sub: "Aporte mensual", color: "var(--franco-text)" };
-  }
-
-  // 2. Negociación — IA da string UF; motor da numérico. Validamos y caemos
-  // al motor si IA halluciná (Fase 20 P2/P3).
-  if (section === "negociacion") {
-    const motorSugUF = results?.negociacion?.precioSugeridoUF ?? 0;
-    // Precio actual de compra: deriva de metrics.precioCLP (no valorMercadoUsuario,
-    // ese es la estimación del usuario). Ambos en UF para comparar contra sugerido.
-    const precioActualCLP = results?.metrics?.precioCLP ?? 0;
-    const precioActualUF = valorUF > 0 ? precioActualCLP / valorUF : 0;
-    const raw = "precioSugerido" in data
-      ? (data as import("@/lib/types").AINegociacionSection).precioSugerido
-      : "";
-    const iaUF = parseUFString(raw);
-
-    // P2 (7.5): si IA sugiere ≥ precio actual, descartamos IA y usamos motor.
-    // P3 (7.7): si IA está vacío/null, fallback a motor.
-    let sugeridoUF: number;
-    if (iaUF > 0 && (precioActualUF === 0 || iaUF < precioActualUF)) {
-      sugeridoUF = iaUF;
-    } else if (motorSugUF > 0) {
-      sugeridoUF = motorSugUF;
-    } else {
-      // Sin datos: caer al raw IA si existe, sino "—".
-      return { value: raw || "—", sub: "Precio al que conviene cerrar", color: "var(--franco-text)" };
-    }
-
-    // P3 (7.6): si sugerido === precio actual (o muy cerca), copy variable.
-    const sugeridoIgualPrecio = precioActualUF > 0 && Math.abs(sugeridoUF - precioActualUF) / precioActualUF < 0.005;
-    const sub = sugeridoIgualPrecio ? "Tu precio ya está alineado" : "Precio al que conviene cerrar";
-
-    if (valorUF > 0) {
-      const value = currency === "CLP"
-        ? "$" + Math.round(sugeridoUF * valorUF).toLocaleString("es-CL")
-        : "UF " + Math.round(sugeridoUF).toLocaleString("es-CL");
-      return { value, sub, color: "var(--franco-text)" };
-    }
-    return { value: `UF ${Math.round(sugeridoUF)}`, sub, color: "var(--franco-text)" };
-  }
-
-  // 3. Largo plazo — from motor
-  if (section === "largoPlazo") {
-    const tir = results?.exitScenario?.tir;
-    const aniosPlazo = results?.exitScenario?.anios ?? 10;
-    if (typeof tir === "number" && !isNaN(tir)) {
-      const tirPct = tir.toFixed(1).replace(".", ",");
-      const isNeg = tir < 0;
-      // Skill Patrón 2: KPI binario (signal-red criticidad / var(--franco-text)
-      // neutro). El dato hace el trabajo — la distinción TIR baja vs alta vive
-      // en el valor mismo, no en color intermedio.
-      return {
-        value: `TIR ${tirPct}%`,
-        sub: isNeg
-          ? `Pérdida anualizada a ${aniosPlazo} años`
-          : `Rentabilidad anual a ${aniosPlazo} años`,
-        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
-      };
-    }
-    const retorno = results?.exitScenario?.retornoTotal;
-    if (typeof retorno === "number" && !isNaN(retorno)) {
-      const isNeg = retorno < 0;
-      const formatted = currency === "CLP"
-        ? "$" + Math.round(Math.abs(retorno) / 1_000_000) + "M"
-        : "UF " + Math.round(Math.abs(retorno) / (valorUF || 1)).toLocaleString("es-CL");
-      return {
-        value: `${isNeg ? "-" : "+"}${formatted}`,
-        sub: "Ganancia total 10 años",
-        color: isNeg ? "var(--signal-red)" : "var(--franco-text)",
-      };
-    }
-    return { value: "—", sub: "Retorno 10 años", color: "var(--franco-text)" };
-  }
-
-  // 4. Riesgos — usa el mismo extractRiesgos que el drawer (Fase 22 P2).
-  // Si extractRiesgos devuelve 0, el drawer cae a 3 hardcoded — count debe
-  // reflejar ESO mismo (3) para consistencia visible.
-  if (section === "riesgos") {
-    const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-    const parsed = extractRiesgos(content || "");
-    const count = parsed.length > 0 ? parsed.length : 3;
-    return {
-      value: `${count} flancos`,
-      sub: "Requieren defensa",
-      color: "var(--signal-red)",
-    };
-  }
-
-  return { value: "—", sub: "", color: "var(--franco-text)" };
-}
-
-function MiniCard({
-  section,
-  numero,
-  label,
-  data,
-  currency,
-  onClick,
-  results,
-  valorUF,
-}: {
-  section: MiniCardSection;
-  /** Numeración mono per skill líneas 254-258 ("02 · COSTO MENSUAL", etc). */
-  numero: string;
-  label: string;
-  data: import("@/lib/types").AISection | import("@/lib/types").AINegociacionSection;
-  currency: "CLP" | "UF";
-  onClick: () => void;
-  results: import("@/lib/types").FullAnalysisResult | null | undefined;
-  valorUF: number;
-}) {
-  const punchline = getPunchline(section, data, currency, results, valorUF);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)] rounded-[12px] p-[1.125rem] text-left transition-colors duration-200 min-h-[150px] md:min-h-[168px] flex flex-col w-full"
-    >
-      <p
-        className="font-mono text-[10px] uppercase tracking-[1.5px] mb-2 font-medium m-0 text-[var(--franco-text-secondary)]"
-      >
-        {numero} · {label}
-      </p>
-      <h3 className="font-heading font-bold text-[18px] leading-[1.3] mb-2 text-[var(--franco-text)] m-0">
-        {(() => {
-          // Override pregunta según estado (Fase 19/20). Coherente con el
-          // override del drawer wrapper en AnalysisDrawer.tsx.
-          if (section === "costoMensual") {
-            const flujo = results?.metrics?.flujoNetoMensual ?? 0;
-            if (flujo < -1000) return "¿Cuánto te cuesta mes a mes?";
-            if (flujo > 1000) return "¿Cuánto te queda mes a mes?";
-            return "¿Cómo queda tu flujo mensual?";
-          }
-          if (section === "negociacion") {
-            const precioCLP = results?.metrics?.precioCLP ?? 0;
-            const precioUF = valorUF > 0 ? precioCLP / valorUF : 0;
-            const vmFranco = results?.metrics?.valorMercadoFrancoUF ?? precioUF;
-            const dev = vmFranco > 0 ? (vmFranco - precioUF) / vmFranco : 0;
-            const absDev = Math.abs(dev);
-            if (absDev <= 0.02) return "¿Vale la pena negociar?";
-            if (dev > 0) return "¿Vale la pena seguir negociando?";
-            return "¿Cuánto bajar el precio?";
-          }
-          if (section === "largoPlazo") {
-            const gananciaSobreTotal = results?.exitScenario?.gananciaSobreTotal ?? 0;
-            const aniosPlazo = results?.exitScenario?.anios ?? 10;
-            if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
-            if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
-            return `¿Vale la pena a ${aniosPlazo} años?`;
-          }
-          if (section === "riesgos") {
-            const score = results?.score ?? 0;
-            const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
-            if (veredicto === "COMPRAR") return "¿Qué cuidar?";
-            if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
-            return "¿Qué riesgos asume tu negociación?";
-          }
-          return data.pregunta;
-        })()}
-      </h3>
-      <p
-        className="font-mono text-[22px] font-bold m-0 mb-1 leading-[1.1]"
-        style={{ color: punchline.color }}
-      >
-        {punchline.value}
-      </p>
-      <p className="font-mono text-[9px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] mb-auto leading-[1.4] m-0">
-        {punchline.sub}
-      </p>
-      <div className="border-t-[0.5px] border-[var(--franco-border)] mt-4 pt-3.5">
-        <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)]">
-          Leer análisis completo →
-        </span>
-      </div>
-    </button>
-  );
-}
 
 // ─── ReestructuracionMiniCard ───────────────────────
 // Wide card que aparece entre el grid 2x2 y la card de Zona cuando
@@ -2341,150 +1966,7 @@ async function consumeAnalysisCredit(analysisId: string): Promise<{ ok: boolean;
 
 // BottomPaywallCTA removed — all users see content directly
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function SectionCard({ title, description, icon: Icon, children }: {
-  title: string;
-  description?: string;
-  icon: React.ElementType;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative mb-8">
-      <Card className="border border-[var(--franco-border)] rounded-2xl shadow-sm bg-[var(--franco-card)]">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Icon className="h-5 w-5 text-[var(--franco-text)]" />
-            <CardTitle className="font-body font-medium text-lg text-[var(--franco-text)]">{title}</CardTitle>
-          </div>
-          {description && <p className="text-sm text-[var(--franco-text-secondary)]">{description}</p>}
-        </CardHeader>
-        <CardContent>{children}</CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ZoneComparisonCards({ m, zoneData, comuna, currency, fmt, mapQuery, googleMapUrl, inputData, valorUF }: {
-  m: ReturnType<typeof normalizeMetrics>;
-  zoneData: MarketDataRow[] | null | undefined;
-  comuna?: string;
-  currency: "CLP" | "UF";
-  fmt: (n: number) => string;
-  mapQuery: string;
-  googleMapUrl: string;
-  inputData?: import("@/lib/types").AnalisisInput;
-  valorUF: number;
-}) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const zonaRadio = (inputData as any)?.zonaRadio as { precioM2VentaCLP?: number; arriendoPromedio?: number; arriendoPrecioM2?: number; sampleSizeArriendo?: number; sampleSizeVenta?: number; radioMetros?: number } | undefined;
-  const hasRadioData = zonaRadio && (zonaRadio.precioM2VentaCLP || zonaRadio.arriendoPromedio);
-
-  if (!m) {
-    return <p className="text-sm text-[var(--franco-text-secondary)]">Datos de mercado no disponibles.</p>;
-  }
-
-  // Prefer radius-based data; fallback to comuna-level market_data
-  let avgArriendoZona: number;
-  let avgM2Zona: number; // UF/m²
-  let totalPubs: number;
-  let sourceLabel: string;
-
-  if (hasRadioData) {
-    avgArriendoZona = zonaRadio.arriendoPromedio || 0;
-    avgM2Zona = zonaRadio.precioM2VentaCLP ? Math.round(zonaRadio.precioM2VentaCLP / valorUF * 10) / 10 : 0;
-    totalPubs = Math.max(zonaRadio.sampleSizeArriendo || 0, zonaRadio.sampleSizeVenta || 0);
-    sourceLabel = `Basado en ${totalPubs} comparables en radio de ${zonaRadio.radioMetros || 800}m.`;
-  } else if (zoneData && zoneData.length > 0) {
-    avgArriendoZona = Math.round(zoneData.reduce((s, d) => s + d.arriendo_promedio, 0) / zoneData.length);
-    avgM2Zona = Math.round(zoneData.reduce((s, d) => s + d.precio_m2_promedio, 0) / zoneData.length * 10) / 10;
-    totalPubs = zoneData.reduce((s, d) => s + d.numero_publicaciones, 0);
-    sourceLabel = `Basado en ${totalPubs} publicaciones activas en ${comuna}.`;
-  } else {
-    return <p className="text-sm text-[var(--franco-text-secondary)]">Datos de mercado no disponibles para esta zona.</p>;
-  }
-
-  // Yield zona: derive from the same values shown in the ARRIENDO and PRECIO/M² cards
-  // so that if tuyo == zona for both, rent. bruta also matches exactly
-  const superficie = inputData?.superficie || 50;
-  const precioTotalZonaCLP = avgM2Zona * superficie * valorUF;
-  const yieldZona = precioTotalZonaCLP > 0 && avgArriendoZona > 0
-    ? (avgArriendoZona * 12) / precioTotalZonaCLP * 100
-    : (m.rentabilidadBruta ?? 0) * 0.9;
-
-  const tuyoPrecioM2 = currency === "UF" ? m.precioM2 : m.precioM2 * valorUF;
-  const zonaPrecioM2 = currency === "UF" ? avgM2Zona : avgM2Zona * valorUF;
-
-  const cards = [
-    {
-      title: currency === "UF" ? "PRECIO/M² (UF)" : "PRECIO/M²",
-      tuyo: tuyoPrecioM2,
-      zona: zonaPrecioM2,
-      fmtVal: (v: number) => currency === "UF" ? `UF ${v.toFixed(1).replace(".", ",")}` : fmtCLP(v),
-      invertColor: true, // lower is better
-    },
-    {
-      title: "ARRIENDO",
-      tuyo: m.ingresoMensual,
-      zona: avgArriendoZona,
-      fmtVal: (v: number) => fmt(v),
-      invertColor: false, // higher is better
-    },
-    {
-      title: "RENT. BRUTA",
-      tuyo: m.rentabilidadBruta,
-      zona: Math.round(yieldZona * 100) / 100,
-      fmtVal: (v: number) => fmtPct(v),
-      invertColor: false, // higher is better
-    },
-  ];
-
-  return (
-    <div>
-      <p className="text-xs text-[var(--franco-text-secondary)] mb-3">
-        {sourceLabel}
-        {hasRadioData && avgArriendoZona > 0 && m.ingresoMensual > 0 && (() => {
-          const diff = ((m.ingresoMensual - avgArriendoZona) / avgArriendoZona) * 100;
-          return Math.abs(diff) > 10 && diff < 0
-            ? " La sugerencia de Franco usa la mediana (más conservadora que el promedio)."
-            : null;
-        })()}
-      </p>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-        {cards.map((c) => {
-          const delta = c.zona !== 0 ? ((c.tuyo - c.zona) / c.zona) * 100 : 0;
-          const isFavorable = c.invertColor ? delta < 0 : delta > 0;
-          const deltaColor = isFavorable ? "text-[var(--franco-positive)]" : "text-signal-red";
-          const deltaSign = delta > 0 ? "+" : "";
-          const contextText = c.invertColor
-            ? (delta < 0 ? "bajo el promedio" : "sobre el promedio")
-            : (delta > 0 ? "sobre el promedio" : "bajo el promedio");
-          return (
-            <div key={c.title} className="bg-[var(--franco-elevated)] border border-[var(--franco-border)] rounded-[10px] p-4 text-center">
-              <p className="font-body text-[10px] text-[var(--franco-text-secondary)] uppercase tracking-wide">{c.title}</p>
-              <p className={`font-mono text-[32px] font-bold leading-none mt-1.5 ${deltaColor}`}>{deltaSign}{Math.round(delta)}%</p>
-              <p className="font-body text-[10px] text-[var(--franco-text-muted)] mt-2">{contextText}</p>
-              <div className="border-t border-[var(--franco-border)] mt-3 pt-2.5 space-y-1">
-                <p className="text-[11px]"><span className="font-body text-[var(--franco-text-secondary)]">Tú: </span><span className="font-mono text-[var(--franco-text)]">{c.fmtVal(c.tuyo)}</span></p>
-                <p className="text-[11px]"><span className="font-body text-[var(--franco-text-muted)]">Zona: </span><span className="font-mono text-[var(--franco-text-secondary)]">{c.fmtVal(c.zona)}</span></p>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {/* Map */}
-      <div className="mt-4">
-        <div className="mb-2 flex items-center gap-2 text-sm text-[var(--franco-text-secondary)]">
-          <MapPin className="h-4 w-4" />
-          <span>Ubicación: {mapQuery}</span>
-        </div>
-        <div className="overflow-hidden rounded-xl border border-[var(--franco-border)]">
-          <iframe src={googleMapUrl} width="100%" height="300" style={{ border: 0 }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" title="Mapa de ubicación" />
-        </div>
-      </div>
-    </div>
-  );
-}
+// Ronda 4a.1: SectionCard, ZoneComparisonCards → src/components/analysis/.
 
 
 export function PremiumResults({
