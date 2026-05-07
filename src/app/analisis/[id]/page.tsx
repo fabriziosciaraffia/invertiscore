@@ -8,6 +8,7 @@ import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -70,7 +71,15 @@ export default async function AnalisisDetallePage({
   }
 
   const analisis = data as Analisis;
-  const results: FullAnalysisResult | null = analisis.results || null;
+  const rawResults: FullAnalysisResult | null = analisis.results || null;
+  const inputDataRaw = analisis.input_data as AnalisisInput | undefined;
+  // Enriquecer metrics legacy: análisis pre-Sesión B1 no tienen
+  // gastos/contribuciones/provisionMantencionAjustada en results.metrics.
+  // Sin este wrap, recompute cliente vía calcProjections dispara NaN cascade
+  // en Card 08 + Card 09. Ver audit/sesionB-bug-nan/diagnostico.md.
+  const results: FullAnalysisResult | null = rawResults && inputDataRaw && rawResults.metrics
+    ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, inputDataRaw) }
+    : rawResults;
 
   // Access level: "guest" | "free" | "premium" | "subscriber"
   const DEMO_ANALYSIS_ID = "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1";

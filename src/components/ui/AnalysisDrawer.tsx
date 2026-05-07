@@ -104,9 +104,9 @@ function DrawerCostoMensual({
   const desglose = calcFlujoDesglose({
     arriendo: results.metrics?.ingresoMensual ?? inputData.arriendo ?? 0,
     dividendo: results.metrics?.dividendo ?? 0,
-    ggcc: results.metrics?.gastos ?? inputData.gastos ?? 0,
-    contribuciones: results.metrics?.contribuciones ?? inputData.contribuciones ?? 0,
-    mantencion: results.metrics?.provisionMantencionAjustada ?? inputData.provisionMantencion ?? 0,
+    ggcc: results.metrics?.gastos ?? 0,
+    contribuciones: results.metrics?.contribuciones ?? 0,
+    mantencion: results.metrics?.provisionMantencionAjustada ?? 0,
     vacanciaMeses: inputData.vacanciaMeses ?? 0,
     usaAdministrador: inputData.usaAdministrador,
     comisionAdministrador: inputData.comisionAdministrador,

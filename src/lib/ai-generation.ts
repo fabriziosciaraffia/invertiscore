@@ -10,6 +10,7 @@ import {
   aplicaSubsidio,
 } from "@/lib/constants/subsidio";
 import { readEngineSignal } from "@/lib/results-helpers";
+import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 
 const anthropic = new Anthropic();
 
@@ -589,12 +590,13 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     if (!input || !results) return null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mRaw = results.metrics as any;
+    const mLegacy = results.metrics as any;
+    const mEnriched = enrichMetricsLegacy(mLegacy, input);
     const m = {
-      ...mRaw,
-      rentabilidadBruta: mRaw.rentabilidadBruta ?? mRaw.yieldBruto ?? 0,
-      rentabilidadNeta: mRaw.rentabilidadNeta ?? mRaw.yieldNeto ?? 0,
-      capRate: mRaw.capRate ?? 0,
+      ...mEnriched,
+      rentabilidadBruta: mEnriched.rentabilidadBruta ?? mLegacy.yieldBruto ?? 0,
+      rentabilidadNeta: mEnriched.rentabilidadNeta ?? mLegacy.yieldNeto ?? 0,
+      capRate: mEnriched.capRate ?? 0,
     };
     const d = results.desglose;
     const exit = results.exitScenario;
@@ -962,8 +964,8 @@ ${financingHealthBloque}
 
 OPERACIÓN MENSUAL
 - arriendo: ${fmtCLP(input.arriendo)}/mes (${fmtUF(input.arriendo / UF_CLP)}/mes)
-- gastosComunes: ${fmtCLP(m.gastos ?? input.gastos)}/mes (paga arrendatario, solo cuenta en vacancia)
-- contribuciones: ${fmtCLP(m.contribuciones ?? input.contribuciones)}/trimestre
+- gastosComunes: ${fmtCLP(m.gastos)}/mes (paga arrendatario, solo cuenta en vacancia)
+- contribuciones: ${fmtCLP(m.contribuciones)}/trimestre
 - provisionMantencion: ${fmtCLP(m.provisionMantencionAjustada ?? input.provisionMantencion)}/mes
 - administracion: ${input.usaAdministrador ? `comisión ${input.comisionAdministrador ?? 7}% sobre arriendo = ${fmtCLP(Math.round(input.arriendo * (input.comisionAdministrador ?? 7) / 100))}/mes` : "sin administrador"}
 - flujoMensualNeto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " — negativo" : ""}

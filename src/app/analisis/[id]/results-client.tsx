@@ -2803,9 +2803,9 @@ export function PremiumResults({
     return calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
-      ggcc: m.gastos ?? inputData.gastos,
-      contribuciones: m.contribuciones ?? inputData.contribuciones,
-      mantencion: m.provisionMantencionAjustada ?? 0,
+      ggcc: m.gastos,
+      contribuciones: m.contribuciones,
+      mantencion: m.provisionMantencionAjustada,
       vacanciaMeses: inputData.vacanciaMeses ?? 1,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
@@ -2868,8 +2868,8 @@ export function PremiumResults({
       };
 
       let arriendoAct = scenArriendo;
-      let gastosAct = m.gastos ?? inputData.gastos;
-      let contribAct = m.contribuciones ?? inputData.contribuciones;
+      let gastosAct = m.gastos;
+      let contribAct = m.contribuciones;
       let flujoAcumH = 0;
       let flujoMes1 = 0;
 
@@ -2928,9 +2928,9 @@ export function PremiumResults({
     const wf = calcFlujoDesglose({
       arriendo: inputData.arriendo,
       dividendo: m.dividendo,
-      ggcc: m.gastos ?? inputData.gastos,
-      contribuciones: m.contribuciones ?? inputData.contribuciones,
-      mantencion: m.provisionMantencionAjustada ?? 0,
+      ggcc: m.gastos,
+      contribuciones: m.contribuciones,
+      mantencion: m.provisionMantencionAjustada,
       vacanciaMeses: inputData.vacanciaMeses,
       usaAdministrador: inputData.usaAdministrador,
       comisionAdministrador: inputData.comisionAdministrador,
@@ -3022,8 +3022,8 @@ export function PremiumResults({
 
     let acumulado = 0;
     let arriendoActual = inputData.arriendo;
-    let gastosActual = m.gastos ?? inputData.gastos ?? 0;
-    let contribucionesActual = m.contribuciones ?? inputData.contribuciones;
+    let gastosActual = m.gastos;
+    let contribucionesActual = m.contribuciones;
     const costGrowthDec = costGrowth / 100;
 
     function getMantencionForMonth(mes: number): number {
@@ -3214,8 +3214,8 @@ export function PremiumResults({
     const flujoAcumByMonth: number[] = [0]; // index 0 = T0
     {
       let arriendoAct = inputData.arriendo;
-      let gastosAct = m.gastos ?? inputData.gastos ?? 0;
-      let contribucionesAct = m.contribuciones ?? inputData.contribuciones;
+      let gastosAct = m.gastos;
+      let contribucionesAct = m.contribuciones;
       let acum = 0;
       const esPreEntregaFlow = mesesPreEntrega > 0 && inputData.estadoVenta !== "inmediata";
       for (let mo = 1; mo <= horizonYears * 12; mo++) {
