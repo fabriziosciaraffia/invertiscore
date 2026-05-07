@@ -1017,7 +1017,12 @@ function calcNegociacionScenario(
     // Modo 2 — optimizar flujo: el precio es bueno vs mercado pero el aporte es alto.
     const precioFlujoViable = calcPrecioFlujoViable(input, metrics, ufClp);
     if (precioFlujoViable !== null && precioFlujoViable < input.precio) {
-      precioSugeridoUF = Math.round(precioFlujoViable * 10) / 10;
+      // Cap descuento absoluto -25% (Sesión B2 item 3): un descuento mayor
+      // suena absurdo narrativamente. Si el cálculo bruto pide más, clampeamos
+      // hacia arriba al -25%; si pide menos, respetamos el cálculo.
+      const precioCap25 = input.precio * 0.75;
+      const precioSugeridoConCap = Math.max(precioFlujoViable, precioCap25);
+      precioSugeridoUF = Math.round(precioSugeridoConCap * 10) / 10;
       modo = "optimizar_flujo";
       razon = "Bajas el precio para que tu aporte mensual sea sostenible, no porque el mercado lo valga menos.";
     } else {

@@ -31,6 +31,10 @@ export function ZoneInsightAI({ insight, currency }: Props) {
         background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
         borderRadius: "0 8px 8px 0",
         padding: "14px 18px",
+        // Item 5 Sesión B2: cap altura para evitar overflow del viewport
+        // cuando la IA genera narrative largo. Scroll interno, sin fade.
+        maxHeight: 240,
+        overflowY: "auto",
       }}
     >
       {/* Tag pill: ★ asterisco firma identitaria IA (skill Patrón 4 obligatorio) */}

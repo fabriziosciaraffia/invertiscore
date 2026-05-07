@@ -1242,10 +1242,22 @@ function buildHeroDatosClave(
     color: flujoColor,
   };
 
-  // 2) Precio sugerido — directly from IA (not a motor number)
+  // 2) Precio sugerido — preferir las anclas canónicas del motor cuando estén
+  // presentes (`negociacion.precios.techo_*`). Antes (Sesión B2 item 2) el
+  // header recomputaba `precioSugeridoUF × valorUF_live` mientras el drawer
+  // leía `precios.techo_clp` ya redondeado al UF snapshot del motor — los
+  // valores divergían ~0,4% (~$858K en UF 5.000) al cargar el análisis con
+  // UF live distinta a la del snapshot.
   const precioSugeridoRaw = aiData.negociacion?.precioSugerido || "";
-  const precioSugeridoUF = parseUFString(precioSugeridoRaw);
-  const precioSugeridoCLP = precioSugeridoUF * (valorUF || 0);
+  const precioSugeridoUFParsed = parseUFString(precioSugeridoRaw);
+  const techoUFAncla = aiData.negociacion?.precios?.techo_uf;
+  const techoCLPAncla = aiData.negociacion?.precios?.techo_clp;
+  const precioSugeridoUF = (typeof techoUFAncla === "number" && techoUFAncla > 0)
+    ? techoUFAncla
+    : precioSugeridoUFParsed;
+  const precioSugeridoCLP = (typeof techoCLPAncla === "number" && techoCLPAncla > 0)
+    ? techoCLPAncla
+    : precioSugeridoUF * (valorUF || 0);
   const precioCard: import("@/lib/types").DatoClave = {
     label: "Precio sugerido",
     valor_uf: precioSugeridoUF > 0 ? `UF ${Math.round(precioSugeridoUF).toLocaleString("es-CL")}` : "—",

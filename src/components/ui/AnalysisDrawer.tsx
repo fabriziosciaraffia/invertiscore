@@ -861,18 +861,29 @@ function PlanNegociacion({
   const glosaTecho = (currency === "CLP" ? precios.glosaTecho_clp : precios.glosaTecho_uf) || "";
   const glosaWalk = (currency === "CLP" ? precios.glosaWalkAway_clp : precios.glosaWalkAway_uf) || "";
 
-  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string }> = [
-    {
-      label: "Primera oferta",
-      valor: fmtPrecio(precios.primeraOferta_clp, precios.primeraOferta_uf),
-      glosa: glosaPrimera || "Con qué número partir.",
-    },
-    {
-      label: "Techo",
-      valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
-      glosa: glosaTecho || "Hasta dónde subir si rechazan.",
-    },
-  ];
+  // Item 1 Sesión B2: cuando primeraOferta == techo (modo cerrar_actual del
+  // motor), ambos slots muestran el mismo número. Fusionamos en uno solo.
+  const slotsUnificados = precios.primeraOferta_uf === precios.techo_uf;
+  const slots: Array<{ label: string; valor: string; glosa: string; razon?: string }> = slotsUnificados
+    ? [
+        {
+          label: "Oferta única",
+          valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
+          glosa: glosaTecho || glosaPrimera || "Cierra a este precio — no hay margen para negociar a la baja.",
+        },
+      ]
+    : [
+        {
+          label: "Primera oferta",
+          valor: fmtPrecio(precios.primeraOferta_clp, precios.primeraOferta_uf),
+          glosa: glosaPrimera || "Con qué número partir.",
+        },
+        {
+          label: "Techo",
+          valor: fmtPrecio(precios.techo_clp, precios.techo_uf),
+          glosa: glosaTecho || "Hasta dónde subir si rechazan.",
+        },
+      ];
 
   if (precios.walkAway) {
     if (precios.walkAway.precio_uf === null) {
