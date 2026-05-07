@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ArrowLeft, CheckCircle2, AlertTriangle, XCircle, Calculator, Home, Building2 } from "lucide-react";
 import { AppNav } from "@/components/chrome/AppNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { Button } from "@/components/ui/button";
 import type { FrancoVerdict } from "@/lib/types";
 
@@ -44,6 +45,9 @@ interface Props {
   ufValue: number;
   accessLevel: AccessLevel;
   isOwner: boolean;
+  isSharedView: boolean;
+  userCredits: number;
+  welcomeAvailable: boolean;
 }
 
 // ─── Format helpers ────────────────────────────────
@@ -451,7 +455,19 @@ export function ComparativaClient(p: Props) {
             </Link>
           </div>
 
-          {/* Comparar otra propiedad */}
+          {/* WalletStatusCTA in-line al cierre — refleja estado del wallet */}
+          <div className="mb-6">
+            <WalletStatusCTA
+              welcomeAvailable={p.welcomeAvailable}
+              credits={p.userCredits}
+              isSubscriber={p.accessLevel === "subscriber"}
+              isAdmin={false /* admin → accessLevel="subscriber" en este componente */}
+              isSharedView={p.isSharedView}
+              source="comparativa"
+            />
+          </div>
+
+          {/* Comparar otra propiedad — navegación secundaria */}
           <div className="mb-4 flex justify-center">
             <Link
               href="/analisis/nuevo-v2"

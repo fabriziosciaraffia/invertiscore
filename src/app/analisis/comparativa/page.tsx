@@ -65,6 +65,20 @@ export default async function ComparativaPage({
   const isLoggedIn = !!user;
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
   const isOwner = user?.id === ltr.user_id && ltr.user_id !== null;
+  const isSharedView = isLoggedIn && !isOwner && !isAdmin;
+
+  // Wallet status para WalletStatusCTA in-line al cierre.
+  let userCredits = 0;
+  let welcomeAvailable = true;
+  if (user) {
+    const { data: creditsRow } = await supabase
+      .from("user_credits")
+      .select("credits, welcome_credit_used")
+      .eq("user_id", user.id)
+      .single();
+    userCredits = creditsRow?.credits ?? 0;
+    welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+  }
 
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
   if (isAdmin) accessLevel = "subscriber";
@@ -105,6 +119,9 @@ export default async function ComparativaPage({
       ufValue={ufValue}
       accessLevel={accessLevel}
       isOwner={isOwner}
+      isSharedView={isSharedView}
+      userCredits={userCredits}
+      welcomeAvailable={welcomeAvailable}
     />
   );
 }

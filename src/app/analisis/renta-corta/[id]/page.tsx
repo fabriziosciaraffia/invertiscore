@@ -78,13 +78,15 @@ export default async function STRResultPage({
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
 
   let userCredits = 0;
+  let welcomeAvailable = true;
   if (user) {
     const { data: credits } = await supabase
       .from("user_credits")
-      .select("credits")
+      .select("credits, welcome_credit_used")
       .eq("user_id", user.id)
       .single();
     userCredits = credits?.credits ?? 0;
+    welcomeAvailable = !(credits?.welcome_credit_used ?? false);
   }
 
   let accessLevel: "guest" | "free" | "premium" | "subscriber";
@@ -115,6 +117,7 @@ export default async function STRResultPage({
       userId={user?.id ?? null}
       isSharedView={isSharedView}
       userCredits={userCredits}
+      welcomeAvailable={welcomeAvailable}
       aiAnalysisInitial={data.ai_analysis ?? null}
     />
   );

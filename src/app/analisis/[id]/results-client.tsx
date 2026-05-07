@@ -23,6 +23,7 @@ import { StateBox } from "@/components/ui/StateBox";
 import { AnalysisDrawer, extractRiesgos, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
+import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { SimulationProvider, useSimulation } from "@/contexts/SimulationContext";
@@ -2506,6 +2507,7 @@ export function PremiumResults({
   isSharedLink = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   userCredits = 0,
+  welcomeAvailable = true,
   ownerFirstName = "",
   analysesCount = 0,
   isLoggedIn = false,
@@ -2534,6 +2536,7 @@ export function PremiumResults({
   isSharedView?: boolean;
   isSharedLink?: boolean;
   userCredits?: number;
+  welcomeAvailable?: boolean;
   ownerFirstName?: string;
   analysesCount?: number;
   isLoggedIn?: boolean;
@@ -3669,11 +3672,26 @@ export function PremiumResults({
           </div>
         )}
         {mainContent}
+
+        {/* WalletStatusCTA in-line al cierre — refleja estado del wallet
+            del user logueado. Excluye admin/sharedView/welcomeDisponible. */}
+        <div className="mt-8">
+          <WalletStatusCTA
+            welcomeAvailable={welcomeAvailable}
+            credits={userCredits}
+            isSubscriber={accessLevel === "subscriber"}
+            isAdmin={false /* admin → accessLevel="subscriber" en este componente */}
+            isSharedView={isSharedView}
+            source="ltr"
+          />
+        </div>
       </div>
       <ProCTABanner
         analysesCount={analysesCount}
         isLoggedIn={isLoggedIn}
         accessLevel={accessLevel}
+        welcomeAvailable={welcomeAvailable}
+        isSharedView={isSharedView}
         source="results"
       />
     </>

@@ -13,6 +13,13 @@ interface ProCTABannerProps {
   analysesCount: number;
   isLoggedIn: boolean;
   accessLevel: "guest" | "free" | "premium" | "subscriber";
+  /** UX fix CTA welcome consumido: cuando welcomeAvailable es false,
+   * <WalletStatusCTA> in-line cubre el caso "sin créditos" con un mensaje
+   * más fuerte. ProCTABanner se queda silencioso para no duplicar. */
+  welcomeAvailable?: boolean;
+  /** Vista compartida (user logueado mirando análisis ajeno): el CTA de
+   * upgrade no aplica al estado del owner del análisis. */
+  isSharedView?: boolean;
   source?: string;
 }
 
@@ -20,6 +27,8 @@ export function ProCTABanner({
   analysesCount,
   isLoggedIn,
   accessLevel,
+  welcomeAvailable = true,
+  isSharedView = false,
   source = "results",
 }: ProCTABannerProps) {
   const posthog = usePostHog();
@@ -29,6 +38,10 @@ export function ProCTABanner({
   // Mount-only resolution: condiciones + localStorage check.
   useEffect(() => {
     if (!isLoggedIn || accessLevel !== "free") return;
+    // <WalletStatusCTA> ya cubre los free sin welcome (sin créditos).
+    if (!welcomeAvailable) return;
+    // No mostrar en shared view.
+    if (isSharedView) return;
 
     const threshold = Number(process.env.NEXT_PUBLIC_PRO_CTA_THRESHOLD) || DEFAULT_THRESHOLD;
     const dismissDays = Number(process.env.NEXT_PUBLIC_PRO_CTA_DISMISS_DAYS) || DEFAULT_DISMISS_DAYS;
@@ -49,7 +62,7 @@ export function ProCTABanner({
 
     setVisible(true);
     posthog?.capture("pro_cta_banner_shown", { analyses_count: analysesCount, source });
-  }, [analysesCount, isLoggedIn, accessLevel, posthog, source]);
+  }, [analysesCount, isLoggedIn, accessLevel, welcomeAvailable, isSharedView, posthog, source]);
 
   function handleDismiss() {
     setClosing(true);

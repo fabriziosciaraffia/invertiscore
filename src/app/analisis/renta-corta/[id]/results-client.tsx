@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { ShortTermResult, EscenarioSTR, FlujoEstacionalMes, SensibilidadRow } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 
 // ─── AI Analysis types (STR) ───────────────────────
 interface AIAnalysisSTR {
@@ -360,6 +361,7 @@ interface STRResultsProps {
   userId: string | null;
   isSharedView: boolean;
   userCredits: number;
+  welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
 }
 
@@ -367,7 +369,7 @@ export function STRResultsClient({
   analysisId, results, inputData, accessLevel, ufValue,
   nombre, comuna, ciudad, superficie, createdAt,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  userId, isSharedView, userCredits, aiAnalysisInitial,
+  userId, isSharedView, userCredits, welcomeAvailable = true, aiAnalysisInitial,
 }: STRResultsProps) {
   if (ufValue) UF_CLP = ufValue;
 
@@ -1210,7 +1212,19 @@ export function STRResultsClient({
           />
         )}
 
-        {/* ─── Bottom CTA ──────────────────────────── */}
+        {/* ─── WalletStatusCTA in-line al cierre ────── */}
+        <div className="mt-8">
+          <WalletStatusCTA
+            welcomeAvailable={welcomeAvailable}
+            credits={userCredits}
+            isSubscriber={accessLevel === "subscriber"}
+            isAdmin={false /* admin → accessLevel="subscriber" en este componente */}
+            isSharedView={isSharedView}
+            source="str"
+          />
+        </div>
+
+        {/* ─── Bottom CTA (navegación secundaria) ───── */}
         <div className="mt-8 text-center pb-12">
           <a href="/analisis/nuevo-v2">
             <Button

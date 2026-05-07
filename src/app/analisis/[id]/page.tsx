@@ -94,15 +94,17 @@ export default async function AnalisisDetallePage({
   // Check user-level subscription/credits status
   const userTier = user ? await getUserAccessLevel(user.id) : "guest";
 
-  // Fetch user credits for "use credit" CTA
+  // Fetch user credits + welcome flag para "use credit" CTA y WalletStatusCTA.
   let userCredits = 0;
+  let welcomeAvailable = true;
   if (user) {
     const { data: credits } = await supabase
       .from("user_credits")
-      .select("credits")
+      .select("credits, welcome_credit_used")
       .eq("user_id", user.id)
       .single();
     userCredits = credits?.credits ?? 0;
+    welcomeAvailable = !(credits?.welcome_credit_used ?? false);
   }
 
   // Pro CTA banner: total de analisis del user para threshold check.
@@ -180,6 +182,7 @@ export default async function AnalisisDetallePage({
           isSharedView={isSharedView}
           isSharedLink={isSharedLink}
           userCredits={userCredits}
+          welcomeAvailable={welcomeAvailable}
           ownerFirstName={ownerFirstName}
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
