@@ -44,6 +44,37 @@ export function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
 
+export function fmtUF(n: number): string {
+  const rounded = Math.round(n * 10) / 10;
+  if (Number.isInteger(rounded)) {
+    return "UF " + Math.round(rounded).toLocaleString("es-CL");
+  }
+  const [int, dec] = rounded.toFixed(1).split(".");
+  return "UF " + Number(int).toLocaleString("es-CL") + "," + dec;
+}
+
+export function fmtMoney(n: number, currency: "CLP" | "UF", ufClp: number): string {
+  if (currency === "UF") return fmtUF(n / ufClp);
+  return fmtCLP(n);
+}
+
+export function fmtM(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1).replace(".", ",") + "M";
+  if (Math.abs(n) >= 1_000) return "$" + Math.round(n / 1_000).toLocaleString("es-CL") + "K";
+  return "$" + Math.round(n).toLocaleString("es-CL");
+}
+
+export function fmtAxisMoney(n: number, currency: "CLP" | "UF", ufClp: number): string {
+  if (currency === "UF") {
+    const uf = n / ufClp;
+    if (Math.abs(uf) >= 1_000) return "UF " + (uf / 1_000).toFixed(0) + "K";
+    if (Math.abs(uf) >= 100) return "UF " + Math.round(uf);
+    if (Math.abs(uf) >= 1) return "UF " + uf.toFixed(1).replace(".", ",");
+    return "UF " + uf.toFixed(2).replace(".", ",");
+  }
+  return fmtM(n);
+}
+
 export function fmtPct(n: number, decimals: number = 1): string {
   return n.toFixed(decimals).replace(".", ",") + "%";
 }
