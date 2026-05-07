@@ -43,12 +43,13 @@ export function getPunchline(
     return { value: "—", sub: "Aporte mensual", color: "var(--franco-text)" };
   }
 
-  // 2. Negociación — IA da string UF; motor da numérico. Validamos y caemos
-  // al motor si IA halluciná (Fase 20 P2/P3).
+  // 2. Negociación — fuente única: motor recomputado (post-Sesión
+  // B-bug-snapshot-fix). Antes la MiniCard prefería IA cuando IA < precio
+  // actual, pero el header `buildHeroDatosClave` y el drawer interno leen
+  // del motor: divergían visualmente. Doctrina canónica: motor primero,
+  // IA fallback. Ver audit/sesionB-bug-snapshot-residual-fix/.
   if (section === "negociacion") {
     const motorSugUF = results?.negociacion?.precioSugeridoUF ?? 0;
-    // Precio actual de compra: deriva de metrics.precioCLP (no valorMercadoUsuario,
-    // ese es la estimación del usuario). Ambos en UF para comparar contra sugerido.
     const precioActualCLP = results?.metrics?.precioCLP ?? 0;
     const precioActualUF = valorUF > 0 ? precioActualCLP / valorUF : 0;
     const raw = "precioSugerido" in data
@@ -56,13 +57,12 @@ export function getPunchline(
       : "";
     const iaUF = parseUFString(raw);
 
-    // P2 (7.5): si IA sugiere ≥ precio actual, descartamos IA y usamos motor.
-    // P3 (7.7): si IA está vacío/null, fallback a motor.
+    // Prioridad: motor (canónico) → IA (con guard anti-hallucinación P2) → raw.
     let sugeridoUF: number;
-    if (iaUF > 0 && (precioActualUF === 0 || iaUF < precioActualUF)) {
-      sugeridoUF = iaUF;
-    } else if (motorSugUF > 0) {
+    if (motorSugUF > 0) {
       sugeridoUF = motorSugUF;
+    } else if (iaUF > 0 && (precioActualUF === 0 || iaUF < precioActualUF)) {
+      sugeridoUF = iaUF;
     } else {
       // Sin datos: caer al raw IA si existe, sino "—".
       return { value: raw || "—", sub: "Precio al que conviene cerrar", color: "var(--franco-text)" };

@@ -79,11 +79,30 @@ export function PatrimonioChart({
     // Para inmediata, escritura es hoy → deuda a0 = creditoInicial.
     const isEntregaFutura = inputData.estadoVenta === "futura";
     const deudaA0 = isEntregaFutura ? 0 : creditoInicial;
+
+    // Año en que ocurre la escritura (entrega). Pre-entrega el activo aún no
+    // está en el patrimonio del comprador — el patrimonio es lo que ya puso
+    // (aporteAcum). Post-entrega aparece el activo: patrimonio = valor − deuda.
+    // Para entrega inmediata aniosEntrega = 0 → fórmula post-entrega aplica
+    // desde a0 (sin cambio vs. comportamiento previo).
+    // Ver audit/sesionB-bug-snapshot-residual-fix/.
+    const mesesPreEntregaCalc = (() => {
+      if (!inputData.fechaEntrega || inputData.estadoVenta === "inmediata") return 0;
+      const [a, me] = inputData.fechaEntrega.split("-").map(Number);
+      const now = new Date();
+      const ent = new Date(a, (me || 1) - 1);
+      const meses = Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
+      return Math.max(0, meses);
+    })();
+    const aniosEntregaInternal = Math.ceil(mesesPreEntregaCalc / 12);
+
     rows.push({
       anio: 0,
       aporteAcum: inversionInicial,
       valorDepto: vmFrancoCLP,
-      patrimonioNeto: vmFrancoCLP - deudaA0,
+      patrimonioNeto: 0 < aniosEntregaInternal
+        ? inversionInicial               // pre-entrega: lo que pusiste
+        : vmFrancoCLP - deudaA0,         // entrega inmediata: equity en activo
       flujoAcumulado: 0,
       deudaPendiente: deudaA0,
     });
@@ -98,11 +117,14 @@ export function PatrimonioChart({
         : 0;
       const aporteAcum =
         inversionInicial + cuotasPagadasHastaI + Math.abs(Math.min(0, p.flujoAcumulado));
+      const isPreEntrega = i < aniosEntregaInternal;
       rows.push({
         anio: i,
         aporteAcum,
         valorDepto: p.valorPropiedad,
-        patrimonioNeto: p.valorPropiedad - p.saldoCredito,
+        patrimonioNeto: isPreEntrega
+          ? aporteAcum                          // pre-entrega: lo que pusiste
+          : p.valorPropiedad - p.saldoCredito,  // post-entrega: equity
         flujoAcumulado: p.flujoAcumulado,
         deudaPendiente: p.saldoCredito,
       });
