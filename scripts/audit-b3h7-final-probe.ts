@@ -15,11 +15,20 @@
 import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { writeFileSync, mkdirSync } from "fs";
+import { readFileSync } from "fs";
 import { runAnalysis } from "../src/lib/analysis";
 import { generateAiAnalysis } from "../src/lib/ai-generation";
-import { INSIGHT_SYSTEM_PROMPT } from "../src/app/api/analisis/[id]/zone-insight/route";
 import { PLUSVALIA_HISTORICA } from "../src/lib/plusvalia-historica";
 import type { AnalisisInput } from "../src/lib/types";
+
+// Extraer INSIGHT_SYSTEM_PROMPT del route.ts (no se puede exportar — Next 14
+// route handlers no permiten exports arbitrarios).
+const INSIGHT_SYSTEM_PROMPT = (() => {
+  const route = readFileSync("src/app/api/analisis/[id]/zone-insight/route.ts", "utf8");
+  const m = route.match(/const INSIGHT_SYSTEM_PROMPT\s*=\s*`([\s\S]*?)`;/);
+  if (!m) throw new Error("INSIGHT_SYSTEM_PROMPT no encontrado en route.ts");
+  return m[1];
+})();
 
 const sb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
