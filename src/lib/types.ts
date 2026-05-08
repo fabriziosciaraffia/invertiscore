@@ -342,6 +342,55 @@ export interface AIAnalysisV2 {
   francoVerdict?: FrancoVerdict;
 }
 
+// ─── STR — IA Análisis v2 (Ronda 4d) ──────────────────────────────
+// Schema canónico STR alineado con doctrina analysis-voice-franco. La duplicación
+// CLP/UF (§2.7) solo aplica a `siendoFrancoHeadline` que típicamente lleva la
+// cifra dominante. El resto de campos son strings únicos: la IA formatea cifras
+// inline ("aporte de $262K mensuales" / "ventaja de UF 880") sin necesidad de
+// toggle CLP↔UF en el render.
+export interface AISectionSTRv2 {
+  pregunta: string;
+  contenido: string;
+  cajaAccionable: string;
+}
+
+export interface AIConvieneSTRv2 {
+  pregunta: string;
+  respuestaDirecta: string;
+  veredictoFrase: string;
+  reencuadre: string;
+  cajaAccionable: string;
+}
+
+export interface AIVsLtrSTRv2 {
+  pregunta: string;
+  contenido: string;
+  estrategiaSugerida: string;   // recomendación con número
+  cajaAccionable: string;
+}
+
+// STRVerdict canónico vive en `lib/engines/short-term-engine.ts` — esto es alias
+// para evitar acoplamiento del consumer del schema IA al motor. Si los tipos
+// divergen, re-export desde aquí.
+import type { STRVerdict as STRVerdictEngine } from "./engines/short-term-engine";
+export type STRVerdict = STRVerdictEngine;
+
+export interface AIAnalysisSTRv2 {
+  siendoFrancoHeadline_clp: string;
+  siendoFrancoHeadline_uf: string;
+  conviene: AIConvieneSTRv2;
+  rentabilidad: AISectionSTRv2;
+  vsLTR: AIVsLtrSTRv2;
+  operacion: AISectionSTRv2;
+  largoPlazo: AISectionSTRv2;
+  riesgos: AISectionSTRv2;
+  // Meta — separación de roles motor ↔ Franco (skill §1.7).
+  engineSignal: STRVerdict;
+  francoVerdict: STRVerdict;
+  // Solo cuando francoVerdict ≠ engineSignal — explica la divergencia en 1-2 frases.
+  francoVerdictRationale?: string;
+}
+
 export interface Analisis {
   id: string;
   user_id: string;
