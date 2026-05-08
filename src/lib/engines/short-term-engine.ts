@@ -90,8 +90,33 @@ export interface SensibilidadRow {
   sobreRentaPct: number;
 }
 
+export type STRVerdict = 'VIABLE' | 'AJUSTA ESTRATEGIA' | 'NO RECOMENDADO';
+
+// Proyección año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
+export interface YearProjectionSTR {
+  year: number;
+  valorDepto: number;
+  saldoCredito: number;
+  flujoOperacionalAnual: number;     // NOI*12 - dividendo*12 (con ramp-up año 1)
+  flujoAcumulado: number;
+  aporteMensualPromedio: number;     // si flujo<0, lo que aporta el dueño /12
+  patrimonioNeto: number;            // valorDepto - saldoCredito + flujoAcumulado
+}
+
+// Escenario "si vendes en año N". Ronda 4b.
+export interface ExitScenarioSTR {
+  yearVenta: number;
+  valorVenta: number;
+  saldoCreditoAlVender: number;
+  gastosCierre: number;              // 2% del precio venta
+  flujoAcumuladoAlVender: number;
+  gananciaNeta: number;              // valorVenta - saldo - cierre + flujoAcum - capitalInicial
+  multiplicadorCapital: number;      // gananciaNeta / capitalInicial
+  tirAnual: number;                  // TIR % del cashflow año 0 → año N
+}
+
 export interface ShortTermResult {
-  veredicto: 'VIABLE' | 'AJUSTA ESTRATEGIA' | 'NO RECOMENDADO';
+  veredicto: STRVerdict;
 
   // Financiamiento
   pie: number;
@@ -132,6 +157,15 @@ export interface ShortTermResult {
 
   // Sensibilidad
   sensibilidad: SensibilidadRow[];
+
+  // Ronda 4b — Paridad estructural con LTR para Patrón 7 (Advanced Section).
+  // Opcionales para no romper análisis STR persistidos pre-4b.
+  projections?: YearProjectionSTR[];
+  exitScenario?: ExitScenarioSTR;
+  // Señal del motor (matemática pura). Espejo de `veredicto` desde 4b.
+  // En 4d la IA podrá producir `francoVerdict` distinto considerando perfil.
+  engineSignal?: STRVerdict;
+  francoVerdict?: STRVerdict;
 }
 
 // =========================================
@@ -147,6 +181,11 @@ const GASTOS_CIERRE_PCT = 0.02;
 const COMISION_AIRBNB = 0.03;
 const COMISION_LTR = 0.05;
 const RAMP_UP_FACTORS = [0.70, 0.80, 0.90, 1.00];
+
+// Ronda 4b — paridad estructural con LTR.
+const PLUSVALIA_ANUAL_DEFAULT = 0.03;   // 3% nominal anual.
+const HORIZONTE_DEFAULT = 10;           // años proyectados.
+const GASTOS_CIERRE_VENTA = 0.02;       // 2% comisión + costos al vender.
 
 /** Costos mensuales por tipología: [electricidad, agua, wifi, insumos, mantencion] */
 export const COSTOS_DEFAULT: Record<string, [number, number, number, number, number]> = {
@@ -232,6 +271,153 @@ function calcEscenario(
     rentabilidadBruta,
     adrReferencia,
     ocupacionReferencia,
+  };
+}
+
+/**
+ * Saldo de crédito al mes M (cuota fija francesa).
+ * tasaAnualDecimal en decimal (0.045 = 4.5%) — convención STR.
+ */
+function saldoCreditoSTR(creditoInicial: number, tasaAnualDecimal: number, plazoAnos: number, mesActual: number): number {
+  if (creditoInicial <= 0) return 0;
+  const tasaMensual = tasaAnualDecimal / 12;
+  const n = plazoAnos * 12;
+  if (tasaMensual === 0) return creditoInicial * (1 - mesActual / n);
+  const dividendo = (creditoInicial * tasaMensual) / (1 - Math.pow(1 + tasaMensual, -n));
+  return creditoInicial * Math.pow(1 + tasaMensual, mesActual) -
+    dividendo * ((Math.pow(1 + tasaMensual, mesActual) - 1) / tasaMensual);
+}
+
+/**
+ * TIR de un flujo de caja (Newton-Raphson). Misma implementación que LTR.
+ */
+function calcTIRSTR(flujos: number[], guess: number = 0.1): number {
+  let rate = guess;
+  for (let iter = 0; iter < 100; iter++) {
+    let npv = 0;
+    let dnpv = 0;
+    for (let i = 0; i < flujos.length; i++) {
+      npv += flujos[i] / Math.pow(1 + rate, i);
+      dnpv -= (i * flujos[i]) / Math.pow(1 + rate, i + 1);
+    }
+    if (Math.abs(npv) < 1) break;
+    if (dnpv === 0) break;
+    rate -= npv / dnpv;
+    if (rate < -0.99) rate = -0.5;
+    if (rate > 10) rate = 1;
+  }
+  return rate;
+}
+
+/**
+ * Proyecciones año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
+ *
+ * Año 1 aplica perdidaRampUp (3 primeros meses operan al 70/80/90%).
+ * Año 2+ flujo a NOI base sin ramp-up.
+ * Plusvalía: compoundéa desde año 1 (a diferencia del LTR pre-entrega).
+ */
+function buildProjections(
+  input: ShortTermInputs,
+  capitalInvertido: number,
+  dividendoMensual: number,
+  noiMensualBase: number,
+  perdidaRampUp: number,
+  horizonte: number = HORIZONTE_DEFAULT,
+  plusvaliaAnual: number = PLUSVALIA_ANUAL_DEFAULT,
+): YearProjectionSTR[] {
+  void capitalInvertido;
+  const precioCompra = input.precioCompra;
+  const pie = Math.round(precioCompra * input.piePercent);
+  const montoCredito = precioCompra - pie;
+  const dividendoAnual = dividendoMensual * 12;
+  const noiAnualBase = noiMensualBase * 12;
+
+  const projections: YearProjectionSTR[] = [];
+  let flujoAcumulado = 0;
+
+  for (let year = 1; year <= horizonte; year++) {
+    const valorDepto = precioCompra * Math.pow(1 + plusvaliaAnual, year);
+
+    const mesActual = Math.min(year * 12, input.plazoCredito * 12);
+    const saldo = Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, mesActual));
+
+    // Ramp-up solo año 1: 3 meses parciales restan ingreso bruto
+    // (ya están en perdidaRampUp). Comisión sobre lo perdido también
+    // se ahorra, pero el efecto neto es conservador → restar el bruto.
+    const flujoOperacionalAnual = year === 1
+      ? noiAnualBase - dividendoAnual - perdidaRampUp
+      : noiAnualBase - dividendoAnual;
+
+    flujoAcumulado += flujoOperacionalAnual;
+
+    const aporteMensualPromedio = flujoOperacionalAnual < 0
+      ? Math.round(Math.abs(flujoOperacionalAnual) / 12)
+      : 0;
+
+    const patrimonioNeto = valorDepto - saldo + flujoAcumulado;
+
+    projections.push({
+      year,
+      valorDepto: Math.round(valorDepto),
+      saldoCredito: Math.round(saldo),
+      flujoOperacionalAnual: Math.round(flujoOperacionalAnual),
+      flujoAcumulado: Math.round(flujoAcumulado),
+      aporteMensualPromedio,
+      patrimonioNeto: Math.round(patrimonioNeto),
+    });
+  }
+
+  return projections;
+}
+
+/**
+ * Escenario de salida en año N. Ronda 4b.
+ * Replica la firma de `calcExitScenario` del LTR adaptada a STR.
+ */
+function buildExitScenario(
+  projections: YearProjectionSTR[],
+  capitalInicial: number,
+  yearVenta: number = HORIZONTE_DEFAULT,
+): ExitScenarioSTR {
+  const idx = Math.min(yearVenta - 1, projections.length - 1);
+  const proy = projections[idx];
+  if (!proy) {
+    return {
+      yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
+      flujoAcumuladoAlVender: 0, gananciaNeta: 0, multiplicadorCapital: 0, tirAnual: 0,
+    };
+  }
+
+  const valorVenta = proy.valorDepto;
+  const saldoCreditoAlVender = proy.saldoCredito;
+  const gastosCierre = Math.round(valorVenta * GASTOS_CIERRE_VENTA);
+  const flujoAcumuladoAlVender = proy.flujoAcumulado;
+  const gananciaNeta = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender - capitalInicial;
+  const multiplicadorCapital = capitalInicial > 0
+    ? Math.round((gananciaNeta / capitalInicial) * 100) / 100
+    : 0;
+
+  // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
+  // T_n = flujoOperacional + (valorVenta - saldo - cierre).
+  const flujos: number[] = [-capitalInicial];
+  for (let i = 0; i < yearVenta && i < projections.length; i++) {
+    let flujo = projections[i].flujoOperacionalAnual;
+    if (i === yearVenta - 1) {
+      flujo += valorVenta - saldoCreditoAlVender - gastosCierre;
+    }
+    flujos.push(flujo);
+  }
+  const tirAnual = Math.round(calcTIRSTR(flujos, 0.1) * 10000) / 100;
+
+  return {
+    yearVenta,
+    valorVenta: Math.round(valorVenta),
+    saldoCreditoAlVender: Math.round(saldoCreditoAlVender),
+    gastosCierre,
+    flujoAcumuladoAlVender: Math.round(flujoAcumuladoAlVender),
+    gananciaNeta: Math.round(gananciaNeta),
+    multiplicadorCapital,
+    tirAnual,
   };
 }
 
@@ -349,7 +535,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   });
 
   // --- 7. Veredicto ---
-  let veredicto: ShortTermResult['veredicto'];
+  let veredicto: STRVerdict;
   if (sobreRentaPct >= 0.10) {
     veredicto = 'VIABLE';
   } else if (sobreRentaPct >= 0 && base.noiMensual > 0) {
@@ -357,6 +543,16 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   } else {
     veredicto = 'NO RECOMENDADO';
   }
+
+  // --- 8. Projections + Exit (Ronda 4b) ---
+  const projections = buildProjections(
+    input,
+    capitalInvertido,
+    dividendoMensual,
+    base.noiMensual,
+    perdidaRampUp,
+  );
+  const exitScenario = buildExitScenario(projections, capitalInvertido);
 
   return {
     veredicto,
@@ -378,5 +574,9 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     breakEvenRevenueAnual,
     breakEvenPctDelMercado,
     sensibilidad,
+    projections,
+    exitScenario,
+    engineSignal: veredicto,
+    francoVerdict: veredicto,
   };
 }
