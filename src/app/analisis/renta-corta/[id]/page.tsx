@@ -5,7 +5,13 @@ import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
+import { STRResultsClientV2 } from "./results-client-v2";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
+
+// Feature flag Ronda 4c — habilita el rebuild visual STR alineado con LTR.
+// Default 'false' (legacy). Setear NEXT_PUBLIC_STR_V2=true en .env.local para
+// activar localmente sin afectar producción.
+const STR_V2_ENABLED = process.env.NEXT_PUBLIC_STR_V2 === "true";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -102,23 +108,26 @@ export default async function STRResultPage({
     accessLevel = isPremium ? "premium" : "free";
   }
 
-  return (
-    <STRResultsClient
-      analysisId={data.id}
-      results={results}
-      inputData={data.input_data}
-      accessLevel={accessLevel}
-      ufValue={ufValue}
-      nombre={data.nombre ?? ""}
-      comuna={data.comuna ?? ""}
-      ciudad={data.ciudad ?? ""}
-      superficie={data.superficie ?? 0}
-      createdAt={data.created_at ?? ""}
-      userId={user?.id ?? null}
-      isSharedView={isSharedView}
-      userCredits={userCredits}
-      welcomeAvailable={welcomeAvailable}
-      aiAnalysisInitial={data.ai_analysis ?? null}
-    />
-  );
+  const sharedProps = {
+    analysisId: data.id,
+    results,
+    inputData: data.input_data,
+    accessLevel,
+    ufValue,
+    nombre: data.nombre ?? "",
+    comuna: data.comuna ?? "",
+    ciudad: data.ciudad ?? "",
+    superficie: data.superficie ?? 0,
+    createdAt: data.created_at ?? "",
+    userId: user?.id ?? null,
+    isSharedView,
+    userCredits,
+    welcomeAvailable,
+    aiAnalysisInitial: data.ai_analysis ?? null,
+  };
+
+  if (STR_V2_ENABLED) {
+    return <STRResultsClientV2 {...sharedProps} />;
+  }
+  return <STRResultsClient {...sharedProps} />;
 }
