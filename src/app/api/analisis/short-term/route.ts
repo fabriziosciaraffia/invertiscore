@@ -7,6 +7,7 @@ import { calcShortTerm } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
 
 function createPaymentsAdminClient() {
   return createClient(
@@ -18,7 +19,6 @@ import type { AirbnbData, ShortTermInputs } from "@/lib/engines/short-term-engin
 import type {
   AirbnbEstimateData,
   AirbnbEstimateDirectData,
-  AirbnbEstimateResponse,
 } from "@/lib/airbnb/types";
 
 // ─── Supabase helpers (same pattern as /api/analisis) ──
@@ -224,29 +224,37 @@ export async function POST(request: Request) {
     // 3. Fetch UF
     const ufValue = await getUFValue();
 
-    // 4. Call AirROI endpoint (internal)
-    const baseUrl =
-      process.env.NEXT_PUBLIC_BASE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000");
-
-    const airbnbRes = await fetch(`${baseUrl}/api/airbnb/estimate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Forward cookies for auth if needed
-        cookie: request.headers.get("cookie") || "",
-      },
-      body: JSON.stringify({
-        address: body.direccion,
-        bedrooms: body.dormitorios,
-        baths: body.banos,
-        guests: body.capacidadHuespedes || 2,
-      }),
-    });
-
-    const airbnbResult: AirbnbEstimateResponse = await airbnbRes.json();
+    // 4. Call AirROI directly (sin sub-fetch HTTP). Bug 2026-05-09:
+    // el sub-fetch HTTP a /api/airbnb/estimate sufría doble cold start +
+    // doble timeout en flujo AMBAS y devolvía HTML cuando la function
+    // colapsaba — el `airbnbRes.json()` parseaba HTML y tiraba SyntaxError
+    // genérico en el catch al final (analizado: 71f4d2fd-fd98-…). La lógica
+    // core vive en `lib/airbnb/get-estimate.ts` y se llama directo.
+    let airbnbResult;
+    try {
+      airbnbResult = await getAirbnbEstimate(
+        body.direccion,
+        body.dormitorios,
+        body.banos,
+        body.capacidadHuespedes || 2,
+      );
+    } catch (err) {
+      console.error("[short-term] AirROI lib threw:", err);
+      return NextResponse.json(
+        { error: "Estimación de Airbnb no disponible. Intenta de nuevo en unos segundos." },
+        { status: 502 },
+      );
+    }
 
     if (!airbnbResult.success) {
+      console.error("[short-term] AirROI failed:", airbnbResult.error, airbnbResult.message);
+      // Diferenciar AirROI down (502) vs caso legítimo sin data (400)
+      if (airbnbResult.error === "airbnb_api_error") {
+        return NextResponse.json(
+          { error: "Estimación de Airbnb no disponible. Intenta de nuevo en unos segundos." },
+          { status: 502 },
+        );
+      }
       return NextResponse.json(
         { error: "No se encontraron datos de Airbnb para esta dirección. Verifica que sea una dirección válida en Santiago." },
         { status: 400 },
