@@ -2,6 +2,14 @@
  * Plusvalía histórica de departamentos por comuna 2014-2024
  * Fuente: Arenas & Cayo, Propital, Tinsa, Activo Más Inversiones
  * Datos de precios promedio de departamentos vendidos
+ *
+ * Shape de cada entry (B4-2):
+ * - plusvalia10a: % ACUMULADO en la década (ej: 37 = 37% en 10 años)
+ * - anualizada: % ANUAL equivalente (ej: 3.2 = 3,2% anual)
+ * - precio2014, precio2024: UF/m² al inicio y fin del rango
+ *
+ * Conversión: anualizada = ((1 + plusvalia10a/100)^(1/10) - 1) × 100. Ej: 37%
+ * acumulado → ((1.37)^0.1 − 1) × 100 ≈ 3.2% anual.
  */
 export const PLUSVALIA_HISTORICA: Record<string, { plusvalia10a: number; anualizada: number; precio2014: number; precio2024: number }> = {
   "Quilicura":           { plusvalia10a: 68, anualizada: 5.3, precio2014: 1077, precio2024: 1813 },
@@ -33,5 +41,6 @@ export const PLUSVALIA_HISTORICA: Record<string, { plusvalia10a: number; anualiz
   "El Bosque":           { plusvalia10a: -7, anualizada: -0.7, precio2014: 1737, precio2024: 1612 },
 };
 
-// Promedio Gran Santiago para comunas sin datos
+// Promedio Gran Santiago para comunas sin datos.
+// plusvalia10a = 35 (acumulado 10 años), anualizada = 3.0 (anual). NO confundir.
 export const PLUSVALIA_DEFAULT = { plusvalia10a: 35, anualizada: 3.0 };

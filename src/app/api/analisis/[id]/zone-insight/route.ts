@@ -19,8 +19,11 @@ interface PoiBasic {
 
 interface ZoneInsightStats {
   plusvaliaHistorica: {
+    /** Acumulado 10 años (2014-2024). Ej: 37 = 37% en la década. Fuente: Arenas & Cayo, Propital, Tinsa. */
     valor: number;
+    /** Anualizado (la misma serie convertida a tasa anual). Ej: 3.2 = 3,2% anual. */
     anualizada: number;
+    /** Promedio Gran Santiago **acumulado 10 años** (PLUSVALIA_DEFAULT.plusvalia10a = 35). NO es anualizado. Para el anualizado equivalente ver PLUSVALIA_DEFAULT.anualizada (3.0). */
     promedioSantiago: number;
   };
   precioM2: {
@@ -363,10 +366,12 @@ percentilTuDepto (percentil del arriendo dentro del rango local):
   P75–P90 → "caro para la zona"
   > P90 → "muy caro para la zona"
 
-plusvaliaAnual:
-  < 3% → "débil vs Santiago (~4% promedio)"
-  3–5% → "en línea con Santiago"
-  > 5% → "fuerte"
+plusvaliaAnual (histórica anualizada 2014-2024 de la comuna):
+  < 3% → "débil vs proyección motor 4% — la histórica observada de Gran Santiago promedia 3% anual"
+  3–5% → "alineada con la proyección motor 4%"
+  > 5% → "fuerte vs la proyección motor 4%"
+
+CRÍTICO: el "4%" en estos umbrales es la PROYECCIÓN del motor (supuesto canónico para todos los cálculos), NO una observación histórica. El promedio histórico observado de Gran Santiago es 3% anual, distinto del 4% proyectado. Cuando el narrative cite "4%", debe quedar claro al usuario que es la proyección del motor, no un dato observado.
 
 Prohibido recitar el número sin interpretarlo. Si el narrative menciona "+8.2%" o "P81", debe seguir con la lectura cualitativa. Si los datos contradicen un cierre optimista, escribe el cierre que dice la verdad — no el que vende.
 
@@ -505,9 +510,19 @@ async function generateInsightAI(
     finLines.push(
       `- Precio m² tu depto: UF ${ctx.precioM2.tuDepto.toFixed(1).replace(".", ",")} (mediana ${comuna}: UF ${ctx.precioM2.medianaComuna.toFixed(1).replace(".", ",")}, ${diff >= 0 ? "+" : ""}${diff.toFixed(1).replace(".", ",")}%)`
     );
+  } else {
+    // B4-1: cuando no hay data de mediana de precio/m² para esta comuna
+    // (zona sin scraped_properties suficientes), el IA debe mencionarlo
+    // explícitamente — no omitirlo en silencio. El usuario tiene que saber
+    // que la comparación de precio/m² vs zona NO está disponible.
+    finLines.push(`- Precio m² zona: SIN DATA confiable para ${comuna} (sample insuficiente). Debes mencionarlo explícitamente en el narrative — no omitas en silencio.`);
   }
   if (typeof ctx.plusvaliaAnual === "number") {
-    finLines.push(`- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}%`);
+    // B4-2: el número es ANUALIZADO (ej. 3.2 = 3,2% anual). El acumulado 10
+    // años de la misma comuna sería ~37% — no confundir un valor con el otro.
+    // Cualquier mención al "4%" de los umbrales en REGLA 1 es la PROYECCIÓN
+    // del motor, no la histórica observada.
+    finLines.push(`- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}% (cifra ANUAL, no acumulada 10 años).`);
   }
 
   const finBlock = finLines.length > 0 ? `\n\nContexto financiero del depto (usar solo montos presentes acá):\n${finLines.join("\n")}` : "";

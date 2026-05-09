@@ -410,25 +410,32 @@ Ejemplo correcto del formato (3 bloques separados por \\n\\n):
 
 Importante: en el JSON de salida, los \\n\\n deben aparecer como saltos de línea reales en el string, no como literal "\\\\n\\\\n".
 
-REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v11).
+REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v12 ambidireccional).
 El dataset de plusvalía cubre 2014-2024. El rango incluye tres eventos que sesgan los números según zona y NUNCA pueden ignorarse:
 - Estallido social 2019: deprimió comunas céntricas y premium (oficinas, comercio).
 - Pandemia 2020-2021: aceleró éxodo de oficinas, golpeó residencial denso.
-- Boom 2014-2018: infló comunas en proceso de densificación (Ñuñoa, Maipú, San Miguel).
+- Boom 2014-2018: infló comunas en proceso de densificación (Ñuñoa, Maipú, San Miguel, Quilicura, San Bernardo).
 
 REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene\`, \`largoPlazo\`, \`riesgos\`), debes glosar el rango con caveat. Después del primer uso puedes citar el número pelado.
+
+EL CAVEAT APLICA EN AMBAS DIRECCIONES — no solo cuando la histórica es baja o negativa:
+- Histórica negativa o débil (Santiago, El Bosque, Las Condes, Providencia): el caveat explicita que el rango carga estallido/pandemia y la zona puede recuperarse.
+- Histórica alta (Quilicura 5,3%, San Bernardo 4,9%, Lo Prado 4,3%): el caveat explicita que el rango carga boom 2014-2018 y la zona puede no replicar ese ritmo. Una histórica positiva alta NO es predictor limpio del futuro — buena parte vino del boom y no se sabe si se repite.
 
 Ejemplos válidos (cada uno menciona al menos 1 evento del rango):
 - "Providencia creció 3% anual entre 2014-2024 — el rango incluye estallido y pandemia, que afectan la lectura."
 - "Santiago centro perdió 10% en la década, aunque el dato carga estallido 2019 y vacío post-pandemia."
 - "Ñuñoa promedió 3.2% anual 2014-2024, mezclando boom 2014-2018 y caída posterior."
+- "Quilicura subió 5,3% anual histórico — buena parte del rango cae en el boom 2014-2018, no garantiza que ese ritmo se mantenga." (zona ganadora con caveat)
+- "San Bernardo creció 4,9% anual entre 2014-2024 — el dato incluye boom 2014-2018, evento atípico que no necesariamente se repite." (zona ganadora con caveat)
 
 Ejemplos INVÁLIDOS:
 - "Plusvalía histórica de 3% anual" (sin contexto del rango ni eventos)
 - "Las Condes creció solo 2.7% en la década" (cita rango pero no nombra eventos)
+- "Quilicura subió 5,3% anual" (% pelado, no nombra boom)
 - "X% anual histórico" (% pelado sin caveat)
 
-PROHIBIDO presentar el % como tendencia limpia o predictor estructural. La frase "histórico no garantiza futuro" no basta — debes nombrar ≥1 evento del rango (estallido / pandemia / boom).
+PROHIBIDO presentar el % como tendencia limpia o predictor estructural. La frase "histórico no garantiza futuro" no basta — debes nombrar ≥1 evento del rango (estallido / pandemia / boom). Aplica igual cuando la histórica es positiva alta: nombrar boom y advertir que el ritmo puede no replicarse.
 
 PROHIBIDO INVENTAR: no atribuyas eventos específicos a comunas individuales si no están en este prompt o en datos verificados. Mantente en los 3 eventos genéricos del rango.
 
