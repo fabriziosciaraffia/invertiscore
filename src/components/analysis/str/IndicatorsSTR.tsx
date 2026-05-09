@@ -23,8 +23,14 @@ export function IndicatorsSTR({
   valorUF: number;
 }) {
   const base = results.escenarios.base;
-  const tir = results.exitScenario?.tirAnual ?? 0;
-  const yearsExit = results.exitScenario?.yearVenta ?? 10;
+  // TIR proviene de exitScenario (Ronda 4b). Análisis pre-4b no lo tienen
+  // persistido — render con "—" + sub "Sin proyecciones disponibles" en lugar
+  // de defaultear a 0 (que confunde con "TIR real = 0%"). Consistente con
+  // PatrimonioChartSTR / SaleBlockSTR.
+  const exit = results.exitScenario;
+  const hasTir = !!exit && Number.isFinite(exit.tirAnual) && exit.tirAnual !== 0;
+  const tirValue = exit?.tirAnual ?? 0;
+  const yearsExit = exit?.yearVenta ?? 10;
   const payback = results.comparativa.paybackMeses;
 
   return (
@@ -72,9 +78,15 @@ export function IndicatorsSTR({
       />
       <KPICard
         label={`TIR @ ${yearsExit} AÑOS`}
-        value={fmtPct(tir, 1)}
-        sub={tir < 0 ? "Pérdida anualizada" : "Rentabilidad anualizada con venta"}
-        tone={tir < 0 ? "bad" : "neutral"}
+        value={hasTir ? fmtPct(tirValue, 1) : "—"}
+        sub={
+          !hasTir
+            ? "Sin proyecciones disponibles"
+            : tirValue < 0
+              ? "Pérdida anualizada"
+              : "Rentabilidad anualizada con venta"
+        }
+        tone={!hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral"}
         size="small"
         tooltip="Tasa interna de retorno considerando capital inicial, flujos operacionales año a año y venta del activo al año del horizonte."
       />
