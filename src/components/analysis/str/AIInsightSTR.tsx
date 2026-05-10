@@ -8,10 +8,6 @@ import type { AIAnalysisSTRv2, STRVerdict } from "@/lib/types";
  *
  * Renderiza el JSON IA producido por `/api/analisis/short-term/ai`.
  *
- * Compat: detecta v1 (legacy) vs v2 (Ronda 4d) por shape — análisis pre-4d
- * persistidos en BD siguen renderizando con su shape antiguo. Análisis nuevos
- * usan v2 alineado con doctrina analysis-voice-franco.
- *
  * Reglas Patrón 4:
  *   • Border-left Ink 100 grueso (3px)
  *   • Background Ink translúcido sutil (~3%)
@@ -19,20 +15,6 @@ import type { AIAnalysisSTRv2, STRVerdict } from "@/lib/types";
  *   • Tag pill "★ INSIGHT GENERADO POR FRANCO IA"
  *   • Cuerpo Sans 14px en CURSIVA (italic) — obligatorio
  */
-
-// ─── Tipos legacy v1 (compat) ─────────────────────────────────────
-interface AIAnalysisSTRv1Shape {
-  textoSimple_clp?: string;
-  textoSimple_uf?: string;
-  textoImportante_clp?: string;
-  textoImportante_uf?: string;
-  tuBolsillo?: { titulo: string; contenido_clp: string; contenido_uf: string; alerta_clp?: string; alerta_uf?: string };
-  vsAlternativas?: { titulo: string; contenido_clp: string; contenido_uf: string };
-  operacion?: { titulo: string; contenido_clp: string; contenido_uf: string };
-  proyeccion?: { titulo: string; contenido_clp: string; contenido_uf: string };
-  riesgos?: { titulo: string; items_clp?: string[]; items_uf?: string[] };
-  veredicto?: { titulo: string; explicacion_clp: string; explicacion_uf: string };
-}
 
 // ─── Discriminator ────────────────────────────────────────────────
 function hasAiSTRv2(ai: unknown): ai is AIAnalysisSTRv2 {
@@ -49,13 +31,6 @@ function hasAiSTRv2(ai: unknown): ai is AIAnalysisSTRv2 {
 }
 
 // ─── Helpers de render ────────────────────────────────────────────
-function pickFieldClpUf(obj: Record<string, unknown> | undefined, base: string, currency: "CLP" | "UF"): string {
-  if (!obj) return "";
-  const key = base + (currency === "UF" ? "_uf" : "_clp");
-  const v = obj[key];
-  return typeof v === "string" ? v : "";
-}
-
 function renderParagraphs(text: string) {
   if (!text) return null;
   return text.split(/\n\n+/).map((parrafo, i) => (
@@ -73,20 +48,17 @@ function renderParagraphs(text: string) {
 // ─── Componente principal ─────────────────────────────────────────
 export function AIInsightSTR({
   ai,
-  currency,
   loading,
   error,
 }: {
   ai: unknown;
-  currency: "CLP" | "UF";
   loading: boolean;
   error: string | null;
 }) {
-  const shape = useMemo<"v2" | "v1" | "loading" | "empty">(() => {
+  const shape = useMemo<"v2" | "loading" | "empty">(() => {
     if (loading && !ai) return "loading";
-    if (!ai || error) return "empty";
-    if (hasAiSTRv2(ai)) return "v2";
-    return "v1";
+    if (!ai || error || !hasAiSTRv2(ai)) return "empty";
+    return "v2";
   }, [ai, loading, error]);
 
   if (shape === "loading") {
@@ -97,11 +69,7 @@ export function AIInsightSTR({
     return null;
   }
 
-  if (shape === "v2") {
-    return <Container><RenderV2 ai={ai as AIAnalysisSTRv2} /></Container>;
-  }
-
-  return <Container><RenderV1 ai={ai as AIAnalysisSTRv1Shape} currency={currency} /></Container>;
+  return <Container><RenderV2 ai={ai as AIAnalysisSTRv2} /></Container>;
 }
 
 // ─── Container Patrón 4 ───────────────────────────────────────────
@@ -297,127 +265,3 @@ function CajaAccionable({ text, variant = "soft" }: { text: string; variant?: "s
   );
 }
 
-// ─── Render v1 (compat — análisis pre-4d) ────────────────────────
-function RenderV1({ ai, currency }: { ai: AIAnalysisSTRv1Shape; currency: "CLP" | "UF" }) {
-  const headline = pickFieldClpUf(ai as Record<string, unknown>, "textoImportante", currency)
-    || pickFieldClpUf(ai as Record<string, unknown>, "textoSimple", currency);
-
-  return (
-    <>
-      {headline && (
-        <h3 className="font-heading font-bold text-[18px] md:text-[20px] text-[var(--franco-text)] m-0 mb-4 leading-[1.3]">
-          {headline}
-        </h3>
-      )}
-      <div className="font-body italic text-[14px] text-[var(--franco-text)] leading-[1.65] space-y-5">
-        {ai.tuBolsillo && (
-          <SectionV1
-            label="TU BOLSILLO"
-            title={ai.tuBolsillo.titulo}
-            content={pickFieldClpUf(ai.tuBolsillo as Record<string, unknown>, "contenido", currency)}
-            alert={pickFieldClpUf(ai.tuBolsillo as Record<string, unknown>, "alerta", currency)}
-          />
-        )}
-        {ai.vsAlternativas && (
-          <SectionV1
-            label="STR vs LTR"
-            title={ai.vsAlternativas.titulo}
-            content={pickFieldClpUf(ai.vsAlternativas as Record<string, unknown>, "contenido", currency)}
-          />
-        )}
-        {ai.operacion && (
-          <SectionV1
-            label="OPERACIÓN"
-            title={ai.operacion.titulo}
-            content={pickFieldClpUf(ai.operacion as Record<string, unknown>, "contenido", currency)}
-          />
-        )}
-        {ai.proyeccion && (
-          <SectionV1
-            label="PROYECCIÓN"
-            title={ai.proyeccion.titulo}
-            content={pickFieldClpUf(ai.proyeccion as Record<string, unknown>, "contenido", currency)}
-          />
-        )}
-        {ai.riesgos && (
-          <RiesgosBlockV1
-            label="RIESGOS"
-            title={ai.riesgos.titulo}
-            items={
-              currency === "UF"
-                ? ai.riesgos.items_uf ?? []
-                : ai.riesgos.items_clp ?? []
-            }
-          />
-        )}
-        {ai.veredicto && (
-          <SectionV1
-            label="VEREDICTO"
-            title={ai.veredicto.titulo}
-            content={pickFieldClpUf(ai.veredicto as Record<string, unknown>, "explicacion", currency)}
-          />
-        )}
-      </div>
-    </>
-  );
-}
-
-function SectionV1({ label, title, content, alert }: { label: string; title: string; content: string; alert?: string }) {
-  return (
-    <div>
-      <p
-        className="font-mono uppercase not-italic mb-1.5"
-        style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
-      >
-        {label}
-      </p>
-      {title && (
-        <h4 className="font-heading font-bold not-italic text-[15px] text-[var(--franco-text)] m-0 mb-2">
-          {title}
-        </h4>
-      )}
-      <div>{renderParagraphs(content)}</div>
-      {alert && (
-        <div
-          className="mt-3 p-3 not-italic"
-          style={{
-            borderLeft: "3px solid var(--franco-text-secondary)",
-            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-            borderRadius: "0 6px 6px 0",
-          }}
-        >
-          <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.5]">{alert}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RiesgosBlockV1({ label, title, items }: { label: string; title: string; items: string[] }) {
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <p
-        className="font-mono uppercase not-italic mb-1.5"
-        style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
-      >
-        {label}
-      </p>
-      {title && (
-        <h4 className="font-heading font-bold not-italic text-[15px] text-[var(--franco-text)] m-0 mb-2">
-          {title}
-        </h4>
-      )}
-      <ul className="list-none p-0 m-0 space-y-2">
-        {items.map((item, i) => (
-          <li key={i} className="flex gap-2">
-            <span className="font-mono not-italic text-[var(--franco-text-tertiary)] shrink-0" style={{ fontSize: 11, paddingTop: 2 }}>
-              {String(i + 1).padStart(2, "0")}
-            </span>
-            <span>{renderParagraphs(item)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}

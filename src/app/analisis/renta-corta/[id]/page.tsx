@@ -5,13 +5,7 @@ import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
-import { STRResultsClientV2 } from "./results-client-v2";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
-
-// Feature flag Ronda 4c — habilita el rebuild visual STR alineado con LTR.
-// v2 default desde 2026-05-09 (Prompt B post-audit). v1 deprecado, eliminación
-// prevista 2026-05-23 (+14d). Para forzar v1 localmente: NEXT_PUBLIC_STR_V2=false.
-const STR_V2_ENABLED = process.env.NEXT_PUBLIC_STR_V2 !== "false";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -126,8 +120,5 @@ export default async function STRResultPage({
     aiAnalysisInitial: data.ai_analysis ?? null,
   };
 
-  if (STR_V2_ENABLED) {
-    return <STRResultsClientV2 {...sharedProps} />;
-  }
   return <STRResultsClient {...sharedProps} />;
 }
