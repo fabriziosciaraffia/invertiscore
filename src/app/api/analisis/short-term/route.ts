@@ -275,6 +275,11 @@ export async function POST(request: Request) {
       airbnbData,
       modoGestion: body.modoGestion,
       comisionAdministrador: body.comisionAdministrador,
+      // Calibración v1 — los 3 ejes operacionales. Si el form aún no los envía,
+      // defaults en el motor dan baseline residencial puro (occ 55%, sin uplift ADR).
+      tipoEdificio: body.tipoEdificio,
+      habilitacion: body.habilitacion,
+      adminPro: body.adminPro === true,
       costoElectricidad: body.costoElectricidad,
       costoAgua: body.costoAgua,
       costoWifi: body.costoWifi,
@@ -363,6 +368,29 @@ export async function POST(request: Request) {
     if (data?.id) {
       await dbClient.from("analisis").update({ is_premium: true }).eq("id", data.id);
       data.is_premium = true;
+
+      // Calibración v1 — captura de operador del edificio (opcional).
+      // Si el usuario reportó un operador para un edificio dedicado, lo
+      // guardamos en `operadores_str_reportados` para curaduría futura.
+      // Falla silenciosamente si la tabla aún no existe.
+      const operadorReportado: string | undefined = typeof body.operadorNombre === "string"
+        ? body.operadorNombre.trim()
+        : undefined;
+      if (data?.id && body.tipoEdificio === "dedicado" && operadorReportado) {
+        try {
+          await dbClient.from("operadores_str_reportados").insert({
+            analisis_id: data.id,
+            operador_nombre: operadorReportado.slice(0, 200),
+            direccion_aproximada: body.direccion ?? null,
+            comuna: body.comuna ?? null,
+            lat: typeof body.lat === "number" ? body.lat : null,
+            lng: typeof body.lng === "number" ? body.lng : null,
+            reportado_por_usuario_id: user.id,
+          });
+        } catch (e) {
+          console.warn("[short-term] operadores_str_reportados insert falló (¿tabla aplicada?):", e);
+        }
+      }
 
       // Claim del prepaid charge si nosotros llegamos primero (flujo AMBAS).
       // .is('consumed_at', null) garantiza idempotencia ante el segundo POST.

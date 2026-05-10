@@ -21,6 +21,9 @@ export interface AirbnbData {
   currency: string;
 }
 
+export type TipoEdificioSTR = 'residencial_puro' | 'mixto' | 'dedicado';
+export type HabilitacionSTR = 'basico' | 'estandar' | 'premium';
+
 export interface ShortTermInputs {
   // Propiedad
   precioCompra: number;
@@ -39,6 +42,15 @@ export interface ShortTermInputs {
   // Gestión
   modoGestion: 'auto' | 'administrador';
   comisionAdministrador: number; // decimal: 0.20 = 20%
+
+  // Calibración v1 (mayo 2026) — 3 ejes operacionales. Opcionales para
+  // backward-compat con análisis existentes; defaults dan baseline residencial.
+  tipoEdificio?: TipoEdificioSTR;
+  habilitacion?: HabilitacionSTR;
+  // adminPro: si el usuario contrata administrador profesional (Andes-style).
+  // Distinto de modoGestion='administrador' que captura "alguien gestiona"
+  // (puede ser un familiar). adminPro implica empresa formal con 15-25% fee.
+  adminPro?: boolean;
 
   // Costos operativos mensuales CLP
   costoElectricidad: number;
@@ -115,8 +127,33 @@ export interface ExitScenarioSTR {
   tirAnual: number;                  // TIR % del cashflow año 0 → año N
 }
 
+export type BandaOcupacionSTR =
+  | 'edificio_dedicado_admin_pro'
+  | 'edificio_dedicado_auto'
+  | 'admin_pro_residencial'
+  | 'auto_gestion_residencial';
+
+// Calibración v1 — registro de ejes aplicados al cálculo, para mostrar al
+// usuario cómo se llegó al número.
+export interface EjesAplicadosSTR {
+  tipoEdificio: TipoEdificioSTR;
+  habilitacion: HabilitacionSTR;
+  adminPro: boolean;
+  factorEdificio: number;        // ej. 1.10
+  factorHabilitacion: number;    // ej. 1.10
+  factorADRTotal: number;        // factorEdificio × factorHabilitacion
+  banda: BandaOcupacionSTR;
+  ocupacionTarget: number;       // ej. 0.74
+  adrBaselineP50: number;        // ADR p50 de AirROI antes del ajuste
+  adrAjustado: number;           // adrBaselineP50 × factorADRTotal
+  ocupacionBaselineP50: number;  // occ p50 de AirROI sin ajuste
+}
+
 export interface ShortTermResult {
   veredicto: STRVerdict;
+
+  // Calibración v1 — qué ejes se aplicaron. Opcional para compat retroactiva.
+  ejesAplicados?: EjesAplicadosSTR;
 
   // Financiamiento
   pie: number;
@@ -180,7 +217,77 @@ const MESES = [
 const GASTOS_CIERRE_PCT = 0.02;
 const COMISION_AIRBNB = 0.03;
 const COMISION_LTR = 0.05;
-const RAMP_UP_FACTORS = [0.70, 0.80, 0.90, 1.00];
+// Ramp-up consolidado: ver `STR_RAMP_UP` exportado más abajo. Esta variable
+// queda como alias interno para no tocar callsites legacy.
+// Curva 6 meses: ocupación llega al 100% del target estabilizado en el mes 6.
+
+// =========================================
+// Calibración v1 — Mayo 2026
+// =========================================
+// Fuentes:
+//  - Proforma Andes STR Alameda 107 Providencia (sept 2025)
+//  - Experimento AirROI 149 listings Lastarria/Providencia/LasCondes
+//    (mayo 2026, ver docs/str-benchmarks-from-airroi-2026-05.md)
+//  - Airbtics público: Andes STR vs market Santiago
+
+// Comisiones (re-exportadas para uso fuera del motor, ej. UI pedagógica)
+export const STR_COMISION_ADMIN_PRO = 0.20;     // Andes STR full-service estándar
+export const STR_COMISION_AUTO_GESTION = 0.03;  // overhead operacional Airbnb auto
+export const LTR_COMISION_ESTANDAR = 0.05;      // industria
+
+// Curva 6 meses post-listing — ocupación alcanza el 100% del target
+// estabilizado recién en el mes 6. Antes era 4 meses [0.70, 0.80, 0.90, 1.00];
+// se extendió tras observar que operadores reales (Andes proforma) reportan
+// ramp-up más largo en mercados saturados como Santiago centro.
+export const STR_RAMP_UP = [0.50, 0.60, 0.70, 0.80, 0.90, 1.00] as const;
+
+// Costos directos mensuales por tipología (CLP). Andes proforma.
+// Estos valores son MÁS DETALLADOS que COSTOS_DEFAULT (que usa string '0'..'3').
+// Coexisten: COSTOS_DEFAULT sigue siendo el path por defecto del form,
+// STR_COSTOS_DIRECTOS_MENSUAL queda disponible para uso pedagógico/debug.
+export const STR_COSTOS_DIRECTOS_MENSUAL: Record<string, number> = {
+  '1D1B_chico': 85000,
+  '1D1B_grande': 94000,
+  '2D1B': 111000,
+  '2D2B': 118000,
+  '2D3B': 127000,
+  '3D2B': 141000,
+  '3D3B': 148000,
+};
+
+export const STR_MANTENCION_MENSUAL: Record<string, number> = {
+  '1D1B_chico': 11000,
+  '1D1B_grande': 17000,
+  '2D1B': 20000,
+  '2D2B': 21000,
+  '2D3B': 24000,
+  '3D2B': 25000,
+  '3D3B': 28000,
+};
+
+// Ocupación target por banda operacional. La gestión profesional drives
+// OCUPACIÓN, no ADR (ver experimento AirROI: ADR similar entre pro/no-pro,
+// ocupación significativamente mayor en operadores pro como Andes).
+export const STR_OCUPACION_TARGET: Record<BandaOcupacionSTR, number> = {
+  edificio_dedicado_admin_pro: 0.74,    // Andes-style (Alameda 107 proforma)
+  edificio_dedicado_auto: 0.65,         // dedicado pero sin admin pro (raro)
+  admin_pro_residencial: 0.65,          // admin pro en edificio residencial
+  auto_gestion_residencial: 0.55,       // baseline: hosts independientes
+};
+
+// ADR factors. Ejes 1 (edificio) y 3 (habilitación). Eje 2 (gestión) NO afecta ADR.
+export const STR_ADR_FACTOR = {
+  edificio: {
+    residencial_puro: 1.00,
+    mixto: 1.05,
+    dedicado: 1.10,    // conservador; experimento mostró direcciones contradictorias
+  },
+  habilitacion: {
+    basico: 1.00,
+    estandar: 1.05,
+    premium: 1.10,     // placeholder defendible — sin data dura aún
+  },
+} as const;
 
 // Ronda 4b — paridad estructural con LTR.
 const PLUSVALIA_ANUAL_DEFAULT = 0.03;   // 3% nominal anual.
@@ -216,6 +323,72 @@ export function getCostosDefault(dormitorios: number) {
     costoInsumos: insumos,
     mantencion,
     costoAmoblamiento: AMOBLAMIENTO_DEFAULT[key] ?? AMOBLAMIENTO_DEFAULT['1'],
+  };
+}
+
+// =========================================
+// Calibración v1 — aplicación de ejes
+// =========================================
+
+/**
+ * Determina banda de ocupación según los 3 ejes del input.
+ * Ver STR_OCUPACION_TARGET para los valores asociados a cada banda.
+ */
+export function determinarBandaOcupacion(input: {
+  tipoEdificio?: TipoEdificioSTR;
+  adminPro?: boolean;
+}): BandaOcupacionSTR {
+  const dedicado = input.tipoEdificio === 'dedicado';
+  const adminPro = input.adminPro === true;
+
+  if (dedicado && adminPro) return 'edificio_dedicado_admin_pro';
+  if (dedicado && !adminPro) return 'edificio_dedicado_auto';
+  if (!dedicado && adminPro) return 'admin_pro_residencial';
+  return 'auto_gestion_residencial';
+}
+
+/**
+ * Aplica los 3 ejes operacionales al baseline de AirROI:
+ *   - Eje 1 (edificio) y eje 3 (habilitación) → ADR factor.
+ *   - Eje 2 (admin pro) + eje 1 → banda de ocupación target.
+ *
+ * Retorna el ADR ajustado y la ocupación target. El revenue ajustado
+ * lo deriva el caller con `adrAjustado * ocupacionTarget * 365`.
+ */
+export function aplicarEjesSTR(
+  airbnbData: AirbnbData,
+  input: {
+    tipoEdificio?: TipoEdificioSTR;
+    habilitacion?: HabilitacionSTR;
+    adminPro?: boolean;
+  },
+): EjesAplicadosSTR {
+  const tipoEdificio = input.tipoEdificio ?? 'residencial_puro';
+  const habilitacion = input.habilitacion ?? 'basico';
+  const adminPro = input.adminPro === true;
+
+  const factorEdificio = STR_ADR_FACTOR.edificio[tipoEdificio];
+  const factorHabilitacion = STR_ADR_FACTOR.habilitacion[habilitacion];
+  const factorADRTotal = factorEdificio * factorHabilitacion;
+
+  const banda = determinarBandaOcupacion({ tipoEdificio, adminPro });
+  const ocupacionTarget = STR_OCUPACION_TARGET[banda];
+
+  const adrBaselineP50 = airbnbData.percentiles.average_daily_rate.p50;
+  const adrAjustado = Math.round(adrBaselineP50 * factorADRTotal);
+
+  return {
+    tipoEdificio,
+    habilitacion,
+    adminPro,
+    factorEdificio,
+    factorHabilitacion,
+    factorADRTotal,
+    banda,
+    ocupacionTarget,
+    adrBaselineP50,
+    adrAjustado,
+    ocupacionBaselineP50: airbnbData.percentiles.occupancy.p50,
   };
 }
 
@@ -312,7 +485,7 @@ function calcTIRSTR(flujos: number[], guess: number = 0.1): number {
 /**
  * Proyecciones año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
  *
- * Año 1 aplica perdidaRampUp (3 primeros meses operan al 70/80/90%).
+ * Año 1 aplica perdidaRampUp (5 primeros meses operan al 50/60/70/80/90%).
  * Año 2+ flujo a NOI base sin ramp-up.
  * Plusvalía: compoundéa desde año 1 (a diferencia del LTR pre-entrega).
  */
@@ -448,19 +621,50 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     calcEscenario(label, revenueAnual, adr, ocu, comisionRate, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
 
   // --- 2. Escenarios ---
+  // Calibración v1: el escenario `base` se construye con los 3 ejes
+  // operacionales (tipo de edificio, habilitación, admin pro). Ramps el ADR
+  // p50 de AirROI por factores de edificio y habilitación, y reemplaza la
+  // occupancy p50 por la ocupación target de la banda operacional.
+  // Conservador y agresivo conservan la dispersión relativa observada en
+  // AirROI (p25/p50, p75/p50) para mantener el ancho del intervalo.
   const p = airbnbData.percentiles;
+  const ejes = aplicarEjesSTR(airbnbData, {
+    tipoEdificio: input.tipoEdificio,
+    habilitacion: input.habilitacion,
+    adminPro: input.adminPro,
+  });
 
-  const conservador = buildEscenario('Conservador', p.revenue.p25, p.average_daily_rate.p25, p.occupancy.p25);
-  const base = buildEscenario('Base', p.revenue.p50, p.average_daily_rate.p50, p.occupancy.p50);
-  const agresivo = buildEscenario('Agresivo', p.revenue.p75, p.average_daily_rate.p75, p.occupancy.p75);
+  const adrBase = ejes.adrAjustado;
+  const occBase = ejes.ocupacionTarget;
+  const revenueBase = Math.round(adrBase * occBase * 365);
+
+  // Shifts relativos de AirROI (fallback a 0.85/1.15 si los percentiles vienen colapsados)
+  const adrShiftP25 = p.average_daily_rate.p50 > 0 ? p.average_daily_rate.p25 / p.average_daily_rate.p50 : 0.85;
+  const adrShiftP75 = p.average_daily_rate.p50 > 0 ? p.average_daily_rate.p75 / p.average_daily_rate.p50 : 1.15;
+  const occShiftP25 = p.occupancy.p50 > 0 ? p.occupancy.p25 / p.occupancy.p50 : 0.85;
+  const occShiftP75 = p.occupancy.p50 > 0 ? p.occupancy.p75 / p.occupancy.p50 : 1.15;
+
+  const adrConservador = Math.round(adrBase * adrShiftP25);
+  const adrAgresivo = Math.round(adrBase * adrShiftP75);
+  const occConservador = Math.max(0.05, Math.min(0.95, occBase * occShiftP25));
+  const occAgresivo = Math.max(0.05, Math.min(0.95, occBase * occShiftP75));
+  const revenueConservador = Math.round(adrConservador * occConservador * 365);
+  const revenueAgresivo = Math.round(adrAgresivo * occAgresivo * 365);
+
+  const conservador = buildEscenario('Conservador', revenueConservador, adrConservador, occConservador);
+  const base = buildEscenario('Base', revenueBase, adrBase, occBase);
+  const agresivo = buildEscenario('Agresivo', revenueAgresivo, adrAgresivo, occAgresivo);
 
   // --- 3. Break-even ---
   const breakEvenRevenueMensual = (1 - comisionRate) > 0
     ? (costosOperativosTotales + dividendoMensual) / (1 - comisionRate)
     : Infinity;
   const breakEvenRevenueAnual = Math.round(breakEvenRevenueMensual * 12);
-  const breakEvenPctDelMercado = p.revenue.p50 > 0
-    ? breakEvenRevenueAnual / p.revenue.p50
+  // El break-even se compara contra el revenue del escenario base CALIBRADO
+  // (no contra el p50 raw de AirROI), para mantener consistencia con el resto
+  // de los KPIs que el usuario ve.
+  const breakEvenPctDelMercado = revenueBase > 0
+    ? breakEvenRevenueAnual / revenueBase
     : Infinity;
 
   // --- 4. Comparativa STR vs LTR ---
@@ -470,9 +674,11 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   const ltr_noiMensual = ltr_ingresoNeto - input.gastosComunes - input.mantencion - contribucionesMensuales;
   const ltr_flujoCaja = ltr_noiMensual - dividendoMensual;
 
-  // STR auto y admin para la comparativa (siempre calcular ambos, escenario base)
-  const str_auto = calcEscenario('Auto', p.revenue.p50, p.average_daily_rate.p50, p.occupancy.p50, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
-  const str_admin = calcEscenario('Administrador', p.revenue.p50, p.average_daily_rate.p50, p.occupancy.p50, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
+  // STR auto y admin para la comparativa: ambos sobre el revenueBase calibrado
+  // (mismo ADR ajustado y misma ocupación target). Lo único que cambia entre
+  // los dos es la comisión que se paga.
+  const str_auto = calcEscenario('Auto', revenueBase, adrBase, occBase, COMISION_AIRBNB, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
+  const str_admin = calcEscenario('Administrador', revenueBase, adrBase, occBase, comisionAdministrador, costosOperativosTotales, dividendoMensual, precioCompra, capitalInvertido);
 
   // Sobre-renta del modo actualmente seleccionado (escenario base)
   const sobreRenta = base.noiMensual - ltr_noiMensual;
@@ -504,11 +710,12 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   });
 
   // --- 6. Ramp-up ---
+  // Suma la pérdida mensual por cada mes parcial (todos los factores salvo
+  // el último, que es 1.00 → mes ya estabilizado). Curva actual: 6 meses.
   const ingresoBrutoMensualBase = base.ingresoBrutoMensual;
+  const mesesParciales = STR_RAMP_UP.slice(0, -1);
   const perdidaRampUp = Math.round(
-    ingresoBrutoMensualBase * (1 - RAMP_UP_FACTORS[0]) +
-    ingresoBrutoMensualBase * (1 - RAMP_UP_FACTORS[1]) +
-    ingresoBrutoMensualBase * (1 - RAMP_UP_FACTORS[2]),
+    mesesParciales.reduce((acum, factor) => acum + ingresoBrutoMensualBase * (1 - factor), 0),
   );
 
   // --- Sensibilidad ---
@@ -556,6 +763,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
 
   return {
     veredicto,
+    ejesAplicados: ejes,
     pie,
     montoCredito,
     dividendoMensual,

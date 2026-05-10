@@ -315,7 +315,7 @@ Estacionalidad Santiago general: julio peak (vacaciones invierno + ski), febrero
 
 === BREAK-EVEN + RAMP-UP ===
 Revenue anual necesario para cubrir costos: ${fmtCLP(r.breakEvenRevenueAnual)} (${Math.round(r.breakEvenPctDelMercado * 100)}% del P50)
-Pérdida estimada primeros 3 meses (ramp-up al 70%/80%/90%): ${fmtCLP(r.perdidaRampUp)}
+Pérdida estimada primeros 5 meses parciales (ramp-up al 50%/60%/70%/80%/90% del target estabilizado): ${fmtCLP(r.perdidaRampUp)}
 
 === PROYECCIÓN LARGO PLAZO ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)} + flujos acumulados ${fmtCLPSigned(projY10.flujoAcumulado)})

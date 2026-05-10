@@ -58,6 +58,10 @@ const TIPS: Record<string, string> = {
   modoGestion: "Auto-gestión: tú te encargas de todo. Airbnb cobra 3%. Con administrador: un operador gestiona huéspedes, limpieza y check-in/out.",
   comisionAdmin: "Comisión del administrador sobre el ingreso bruto. Típicamente 15-25%.",
   edificioAirbnb: "Algunos edificios prohíben Airbnb en su Reglamento de Copropiedad.",
+  tipoEdificio: "Esto influye en cómo se comporta tu inversión en renta corta. Edificios dedicados (tipo aparthotel) tienen mejor reputación operacional. Residenciales puros suelen tener más restricciones.",
+  adminPro: "Empresa especializada que maneja todo (limpieza, check-in, pricing, marketing). Cobra 15-25% del bruto pero suele lograr ocupación significativamente mayor que auto-gestión.",
+  habilitacion: "Define la calidad percibida por los huéspedes y por tanto el ADR. Premium implica decoración curada, blancos hoteleros y amenidades extra.",
+  operadorNombre: "Si tu edificio es dedicado, el nombre del operador (ej. Andes STR, Mayflower). Nos ayuda a refinar las estimaciones para futuros usuarios.",
   electricidad: "Consumo eléctrico mensual promedio. En Airbnb el dueño paga la luz.",
   agua: "Consumo de agua mensual promedio.",
   wifi: "Internet fijo mensual. Esencial para Airbnb.",
@@ -336,6 +340,12 @@ export default function RentaCortaFormPage() {
     modoGestion: "auto" as "auto" | "administrador",
     comisionAdministrador: "20",
     edificioPermiteAirbnb: "no_seguro" as "si" | "no" | "no_seguro",
+
+    // Calibración v1 — 3 ejes operacionales
+    tipoEdificio: "residencial_puro" as "residencial_puro" | "mixto" | "dedicado",
+    adminPro: false as boolean,
+    habilitacion: "basico" as "basico" | "estandar" | "premium",
+    operadorNombre: "",
 
     // Costos operativos (pre-filled by dormitorios)
     costoElectricidad: "35000",
@@ -704,6 +714,14 @@ export default function RentaCortaFormPage() {
           modoGestion: form.modoGestion,
           comisionAdministrador: form.modoGestion === "administrador" ? parseFloat(form.comisionAdministrador) / 100 : 0.20,
           edificioPermiteAirbnb: form.edificioPermiteAirbnb,
+
+          // Calibración v1 — 3 ejes
+          tipoEdificio: form.tipoEdificio,
+          adminPro: form.adminPro,
+          habilitacion: form.habilitacion,
+          operadorNombre: form.tipoEdificio === "dedicado" && form.operadorNombre.trim().length > 0
+            ? form.operadorNombre.trim()
+            : null,
 
           costoElectricidad: Number(form.costoElectricidad) || 0,
           costoAgua: Number(form.costoAgua) || 0,
@@ -1367,6 +1385,124 @@ export default function RentaCortaFormPage() {
                 Te recomendamos revisar el Reglamento de Copropiedad de tu edificio.
               </p>
             )}
+          </div>
+        </div>
+
+        {/* ════════════════════════════════════════════════════════
+            BLOCK 3.5: Perfil operacional (Calibración v1)
+            Eje 1: tipo de edificio · Eje 2: admin pro · Eje 3: habilitación
+            ════════════════════════════════════════════════════════ */}
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-5 mt-3">
+          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">Perfil operacional</div>
+
+          {/* Eje 1 — Tipo de edificio */}
+          <div>
+            <FieldLabel tip={TIPS.tipoEdificio}>¿Cómo es el edificio?</FieldLabel>
+            <div className="flex flex-col gap-1.5">
+              {[
+                { value: "residencial_puro", label: "Residencial puro", subtitle: "La mayoría de los vecinos vive ahí" },
+                { value: "mixto", label: "Mixto", subtitle: "Algunos departamentos son Airbnb" },
+                { value: "dedicado", label: "Dedicado / aparthotel", subtitle: "Tipo Andes STR, Mayflower, Wynwood" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setField("tipoEdificio", opt.value)}
+                  className={`flex items-start justify-between rounded-lg border px-3 py-2.5 text-left transition-all ${
+                    form.tipoEdificio === opt.value
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
+                      : "bg-[var(--franco-card)] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  <div>
+                    <div className={`font-body text-[13px] ${form.tipoEdificio === opt.value ? "font-semibold" : "text-[var(--franco-text)]"}`}>{opt.label}</div>
+                    <div className={`font-body text-[11px] ${form.tipoEdificio === opt.value ? "text-[var(--franco-bg)]/70" : "text-[var(--franco-text-muted)]"}`}>{opt.subtitle}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Eje 2 — Administrador profesional */}
+          <div>
+            <FieldLabel tip={TIPS.adminPro}>¿Vas a contratar un administrador profesional?</FieldLabel>
+            <div className="flex gap-1.5">
+              <button
+                type="button"
+                onClick={() => setField("adminPro", false)}
+                className={`flex-1 rounded-lg border px-3 py-2.5 font-body text-[13px] text-center transition-all ${
+                  form.adminPro === false
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)] font-semibold border-[var(--franco-text)]"
+                    : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:border-[var(--franco-border-hover)]"
+                }`}
+              >No — auto-gestión</button>
+              <button
+                type="button"
+                onClick={() => setField("adminPro", true)}
+                className={`flex-1 rounded-lg border px-3 py-2.5 font-body text-[13px] text-center transition-all ${
+                  form.adminPro === true
+                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)] font-semibold border-[var(--franco-text)]"
+                    : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:border-[var(--franco-border-hover)]"
+                }`}
+              >Sí — administrador pro</button>
+            </div>
+            <p className="mt-1.5 font-body text-[11px] text-[var(--franco-text-muted)]">
+              {form.adminPro
+                ? "Operador profesional (Andes STR, Mayflower, etc.). Ocupación estabilizada (mes 7+): ~74% si edificio es dedicado, ~65% si residencial."
+                : "Tú gestionas. Ocupación estabilizada (mes 7+): ~55% (baseline hosts independientes Santiago)."}
+            </p>
+          </div>
+
+          {/* Eje 3 — Habilitación */}
+          <div>
+            <FieldLabel tip={TIPS.habilitacion}>¿Cómo va a estar amoblado?</FieldLabel>
+            <div className="flex gap-1.5">
+              {[
+                { value: "basico", label: "Básico" },
+                { value: "estandar", label: "Estándar" },
+                { value: "premium", label: "Premium" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setField("habilitacion", opt.value)}
+                  className={`flex-1 rounded-lg border px-3 py-2.5 font-body text-[13px] text-center transition-all ${
+                    form.habilitacion === opt.value
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] font-semibold border-[var(--franco-text)]"
+                      : "bg-[var(--franco-card)] border-[var(--franco-border)] text-[var(--franco-text-secondary)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >{opt.label}</button>
+              ))}
+            </div>
+            <p className="mt-1.5 font-body text-[11px] text-[var(--franco-text-muted)]">
+              {form.habilitacion === "basico" && "Funcional, fotos amateur. ADR sin uplift."}
+              {form.habilitacion === "estandar" && "Decente + fotos profesionales. ADR ×1.05."}
+              {form.habilitacion === "premium" && "Decoración curada, blancos hoteleros, amenidades. ADR ×1.10."}
+            </p>
+          </div>
+
+          {/* Operador (solo si edificio dedicado) */}
+          <div
+            style={{
+              maxHeight: form.tipoEdificio === "dedicado" ? 200 : 0,
+              opacity: form.tipoEdificio === "dedicado" ? 1 : 0,
+              overflow: "hidden",
+              transition: "all 0.3s ease",
+            }}
+          >
+            <FieldLabel htmlFor="operadorNombre" tip={TIPS.operadorNombre}>Operador del edificio (opcional)</FieldLabel>
+            <input
+              id="operadorNombre"
+              type="text"
+              value={form.operadorNombre}
+              onChange={(e) => setField("operadorNombre", e.target.value)}
+              placeholder="Andes STR, Mayflower, Wynwood…"
+              maxLength={200}
+              className={inputClass}
+            />
+            <p className="mt-1.5 font-body text-[11px] text-[var(--franco-text-muted)]">
+              Si lo conoces, nos ayuda a refinar estimaciones para futuros usuarios.
+            </p>
           </div>
         </div>
 
