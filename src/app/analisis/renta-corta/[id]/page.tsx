@@ -9,9 +9,9 @@ import { STRResultsClientV2 } from "./results-client-v2";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 
 // Feature flag Ronda 4c — habilita el rebuild visual STR alineado con LTR.
-// Default 'false' (legacy). Setear NEXT_PUBLIC_STR_V2=true en .env.local para
-// activar localmente sin afectar producción.
-const STR_V2_ENABLED = process.env.NEXT_PUBLIC_STR_V2 === "true";
+// v2 default desde 2026-05-09 (Prompt B post-audit). v1 deprecado, eliminación
+// prevista 2026-05-23 (+14d). Para forzar v1 localmente: NEXT_PUBLIC_STR_V2=false.
+const STR_V2_ENABLED = process.env.NEXT_PUBLIC_STR_V2 !== "false";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();

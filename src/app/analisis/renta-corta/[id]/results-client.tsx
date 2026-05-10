@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * @deprecated v1 STR — Reemplazado por v2 (`results-client-v2.tsx` + Patrón 4
+ * AI Insight). v2 default desde 2026-05-09 (Prompt B post-audit).
+ * Eliminación prevista: 2026-05-23 (+14 días).
+ *
+ * No agregar features. Bugs críticos: arreglar en v2.
+ * Para detalles ver `docs/DEPRECATION_STR_V1.md`.
+ */
+
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,

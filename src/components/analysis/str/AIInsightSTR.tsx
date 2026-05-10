@@ -155,22 +155,23 @@ function RenderV2({ ai }: { ai: AIAnalysisSTRv2 }) {
         </h3>
       )}
 
-      {/* Veredicto Franco — explícito si diverge del motor */}
+      {/* Veredicto Franco — explícito si diverge del motor.
+          Patrón 4 prohíbe Signal Red en AI Insight: bloque va Ink-only. */}
       {verdictDiverge && ai.francoVerdictRationale && (
         <div
           className="mb-5 p-4 not-italic"
           style={{
-            background: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
-            borderLeft: "3px solid var(--signal-red)",
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+            borderLeft: "3px solid var(--franco-text)",
             borderRadius: "0 8px 8px 0",
           }}
         >
-          <p className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--signal-red)", fontWeight: 600 }}>
+          <p className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text)", fontWeight: 500 }}>
             FRANCO DIVERGE DEL MOTOR
           </p>
           <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
             <span className="font-mono">Motor: {ai.engineSignal}</span> &nbsp;·&nbsp;{" "}
-            <span className="font-mono" style={{ color: "var(--signal-red)" }}>Franco: {ai.francoVerdict}</span>
+            <span className="font-mono font-medium">Franco: {ai.francoVerdict}</span>
           </p>
           <p className="font-body italic text-[13px] text-[var(--franco-text)] mt-2 m-0 leading-[1.55]">
             {ai.francoVerdictRationale}
@@ -199,7 +200,7 @@ function RenderV2({ ai }: { ai: AIAnalysisSTRv2 }) {
         <SectionV2 numero="03" label="vs ARRIENDO LARGO" pregunta={ai.vsLTR.pregunta}>
           <p className="m-0">{ai.vsLTR.contenido}</p>
           {ai.vsLTR.estrategiaSugerida && (
-            <p className="mt-3 m-0 not-italic font-mono text-[13px]" style={{ color: "var(--franco-text)" }}>
+            <p className="mt-3 m-0 font-medium text-[14px]" style={{ color: "var(--franco-text)" }}>
               {ai.vsLTR.estrategiaSugerida}
             </p>
           )}
@@ -253,9 +254,11 @@ function SectionV2({
             style={{
               fontSize: 9,
               letterSpacing: "0.08em",
-              color: verdictBadge === "NO RECOMENDADO" ? "var(--signal-red)" : "var(--franco-text-secondary)",
-              fontWeight: 600,
-              background: "color-mix(in srgb, var(--franco-text) 6%, transparent)",
+              color: "var(--franco-text)",
+              fontWeight: verdictBadge === "NO RECOMENDADO" ? 700 : 500,
+              background: verdictBadge === "NO RECOMENDADO"
+                ? "color-mix(in srgb, var(--franco-text) 12%, transparent)"
+                : "color-mix(in srgb, var(--franco-text) 6%, transparent)",
               padding: "2px 8px",
               borderRadius: 3,
             }}
@@ -378,8 +381,8 @@ function SectionV1({ label, title, content, alert }: { label: string; title: str
         <div
           className="mt-3 p-3 not-italic"
           style={{
-            borderLeft: "3px solid var(--signal-red)",
-            background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
             borderRadius: "0 6px 6px 0",
           }}
         >
