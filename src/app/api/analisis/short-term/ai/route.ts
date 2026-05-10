@@ -245,7 +245,7 @@ export async function POST(request: Request) {
     const projY10 = r.projections && r.projections.length >= 10 ? r.projections[9] : null;
     const exit = r.exitScenario;
 
-    const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplicá doctrina §1-§13 del system prompt y devolvé el JSON v2.
+    const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplica doctrina §1-§13 del system prompt y devuelve el JSON v2.
 
 === DATOS DE LA PROPIEDAD ===
 Dirección: ${direccion || "—"}
@@ -334,9 +334,9 @@ ${anomaliasTexto}
 INSTRUCCIÓN FINAL
 ═══════════════════════════════════════════════════════════════════
 
-1. Aplicá la doctrina §1-§13 sin excepción. El test del §1 (¿se puede reemplazar por una tabla?) es real.
-2. \`engineSignal\` = "${engineSignal}" — copialo EXACTO al JSON output.
-3. \`francoVerdict\` por default = "${engineSignal}". Diverge solo si §7 lo justifica (ej. regulación bloqueada). Si diverge, completá \`francoVerdictRationale\` con 1-2 frases.
+1. Aplica la doctrina §1-§13 sin excepción. El test del §1 (¿se puede reemplazar por una tabla?) es real.
+2. \`engineSignal\` = "${engineSignal}" — cópialo EXACTO al JSON output.
+3. \`francoVerdict\` por default = "${engineSignal}". Diverge solo si §7 lo justifica (ej. regulación bloqueada). Si diverge, completa \`francoVerdictRationale\` con 1-2 frases.
 4. Cada anomalía detectada por el motor debe aparecer en el output (§8).
 5. Cierre obligatorio en \`riesgos.cajaAccionable\` con posición personal (§9), NO checklist.
 6. Voz tuteo neutro chileno (§10). Auto-chequeo final: ningún verbo voseo (terminado en -ás/-és/-ís acentuado).

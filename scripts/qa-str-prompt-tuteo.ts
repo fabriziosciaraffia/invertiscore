@@ -1,12 +1,14 @@
-// Ronda 4d — regenera ai_analysis v2 sobre el seed STR (8e006a98).
-// Replica el path del endpoint sin pasar por auth: lee análisis, construye
-// USER prompt con datos reales, llama Anthropic con SYSTEM_PROMPT_STR
-// extraído de lib/, parsea JSON v2, persiste en BD.
+// QA del prompt STR post-fix (Prompt A — voz tuteo).
+// Genera 1 output usando SYSTEM_PROMPT_STR + userPrompt actualizados, sin
+// tocar la base. Guarda el JSON en audit/str-voice-design/ y corre regex de
+// voseo sobre el resultado para validar que la salida está limpia.
 //
-// Uso: npx tsx scripts/regen-ai-str-v2-4d.ts <analysisId>
+// Uso: npx tsx scripts/qa-str-prompt-tuteo.ts [analysisId]
+// Default: 8e006a98 (seed Providencia VIABLE — el output más rico).
 
 import { config } from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { createClient } from '@supabase/supabase-js';
 import Anthropic from '@anthropic-ai/sdk';
 import { SYSTEM_PROMPT_STR } from '../src/lib/ai-generation-str';
@@ -35,18 +37,61 @@ function fmtCLPSigned(n: number) {
   return n < 0 ? '-' + f : f;
 }
 
+const RX = {
+  voseoAS: /\b\w+ás\b/gi,
+  voseoES: /\b\w+és\b/gi,
+  voseoIS: /\b\w+ís\b/gi,
+  imperVos: /\b(comprá|mirá|dale|pegá|andá|fijate|elegí|pedí|poné|hacé|hací|vení|sentate|empezá|cerrá|abrí|sumá|restá|negociá|verificá|cotizá|chequeá|completá|aplicá|devolvé|releé|conjugá|sugerí|usá|dejá|mencionalo|copialo)\b/gi,
+  vos: /\bvos\b/gi,
+  chilenismos: /\b(cachái|wei?ón|po\b|bacán|fome|filete|altiro)\b/gi,
+};
+
+const FALSE_POS = {
+  voseoAS: /^(además|atrás|jamás|demás|quizás|verás|verán|allá|acá|estarás|tendrás|podrás|darás|harás|querrás|sabrás|saldrás|vendrás|irás|serás|comerás|vivirás|hablarás|recibirás|comprarás|operarás|asumirás|aprenderás|escucharás|gastarás|invertirás|trabajarás|firmarás|llegarás|necesitarás|partirás|renunciarás|terminarás|ganarás|perderás|alcanzarás)$/i,
+  voseoES: /^(después|interés|francés|inglés|cortés|revés|través|estrés|también|según|mes|pies|res)$/i,
+  voseoIS: /^(país|raíz|maíz)$/i,
+  vos: /^(vosotros|voseo|voz)$/i,
+};
+
+interface Match { kind: keyof typeof RX; word: string; }
+
+function scanText(text: string): Match[] {
+  const matches: Match[] = [];
+  for (const k of Object.keys(RX) as (keyof typeof RX)[]) {
+    const re = RX[k];
+    re.lastIndex = 0;
+    const found = text.match(re) ?? [];
+    for (const m of found) {
+      const w = m.toLowerCase();
+      const fpRe = (FALSE_POS as Record<string, RegExp | undefined>)[k];
+      if (fpRe && fpRe.test(w)) continue;
+      matches.push({ kind: k, word: m });
+    }
+  }
+  return matches;
+}
+
+function scanObject(obj: unknown, p: string, out: { path: string; matches: Match[] }[]) {
+  if (typeof obj === 'string') {
+    const ms = scanText(obj);
+    if (ms.length > 0) out.push({ path: p, matches: ms });
+    return;
+  }
+  if (Array.isArray(obj)) {
+    obj.forEach((v, i) => scanObject(v, `${p}[${i}]`, out));
+    return;
+  }
+  if (obj && typeof obj === 'object') {
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      scanObject(v, p ? `${p}.${k}` : k, out);
+    }
+  }
+}
+
 async function main() {
-  console.log('Regenerando ai_analysis v2 para:', ANALYSIS_ID);
+  console.log(`=== QA prompt STR post-fix · análisis ${ANALYSIS_ID} ===\n`);
 
-  // 1. Limpiar ai_analysis previo
-  const { error: clearErr } = await supabase
-    .from('analisis')
-    .update({ ai_analysis: null })
-    .eq('id', ANALYSIS_ID);
-  if (clearErr) throw clearErr;
-  console.log('  - ai_analysis previo limpiado');
-
-  // 2. Cargar análisis
+  // 1. Cargar análisis (READ-ONLY)
   const { data: analysis, error: loadErr } = await supabase
     .from('analisis')
     .select('*')
@@ -59,14 +104,14 @@ async function main() {
   const r = analysis.results as ShortTermResult & { francoScore?: FrancoScoreSTR };
   if (!r || !r.escenarios) throw new Error('Análisis sin results 4b/4c válidos');
 
-  // 3. Construir USER prompt (mismo shape que el endpoint)
+  // 2. Construir userPrompt — mismo contenido que route.ts post-fix
   const base = r.escenarios.base;
   const cons = r.escenarios.conservador;
   const agr = r.escenarios.agresivo;
   const comp = r.comparativa;
   const precioCompraCLP = (inp.precioCompra as number) ?? 0;
   const precioCompraUF = (inp.precioCompraUF as number) ?? 0;
-  const superficie = (inp.superficie as number) ?? (analysis.superficie as number) ?? 0;
+  const superficie = (inp.superficie as number) ?? 0;
   const dormitorios = (inp.dormitorios as number) ?? 0;
   const banos = (inp.banos as number) ?? 0;
   const direccion = (inp.direccion as string) ?? '';
@@ -82,9 +127,9 @@ async function main() {
   const capitalInv = r.capitalInvertido;
   const pieCLP = Math.round(precioCompraCLP * ((inp.piePercent as number) ?? 0.2));
 
-  const fs = r.francoScore;
-  const score = fs?.score ?? 50;
-  const engineSignal: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
+  const fScore = r.francoScore;
+  const score = fScore?.score ?? 50;
+  const engineSignal: STRVerdict = (fScore?.veredicto as STRVerdict) ?? r.veredicto;
 
   const projY10 = r.projections && r.projections.length >= 10 ? r.projections[9] : null;
   const exit = r.exitScenario;
@@ -151,8 +196,7 @@ INSTRUCCIÓN FINAL
 
 Responde SOLO con el JSON.`;
 
-  // 4. Llamar Anthropic
-  console.log('  - llamando Anthropic claude-sonnet-4...');
+  console.log('  - llamando Anthropic claude-sonnet-4 (DRY-RUN, sin escribir BD)...');
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-20250514',
     max_tokens: 8000,
@@ -163,7 +207,6 @@ Responde SOLO con el JSON.`;
   const rawText = msg.content[0].type === 'text' ? msg.content[0].text : '';
   console.log('  - respuesta length:', rawText.length, 'chars');
 
-  // 5. Parsear
   let aiResult: AIAnalysisSTRv2;
   try {
     let cleanText = rawText.replace(/```json\s*/g, '').replace(/```\s*/g, '');
@@ -174,55 +217,62 @@ Responde SOLO con el JSON.`;
     aiResult = JSON.parse(cleanText) as AIAnalysisSTRv2;
   } catch (e) {
     console.error('Parse error:', e);
-    console.log('Raw output:', rawText.substring(0, 1000));
+    console.log('Raw output:', rawText.substring(0, 1500));
     process.exit(1);
   }
 
   if (!aiResult.engineSignal) aiResult.engineSignal = engineSignal;
   if (!aiResult.francoVerdict) aiResult.francoVerdict = aiResult.engineSignal;
 
-  // 6. Persistir
-  const { error: saveErr } = await supabase
-    .from('analisis')
-    .update({ ai_analysis: aiResult })
-    .eq('id', ANALYSIS_ID);
-  if (saveErr) throw saveErr;
+  // 3. Guardar artefacto
+  const outDir = path.resolve(process.cwd(), 'audit/str-voice-design');
+  fs.mkdirSync(outDir, { recursive: true });
+  const outFile = path.join(outDir, `qa-tuteo-${ANALYSIS_ID}.json`);
+  fs.writeFileSync(outFile, JSON.stringify(aiResult, null, 2));
+  console.log('  - JSON persistido en:', outFile);
 
-  // 7. Validación schema v2
-  const checks = {
-    has_siendoFrancoHeadline_clp: typeof aiResult.siendoFrancoHeadline_clp === 'string',
-    has_siendoFrancoHeadline_uf: typeof aiResult.siendoFrancoHeadline_uf === 'string',
-    has_conviene_respuestaDirecta: typeof aiResult.conviene?.respuestaDirecta === 'string',
-    has_rentabilidad_contenido: typeof aiResult.rentabilidad?.contenido === 'string',
-    has_vsLTR_contenido: typeof aiResult.vsLTR?.contenido === 'string',
-    has_operacion_contenido: typeof aiResult.operacion?.contenido === 'string',
-    has_largoPlazo_contenido: typeof aiResult.largoPlazo?.contenido === 'string',
-    has_riesgos_contenido: typeof aiResult.riesgos?.contenido === 'string',
-    riesgos_3_blocks: (aiResult.riesgos?.contenido?.match(/\n\n+/g)?.length ?? 0) >= 2,
-    engineSignal_eq_motor: aiResult.engineSignal === engineSignal,
-    has_francoVerdict: typeof aiResult.francoVerdict === 'string',
-  };
+  // 4. Regex de voseo sobre el output
+  const findings: { path: string; matches: Match[] }[] = [];
+  scanObject(aiResult, '', findings);
 
-  console.log('\n=== SCHEMA v2 CHECKS ===');
-  console.log(JSON.stringify(checks, null, 2));
-  const allPass = Object.values(checks).every(Boolean);
-  console.log('all_checks_pass:', allPass);
+  console.log('\n=== REGEX SCAN — voseo / chilenismos ===');
+  if (findings.length === 0) {
+    console.log('  ✓ 0 matches (output limpio)');
+  } else {
+    for (const f of findings) {
+      console.log(`  ✗ ${f.path}: ${f.matches.map((m) => `${m.kind}:${m.word}`).join(', ')}`);
+    }
+  }
 
-  console.log('\n=== HEADLINE ===');
+  // 5. Pegar 2 párrafos para review humano
+  console.log('\n=== HEADLINES ===');
   console.log('  CLP:', aiResult.siendoFrancoHeadline_clp);
   console.log('  UF :', aiResult.siendoFrancoHeadline_uf);
 
-  console.log('\n=== VEREDICTO ===');
+  console.log('\n=== conviene.respuestaDirecta ===');
+  console.log(aiResult.conviene?.respuestaDirecta);
+
+  console.log('\n=== riesgos.cajaAccionable (cierre) ===');
+  console.log(aiResult.riesgos?.cajaAccionable);
+
+  console.log('\n=== preguntas (verifica que no hay voseo hardcoded) ===');
+  console.log('  conviene:', aiResult.conviene?.pregunta);
+  console.log('  rentabilidad:', aiResult.rentabilidad?.pregunta);
+  console.log('  vsLTR:', aiResult.vsLTR?.pregunta);
+  console.log('  operacion:', aiResult.operacion?.pregunta);
+  console.log('  largoPlazo:', aiResult.largoPlazo?.pregunta);
+  console.log('  riesgos:', aiResult.riesgos?.pregunta);
+
+  console.log('\n=== VEREDICTOS ===');
   console.log('  engineSignal:', aiResult.engineSignal);
   console.log('  francoVerdict:', aiResult.francoVerdict);
   console.log('  rationale:', aiResult.francoVerdictRationale || '(coincide con motor — no diverge)');
 
-  console.log('\n=== PERSISTIDO ===');
-  console.log('  URL:', `http://localhost:3000/analisis/renta-corta/${ANALYSIS_ID}`);
-  console.log('\nPara legibilidad, sample completo:');
-  console.log(JSON.stringify(aiResult, null, 2).substring(0, 2500));
-
-  if (!allPass) process.exit(1);
+  if (findings.length > 0) {
+    console.log('\n✗ HAY MATCHES — el prompt sigue produciendo voseo. Revisar.');
+    process.exit(1);
+  }
+  console.log('\n✓ QA pasa.');
 }
 
 main().catch((e) => { console.error(e); process.exit(1); });
