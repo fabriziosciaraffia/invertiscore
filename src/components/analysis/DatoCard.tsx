@@ -7,12 +7,17 @@ import type { DatoClave } from "@/lib/types";
  * (degradación graceful).
  */
 const DATO_TOOLTIPS: Record<string, string> = {
+  // LTR
   "Aporte mensual": "Lo que sale de tu bolsillo cada mes porque el arriendo no cubre los costos (dividendo + gastos + contribuciones + mantención).",
   "Te sobra mensual": "Excedente mensual: el arriendo cubre todos los costos y queda saldo a tu favor.",
   "Precio sugerido": "Precio recomendado por Franco para que la inversión tenga sentido financiero. Útil como punto de partida para negociar.",
   "Ventaja": "Diferencia favorable entre el precio que pagas y el valor de mercado del depto en la zona. Compras bajo mercado.",
   "Sobreprecio": "Diferencia desfavorable: estás pagando más que el valor de mercado en la zona.",
   "Precio alineado": "Tu precio de compra coincide con el valor de mercado de la zona (±2% de diferencia).",
+  // STR
+  "NOI mensual": "Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo. Mide qué tan buena es la propiedad operando como STR.",
+  "Cash-on-Cash": "Retorno anual sobre el capital efectivamente invertido (pie + gastos cierre + amoblamiento). Si es negativo, estás poniendo plata extra cada mes para sostener la operación.",
+  "Ventaja vs LTR": "Cuánto más genera operar STR vs arrendar a largo plazo. Si la ventaja es baja (<10%), el riesgo operacional STR rara vez compensa la simplicidad del LTR.",
 };
 
 /**

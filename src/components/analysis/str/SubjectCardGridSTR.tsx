@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { MiniCardSTR, type MiniCardSTRPunchline } from "./MiniCardSTR";
 import { DrawerSTR, type DrawerKeySTR } from "./DrawerSTR";
 import { fmtMoney, fmtPct } from "../utils";
@@ -177,10 +178,13 @@ function DrawerSection({ label, children }: { label: string; children: React.Rea
   );
 }
 
-function DataRow({ label, value, isCritical = false }: { label: string; value: string; isCritical?: boolean }) {
+function DataRow({ label, value, isCritical = false, tooltip }: { label: string; value: string; isCritical?: boolean; tooltip?: string }) {
   return (
     <div className="flex items-center justify-between py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
-      <span className="font-body text-[13px] text-[var(--franco-text)]">{label}</span>
+      <span className="inline-flex items-center gap-1 font-body text-[13px] text-[var(--franco-text)]">
+        {label}
+        {tooltip && <InfoTooltip content={tooltip} />}
+      </span>
       <span
         className="font-mono text-[13px] font-medium"
         style={{ color: isCritical ? "var(--signal-red)" : "var(--franco-text)" }}
@@ -253,16 +257,49 @@ function DrawerContent({
           La rentabilidad operacional del escenario base — el más probable según la mediana de la zona — y cómo varía si cae al p25 (conservador) o sube al p75 (agresivo).
         </p>
         <DrawerSection label="Escenario base (P50)">
-          <DataRow label="Revenue anual bruto" value={fmtMoney(base.revenueAnual, currency, valorUF)} />
-          <DataRow label="NOI mensual" value={fmtMoney(base.noiMensual, currency, valorUF)} />
-          <DataRow label="CAP Rate" value={fmtPct(base.capRate * 100, 2)} />
-          <DataRow label="Cash-on-Cash" value={fmtPct(base.cashOnCash * 100, 1)} isCritical={base.cashOnCash < 0} />
-          <DataRow label="Rentabilidad bruta" value={fmtPct(base.rentabilidadBruta * 100, 2)} />
+          <DataRow
+            label="Revenue anual bruto"
+            value={fmtMoney(base.revenueAnual, currency, valorUF)}
+            tooltip="Total de ingresos del año asumiendo la mediana del mercado de la zona. Sin descontar costos."
+          />
+          <DataRow
+            label="NOI mensual"
+            value={fmtMoney(base.noiMensual, currency, valorUF)}
+            tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo."
+          />
+          <DataRow
+            label="CAP Rate"
+            value={fmtPct(base.capRate * 100, 2)}
+            tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
+          />
+          <DataRow
+            label="Cash-on-Cash"
+            value={fmtPct(base.cashOnCash * 100, 1)}
+            isCritical={base.cashOnCash < 0}
+            tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos cierre + amoblamiento). Si es negativo, pones plata extra cada mes."
+          />
+          <DataRow
+            label="Rentabilidad bruta"
+            value={fmtPct(base.rentabilidadBruta * 100, 2)}
+            tooltip="Revenue anual dividido por precio de compra, sin descontar nada. Útil sólo como referencia rápida — el corredor te muestra esto."
+          />
         </DrawerSection>
         <DrawerSection label="Rango por percentil">
-          <DataRow label="Conservador (p25)" value={fmtMoney(conservador.noiMensual, currency, valorUF) + "/mes NOI"} />
-          <DataRow label="Base (p50)" value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"} />
-          <DataRow label="Agresivo (p75)" value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"} />
+          <DataRow
+            label="Conservador (p25)"
+            value={fmtMoney(conservador.noiMensual, currency, valorUF) + "/mes NOI"}
+            tooltip="NOI si tu propiedad opera al nivel del 25% más bajo del mercado de la zona. Mala temporada, reviews flojos o competencia fuerte."
+          />
+          <DataRow
+            label="Base (p50)"
+            value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
+            tooltip="Mediana de la zona: el escenario más probable si operas a nivel promedio del mercado."
+          />
+          <DataRow
+            label="Agresivo (p75)"
+            value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
+            tooltip="NOI si superas al 75% del mercado de la zona. Requiere pricing dinámico, fotografía profesional y reviews ≥4,7."
+          />
         </DrawerSection>
       </>
     );
@@ -279,11 +316,32 @@ function DrawerContent({
             : `Te quedan ${fmtMoney(base.flujoCajaMensual, currency, valorUF)} mensuales después de cubrir costos + dividendo. Tu break-even queda al ${fmtPct(breakEvenPct * 100, 0)} del mercado base.`}
         </p>
         <DrawerSection label="Flujo mensual base">
-          <DataRow label="Ingreso bruto mensual" value={fmtMoney(base.ingresoBrutoMensual, currency, valorUF)} />
-          <DataRow label="Comisión gestión" value={"-" + fmtMoney(base.comisionMensual, currency, valorUF)} />
-          <DataRow label="Costos operativos" value={"-" + fmtMoney(base.costosOperativos, currency, valorUF)} />
-          <DataRow label="Dividendo" value={"-" + fmtMoney(results.dividendoMensual, currency, valorUF)} />
-          <DataRow label="Flujo neto" value={(base.flujoCajaMensual >= 0 ? "+" : "") + fmtMoney(base.flujoCajaMensual, currency, valorUF)} isCritical={isCritical} />
+          <DataRow
+            label="Ingreso bruto mensual"
+            value={fmtMoney(base.ingresoBrutoMensual, currency, valorUF)}
+            tooltip="ADR × ocupación × días del mes. Lo que entra antes de comisiones y costos operativos."
+          />
+          <DataRow
+            label="Comisión gestión"
+            value={"-" + fmtMoney(base.comisionMensual, currency, valorUF)}
+            tooltip="Lo que cobra la plataforma o el administrador. Auto-gestión: 3% (Airbnb). Administrador profesional: 18-22% del bruto."
+          />
+          <DataRow
+            label="Costos operativos"
+            value={"-" + fmtMoney(base.costosOperativos, currency, valorUF)}
+            tooltip="Suma mensual de electricidad, agua, wifi, insumos (sábanas/amenities), mantención, gastos comunes y contribuciones."
+          />
+          <DataRow
+            label="Dividendo"
+            value={"-" + fmtMoney(results.dividendoMensual, currency, valorUF)}
+            tooltip="Cuota mensual del crédito hipotecario. Lo que pagas al banco hasta terminar el plazo."
+          />
+          <DataRow
+            label="Flujo neto"
+            value={(base.flujoCajaMensual >= 0 ? "+" : "") + fmtMoney(base.flujoCajaMensual, currency, valorUF)}
+            isCritical={isCritical}
+            tooltip="Lo que queda en tu bolsillo después de cubrir todos los costos. Si es negativo, pones plata cada mes."
+          />
         </DrawerSection>
         {isCritical && (
           <ConclusionBlock
@@ -308,10 +366,27 @@ function DrawerContent({
             : `Tu STR genera ${fmtMoney(results.comparativa.sobreRenta, currency, valorUF)} más que arrendar largo plazo. Eso compensa el mayor esfuerzo operativo siempre que la ocupación se sostenga.`}
         </p>
         <DrawerSection label="Comparativa NOI mensual">
-          <DataRow label="Largo plazo (LTR)" value={fmtMoney(ltr.noiMensual, currency, valorUF)} />
-          <DataRow label="Renta corta (Auto)" value={fmtMoney(results.comparativa.str_auto.noiMensual, currency, valorUF)} />
-          <DataRow label="Renta corta (Admin)" value={fmtMoney(results.comparativa.str_admin.noiMensual, currency, valorUF)} />
-          <DataRow label="Sobre-renta vs LTR" value={(results.comparativa.sobreRenta >= 0 ? "+" : "") + fmtMoney(results.comparativa.sobreRenta, currency, valorUF)} isCritical={isCritical} />
+          <DataRow
+            label="Largo plazo (LTR)"
+            value={fmtMoney(ltr.noiMensual, currency, valorUF)}
+            tooltip="NOI mensual si arriendas el depto a un solo inquilino por contrato anual. Sin esfuerzo operativo, sin estacionalidad."
+          />
+          <DataRow
+            label="Renta corta (Auto)"
+            value={fmtMoney(results.comparativa.str_auto.noiMensual, currency, valorUF)}
+            tooltip="NOI con auto-gestión: pagas sólo 3% de comisión Airbnb pero requiere ~8-12 hrs semanales tuyas."
+          />
+          <DataRow
+            label="Renta corta (Admin)"
+            value={fmtMoney(results.comparativa.str_admin.noiMensual, currency, valorUF)}
+            tooltip="NOI con administrador profesional: pagas 18-22% de comisión pero la operación es 100% pasiva."
+          />
+          <DataRow
+            label="Sobre-renta vs LTR"
+            value={(results.comparativa.sobreRenta >= 0 ? "+" : "") + fmtMoney(results.comparativa.sobreRenta, currency, valorUF)}
+            isCritical={isCritical}
+            tooltip="Cuánto más genera STR vs LTR cada mes. Bajo 30% suele no compensar el esfuerzo operacional adicional."
+          />
         </DrawerSection>
         <DrawerSection label="Recuperación amoblamiento">
           <DataRow
@@ -324,6 +399,7 @@ function DrawerContent({
                   : `${payback} meses`
             }
             isCritical={payback < 0}
+            tooltip="Meses de sobre-renta necesarios para recuperar la inversión inicial en muebles, electrodomésticos y decoración."
           />
         </DrawerSection>
       </>
@@ -352,8 +428,13 @@ function DrawerContent({
                 : "No verificado"
           }
           isCritical={isCriticalReg}
+          tooltip="Si el reglamento de copropiedad del edificio permite arriendo corto plazo. 'Permitido' no garantiza permanencia — la asamblea puede modificarlo."
         />
-        <DataRow label="Zona" value={comuna} />
+        <DataRow
+          label="Zona"
+          value={comuna}
+          tooltip="Comuna donde está la propiedad. Cada zona tiene perfil de demanda distinto: turismo, negocios, salud, residencial."
+        />
       </DrawerSection>
       {regulacion === "no_seguro" && (
         <div
