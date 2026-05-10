@@ -74,6 +74,11 @@ const TAB_FIELDS: Record<TabKey, (keyof WizardV3State)[]> = {
     "mantencionMensual",
     "estaAmoblado",
     "costoAmoblamiento",
+    // Modelo STR v1 — 3 ejes operacionales + operador.
+    "tipoEdificio",
+    "adminPro",
+    "habilitacion",
+    "operadorNombre",
     // Solo en modo STR puro este tab edita arriendo (referencia LTR);
     // en AMBAS lo trackea el tab "arriendo" y aquí no se renderiza.
     "arriendo",
@@ -152,6 +157,11 @@ export function ModalAjusteCondiciones({
     mantencionMensual: state.mantencionMensual,
     estaAmoblado: state.estaAmoblado,
     costoAmoblamiento: state.costoAmoblamiento,
+    // Modelo STR v1 — 3 ejes operacionales
+    tipoEdificio: state.tipoEdificio,
+    adminPro: state.adminPro,
+    habilitacion: state.habilitacion,
+    operadorNombre: state.operadorNombre,
   };
   const [startSnapshot, setStartSnapshot] = useResetOnOpen(open, baselineSnapshot);
   const [local, setLocal] = useResetOnOpen(open, baselineSnapshot);
@@ -378,6 +388,11 @@ type LocalState = {
   mantencionMensual: string;
   estaAmoblado: boolean;
   costoAmoblamiento: string;
+  // Modelo STR v1 — 3 ejes operacionales + operador
+  tipoEdificio: "residencial_puro" | "mixto" | "dedicado";
+  adminPro: boolean;
+  habilitacion: "basico" | "estandar" | "premium";
+  operadorNombre: string;
 };
 
 const inputBase =
@@ -689,6 +704,153 @@ function TabOperacionAirbnb({
 }) {
   return (
     <div className="flex flex-col gap-4">
+      {/* ── Perfil operacional (modelo STR v1) ──
+          3 ejes que definen ocupación target y factor ADR. La gestión profesional
+          drives ocupación, no ADR — ver docs/str-benchmarks-from-airroi-2026-05.md. */}
+      <div>
+        <p className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0 mb-1">
+          Perfil operacional
+        </p>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mb-2 leading-snug">
+          3 ejes que definen tu ocupación estabilizada (mes 7+) y el ADR ajustado.
+        </p>
+
+        {/* Eje 1 — Tipo de edificio */}
+        <div className="mb-3">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              ¿Cómo es el edificio?
+            </span>
+            <InfoTooltip content="Residencial puro = la mayoría vive ahí. Mixto = algunos departamentos son Airbnb. Dedicado = aparthotel tipo Andes STR, Mayflower." />
+          </span>
+          <div className="flex flex-col gap-1">
+            {([
+              { value: "residencial_puro", label: "Residencial puro", subtitle: "La mayoría vive ahí · ADR ×1.00" },
+              { value: "mixto", label: "Mixto", subtitle: "Algunos depts son Airbnb · ADR ×1.05" },
+              { value: "dedicado", label: "Dedicado / aparthotel", subtitle: "Tipo Andes STR · ADR ×1.10" },
+            ] as const).map((opt) => {
+              const active = local.tipoEdificio === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setLocal("tipoEdificio", opt.value)}
+                  className={`text-left px-3 py-2 rounded-lg transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  <p className="font-body text-[13px] font-medium m-0 mb-0.5">{opt.label}</p>
+                  <p className="font-mono text-[10px] m-0 leading-snug opacity-80">{opt.subtitle}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Eje 2 — Admin pro (toggle) */}
+        <div className="mb-3">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              ¿Vas a contratar un administrador profesional?
+            </span>
+            <InfoTooltip content="Empresa especializada que maneja todo (limpieza, check-in, pricing). Cobra 15-25% del bruto pero suele lograr ocupación significativamente mayor." />
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: false, label: "No — auto-gestión" },
+              { value: true, label: "Sí — admin pro" },
+            ] as const).map((opt) => {
+              const active = local.adminPro === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setLocal("adminPro", opt.value)}
+                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-1.5 leading-snug">
+            {local.adminPro
+              ? local.tipoEdificio === "dedicado"
+                ? "Ocupación estabilizada (mes 7+): ~74% (Andes-style)."
+                : "Ocupación estabilizada (mes 7+): ~65% (admin pro residencial)."
+              : local.tipoEdificio === "dedicado"
+                ? "Ocupación estabilizada (mes 7+): ~65% (dedicado sin admin)."
+                : "Ocupación estabilizada (mes 7+): ~55% (baseline auto-gestión)."}
+          </p>
+        </div>
+
+        {/* Eje 3 — Habilitación */}
+        <div className="mb-3">
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+              ¿Cómo va a estar amoblado?
+            </span>
+            <InfoTooltip content="Define la calidad percibida y el ADR. Premium = decoración curada, blancos hoteleros, amenidades extra." />
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "basico", label: "Básico" },
+              { value: "estandar", label: "Estándar" },
+              { value: "premium", label: "Premium" },
+            ] as const).map((opt) => {
+              const active = local.habilitacion === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setLocal("habilitacion", opt.value)}
+                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-1.5 leading-snug">
+            {local.habilitacion === "basico" && "Funcional, fotos amateur. ADR sin uplift."}
+            {local.habilitacion === "estandar" && "Decente + fotos profesionales. ADR ×1.05."}
+            {local.habilitacion === "premium" && "Decoración curada, amenidades. ADR ×1.10."}
+          </p>
+        </div>
+
+        {/* Operador (condicional) */}
+        {local.tipoEdificio === "dedicado" && (
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                Operador del edificio (opcional)
+              </span>
+              <InfoTooltip content="Si lo conoces (ej. Andes STR, Mayflower), nos ayuda a refinar estimaciones para futuros usuarios." />
+            </span>
+            <input
+              type="text"
+              value={local.operadorNombre}
+              onChange={(e) => setLocal("operadorNombre", e.target.value)}
+              placeholder="Andes STR, Mayflower, Wynwood…"
+              maxLength={200}
+              className={inputBase}
+            />
+          </label>
+        )}
+      </div>
+
+      <div style={{ height: 4, borderTop: "1px solid var(--franco-border)" }} />
+
       {/* ── Modo de gestión ── */}
       <div>
         <span className="flex items-center gap-1.5 mb-1.5">

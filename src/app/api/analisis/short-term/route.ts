@@ -1,51 +1,19 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
-import { cookies } from "next/headers";
 import { getUFValue } from "@/lib/uf";
 import { calcShortTerm } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
-import { chargeAnalysisCredit } from "@/lib/access";
-import { isAdminUser } from "@/lib/admin";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
-
-function createPaymentsAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
-}
+import {
+  createSupabaseServer,
+  requireAuthenticatedUser,
+  ensureCreditCharged,
+  markPremiumAndClaimPrepaid,
+} from "@/lib/api-helpers/analisis-pipeline";
 import type { AirbnbData, ShortTermInputs } from "@/lib/engines/short-term-engine";
 import type {
   AirbnbEstimateData,
   AirbnbEstimateDirectData,
 } from "@/lib/airbnb/types";
-
-// ─── Supabase helpers (same pattern as /api/analisis) ──
-
-function createSupabaseServer() {
-  const cookieStore = cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // ignored in route handler
-          }
-        },
-      },
-    }
-  );
-}
 
 // ─── Build AirbnbData for the engine ───────────────────
 // The engine expects percentiles and monthly factors.
@@ -161,67 +129,19 @@ function buildAirbnbData(
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth — same pattern as /api/analisis
     const supabase = createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
-    // Solo usuarios registrados crean análisis (Backlog #3).
-    if (!user) {
-      return NextResponse.json(
-        { error: "Debes iniciar sesión para crear un análisis" },
-        { status: 401 },
-      );
-    }
+    const auth = await requireAuthenticatedUser(supabase);
+    if (!auth.ok) return auth.response;
+    const { user } = auth;
 
-    const isAdmin = isAdminUser(user.email);
-
-    // 2. Parse body (antes que charge para leer prepaidChargeId)
     const body = await request.json();
     const prepaidChargeId: string | undefined = body?.prepaidChargeId;
 
-    // 1b. Cobro de crédito (welcome / paid / subscription). Admin bypass.
-    // Si viene prepaidChargeId (flujo AMBAS), validamos contra payments en
-    // vez de cobrar de nuevo. Ver /api/credits/charge.
-    let prepaidNeedClaim = false;
+    const charge = await ensureCreditCharged({ user, prepaidChargeId });
+    if (!charge.ok) return charge.response;
+    const { prepaidNeedClaim } = charge;
 
-    if (prepaidChargeId) {
-      const paymentsAdmin = createPaymentsAdminClient();
-      const { data: charge } = await paymentsAdmin
-        .from("payments")
-        .select("payment_data, consumed_at")
-        .eq("commerce_order", prepaidChargeId)
-        .eq("user_id", user.id)
-        .eq("status", "paid")
-        .maybeSingle();
-
-      if (!charge) {
-        return NextResponse.json(
-          { error: "Charge inválido o no encontrado" },
-          { status: 403 },
-        );
-      }
-
-      if (charge.consumed_at === null) {
-        prepaidNeedClaim = true; // somos los primeros, claim post-insert
-      } else {
-        const intent = (charge.payment_data as { intent?: string } | null)?.intent;
-        if (intent !== "both") {
-          return NextResponse.json(
-            { error: "Charge ya consumido" },
-            { status: 403 },
-          );
-        }
-      }
-    } else if (!isAdmin) {
-      const charge = await chargeAnalysisCredit(user.id, null);
-      if (!charge.ok) {
-        return NextResponse.json({ error: charge.message }, { status: 403 });
-      }
-    }
-
-    // 3. Fetch UF
     const ufValue = await getUFValue();
 
     // 4. Call AirROI directly (sin sub-fetch HTTP). Bug 2026-05-09:
@@ -332,6 +252,7 @@ export async function POST(request: Request) {
         ciudad: body.ciudad || "Santiago",
         direccion: body.direccion || null,
         tipo: "Departamento",
+        tipo_analisis: "short-term",
         dormitorios: body.dormitorios,
         banos: body.banos,
         superficie: body.superficieUtil,
@@ -343,6 +264,8 @@ export async function POST(request: Request) {
         score: francoScore.score,
         desglose: francoScore.desglose,
         resumen: francoScore.veredicto,
+        // results.tipoAnalisis y input_data.tipoAnalisis se preservan para
+        // backward-compat con análisis pre-migration que se leen por JSON.
         results: { ...result, tipoAnalisis: "short-term", veredicto: francoScore.veredicto, francoScore, airbnbRaw: airbnbResult.data },
         input_data: { ...body, tipoAnalisis: "short-term" },
         creator_name:
@@ -362,21 +285,21 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Marcar análisis como premium tras cobro exitoso (o admin bypass).
-    // Backlog #3: TODOS los análisis del registrado son premium completos —
-    // el welcome credit otorga el mismo nivel que un crédito comprado.
+    // Mark premium + claim prepaid (helper compartido con LTR endpoint).
     if (data?.id) {
-      await dbClient.from("analisis").update({ is_premium: true }).eq("id", data.id);
+      await markPremiumAndClaimPrepaid({
+        dbClient,
+        analysisId: data.id,
+        prepaidChargeId,
+        prepaidNeedClaim,
+      });
       data.is_premium = true;
 
-      // Calibración v1 — captura de operador del edificio (opcional).
-      // Si el usuario reportó un operador para un edificio dedicado, lo
-      // guardamos en `operadores_str_reportados` para curaduría futura.
-      // Falla silenciosamente si la tabla aún no existe.
-      const operadorReportado: string | undefined = typeof body.operadorNombre === "string"
-        ? body.operadorNombre.trim()
-        : undefined;
-      if (data?.id && body.tipoEdificio === "dedicado" && operadorReportado) {
+      // Calibración v1 — captura del operador del edificio (opcional).
+      // Falla silenciosamente si `operadores_str_reportados` aún no existe.
+      const operadorReportado: string | undefined =
+        typeof body.operadorNombre === "string" ? body.operadorNombre.trim() : undefined;
+      if (body.tipoEdificio === "dedicado" && operadorReportado) {
         try {
           await dbClient.from("operadores_str_reportados").insert({
             analisis_id: data.id,
@@ -391,23 +314,8 @@ export async function POST(request: Request) {
           console.warn("[short-term] operadores_str_reportados insert falló (¿tabla aplicada?):", e);
         }
       }
-
-      // Claim del prepaid charge si nosotros llegamos primero (flujo AMBAS).
-      // .is('consumed_at', null) garantiza idempotencia ante el segundo POST.
-      if (prepaidChargeId && prepaidNeedClaim) {
-        const paymentsAdmin = createPaymentsAdminClient();
-        await paymentsAdmin
-          .from("payments")
-          .update({
-            consumed_at: new Date().toISOString(),
-            consumed_by_analysis_id: data.id,
-          })
-          .eq("commerce_order", prepaidChargeId)
-          .is("consumed_at", null);
-      }
     }
 
-    // 9. Return the inserted row
     return NextResponse.json(data);
   } catch (error) {
     console.error("[short-term] API error:", error);

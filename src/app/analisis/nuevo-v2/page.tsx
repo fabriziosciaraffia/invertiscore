@@ -438,6 +438,15 @@ export default function NuevoAnalisisV3Page() {
           : 0.20,
         edificioPermiteAirbnb: state.edificioPermiteAirbnb,
 
+        // Modelo STR v1 — 3 ejes operacionales + operador.
+        tipoEdificio: state.tipoEdificio,
+        adminPro: state.adminPro,
+        habilitacion: state.habilitacion,
+        operadorNombre:
+          state.tipoEdificio === "dedicado" && state.operadorNombre.trim().length > 0
+            ? state.operadorNombre.trim()
+            : null,
+
         // Costos operativos mensuales
         costoElectricidad: Number(state.costoElectricidad) || 0,
         costoAgua: Number(state.costoAgua) || 0,

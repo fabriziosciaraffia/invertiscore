@@ -76,6 +76,22 @@ export interface WizardV3State {
   /** Permite Airbnb el reglamento del edificio. */
   edificioPermiteAirbnb: "si" | "no" | "no_seguro";
 
+  // Modelo STR v1 (mayo 2026) — 3 ejes operacionales + operador.
+  // Solo aplican si modalidad ∈ {str, both}; el motor STR los lee como
+  // opcionales y aplica defaults baseline si faltan. Defaults aquí
+  // espejan los del motor: residencial_puro / auto / basico = banda
+  // auto_gestion_residencial (occ 0.55, factor ADR 1.00).
+  /** Tipo de edificio: residencial / mixto / dedicado (aparthotel). */
+  tipoEdificio: "residencial_puro" | "mixto" | "dedicado";
+  /** Admin pro = empresa formal full-service (Andes STR, Mayflower, etc.). */
+  adminPro: boolean;
+  /** Calidad del amoblamiento (afecta ADR). */
+  habilitacion: "basico" | "estandar" | "premium";
+  /** Nombre del operador del edificio (texto libre). Solo visible si
+   * tipoEdificio === "dedicado". Se persiste en operadores_str_reportados
+   * para curaduría futura sin gastar AirROI calls. */
+  operadorNombre: string;
+
   // Tracking + metadata
   editedFields: string[];            // claves ajustadas manualmente en modal
   sampleSize: number;                // del último fetch de suggestions
@@ -125,6 +141,10 @@ export const DEFAULT_STATE: WizardV3State = {
   estaAmoblado: false,
   costoAmoblamiento: "3500000",
   edificioPermiteAirbnb: "no_seguro",
+  tipoEdificio: "residencial_puro",
+  adminPro: false,
+  habilitacion: "basico",
+  operadorNombre: "",
   editedFields: [],
   sampleSize: 0,
   radiusUsed: null,
