@@ -4,7 +4,7 @@ const STEPS = [
   { num: 1, label: "Propiedad" },
   { num: 2, label: "Financiamiento" },
   { num: 3, label: "Operacional" },
-  { num: 4, label: "Ajuste fino" },
+  { num: 4, label: "Resumen" },
 ] as const;
 
 export function WizardStepper({ current }: { current: 1 | 2 | 3 | 4 }) {

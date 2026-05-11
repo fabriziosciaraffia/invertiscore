@@ -12,7 +12,7 @@ import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
 import { Paso1Propiedad } from "@/components/formulario-v3/Paso1Propiedad";
 import { Paso2Financiamiento } from "@/components/formulario-v3/Paso2Financiamiento";
 import { Paso3Modalidad, type TierInfo, canAnalyzeFromTier } from "@/components/formulario-v3/Paso3Modalidad";
-import { Paso4AjusteFino } from "@/components/formulario-v3/Paso4AjusteFino";
+import { Paso4Resumen } from "@/components/formulario-v3/Paso4Resumen";
 import { useAirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import {
   DEFAULT_STATE,
@@ -608,7 +608,7 @@ export default function NuevoAnalisisV3Page() {
     1: { title: "Ingresa los datos de la propiedad", sub: "Con dirección y superficie ya podemos inferir lo demás." },
     2: { title: "¿Cómo la compras?", sub: "Precio y pie. Tasa y plazo los asignamos nosotros — podrás ajustarlos en el siguiente paso." },
     3: { title: "Configura la operación", sub: "Modalidad + bloques operacionales. Defaults razonables — edita si tienes data más fina." },
-    4: { title: "Ajuste fino", sub: "Opcional. Tasa exacta, vacancia LTR, comisión STR." },
+    4: { title: "Resumen", sub: "Revisa los datos y edita cualquier sección si necesitas ajustar algo antes de analizar." },
   }[step];
 
   // Overlay full-page durante submit (30-60s). Cubre la ventana real sin
@@ -681,10 +681,11 @@ export default function NuevoAnalisisV3Page() {
               />
             )}
             {step === 4 && (
-              <Paso4AjusteFino
+              <Paso4Resumen
                 state={state}
-                setState={patch}
+                ufCLP={ufCLP}
                 tierInfo={tierInfo}
+                onEditarStep={(n) => { setSlideDir("right"); setStep(n); }}
                 onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
                 submitting={submitting}

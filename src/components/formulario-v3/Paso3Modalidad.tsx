@@ -368,6 +368,35 @@ export function Paso3Modalidad({
               />
             </label>
           )}
+
+          {/* Vacancia + % gestión LTR — movidos desde paso 4 (eran "ajuste
+              fino" mal ubicados; pertenecen al bloque operacional LTR). */}
+          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-dashed border-[var(--franco-border)]">
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Vacancia: {state.vacanciaPct}%</span>
+                <InfoTooltip content="Porcentaje del año sin arrendatario. Default 5% ≈ 18 días/año. Se descuenta del flujo proyectado." />
+              </span>
+              <input
+                type="range" min={0} max={25} step={1}
+                value={state.vacanciaPct}
+                onChange={(e) => setState({ vacanciaPct: e.target.value })}
+                className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+              />
+            </label>
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Gestión LTR: {state.adminPct}%</span>
+                <InfoTooltip content="Comisión del corredor LTR (publicación, cobranza). Default 0% = autogestión. Típico 7-10% si delegas." />
+              </span>
+              <input
+                type="range" min={0} max={15} step={1}
+                value={state.adminPct}
+                onChange={(e) => setState({ adminPct: e.target.value })}
+                className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+              />
+            </label>
+          </div>
         </div>
       )}
 
