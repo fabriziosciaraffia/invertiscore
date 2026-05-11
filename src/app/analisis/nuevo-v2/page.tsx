@@ -464,7 +464,9 @@ export default function NuevoAnalisisV3Page() {
         edificioPermiteAirbnb: state.edificioPermiteAirbnb,
 
         // Modelo STR v1 — 3 ejes operacionales + operador.
-        tipoEdificio: state.tipoEdificio,
+        // tipoEdificio null = el user no eligió en el wizard. Motor STR
+        // defaultea a residencial_puro silenciosamente.
+        tipoEdificio: state.tipoEdificio ?? "residencial_puro",
         adminPro: state.adminPro,
         habilitacion: state.habilitacion,
         operadorNombre:

@@ -83,8 +83,12 @@ export interface WizardV3State {
   // auto_gestion_residencial (occ 0.55, factor ADR 1.00).
   /** Tipo de edificio: residencial / dedicado (aparthotel). Iteración 2026-05-10:
    * eliminado "mixto" tras audit (sección 9.1) — motor STR ya colapsaba mixto
-   * en residencial_puro, así que el enum value era ruido sin diferenciación. */
-  tipoEdificio: "residencial_puro" | "dedicado";
+   * en residencial_puro, así que el enum value era ruido sin diferenciación.
+   * Iteración 2026-05-11: nullable. null = el user aún no eligió. UI Bloque B
+   * usa null para flujo incremental (oculta resto de campos hasta que se
+   * selecciona). Motor STR (route + engine) defaultea a "residencial_puro"
+   * si llega null/undefined. */
+  tipoEdificio: "residencial_puro" | "dedicado" | null;
   /** Admin pro = empresa formal full-service (Andes STR, HOM, etc.).
    * Iteración 2026-05-10: ahora derivado de gestionOption en el wizard, pero
    * persiste como campo independiente para compat con análisis legacy + motor. */
@@ -166,7 +170,7 @@ export const DEFAULT_STATE: WizardV3State = {
   estaAmoblado: false,
   costoAmoblamiento: "3500000",
   edificioPermiteAirbnb: "no_seguro",
-  tipoEdificio: "residencial_puro",
+  tipoEdificio: null,
   adminPro: false,
   gestionOption: "tu_mismo",
   habilitacion: "basico",

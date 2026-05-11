@@ -4,11 +4,20 @@
 // Iteración 2026-05-10. Reemplaza el contenido inline + modal "Operación Airbnb".
 //
 // Inputs visibles:
-//   - tipoEdificio (binario: residencial_puro | dedicado)
+//   - tipoEdificio (binario: residencial_puro | dedicado | null)
 //   - gestionOption (binario: tu_mismo | pro_formal) → fusión modoGestion+adminPro
 //   - comisionAdminPct (slider, solo si pro_formal)
-//   - edificioPermiteAirbnb (select)
+//   - edificioPermiteAirbnb (select, oculto si tipoEdificio=dedicado)
 //   - operadorNombre (text, solo si tipoEdificio=dedicado)
+//
+// Iteración 2026-05-11 — flujo incremental:
+//   - tipoEdificio empieza null; resto del bloque se oculta hasta que el user
+//     elige una opción. Evita que el usuario vea 5 campos a la vez sin
+//     entender qué afecta qué.
+//   - Al elegir "dedicado" auto-aplica: gestionOption=pro_formal,
+//     edificioPermiteAirbnb=si. Reflejo de realidad (edificios dedicados
+//     siempre permiten Airbnb y operan con admin profesional). El user
+//     puede cambiar gestionOption manualmente después.
 //
 // Preview live:
 //   - ADR baseline mock (en futuro vendrá del prefetch AirROI; hoy hardcoded
@@ -52,6 +61,7 @@ function calcBandaOcc(tipoEdificio: WizardV3State["tipoEdificio"], adminPro: boo
 }
 
 function calcFactorEdif(tipoEdificio: WizardV3State["tipoEdificio"]): number {
+  // null se trata como residencial_puro para el preview (motor también lo hace).
   return tipoEdificio === "dedicado" ? 1.10 : 1.00;
 }
 
@@ -170,7 +180,25 @@ export function BloqueOperacionSTR({
               <button
                 key={opt.value}
                 type="button"
-                onClick={() => setState({ tipoEdificio: opt.value })}
+                onClick={() => {
+                  // Edificio dedicado → auto-aplica defaults que reflejan la
+                  // realidad: opera con admin profesional y obviamente permite
+                  // Airbnb. El user puede cambiar gestionOption manualmente
+                  // después; edificioPermiteAirbnb queda oculto.
+                  if (opt.value === "dedicado") {
+                    const m = gestionOptionToMotor("pro_formal");
+                    setState({
+                      tipoEdificio: opt.value,
+                      gestionOption: "pro_formal",
+                      modoGestion: m.modoGestion,
+                      adminPro: m.adminPro,
+                      comisionAdminPct: String(m.comisionDefaultPct),
+                      edificioPermiteAirbnb: "si",
+                    });
+                  } else {
+                    setState({ tipoEdificio: opt.value });
+                  }
+                }}
                 className={`text-left px-3 py-2.5 rounded-lg transition-all ${
                   active
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
@@ -184,6 +212,12 @@ export function BloqueOperacionSTR({
           })}
         </div>
       </div>
+
+      {/* Resto del bloque B se renderiza solo después de que el user eligió
+          tipoEdificio. Flujo incremental — evita exposición masiva. */}
+      {state.tipoEdificio !== null && (
+      <>
+
 
       {/* ── Eje 2: Quién opera (fusión modoGestion + adminPro) ── */}
       <div>
@@ -241,37 +275,42 @@ export function BloqueOperacionSTR({
         )}
       </div>
 
-      {/* ── ¿Edificio permite Airbnb? ── */}
-      <div>
-        <label className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
-          ¿Tu edificio permite Airbnb?
-        </label>
-        <select
-          className={`${inputBase} appearance-none pr-8`}
-          value={state.edificioPermiteAirbnb}
-          onChange={(e) =>
-            setState({
-              edificioPermiteAirbnb: e.target.value as WizardV3State["edificioPermiteAirbnb"],
-            })
-          }
-        >
-          <option value="si">Sí permite</option>
-          <option value="no">No permite</option>
-          <option value="no_seguro">No estoy seguro</option>
-        </select>
-        {state.edificioPermiteAirbnb === "no" && (
-          <div className="mt-2">
-            <StateBox variant="left-border" state="negative">
-              Algunos edificios prohíben Airbnb en su reglamento. Verifica antes de invertir — esto puede invalidar el modelo de negocio.
-            </StateBox>
-          </div>
-        )}
-        {state.edificioPermiteAirbnb === "no_seguro" && (
-          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
-            Te conviene revisar el reglamento de copropiedad antes de comprar.
-          </p>
-        )}
-      </div>
+      {/* ── ¿Edificio permite Airbnb? ──
+          Oculto si tipoEdificio=dedicado — un edificio 100% renta corta
+          obviamente lo permite (auto-seteado a "si" en el handler de
+          tipoEdificio). */}
+      {state.tipoEdificio !== "dedicado" && (
+        <div>
+          <label className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
+            ¿Tu edificio permite Airbnb?
+          </label>
+          <select
+            className={`${inputBase} appearance-none pr-8`}
+            value={state.edificioPermiteAirbnb}
+            onChange={(e) =>
+              setState({
+                edificioPermiteAirbnb: e.target.value as WizardV3State["edificioPermiteAirbnb"],
+              })
+            }
+          >
+            <option value="si">Sí permite</option>
+            <option value="no">No permite</option>
+            <option value="no_seguro">No estoy seguro</option>
+          </select>
+          {state.edificioPermiteAirbnb === "no" && (
+            <div className="mt-2">
+              <StateBox variant="left-border" state="negative">
+                Algunos edificios prohíben Airbnb en su reglamento. Verifica antes de invertir — esto puede invalidar el modelo de negocio.
+              </StateBox>
+            </div>
+          )}
+          {state.edificioPermiteAirbnb === "no_seguro" && (
+            <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
+              Te conviene revisar el reglamento de copropiedad antes de comprar.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* ── Operador (condicional a dedicado) ── */}
       {state.tipoEdificio === "dedicado" && (
@@ -291,11 +330,16 @@ export function BloqueOperacionSTR({
         </div>
       )}
 
-      {/* ── Preview operacional live + overrides ── */}
+      {/* ── Preview operacional live + overrides ──
+          Border-left con esquinas izquierdas cuadradas (regla
+          franco-design-system: cualquier bloque con border-left lateral va
+          en border-radius: 0 X X 0). */}
       <div
-        className="rounded-lg p-4 mt-2"
+        className="rounded-r-lg p-4 mt-2"
         style={{
           borderLeft: "3px solid var(--franco-text)",
+          borderTopLeftRadius: 0,
+          borderBottomLeftRadius: 0,
           background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
         }}
       >
@@ -439,6 +483,8 @@ export function BloqueOperacionSTR({
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }

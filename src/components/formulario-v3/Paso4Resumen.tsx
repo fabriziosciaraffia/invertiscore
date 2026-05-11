@@ -26,7 +26,7 @@ import {
   type WizardV3State,
 } from "./wizardV3State";
 
-const LABEL_TIPO_EDIFICIO: Record<WizardV3State["tipoEdificio"], string> = {
+const LABEL_TIPO_EDIFICIO: Record<NonNullable<WizardV3State["tipoEdificio"]>, string> = {
   residencial_puro: "Residencial",
   dedicado: "Dedicado / aparthotel",
 };
@@ -264,7 +264,7 @@ export function Paso4Resumen({
     operacionalRows.push(
       {
         label: "Tipo de edificio",
-        value: LABEL_TIPO_EDIFICIO[state.tipoEdificio],
+        value: state.tipoEdificio ? LABEL_TIPO_EDIFICIO[state.tipoEdificio] : "—",
         tooltip: "Residencial = la mayoría de los vecinos vive ahí. Dedicado = aparthotel diseñado para Airbnb (todos los departamentos son de renta corta).",
       },
       {

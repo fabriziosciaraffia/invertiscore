@@ -459,7 +459,8 @@ export function Paso3Modalidad({
           )}
         </label>
 
-        {/* Costos operativos STR — collapsible, solo si STR/AMBAS */}
+        {/* Costos operativos STR — collapsible, solo si STR/AMBAS.
+            Título dinámico con tipología (mismo patrón que header Bloque A). */}
         {showSTR && (
           <div className="pt-3 border-t border-dashed border-[var(--franco-border)]">
             <button
@@ -468,7 +469,9 @@ export function Paso3Modalidad({
               className="flex w-full items-center justify-between"
             >
               <span className="font-body text-[13px] font-medium text-[var(--franco-text)]">
-                Costos operativos STR
+                Costos operativos STR {state.esStudio
+                  ? "para tu studio"
+                  : `para tu depto ${state.dormitorios || "—"}D${state.banos || "—"}B`}
               </span>
               <ChevronDown className={`h-4 w-4 transition-transform ${strCostsOpen ? "rotate-180" : ""}`} />
             </button>
