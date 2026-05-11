@@ -61,7 +61,7 @@ const TIPS: Record<string, string> = {
   tipoEdificio: "Esto influye en cómo se comporta tu inversión en renta corta. Edificios dedicados (tipo aparthotel) tienen mejor reputación operacional. Residenciales puros suelen tener más restricciones.",
   adminPro: "Empresa especializada que maneja todo (limpieza, check-in, pricing, marketing). Cobra 15-25% del bruto pero suele lograr ocupación significativamente mayor que auto-gestión.",
   habilitacion: "Define la calidad percibida por los huéspedes y por tanto el ADR. Premium implica decoración curada, blancos hoteleros y amenidades extra.",
-  operadorNombre: "Si tu edificio es dedicado, el nombre del operador (ej. Andes STR, Mayflower). Nos ayuda a refinar las estimaciones para futuros usuarios.",
+  operadorNombre: "Si tu edificio es dedicado, el nombre del operador (ej. Andes STR, HOM). Nos ayuda a refinar las estimaciones para futuros usuarios.",
   electricidad: "Consumo eléctrico mensual promedio. En Airbnb el dueño paga la luz.",
   agua: "Consumo de agua mensual promedio.",
   wifi: "Internet fijo mensual. Esencial para Airbnb.",
@@ -1402,7 +1402,7 @@ export default function RentaCortaFormPage() {
               {[
                 { value: "residencial_puro", label: "Residencial puro", subtitle: "La mayoría de los vecinos vive ahí" },
                 { value: "mixto", label: "Mixto", subtitle: "Algunos departamentos son Airbnb" },
-                { value: "dedicado", label: "Dedicado / aparthotel", subtitle: "Tipo Andes STR, Mayflower, Wynwood" },
+                { value: "dedicado", label: "Dedicado / aparthotel", subtitle: "Tipo Andes STR, HOM" },
               ].map((opt) => (
                 <button
                   key={opt.value}
@@ -1448,7 +1448,7 @@ export default function RentaCortaFormPage() {
             </div>
             <p className="mt-1.5 font-body text-[11px] text-[var(--franco-text-muted)]">
               {form.adminPro
-                ? "Operador profesional (Andes STR, Mayflower, etc.). Ocupación estabilizada (mes 7+): ~74% si edificio es dedicado, ~65% si residencial."
+                ? "Operador profesional (Andes STR, HOM, etc.). Ocupación estabilizada (mes 7+): ~74% si edificio es dedicado, ~65% si residencial."
                 : "Tú gestionas. Ocupación estabilizada (mes 7+): ~55% (baseline hosts independientes Santiago)."}
             </p>
           </div>
@@ -1496,7 +1496,7 @@ export default function RentaCortaFormPage() {
               type="text"
               value={form.operadorNombre}
               onChange={(e) => setField("operadorNombre", e.target.value)}
-              placeholder="Andes STR, Mayflower, Wynwood…"
+              placeholder="Andes STR, HOM…"
               maxLength={200}
               className={inputClass}
             />

@@ -102,11 +102,11 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
           valor efectivamente usado por el motor. */}
       <div className="mt-4 pt-3 border-t border-[var(--franco-border)] space-y-1.5">
         <div className="flex justify-between font-mono text-[12px]">
-          <span className="text-[var(--franco-text-muted)]">ADR baseline (AirROI p50)</span>
+          <span className="text-[var(--franco-text-muted)]">Tarifa diaria promedio del mercado</span>
           <span className="text-[var(--franco-text-secondary)]">{fmtMoney(ejes.adrBaselineP50, currency, valorUF)}</span>
         </div>
         <div className="flex justify-between font-mono text-[12px]">
-          <span className="text-[var(--franco-text-muted)]">ADR ajustado (×{ejes.factorADRTotal.toFixed(2)})</span>
+          <span className="text-[var(--franco-text-muted)]">Tu tarifa diaria estimada (×{ejes.factorADRTotal.toFixed(2)})</span>
           {adrEsOverride ? (
             <span className="flex items-center gap-2">
               <span className="text-[var(--franco-text-muted)] line-through">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>

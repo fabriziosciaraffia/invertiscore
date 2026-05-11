@@ -158,12 +158,12 @@ export function BloqueOperacionSTR({
       <div>
         <span className="flex items-center gap-1.5 mb-1.5">
           <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">¿Cómo es el edificio?</span>
-          <InfoTooltip content="Residencial = la mayoría de los vecinos vive ahí. Dedicado = aparthotel tipo Andes STR, Mayflower (100% renta corta)." />
+          <InfoTooltip content="Residencial = la mayoría de los vecinos vive ahí. Dedicado = edificio diseñado para Airbnb (tipo Andes STR, HOM), donde todos los departamentos son de renta corta." />
         </span>
         <div className="flex flex-col gap-1.5">
           {([
             { value: "residencial_puro", label: "Residencial", subtitle: "La mayoría vive ahí · ADR ×1.00" },
-            { value: "dedicado", label: "Dedicado 100% renta corta", subtitle: "Tipo Andes STR, Mayflower · ADR ×1.10" },
+            { value: "dedicado", label: "Dedicado 100% renta corta", subtitle: "Tipo Andes STR, HOM · tarifa +10%" },
           ] as const).map((opt) => {
             const active = state.tipoEdificio === opt.value;
             return (
@@ -189,12 +189,12 @@ export function BloqueOperacionSTR({
       <div>
         <span className="flex items-center gap-1.5 mb-1.5">
           <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">¿Quién va a operar el Airbnb?</span>
-          <InfoTooltip content="Auto-gestión: tú operas (comisión Airbnb 3%). Operador profesional: empresa formal tipo Andes STR (comisión ~20% pero suele lograr ocupación significativamente mayor)." />
+          <InfoTooltip content="Auto-gestión: tú te encargas de todo (limpieza, check-in, mensajes). Solo pagas la comisión 3% de Airbnb. Operador profesional: una empresa (tipo Andes STR, HOM) maneja todo. Cobra ~20% del ingreso pero suele lograr más ocupación." />
         </span>
         <div className="flex flex-col gap-1.5">
           {([
             { value: "tu_mismo", label: "Auto-gestión", subtitle: "Tú operas · comisión Airbnb 3%" },
-            { value: "pro_formal", label: "Operador profesional", subtitle: "Andes STR, Mayflower · comisión ~20%" },
+            { value: "pro_formal", label: "Operador profesional", subtitle: "Andes STR, HOM · comisión ~20%" },
           ] as const).map((opt) => {
             const active = state.gestionOption === opt.value;
             return (
@@ -278,7 +278,7 @@ export function BloqueOperacionSTR({
         <div>
           <span className="flex items-center gap-1.5 mb-1.5">
             <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Operador del edificio (opcional)</span>
-            <InfoTooltip content="Si lo conoces (ej. Andes STR, Mayflower), nos ayuda a refinar estimaciones para futuros usuarios." />
+            <InfoTooltip content="Si conoces la marca del operador del edificio (ej. Andes STR, HOM), nos ayuda a refinar estimaciones para futuros usuarios." />
           </span>
           <input
             type="text"
@@ -311,31 +311,31 @@ export function BloqueOperacionSTR({
           <div className="space-y-1.5">
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
               <span className="flex items-center gap-1.5">
-                ADR baseline (AirROI)
-                <InfoTooltip content="Lo que cobra hoy en promedio una propiedad similar en esta zona según AirROI, sin contar tu posicionamiento ni gestión." />
+                Tarifa diaria promedio del mercado
+                <InfoTooltip content="Lo que cobran por noche, en promedio, los Airbnb parecidos al tuyo en esta zona." />
               </span>
               <span>{fmtCLP(adrBaselineSugerido)}</span>
             </div>
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
               <span className="flex items-center gap-1.5">
                 × factor edificio
-                <InfoTooltip content="Cuánto puedes cobrar de más sobre el promedio por el tipo de edificio. Residencial 1.00 · Dedicado 1.10." />
+                <InfoTooltip content="Cuánto más puedes cobrar si tu edificio está diseñado para Airbnb (aparthotel) en vez de uno residencial común." />
               </span>
               <span>×{factorEdif.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
               <span className="flex items-center gap-1.5">
                 × factor habilitación
-                <InfoTooltip content="Cuánto puedes cobrar de más por la calidad del amoblamiento. Básico 1.00 · Estándar 1.05 · Premium 1.10." />
+                <InfoTooltip content="Cuánto más puedes cobrar si invertiste en buen amoblamiento y fotos profesionales." />
               </span>
               <span>×{factorHab.toFixed(2)}</span>
             </div>
 
-            {/* ADR ajustado — editable */}
+            {/* Tu tarifa diaria estimada — editable (interna: adrAjustado) */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
               <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
-                ADR ajustado
-                <InfoTooltip content="Tu ADR estimado después de aplicar los factores de edificio y habilitación. Es el precio por noche del cálculo." />
+                Tu tarifa diaria estimada
+                <InfoTooltip content="Lo que vas a cobrar por noche con tu tipo de edificio y nivel de amoblamiento. Es la base del cálculo de ingresos." />
               </span>
               {!adrEsOverride ? (
                 <span className="flex items-center gap-2">
@@ -379,7 +379,7 @@ export function BloqueOperacionSTR({
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
               <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
                 Ocupación estabilizada (mes 7+)
-                <InfoTooltip content="Porcentaje del año que el depto está arrendado, una vez que pasaste el ramp-up de los primeros 6 meses." />
+                <InfoTooltip content="Porcentaje del año que el depto está reservado. 'Estabilizada' = cuando ya llevas más de 6 meses operando, tienes reseñas y el listing maduró." />
               </span>
               {!occEsOverride ? (
                 <span className="flex items-center gap-2">
@@ -420,9 +420,12 @@ export function BloqueOperacionSTR({
               )}
             </div>
 
-            {/* Revenue mensual */}
-            <div className="flex justify-between pt-2 border-t border-[var(--franco-text)] mt-2">
-              <span className="font-mono text-[12px] font-bold text-[var(--franco-text)]">Revenue mensual estimado</span>
+            {/* Ingreso mensual (variable interna: revenueMensual) */}
+            <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-[var(--franco-text)] mt-2">
+              <span className="flex items-center gap-1.5 font-mono text-[12px] font-bold text-[var(--franco-text)]">
+                Ingreso mensual estimado
+                <InfoTooltip content="Lo que entra a tu bolsillo cada mes en promedio (antes de descontar gastos, comisiones y crédito hipotecario). Calculado como tarifa × ocupación × 30 días." />
+              </span>
               <span className="font-mono text-[14px] font-bold text-[var(--franco-text)]">
                 {revenueMensual != null ? fmtCLP(revenueMensual) : "—"}
               </span>

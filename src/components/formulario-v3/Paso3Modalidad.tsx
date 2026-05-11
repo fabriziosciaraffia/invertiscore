@@ -223,10 +223,14 @@ export function Paso3Modalidad({
         </div>
       )}
 
-      {/* ════ Bloque A · Estado del depto (siempre visible) ════ */}
+      {/* ════ Bloque A · Estado del depto (solo STR / AMBAS) ════
+          En LTR puro no aplica — no se amobla para arrendar a largo plazo. */}
+      {showSTR && (
       <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
         <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
-          A · Estado del depto
+          A · Estado del depto · {state.esStudio
+            ? "para tu studio"
+            : `para tu depto ${state.dormitorios || "—"}D${state.banos || "—"}B`}
         </div>
 
         {/* ¿Está amoblado? */}
@@ -310,12 +314,13 @@ export function Paso3Modalidad({
             })}
           </div>
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
-            {state.habilitacion === "basico" && "Funcional, fotos amateur. ADR sin uplift."}
-            {state.habilitacion === "estandar" && "Decente + fotos profesionales. ADR ×1.05."}
-            {state.habilitacion === "premium" && "Decoración curada, amenidades. ADR ×1.10."}
+            {state.habilitacion === "basico" && "Funcional, fotos amateur. Sin uplift de tarifa."}
+            {state.habilitacion === "estandar" && "Decente, con fotos profesionales. Tarifa +5%."}
+            {state.habilitacion === "premium" && "Decoración curada y amenidades extra. Tarifa +10%."}
           </p>
         </div>
       </div>
+      )}
 
       {/* ════ Bloque B · Operación Airbnb (solo STR/AMBAS) ════ */}
       {showSTR && (
@@ -482,10 +487,10 @@ export function Paso3Modalidad({
                   tooltip="Cuenta de agua mensual promedio. La paga el dueño."
                 />
                 <CostInput
-                  label="WiFi"
+                  label="Internet"
                   value={state.costoWifi}
                   onChange={(v) => setState({ costoWifi: v })}
-                  tooltip="Plan de internet fijo. Esencial para Airbnb — un mal wifi tira la nota."
+                  tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
                 />
                 <CostInput
                   label="Insumos"
@@ -503,7 +508,7 @@ export function Paso3Modalidad({
             )}
             {strCostsOpen && (
               <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-2 m-0">
-                Defaults para 2D1B en Santiago. Edita si tienes data real.
+                Defaults escalados por tipología (excepto Internet, que es plan fijo). Edita si tienes data real.
               </p>
             )}
           </div>
@@ -553,7 +558,7 @@ export function Paso3Modalidad({
             disabled={submitting || !mod}
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            Continuar a ajuste fino <ArrowRight size={14} />
+            Continuar al paso 4 <ArrowRight size={14} />
           </button>
         </div>
       )}

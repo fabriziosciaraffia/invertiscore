@@ -85,7 +85,7 @@ export interface WizardV3State {
    * eliminado "mixto" tras audit (sección 9.1) — motor STR ya colapsaba mixto
    * en residencial_puro, así que el enum value era ruido sin diferenciación. */
   tipoEdificio: "residencial_puro" | "dedicado";
-  /** Admin pro = empresa formal full-service (Andes STR, Mayflower, etc.).
+  /** Admin pro = empresa formal full-service (Andes STR, HOM, etc.).
    * Iteración 2026-05-10: ahora derivado de gestionOption en el wizard, pero
    * persiste como campo independiente para compat con análisis legacy + motor. */
   adminPro: boolean;

@@ -15,6 +15,7 @@
 
 import { Loader2 } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { canAnalyzeFromTier, type TierInfo } from "./Paso3Modalidad";
 import {
   fmtCLP,
@@ -76,11 +77,18 @@ function calcFactorADR(
 
 // ─── Tipos ──────────────────────────────────────────────
 
+interface ResumenRow {
+  label: string;
+  value: string;
+  /** Opcional. 1 oración pedagógica en lenguaje no-técnico. */
+  tooltip?: string;
+}
+
 interface SectionConfig {
   numero: string;
   title: string;
   editStep: 1 | 2 | 3;
-  rows: { label: string; value: string }[];
+  rows: ResumenRow[];
 }
 
 // ─── Subcomponente: sección del resumen ─────────────────
@@ -112,14 +120,17 @@ function ResumenSection({
         </button>
       </div>
 
-      {/* Filas: label Sans (izq) + valor Mono (der) */}
+      {/* Filas: label Sans (izq) + valor Mono (der). Tooltip opcional inline. */}
       <dl className="space-y-1.5">
         {rows.map((row, i) => (
           <div
             key={i}
             className="flex items-baseline justify-between gap-3 py-1 border-b border-dashed border-[var(--franco-border)] last:border-b-0"
           >
-            <dt className="font-body text-[13px] text-[var(--franco-text-secondary)]">{row.label}</dt>
+            <dt className="flex items-center gap-1.5 font-body text-[13px] text-[var(--franco-text-secondary)]">
+              {row.label}
+              {row.tooltip && <InfoTooltip content={row.tooltip} />}
+            </dt>
             <dd className="font-mono text-[13px] text-[var(--franco-text)] text-right m-0">{row.value}</dd>
           </div>
         ))}
@@ -189,8 +200,16 @@ export function Paso4Resumen({
     rows: [
       { label: "Dirección", value: state.direccion || "—" },
       { label: "Comuna", value: state.comuna || "—" },
-      { label: "Tipo", value: state.tipoPropiedad === "nuevo" ? "Nuevo" : "Usado" },
-      { label: "Superficie útil", value: state.superficieUtil ? `${state.superficieUtil} m²` : "—" },
+      {
+        label: "Tipo",
+        value: state.tipoPropiedad === "nuevo" ? "Nuevo" : "Usado",
+        tooltip: "Nuevo = primera venta directa de la inmobiliaria. Usado = ya tuvo otro dueño. El motor ajusta plusvalía esperada según esto.",
+      },
+      {
+        label: "Superficie útil",
+        value: state.superficieUtil ? `${state.superficieUtil} m²` : "—",
+        tooltip: "Metros cuadrados al interior del depto, sin contar terrazas ni espacios comunes.",
+      },
       {
         label: "Tipología",
         value: `${state.dormitorios || "—"}D · ${state.banos || "—"}B${state.esStudio ? " (studio)" : ""}`,
@@ -205,59 +224,122 @@ export function Paso4Resumen({
     editStep: 2,
     rows: [
       { label: "Precio", value: precioUF > 0 ? `${fmtUF(precioUF)} ≈ ${fmtCLP(precioCLP)}` : "—" },
-      { label: "Precio por m²", value: precioPorM2 > 0 ? fmtUF(precioPorM2) : "—" },
-      { label: "Pie", value: `${piePct}% · ${fmtUF(pieUF)}` },
-      { label: "Plazo crédito", value: `${plazo} años` },
-      { label: "Tasa anual", value: `${state.tasaInteres}%` },
-      { label: "Dividendo estimado", value: dividendoCLP > 0 ? `${fmtCLP(dividendoCLP)}/mes` : "—" },
+      {
+        label: "Precio por m²",
+        value: precioPorM2 > 0 ? fmtUF(precioPorM2) : "—",
+        tooltip: "Indicador para comparar este depto contra otros similares en la zona. UF/m² es la métrica estándar del mercado chileno.",
+      },
+      {
+        label: "Pie",
+        value: `${piePct}% · ${fmtUF(pieUF)}`,
+        tooltip: "Lo que pagas al contado al firmar. El resto se financia con crédito hipotecario.",
+      },
+      {
+        label: "Plazo crédito",
+        value: `${plazo} años`,
+        tooltip: "Cuánto tiempo te demoras en pagar el crédito. Más plazo = cuota mensual más baja pero pagas más intereses totales.",
+      },
+      {
+        label: "Tasa anual",
+        value: `${state.tasaInteres}%`,
+        tooltip: "Tasa anual del crédito hipotecario en UF. Hoy en Chile fluctúa entre 4% y 5,5%.",
+      },
+      {
+        label: "Dividendo estimado",
+        value: dividendoCLP > 0 ? `${fmtCLP(dividendoCLP)}/mes` : "—",
+        tooltip: "Cuota mensual fija del crédito hipotecario. Calculada con la fórmula de cuota francesa estándar.",
+      },
     ],
   };
 
-  const operacionalRows: { label: string; value: string }[] = [
-    { label: "Modalidad de análisis", value: mod ? LABEL_MODALIDAD[mod] : "—" },
+  const operacionalRows: ResumenRow[] = [
+    {
+      label: "Modalidad de análisis",
+      value: mod ? LABEL_MODALIDAD[mod] : "—",
+      tooltip: "Modo en el que vas a operar la propiedad. LTR = arriendo tradicional a 1+ año. STR = renta corta tipo Airbnb. Ambas = se calculan en paralelo para comparar.",
+    },
   ];
 
   if (mod === "str" || mod === "both") {
     operacionalRows.push(
-      { label: "Tipo de edificio", value: LABEL_TIPO_EDIFICIO[state.tipoEdificio] },
-      { label: "Gestión", value: state.gestionOption === "pro_formal" ? "Operador profesional" : "Auto-gestión" },
-      { label: "Comisión operador", value: `${comisionUsadaPct}%` },
-      { label: "Habilitación", value: LABEL_HABILITACION[state.habilitacion] },
-      { label: "Edificio permite Airbnb", value: LABEL_EDIFICIO_PERMITE[state.edificioPermiteAirbnb] },
+      {
+        label: "Tipo de edificio",
+        value: LABEL_TIPO_EDIFICIO[state.tipoEdificio],
+        tooltip: "Residencial = la mayoría de los vecinos vive ahí. Dedicado = aparthotel diseñado para Airbnb (todos los departamentos son de renta corta).",
+      },
+      {
+        label: "Gestión",
+        value: state.gestionOption === "pro_formal" ? "Operador profesional" : "Auto-gestión",
+        tooltip: "Quién va a operar el Airbnb. Auto = tú mismo (limpieza, check-in, mensajes). Profesional = una empresa lo hace por ti a cambio de comisión.",
+      },
+      {
+        label: "Comisión operador",
+        value: `${comisionUsadaPct}%`,
+        tooltip: "Porcentaje del ingreso bruto que se queda el operador (o Airbnb si es auto-gestión).",
+      },
+      {
+        label: "Habilitación",
+        value: LABEL_HABILITACION[state.habilitacion],
+        tooltip: "Calidad del amoblamiento y fotos. Premium implica decoración curada y amenidades extra; influye en cuánto puedes cobrar por noche.",
+      },
+      {
+        label: "Edificio permite Airbnb",
+        value: LABEL_EDIFICIO_PERMITE[state.edificioPermiteAirbnb],
+        tooltip: "Algunos edificios prohíben Airbnb en su reglamento. Verifica esto antes de comprar — un veto del comité puede invalidar el modelo entero.",
+      },
     );
     if (state.tipoEdificio === "dedicado" && state.operadorNombre.trim().length > 0) {
       operacionalRows.push({ label: "Operador del edificio", value: state.operadorNombre.trim() });
     }
     operacionalRows.push(
       {
-        label: "ADR ajustado",
+        label: "Tu tarifa diaria estimada",
         value: adrEsOverride
-          ? `${fmtCLP(state.adrOverride!)} (override manual)`
-          : "Derivado automáticamente",
+          ? `${fmtCLP(state.adrOverride!)} (Ajustado manualmente)`
+          : "Derivada automáticamente",
+        tooltip: "Lo que vas a cobrar por noche con tu tipo de edificio y nivel de amoblamiento. Es la base del cálculo de ingresos.",
       },
       {
         label: "Ocupación estabilizada",
         value: occEsOverride
-          ? `${Math.round(occFinal * 100)}% (override manual)`
+          ? `${Math.round(occFinal * 100)}% (Ajustado manualmente)`
           : `${Math.round(occDerivada * 100)}% (mes 7+)`,
+        tooltip: "Porcentaje del año que el depto está reservado, una vez que pasaste los primeros 6 meses de ramp-up y tienes reseñas.",
       },
-      { label: "Factor ADR (edif × hab)", value: `×${factorADR.toFixed(2)}` },
+      {
+        label: "Factor de tarifa (edif × hab)",
+        value: `×${factorADR.toFixed(2)}`,
+        tooltip: "Multiplicador que el motor aplica a la tarifa promedio del mercado según tu tipo de edificio y habilitación.",
+      },
     );
   }
 
   if (mod === "ltr" || mod === "both") {
     operacionalRows.push(
-      { label: "Vacancia LTR", value: `${state.vacanciaPct}%` },
-      { label: "Gestión LTR", value: state.adminPct === "0" ? "Autogestión" : `${state.adminPct}% corredor` },
+      {
+        label: "Vacancia LTR",
+        value: `${state.vacanciaPct}%`,
+        tooltip: "Porcentaje del año estimado sin arrendatario en arriendo tradicional. Default 5% ≈ 18 días/año.",
+      },
+      {
+        label: "Gestión LTR",
+        value: state.adminPct === "0" ? "Autogestión" : `${state.adminPct}% corredor`,
+        tooltip: "Quién gestiona el arriendo tradicional. Autogestión = sin costo. Corredor = comisión mensual sobre el arriendo (típico 7-10%).",
+      },
     );
   }
 
-  operacionalRows.push({
-    label: "Estado del depto",
-    value: state.estaAmoblado
-      ? "Ya amoblado"
-      : `Falta amoblar (${state.costoAmoblamiento ? fmtCLP(parseNum(state.costoAmoblamiento)) : "—"})`,
-  });
+  // Estado del depto: solo aplica para STR. En LTR puro no tiene sentido
+  // porque típicamente no se amobla para arrendar a largo plazo.
+  if (mod === "str" || mod === "both") {
+    operacionalRows.push({
+      label: "Estado del depto",
+      value: state.estaAmoblado
+        ? "Ya amoblado"
+        : `Falta amoblar (${state.costoAmoblamiento ? fmtCLP(parseNum(state.costoAmoblamiento)) : "—"})`,
+      tooltip: "Si el depto ya viene amoblado, no se descuenta nada del flujo. Si no, sumamos el costo de amoblar como inversión inicial.",
+    });
+  }
 
   const seccionOperacional: SectionConfig = {
     numero: "03 · OPERACIONAL",
@@ -266,10 +348,22 @@ export function Paso4Resumen({
     rows: operacionalRows,
   };
 
-  const costosRows: { label: string; value: string }[] = [
-    { label: "Arriendo de referencia LTR", value: state.arriendo ? `${fmtCLP(parseNum(state.arriendo))}/mes` : "—" },
-    { label: "Gastos comunes", value: state.gastos ? `${fmtCLP(parseNum(state.gastos))}/mes` : "—" },
-    { label: "Contribuciones", value: state.contribuciones ? `${fmtCLP(parseNum(state.contribuciones))}/trim` : "—" },
+  const costosRows: ResumenRow[] = [
+    {
+      label: "Arriendo de referencia LTR",
+      value: state.arriendo ? `${fmtCLP(parseNum(state.arriendo))}/mes` : "—",
+      tooltip: "Arriendo tradicional estimado. En modo Ambas se usa para comparar STR vs LTR; en modo STR solo es referencia visual.",
+    },
+    {
+      label: "Gastos comunes",
+      value: state.gastos ? `${fmtCLP(parseNum(state.gastos))}/mes` : "—",
+      tooltip: "Cuota mensual a la administración del edificio. La pagas tú aunque el depto esté vacío.",
+    },
+    {
+      label: "Contribuciones",
+      value: state.contribuciones ? `${fmtCLP(parseNum(state.contribuciones))}/trim` : "—",
+      tooltip: "Impuesto territorial trimestral que paga el dueño. Lo calcula el SII según el avalúo fiscal.",
+    },
   ];
   if (mod === "str" || mod === "both") {
     const totalSTROps = parseNum(state.costoElectricidad)
@@ -279,7 +373,8 @@ export function Paso4Resumen({
       + parseNum(state.mantencionMensual);
     costosRows.push({
       label: "Costos operativos STR",
-      value: totalSTROps > 0 ? `${fmtCLP(totalSTROps)}/mes (luz + agua + wifi + insumos + mant.)` : "—",
+      value: totalSTROps > 0 ? `${fmtCLP(totalSTROps)}/mes (luz + agua + internet + insumos + mant.)` : "—",
+      tooltip: "Suma de los costos que el dueño asume mensualmente para operar el Airbnb (servicios básicos + insumos + mantención). En Airbnb no se traspasan al huésped.",
     });
   }
 
