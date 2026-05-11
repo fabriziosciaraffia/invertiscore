@@ -14,6 +14,7 @@ import { Paso2Financiamiento } from "@/components/formulario-v3/Paso2Financiamie
 import { Paso3Modalidad, type TierInfo, canAnalyzeFromTier } from "@/components/formulario-v3/Paso3Modalidad";
 import { Paso4Resumen } from "@/components/formulario-v3/Paso4Resumen";
 import { useAirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
+import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import {
   DEFAULT_STATE,
   antiguedadToNumber,
@@ -140,6 +141,27 @@ export default function NuevoAnalisisV3Page() {
     }, 500);
     return () => clearTimeout(t);
   }, [state]);
+
+  // ─── Scale defaults con dormitorios + habilitación (iter 2026-05-10) ──
+  // Cuando el user cambia dormitorios o habilitación, recalcula los defaults
+  // de costos operativos y costo amoblamiento. Respeta state.editedFields:
+  // si el campo ya fue editado manualmente, no se sobrescribe.
+  useEffect(() => {
+    if (!initialized.current) return;
+    const dorm = parseInt(state.dormitorios, 10);
+    if (!Number.isFinite(dorm) || dorm < 0) return;
+    const defaults = getCostosDefault(dorm, state.habilitacion);
+    const edited = new Set(state.editedFields);
+    const patch_obj: Partial<WizardV3State> = {};
+    if (!edited.has("costoElectricidad")) patch_obj.costoElectricidad = String(defaults.costoElectricidad);
+    if (!edited.has("costoAgua")) patch_obj.costoAgua = String(defaults.costoAgua);
+    if (!edited.has("costoWifi")) patch_obj.costoWifi = String(defaults.costoWifi);
+    if (!edited.has("costoInsumos")) patch_obj.costoInsumos = String(defaults.costoInsumos);
+    if (!edited.has("mantencionMensual")) patch_obj.mantencionMensual = String(defaults.mantencion);
+    if (!edited.has("costoAmoblamiento")) patch_obj.costoAmoblamiento = String(defaults.costoAmoblamiento);
+    if (Object.keys(patch_obj).length > 0) patch(patch_obj);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.dormitorios, state.habilitacion]);
 
   // ─── Fetch market suggestions when key inputs change ──
   // Objetivo doble: (1) obtener conteo de comparables apenas haya dirección,

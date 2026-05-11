@@ -111,8 +111,8 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
             <span className="flex items-center gap-2">
               <span className="text-[var(--franco-text-muted)] line-through">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>
               <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(adrFinal, currency, valorUF)}</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
-                override manual
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                Ajustado manualmente
               </span>
             </span>
           ) : (
@@ -125,8 +125,8 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
             <span className="flex items-center gap-2">
               <span className="text-[var(--franco-text-muted)] line-through">{occPct}%</span>
               <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
-                override manual
+              <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                Ajustado manualmente
               </span>
             </span>
           ) : (
@@ -142,7 +142,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
       {/* Caveat */}
       <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
         {(adrEsOverride || occEsOverride)
-          ? "Aplicaste un override manual sobre uno o más valores. Los ejes operacionales siguen mostrados como referencia, pero el motor está usando tus valores manuales para el cálculo."
+          ? "Ajustaste uno o más valores manualmente. Los ejes operacionales siguen mostrados como referencia, pero el motor está usando tus valores en el cálculo."
           : "Estas estimaciones se basan en data de operadores reales en Santiago (proforma Andes STR Providencia 2025 + análisis 149 listings AirROI). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
       </p>
     </div>

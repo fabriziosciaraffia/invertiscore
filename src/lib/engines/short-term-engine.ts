@@ -321,18 +321,48 @@ export const COSTOS_DEFAULT: Record<string, [number, number, number, number, num
   '3': [72000, 20000, 22000, 27000, 25000],
 };
 
+// Amoblamiento base por dormitorios (CLP). Iter 2026-05-10: re-calibración
+// según Andes proforma + Habilitación STR Santiago. Valores BASE — se
+// multiplican por factor de habilitación (ver getCostoAmoblamientoEscalado).
 export const AMOBLAMIENTO_DEFAULT: Record<string, number> = {
-  '0': 3000000,
-  '1': 3500000,
-  '2': 5000000,
-  '3': 7000000,
+  '0': 2500000,   // studio = 1D para amoblamiento
+  '1': 2500000,
+  '2': 3500000,
+  '3': 5000000,
 };
+
+// Factor de habilitación sobre el costo base de amoblamiento.
+//   básico:   funcional, fotos amateur → ×1.0
+//   estándar: decente + fotos pro     → ×1.3
+//   premium:  curado + amenidades     → ×2.1
+export const AMOBLAMIENTO_FACTOR_HABILITACION: Record<HabilitacionSTR, number> = {
+  basico: 1.0,
+  estandar: 1.3,
+  premium: 2.1,
+};
+
+/**
+ * Costo de amoblamiento escalado por dormitorios + habilitación.
+ * 1D=$2.5M, 2D=$3.5M, 3D+=$5M × factor habilitación.
+ */
+export function getCostoAmoblamientoEscalado(
+  dormitorios: number,
+  habilitacion: HabilitacionSTR = 'basico',
+): number {
+  const key = String(Math.min(dormitorios, 3));
+  const base = AMOBLAMIENTO_DEFAULT[key] ?? AMOBLAMIENTO_DEFAULT['1'];
+  const factor = AMOBLAMIENTO_FACTOR_HABILITACION[habilitacion] ?? 1.0;
+  return Math.round(base * factor);
+}
 
 /**
  * Retorna costos operativos por defecto para una tipología.
  * El formulario puede llamar esto para pre-llenar los campos.
+ *
+ * Nota iter 2026-05-10: costoAmoblamiento ahora también acepta habilitación
+ * para escalarlo. Backward-compat: si no se pasa, se usa basico (×1.0).
  */
-export function getCostosDefault(dormitorios: number) {
+export function getCostosDefault(dormitorios: number, habilitacion: HabilitacionSTR = 'basico') {
   const key = String(Math.min(dormitorios, 3));
   const [electricidad, agua, wifi, insumos, mantencion] = COSTOS_DEFAULT[key] ?? COSTOS_DEFAULT['1'];
   return {
@@ -341,7 +371,7 @@ export function getCostosDefault(dormitorios: number) {
     costoWifi: wifi,
     costoInsumos: insumos,
     mantencion,
-    costoAmoblamiento: AMOBLAMIENTO_DEFAULT[key] ?? AMOBLAMIENTO_DEFAULT['1'],
+    costoAmoblamiento: getCostoAmoblamientoEscalado(dormitorios, habilitacion),
   };
 }
 

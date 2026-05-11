@@ -21,6 +21,7 @@
 //   - ADR editable: click "Editar manualmente" → input + badge override + "Usar sugerido"
 //   - Occ editable: idem
 
+import { useEffect, useState } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import {
@@ -100,6 +101,52 @@ export function BloqueOperacionSTR({
   function resetAdrOverride() { setState({ adrOverride: null }); }
   function enableOccOverride() { setState({ occOverride: occDerivada }); }
   function resetOccOverride() { setState({ occOverride: null }); }
+
+  // ─── Local buffers para inputs (iter 2026-05-10) ───
+  // Permitir borrar el contenido sin colapsar el override. La validación
+  // (parse a número, commit a state) ocurre en blur.
+  const [adrBuffer, setAdrBuffer] = useState<string>(
+    state.adrOverride !== null ? String(state.adrOverride) : "",
+  );
+  const [occBuffer, setOccBuffer] = useState<string>(
+    state.occOverride !== null ? String(Math.round(state.occOverride * 100)) : "",
+  );
+  // Sync cuando override se cambia desde afuera (ej. "Usar sugerido" reset).
+  useEffect(() => {
+    setAdrBuffer(state.adrOverride !== null ? String(state.adrOverride) : "");
+  }, [state.adrOverride]);
+  useEffect(() => {
+    setOccBuffer(state.occOverride !== null ? String(Math.round(state.occOverride * 100)) : "");
+  }, [state.occOverride]);
+
+  function commitAdrBuffer() {
+    const trimmed = adrBuffer.trim();
+    if (trimmed === "") {
+      // Empty → mantener override pero con valor inválido implícito hace que
+      // adrFinal caiga al derivado. Mejor reset explícito.
+      setState({ adrOverride: null });
+      return;
+    }
+    const num = Number(trimmed);
+    if (!Number.isFinite(num) || num <= 0) {
+      setState({ adrOverride: null });
+      return;
+    }
+    setState({ adrOverride: Math.round(num) });
+  }
+  function commitOccBuffer() {
+    const trimmed = occBuffer.trim();
+    if (trimmed === "") {
+      setState({ occOverride: null });
+      return;
+    }
+    const pct = Number(trimmed);
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 95) {
+      setState({ occOverride: null });
+      return;
+    }
+    setState({ occOverride: pct / 100 });
+  }
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-5 mt-3">
@@ -237,7 +284,7 @@ export function BloqueOperacionSTR({
             type="text"
             value={state.operadorNombre}
             onChange={(e) => setState({ operadorNombre: e.target.value })}
-            placeholder="Andes STR, Mayflower, Wynwood…"
+            placeholder="Andes STR, HOM…"
             maxLength={200}
             className={inputBase}
           />
@@ -263,21 +310,33 @@ export function BloqueOperacionSTR({
         ) : (
           <div className="space-y-1.5">
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-              <span>ADR baseline (AirROI)</span>
+              <span className="flex items-center gap-1.5">
+                ADR baseline (AirROI)
+                <InfoTooltip content="Lo que cobra hoy en promedio una propiedad similar en esta zona según AirROI, sin contar tu posicionamiento ni gestión." />
+              </span>
               <span>{fmtCLP(adrBaselineSugerido)}</span>
             </div>
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-              <span>× factor edificio</span>
+              <span className="flex items-center gap-1.5">
+                × factor edificio
+                <InfoTooltip content="Cuánto puedes cobrar de más sobre el promedio por el tipo de edificio. Residencial 1.00 · Dedicado 1.10." />
+              </span>
               <span>×{factorEdif.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-              <span>× factor habilitación</span>
+              <span className="flex items-center gap-1.5">
+                × factor habilitación
+                <InfoTooltip content="Cuánto puedes cobrar de más por la calidad del amoblamiento. Básico 1.00 · Estándar 1.05 · Premium 1.10." />
+              </span>
               <span>×{factorHab.toFixed(2)}</span>
             </div>
 
             {/* ADR ajustado — editable */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
-              <span className="font-mono text-[12px] font-semibold text-[var(--franco-text)]">ADR ajustado</span>
+              <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
+                ADR ajustado
+                <InfoTooltip content="Tu ADR estimado después de aplicar los factores de edificio y habilitación. Es el precio por noche del cálculo." />
+              </span>
               {!adrEsOverride ? (
                 <span className="flex items-center gap-2">
                   <span className="font-mono text-[13px] font-semibold text-[var(--franco-text)]">
@@ -294,15 +353,16 @@ export function BloqueOperacionSTR({
               ) : (
                 <span className="flex items-center gap-2">
                   <input
-                    type="number"
-                    min="1000"
-                    step="500"
-                    value={state.adrOverride ?? 0}
-                    onChange={(e) => setState({ adrOverride: Number(e.target.value) || null })}
+                    type="text"
+                    inputMode="numeric"
+                    value={adrBuffer}
+                    onChange={(e) => setAdrBuffer(e.target.value)}
+                    onBlur={commitAdrBuffer}
+                    placeholder="—"
                     className="w-28 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
                   />
-                  <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
-                    override
+                  <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                    Ajustado manualmente
                   </span>
                   <button
                     type="button"
@@ -317,7 +377,10 @@ export function BloqueOperacionSTR({
 
             {/* Ocupación — editable */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
-              <span className="font-mono text-[12px] font-semibold text-[var(--franco-text)]">Ocupación estabilizada (mes 7+)</span>
+              <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
+                Ocupación estabilizada (mes 7+)
+                <InfoTooltip content="Porcentaje del año que el depto está arrendado, una vez que pasaste el ramp-up de los primeros 6 meses." />
+              </span>
               {!occEsOverride ? (
                 <span className="flex items-center gap-2">
                   <span className="font-mono text-[13px] font-semibold text-[var(--franco-text)]">
@@ -334,20 +397,17 @@ export function BloqueOperacionSTR({
               ) : (
                 <span className="flex items-center gap-2">
                   <input
-                    type="number"
-                    min="1"
-                    max="95"
-                    step="1"
-                    value={Math.round((state.occOverride ?? 0) * 100)}
-                    onChange={(e) => {
-                      const pct = Math.max(1, Math.min(95, Number(e.target.value) || 0));
-                      setState({ occOverride: pct / 100 });
-                    }}
+                    type="text"
+                    inputMode="numeric"
+                    value={occBuffer}
+                    onChange={(e) => setOccBuffer(e.target.value)}
+                    onBlur={commitOccBuffer}
+                    placeholder="—"
                     className="w-20 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
                   />
                   <span className="font-mono text-[12px]">%</span>
-                  <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
-                    override
+                  <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                    Ajustado manualmente
                   </span>
                   <button
                     type="button"

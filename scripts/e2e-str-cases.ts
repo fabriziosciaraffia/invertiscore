@@ -151,7 +151,7 @@ async function runCase(
     [`Occ final ${occFinalPct}% en HTML`, html.includes(`${occFinalPct}%`)],
   ];
   if (hayOverride) {
-    checks.push([`Badge "override manual" visible`, html.includes("override manual")]);
+    checks.push([`Badge "Ajustado manualmente" visible`, html.includes("Ajustado manualmente")]);
   }
   console.log(`  Checks HTML:`);
   for (const [name, ok] of checks) {

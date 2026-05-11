@@ -231,7 +231,10 @@ export function Paso3Modalidad({
 
         {/* ¿Está amoblado? */}
         <div>
-          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">¿Está amoblado?</span>
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">¿Está amoblado?</span>
+            <InfoTooltip content="Si el depto ya viene amoblado, no se considera inversión inicial. Si no, sumamos el costo de amoblar al cálculo." />
+          </span>
           <div className="grid grid-cols-2 gap-2">
             {([
               { value: false, label: "No, falta amoblar" },
@@ -259,16 +262,19 @@ export function Paso3Modalidad({
           </p>
           {!state.estaAmoblado && (
             <div className="mt-3">
-              <label className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-                Costo de amoblar (CLP único)
-              </label>
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <label className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                  Costo de amoblar (CLP único)
+                </label>
+                <InfoTooltip content="Inversión única para amoblar el depto y dejarlo listo para Airbnb. Se descuenta del flujo del año 1." />
+              </span>
               <MoneyInput
                 className={inputBase}
                 value={state.costoAmoblamiento}
                 onChange={(raw) => setState({ costoAmoblamiento: raw })}
               />
               <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                Default $3.500.000 para 2D1B estándar Airbnb.
+                Default escalado por dormitorios × habilitación.
               </p>
             </div>
           )}
@@ -411,8 +417,11 @@ export function Paso3Modalidad({
         </div>
 
         <label className="block">
-          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
-            Gastos comunes mensuales
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
+              Gastos comunes mensuales
+            </span>
+            <InfoTooltip content="Cuota mensual a la administración del edificio. La pagas tú aunque el depto esté vacío." />
           </span>
           <MoneyInput
             className={inputBase}
@@ -427,8 +436,11 @@ export function Paso3Modalidad({
         </label>
 
         <label className="block">
-          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
-            Contribuciones (trimestral, CLP)
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
+              Contribuciones (trimestral, CLP)
+            </span>
+            <InfoTooltip content="Impuesto territorial que paga el dueño cada 3 meses. Lo calcula el SII según el avalúo fiscal." />
           </span>
           <MoneyInput
             className={inputBase}
@@ -457,11 +469,36 @@ export function Paso3Modalidad({
             </button>
             {strCostsOpen && (
               <div className="mt-3 grid grid-cols-2 gap-3">
-                <CostInput label="Electricidad" value={state.costoElectricidad} onChange={(v) => setState({ costoElectricidad: v })} />
-                <CostInput label="Agua" value={state.costoAgua} onChange={(v) => setState({ costoAgua: v })} />
-                <CostInput label="WiFi" value={state.costoWifi} onChange={(v) => setState({ costoWifi: v })} />
-                <CostInput label="Insumos" value={state.costoInsumos} onChange={(v) => setState({ costoInsumos: v })} />
-                <CostInput label="Mantención" value={state.mantencionMensual} onChange={(v) => setState({ mantencionMensual: v })} />
+                <CostInput
+                  label="Electricidad"
+                  value={state.costoElectricidad}
+                  onChange={(v) => setState({ costoElectricidad: v })}
+                  tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
+                />
+                <CostInput
+                  label="Agua"
+                  value={state.costoAgua}
+                  onChange={(v) => setState({ costoAgua: v })}
+                  tooltip="Cuenta de agua mensual promedio. La paga el dueño."
+                />
+                <CostInput
+                  label="WiFi"
+                  value={state.costoWifi}
+                  onChange={(v) => setState({ costoWifi: v })}
+                  tooltip="Plan de internet fijo. Esencial para Airbnb — un mal wifi tira la nota."
+                />
+                <CostInput
+                  label="Insumos"
+                  value={state.costoInsumos}
+                  onChange={(v) => setState({ costoInsumos: v })}
+                  tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
+                />
+                <CostInput
+                  label="Mantención"
+                  value={state.mantencionMensual}
+                  onChange={(v) => setState({ mantencionMensual: v })}
+                  tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
+                />
               </div>
             )}
             {strCostsOpen && (
@@ -527,16 +564,21 @@ export function Paso3Modalidad({
 // ─── Sub-componentes ──────────────────────────────────
 
 function CostInput({
-  label, value, onChange,
+  label, value, onChange, tooltip,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  /** Opcional. 1 frase explicando el campo en lenguaje no técnico. */
+  tooltip?: string;
 }) {
   return (
     <label className="block">
-      <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-        {label}
+      <span className="flex items-center gap-1.5 mb-1.5">
+        <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+          {label}
+        </span>
+        {tooltip && <InfoTooltip content={tooltip} />}
       </span>
       <MoneyInput
         className={inputBase}
