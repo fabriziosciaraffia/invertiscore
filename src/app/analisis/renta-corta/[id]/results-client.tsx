@@ -168,6 +168,17 @@ export function STRResultsClient({
         {/* gap mayor 40px — Hero → Cards */}
         <div style={{ height: 24 }} />
 
+        {/* Apertura IA (Patrón 4) — siendoFrancoHeadline + conviene.
+            Paralelo a cómo el LTR embebe el conviene dentro del Hero
+            (Commit 2 2026-05-11 — el resto de secciones IA vive en drawers). */}
+        <AIInsightSTR
+          ai={aiAnalysis as never}
+          loading={aiLoading}
+          error={aiError}
+        />
+
+        <div style={{ height: 24 }} />
+
         {/* Calibración v1 — bloque pedagógico "¿Cómo llegamos a este número?" */}
         {results.ejesAplicados && (
           <>
@@ -181,13 +192,15 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* 02-05 · DIMENSIONES — Subject Card Grid */}
+        {/* 02-05 · DIMENSIONES — Subject Card Grid.
+            Cada drawer embebe la narrativa IA correspondiente (Commit 2 2026-05-11). */}
         <SubjectCardGridSTR
           results={results}
           inputData={inputData as { edificioPermiteAirbnb?: "si" | "no" | "no_seguro" } | null}
           comuna={comuna}
           currency={currency}
           valorUF={ufValue}
+          ai={aiAnalysis as never}
         />
 
         {/* gap mayor 40px — Cards → Advanced */}
@@ -198,16 +211,6 @@ export function STRResultsClient({
           results={results}
           currency={currency}
           valorUF={ufValue}
-        />
-
-        {/* gap mayor — Advanced → AI Insight */}
-        <div style={{ height: 24 }} />
-
-        {/* AI Insight (Patrón 4) — cursiva obligatoria */}
-        <AIInsightSTR
-          ai={aiAnalysis as never}
-          loading={aiLoading}
-          error={aiError}
         />
 
         {/* CTA banner (free) */}

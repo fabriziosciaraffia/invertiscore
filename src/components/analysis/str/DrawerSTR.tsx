@@ -6,32 +6,36 @@ import { X } from "lucide-react";
 /**
  * Drawer Detail — variante Renta Corta (Patrón 3 del design system).
  *
- * 4 dimensiones STR:
+ * 5 dimensiones STR (Commit 2b — 2026-05-11):
  *   02 · RENTABILIDAD
  *   03 · SOSTENIBILIDAD
- *   04 · VENTAJA vs LTR
- *   05 · FACTIBILIDAD
+ *   04 · SENSIBILIDAD     ← nuevo: ¿qué tan robusta es la proyección?
+ *   05 · VENTAJA vs LTR   (renumerado, era 04)
+ *   06 · FACTIBILIDAD Y RIESGOS  (renumerado, era 05)
  *
  * Versión simplificada del AnalysisDrawer LTR — solo header + body genérico
  * (consumer pasa children con secciones de datos / bloque conclusivo /
- * "HAZTE ESTA PREGUNTA").
+ * caja accionable Franco).
  */
 export type DrawerKeySTR =
   | "rentabilidad"
   | "sostenibilidad"
+  | "sensibilidad"
   | "ventajaLtr"
   | "factibilidad";
 
 const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
   rentabilidad: { numero: "02", label: "RENTABILIDAD" },
   sostenibilidad: { numero: "03", label: "SOSTENIBILIDAD" },
-  ventajaLtr: { numero: "04", label: "VENTAJA vs LTR" },
-  factibilidad: { numero: "05", label: "FACTIBILIDAD" },
+  sensibilidad: { numero: "04", label: "SENSIBILIDAD" },
+  ventajaLtr: { numero: "05", label: "VENTAJA vs LTR" },
+  factibilidad: { numero: "06", label: "FACTIBILIDAD Y RIESGOS" },
 };
 
 const DRAWER_NAV_ORDER: DrawerKeySTR[] = [
   "rentabilidad",
   "sostenibilidad",
+  "sensibilidad",
   "ventajaLtr",
   "factibilidad",
 ];
@@ -80,16 +84,21 @@ export function DrawerSTR({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[2px] animate-fadeIn"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm animate-fadeIn"
         onClick={onClose}
         aria-hidden
       />
-      {/* Panel */}
+      {/* Panel — paridad visual con AnalysisDrawer LTR (Commit 2):
+          desktop md:75vw → lg:70vw → xl:min(960px,65vw); mobile bottom sheet
+          85vh con esquinas redondas arriba. Mismo breakpoint system. */}
       <aside
         role="dialog"
         aria-modal="true"
-        className="fixed inset-y-0 right-0 z-50 w-full md:w-[560px] bg-[var(--franco-bg)] shadow-2xl flex flex-col overflow-hidden animate-slideInRight"
-        style={{ borderLeft: "0.5px solid var(--franco-border)" }}
+        className="
+          fixed z-50 bg-[var(--franco-card)] overflow-hidden flex flex-col
+          md:top-0 md:right-0 md:bottom-0 md:w-[75vw] lg:w-[70vw] xl:w-[min(960px,65vw)] md:border-l md:border-[var(--franco-border)] md:animate-slideInRight
+          max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--franco-border)] max-md:animate-slideInUp
+        "
       >
         {/* Header */}
         <div className="px-5 md:px-7 pt-5 pb-4 flex items-start justify-between gap-3 shrink-0">

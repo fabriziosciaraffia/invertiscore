@@ -6,7 +6,15 @@ import type { AIAnalysisSTRv2, STRVerdict } from "@/lib/types";
 /**
  * AI Insight Section — variante Renta Corta (Patrón 4 del design system).
  *
- * Renderiza el JSON IA producido por `/api/analisis/short-term/ai`.
+ * Iteración Commit 2 — 2026-05-11:
+ * Esta apertura IA quedó reducida a `siendoFrancoHeadline` + `conviene`
+ * (paralelo a cómo el LTR embebe el bloque conviene dentro del Hero).
+ *
+ * Las secciones rentabilidad / vsLTR / operacion / largoPlazo / riesgos
+ * ahora viven dentro de los drawers correspondientes (ver
+ * `SubjectCardGridSTR.tsx`). Mover la narrativa Franco a donde el usuario
+ * profundiza es el cambio core de Commit 2 — la voz no se pierde en el
+ * detalle.
  *
  * Reglas Patrón 4:
  *   • Border-left Ink 100 grueso (3px)
@@ -28,21 +36,6 @@ function hasAiSTRv2(ai: unknown): ai is AIAnalysisSTRv2 {
     && typeof a.engineSignal === "string"
     && typeof a.francoVerdict === "string"
   );
-}
-
-// ─── Helpers de render ────────────────────────────────────────────
-function renderParagraphs(text: string) {
-  if (!text) return null;
-  return text.split(/\n\n+/).map((parrafo, i) => (
-    <p key={i} className={i > 0 ? "mt-3 mb-0" : "m-0"}>
-      {parrafo.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
-        if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={j} className="font-medium">{part.slice(2, -2)}</strong>;
-        }
-        return part;
-      })}
-    </p>
-  ));
 }
 
 // ─── Componente principal ─────────────────────────────────────────
@@ -69,7 +62,7 @@ export function AIInsightSTR({
     return null;
   }
 
-  return <Container><RenderV2 ai={ai as AIAnalysisSTRv2} /></Container>;
+  return <Container><RenderApertura ai={ai as AIAnalysisSTRv2} /></Container>;
 }
 
 // ─── Container Patrón 4 ───────────────────────────────────────────
@@ -110,8 +103,10 @@ function LoadingState() {
   );
 }
 
-// ─── Render v2 (canónico Ronda 4d) ───────────────────────────────
-function RenderV2({ ai }: { ai: AIAnalysisSTRv2 }) {
+// ─── Apertura: headline + conviene ───────────────────────────────
+// Las otras 5 secciones (rentabilidad / vsLTR / operacion / largoPlazo /
+// riesgos) ahora viven en los drawers — ver SubjectCardGridSTR.tsx.
+function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
   const headline = ai.siendoFrancoHeadline_clp || ai.siendoFrancoHeadline_uf;
   const verdictDiverge = ai.francoVerdict !== ai.engineSignal;
 
@@ -147,9 +142,14 @@ function RenderV2({ ai }: { ai: AIAnalysisSTRv2 }) {
         </div>
       )}
 
-      {/* 6 secciones doctrina canónica — todas en italic per Patrón 4 */}
-      <div className="font-body italic text-[14px] text-[var(--franco-text)] leading-[1.65] space-y-5">
-        <SectionV2 numero="01" label="¿CONVIENE?" pregunta={ai.conviene.pregunta} verdictBadge={ai.francoVerdict}>
+      {/* Sección 01 — ¿CONVIENE? (apertura, sin numeración 02-06: esas
+          viven en drawers) */}
+      <div className="font-body italic text-[14px] text-[var(--franco-text)] leading-[1.65]">
+        <SeccionApertura
+          label="¿CONVIENE?"
+          pregunta={ai.conviene.pregunta}
+          verdictBadge={ai.francoVerdict}
+        >
           <p className="m-0">{ai.conviene.respuestaDirecta}</p>
           {ai.conviene.veredictoFrase && (
             <p className="mt-3 m-0 font-medium">{ai.conviene.veredictoFrase}</p>
@@ -158,50 +158,18 @@ function RenderV2({ ai }: { ai: AIAnalysisSTRv2 }) {
             <p className="mt-3 m-0">{ai.conviene.reencuadre}</p>
           )}
           {ai.conviene.cajaAccionable && <CajaAccionable text={ai.conviene.cajaAccionable} />}
-        </SectionV2>
-
-        <SectionV2 numero="02" label="RENTABILIDAD" pregunta={ai.rentabilidad.pregunta}>
-          <p className="m-0">{ai.rentabilidad.contenido}</p>
-          {ai.rentabilidad.cajaAccionable && <CajaAccionable text={ai.rentabilidad.cajaAccionable} />}
-        </SectionV2>
-
-        <SectionV2 numero="03" label="vs ARRIENDO LARGO" pregunta={ai.vsLTR.pregunta}>
-          <p className="m-0">{ai.vsLTR.contenido}</p>
-          {ai.vsLTR.estrategiaSugerida && (
-            <p className="mt-3 m-0 font-medium text-[14px]" style={{ color: "var(--franco-text)" }}>
-              {ai.vsLTR.estrategiaSugerida}
-            </p>
-          )}
-          {ai.vsLTR.cajaAccionable && <CajaAccionable text={ai.vsLTR.cajaAccionable} />}
-        </SectionV2>
-
-        <SectionV2 numero="04" label="OPERACIÓN" pregunta={ai.operacion.pregunta}>
-          <p className="m-0">{ai.operacion.contenido}</p>
-          {ai.operacion.cajaAccionable && <CajaAccionable text={ai.operacion.cajaAccionable} />}
-        </SectionV2>
-
-        <SectionV2 numero="05" label="LARGO PLAZO" pregunta={ai.largoPlazo.pregunta}>
-          <p className="m-0">{ai.largoPlazo.contenido}</p>
-          {ai.largoPlazo.cajaAccionable && <CajaAccionable text={ai.largoPlazo.cajaAccionable} />}
-        </SectionV2>
-
-        <SectionV2 numero="06" label="RIESGOS" pregunta={ai.riesgos.pregunta}>
-          {renderParagraphs(ai.riesgos.contenido)}
-          {ai.riesgos.cajaAccionable && <CajaAccionable text={ai.riesgos.cajaAccionable} variant="strong" />}
-        </SectionV2>
+        </SeccionApertura>
       </div>
     </>
   );
 }
 
-function SectionV2({
-  numero,
+function SeccionApertura({
   label,
   pregunta,
   verdictBadge,
   children,
 }: {
-  numero: string;
   label: string;
   pregunta: string;
   verdictBadge?: STRVerdict;
@@ -214,7 +182,7 @@ function SectionV2({
           className="font-mono uppercase m-0"
           style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          {numero} · {label}
+          {label}
         </p>
         {verdictBadge && (
           <span
@@ -245,16 +213,13 @@ function SectionV2({
   );
 }
 
-function CajaAccionable({ text, variant = "soft" }: { text: string; variant?: "soft" | "strong" }) {
-  const isStrong = variant === "strong";
+function CajaAccionable({ text }: { text: string }) {
   return (
     <div
       className="mt-3 p-3 not-italic"
       style={{
-        background: isStrong
-          ? "color-mix(in srgb, var(--franco-text) 6%, transparent)"
-          : "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-        borderLeft: `3px solid ${isStrong ? "var(--franco-text)" : "var(--franco-text-secondary)"}`,
+        background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+        borderLeft: "3px solid var(--franco-text-secondary)",
         borderRadius: "0 6px 6px 0",
       }}
     >
@@ -264,4 +229,3 @@ function CajaAccionable({ text, variant = "soft" }: { text: string; variant?: "s
     </div>
   );
 }
-
