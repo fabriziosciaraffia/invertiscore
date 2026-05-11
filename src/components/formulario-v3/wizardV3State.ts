@@ -114,6 +114,13 @@ export interface WizardV3State {
   editedFields: string[];            // claves ajustadas manualmente en modal
   sampleSize: number;                // del último fetch de suggestions
   radiusUsed: number | null;
+
+  /** Iteración 2026-05-10: navegación Editar → Volver al resumen.
+   * Cuando el user clickea "Editar →" en Paso4Resumen, el orchestrator
+   * setea returnToStep=4 antes de navegar al paso 1/2/3. El paso destino
+   * detecta el flag y reemplaza su CTA primario por "Volver al resumen →",
+   * que vuelve a step=4 + limpia el flag. Null = no hay edit pendiente. */
+  returnToStep: number | null;
 }
 
 export const DEFAULT_STATE: WizardV3State = {
@@ -169,6 +176,7 @@ export const DEFAULT_STATE: WizardV3State = {
   editedFields: [],
   sampleSize: 0,
   radiusUsed: null,
+  returnToStep: null,
 };
 
 // ─── Helpers ──────────────────────────────────────────

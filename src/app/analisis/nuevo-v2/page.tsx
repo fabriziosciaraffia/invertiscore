@@ -676,6 +676,14 @@ export default function NuevoAnalisisV3Page() {
                 airRoi={airRoi}
                 onAnalizar={handleAnalizar}
                 onAvanzar4={() => { setSlideDir("left"); setStep(4); }}
+                onVolverAResumen={() => {
+                  // Solo se llama cuando state.returnToStep !== null.
+                  // Limpia el flag y vuelve al paso indicado (típicamente 4).
+                  const dest = state.returnToStep ?? 4;
+                  patch({ returnToStep: null });
+                  setSlideDir("left");
+                  setStep(dest as 1 | 2 | 3 | 4);
+                }}
                 submitting={submitting}
                 submitError={submitError}
               />
@@ -685,7 +693,13 @@ export default function NuevoAnalisisV3Page() {
                 state={state}
                 ufCLP={ufCLP}
                 tierInfo={tierInfo}
-                onEditarStep={(n) => { setSlideDir("right"); setStep(n); }}
+                onEditarStep={(n) => {
+                  // Seteamos returnToStep ANTES de navegar para que el paso
+                  // destino renderice el CTA "Volver al resumen →".
+                  patch({ returnToStep: 4 });
+                  setSlideDir("right");
+                  setStep(n);
+                }}
                 onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
                 submitting={submitting}
@@ -722,7 +736,24 @@ export default function NuevoAnalisisV3Page() {
               </button>
             )}
           </div>
-          {step < 3 && (
+          {step < 3 && state.returnToStep !== null && (
+            <button
+              type="button"
+              onClick={() => {
+                // Modo edit-from-resumen: vuelve al paso de resumen y limpia
+                // el flag para que el resto del flow continúe normal.
+                const dest = state.returnToStep!;
+                patch({ returnToStep: null });
+                setSlideDir("left");
+                setStep(dest as 1 | 2 | 3 | 4);
+              }}
+              disabled={step === 1 ? !canAdvanceFromStep1 : !canAdvanceFromStep2}
+              className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Volver al resumen →
+            </button>
+          )}
+          {step < 3 && state.returnToStep === null && (
             <button
               type="button"
               onClick={goNext}

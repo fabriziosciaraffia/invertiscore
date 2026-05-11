@@ -62,6 +62,7 @@ export function Paso3Modalidad({
   airRoi,
   onAnalizar,
   onAvanzar4,
+  onVolverAResumen,
   submitting,
   submitError,
 }: {
@@ -80,6 +81,9 @@ export function Paso3Modalidad({
   onAnalizar: () => void;
   /** "Continuar a ajuste fino →" → navega al paso 4 sin POST. */
   onAvanzar4: () => void;
+  /** "Volver al resumen →" → solo cuando state.returnToStep !== null.
+   * Reemplaza onAnalizar + onAvanzar4 en modo edit-from-resumen. */
+  onVolverAResumen: () => void;
   submitting: boolean;
   submitError: string;
 }) {
@@ -476,31 +480,46 @@ export function Paso3Modalidad({
         <StateBox variant="left-border" state="negative">{submitError}</StateBox>
       )}
 
-      {/* CTAs paso 3: Saltar / Continuar */}
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-[var(--franco-border)]">
-        <button
-          type="button"
-          onClick={onAnalizar}
-          disabled={submitting || !mod || !canAnalyze}
-          className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-4 py-2.5 rounded-lg border border-[var(--franco-border)] disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {submitting ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
-          ) : !canAnalyze ? (
-            <>Necesitas un crédito</>
-          ) : (
-            <>Saltar y analizar</>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onAvanzar4}
-          disabled={submitting || !mod}
-          className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          Continuar a ajuste fino <ArrowRight size={14} />
-        </button>
-      </div>
+      {/* CTAs paso 3 — modo normal vs modo edit-from-resumen. */}
+      {state.returnToStep !== null ? (
+        // Modo edit-from-resumen: un solo CTA "Volver al resumen →" que
+        // reemplaza tanto "Saltar y analizar" como "Continuar a ajuste fino".
+        <div className="flex justify-end pt-4 border-t border-[var(--franco-border)]">
+          <button
+            type="button"
+            onClick={onVolverAResumen}
+            disabled={submitting || !mod}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            Volver al resumen <ArrowRight size={14} />
+          </button>
+        </div>
+      ) : (
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-[var(--franco-border)]">
+          <button
+            type="button"
+            onClick={onAnalizar}
+            disabled={submitting || !mod || !canAnalyze}
+            className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-4 py-2.5 rounded-lg border border-[var(--franco-border)] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
+            ) : !canAnalyze ? (
+              <>Necesitas un crédito</>
+            ) : (
+              <>Saltar y analizar</>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onAvanzar4}
+            disabled={submitting || !mod}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            Continuar a ajuste fino <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
