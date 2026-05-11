@@ -12,6 +12,7 @@ import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
 import { Paso1Propiedad } from "@/components/formulario-v3/Paso1Propiedad";
 import { Paso2Financiamiento } from "@/components/formulario-v3/Paso2Financiamiento";
 import { Paso3Modalidad, type TierInfo, canAnalyzeFromTier } from "@/components/formulario-v3/Paso3Modalidad";
+import { Paso4AjusteFino } from "@/components/formulario-v3/Paso4AjusteFino";
 import { useAirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import {
   DEFAULT_STATE,
@@ -32,7 +33,7 @@ export default function NuevoAnalisisV3Page() {
   const router = useRouter();
   const posthog = usePostHog();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [ufCLP, setUfCLP] = useState(UF_CLP_FALLBACK);
   // Tasa hipotecaria de mercado (referencia para subsidio + microcopy).
   // Se actualiza desde /api/config?key=tasa_hipotecaria. Independiente de
@@ -265,11 +266,13 @@ export default function NuevoAnalisisV3Page() {
   function goNext() {
     if (step === 1 && canAdvanceFromStep1) { setSlideDir("left"); setStep(2); }
     else if (step === 2 && canAdvanceFromStep2) { setSlideDir("left"); setStep(3); }
+    else if (step === 3 && state.modalidad) { setSlideDir("left"); setStep(4); }
   }
   function goBack() {
     setSlideDir("right");
     if (step === 2) setStep(1);
     else if (step === 3) setStep(2);
+    else if (step === 4) setStep(3);
   }
 
   function handleCancel() {
@@ -447,6 +450,11 @@ export default function NuevoAnalisisV3Page() {
             ? state.operadorNombre.trim()
             : null,
 
+        // Overrides manuales (iter 2026-05-10). null si el usuario no editó;
+        // número si overrideó el valor derivado por ejes.
+        adrOverride: typeof state.adrOverride === "number" ? state.adrOverride : null,
+        occOverride: typeof state.occOverride === "number" ? state.occOverride : null,
+
         // Costos operativos mensuales
         costoElectricidad: Number(state.costoElectricidad) || 0,
         costoAgua: Number(state.costoAgua) || 0,
@@ -599,7 +607,8 @@ export default function NuevoAnalisisV3Page() {
   const titleByStep = {
     1: { title: "Ingresa los datos de la propiedad", sub: "Con dirección y superficie ya podemos inferir lo demás." },
     2: { title: "¿Cómo la compras?", sub: "Precio y pie. Tasa y plazo los asignamos nosotros — podrás ajustarlos en el siguiente paso." },
-    3: { title: "Último paso", sub: "Confirma la modalidad y revisa el resumen." },
+    3: { title: "Configura la operación", sub: "Modalidad + bloques operacionales. Defaults razonables — edita si tienes data más fina." },
+    4: { title: "Ajuste fino", sub: "Opcional. Tasa exacta, vacancia LTR, comisión STR." },
   }[step];
 
   // Overlay full-page durante submit (30-60s). Cubre la ventana real sin
@@ -665,7 +674,18 @@ export default function NuevoAnalisisV3Page() {
                   contribuciones: suggestions.contribuciones,
                 }}
                 airRoi={airRoi}
-                onEditarPaso2={() => { setSlideDir("right"); setStep(2); }}
+                onAnalizar={handleAnalizar}
+                onAvanzar4={() => { setSlideDir("left"); setStep(4); }}
+                submitting={submitting}
+                submitError={submitError}
+              />
+            )}
+            {step === 4 && (
+              <Paso4AjusteFino
+                state={state}
+                setState={patch}
+                tierInfo={tierInfo}
+                onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
                 submitting={submitting}
                 submitError={submitError}
@@ -691,7 +711,7 @@ export default function NuevoAnalisisV3Page() {
             >
               Cancelar
             </button>
-            {step > 1 && (
+            {step > 1 && step !== 4 && (
               <button
                 type="button"
                 onClick={step === 3 ? goBackStep3 : goBack}

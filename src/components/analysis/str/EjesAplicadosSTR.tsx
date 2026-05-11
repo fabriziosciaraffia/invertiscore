@@ -1,6 +1,6 @@
 // "¿Cómo llegamos a este número?" — bloque pedagógico que explica
 // cómo se aplicaron los 3 ejes operacionales al baseline de AirROI.
-// Calibración v1 (mayo 2026).
+// Calibración v1 (mayo 2026) + override manual (iter 2026-05-10).
 
 import type { EjesAplicadosSTR as EjesType } from "@/lib/engines/short-term-engine";
 
@@ -17,7 +17,7 @@ const fmtUF = (n: number, valorUF: number): string => "UF " + (Math.round((n / v
 const fmtMoney = (n: number, currency: "CLP" | "UF", valorUF: number) => currency === "UF" ? fmtUF(n, valorUF) : fmtCLP(n);
 
 const LABEL_EDIFICIO: Record<string, string> = {
-  residencial_puro: "Residencial puro",
+  residencial_puro: "Residencial",
   mixto: "Mixto",
   dedicado: "Edificio dedicado",
 };
@@ -32,6 +32,13 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
   if (!ejes) return null;
 
   const occPct = (ejes.ocupacionTarget * 100).toFixed(0);
+  // Iter 2026-05-10 — flags de override. Backward-compat: análisis pre-iter
+  // no tienen estos campos en el jsonb, los tratamos como false.
+  const adrEsOverride = ejes.adrOverride != null;
+  const occEsOverride = ejes.occOverride != null;
+  const adrFinal = ejes.adrFinal ?? ejes.adrAjustado;
+  const ocupacionFinal = ejes.ocupacionFinal ?? ejes.ocupacionTarget;
+  const occFinalPct = (ocupacionFinal * 100).toFixed(0);
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 mt-3">
@@ -85,12 +92,14 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
             </div>
           </div>
           <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-            Estabilizada {occPct}%
+            Occ target {occPct}%
           </div>
         </div>
       </div>
 
-      {/* Línea final: resultado */}
+      {/* Línea final: resultado. Si hay override manual, el valor sugerido por
+          ejes se muestra tachado y el badge "override manual" aparece junto al
+          valor efectivamente usado por el motor. */}
       <div className="mt-4 pt-3 border-t border-[var(--franco-border)] space-y-1.5">
         <div className="flex justify-between font-mono text-[12px]">
           <span className="text-[var(--franco-text-muted)]">ADR baseline (AirROI p50)</span>
@@ -98,11 +107,31 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
         </div>
         <div className="flex justify-between font-mono text-[12px]">
           <span className="text-[var(--franco-text-muted)]">ADR ajustado (×{ejes.factorADRTotal.toFixed(2)})</span>
-          <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>
+          {adrEsOverride ? (
+            <span className="flex items-center gap-2">
+              <span className="text-[var(--franco-text-muted)] line-through">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>
+              <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(adrFinal, currency, valorUF)}</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
+                override manual
+              </span>
+            </span>
+          ) : (
+            <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(adrFinal, currency, valorUF)}</span>
+          )}
         </div>
         <div className="flex justify-between font-mono text-[12px]">
           <span className="text-[var(--franco-text-muted)]">Ocupación estabilizada (mes 7+)</span>
-          <span className="text-[var(--franco-text)] font-semibold">{occPct}%</span>
+          {occEsOverride ? (
+            <span className="flex items-center gap-2">
+              <span className="text-[var(--franco-text-muted)] line-through">{occPct}%</span>
+              <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+              <span className="px-1.5 py-0.5 rounded text-[9px] uppercase tracking-[0.06em] font-semibold" style={{ background: "#FBBF24", color: "#0F0F0F" }}>
+                override manual
+              </span>
+            </span>
+          ) : (
+            <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+          )}
         </div>
         <div className="flex justify-between font-mono text-[13px]">
           <span className="text-[var(--franco-text)]">Revenue mensual estimado</span>
@@ -112,7 +141,9 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
 
       {/* Caveat */}
       <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
-        Estas estimaciones se basan en data de operadores reales en Santiago (proforma Andes STR Providencia 2025 + análisis 149 listings AirROI). Calibración en mejora continua a medida que más usuarios usan Franco STR.
+        {(adrEsOverride || occEsOverride)
+          ? "Aplicaste un override manual sobre uno o más valores. Los ejes operacionales siguen mostrados como referencia, pero el motor está usando tus valores manuales para el cálculo."
+          : "Estas estimaciones se basan en data de operadores reales en Santiago (proforma Andes STR Providencia 2025 + análisis 149 listings AirROI). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
       </p>
     </div>
   );

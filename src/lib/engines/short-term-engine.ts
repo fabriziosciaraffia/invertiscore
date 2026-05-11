@@ -21,6 +21,9 @@ export interface AirbnbData {
   currency: string;
 }
 
+// 'mixto' se mantiene en el union para no romper análisis legacy persistidos
+// con ese valor. El form ya no lo expone; nuevos análisis solo serán
+// 'residencial_puro' o 'dedicado'. Migración 2026-05-10 confirmó 0 rows.
 export type TipoEdificioSTR = 'residencial_puro' | 'mixto' | 'dedicado';
 export type HabilitacionSTR = 'basico' | 'estandar' | 'premium';
 
@@ -51,6 +54,14 @@ export interface ShortTermInputs {
   // Distinto de modoGestion='administrador' que captura "alguien gestiona"
   // (puede ser un familiar). adminPro implica empresa formal con 15-25% fee.
   adminPro?: boolean;
+
+  // Overrides manuales (2026-05-10). Cuando != null, el motor usa el valor
+  // manual en lugar del derivado de los ejes operacionales. Los ejes siguen
+  // poblando ejesAplicados como referencia para la UI pedagógica.
+  // - adrOverride: CLP/noche.
+  // - occOverride: decimal 0-1.
+  adrOverride?: number | null;
+  occOverride?: number | null;
 
   // Costos operativos mensuales CLP
   costoElectricidad: number;
@@ -147,6 +158,14 @@ export interface EjesAplicadosSTR {
   adrBaselineP50: number;        // ADR p50 de AirROI antes del ajuste
   adrAjustado: number;           // adrBaselineP50 × factorADRTotal
   ocupacionBaselineP50: number;  // occ p50 de AirROI sin ajuste
+
+  // Overrides manuales (2026-05-10). Cuando flag=true, el ADR/Occ usado
+  // efectivamente por el motor difiere de adrAjustado / ocupacionTarget;
+  // estos campos guardan el valor que prevaleció + de dónde vino.
+  adrOverride: number | null;       // null si no hubo override
+  occOverride: number | null;       // null si no hubo override
+  adrFinal: number;                 // ADR efectivamente usado por el motor
+  ocupacionFinal: number;           // Occupancy efectivamente usada
 }
 
 export interface ShortTermResult {
@@ -352,8 +371,8 @@ export function determinarBandaOcupacion(input: {
  *   - Eje 1 (edificio) y eje 3 (habilitación) → ADR factor.
  *   - Eje 2 (admin pro) + eje 1 → banda de ocupación target.
  *
- * Retorna el ADR ajustado y la ocupación target. El revenue ajustado
- * lo deriva el caller con `adrAjustado * ocupacionTarget * 365`.
+ * Si se pasan overrides manuales, prevalecen sobre los valores derivados.
+ * Los ejes siguen calculándose como referencia (UI pedagógica).
  */
 export function aplicarEjesSTR(
   airbnbData: AirbnbData,
@@ -361,6 +380,8 @@ export function aplicarEjesSTR(
     tipoEdificio?: TipoEdificioSTR;
     habilitacion?: HabilitacionSTR;
     adminPro?: boolean;
+    adrOverride?: number | null;
+    occOverride?: number | null;
   },
 ): EjesAplicadosSTR {
   const tipoEdificio = input.tipoEdificio ?? 'residencial_puro';
@@ -377,6 +398,18 @@ export function aplicarEjesSTR(
   const adrBaselineP50 = airbnbData.percentiles.average_daily_rate.p50;
   const adrAjustado = Math.round(adrBaselineP50 * factorADRTotal);
 
+  // Resolver overrides. null/undefined → usar derivado; número válido → override.
+  const adrOverrideValido = typeof input.adrOverride === 'number'
+    && Number.isFinite(input.adrOverride)
+    && input.adrOverride > 0;
+  const occOverrideValido = typeof input.occOverride === 'number'
+    && Number.isFinite(input.occOverride)
+    && input.occOverride > 0
+    && input.occOverride <= 1;
+
+  const adrFinal = adrOverrideValido ? Math.round(input.adrOverride as number) : adrAjustado;
+  const ocupacionFinal = occOverrideValido ? (input.occOverride as number) : ocupacionTarget;
+
   return {
     tipoEdificio,
     habilitacion,
@@ -389,6 +422,10 @@ export function aplicarEjesSTR(
     adrBaselineP50,
     adrAjustado,
     ocupacionBaselineP50: airbnbData.percentiles.occupancy.p50,
+    adrOverride: adrOverrideValido ? Math.round(input.adrOverride as number) : null,
+    occOverride: occOverrideValido ? (input.occOverride as number) : null,
+    adrFinal,
+    ocupacionFinal,
   };
 }
 
@@ -632,10 +669,14 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     tipoEdificio: input.tipoEdificio,
     habilitacion: input.habilitacion,
     adminPro: input.adminPro,
+    adrOverride: input.adrOverride,
+    occOverride: input.occOverride,
   });
 
-  const adrBase = ejes.adrAjustado;
-  const occBase = ejes.ocupacionTarget;
+  // adrFinal / ocupacionFinal prevalecen sobre el derivado de ejes cuando
+  // hay override manual. Cuando no, son iguales a adrAjustado / ocupacionTarget.
+  const adrBase = ejes.adrFinal;
+  const occBase = ejes.ocupacionFinal;
   const revenueBase = Math.round(adrBase * occBase * 365);
 
   // Shifts relativos de AirROI (fallback a 0.85/1.15 si los percentiles vienen colapsados)

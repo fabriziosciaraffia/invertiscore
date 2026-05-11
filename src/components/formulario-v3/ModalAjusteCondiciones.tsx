@@ -389,7 +389,10 @@ type LocalState = {
   estaAmoblado: boolean;
   costoAmoblamiento: string;
   // Modelo STR v1 — 3 ejes operacionales + operador
-  tipoEdificio: "residencial_puro" | "mixto" | "dedicado";
+  // Nota: "mixto" eliminado de tipoEdificio en iteración 2026-05-10. El modal
+  // se va a deprecar (refactor a inline en paso 3); este type queda alineado
+  // con WizardV3State para que el build pase mientras tanto.
+  tipoEdificio: "residencial_puro" | "dedicado";
   adminPro: boolean;
   habilitacion: "basico" | "estandar" | "premium";
   operadorNombre: string;
@@ -725,8 +728,7 @@ function TabOperacionAirbnb({
           </span>
           <div className="flex flex-col gap-1">
             {([
-              { value: "residencial_puro", label: "Residencial puro", subtitle: "La mayoría vive ahí · ADR ×1.00" },
-              { value: "mixto", label: "Mixto", subtitle: "Algunos depts son Airbnb · ADR ×1.05" },
+              { value: "residencial_puro", label: "Residencial", subtitle: "La mayoría vive ahí · ADR ×1.00" },
               { value: "dedicado", label: "Dedicado / aparthotel", subtitle: "Tipo Andes STR · ADR ×1.10" },
             ] as const).map((opt) => {
               const active = local.tipoEdificio === opt.value;

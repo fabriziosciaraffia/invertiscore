@@ -33,7 +33,7 @@ const mockAirbnb: AirbnbData = {
   currency: "CLP",
 };
 
-function commonInputs(): Omit<ShortTermInputs, "tipoEdificio" | "habilitacion" | "adminPro"> {
+function commonInputs(): Omit<ShortTermInputs, "tipoEdificio" | "habilitacion" | "adminPro" | "adrOverride" | "occOverride"> {
   return {
     precioCompra: 150_000_000,
     superficie: 60,
@@ -58,7 +58,17 @@ function commonInputs(): Omit<ShortTermInputs, "tipoEdificio" | "habilitacion" |
   };
 }
 
-async function runCase(label: string, comuna: string, ejes: { tipoEdificio: any; habilitacion: any; adminPro: boolean }) {
+async function runCase(
+  label: string,
+  comuna: string,
+  ejes: {
+    tipoEdificio: any;
+    habilitacion: any;
+    adminPro: boolean;
+    adrOverride?: number | null;
+    occOverride?: number | null;
+  },
+) {
   const inputs: ShortTermInputs = { ...commonInputs(), ...ejes };
   const result = calcShortTerm(inputs);
 
@@ -97,41 +107,52 @@ async function runCase(label: string, comuna: string, ejes: { tipoEdificio: any;
 
   if (error) throw error;
 
+  const ea = result.ejesAplicados!;
+  const hayOverride = ea.adrOverride !== null || ea.occOverride !== null;
+
   console.log(`\n────── Case: ${label} ──────`);
   console.log(`  ID: ${row.id}`);
   console.log(`  Ejes aplicados:`);
-  console.log(`    factor ADR total      = ${result.ejesAplicados!.factorADRTotal.toFixed(2)}`);
-  console.log(`    banda                 = ${result.ejesAplicados!.banda}`);
-  console.log(`    occ estabilizada (m7+)= ${result.ejesAplicados!.ocupacionTarget}`);
-  console.log(`    ADR ajustado          = ${result.ejesAplicados!.adrAjustado.toLocaleString("es-CL")}`);
+  console.log(`    factor ADR total      = ${ea.factorADRTotal.toFixed(2)}`);
+  console.log(`    banda                 = ${ea.banda}`);
+  console.log(`    occ estabilizada (m7+)= ${ea.ocupacionTarget}`);
+  console.log(`    ADR ajustado (derivado) = ${ea.adrAjustado.toLocaleString("es-CL")}`);
+  if (hayOverride) {
+    console.log(`  ★ Override manual activo:`);
+    if (ea.adrOverride !== null) console.log(`    adrOverride           = ${ea.adrOverride.toLocaleString("es-CL")} (vs derivado ${ea.adrAjustado.toLocaleString("es-CL")})`);
+    if (ea.occOverride !== null) console.log(`    occOverride           = ${(ea.occOverride * 100).toFixed(0)}% (vs derivado ${(ea.ocupacionTarget * 100).toFixed(0)}%)`);
+    console.log(`    adrFinal              = ${ea.adrFinal.toLocaleString("es-CL")}`);
+    console.log(`    ocupacionFinal        = ${(ea.ocupacionFinal * 100).toFixed(0)}%`);
+  }
   console.log(`  Base scenario:`);
   console.log(`    Revenue/año     = ${result.escenarios.base.revenueAnual.toLocaleString("es-CL")}`);
   console.log(`    NOI mensual     = ${result.escenarios.base.noiMensual.toLocaleString("es-CL")}`);
-  console.log(`    Pérdida ramp-up = ${result.perdidaRampUp.toLocaleString("es-CL")} (5 meses parciales 50/60/70/80/90%)`);
+  console.log(`    Pérdida ramp-up = ${result.perdidaRampUp.toLocaleString("es-CL")} (5 meses parciales)`);
   console.log(`    Veredicto       = ${result.veredicto}`);
 
-  // cURL la página. React SSR inserta <!-- --> entre text-nodes adyacentes
-  // (ej. "Occ target {x}%" → "Occ target <!-- -->74<!-- -->%"), por eso
-  // strip de comentarios antes de buscar.
+  // cURL la página. React SSR inserta <!-- --> entre text-nodes adyacentes,
+  // strip antes de buscar.
   const url = `http://localhost:3000/analisis/renta-corta/${row.id}`;
   const res = await fetch(url);
   const rawHtml = await res.text();
   const html = rawHtml.replace(/<!-- -->/g, "");
   console.log(`  HTTP ${res.status} (${rawHtml.length} bytes raw, ${html.length} bytes stripped)`);
 
-  const adrFmt = result.ejesAplicados!.adrAjustado.toLocaleString("es-CL");
-  const occPct = (result.ejesAplicados!.ocupacionTarget * 100).toFixed(0);
+  const adrFinalFmt = ea.adrFinal.toLocaleString("es-CL");
+  const occFinalPct = (ea.ocupacionFinal * 100).toFixed(0);
 
   const checks: Array<[string, boolean]> = [
     ["¿Cómo llegamos a este número?", html.includes("¿Cómo llegamos a este número")],
     ["Edificio:", html.includes("Edificio:")],
     ["Habilitación:", html.includes("Habilitación:")],
     ["Gestión:", html.includes("Gestión:")],
-    [`Estabilizada ${occPct}%`, html.includes(`Estabilizada ${occPct}%`)],
     ["Revenue mensual estimado", html.includes("Revenue mensual estimado")],
-    [`ADR ajustado "${adrFmt}"`, html.includes(adrFmt)],
-    [`Ocupación estabilizada (mes 7+) ${occPct}%`, html.includes(`Ocupación estabilizada (mes 7+)</span><span class="text-[var(--franco-text)] font-semibold">${occPct}%`)],
+    [`ADR final "${adrFinalFmt}" en HTML`, html.includes(adrFinalFmt)],
+    [`Occ final ${occFinalPct}% en HTML`, html.includes(`${occFinalPct}%`)],
   ];
+  if (hayOverride) {
+    checks.push([`Badge "override manual" visible`, html.includes("override manual")]);
+  }
   console.log(`  Checks HTML:`);
   for (const [name, ok] of checks) {
     console.log(`    ${ok ? "✓" : "✗"} ${name}`);
@@ -162,9 +183,31 @@ async function cleanup(ids: string[]) {
     });
     ids.push(baseline.id);
 
+    // Iter 2026-05-10: casos override.
+    // ADR override: forzar ADR=80000 sobre baseline (que daría 50000 derivado).
+    // El motor debe usar 80000 en lugar del derivado y reportarlo en ejesAplicados.adrFinal.
+    const adrOver = await runCase("Override ADR manual (residencial → ADR=80000)", "Providencia", {
+      tipoEdificio: "residencial_puro",
+      habilitacion: "basico",
+      adminPro: false,
+      adrOverride: 80000,
+    });
+    ids.push(adrOver.id);
+
+    // Occ override: forzar occ=0.80 sobre baseline (que daría 0.55 derivado).
+    const occOver = await runCase("Override Occ manual (residencial → Occ=80%)", "Providencia", {
+      tipoEdificio: "residencial_puro",
+      habilitacion: "basico",
+      adminPro: false,
+      occOverride: 0.80,
+    });
+    ids.push(occOver.id);
+
     console.log("\n══════════════════════════════════════════════════════════════");
-    console.log(`Andes   : ${andes.allOk ? "✓ OK" : "✗ FAIL"}`);
-    console.log(`Baseline: ${baseline.allOk ? "✓ OK" : "✗ FAIL"}`);
+    console.log(`Andes        : ${andes.allOk ? "✓ OK" : "✗ FAIL"}`);
+    console.log(`Baseline     : ${baseline.allOk ? "✓ OK" : "✗ FAIL"}`);
+    console.log(`Override ADR : ${adrOver.allOk ? "✓ OK" : "✗ FAIL"}`);
+    console.log(`Override Occ : ${occOver.allOk ? "✓ OK" : "✗ FAIL"}`);
     console.log("══════════════════════════════════════════════════════════════");
   } finally {
     // SKIP cleanup para inspección manual del HTML.

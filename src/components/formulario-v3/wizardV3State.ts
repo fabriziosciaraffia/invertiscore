@@ -81,16 +81,34 @@ export interface WizardV3State {
   // opcionales y aplica defaults baseline si faltan. Defaults aquí
   // espejan los del motor: residencial_puro / auto / basico = banda
   // auto_gestion_residencial (occ 0.55, factor ADR 1.00).
-  /** Tipo de edificio: residencial / mixto / dedicado (aparthotel). */
-  tipoEdificio: "residencial_puro" | "mixto" | "dedicado";
-  /** Admin pro = empresa formal full-service (Andes STR, Mayflower, etc.). */
+  /** Tipo de edificio: residencial / dedicado (aparthotel). Iteración 2026-05-10:
+   * eliminado "mixto" tras audit (sección 9.1) — motor STR ya colapsaba mixto
+   * en residencial_puro, así que el enum value era ruido sin diferenciación. */
+  tipoEdificio: "residencial_puro" | "dedicado";
+  /** Admin pro = empresa formal full-service (Andes STR, Mayflower, etc.).
+   * Iteración 2026-05-10: ahora derivado de gestionOption en el wizard, pero
+   * persiste como campo independiente para compat con análisis legacy + motor. */
   adminPro: boolean;
+  /** Iteración 2026-05-10: enum binario para fusionar modoGestion + adminPro
+   * en una sola pregunta del wizard. Valores:
+   *   - "tu_mismo"   → modoGestion="auto", adminPro=false, comisión 3%
+   *   - "pro_formal" → modoGestion="administrador", adminPro=true, comisión 20%
+   * El motor sigue leyendo modoGestion + adminPro independientes; gestionOption
+   * solo vive en el state del wizard como UX helper. */
+  gestionOption: "tu_mismo" | "pro_formal";
   /** Calidad del amoblamiento (afecta ADR). */
   habilitacion: "basico" | "estandar" | "premium";
   /** Nombre del operador del edificio (texto libre). Solo visible si
    * tipoEdificio === "dedicado". Se persiste en operadores_str_reportados
    * para curaduría futura sin gastar AirROI calls. */
   operadorNombre: string;
+  /** Iteración 2026-05-10: override manual de ADR ajustado (CLP/noche). Cuando
+   * != null, el motor lo usa en lugar del derivado de ejes. Los ejes siguen
+   * persistiendo en ejesAplicados como referencia. */
+  adrOverride: number | null;
+  /** Iteración 2026-05-10: override manual de occupancy (decimal 0-1).
+   * Análogo a adrOverride. */
+  occOverride: number | null;
 
   // Tracking + metadata
   editedFields: string[];            // claves ajustadas manualmente en modal
@@ -143,8 +161,11 @@ export const DEFAULT_STATE: WizardV3State = {
   edificioPermiteAirbnb: "no_seguro",
   tipoEdificio: "residencial_puro",
   adminPro: false,
+  gestionOption: "tu_mismo",
   habilitacion: "basico",
   operadorNombre: "",
+  adrOverride: null,
+  occOverride: null,
   editedFields: [],
   sampleSize: 0,
   radiusUsed: null,
@@ -195,6 +216,21 @@ export function antiguedadToNumber(val: string): number {
     case "20+": return 25;
     default: return 5;
   }
+}
+
+/** Mapea `gestionOption` del wizard a los campos del motor STR.
+ * Iteración 2026-05-10. Mantener sincronizado con el motor en
+ * src/lib/engines/short-term-engine.ts (banda + tasa de comisión). */
+export function gestionOptionToMotor(opt: WizardV3State["gestionOption"]): {
+  modoGestion: "auto" | "administrador";
+  adminPro: boolean;
+  comisionDefaultPct: number;
+} {
+  if (opt === "pro_formal") {
+    return { modoGestion: "administrador", adminPro: true, comisionDefaultPct: 20 };
+  }
+  // "tu_mismo" — default seguro.
+  return { modoGestion: "auto", adminPro: false, comisionDefaultPct: 3 };
 }
 
 export function calcDividendo(precioUF: number, piePct: number, plazoAnos: number, tasaAnual: number, ufClp: number) {

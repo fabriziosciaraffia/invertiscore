@@ -1,17 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+// Paso 3 — Operacional inline. Iteración 2026-05-10.
+// Reemplaza el modal ModalAjusteCondiciones por 4 bloques inline:
+//   A · Estado del depto (estaAmoblado + habilitacion)
+//   B · Operación Airbnb (componente BloqueOperacionSTR con preview + overrides)
+//   C · Comparativa renta larga (arriendo + extras)
+//   D · Costos mensuales (gastos + contribuciones + costos op STR collapsible)
+//
+// El paso 4 (ajuste fino) es opcional. CTAs:
+//   - "Saltar y analizar" → onAnalizar directo
+//   - "Continuar a ajuste fino →" → onAvanzar4
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, Check, X, ArrowRight } from "lucide-react";
-// Ronda 2b: inputs STR críticos inline (modoGestion + edificioPermiteAirbnb).
-// Resto de campos operativos viven en Modal Ajustar (Ronda 2c).
+import { Loader2, Check, X, ArrowRight, ChevronDown } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { ResumenCard } from "./ResumenCard";
-import { ModalAjusteCondiciones } from "./ModalAjusteCondiciones";
+import { MoneyInput } from "@/components/ui/MoneyInput";
+import { BloqueOperacionSTR } from "./BloqueOperacionSTR";
 import {
   fmtCLP,
   fmtUF,
+  parseDecimalLocale,
   type Modalidad,
   type WizardV3State,
 } from "./wizardV3State";
@@ -27,15 +37,10 @@ export interface TierInfo {
   tier: "guest" | "free" | "premium" | "subscriber";
   isAdmin: boolean;
   credits: number;
-  /** UX fix #2a: welcome credit aún disponible (no consumido). Cuando false
-   * y no hay credits/subscription/admin, el wizard bloquea el submit. */
   welcomeAvailable?: boolean;
   email: string | null;
 }
 
-/** UX fix #2: indica si el user tiene capacidad para crear un análisis.
- * Usado por Paso3 para gobernar el costo card / paywall y el estado del CTA,
- * y por el wizard como guard defensivo en handleAnalizar. */
 export function canAnalyzeFromTier(info: TierInfo | null): boolean {
   if (!info) return false;
   if (info.isAdmin) return true;
@@ -45,6 +50,9 @@ export function canAnalyzeFromTier(info: TierInfo | null): boolean {
   return false;
 }
 
+const inputBase =
+  "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-mono text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
+
 export function Paso3Modalidad({
   state,
   setState,
@@ -52,8 +60,8 @@ export function Paso3Modalidad({
   tierInfo,
   suggestions,
   airRoi,
-  onEditarPaso2,
   onAnalizar,
+  onAvanzar4,
   submitting,
   submitError,
 }: {
@@ -68,211 +76,431 @@ export function Paso3Modalidad({
     contribuciones: number | null;
   };
   airRoi: AirRoiSuggestion;
-  /** Navegación cross-step desde Modal Ajustar (link "Editar en Paso 2"). */
-  onEditarPaso2?: () => void;
+  /** "Saltar y analizar" → POST directo. */
   onAnalizar: () => void;
+  /** "Continuar a ajuste fino →" → navega al paso 4 sin POST. */
+  onAvanzar4: () => void;
   submitting: boolean;
   submitError: string;
 }) {
-  const [ajustarOpen, setAjustarOpen] = useState(false);
-
-  // Banner introductorio: dismiss persiste por sesión (sessionStorage,
-  // se limpia al cerrar la pestaña). Mount-only check.
+  // Banner introductorio dismissable
   const [introDismissed, setIntroDismissed] = useState(false);
   useEffect(() => {
     try {
-      if (sessionStorage.getItem("franco_p3_intro_dismissed") === "1") {
-        setIntroDismissed(true);
-      }
-    } catch {
-      // private mode — banner reaparece esta sesión, sin persistir.
-    }
+      if (sessionStorage.getItem("franco_p3_intro_dismissed") === "1") setIntroDismissed(true);
+    } catch { /* private mode */ }
   }, []);
   function dismissIntro() {
-    try {
-      sessionStorage.setItem("franco_p3_intro_dismissed", "1");
-    } catch {
-      // graceful
-    }
+    try { sessionStorage.setItem("franco_p3_intro_dismissed", "1"); } catch { /* graceful */ }
     setIntroDismissed(true);
   }
 
+  // Costos operativos STR collapsible
+  const [strCostsOpen, setStrCostsOpen] = useState(true);
+
   const mod = state.modalidad;
+  const showSTR = mod === "str" || mod === "both";
+  const showLTR = mod === "ltr" || mod === "both";
 
   function selectModalidad(key: "ltr" | "str" | "both") {
     setState({ modalidad: key });
   }
 
-  // Label compacto para el chip post-selección (LTR / STR / AMBAS)
   const modLabel = OPCIONES.find((o) => o.key === mod);
 
-  return (
-    <div className="flex flex-col gap-5">
-      {/* ── Estado 1: sin modalidad → grid de 3 ── */}
-      {!mod && (
-        <div key="grid" className="flex flex-col gap-5 animate-slide-left">
-          <div>
-            <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)] m-0 mb-1">
-              ¿Cómo lo analizamos?
-            </h2>
-            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
-              Elige la modalidad para ver el resumen.
-            </p>
-          </div>
+  // Derivar ADR baseline para el bloque B. AirROI da ingreso mensual + occ;
+  // ADR/noche = (ingresoAnual) / (occ × 365).
+  const adrBaselineSugerido: number | null = (() => {
+    if (airRoi.isLoading || airRoi.error) return null;
+    const ingresoAnual = airRoi.ingresoBrutoMensual * 12;
+    const occ = airRoi.ocupacionReferencia;
+    if (ingresoAnual <= 0 || occ <= 0) return null;
+    return Math.round(ingresoAnual / (occ * 365));
+  })();
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {OPCIONES.map((o) => (
-              <button
-                key={o.key}
-                type="button"
-                onClick={() => selectModalidad(o.key)}
-                className="relative text-left rounded-xl border p-4 transition-all bg-[var(--franco-card)] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
-              >
-                <p className="font-mono text-[10px] uppercase tracking-[0.06em] m-0 mb-1 font-semibold text-[var(--franco-text-muted)]">
-                  {o.label}{o.star ? " ★" : ""}
-                </p>
-                <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 leading-snug">
-                  {o.sub}
-                </p>
-              </button>
-            ))}
-          </div>
-
-          <p className="font-body text-[12px] text-[var(--franco-text-muted)] text-center m-0 py-4">
-            Elige una opción para ver el resumen
+  // ── Estado 1: sin modalidad ──
+  if (!mod) {
+    return (
+      <div key="grid" className="flex flex-col gap-5 animate-slide-left">
+        <div>
+          <h2 className="font-heading text-2xl font-bold text-[var(--franco-text)] m-0 mb-1">
+            ¿Cómo lo analizamos?
+          </h2>
+          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
+            Elige la modalidad para ver el resumen.
           </p>
         </div>
-      )}
 
-      {/* ── Estado 2: modalidad elegida → chip + headline + resumen ── */}
-      {mod && (
-        <div key="compact" className="flex flex-col gap-5 animate-slide-left">
-          {/* Chip compacto con "Cambiar" */}
-          <div
-            className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5"
-            style={{
-              background: "color-mix(in srgb, var(--signal-red) 8%, transparent)",
-              border: "1px solid color-mix(in srgb, var(--signal-red) 40%, transparent)",
-            }}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--signal-red)" }} strokeWidth={3} />
-              <span className="font-mono text-[11px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text)]">
-                {modLabel?.label}{modLabel?.star ? " ★" : ""}
-              </span>
-              <span className="font-body text-[12px] text-[var(--franco-text-secondary)] truncate">
-                · {modLabel?.sub}
-              </span>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {OPCIONES.map((o) => (
             <button
+              key={o.key}
               type="button"
-              onClick={() => setState({ modalidad: null })}
-              className="shrink-0 font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2"
+              onClick={() => selectModalidad(o.key)}
+              className="relative text-left rounded-xl border p-4 transition-all bg-[var(--franco-card)] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
             >
-              Cambiar
-            </button>
-          </div>
-
-          {/* Headline serif prominente con datos del depto */}
-          <div>
-            <h2 className="font-heading text-[18px] md:text-[20px] font-bold text-[var(--franco-text)] m-0 mb-0.5 leading-tight">
-              Depto en {state.comuna || "—"}
-              {" · "}{state.tipoPropiedad === "nuevo" ? "Nuevo" : "Usado"}
-              {" · "}{state.superficieUtil || "—"}m²
-            </h2>
-            <p className="font-heading text-[14px] m-0" style={{ color: "color-mix(in srgb, var(--franco-text) 70%, transparent)" }}>
-              {Number(state.precio) > 0 ? fmtUF(Number(state.precio)) : "—"}
-              {" ≈ "}
-              {Number(state.precio) > 0 ? fmtCLP(Number(state.precio) * ufCLP) : "—"}
-              {" · pie "}{state.piePct}%
-            </p>
-          </div>
-
-          {/* Banner introductorio dismissable — pattern dot indicator
-              narrativo (Fase 4.8). sessionStorage persiste durante la
-              sesión, reset al cerrar la pestaña. Copy condicional según si
-              hay edits previos (Fase 14a) — evita el framing "valores
-              automáticos" cuando el user ya editó campos en pasos 1-2. */}
-          {!introDismissed && (
-            <div className="flex items-start gap-3">
-              <p className="font-mono text-[11px] m-0 flex-1 leading-[1.6] text-[var(--franco-text-secondary)]">
-                {state.editedFields.length > 0
-                  ? "● Estos son los valores con tus ajustes previos más sugerencias de mercado. Edítalos si necesitas refinar."
-                  : "● Estos valores son sugerencias automáticas según el mercado de tu zona. Ajústalos si tienes información más precisa de tu caso."}
+              <p className="font-mono text-[10px] uppercase tracking-[0.06em] m-0 mb-1 font-semibold text-[var(--franco-text-muted)]">
+                {o.label}{o.star ? " ★" : ""}
               </p>
-              <button
-                type="button"
-                onClick={dismissIntro}
-                aria-label="Cerrar mensaje"
-                className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] transition-colors"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
+              <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 leading-snug">
+                {o.sub}
+              </p>
+            </button>
+          ))}
+        </div>
 
-          <ResumenCard
-            state={state}
-            ufCLP={ufCLP}
-            sampleSize={state.sampleSize}
-            airRoi={airRoi}
-            onAjustar={() => setAjustarOpen(true)}
-          />
+        <p className="font-body text-[12px] text-[var(--franco-text-muted)] text-center m-0 py-4">
+          Elige una opción para ver los bloques operacionales
+        </p>
+      </div>
+    );
+  }
 
-          {/* ── Sección "Operación Airbnb" — solo STR/AMBAS (Ronda 2b) ── */}
-          {(mod === "str" || mod === "both") && (
-            <OperacionAirbnbSection state={state} setState={setState} />
-          )}
+  // ── Estado 2: modalidad elegida → bloques A-D ──
+  const canAnalyze = canAnalyzeFromTier(tierInfo);
 
-          {/* Costo tier-aware */}
-          {tierInfo && <CostoCard tierInfo={tierInfo} />}
+  return (
+    <div key="compact" className="flex flex-col gap-5 animate-slide-left">
+      {/* Chip compacto con "Cambiar" */}
+      <div
+        className="flex items-center justify-between gap-3 rounded-lg px-4 py-2.5"
+        style={{
+          background: "color-mix(in srgb, var(--signal-red) 8%, transparent)",
+          border: "1px solid color-mix(in srgb, var(--signal-red) 40%, transparent)",
+        }}
+      >
+        <div className="flex items-center gap-2 min-w-0">
+          <Check className="w-3.5 h-3.5 shrink-0" style={{ color: "var(--signal-red)" }} strokeWidth={3} />
+          <span className="font-mono text-[11px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text)]">
+            {modLabel?.label}{modLabel?.star ? " ★" : ""}
+          </span>
+          <span className="font-body text-[12px] text-[var(--franco-text-secondary)] truncate">
+            · {modLabel?.sub}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setState({ modalidad: null })}
+          className="shrink-0 font-body text-[12px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-2"
+        >
+          Cambiar
+        </button>
+      </div>
 
-          {submitError && (
-            <StateBox variant="left-border" state="negative">{submitError}</StateBox>
-          )}
+      {/* Headline depto */}
+      <div>
+        <h2 className="font-heading text-[18px] md:text-[20px] font-bold text-[var(--franco-text)] m-0 mb-0.5 leading-tight">
+          Depto en {state.comuna || "—"}
+          {" · "}{state.tipoPropiedad === "nuevo" ? "Nuevo" : "Usado"}
+          {" · "}{state.superficieUtil || "—"}m²
+        </h2>
+        <p className="font-heading text-[14px] m-0" style={{ color: "color-mix(in srgb, var(--franco-text) 70%, transparent)" }}>
+          {Number(state.precio) > 0 ? fmtUF(Number(state.precio)) : "—"}
+          {" ≈ "}
+          {Number(state.precio) > 0 ? fmtCLP(Number(state.precio) * ufCLP) : "—"}
+          {" · pie "}{state.piePct}%
+        </p>
+      </div>
 
-          {/* CTA — bloqueado cuando no hay créditos disponibles (paywall arriba). */}
-          {(() => {
-            const canAnalyze = canAnalyzeFromTier(tierInfo);
-            return (
-              <button
-                type="button"
-                onClick={onAnalizar}
-                disabled={submitting || !mod || !canAnalyze}
-                className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
-              >
-                {submitting ? (
-                  <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
-                ) : !canAnalyze ? (
-                  <>Necesitas un crédito</>
-                ) : (
-                  <>Analizar ahora →</>
-                )}
-              </button>
-            );
-          })()}
+      {/* Banner introductorio */}
+      {!introDismissed && (
+        <div className="flex items-start gap-3">
+          <p className="font-mono text-[11px] m-0 flex-1 leading-[1.6] text-[var(--franco-text-secondary)]">
+            ● Completa los bloques operacionales abajo. Defaults son sugerencias del mercado — edita si tienes data real.
+          </p>
+          <button
+            type="button"
+            onClick={dismissIntro}
+            aria-label="Cerrar mensaje"
+            className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
-      {mod && (
-        <ModalAjusteCondiciones
-          open={ajustarOpen}
-          onClose={() => setAjustarOpen(false)}
+      {/* ════ Bloque A · Estado del depto (siempre visible) ════ */}
+      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+        <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
+          A · Estado del depto
+        </div>
+
+        {/* ¿Está amoblado? */}
+        <div>
+          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">¿Está amoblado?</span>
+          <div className="grid grid-cols-2 gap-2">
+            {([
+              { value: false, label: "No, falta amoblar" },
+              { value: true, label: "Sí, ya amoblado" },
+            ] as const).map((opt) => {
+              const active = state.estaAmoblado === opt.value;
+              return (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => setState({ estaAmoblado: opt.value })}
+                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2 leading-snug">
+            {state.estaAmoblado ? "Sin inversión inicial pendiente." : "Se calcula inversión inicial para amoblar."}
+          </p>
+          {!state.estaAmoblado && (
+            <div className="mt-3">
+              <label className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+                Costo de amoblar (CLP único)
+              </label>
+              <MoneyInput
+                className={inputBase}
+                value={state.costoAmoblamiento}
+                onChange={(raw) => setState({ costoAmoblamiento: raw })}
+              />
+              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                Default $3.500.000 para 2D1B estándar Airbnb.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Habilitación */}
+        <div>
+          <span className="flex items-center gap-1.5 mb-1.5">
+            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Habilitación / posicionamiento</span>
+            <InfoTooltip content="Define la calidad percibida por los huéspedes y por tanto el ADR. Premium implica decoración curada, blancos hoteleros, amenidades extra." />
+          </span>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { value: "basico", label: "Básico" },
+              { value: "estandar", label: "Estándar" },
+              { value: "premium", label: "Premium" },
+            ] as const).map((opt) => {
+              const active = state.habilitacion === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setState({ habilitacion: opt.value })}
+                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
+            {state.habilitacion === "basico" && "Funcional, fotos amateur. ADR sin uplift."}
+            {state.habilitacion === "estandar" && "Decente + fotos profesionales. ADR ×1.05."}
+            {state.habilitacion === "premium" && "Decoración curada, amenidades. ADR ×1.10."}
+          </p>
+        </div>
+      </div>
+
+      {/* ════ Bloque B · Operación Airbnb (solo STR/AMBAS) ════ */}
+      {showSTR && (
+        <BloqueOperacionSTR
           state={state}
-          onSave={setState}
-          suggestions={suggestions}
-          ufCLP={ufCLP}
-          onEditarPaso2={onEditarPaso2}
+          setState={setState}
+          adrBaselineSugerido={adrBaselineSugerido}
         />
       )}
+
+      {/* ════ Bloque C · Comparativa renta larga (solo LTR/AMBAS) ════ */}
+      {showLTR && (
+        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
+            C · Comparativa renta larga
+          </div>
+
+          <label className="block">
+            <span className="flex items-center gap-1.5 mb-1.5">
+              <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Arriendo mensual estimado</span>
+              <InfoTooltip content="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares en la zona." />
+            </span>
+            <MoneyInput
+              className={inputBase}
+              value={state.arriendo}
+              onChange={(raw) => setState({ arriendo: raw })}
+            />
+            {suggestions.arriendo && (
+              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                Mercado sugiere {fmtCLP(suggestions.arriendo)}
+                {suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.
+              </p>
+            )}
+          </label>
+
+          {Number(state.estacionamientos) > 0 && (
+            <label className="block">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+                Arriendo estacionamiento ($/mes)
+              </span>
+              <MoneyInput
+                className={inputBase}
+                value={state.arriendoEstac}
+                onChange={(raw) => setState({ arriendoEstac: raw })}
+                placeholder={(40000 * Number(state.estacionamientos)).toLocaleString("es-CL")}
+              />
+            </label>
+          )}
+
+          {Number(state.bodegas) > 0 && (
+            <label className="block">
+              <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+                Arriendo bodega ($/mes)
+              </span>
+              <MoneyInput
+                className={inputBase}
+                value={state.arriendoBodega}
+                onChange={(raw) => setState({ arriendoBodega: raw })}
+                placeholder={(15000 * Number(state.bodegas)).toLocaleString("es-CL")}
+              />
+            </label>
+          )}
+        </div>
+      )}
+
+      {/* ════ Bloque D · Costos mensuales (siempre visible) ════ */}
+      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+        <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
+          D · Costos mensuales recurrentes
+        </div>
+
+        <label className="block">
+          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
+            Gastos comunes mensuales
+          </span>
+          <MoneyInput
+            className={inputBase}
+            value={state.gastos}
+            onChange={(raw) => setState({ gastos: raw })}
+          />
+          {suggestions.gastos && (
+            <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+              Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).
+            </p>
+          )}
+        </label>
+
+        <label className="block">
+          <span className="font-body text-[13px] font-semibold text-[var(--franco-text)] block mb-1.5">
+            Contribuciones (trimestral, CLP)
+          </span>
+          <MoneyInput
+            className={inputBase}
+            value={state.contribuciones}
+            onChange={(raw) => setState({ contribuciones: raw })}
+          />
+          {suggestions.contribuciones && (
+            <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+              Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).
+            </p>
+          )}
+        </label>
+
+        {/* Costos operativos STR — collapsible, solo si STR/AMBAS */}
+        {showSTR && (
+          <div className="pt-3 border-t border-dashed border-[var(--franco-border)]">
+            <button
+              type="button"
+              onClick={() => setStrCostsOpen((o) => !o)}
+              className="flex w-full items-center justify-between"
+            >
+              <span className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+                Costos operativos STR
+              </span>
+              <ChevronDown className={`h-4 w-4 transition-transform ${strCostsOpen ? "rotate-180" : ""}`} />
+            </button>
+            {strCostsOpen && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <CostInput label="Electricidad" value={state.costoElectricidad} onChange={(v) => setState({ costoElectricidad: v })} />
+                <CostInput label="Agua" value={state.costoAgua} onChange={(v) => setState({ costoAgua: v })} />
+                <CostInput label="WiFi" value={state.costoWifi} onChange={(v) => setState({ costoWifi: v })} />
+                <CostInput label="Insumos" value={state.costoInsumos} onChange={(v) => setState({ costoInsumos: v })} />
+                <CostInput label="Mantención" value={state.mantencionMensual} onChange={(v) => setState({ mantencionMensual: v })} />
+              </div>
+            )}
+            {strCostsOpen && (
+              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-2 m-0">
+                Defaults para 2D1B en Santiago. Edita si tienes data real.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Costo tier-aware */}
+      {tierInfo && <CostoCard tierInfo={tierInfo} />}
+
+      {submitError && (
+        <StateBox variant="left-border" state="negative">{submitError}</StateBox>
+      )}
+
+      {/* CTAs paso 3: Saltar / Continuar */}
+      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-[var(--franco-border)]">
+        <button
+          type="button"
+          onClick={onAnalizar}
+          disabled={submitting || !mod || !canAnalyze}
+          className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-4 py-2.5 rounded-lg border border-[var(--franco-border)] disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {submitting ? (
+            <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
+          ) : !canAnalyze ? (
+            <>Necesitas un crédito</>
+          ) : (
+            <>Saltar y analizar</>
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={onAvanzar4}
+          disabled={submitting || !mod}
+          className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          Continuar a ajuste fino <ArrowRight size={14} />
+        </button>
+      </div>
     </div>
+  );
+}
+
+// ─── Sub-componentes ──────────────────────────────────
+
+function CostInput({
+  label, value, onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+        {label}
+      </span>
+      <MoneyInput
+        className={inputBase}
+        value={value}
+        onChange={onChange}
+      />
+    </label>
   );
 }
 
 function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
   const copy = tierCopy(tierInfo);
-  // Estado SIN CRÉDITOS: card paywall con border Signal Red + CTA /pricing
-  // (Capa 1 — uso #1 CTA primario, uso #2 cifra crítica negativa).
   if (!copy.canAnalyze) {
     return (
       <div
@@ -311,7 +539,6 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
       </div>
     );
   }
-
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 flex items-start justify-between gap-4">
       <div>
@@ -335,112 +562,13 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
 }
 
 function tierCopy(info: TierInfo): { costo: string; plan: string; color: string; canAnalyze: boolean } {
-  // Capa 1 binario: tier ya queda señalado por plan acronym (FRANCOMENSUAL, PRO,
-  // GRATUITO, INVITADO, ADMIN, SIN CRÉDITOS). Color colapsado a Ink primario.
   if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)", canAnalyze: true };
   if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)", canAnalyze: true };
   if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)", canAnalyze: true };
   if (info.welcomeAvailable) return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true };
-  // Sin créditos disponibles (welcome consumido + sin créditos comprados +
-  // sin suscripción + no admin). UX fix #2: en vez de dejar que el submit
-  // pegue contra el 403 del backend, bloqueamos en el cliente con paywall.
   return { costo: "Sin créditos disponibles. Compra uno para continuar.", plan: "SIN CRÉDITOS", color: "var(--signal-red)", canAnalyze: false };
 }
 
-// ─── Sección "Operación Airbnb" (Ronda 2b) ──
-// Inputs críticos inline en Paso 3 cuando modalidad ∈ {str, both}. Resto de
-// campos operativos (comisión exacta, costos electricidad/agua/wifi/insumos,
-// mantención, amoblamiento) viven en Modal Ajustar (Ronda 2c).
-function OperacionAirbnbSection({
-  state,
-  setState,
-}: {
-  state: WizardV3State;
-  setState: (patch: Partial<WizardV3State>) => void;
-}) {
-  const inputClass =
-    "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-body text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
-  return (
-    <div className="flex flex-col gap-4 pt-4 border-t border-[var(--franco-border)]">
-      <div className="flex items-center gap-1.5">
-        <h3 className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0">
-          Operación Airbnb
-        </h3>
-        <InfoTooltip content="Estos datos definen cómo operarás el Airbnb. El resto (costos operativos, amoblamiento, comisión exacta) puedes ajustarlos en 'Ajustar condiciones'." />
-      </div>
-
-      {/* Modo de gestión — toggle 2 cols */}
-      <div>
-        <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-          Modo de gestión
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          {(["auto", "administrador"] as const).map((m) => {
-            const active = state.modoGestion === m;
-            return (
-              <button
-                key={m}
-                type="button"
-                onClick={() => setState({ modoGestion: m })}
-                className={`text-left px-3 py-2.5 rounded-lg transition-colors ${
-                  active
-                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
-                }`}
-              >
-                <p className="font-body text-[13px] font-medium m-0 mb-0.5">
-                  {m === "auto" ? "Auto-gestión" : "Administrador"}
-                </p>
-                <p className="font-mono text-[10px] m-0 leading-snug opacity-80">
-                  {m === "auto"
-                    ? "Tú gestionas. Comisión Airbnb 3%."
-                    : "Operador profesional. Comisión 20% por defecto."}
-                </p>
-              </button>
-            );
-          })}
-        </div>
-        {state.modoGestion === "administrador" && (
-          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
-            Puedes ajustar la comisión exacta en &ldquo;Ajustar condiciones&rdquo;.
-          </p>
-        )}
-      </div>
-
-      {/* Edificio permite Airbnb */}
-      <div>
-        <label className="font-body text-[13px] font-medium text-[var(--franco-text)] block mb-1.5">
-          ¿Tu edificio permite Airbnb?
-        </label>
-        <select
-          className={`${inputClass} appearance-none pr-8`}
-          value={state.edificioPermiteAirbnb}
-          onChange={(e) =>
-            setState({
-              edificioPermiteAirbnb: e.target.value as WizardV3State["edificioPermiteAirbnb"],
-            })
-          }
-        >
-          <option value="si">Sí permite</option>
-          <option value="no">No permite</option>
-          <option value="no_seguro">No estoy seguro</option>
-        </select>
-        {state.edificioPermiteAirbnb === "no" && (
-          <div className="mt-2">
-            <StateBox variant="left-border" state="negative">
-              Algunos edificios prohíben Airbnb en su reglamento. Verifica antes de invertir — esto puede invalidar el modelo de negocio.
-            </StateBox>
-          </div>
-        )}
-        {state.edificioPermiteAirbnb === "no_seguro" && (
-          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2">
-            Te conviene revisar el reglamento de copropiedad antes de comprar.
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Suppress unused export warning
+// Re-exports utilitarios para compatibilidad con callsites antiguos
 export type { Modalidad };
+export { parseDecimalLocale };

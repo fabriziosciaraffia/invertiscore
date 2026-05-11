@@ -3,10 +3,11 @@
 const STEPS = [
   { num: 1, label: "Propiedad" },
   { num: 2, label: "Financiamiento" },
-  { num: 3, label: "Análisis" },
+  { num: 3, label: "Operacional" },
+  { num: 4, label: "Ajuste fino" },
 ] as const;
 
-export function WizardStepper({ current }: { current: 1 | 2 | 3 }) {
+export function WizardStepper({ current }: { current: 1 | 2 | 3 | 4 }) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3 flex-1">
@@ -46,7 +47,7 @@ export function WizardStepper({ current }: { current: 1 | 2 | 3 }) {
         })}
       </div>
       <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] ml-3 shrink-0">
-        Paso {current} de 3
+        Paso {current} de {STEPS.length}
       </span>
     </div>
   );

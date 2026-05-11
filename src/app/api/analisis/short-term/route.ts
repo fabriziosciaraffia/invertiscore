@@ -200,6 +200,10 @@ export async function POST(request: Request) {
       tipoEdificio: body.tipoEdificio,
       habilitacion: body.habilitacion,
       adminPro: body.adminPro === true,
+      // Overrides manuales (2026-05-10). Valor numérico válido prevalece sobre
+      // el derivado de ejes; null/undefined → usar derivado.
+      adrOverride: typeof body.adrOverride === "number" ? body.adrOverride : null,
+      occOverride: typeof body.occOverride === "number" ? body.occOverride : null,
       costoElectricidad: body.costoElectricidad,
       costoAgua: body.costoAgua,
       costoWifi: body.costoWifi,
