@@ -47,6 +47,15 @@ const CASOS: Caso[] = [
     comuna: "Santiago",
     expectedDominante: "turista_leisure or nomada_digital",
   },
+  {
+    // Iter 2026-05-12: Clínica Las Condes está en (-33.38520843770616, -70.53152428836158).
+    // Depto a ~200m al sur de la clínica.
+    nombre: "Vecindad Clínica Las Condes (Av. Estoril)",
+    lat: -33.3870,
+    lng: -70.5315,
+    comuna: "Las Condes",
+    expectedDominante: "paciente_medico or familia (LC alta densidad clínicas)",
+  },
 ];
 
 function fmtPct(n: number): string {

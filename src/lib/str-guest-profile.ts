@@ -1,35 +1,43 @@
 // Scoring de perfil de huésped esperado para análisis STR (Commit 2c — 2026-05-12).
 //
-// Mapea POIs cercanos al depto + comuna a 4 perfiles candidatos:
+// Mapea POIs cercanos al depto + comuna a 5 perfiles candidatos:
 //   - turista_leisure  : turismo + cultura + nightlife
 //   - ejecutivo_corto  : hubs corporativos + metro + accesos
 //   - nomada_digital   : universidades + cafés/coworking + zonas residenciales activas
 //   - familia          : parques + malls familiares + zona residencial estable
+//   - paciente_medico  : clínicas grandes cercanas + comuna con concentración médica
+//                        (agregado iter 2026-05-12 post Commit 2c — heurística Fase 1)
 //
-// Perfil paciente_medico OMITIDO en Fase 1 — el dataset de clínicas existe pero
-// fase 1 requiere data más rica (acompañantes médicos buscan estadías 5-15 días
-// con perfil específico; meterlo sin investigación dedicada dejaría false
-// positives en cualquier depto a < 1.5km de una clínica grande). Agregar en
-// Fase 2 cuando ux-cx-franco apruebe el flow.
+// CAVEAT FASE 1 — paciente_medico:
+// El dataset de clínicas (CLINICAS en attractors.ts) NO distingue tipología
+// (oncológico vs general vs maternidad vs odontológico). Eso afecta el perfil
+// real del huésped (un acompañante oncológico de Clínica Alemana se queda
+// 2-3 semanas; un huésped post-cirugía estética ambulatoria duerme 1-2
+// noches). En Fase 1 tratamos todas las clínicas igual — la señal es
+// proximidad agregada a centros de salud privados grandes. Refinar en
+// Fase 2 cuando se enriquezca tipología.
 //
-// La heurística es DEFENDIBLE pero NO definitiva — futuras iteraciones pueden
-// incorporar señales adicionales (eventos locales, percentil ADR por tipología,
-// estacionalidad). El score se normaliza 0-100; el perfil dominante es el de
-// score más alto; secundarios solo aparecen si score > UMBRAL_SECUNDARIO.
+// La heurística completa es DEFENDIBLE pero NO definitiva — futuras
+// iteraciones pueden incorporar señales adicionales (eventos locales,
+// percentil ADR por tipología, estacionalidad fina). El score se normaliza
+// 0-100; el perfil dominante es el de score más alto; secundarios solo
+// aparecen si score > UMBRAL_SECUNDARIO.
 
-import { type Attractor, getNearbyAttractors } from "./data/attractors";
+import { type Attractor, CLINICAS, distanciaMetros, getNearbyAttractors } from "./data/attractors";
 
 export type PerfilHuespedSTR =
   | "turista_leisure"
   | "ejecutivo_corto"
   | "nomada_digital"
-  | "familia";
+  | "familia"
+  | "paciente_medico";
 
 export const PERFIL_LABEL: Record<PerfilHuespedSTR, string> = {
   turista_leisure: "Turista de leisure",
   ejecutivo_corto: "Ejecutivo en visita corta",
   nomada_digital: "Nómada digital",
   familia: "Familia visitando",
+  paciente_medico: "Paciente médico / Familiar acompañante",
 };
 
 export const PERFIL_DESCRIPCION: Record<PerfilHuespedSTR, string> = {
@@ -41,6 +49,8 @@ export const PERFIL_DESCRIPCION: Record<PerfilHuespedSTR, string> = {
     "Estadía media-larga (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés.",
   familia:
     "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, malls familiares y depto amplio sobre lujo.",
+  paciente_medico:
+    "Paciente en tratamiento o familiar acompañante (1-3 semanas). Prioriza cercanía caminable a clínica, silencio, blackout para descanso prolongado, cocina equipada y lavadora.",
 };
 
 export interface PerfilScore {
@@ -244,6 +254,75 @@ function scoreFamilia(
 }
 
 /**
+ * Score perfil paciente_medico / familiar acompañante (Fase 1 — 2026-05-12).
+ *
+ * Señales:
+ *   - Distancia a clínica más cercana (peso dominante):
+ *     <1.5km caminable → muy alto (+50). El acompañante valora poder llegar
+ *     a pie en pausas del día (visitar 2-3 veces al día sin auto).
+ *     <3km en auto/Uber → medio (+25). Comodidad de logística.
+ *   - Bonus comuna por concentración de clínicas privadas top:
+ *     Las Condes (Alemana, Las Condes), Providencia (Indisa, Santa María, UC),
+ *     Vitacura (Alemana sede, RedSalud) → +20.
+ *   - Bonus 2+ clínicas a <2km → +15 (cluster de "barrio médico", típico
+ *     en Av. Salvador / Tobalaba / Vitacura).
+ *
+ * Heurística Fase 1 — no distingue tipología (oncológico vs general vs
+ * maternidad). Refinar en Fase 2 cuando el dataset CLINICAS se enriquezca
+ * con metadata.
+ */
+function scorePacienteMedico(
+  lat: number,
+  lng: number,
+  comuna: string,
+): { score: number; driver: string } {
+  const drivers: string[] = [];
+  let score = 0;
+
+  // Distancia a clínica más cercana.
+  let closestKm = Infinity;
+  let closestNombre = "";
+  let countSub2km = 0;
+  for (const clinica of CLINICAS) {
+    const d = distanciaMetros(lat, lng, clinica.lat, clinica.lng);
+    if (d < closestKm * 1000) {
+      closestKm = d / 1000;
+      closestNombre = clinica.nombre;
+    }
+    if (d <= 2000) countSub2km++;
+  }
+
+  if (closestKm < 1.5) {
+    score += 50;
+    drivers.push(`${closestNombre} a ${Math.round(closestKm * 1000)}m (caminable)`);
+  } else if (closestKm < 3) {
+    score += 25;
+    drivers.push(`${closestNombre} a ${closestKm.toFixed(1)}km (auto/Uber)`);
+  }
+
+  // Bonus por comuna con concentración de clínicas privadas top.
+  const comunaMedica = ["Las Condes", "Providencia", "Vitacura"].includes(comuna);
+  if (comunaMedica) {
+    score += 20;
+    drivers.push(`Comuna ${comuna} con concentración de clínicas privadas top`);
+  }
+
+  // Bonus por cluster (2+ clínicas a <2km — barrio médico tipo Av. Salvador).
+  if (countSub2km >= 2) {
+    score += 15;
+    if (countSub2km >= 3) drivers.push(`${countSub2km} clínicas a <2 km — barrio médico`);
+  }
+
+  score = Math.min(100, score);
+  return {
+    score,
+    driver: drivers.length > 0
+      ? drivers.slice(0, 2).join(" + ")
+      : "Sin clínicas privadas grandes a distancia caminable",
+  };
+}
+
+/**
  * Calcula el perfil de huésped esperado para un depto STR.
  * Reusa `getNearbyAttractors` del LTR (radio 2500m por defecto).
  */
@@ -255,7 +334,9 @@ export function calcGuestProfile(
 ): GuestProfileResult {
   const nearby = getNearbyAttractors(lat, lng, radioMetros);
 
-  // 4 perfiles candidatos (paciente_medico omitido en Fase 1).
+  // 5 perfiles candidatos (iter 2026-05-12 — agregado paciente_medico al
+  // scoring de Fase 1; comentario de archivo arriba documenta caveat de
+  // tipología).
   const perfiles: PerfilScore[] = [
     {
       perfil: "turista_leisure",
@@ -277,6 +358,11 @@ export function calcGuestProfile(
       ...scoreFamilia(nearby, comuna),
       porcentaje: 0,
     },
+    {
+      perfil: "paciente_medico",
+      ...scorePacienteMedico(lat, lng, comuna),
+      porcentaje: 0,
+    },
   ];
 
   // Ordenar por score desc.
@@ -293,7 +379,9 @@ export function calcGuestProfile(
   const secundarios = perfiles.slice(1).filter((p) => p.score >= umbral);
 
   // POIs relevantes (top 5 por categorías que aportan a algún perfil).
-  const categoriasRelevantes = new Set(["turismo", "negocios", "universidad", "parque", "mall", "metro"]);
+  // Iter 2026-05-12: agregada 'clinica' para que se vea el atractor médico
+  // cuando paciente_medico es dominante o secundario.
+  const categoriasRelevantes = new Set(["turismo", "negocios", "universidad", "parque", "mall", "metro", "clinica"]);
   const poisRelevantes = nearby
     .filter((p) => categoriasRelevantes.has(p.tipo))
     .slice(0, 8)
