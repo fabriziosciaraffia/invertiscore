@@ -18,6 +18,7 @@ const DATO_TOOLTIPS: Record<string, string> = {
   "NOI mensual": "Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo. Mide qué tan buena es la propiedad operando como STR.",
   "Cash-on-Cash": "Retorno anual sobre el capital efectivamente invertido (pie + gastos cierre + amoblamiento). Si es negativo, estás poniendo plata extra cada mes para sostener la operación.",
   "Ventaja vs LTR": "Cuánto más genera operar STR vs arrendar a largo plazo. Si la ventaja es baja (<10%), el riesgo operativo STR rara vez compensa la simplicidad del LTR.",
+  "Desventaja vs LTR": "Cuánto menos genera operar STR vs arrendar a largo plazo. STR pierde flujo frente a LTR — operar Airbnb acá no compensa el esfuerzo operativo adicional.",
 };
 
 /**

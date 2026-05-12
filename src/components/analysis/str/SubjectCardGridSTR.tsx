@@ -173,7 +173,7 @@ export function SubjectCardGridSTR({
           color: "var(--franco-text)",
         }
       : {
-          value: "Por analizar",
+          value: "Calculando perfil…",
           sub: "Abre el detalle para ver el perfil de huésped",
           color: "var(--franco-text-secondary)",
         },
@@ -554,7 +554,7 @@ function DrawerContent({
           <DataRow
             label="Pesimista"
             value={fmtMoney(conservador.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si la operación rinde por debajo de tu base — mala temporada, reviews flojos o competencia agresiva. Ya incluye el factor de tu edificio y nivel de amoblamiento."
+            tooltip="NOI si la operación rinde por debajo de tu base — mala temporada, reseñas flojas o competencia agresiva. Ya incluye el factor de tu edificio y nivel de amoblamiento."
           />
           <DataRow
             label="Base"
@@ -564,7 +564,7 @@ function DrawerContent({
           <DataRow
             label="Optimista"
             value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si superás al promedio del mercado. Requiere pricing dinámico, fotos profesionales y reviews ≥4,7. Está calibrado sobre tu base — no es el percentil 75 del mercado sin ajustes."
+            tooltip="NOI si superas al promedio del mercado. Requiere tarifas dinámicas por temporada, fotos profesionales y reseñas ≥4,7. Está calibrado sobre tu base — no es el percentil 75 del mercado sin ajustes."
           />
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />

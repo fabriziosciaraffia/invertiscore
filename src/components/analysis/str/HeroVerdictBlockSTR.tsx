@@ -31,12 +31,6 @@ function tratamientoFor(v: STRVerdict): Tratamiento {
   return "ajusta";
 }
 
-const VERDICT_TOOLTIPS_STR: Record<string, string> = {
-  COMPRAR: "El depto cumple los criterios de renta corta: ventaja sobre LTR clara, NOI sólido, recuperación de inversión razonable.",
-  "AJUSTA SUPUESTOS": "El depto tiene potencial STR pero algún parámetro (ocupación, comisión, costos) está justo. Hay que ajustar antes de operar.",
-  "BUSCAR OTRA": "Los números STR no superan al LTR. Mejor revisar otra propiedad o cambiar la estrategia.",
-};
-
 export function HeroVerdictBlockSTR({
   results,
   veredicto,
@@ -109,7 +103,7 @@ export function HeroVerdictBlockSTR({
 
   const datosClave: DatoClave[] = [
     {
-      label: noiMensual >= 0 ? "NOI mensual" : "NOI mensual",
+      label: "NOI mensual",
       valor_clp: fmtMoney(noiMensual, "CLP", valorUF),
       valor_uf: fmtMoney(noiMensual, "UF", valorUF),
       subtexto: "Antes de dividendo",
@@ -125,7 +119,7 @@ export function HeroVerdictBlockSTR({
       color: cashOnCash < 0 ? "red" : isRojo ? "neutral" : "accent",
     },
     {
-      label: sobreRenta >= 0 ? "Ventaja vs LTR" : "Ventaja vs LTR",
+      label: sobreRenta >= 0 ? "Ventaja vs LTR" : "Desventaja vs LTR",
       valor_clp: (sobreRenta >= 0 ? "+" : "") + fmtMoney(sobreRenta, "CLP", valorUF),
       valor_uf: (sobreRenta >= 0 ? "+" : "") + fmtMoney(sobreRenta, "UF", valorUF),
       subtexto: `${sobreRentaPct >= 0 ? "+" : ""}${fmtPct(sobreRentaPct * 100, 0)} mensual`,
@@ -230,16 +224,12 @@ export function HeroVerdictBlockSTR({
 }
 
 /**
- * Wrapper sobre HeroTopStrip que sustituye los tooltips LTR por los STR.
- * HeroTopStrip importa VERDICT_TOOLTIPS de AIInsightSection (LTR-only) — para
- * STR usamos la lookup local. Por ahora el componente shared no expone slot
- * de tooltip; el wrapper inyecta el tooltip al título del badge no se cambia
- * (lo hace HeroTopStrip internamente). Si en el futuro se requiere override,
+ * Wrapper sobre HeroTopStrip. Actualmente delega 1:1 al componente shared —
+ * los tooltips del badge de veredicto los resuelve HeroTopStrip internamente
+ * leyendo VERDICT_TOOLTIPS de AIInsightSection (LTR + STR comparten los 3
+ * valores base). Si en el futuro se requiere override STR-específico,
  * extender HeroTopStrip con prop `verdictTooltip?: string`.
  */
 function HeroTopStripWrapper(props: React.ComponentProps<typeof HeroTopStrip>) {
-  // Side-effect-free: el lookup VERDICT_TOOLTIPS_STR queda disponible para
-  // consumers manuales si se requiere. HeroTopStrip resuelve el suyo.
-  void VERDICT_TOOLTIPS_STR;
   return <HeroTopStrip {...props} />;
 }
