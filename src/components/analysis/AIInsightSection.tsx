@@ -32,7 +32,7 @@ export const VERDICT_STYLES: Record<
     bgInner: "color-mix(in srgb, var(--signal-red) 12%, transparent)",
     borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
   },
-  "AJUSTA EL PRECIO": {
+  "AJUSTA SUPUESTOS": {
     color: "var(--signal-red)",
     bg: "color-mix(in srgb, var(--signal-red) 8%, transparent)",
     border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
@@ -52,18 +52,18 @@ export const VERDICT_STYLES: Record<
 };
 
 export function getVerdictStyles(veredicto: string) {
-  return VERDICT_STYLES[veredicto] || VERDICT_STYLES["AJUSTA EL PRECIO"];
+  return VERDICT_STYLES[veredicto] || VERDICT_STYLES["AJUSTA SUPUESTOS"];
 }
 
 /** Tooltips por veredicto (badge del callout, Fase 17). */
 export const VERDICT_TOOLTIPS: Record<string, string> = {
   COMPRAR: "El depto cumple los criterios de inversión: buena rentabilidad, flujo razonable y plusvalía proyectada.",
-  "AJUSTA EL PRECIO": "El depto tiene potencial pero el precio actual no lo justifica. Negociar puede convertirlo en buena inversión.",
+  "AJUSTA SUPUESTOS": "El depto tiene potencial pero el precio actual no lo justifica. Negociar puede convertirlo en buena inversión.",
   "BUSCAR OTRA": "Los números no cierran. Mejor dedicar el presupuesto a otra propiedad o zona.",
 };
 
 export const FRANCO_SCORE_TOOLTIP =
-  "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA EL PRECIO. Bajo 50: BUSCAR OTRA.";
+  "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA SUPUESTOS. Bajo 50: BUSCAR OTRA.";
 
 /** Detecta la estructura nueva v2 del análisis IA. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

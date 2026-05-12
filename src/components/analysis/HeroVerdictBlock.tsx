@@ -18,7 +18,7 @@ import {
  *  3. Cuerpo: tag "01 · Veredicto", pregunta, respuesta IA, banner callout,
  *     grid 3 DatoCards, reencuadre, alert box (StateBox left-border).
  *
- * Diferenciación visual por veredicto (4 variantes: COMPRAR, AJUSTA EL PRECIO,
+ * Diferenciación visual por veredicto (4 variantes: COMPRAR, AJUSTA SUPUESTOS,
  * BUSCAR OTRA, RECONSIDERA LA ESTRUCTURA) — wash, borde, badge y label del
  * alert cambian. El gradient del ScoreBarInline es invariante (skill).
  *
@@ -51,7 +51,7 @@ export function HeroVerdictBlock({
   // VERDICT_STYLES). El resto del styling vive en helpers veredicto-based abajo.
   const v = getVerdictStyles(veredicto);
   const isCompra = veredicto === "COMPRAR";
-  const isAjusta = veredicto === "AJUSTA EL PRECIO";
+  const isAjusta = veredicto === "AJUSTA SUPUESTOS";
   const isBuscar = veredicto === "BUSCAR OTRA";
   // 4to veredicto: el depto está bien, la matemática del financiamiento no.
   // Comparte tratamiento neutro con COMPRAR (badge Ink invertido, sin wash rojo)
@@ -95,7 +95,7 @@ export function HeroVerdictBlock({
 
   // Verdict callout banner — bg/border per veredicto
   // - BUSCAR OTRA: wash Signal Red 8%
-  // - AJUSTA EL PRECIO: var(--franco-card)
+  // - AJUSTA SUPUESTOS: var(--franco-card)
   // - COMPRAR / RECONSIDERA: var(--franco-elevated) (sin tinte cromático)
   const calloutBg = isBuscar
     ? "color-mix(in srgb, var(--signal-red) 8%, transparent)"
@@ -213,7 +213,7 @@ export function HeroVerdictBlock({
           className="mt-5"
           style={{
             // - BUSCAR OTRA: wash Signal Red 6%
-            // - AJUSTA EL PRECIO: var(--franco-card) (state="negative" preserva
+            // - AJUSTA SUPUESTOS: var(--franco-card) (state="negative" preserva
             //   borderLeft Signal Red + label Signal Red vía StateBox internal)
             // - COMPRAR / RECONSIDERA: var(--franco-elevated) sin tinte cromático
             background: isBuscar

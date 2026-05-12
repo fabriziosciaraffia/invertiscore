@@ -163,15 +163,63 @@ export interface NegociacionScenario {
   razon?: string;
 }
 
-// El motor produce solo 3 señales matemáticas. Solo Franco puede emitir el
-// 4to veredicto RECONSIDERA LA ESTRUCTURA (cuando el problema es financiero,
-// no del depto). Ver analysis-voice-franco/SKILL.md §1.5 + §1.7.
-export type EngineSignal = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+// Vocabulario unificado de veredictos (Commit 1 · 2026-05-11).
+// LTR + STR comparten los 3 valores base; LTR agrega el 4to (RECONSIDERA
+// LA ESTRUCTURA) que solo Franco emite cuando el problema es financiero,
+// no del depto. Ver analysis-voice-franco/SKILL.md §1.5 + §1.7.
+//
+// Migración desde vocabulario antiguo (read path, no destructivo en DB):
+//   LTR antiguo:
+//     "COMPRAR"             → "COMPRAR"                    (sin cambio)
+//     "AJUSTA EL PRECIO"    → "AJUSTA SUPUESTOS"
+//     "BUSCAR OTRA"         → "BUSCAR OTRA"                (sin cambio)
+//     "RECONSIDERA LA ESTRUCTURA" → "RECONSIDERA LA ESTRUCTURA" (sin cambio)
+//   STR antiguo:
+//     "VIABLE"              → "COMPRAR"
+//     "AJUSTA ESTRATEGIA"   → "AJUSTA SUPUESTOS"
+//     "NO RECOMENDADO"      → "BUSCAR OTRA"
+//
+// Usar `normalizeLegacyVerdict()` (en este mismo archivo) para coercer
+// strings legacy de DB al vocabulario canónico antes de pasarlos a la UI.
+export type EngineSignal = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 export type FrancoVerdict =
   | "COMPRAR"
-  | "AJUSTA EL PRECIO"
+  | "AJUSTA SUPUESTOS"
   | "BUSCAR OTRA"
   | "RECONSIDERA LA ESTRUCTURA";
+
+/**
+ * Mapea cualquier string de veredicto (legacy o canónico, LTR o STR) al
+ * vocabulario canónico unificado. Devuelve null si el string no es
+ * reconocible — los consumers deben proteger con fallback ("—", placeholder).
+ *
+ * Ejemplos:
+ *   normalizeLegacyVerdict("AJUSTA EL PRECIO")   → "AJUSTA SUPUESTOS"
+ *   normalizeLegacyVerdict("VIABLE")             → "COMPRAR"
+ *   normalizeLegacyVerdict("AJUSTA ESTRATEGIA")  → "AJUSTA SUPUESTOS"
+ *   normalizeLegacyVerdict("NO RECOMENDADO")     → "BUSCAR OTRA"
+ *   normalizeLegacyVerdict("COMPRAR")            → "COMPRAR"
+ *   normalizeLegacyVerdict("garbage")            → null
+ */
+export function normalizeLegacyVerdict(raw: string | null | undefined): FrancoVerdict | null {
+  if (!raw || typeof raw !== "string") return null;
+  switch (raw.trim().toUpperCase()) {
+    case "COMPRAR":
+    case "VIABLE":
+      return "COMPRAR";
+    case "AJUSTA SUPUESTOS":
+    case "AJUSTA EL PRECIO":
+    case "AJUSTA ESTRATEGIA":
+      return "AJUSTA SUPUESTOS";
+    case "BUSCAR OTRA":
+    case "NO RECOMENDADO":
+      return "BUSCAR OTRA";
+    case "RECONSIDERA LA ESTRUCTURA":
+      return "RECONSIDERA LA ESTRUCTURA";
+    default:
+      return null;
+  }
+}
 
 export interface FullAnalysisResult {
   score: number;
@@ -233,7 +281,7 @@ export interface AIAnalysis {
   };
   veredicto: {
     titulo: string;
-    decision: "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
+    decision: "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
     explicacion_clp: string;
     explicacion_uf: string;
   };

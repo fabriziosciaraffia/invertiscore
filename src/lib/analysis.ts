@@ -1165,7 +1165,9 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
 
   // engineSignal: base por score + overrides por señales fuertes.
   // Antes era `veredicto`. Ver analysis-voice-franco/SKILL.md §1.7 para el rename.
-  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
+  // Commit 1 · 2026-05-11: vocabulario unificado con STR. Thresholds (70 / 40)
+  // idénticos; solo cambia "AJUSTA EL PRECIO" → "AJUSTA SUPUESTOS".
+  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
   // NOTE: These overrides can make the badge contradict the score bar visually.
   // This is intentional: structural signals (extreme flujo, zero break-even) override the composite score.

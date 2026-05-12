@@ -115,7 +115,7 @@ export function OnboardingClient() {
           {[
             { n: "1", title: "Ingresa los datos del departamento", sub: "Precio, ubicación, superficie, dormitorios" },
             { n: "2", title: "Franco analiza con datos reales", sub: "20.000+ propiedades, 24 comunas, plusvalía histórica" },
-            { n: "3", title: "Recibe un veredicto claro", sub: "COMPRAR · AJUSTA EL PRECIO · BUSCAR OTRA" },
+            { n: "3", title: "Recibe un veredicto claro", sub: "COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA" },
           ].map((step) => (
             <div key={step.n} className="flex items-center gap-4">
               <div
@@ -165,7 +165,7 @@ export function OnboardingClient() {
               borderRadius: 20,
             }}
           >
-            AJUSTA EL PRECIO
+            AJUSTA SUPUESTOS
           </span>
           <span
             className="font-mono font-semibold uppercase"

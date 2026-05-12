@@ -1074,7 +1074,7 @@ export function PremiumResults({
       tooltip: "Arriendo mensual estimado o ajustado por el usuario.",
     },
   ];
-  const resolvedVeredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+  const resolvedVeredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
 
   const mainContent = (
     <>

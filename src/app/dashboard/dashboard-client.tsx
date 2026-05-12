@@ -10,27 +10,38 @@ import { AppNav } from "@/components/chrome/AppNav";
 import { LogoutButton } from "@/components/logout-button";
 import type { Analisis } from "@/lib/types";
 import { readFrancoVerdict } from "@/lib/results-helpers";
+import { normalizeLegacyVerdict } from "@/lib/types";
 import { User } from "lucide-react";
 
-type LTRVerdict = "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA";
-type STRVerdict = "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO";
-type AnyVerdict = LTRVerdict | STRVerdict;
+// Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11). Análisis legacy
+// con strings antiguos (VIABLE / AJUSTA ESTRATEGIA / NO RECOMENDADO / AJUSTA
+// EL PRECIO) se normalizan en read path via `normalizeLegacyVerdict`.
+type UnifiedVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
+type LTRVerdict = UnifiedVerdict;
+type STRVerdict = UnifiedVerdict;
+type AnyVerdict = UnifiedVerdict;
 type VerdictFilter = "todos" | AnyVerdict;
 type TypeFilter = "todos" | "ltr" | "str";
 
 function getVerdict(score: number, veredictoMotor?: string): LTRVerdict {
-  if (veredictoMotor === "COMPRAR" || veredictoMotor === "AJUSTA EL PRECIO" || veredictoMotor === "BUSCAR OTRA") return veredictoMotor;
+  const norm = normalizeLegacyVerdict(veredictoMotor);
+  // RECONSIDERA LA ESTRUCTURA solo aplica al render del veredicto Franco
+  // (badge LTR detallado). En dashboard listing colapsa a COMPRAR para no
+  // sumar un 4to filtro.
+  if (norm && norm !== "RECONSIDERA LA ESTRUCTURA") return norm;
+  if (norm === "RECONSIDERA LA ESTRUCTURA") return "COMPRAR";
   if (score >= 75) return "COMPRAR";
-  if (score >= 40) return "AJUSTA EL PRECIO";
+  if (score >= 40) return "AJUSTA SUPUESTOS";
   return "BUSCAR OTRA";
 }
 
 function getSTRVerdict(item: Analisis): STRVerdict {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = item.results as any;
-  const v = r?.francoScore?.veredicto ?? r?.veredicto;
-  if (v === "VIABLE" || v === "AJUSTA ESTRATEGIA" || v === "NO RECOMENDADO") return v;
-  return "NO RECOMENDADO";
+  const raw = r?.francoScore?.veredicto ?? r?.veredicto;
+  const norm = normalizeLegacyVerdict(raw);
+  if (norm && norm !== "RECONSIDERA LA ESTRUCTURA") return norm;
+  return "BUSCAR OTRA";
 }
 
 function getSTRScore(item: Analisis): number | null {
@@ -128,40 +139,59 @@ function getSTRSiendoFranco(item: Analisis): string {
   const sobreRenta = r?.comparativa?.sobreRenta ?? 0;
   const sobreRentaPct = Math.round((r?.comparativa?.sobreRentaPct ?? 0) * 100);
   const veredicto = getSTRVerdict(item);
-  if (veredicto === "VIABLE") {
+  if (veredicto === "COMPRAR") {
     return `Airbnb genera +${sobreRentaPct}% más que arriendo largo. Sobre-renta de $${Math.abs(Math.round(sobreRenta)).toLocaleString("es-CL")}/mes.`;
   }
-  if (veredicto === "AJUSTA ESTRATEGIA") {
+  if (veredicto === "AJUSTA SUPUESTOS") {
     return `Airbnb genera levemente más que arriendo largo (+${sobreRentaPct}%). Evalúa si el esfuerzo operativo vale la pena.`;
   }
   return "El arriendo tradicional es más rentable para esta propiedad. La renta corta no cubre los costos operativos adicionales.";
 }
 
+// Commit 1 · 2026-05-11: badges en Ink + Signal Red (Capa 1 binaria del
+// franco-design-system). Las variables --franco-v-buy / --franco-v-adjust
+// migran a Ink: el color del badge ya no expresa "verde positivo" / "amber
+// warning"; expresa jerarquía (Ink primary / Ink secondary / Signal Red).
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles: Record<string, { color: string; bg: string; border: string }> = {
-    COMPRAR: { color: "var(--franco-v-buy)", bg: "var(--franco-v-buy-bg)", border: "var(--franco-v-buy-bg)" },
-    "AJUSTA EL PRECIO": { color: "var(--franco-v-adjust)", bg: "var(--franco-v-adjust-bg)", border: "var(--franco-v-adjust-bg)" },
-    "BUSCAR OTRA": { color: "var(--franco-v-avoid)", bg: "var(--franco-v-avoid-bg)", border: "var(--franco-v-avoid-bg)" },
-    VIABLE: { color: "var(--franco-v-buy)", bg: "var(--franco-v-buy-bg)", border: "var(--franco-v-buy-bg)" },
-    "AJUSTA ESTRATEGIA": { color: "var(--franco-v-adjust)", bg: "var(--franco-v-adjust-bg)", border: "var(--franco-v-adjust-bg)" },
-    "NO RECOMENDADO": { color: "var(--franco-v-avoid)", bg: "var(--franco-v-avoid-bg)", border: "var(--franco-v-avoid-bg)" },
+    COMPRAR: {
+      color: "var(--franco-text)",
+      bg: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
+      border: "color-mix(in srgb, var(--franco-text) 18%, transparent)",
+    },
+    "AJUSTA SUPUESTOS": {
+      color: "var(--franco-text-secondary)",
+      bg: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+      border: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
+    },
+    "BUSCAR OTRA": {
+      color: "var(--signal-red)",
+      bg: "color-mix(in srgb, var(--signal-red) 6%, transparent)",
+      border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
+    },
   };
-  const s = styles[verdict] || styles["AJUSTA EL PRECIO"];
+  // Coerce legacy strings on render (no DB rewrite).
+  const normalized = normalizeLegacyVerdict(verdict);
+  const displayLabel = normalized === "RECONSIDERA LA ESTRUCTURA" ? "RECONSIDERA" : (normalized ?? verdict);
+  const s = styles[displayLabel] || styles["AJUSTA SUPUESTOS"];
   return (
     <span
       className="inline-flex font-mono text-[9px] font-bold tracking-wide"
       style={{ padding: "3px 10px", borderRadius: 5, background: s.bg, border: `1.5px solid ${s.border}`, color: s.color }}
     >
-      {verdict}
+      {displayLabel}
     </span>
   );
 }
 
+// Commit 1 · 2026-05-11: iconos Ink + Signal Red. Antes COMPRAR usaba
+// teal/gray, AJUSTA usaba amber. Capa 1 binaria los reemplaza por gradación
+// de Ink + Signal Red exclusivamente para criticidad.
 function STRScoreIcon({ verdict }: { verdict: STRVerdict }) {
   const config = {
-    VIABLE: { icon: "✓", color: "var(--franco-v-buy)" },
-    "AJUSTA ESTRATEGIA": { icon: "⚠", color: "var(--franco-v-adjust)" },
-    "NO RECOMENDADO": { icon: "✗", color: "var(--signal-red)" },
+    COMPRAR: { icon: "✓", color: "var(--franco-text)" },
+    "AJUSTA SUPUESTOS": { icon: "⚠", color: "var(--franco-text-secondary)" },
+    "BUSCAR OTRA": { icon: "✗", color: "var(--signal-red)" },
   }[verdict];
   return (
     <div className="relative h-12 w-12 shrink-0">
@@ -176,7 +206,15 @@ function STRScoreIcon({ verdict }: { verdict: STRVerdict }) {
 }
 
 function ScoreCircle({ score }: { score: number }) {
-  const color = score >= 75 ? "var(--franco-v-buy)" : score >= 40 ? "var(--franco-v-adjust)" : "var(--signal-red)";
+  // Capa 1 binaria: ScoreCircle migra a Ink + Signal Red.
+  // Score >= 75 → Ink primary (operación sólida).
+  // Score 40-74 → Ink secondary (operación con ajustes).
+  // Score < 40  → Signal Red (criticidad).
+  const color = score >= 75
+    ? "var(--franco-text)"
+    : score >= 40
+      ? "var(--franco-text-secondary)"
+      : "var(--signal-red)";
   const dashLen = (score / 100) * 126;
   return (
     <div className="relative h-12 w-12 shrink-0">
@@ -241,11 +279,11 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
     return { str, ltr: analisis.length - str, total: analisis.length };
   }, [analisis]);
 
-  // Verdict counts (within type-filtered set)
+  // Verdict counts (within type-filtered set). Vocabulario unificado tras
+  // Commit 1 · 2026-05-11: 3 categorías para LTR + STR.
   const verdictCounts = useMemo(() => {
     const counts: Record<string, number> = {
-      COMPRAR: 0, "AJUSTA EL PRECIO": 0, "BUSCAR OTRA": 0,
-      VIABLE: 0, "AJUSTA ESTRATEGIA": 0, "NO RECOMENDADO": 0,
+      COMPRAR: 0, "AJUSTA SUPUESTOS": 0, "BUSCAR OTRA": 0,
     };
     typeFiltered.forEach((a) => { counts[getAnyVerdict(a)]++; });
     return counts;
@@ -282,20 +320,17 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
     router.refresh();
   };
 
-  const ltrVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
-    { key: "COMPRAR", label: "Comprar", color: "var(--ink-400)" },
-    { key: "AJUSTA EL PRECIO", label: "Ajusta precio", color: "var(--ink-500)" },
+  // Vocabulario unificado (Commit 1 · 2026-05-11) → un solo set de filtros
+  // sirve para LTR, STR y "todos". El typeFilter sigue separando listados;
+  // sólo los nombres de filtro se consolidan.
+  const unifiedVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
+    { key: "COMPRAR", label: "Comprar", color: "var(--franco-text)" },
+    { key: "AJUSTA SUPUESTOS", label: "Ajusta supuestos", color: "var(--franco-text-secondary)" },
     { key: "BUSCAR OTRA", label: "Buscar otra", color: "var(--signal-red)" },
   ];
-  const strVerdictFilters: { key: VerdictFilter; label: string; color: string }[] = [
-    { key: "VIABLE", label: "Viable", color: "var(--ink-400)" },
-    { key: "AJUSTA ESTRATEGIA", label: "Ajusta estrategia", color: "var(--ink-500)" },
-    { key: "NO RECOMENDADO", label: "No recomendado", color: "var(--signal-red)" },
-  ];
-  const verdictFilterSet =
-    typeFilter === "str" ? strVerdictFilters :
-    typeFilter === "ltr" ? ltrVerdictFilters :
-    [...ltrVerdictFilters, ...strVerdictFilters].filter((f) => (verdictCounts[f.key as string] ?? 0) > 0);
+  const verdictFilterSet = unifiedVerdictFilters.filter((f) =>
+    typeFilter !== "todos" || (verdictCounts[f.key as string] ?? 0) > 0
+  );
 
   const filters: { key: VerdictFilter; label: string; count: number; color: string | null }[] = [
     { key: "todos", label: "Todos", count: typeFiltered.length, color: null },

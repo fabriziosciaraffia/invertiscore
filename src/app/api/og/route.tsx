@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   }
 
   const score = data.score || 0;
-  const verdict = score >= 75 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA";
+  const verdict = score >= 75 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
   const verdictColor = score >= 75 ? "#B0BEC5" : score >= 40 ? "#C8323C" : "#C8323C";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const results = data.results as any;

@@ -6,6 +6,7 @@ import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
+import { normalizeLegacyVerdict } from "@/lib/types";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -20,7 +21,8 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
   }
 
   const results = data.results as ShortTermResult | null;
-  const veredicto = results?.veredicto ?? "Análisis";
+  // Commit 1 · 2026-05-11: normalizar veredicto legacy en metadata.
+  const veredicto = normalizeLegacyVerdict(results?.veredicto) ?? "Análisis";
   const title = `Renta Corta: ${data.nombre} — ${veredicto}`;
   const description = `Análisis de renta corta en ${data.comuna}. Veredicto: ${veredicto}.`;
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";

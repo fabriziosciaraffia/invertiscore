@@ -177,10 +177,10 @@ REGLA DE DIVERGENCIA (lee esto antes de elegir francoVerdict):
 Si engineSignal === "COMPRAR":
 - francoVerdict = "COMPRAR" (default).
 - O francoVerdict = "RECONSIDERA LA ESTRUCTURA" si y solo si la matemática del depto cierra PERO el financiamiento del usuario no es sostenible.
-- PROHIBIDO francoVerdict = "AJUSTA EL PRECIO" o "BUSCAR OTRA" cuando engineSignal === "COMPRAR". Si el motor concluyó que la operación es sólida, tu única razón legítima para discrepar es la estructura financiera del usuario, NO el flujo en horizonte ni el aporte indefinido (esos ya los consideró el motor en su score).
+- PROHIBIDO francoVerdict = "AJUSTA SUPUESTOS" o "BUSCAR OTRA" cuando engineSignal === "COMPRAR". Si el motor concluyó que la operación es sólida, tu única razón legítima para discrepar es la estructura financiera del usuario, NO el flujo en horizonte ni el aporte indefinido (esos ya los consideró el motor en su score).
 
-Si engineSignal === "AJUSTA EL PRECIO":
-- francoVerdict puede ser "AJUSTA EL PRECIO" (default), "RECONSIDERA LA ESTRUCTURA", o "COMPRAR" (raro, solo si ves algo que el motor no consideró).
+Si engineSignal === "AJUSTA SUPUESTOS":
+- francoVerdict puede ser "AJUSTA SUPUESTOS" (default), "RECONSIDERA LA ESTRUCTURA", o "COMPRAR" (raro, solo si ves algo que el motor no consideró).
 
 Si engineSignal === "BUSCAR OTRA":
 - francoVerdict puede ser "BUSCAR OTRA" (default) o "RECONSIDERA LA ESTRUCTURA" si un cambio plausible de estructura vuelve viable la operación.
@@ -477,7 +477,7 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 {
   "siendoFrancoHeadline_clp": string,
   "siendoFrancoHeadline_uf": string,
-  "francoVerdict": "COMPRAR" | "AJUSTA EL PRECIO" | "BUSCAR OTRA" | "RECONSIDERA LA ESTRUCTURA",
+  "francoVerdict": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" | "RECONSIDERA LA ESTRUCTURA",
 
   "conviene": {
     "pregunta": "¿Conviene o no conviene?",
@@ -896,7 +896,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         ? Math.round(precioFlujoNeutroUF)
         : Math.round(input.precio * 0.9);
 
-    const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+    const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
 
     // ─── Fase 3.7 v10 — 3 anclas discretas + modo del motor ──────────────
     // Techo viene del motor (siempre). primeraOferta:
@@ -921,7 +921,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precio_clp: null,
         razon: "El motor recomienda no comprar esta propiedad.",
       };
-    } else if (veredictoMotor === "AJUSTA EL PRECIO" && modoSugerido !== "cerrar_actual") {
+    } else if (veredictoMotor === "AJUSTA SUPUESTOS" && modoSugerido !== "cerrar_actual") {
       // Solo se incluye walkAway-precio cuando NO es cerrar_actual y NO es BUSCAR.
       // Cuando precio_uf == techo, el walkAway es redundante con techo, así que lo
       // omitimos a nivel ancla — frontend NO renderiza slot redundante.

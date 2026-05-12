@@ -7,7 +7,7 @@ import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima
 
 export interface FrancoScoreSTR {
   score: number;
-  veredicto: 'VIABLE' | 'AJUSTA ESTRATEGIA' | 'NO RECOMENDADO';
+  veredicto: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
   overrideApplied: string | null;
   desglose: {
     rentabilidad: DimensionScore;
@@ -318,32 +318,34 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   );
   score = Math.max(0, Math.min(100, score));
 
-  let veredicto: 'VIABLE' | 'AJUSTA ESTRATEGIA' | 'NO RECOMENDADO';
-  if (score >= 65) veredicto = 'VIABLE';
-  else if (score >= 40) veredicto = 'AJUSTA ESTRATEGIA';
-  else veredicto = 'NO RECOMENDADO';
+  // Commit 1 · 2026-05-11: vocabulario unificado con LTR. Thresholds del
+  // score (65 / 40) idénticos; solo cambia la string emitida.
+  let veredicto: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
+  if (score >= 65) veredicto = 'COMPRAR';
+  else if (score >= 40) veredicto = 'AJUSTA SUPUESTOS';
+  else veredicto = 'BUSCAR OTRA';
 
   let overrideApplied: string | null = null;
 
   const sobreRentaPct = inputs.results.comparativa.sobreRentaPct;
 
-  if (sobreRentaPct < 0 && veredicto === 'VIABLE') {
-    veredicto = 'AJUSTA ESTRATEGIA';
-    overrideApplied = 'LTR genera más que STR — máximo AJUSTA ESTRATEGIA';
+  if (sobreRentaPct < 0 && veredicto === 'COMPRAR') {
+    veredicto = 'AJUSTA SUPUESTOS';
+    overrideApplied = 'LTR genera más que STR — máximo AJUSTA SUPUESTOS';
   }
 
-  if (inputs.regulacionEdificio === 'no' && veredicto === 'VIABLE') {
-    veredicto = 'AJUSTA ESTRATEGIA';
-    overrideApplied = 'Edificio no permite Airbnb — máximo AJUSTA ESTRATEGIA';
+  if (inputs.regulacionEdificio === 'no' && veredicto === 'COMPRAR') {
+    veredicto = 'AJUSTA SUPUESTOS';
+    overrideApplied = 'Edificio no permite Airbnb — máximo AJUSTA SUPUESTOS';
   }
 
   if (base.flujoCajaMensual < -250000 && sobreRentaPct < 0.10) {
-    veredicto = 'NO RECOMENDADO';
+    veredicto = 'BUSCAR OTRA';
     overrideApplied = 'Flujo muy negativo sin ventaja clara sobre LTR';
   }
 
   if (base.capRate < 0.02) {
-    veredicto = 'NO RECOMENDADO';
+    veredicto = 'BUSCAR OTRA';
     overrideApplied = 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR';
   }
 

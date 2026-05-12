@@ -1,6 +1,7 @@
 "use client";
 
 import type { DatoClave } from "@/lib/types";
+import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { HeroTopStrip } from "../HeroTopStrip";
 import { DatoCard } from "../DatoCard";
@@ -15,24 +16,25 @@ import { fmtMoney, fmtPct } from "../utils";
  *   3. Cuerpo: tag "01 · VEREDICTO" + pregunta + alert callout +
  *      grid 3 DatoCards (NOI · Cash-on-Cash · Ventaja vs LTR)
  *
- * Mapeo de veredictos STR → tratamiento visual LTR:
- *   VIABLE          → COMPRAR (Ink neutro, badge invertido)
- *   AJUSTA ESTRAT.  → AJUSTA EL PRECIO (Ink secundario)
- *   NO RECOMENDADO  → BUSCAR OTRA (wash Signal Red)
+ * Commit 1 · 2026-05-11: vocabulario unificado con LTR (COMPRAR / AJUSTA
+ * SUPUESTOS / BUSCAR OTRA). El tratamiento visual sigue el mismo patrón:
+ *   COMPRAR          → Ink neutro, badge invertido
+ *   AJUSTA SUPUESTOS → Ink secundario, badge texto Signal Red
+ *   BUSCAR OTRA      → wash Signal Red, badge sólido
  */
 
 type Tratamiento = "neutro" | "ajusta" | "rojo";
 
 function tratamientoFor(v: STRVerdict): Tratamiento {
-  if (v === "VIABLE") return "neutro";
-  if (v === "NO RECOMENDADO") return "rojo";
+  if (v === "COMPRAR") return "neutro";
+  if (v === "BUSCAR OTRA") return "rojo";
   return "ajusta";
 }
 
 const VERDICT_TOOLTIPS_STR: Record<string, string> = {
-  VIABLE: "El depto cumple los criterios de renta corta: ventaja sobre LTR clara, NOI sólido, payback razonable.",
-  "AJUSTA ESTRATEGIA": "El depto tiene potencial STR pero algún parámetro (ocupación, comisión, costos) está justo. Hay que ajustar antes de operar.",
-  "NO RECOMENDADO": "Los números STR no superan al LTR. Mejor revisar otra propiedad o cambiar la estrategia.",
+  COMPRAR: "El depto cumple los criterios de renta corta: ventaja sobre LTR clara, NOI sólido, payback razonable.",
+  "AJUSTA SUPUESTOS": "El depto tiene potencial STR pero algún parámetro (ocupación, comisión, costos) está justo. Hay que ajustar antes de operar.",
+  "BUSCAR OTRA": "Los números STR no superan al LTR. Mejor revisar otra propiedad o cambiar la estrategia.",
 };
 
 export function HeroVerdictBlockSTR({
@@ -56,6 +58,13 @@ export function HeroVerdictBlockSTR({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   valorUF: number;
 }) {
+  // Commit 1 · 2026-05-11: normalizar veredicto recibido para soportar
+  // legacy DB ("VIABLE", "AJUSTA ESTRATEGIA", "NO RECOMENDADO"). El render
+  // siempre usa el vocabulario unificado. La variable local sombrea la prop
+  // — los renders abajo usan `veredicto` ya normalizado.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _veredictoOriginal: string = veredicto;
+  veredicto = (normalizeLegacyVerdict(veredicto) as STRVerdict | null) ?? "BUSCAR OTRA";
   const trato = tratamientoFor(veredicto);
   const isRojo = trato === "rojo";
   const isAjusta = trato === "ajusta";
@@ -76,7 +85,7 @@ export function HeroVerdictBlockSTR({
     ? "var(--franco-border)"
     : "color-mix(in srgb, var(--signal-red) 20%, transparent)";
 
-  // Badge: rojo sólido (NO RECOM), texto rojo sobre card (AJUSTA), Ink invertido (VIABLE)
+  // Badge: rojo sólido (BUSCAR OTRA), texto rojo sobre card (AJUSTA), Ink invertido (COMPRAR)
   const badgeBg = isRojo
     ? "var(--signal-red)"
     : isAjusta

@@ -131,7 +131,7 @@ export function HeroTopStrip({
               >
                 {veredicto}
               </span>
-              <InfoTooltip content={VERDICT_TOOLTIPS[veredicto] ?? VERDICT_TOOLTIPS["AJUSTA EL PRECIO"]} />
+              <InfoTooltip content={VERDICT_TOOLTIPS[veredicto] ?? VERDICT_TOOLTIPS["AJUSTA SUPUESTOS"]} />
             </span>
           </div>
 

@@ -50,7 +50,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       },
       {
         q: "¿Qué significan los veredictos?",
-        a: "COMPRAR significa que los números cierran bien. AJUSTA EL PRECIO significa que hay potencial pero al precio actual no es ideal — negocia o espera una baja. BUSCAR OTRA significa que los números no cierran y probablemente hay mejores opciones.",
+        a: "COMPRAR significa que los números cierran bien. AJUSTA SUPUESTOS significa que hay potencial pero algún supuesto (precio, ocupación, estructura) hace que la operación quede justa — revisa antes de avanzar. BUSCAR OTRA significa que los números no cierran y probablemente hay mejores opciones.",
       },
       {
         q: "¿De dónde salen los datos?",

@@ -113,7 +113,13 @@ export interface SensibilidadRow {
   sobreRentaPct: number;
 }
 
-export type STRVerdict = 'VIABLE' | 'AJUSTA ESTRATEGIA' | 'NO RECOMENDADO';
+// Vocabulario unificado de veredictos (Commit 1 · 2026-05-11). STR comparte
+// los 3 valores con LTR. Mapping desde vocabulario antiguo (read path):
+//   "VIABLE"            → "COMPRAR"
+//   "AJUSTA ESTRATEGIA" → "AJUSTA SUPUESTOS"
+//   "NO RECOMENDADO"    → "BUSCAR OTRA"
+// Usar `normalizeLegacyVerdict()` de `lib/types.ts` para coercer DB legacy.
+export type STRVerdict = 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
 
 // Proyección año-a-año para Patrón 7 (Advanced Section). Ronda 4b.
 export interface YearProjectionSTR {
@@ -813,13 +819,15 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   });
 
   // --- 7. Veredicto ---
+  // Commit 1 · 2026-05-11: vocabulario unificado con LTR. Thresholds idénticos
+  // (sobreRentaPct), solo cambia la string emitida.
   let veredicto: STRVerdict;
   if (sobreRentaPct >= 0.10) {
-    veredicto = 'VIABLE';
+    veredicto = 'COMPRAR';
   } else if (sobreRentaPct >= 0 && base.noiMensual > 0) {
-    veredicto = 'AJUSTA ESTRATEGIA';
+    veredicto = 'AJUSTA SUPUESTOS';
   } else {
-    veredicto = 'NO RECOMENDADO';
+    veredicto = 'BUSCAR OTRA';
   }
 
   // --- 8. Projections + Exit (Ronda 4b) ---

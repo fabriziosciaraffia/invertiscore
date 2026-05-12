@@ -101,7 +101,7 @@ export async function POST(request: Request) {
               user.user_metadata?.nombre || user.user_metadata?.full_name || "",
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
-              readFrancoVerdict(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA"),
+              readFrancoVerdict(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
               data.id,
             );
           } catch (e) {

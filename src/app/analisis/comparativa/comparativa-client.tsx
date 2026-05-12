@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import type { FrancoVerdict } from "@/lib/types";
 
 type LTRVerdict = FrancoVerdict;
-type STRVerdict = "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO";
+// Commit 1 · 2026-05-11: vocabulario unificado con LTR.
+type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
 
 interface Props {
@@ -84,23 +85,24 @@ function fmtPctDecimal(n: number, decimals = 1): string {
 }
 
 // ─── Verdict configs (Capa 1: solo Ink + Signal Red) ───────
-// COMPRAR / VIABLE → neutral Ink (sin wash, badge invertido).
-// AJUSTA EL PRECIO / AJUSTA ESTRATEGIA → surface neutral con badge texto Signal Red (sin wash amber).
-// BUSCAR OTRA / NO RECOMENDADO → wash Signal Red (--franco-sc-bad-*) + badge sólido.
+// Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11):
+// COMPRAR          → neutral Ink (sin wash, badge invertido).
+// AJUSTA SUPUESTOS → surface neutral con badge texto Signal Red (sin wash amber).
+// BUSCAR OTRA      → wash Signal Red (--franco-sc-bad-*) + badge sólido.
 type VerdictTone = "neutral" | "warn" | "avoid";
 
 const LTR_VERDICT: Record<LTRVerdict, { tone: VerdictTone; icon: typeof CheckCircle2; label: string }> = {
   "COMPRAR": { tone: "neutral", icon: CheckCircle2, label: "COMPRAR" },
-  "AJUSTA EL PRECIO": { tone: "warn", icon: AlertTriangle, label: "AJUSTA EL PRECIO" },
+  "AJUSTA SUPUESTOS": { tone: "warn", icon: AlertTriangle, label: "AJUSTA SUPUESTOS" },
   "BUSCAR OTRA": { tone: "avoid", icon: XCircle, label: "BUSCAR OTRA" },
   // 4to veredicto: el depto está bien, la matemática del financiamiento no.
   "RECONSIDERA LA ESTRUCTURA": { tone: "neutral", icon: Calculator, label: "RECONSIDERA LA ESTRUCTURA" },
 };
 
 const STR_VERDICT: Record<STRVerdict, { tone: VerdictTone; icon: typeof CheckCircle2; label: string }> = {
-  "VIABLE": { tone: "neutral", icon: CheckCircle2, label: "VIABLE" },
-  "AJUSTA ESTRATEGIA": { tone: "warn", icon: AlertTriangle, label: "AJUSTA ESTRATEGIA" },
-  "NO RECOMENDADO": { tone: "avoid", icon: XCircle, label: "NO RECOMENDADO" },
+  "COMPRAR": { tone: "neutral", icon: CheckCircle2, label: "COMPRAR" },
+  "AJUSTA SUPUESTOS": { tone: "warn", icon: AlertTriangle, label: "AJUSTA SUPUESTOS" },
+  "BUSCAR OTRA": { tone: "avoid", icon: XCircle, label: "BUSCAR OTRA" },
 };
 
 // Tone → CSS vars. Sin hex hardcoded.
@@ -118,7 +120,7 @@ function badgeSurface(tone: VerdictTone): { background: string; color: string } 
     return { background: "var(--signal-red)", color: "var(--ink-100)" };
   }
   if (tone === "warn") {
-    // Texto Signal Red sobre fondo card sin wash (Patrón 1: AJUSTA EL PRECIO).
+    // Texto Signal Red sobre fondo card sin wash (Patrón 1: AJUSTA SUPUESTOS).
     return { background: "var(--franco-card)", color: "var(--signal-red)" };
   }
   // neutral / COMPRAR: badge Ink sólido con texto invertido.

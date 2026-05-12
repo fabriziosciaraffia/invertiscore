@@ -8,6 +8,7 @@ import type { Analisis, FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { readFrancoVerdict } from "@/lib/results-helpers";
+import { normalizeLegacyVerdict } from "@/lib/types";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -107,7 +108,7 @@ export default async function ComparativaPage({
       ltrEgresos={Math.max(0, (ltrResults?.metrics?.egresosMensuales ?? 0) - (ltrResults?.metrics?.dividendo ?? 0))}
       ltrMultiplicador={ltrResults?.exitScenario?.multiplicadorCapital ?? 0}
       strScore={strResults?.francoScore?.score ?? 0}
-      strVeredicto={strResults?.veredicto ?? null}
+      strVeredicto={(normalizeLegacyVerdict(strResults?.veredicto) as never) ?? null}
       strIngresoBruto={strResults?.escenarios?.base?.ingresoBrutoMensual ?? 0}
       strNOI={strResults?.escenarios?.base?.noiMensual ?? 0}
       strFlujoMensual={strResults?.escenarios?.base?.flujoCajaMensual ?? 0}

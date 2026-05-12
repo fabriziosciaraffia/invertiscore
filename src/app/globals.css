@@ -81,28 +81,31 @@
     --franco-wm-franco: #FAFAF8;
     --franco-bar-track: rgba(250,250,248,0.06);
     --franco-bar-fill: rgba(250,250,248,0.6);
-    /* DEUDA FORMAL Fase 4.13: Capa 1 binaria pendiente.
-       Variables --franco-v-buy y --franco-v-adjust siguen activas en:
-         - StateBox.tsx (positive/warning)
-         - dashboard-client.tsx (verdict pills + scores)
-         - onboarding-client.tsx (tier badges)
-         - ResumenConfirmacion.tsx (legacy form)
-         - renta-corta/results-client.tsx (fallback bg)
-         - comunas/[slug]/page.tsx (badge highlight)
-       Migrar a Ink + Signal Red + dot indicator antes de eliminar las vars. */
+    /* Commit 1 · 2026-05-11 — Capa 1 binaria (Ink + Signal Red exclusivamente).
+       Las variables --franco-v-buy / --franco-v-adjust / --franco-warning /
+       --franco-score-gradient quedan ahora Ink-only (antes mezclaban teal +
+       amber + gris). Cumple franco-design-system Capa 1 cromática. Los
+       consumers no necesitan cambiar — la vars apuntan a Ink en vez de a
+       colores prohibidos.
+         --franco-v-buy:    Ink 400 (#B0BEC5) — neutral OK.
+         --franco-v-adjust: Ink 500 (antes amber #FBBF24).
+         --franco-v-avoid:  Signal Red (#C8323C) — uso #1 permitido.
+         --franco-positive: alias de v-buy.
+         --franco-warning:  alias de v-adjust.
+         --franco-score-gradient: red → ink 500 → ink 400 (sin amber). */
     --franco-v-buy: #B0BEC5;
     --franco-v-buy-bg: rgba(176,190,197,0.15);
-    --franco-v-adjust: #FBBF24;
-    --franco-v-adjust-bg: rgba(251,191,36,0.15);
+    --franco-v-adjust: #888780;
+    --franco-v-adjust-bg: rgba(136,135,128,0.15);
     --franco-v-avoid: #C8323C;
     --franco-v-avoid-bg: rgba(200,50,60,0.15);
     --franco-positive: #B0BEC5;
-    --franco-warning: #FBBF24;
+    --franco-warning: #888780;
     --franco-sc-bad-bg: rgba(200,50,60,0.08);
     --franco-sc-bad-border: rgba(200,50,60,0.15);
     --franco-sc-good-bg: rgba(176,190,197,0.08);
     --franco-sc-good-border: rgba(176,190,197,0.15);
-    --franco-score-gradient: linear-gradient(90deg, #C8323C, #FBBF24 50%, #B0BEC5);
+    --franco-score-gradient: linear-gradient(90deg, #C8323C, #888780 50%, #B0BEC5);
     --franco-dot-fill: #FAFAF8;
     --franco-dot-border: #0F0F0F;
   }
@@ -127,19 +130,22 @@
     --franco-wm-franco: #111111;
     --franco-bar-track: #F0F0F0;
     --franco-bar-fill: #D1D5DB;
-    --franco-v-buy: #0F766E;
-    --franco-v-buy-bg: rgba(15,118,110,0.08);
-    --franco-v-adjust: #B45309;
-    --franco-v-adjust-bg: rgba(217,119,6,0.08);
+    /* Commit 1 · 2026-05-11 — Capa 1 binaria también en light mode.
+       Antes teal + amber-dark; ahora Ink (5F5E5A para v-adjust, B4B2A9 para
+       v-buy/positive). Sin teal ni amber en ningún modo. */
+    --franco-v-buy: #B4B2A9;
+    --franco-v-buy-bg: rgba(180,178,169,0.08);
+    --franco-v-adjust: #5F5E5A;
+    --franco-v-adjust-bg: rgba(95,94,90,0.08);
     --franco-v-avoid: #C8323C;
     --franco-v-avoid-bg: rgba(200,50,60,0.06);
-    --franco-positive: #0F766E;
-    --franco-warning: #B45309;
+    --franco-positive: #B4B2A9;
+    --franco-warning: #5F5E5A;
     --franco-sc-bad-bg: rgba(200,50,60,0.04);
     --franco-sc-bad-border: rgba(200,50,60,0.12);
-    --franco-sc-good-bg: rgba(15,118,110,0.04);
-    --franco-sc-good-border: rgba(15,118,110,0.12);
-    --franco-score-gradient: linear-gradient(90deg, #C8323C, #D97706 50%, #0F766E);
+    --franco-sc-good-bg: rgba(180,178,169,0.06);
+    --franco-sc-good-border: rgba(180,178,169,0.16);
+    --franco-score-gradient: linear-gradient(90deg, #C8323C, #5F5E5A 50%, #B4B2A9);
     --franco-dot-fill: #111111;
     --franco-dot-border: #FFFFFF;
   }

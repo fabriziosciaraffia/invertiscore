@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import type { AIAnalysisSTRv2, STRVerdict } from "@/lib/types";
+import { normalizeLegacyVerdict } from "@/lib/types";
 
 /**
  * AI Insight Section — variante Renta Corta (Patrón 4 del design system).
@@ -108,7 +109,12 @@ function LoadingState() {
 // riesgos) ahora viven en los drawers — ver SubjectCardGridSTR.tsx.
 function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
   const headline = ai.siendoFrancoHeadline_clp || ai.siendoFrancoHeadline_uf;
-  const verdictDiverge = ai.francoVerdict !== ai.engineSignal;
+  // Commit 1 · 2026-05-11: normalizar veredictos cacheados en IA legacy.
+  // Cache pre-Commit 1 emitía "VIABLE"/"NO RECOMENDADO"; render unifica al
+  // vocabulario canónico antes de mostrarlos en badge/divergencia.
+  const francoVerdictNorm = (normalizeLegacyVerdict(ai.francoVerdict) as STRVerdict | null) ?? ai.francoVerdict;
+  const engineSignalNorm = (normalizeLegacyVerdict(ai.engineSignal) as STRVerdict | null) ?? ai.engineSignal;
+  const verdictDiverge = francoVerdictNorm !== engineSignalNorm;
 
   return (
     <>
@@ -133,8 +139,8 @@ function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
             FRANCO DIVERGE DEL MOTOR
           </p>
           <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
-            <span className="font-mono">Motor: {ai.engineSignal}</span> &nbsp;·&nbsp;{" "}
-            <span className="font-mono font-medium">Franco: {ai.francoVerdict}</span>
+            <span className="font-mono">Motor: {engineSignalNorm}</span> &nbsp;·&nbsp;{" "}
+            <span className="font-mono font-medium">Franco: {francoVerdictNorm}</span>
           </p>
           <p className="font-body italic text-[13px] text-[var(--franco-text)] mt-2 m-0 leading-[1.55]">
             {ai.francoVerdictRationale}
@@ -148,7 +154,7 @@ function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
         <SeccionApertura
           label="¿CONVIENE?"
           pregunta={ai.conviene.pregunta}
-          verdictBadge={ai.francoVerdict}
+          verdictBadge={francoVerdictNorm as STRVerdict}
         >
           <p className="m-0">{ai.conviene.respuestaDirecta}</p>
           {ai.conviene.veredictoFrase && (
@@ -191,8 +197,8 @@ function SeccionApertura({
               fontSize: 9,
               letterSpacing: "0.08em",
               color: "var(--franco-text)",
-              fontWeight: verdictBadge === "NO RECOMENDADO" ? 700 : 500,
-              background: verdictBadge === "NO RECOMENDADO"
+              fontWeight: verdictBadge === "BUSCAR OTRA" ? 700 : 500,
+              background: verdictBadge === "BUSCAR OTRA"
                 ? "color-mix(in srgb, var(--franco-text) 12%, transparent)"
                 : "color-mix(in srgb, var(--franco-text) 6%, transparent)",
               padding: "2px 8px",

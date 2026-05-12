@@ -125,11 +125,11 @@ REGLA DE DIVERGENCIA:
 - Cuando diverjas, completas \`francoVerdictRationale\` con 1-2 frases que expliquen POR QUÉ. Si no diverge, deja el campo en string vacío.
 
 Casos legítimos para diverger:
-- engineSignal=VIABLE pero regulacionEdificio="no" → francoVerdict="NO RECOMENDADO" (el motor no puede saber que está prohibido). Rationale: "El motor cierra los números pero el reglamento del edificio prohíbe arriendo corto plazo. Operar igual es arriesgar multa o cancelación del reglamento."
-- engineSignal=NO RECOMENDADO con sobre-renta marginal pero costos operativos inflados artificialmente → puede divergir a AJUSTA ESTRATEGIA si los costos son ajustables. Raro.
-- engineSignal=AJUSTA + ubicación con demanda excepcional (clínica + zona negocios + ski a tiro) → puede mantenerse o subir a VIABLE solo si el caso lo justifica EXPLÍCITAMENTE.
+- engineSignal=COMPRAR pero regulacionEdificio="no" → francoVerdict="BUSCAR OTRA" (el motor no puede saber que está prohibido). Rationale: "El motor cierra los números pero el reglamento del edificio prohíbe arriendo corto plazo. Operar igual es arriesgar multa o cancelación del reglamento."
+- engineSignal=BUSCAR OTRA con sobre-renta marginal pero costos operativos inflados artificialmente → puede divergir a AJUSTA SUPUESTOS si los costos son ajustables. Raro.
+- engineSignal=AJUSTA SUPUESTOS + ubicación con demanda excepcional (clínica + zona negocios + ski a tiro) → puede mantenerse o subir a COMPRAR solo si el caso lo justifica EXPLÍCITAMENTE.
 
-REGLA DURA: NO inventes contradicciones. Si el motor dice VIABLE y la operación se ve sólida, francoVerdict = VIABLE. La divergencia es para casos donde un dato cualitativo cambia la conclusión.
+REGLA DURA: NO inventes contradicciones. Si el motor dice COMPRAR y la operación se ve sólida, francoVerdict = COMPRAR. La divergencia es para casos donde un dato cualitativo cambia la conclusión.
 
 ## 8. Anomalías del input
 
@@ -269,8 +269,8 @@ Devuelve un objeto con esta estructura exacta. Sin texto fuera del JSON.
     "cajaAccionable": string             // POSICIÓN PERSONAL de Franco — cierre obligatorio
   },
 
-  "engineSignal": "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO",   // copia exacta del motor
-  "francoVerdict": "VIABLE" | "AJUSTA ESTRATEGIA" | "NO RECOMENDADO",  // tu veredicto
+  "engineSignal": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",   // copia exacta del motor
+  "francoVerdict": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // tu veredicto
   "francoVerdictRationale": string       // string vacío si francoVerdict === engineSignal; 1-2 frases si difiere
 }
 \`\`\`

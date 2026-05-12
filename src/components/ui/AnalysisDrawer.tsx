@@ -2031,7 +2031,7 @@ export function AnalysisDrawer({
     }
     if (activeKey === "riesgos") {
       const score = results.score ?? 0;
-      const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA EL PRECIO" : "BUSCAR OTRA");
+      const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
       if (veredicto === "COMPRAR") return "¿Qué cuidar?";
       if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
       return "¿Qué riesgos asume tu negociación?"; // AJUSTA
