@@ -192,11 +192,14 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* 02-05 · DIMENSIONES — Subject Card Grid.
-            Cada drawer embebe la narrativa IA correspondiente (Commit 2 2026-05-11). */}
+        {/* 02-07 · DIMENSIONES — Subject Card Grid.
+            Cada drawer embebe la narrativa IA correspondiente.
+            Commit 2c (2026-05-12): drawer 06 Tipo de huésped agregado, drawer
+            Factibilidad y riesgos renumerado a 07. */}
         <SubjectCardGridSTR
+          analysisId={analysisId}
           results={results}
-          inputData={inputData as { edificioPermiteAirbnb?: "si" | "no" | "no_seguro" } | null}
+          inputData={inputData as never}
           comuna={comuna}
           currency={currency}
           valorUF={ufValue}

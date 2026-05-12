@@ -9,6 +9,8 @@ import { extractRiesgos } from "@/components/ui/AnalysisDrawer";
 import { MiniCardSTR, type MiniCardSTRPunchline } from "./MiniCardSTR";
 import { DrawerSTR, type DrawerKeySTR } from "./DrawerSTR";
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
+import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
+import { calcGuestProfile, PERFIL_LABEL } from "@/lib/str-guest-profile";
 import { fmtMoney, fmtPct } from "../utils";
 
 /**
@@ -51,7 +53,8 @@ const DIMENSIONS: DimMeta[] = [
   { key: "sostenibilidad", numero: "03", label: "SOSTENIBILIDAD" },
   { key: "sensibilidad", numero: "04", label: "SENSIBILIDAD" },
   { key: "ventajaLtr", numero: "05", label: "VENTAJA vs LTR" },
-  { key: "factibilidad", numero: "06", label: "FACTIBILIDAD Y RIESGOS" },
+  { key: "tipoHuesped", numero: "06", label: "TIPO DE HUÉSPED" },
+  { key: "factibilidad", numero: "07", label: "FACTIBILIDAD Y RIESGOS" },
 ];
 
 interface InputDataSTR {
@@ -66,9 +69,15 @@ interface InputDataSTR {
   mantencion?: number;
   gastosComunes?: number;
   contribuciones?: number; // CLP trimestrales
+  // Coordenadas (Commit 2c — drawer 06 Tipo de huésped). Opcionales para
+  // backward-compat con análisis legacy sin geocodificación.
+  lat?: number;
+  lng?: number;
+  zonaRadio?: { lat?: number; lng?: number };
 }
 
 export function SubjectCardGridSTR({
+  analysisId,
   results,
   inputData,
   comuna,
@@ -76,6 +85,9 @@ export function SubjectCardGridSTR({
   valorUF,
   ai,
 }: {
+  /** Necesario para drawer 06 Tipo de huésped (lazy fetch del endpoint
+   * guest-insight). */
+  analysisId: string;
   results: ShortTermResult;
   inputData: InputDataSTR | null | undefined;
   comuna: string;
@@ -104,6 +116,21 @@ export function SubjectCardGridSTR({
   const sensibilidadGap = base.noiMensual > 0
     ? (base.noiMensual - noiP25) / base.noiMensual
     : 0;
+
+  // Tipo de huésped punchline — calculado sincrónicamente desde el motor
+  // (lat/lng + comuna + POIs). Si no hay coords, el card cae a placeholder
+  // genérico y el drawer mostrará error al abrir.
+  const lat = inputData?.lat ?? inputData?.zonaRadio?.lat ?? null;
+  const lng = inputData?.lng ?? inputData?.zonaRadio?.lng ?? null;
+  const guestProfileSync = useMemo(() => {
+    if (typeof lat !== "number" || typeof lng !== "number" || !comuna) return null;
+    try {
+      return calcGuestProfile(lat, lng, comuna);
+    } catch (e) {
+      console.warn("SubjectCardGridSTR: calcGuestProfile failed", e);
+      return null;
+    }
+  }, [lat, lng, comuna]);
 
   // ─── Punchlines por dimensión ───────────────────────
   const punchlines: Record<DrawerKeySTR, MiniCardSTRPunchline> = {
@@ -137,6 +164,19 @@ export function SubjectCardGridSTR({
           : `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR · payback no recupera`,
       color: sobreRenta < 0 ? "var(--signal-red)" : "var(--franco-text)",
     },
+    tipoHuesped: guestProfileSync
+      ? {
+          value: PERFIL_LABEL[guestProfileSync.dominante.perfil],
+          sub: guestProfileSync.secundarios.length > 0
+            ? `${guestProfileSync.dominante.porcentaje}% del flujo esperado · ${guestProfileSync.secundarios.length} perfil${guestProfileSync.secundarios.length > 1 ? "es" : ""} secundari${guestProfileSync.secundarios.length > 1 ? "os" : "o"}`
+            : `${guestProfileSync.dominante.porcentaje}% del flujo esperado · perfil dominante claro`,
+          color: "var(--franco-text)",
+        }
+      : {
+          value: "Por analizar",
+          sub: "Abre el detalle para ver el perfil de huésped",
+          color: "var(--franco-text-secondary)",
+        },
     factibilidad: {
       value:
         regulacion === "si"
@@ -168,6 +208,7 @@ export function SubjectCardGridSTR({
     ventajaLtr: sobreRenta >= 0
       ? "¿Cuánto más te da STR vs LTR?"
       : "¿Vale más arrendar largo en este depto?",
+    tipoHuesped: "¿Quién va a alojarse acá?",
     factibilidad: regulacion === "no"
       ? "¿Por qué no se puede operar acá?"
       : "¿Es posible operar STR en este depto?",
@@ -179,19 +220,15 @@ export function SubjectCardGridSTR({
     sostenibilidad: "Flujo mensual y estacionalidad",
     sensibilidad: "Sensibilidad a ocupación y mercado",
     ventajaLtr: "STR vs arriendo largo",
+    tipoHuesped: "Quién va a alojarse y cómo amoblar para él",
     factibilidad: "Regulación, zona y riesgos",
   };
 
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-        {DIMENSIONS.map((dim, i) => (
-          <div
-            key={dim.key}
-            // Último card (Factibilidad y riesgos) span full en desktop cuando
-            // hay 5 — evita una fila huérfana de 1 sola card.
-            className={i === DIMENSIONS.length - 1 ? "md:col-span-2" : undefined}
-          >
+        {DIMENSIONS.map((dim) => (
+          <div key={dim.key}>
             <MiniCardSTR
               numero={dim.numero}
               label={dim.label}
@@ -212,6 +249,7 @@ export function SubjectCardGridSTR({
         {activeDrawer && (
           <DrawerContent
             activeKey={activeDrawer}
+            analysisId={analysisId}
             results={results}
             inputData={inputData}
             comuna={comuna}
@@ -444,6 +482,7 @@ function CostosBreakdown({ inputData, currency, valorUF }: {
 
 function DrawerContent({
   activeKey,
+  analysisId,
   results,
   inputData,
   comuna,
@@ -452,6 +491,7 @@ function DrawerContent({
   ai,
 }: {
   activeKey: DrawerKeySTR;
+  analysisId: string;
   results: ShortTermResult;
   inputData: InputDataSTR | null | undefined;
   comuna: string;
@@ -464,6 +504,13 @@ function DrawerContent({
   const agresivo = results.escenarios.agresivo;
   const ltr = results.comparativa.ltr;
   const regulacion = inputData?.edificioPermiteAirbnb ?? "no_seguro";
+
+  // Drawer 06 Tipo de huésped — Commit 2c · 2026-05-12.
+  // Delega rendering a DrawerTipoHuesped (lazy fetch del endpoint guest-insight
+  // via useGuestInsight hook).
+  if (activeKey === "tipoHuesped") {
+    return <DrawerTipoHuesped analysisId={analysisId} />;
+  }
 
   if (activeKey === "rentabilidad") {
     const seccion = ai?.rentabilidad;

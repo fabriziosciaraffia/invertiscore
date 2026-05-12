@@ -6,12 +6,13 @@ import { X } from "lucide-react";
 /**
  * Drawer Detail — variante Renta Corta (Patrón 3 del design system).
  *
- * 5 dimensiones STR (Commit 2b — 2026-05-11):
+ * 6 dimensiones STR (Commit 2c — 2026-05-12):
  *   02 · RENTABILIDAD
  *   03 · SOSTENIBILIDAD
- *   04 · SENSIBILIDAD     ← nuevo: ¿qué tan robusta es la proyección?
- *   05 · VENTAJA vs LTR   (renumerado, era 04)
- *   06 · FACTIBILIDAD Y RIESGOS  (renumerado, era 05)
+ *   04 · SENSIBILIDAD
+ *   05 · VENTAJA vs LTR
+ *   06 · TIPO DE HUÉSPED        ← nuevo (paralelo LTR Drawer 06 Zona)
+ *   07 · FACTIBILIDAD Y RIESGOS (renumerado, era 06)
  *
  * Versión simplificada del AnalysisDrawer LTR — solo header + body genérico
  * (consumer pasa children con secciones de datos / bloque conclusivo /
@@ -22,6 +23,7 @@ export type DrawerKeySTR =
   | "sostenibilidad"
   | "sensibilidad"
   | "ventajaLtr"
+  | "tipoHuesped"
   | "factibilidad";
 
 const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
@@ -29,7 +31,8 @@ const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
   sostenibilidad: { numero: "03", label: "SOSTENIBILIDAD" },
   sensibilidad: { numero: "04", label: "SENSIBILIDAD" },
   ventajaLtr: { numero: "05", label: "VENTAJA vs LTR" },
-  factibilidad: { numero: "06", label: "FACTIBILIDAD Y RIESGOS" },
+  tipoHuesped: { numero: "06", label: "TIPO DE HUÉSPED" },
+  factibilidad: { numero: "07", label: "FACTIBILIDAD Y RIESGOS" },
 };
 
 const DRAWER_NAV_ORDER: DrawerKeySTR[] = [
@@ -37,6 +40,7 @@ const DRAWER_NAV_ORDER: DrawerKeySTR[] = [
   "sostenibilidad",
   "sensibilidad",
   "ventajaLtr",
+  "tipoHuesped",
   "factibilidad",
 ];
 
