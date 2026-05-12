@@ -4,6 +4,8 @@
 //   - turista_leisure  : turismo + cultura + nightlife
 //   - ejecutivo_corto  : hubs corporativos + metro + accesos
 //   - nomada_digital   : universidades + cafés/coworking + zonas residenciales activas
+//                        Label user-facing: "Trabajador remoto" (rename 2026-05-12).
+//                        Internal key conservado para compat con DB cache.
 //   - familia          : parques + malls familiares + zona residencial estable
 //   - paciente_medico  : clínicas grandes cercanas + comuna con concentración médica
 //                        (agregado iter 2026-05-12 post Commit 2c — heurística Fase 1)
@@ -32,10 +34,13 @@ export type PerfilHuespedSTR =
   | "familia"
   | "paciente_medico";
 
+// Labels user-facing. Iter 2026-05-12: "Nómada digital" → "Trabajador remoto"
+// (más reconocible para usuario chileno, evita connotación de turismo de moda).
+// El key interno `nomada_digital` se conserva para compat con cache DB.
 export const PERFIL_LABEL: Record<PerfilHuespedSTR, string> = {
   turista_leisure: "Turista de leisure",
   ejecutivo_corto: "Ejecutivo en visita corta",
-  nomada_digital: "Nómada digital",
+  nomada_digital: "Trabajador remoto",
   familia: "Familia visitando",
   paciente_medico: "Paciente médico / Familiar acompañante",
 };
@@ -46,7 +51,7 @@ export const PERFIL_DESCRIPCION: Record<PerfilHuespedSTR, string> = {
   ejecutivo_corto:
     "Visita por trabajo (3-7 noches). Prioriza cercanía a zona de negocios (El Golf, Sanhattan, Apoquindo), wifi rápido, escritorio funcional y conexión rápida con aeropuerto.",
   nomada_digital:
-    "Estadía media-larga (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés.",
+    "Trabajador remoto extranjero o de regiones (1-3 meses). Prioriza cocina equipada, lavadora, espacio de trabajo cómodo, internet sólido y barrio activo con cafés.",
   familia:
     "Familia en visita corta (3-5 noches), a veces acompañando a estudiantes o eventos. Prioriza parques cercanos, malls familiares y depto amplio sobre lujo.",
   paciente_medico:

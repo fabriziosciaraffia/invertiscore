@@ -55,7 +55,7 @@ Cada perfil cambia drásticamente la operación. Tus recomendaciones deben refle
 
   turista_leisure → estadía 2-4 noches, peak verano + fiestas patrias, ADR alto, requiere fotos profesionales + amenidades hotel-like + check-out flexible.
   ejecutivo_corto → estadía 3-7 noches, demanda lunes-jueves todo el año, ADR medio-alto, requiere wifi rápido + escritorio + secador profesional + cerca metro.
-  nomada_digital → estadía 1-3 meses, demanda fuera de temporada, ADR medio (descuento por estadía larga), requiere wifi sólido + cocina equipada + lavadora + espacio de trabajo.
+  nomada_digital → llamarlo "trabajador remoto" en todo el output al usuario (extranjero o de regiones que trabaja online). Estadía 1-3 meses, demanda fuera de temporada, ADR medio (descuento por estadía larga), requiere wifi sólido + cocina equipada + lavadora + espacio de trabajo. NUNCA uses "nómada digital" en el output — siempre "trabajador remoto".
   familia → estadía 3-5 noches, peak marzo (vuelta a clases) + julio (vacaciones de invierno), ADR variable, requiere parques cercanos + más camas que personas + kit familiar (cuna/silla bebé si aplica).
   paciente_medico → estadía 1-3 semanas (tratamiento o post-operatorio + acompañante familiar), demanda relativamente estable todo el año (sin peak turístico claro), ADR medio. Requiere silencio + blackout efectivo + cama king cómoda + cocina equipada para dieta especial + lavadora + accesibilidad básica (sin escaleras innecesarias) + cercanía caminable a la clínica. NO comunica como destino turístico — el listing debe transmitir descanso, no atracciones.
 
@@ -70,7 +70,7 @@ REGLA 3 — ESTACIONALIDAD POR PERFIL
 La estacionalidad mensual varía por perfil. Conecta con el chart de Drawer 03 mencionando el mes peak/valle ESPECÍFICO para el perfil:
   turista_leisure: peak enero-febrero (verano) + septiembre (fiestas patrias). Valle abril-mayo.
   ejecutivo_corto: peak abril-junio + septiembre-noviembre (temporada corporativa). Valle enero-febrero (corporativos de vacaciones).
-  nomada_digital: peak noviembre-marzo (escape del invierno norte). Valle julio-agosto.
+  nomada_digital (trabajador remoto): peak noviembre-marzo (escape del invierno norte). Valle julio-agosto.
   familia: peak marzo (vuelta a clases) + julio (vacaciones invierno) + diciembre. Valle agosto + abril.
   paciente_medico: demanda estable todo el año (los tratamientos no respetan temporada turística). Ligero peak marzo-junio + septiembre-noviembre (meses con más cirugías electivas programadas). Casi no hay valles marcados — esto es ventaja: ocupación más predecible, menos dependencia de temporada alta.
 
