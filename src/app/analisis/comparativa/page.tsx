@@ -7,6 +7,7 @@ import { isAdminUser } from "@/lib/admin";
 import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+import { encodeShareToken } from "@/lib/share-token";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -95,10 +96,15 @@ export default async function ComparativaPage({
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
 
+  // Share token determinístico (Commit 3c) — sin DB column. Permite generar
+  // URLs públicas `/share/comparativa/[token]` que decoderán al par (LTR, STR).
+  const shareToken = encodeShareToken(ltr.id, str.id);
+
   return (
     <ComparativaClient
       ltrId={ltr.id}
       strId={str.id}
+      shareToken={shareToken}
       nombre={ltr.nombre ?? str.nombre ?? ""}
       comuna={ltr.comuna ?? str.comuna ?? ""}
       ciudad={ltr.ciudad ?? str.ciudad ?? ""}

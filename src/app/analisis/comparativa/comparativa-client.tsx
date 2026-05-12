@@ -42,6 +42,7 @@ type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 interface Props {
   ltrId: string;
   strId: string;
+  shareToken: string;
   nombre: string;
   comuna: string;
   ciudad: string;
@@ -358,6 +359,9 @@ export function ComparativaClient(p: Props) {
             />
           </div>
 
+          {/* Compartir este análisis — Commit 3c */}
+          <ShareBlock token={p.shareToken} />
+
           {/* WalletStatusCTA */}
           <div className="mb-6">
             <WalletStatusCTA
@@ -450,5 +454,72 @@ function DrawerTrigger({
         Abrir →
       </p>
     </button>
+  );
+}
+
+// ─── Compartir este análisis · link público + PDF (Commit 3c) ───────────
+function ShareBlock({ token }: { token: string }) {
+  const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const shareUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/share/comparativa/${token}`
+    : `/share/comparativa/${token}`;
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      // Fallback
+      const ta = document.createElement("textarea");
+      ta.value = shareUrl;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    }
+  };
+
+  const downloadPDF = () => {
+    setDownloading(true);
+    // Trigger descarga directa via navegación. El endpoint responde con
+    // Content-Disposition: attachment, el browser baja el archivo.
+    window.location.href = `/api/share/comparativa/${token}/pdf`;
+    setTimeout(() => setDownloading(false), 8000);
+  };
+
+  return (
+    <div
+      className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 mb-6"
+    >
+      <p className="font-mono text-[10px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mb-2">
+        COMPARTIR ESTE ANÁLISIS
+      </p>
+      <p className="font-body text-[13px] text-[var(--franco-text-secondary)] leading-relaxed mb-4">
+        Link público con la comparativa completa o PDF descargable. La narrativa IA y los
+        números quedan congelados al momento que compartes.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          type="button"
+          onClick={copyLink}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-[var(--franco-border)] bg-[var(--franco-bg)] px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text)] transition-colors hover:border-[var(--franco-text-secondary)]"
+        >
+          {copied ? "✓ Link copiado" : "Copiar link"}
+        </button>
+        <button
+          type="button"
+          onClick={downloadPDF}
+          disabled={downloading}
+          className="flex-1 inline-flex items-center justify-center gap-2 rounded-md px-4 py-2.5 font-mono text-[11px] uppercase tracking-[0.06em] font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+          style={{ background: "var(--franco-text)", color: "var(--franco-bg)" }}
+        >
+          {downloading ? "Generando PDF…" : "Descargar PDF"}
+        </button>
+      </div>
+    </div>
   );
 }
