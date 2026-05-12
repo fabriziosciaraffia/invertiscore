@@ -328,6 +328,21 @@ Metro más cercano: ${metroName} a ${distMetro}m
 Clínica/hospital más cercano: ${clinica.nombre} a ${distClinicaTxt} (demanda médica internacional captura estadías 3-15 días)
 Zona negocios/turismo: ${zonaNT.nombre} a ${distZonaTxt} (demanda corporativa)
 Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR Santiago, +34% vs promedio)
+
+=== SUBSIDIO LEY 21.748 (palanca financiera ajena al motor) ===
+${r.subsidioTasa
+  ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${r.subsidioTasa.tasaConSubsidio.toFixed(1)}%
+${r.subsidioTasa.califica && !r.subsidioTasa.aplicado
+  ? `→ DEBES mencionar (Ángulo 4): el user puede pedir tasa subsidiada al banco (~0,6 pp menos). Esto BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo (la tasa actual no es la subsidiada).`
+  : r.subsidioTasa.califica && r.subsidioTasa.aplicado
+  ? `→ Ya está aplicado (la tasa ingresada coincide con la subsidiada). No menciones como mejora — solo si suma contexto.`
+  : `→ No califica. NO mencionar el subsidio.`}`
+  : "(motor pre-3a · subsidio no calculado)"}
+
+=== SENSIBILIDAD DE PRECIO (Ángulo 4) ===
+${r.sensibilidadPrecio
+  ? r.sensibilidadPrecio.map(s => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${(s.capRate * 100).toFixed(2)}%, CoC ${(s.cashOnCash * 100).toFixed(1)}%, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n")
+  : "(motor pre-3a · sin sensibilidad de precio)"}
 ${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════

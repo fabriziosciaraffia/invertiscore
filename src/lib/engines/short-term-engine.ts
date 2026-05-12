@@ -4,6 +4,13 @@
 // P&L completo, comparativa STR vs LTR, escenarios por percentil,
 // estacionalidad, ramp-up y veredicto.
 
+import {
+  calcTasaConSubsidio,
+  calificaSubsidio,
+  aplicaSubsidio,
+  TASA_MERCADO_FALLBACK,
+} from "../constants/subsidio";
+
 // =========================================
 // Types
 // =========================================
@@ -33,6 +40,10 @@ export interface ShortTermInputs {
   superficie: number;
   dormitorios: number;
   banos: number;
+  /** Tipo de propiedad: "Nuevo" / "Usado" (forma canónica) o lowercase del
+   * form ("nuevo"/"usado"). Necesario para evaluar subsidio Ley 21.748
+   * (Commit 3a · 2026-05-12). Opcional para back-compat con análisis legacy. */
+  tipoPropiedad?: string;
 
   // Financiamiento
   piePercent: number;       // decimal: 0.20 = 20%
@@ -228,6 +239,40 @@ export interface ShortTermResult {
   // En 4d la IA podrá producir `francoVerdict` distinto considerando perfil.
   engineSignal?: STRVerdict;
   francoVerdict?: STRVerdict;
+
+  // Commit 3a · 2026-05-12 — Subsidio Ley 21.748 (paridad con LTR).
+  // Aplica a viviendas nuevas ≤ 4.000 UF (primera vivienda). Rebaja la tasa
+  // hipotecaria en ~0,6 pp respecto al mercado. Estructura espejo de LTR
+  // (analysis.ts:307-311 metrics.subsidioTasa).
+  // Opcional para back-compat con análisis legacy pre-3a.
+  subsidioTasa?: {
+    califica: boolean;
+    tasaConSubsidio: number;
+    aplicado: boolean;
+  };
+
+  // Commit 3a · 2026-05-12 — Sensibilidad al PRECIO (paridad con LTR
+  // calcNegociacionScenario). Distinto de `sensibilidad[]` que mide
+  // sensibilidad al revenue del mercado. Acá variamos el precio del depto y
+  // recalculamos CAP/CoC/payback — útil para drawer 04 "Plan negociación".
+  sensibilidadPrecio?: SensibilidadPrecioRow[];
+}
+
+export interface SensibilidadPrecioRow {
+  /** "-5%" / "-10%" / "actual" */
+  label: string;
+  /** Precio resultante en CLP. */
+  precioCLP: number;
+  /** Δ del precio en CLP (negativo si bajó). */
+  delta: number;
+  /** CAP rate resultante (decimal). */
+  capRate: number;
+  /** Cash-on-Cash resultante anual (decimal). */
+  cashOnCash: number;
+  /** Flujo de caja mensual con precio reducido. */
+  flujoCajaMensual: number;
+  /** Payback amoblamiento en meses (negativo = no recupera, 0 = sin amobl). */
+  paybackMeses: number;
 }
 
 // =========================================
@@ -840,6 +885,33 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   );
   const exitScenario = buildExitScenario(projections, capitalInvertido);
 
+  // --- 9. Subsidio Ley 21.748 (Commit 3a · 2026-05-12) ---
+  // Paridad con LTR analysis.ts:307-311. La rebaja NO se aplica al cálculo
+  // del motor — se reporta como metadata para que UI/IA sugieran al usuario
+  // pedir tasa subsidiada al banco si califica.
+  const precioUF = input.valorUF > 0 ? input.precioCompra / input.valorUF : 0;
+  const tasaIngresadaPct = input.tasaCredito * 100;
+  const subsidioTasa = (() => {
+    const califica = calificaSubsidio(input.tipoPropiedad ?? "", precioUF);
+    const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
+    return {
+      califica,
+      tasaConSubsidio,
+      aplicado: califica && aplicaSubsidio(tasaIngresadaPct, tasaConSubsidio),
+    };
+  })();
+
+  // --- 10. Sensibilidad de precio (Commit 3a · 2026-05-12) ---
+  // Recalcula CAP / CoC / payback con precio reducido (-5%, -10%). El revenue
+  // (ADR × occ × 365) y los costos operativos NO cambian con el precio — sólo
+  // cambian el crédito, el dividendo, el capital invertido y los ratios.
+  const sensibilidadPrecio = calcSensibilidadPrecio(
+    input,
+    base,
+    costosOperativosTotales,
+    comisionRate,
+  );
+
   return {
     veredicto,
     ejesAplicados: ejes,
@@ -861,9 +933,56 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     breakEvenRevenueAnual,
     breakEvenPctDelMercado,
     sensibilidad,
+    sensibilidadPrecio,
     projections,
     exitScenario,
     engineSignal: veredicto,
     francoVerdict: veredicto,
+    subsidioTasa,
   };
+}
+
+// =========================================
+// Sensibilidad al precio (Commit 3a · 2026-05-12)
+// =========================================
+function calcSensibilidadPrecio(
+  input: ShortTermInputs,
+  base: EscenarioSTR,
+  costosOperativosTotales: number,
+  comisionRate: number,
+): SensibilidadPrecioRow[] {
+  const revenueAnual = base.revenueAnual;
+  const revenueMensual = revenueAnual / 12;
+  const comisionMensual = revenueMensual * comisionRate;
+  const noiMensualConst = revenueMensual - comisionMensual - costosOperativosTotales;
+  const noiAnual = noiMensualConst * 12;
+  const variantes = [
+    { label: "actual", factor: 1.0 },
+    { label: "-5%", factor: 0.95 },
+    { label: "-10%", factor: 0.9 },
+  ];
+  return variantes.map(({ label, factor }) => {
+    const precioCLP = input.precioCompra * factor;
+    const delta = precioCLP - input.precioCompra;
+    const pieMonto = precioCLP * input.piePercent;
+    const creditoMonto = precioCLP - pieMonto;
+    const dividendoMensual = calcDividendo(creditoMonto, input.tasaCredito, input.plazoCredito);
+    const capitalInvertido = pieMonto + (input.costoAmoblamiento || 0);
+    const flujoCajaMensual = noiMensualConst - dividendoMensual;
+    const capRate = precioCLP > 0 ? noiAnual / precioCLP : 0;
+    const cashOnCash = capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0;
+    const sobreRenta = base.flujoCajaMensual; // placeholder — usamos NOI vs LTR igual
+    let paybackMeses = -1;
+    if ((input.costoAmoblamiento || 0) <= 0) paybackMeses = 0;
+    else if (sobreRenta > 0) paybackMeses = Math.round(input.costoAmoblamiento / sobreRenta);
+    return {
+      label,
+      precioCLP: Math.round(precioCLP),
+      delta: Math.round(delta),
+      capRate: Math.round(capRate * 10000) / 10000,
+      cashOnCash: Math.round(cashOnCash * 10000) / 10000,
+      flujoCajaMensual: Math.round(flujoCajaMensual),
+      paybackMeses,
+    };
+  });
 }

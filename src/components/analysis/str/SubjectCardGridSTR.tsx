@@ -545,21 +545,26 @@ function DrawerContent({
             tooltip="Revenue anual dividido por precio de compra, sin descontar nada. Útil sólo como referencia rápida — el corredor te muestra esto."
           />
         </DrawerSection>
-        <DrawerSection label="Rango por percentil">
+        {/* Commit 3a · 2026-05-12: renombrado de "Conservador (p25) / Base (p50)
+            / Agresivo (p75)" → "Pesimista / Base / Optimista" para desambiguar
+            del drawer 04 SENSIBILIDAD que usa P25-P90 sobre el revenue raw del
+            mercado. Acá los escenarios ya están CALIBRADOS a tu propiedad
+            (factor ADR + occupancy ajustada por ejes operacionales). */}
+        <DrawerSection label="Escenarios calibrados a tu propiedad">
           <DataRow
-            label="Conservador (p25)"
+            label="Pesimista"
             value={fmtMoney(conservador.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si tu propiedad opera al nivel del 25% más bajo del mercado de la zona. Mala temporada, reviews flojos o competencia fuerte."
+            tooltip="NOI si la operación rinde por debajo de tu base — mala temporada, reviews flojos o competencia agresiva. Ya incluye el factor de tu edificio y nivel de amoblamiento."
           />
           <DataRow
-            label="Base (p50)"
+            label="Base"
             value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="Mediana de la zona: el escenario más probable si operas a nivel promedio del mercado."
+            tooltip="Escenario más probable: ADR y ocupación calibrados a la mediana de la zona, ajustados por los ejes operacionales de tu propiedad (tipo de edificio + habilitación + gestión)."
           />
           <DataRow
-            label="Agresivo (p75)"
+            label="Optimista"
             value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si superas al 75% del mercado de la zona. Requiere pricing dinámico, fotografía profesional y reviews ≥4,7."
+            tooltip="NOI si superás al promedio del mercado. Requiere pricing dinámico, fotos profesionales y reviews ≥4,7. Está calibrado sobre tu base — no es el P75 del mercado raw."
           />
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />
@@ -648,9 +653,11 @@ function DrawerContent({
 
         <DrawerSection label="¿Qué pasa si el mercado se mueve?">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
-            Esta tabla muestra tu NOI mensual y el delta vs arrendar largo
-            si tu propiedad opera al nivel de cada percentil de revenue
-            del mercado. P50 es la mediana (escenario más probable).
+            Esta tabla muestra tu NOI mensual si la zona rinde a distintos
+            percentiles del revenue de mercado RAW (P25-P90 de AirROI sin
+            factor de tu propiedad). P50 = mediana de zona. Distinto del
+            drawer 02 “Escenarios calibrados”, que ya aplica el factor de tu
+            edificio y nivel de amoblamiento sobre la base.
           </p>
           <div className="grid grid-cols-1 gap-0">
             <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
@@ -707,6 +714,71 @@ function DrawerContent({
             tooltip="Si esta cifra es >100%, ni siquiera operando al nivel mediano del mercado cubres costos. Riesgo estructural — la operación depende de superar al mercado típico."
           />
         </DrawerSection>
+
+        {/* Commit 3a · 2026-05-12 — Sensibilidad al precio (paridad con LTR
+            calcNegociacionScenario). Recalcula CAP/CoC/flujo si negocias
+            el precio a -5% o -10%. */}
+        {results.sensibilidadPrecio && results.sensibilidadPrecio.length > 0 && (
+          <DrawerSection label="¿Y si negocias el precio?">
+            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
+              Cuánto mejoran CAP, Cash-on-Cash y flujo si rebajas el precio
+              de compra. El ingreso del Airbnb no cambia; lo que baja es el
+              crédito + dividendo + capital invertido.
+            </p>
+            <div className="grid grid-cols-1 gap-0">
+              <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
+                <span className="flex-1">Precio</span>
+                <span className="w-20 text-right">CAP</span>
+                <span className="w-20 text-right">CoC</span>
+                <span className="w-28 text-right">Flujo/mes</span>
+              </div>
+              {results.sensibilidadPrecio.map((r) => {
+                const isActual = r.label === "actual";
+                const flujoNeg = r.flujoCajaMensual < 0;
+                return (
+                  <div
+                    key={r.label}
+                    className="flex items-center py-2 border-b-[0.5px] border-[var(--franco-border)]"
+                    style={isActual ? { background: "color-mix(in srgb, var(--franco-text) 4%, transparent)", padding: "8px 8px", borderRadius: 4 } : undefined}
+                  >
+                    <span className="flex-1 font-body text-[13px] text-[var(--franco-text)]" style={{ fontWeight: isActual ? 600 : 400 }}>
+                      {isActual ? "Precio actual" : `${r.label} ${fmtMoney(r.precioCLP, currency, valorUF)}`}
+                    </span>
+                    <span className="w-20 text-right font-mono text-[13px] font-medium">
+                      {fmtPct(r.capRate * 100, 2)}
+                    </span>
+                    <span className="w-20 text-right font-mono text-[13px]" style={{ color: r.cashOnCash < 0 ? "var(--signal-red)" : "var(--franco-text)" }}>
+                      {fmtPct(r.cashOnCash * 100, 1)}
+                    </span>
+                    <span className="w-28 text-right font-mono text-[13px]" style={{ color: flujoNeg ? "var(--signal-red)" : "var(--franco-text)" }}>
+                      {(r.flujoCajaMensual >= 0 ? "+" : "")}
+                      {fmtMoney(r.flujoCajaMensual, currency, valorUF)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </DrawerSection>
+        )}
+
+        {/* Commit 3a · 2026-05-12 — Subsidio Ley 21.748 (paridad LTR). Si el
+            depto califica (Nuevo ≤ 4000 UF) y la tasa ingresada NO es la
+            subsidiada, sugerir pedirla al banco. */}
+        {results.subsidioTasa?.califica && !results.subsidioTasa.aplicado && (
+          <DrawerSection label="Subsidio a la tasa hipotecaria (Ley 21.748)">
+            <p className="font-body text-[13px] text-[var(--franco-text)] mb-2 m-0 leading-[1.55]">
+              Tu depto califica para el subsidio del MINVU: vivienda nueva
+              bajo 4.000 UF + primera vivienda. Te baja la tasa hipotecaria
+              en ~0,6 puntos (a {fmtPct(results.subsidioTasa.tasaConSubsidio, 1)} aprox).
+            </p>
+            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mb-0 m-0 leading-[1.55] italic">
+              No está reflejado en este cálculo — la tasa que ingresaste no
+              corresponde a la subsidiada. Si la negocias con el banco, el
+              flujo mensual mejora porque baja el dividendo. Pídela como
+              “subsidio al crédito hipotecario Ley 21.748”.
+            </p>
+          </DrawerSection>
+        )}
 
         <CajaFranco
           text={seccion?.cajaAccionable}

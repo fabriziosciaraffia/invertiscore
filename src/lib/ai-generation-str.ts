@@ -63,6 +63,8 @@ ACTIVAR en \`largoPlazo.contenido\` casi siempre. Comparar TIR vs depósito UF /
 **Ángulo 4 — Negociación del precio.**
 Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto en \`vsLTR.estrategiaSugerida\` o \`operacion.contenido\`. Ejemplo: "Negociar a UF 4.500 (5% bajo mercado) sube CAP de 9,9% a 11,2% y vuelve sostenible la operación incluso bajo p25."
 
+Subsidio Ley 21.748 (Commit 3a · 2026-05-12): si el user prompt te pasa \`subsidioTasa.califica=true\` Y \`subsidioTasa.aplicado=false\`, OBLIGATORIO mencionar la palanca del subsidio en \`vsLTR.estrategiaSugerida\` o \`operacion.contenido\`. Forma: "Tu depto califica para el subsidio MINVU (Ley 21.748): vivienda nueva ≤ 4.000 UF te baja la tasa ~0,6 pp. Pídelo al banco como 'subsidio al crédito hipotecario' — el dividendo baja $X y el flujo mejora $Y al mes." Sin inventar montos exactos: usa el formato condicional ("baja unos $X").
+
 **Ángulo 5 — Errores típicos del primer operador STR.**
 Activar en \`riesgos.contenido\` o \`operacion.cajaAccionable\` cuando el caso lo amerite (ej: regulación incierta, primer Airbnb del usuario). Anticipar:
 - Subestimar costos de rotación (sábanas, toallas, amenidades) — suelen ser 5-8% del bruto, no 3%.

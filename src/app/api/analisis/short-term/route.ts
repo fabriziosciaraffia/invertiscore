@@ -189,6 +189,9 @@ export async function POST(request: Request) {
       superficie: body.superficieUtil,
       dormitorios: body.dormitorios,
       banos: body.banos,
+      // Commit 3a · 2026-05-12 — `tipoPropiedad` requerido para evaluar
+      // subsidio Ley 21.748 (Nuevo ≤ 4000 UF). Form envía "nuevo"/"usado".
+      tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
       piePercent: body.piePct / 100,
       tasaCredito: body.tasaInteres / 100,
       plazoCredito: body.plazoCredito,
