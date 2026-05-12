@@ -4,16 +4,19 @@ import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
-import type { Analisis, FullAnalysisResult } from "@/lib/types";
+import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import { readFrancoVerdict } from "@/lib/results-helpers";
-import { normalizeLegacyVerdict } from "@/lib/types";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
   title: "Franco — Comparativa Renta Larga vs Renta Corta",
   description: "Compara qué modalidad de renta conviene más para tu departamento.",
+};
+
+type LTRResultsWithCache = FullAnalysisResult & {
+  comparativaAI?: AIAnalysisComparativa;
+  tipoAnalisis?: string;
 };
 
 type STRResultsWithScore = ShortTermResult & {
@@ -48,9 +51,8 @@ export default async function ComparativaPage({
     redirect(user ? "/dashboard" : "/");
   }
 
-  // Validación de IDs cruzados (Ronda 2a): ?ltr= debe ser análisis LTR
-  // (no marcado como "short-term") y ?str= debe ser STR. Si están cruzados,
-  // los datos en columnas quedarían incoherentes — mejor redirigir.
+  // Validación de IDs cruzados: ?ltr= debe ser análisis LTR (no marcado como
+  // "short-term") y ?str= debe ser STR. Si están cruzados redirigimos.
   const ltrType = (ltrRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
   const strType = (strRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
   if (ltrType === "short-term" || strType !== "short-term") {
@@ -59,7 +61,7 @@ export default async function ComparativaPage({
 
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
-  const ltrResults = (ltr.results ?? null) as FullAnalysisResult | null;
+  const ltrResults = (ltr.results ?? null) as LTRResultsWithCache | null;
   const strResults = (str.results ?? null) as STRResultsWithScore | null;
 
   const isAdmin = isAdminUser(user?.email);
@@ -68,7 +70,7 @@ export default async function ComparativaPage({
   const isOwner = user?.id === ltr.user_id && ltr.user_id !== null;
   const isSharedView = isLoggedIn && !isOwner && !isAdmin;
 
-  // Wallet status para WalletStatusCTA in-line al cierre.
+  // Wallet status (in-line CTA al cierre)
   let userCredits = 0;
   let welcomeAvailable = true;
   if (user) {
@@ -87,6 +89,12 @@ export default async function ComparativaPage({
   else if (userTier === "subscriber") accessLevel = "subscriber";
   else accessLevel = (ltr.is_premium || str.is_premium) ? "premium" : "free";
 
+  // Inputs (necesarios para tabla side-by-side: amoblamiento, modo gestión)
+  const strInput = (str.input_data ?? null) as Record<string, unknown> | null;
+  const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
+  const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
+  const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
+
   return (
     <ComparativaClient
       ltrId={ltr.id}
@@ -98,25 +106,14 @@ export default async function ComparativaPage({
       banos={ltr.banos ?? str.banos ?? 0}
       superficie={ltr.superficie ?? str.superficie ?? 0}
       precioUF={ltr.precio ?? str.precio ?? 0}
-      arriendoLTR={ltrResults?.metrics?.ingresoMensual ?? ltr.arriendo ?? 0}
       ltrScore={ltr.score ?? 0}
-      ltrVeredicto={readFrancoVerdict(ltrResults) ?? null}
-      ltrFlujoMensual={ltrResults?.metrics?.flujoNetoMensual ?? 0}
-      ltrRentBruta={ltrResults?.metrics?.rentabilidadBruta ?? 0}
-      ltrNOI={(ltrResults?.metrics?.noi ?? 0) / 12}
-      ltrDividendo={ltrResults?.metrics?.dividendo ?? 0}
-      ltrEgresos={Math.max(0, (ltrResults?.metrics?.egresosMensuales ?? 0) - (ltrResults?.metrics?.dividendo ?? 0))}
-      ltrMultiplicador={ltrResults?.exitScenario?.multiplicadorCapital ?? 0}
       strScore={strResults?.francoScore?.score ?? 0}
-      strVeredicto={(normalizeLegacyVerdict(strResults?.veredicto) as never) ?? null}
-      strIngresoBruto={strResults?.escenarios?.base?.ingresoBrutoMensual ?? 0}
-      strNOI={strResults?.escenarios?.base?.noiMensual ?? 0}
-      strFlujoMensual={strResults?.escenarios?.base?.flujoCajaMensual ?? 0}
-      strCapRate={strResults?.escenarios?.base?.capRate ?? 0}
-      strComisionMensual={strResults?.escenarios?.base?.comisionMensual ?? 0}
-      strCostosOperativos={strResults?.escenarios?.base?.costosOperativos ?? 0}
-      strDividendo={strResults?.dividendoMensual ?? 0}
-      strSobreRentaPct={strResults?.comparativa?.sobreRentaPct ?? 0}
+      ltrResults={ltrResults}
+      strResults={strResults}
+      cachedAI={ltrResults?.comparativaAI ?? null}
+      costoAmoblamiento={costoAmoblamiento}
+      modoGestion={modoGestion}
+      comisionAdministrador={comisionAdministrador}
       ufValue={ufValue}
       accessLevel={accessLevel}
       isOwner={isOwner}

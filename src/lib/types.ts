@@ -439,6 +439,37 @@ export interface AIAnalysisSTRv2 {
   francoVerdictRationale?: string;
 }
 
+// ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Commit 3b · 2026-05-12) ──
+// Schema canónico para la narrativa del landing unificado de modalidad=Ambas.
+// 4 ángulos doctrinales (analysis-voice-franco):
+//   1. quienDeberiasSer  — perfil inversor + tolerancia operativa requerida para STR
+//   2. balance           — qué cambia en tu balance si eliges una vs otra
+//   3. switchPath        — viabilidad y costo de migrar LTR↔STR a futuro
+//   4. cierre            — posición personal de Franco (skill §1.10)
+// Persistencia: cacheada permanente en `ltr.results.comparativaAI` (jsonb).
+export type RecomendacionModalidadAmbas =
+  | "LTR_PREFERIDO"
+  | "STR_VENTAJA_CLARA"
+  | "INDIFERENTE";
+
+export interface AIAnalysisComparativa {
+  // Headline — 1 frase máx 25 palabras, refleja recomendacionFranco.
+  headline: string;
+  conviene: {
+    quienDeberiasSer: string;
+    balance: string;
+    switchPath: string;
+    cierre: string;
+  };
+  // Recomendación del motor (input) — copiada al output para trazabilidad.
+  engineRecommendation: RecomendacionModalidadAmbas;
+  // Recomendación que Franco emite. Default = engineRecommendation; puede
+  // diverger si la doctrina lo justifica (ej. perfil que no tolera STR).
+  recomendacionFranco: RecomendacionModalidadAmbas;
+  // Solo si Franco diverge del motor — explica en 1-2 frases.
+  recomendacionRationale?: string;
+}
+
 export interface Analisis {
   id: string;
   user_id: string;
