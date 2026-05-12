@@ -2,6 +2,12 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // @sparticuz/chromium ships un binario nativo en node_modules/.../bin que
+  // webpack rompe al relocate. Externalizarlo evita el bundling y deja el
+  // path original intacto en la function de Vercel.
+  experimental: {
+    serverComponentsExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  },
   async headers() {
     return [
       {
