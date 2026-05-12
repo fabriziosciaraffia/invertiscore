@@ -104,8 +104,12 @@ export function DrawerSTR({
           max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--franco-border)] max-md:animate-slideInUp
         "
       >
-        {/* Header */}
-        <div className="px-5 md:px-7 pt-5 pb-4 flex items-start justify-between gap-3 shrink-0">
+        {/* Header — Commit 4 · 2026-05-12: paridad con AnalysisDrawer LTR
+            (border-bottom 0.5px que separa header de body). */}
+        <div
+          className="px-5 md:px-7 pt-5 pb-4 flex items-start justify-between gap-3 shrink-0"
+          style={{ borderBottom: "0.5px solid var(--franco-border)" }}
+        >
           <div className="min-w-0">
             <span
               className="font-mono uppercase block mb-1.5"

@@ -192,6 +192,9 @@ export async function POST(request: Request) {
       // Commit 3a · 2026-05-12 — `tipoPropiedad` requerido para evaluar
       // subsidio Ley 21.748 (Nuevo ≤ 4000 UF). Form envía "nuevo"/"usado".
       tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
+      // Commit 4 · 2026-05-12 — `comuna` para benchmark zonaSTR (universo
+      // Santiago). Opcional para back-compat (fallback a percentil 50).
+      comuna: typeof body.comuna === "string" ? body.comuna : undefined,
       piePercent: body.piePct / 100,
       tasaCredito: body.tasaInteres / 100,
       plazoCredito: body.plazoCredito,

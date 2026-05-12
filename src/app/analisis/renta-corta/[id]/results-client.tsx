@@ -27,6 +27,7 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroVerdictBlockSTR } from "@/components/analysis/str/HeroVerdictBlockSTR";
+import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { AIInsightSTR } from "@/components/analysis/str/AIInsightSTR";
@@ -167,6 +168,11 @@ export function STRResultsClient({
 
         {/* gap mayor 40px — Hero → Cards */}
         <div style={{ height: 24 }} />
+
+        {/* Commit 4 · 2026-05-12 — Viabilidad STR honesta por zona.
+            Aparece sólo cuando tierZona = "baja" o recomendacionModalidad =
+            "LTR_PREFERIDO". Doctrina Franco: decir cuando STR no conviene. */}
+        <ViabilidadSTRBanner results={results} />
 
         {/* Apertura IA (Patrón 4) — siendoFrancoHeadline + conviene.
             Paralelo a cómo el LTR embebe el conviene dentro del Hero

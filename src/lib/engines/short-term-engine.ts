@@ -10,6 +10,12 @@ import {
   aplicaSubsidio,
   TASA_MERCADO_FALLBACK,
 } from "../constants/subsidio";
+import {
+  calcZonaSTR,
+  calcRecomendacionModalidad,
+  type ZonaSTRScore,
+  type RecomendacionModalidadSTR,
+} from "./str-universo-santiago";
 
 // =========================================
 // Types
@@ -44,6 +50,11 @@ export interface ShortTermInputs {
    * form ("nuevo"/"usado"). Necesario para evaluar subsidio Ley 21.748
    * (Commit 3a · 2026-05-12). Opcional para back-compat con análisis legacy. */
   tipoPropiedad?: string;
+
+  /** Comuna del depto. Usado para Commit 4 (zonaSTR + benchmark universo
+   * Santiago). Opcional para back-compat — si falta, zonaSTR score cae a
+   * fallback 50 (zona "media" sin información). */
+  comuna?: string;
 
   // Financiamiento
   piePercent: number;       // decimal: 0.20 = 20%
@@ -256,6 +267,17 @@ export interface ShortTermResult {
   // sensibilidad al revenue del mercado. Acá variamos el precio del depto y
   // recalculamos CAP/CoC/payback — útil para drawer 04 "Plan negociación".
   sensibilidadPrecio?: SensibilidadPrecioRow[];
+
+  // Commit 4 · 2026-05-12 — Viabilidad STR honesta por zona.
+  // `zonaSTR` clasifica la zona vs universo Santiago (alta/media/baja) en
+  // base a ADR + ocupación + revenue p50. Sirve para emitir advertencias
+  // en UI cuando la zona no tracciona STR.
+  // `recomendacionModalidad` cruza tier de zona + sobre-renta para decir
+  // honestamente cuándo LTR es mejor opción que STR.
+  // Calibración V1 — benchmarks de universo Santiago hardcoded en
+  // str-universo-santiago.ts. Recalibrar con data interna en V2.
+  zonaSTR?: ZonaSTRScore;
+  recomendacionModalidad?: RecomendacionModalidadSTR;
 }
 
 export interface SensibilidadPrecioRow {
@@ -912,6 +934,19 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     comisionRate,
   );
 
+  // --- 11. Viabilidad STR honesta por zona (Commit 4 · 2026-05-12) ---
+  // Calibración V1 — benchmarks de universo Santiago hardcoded en
+  // str-universo-santiago.ts. Recalibrar con data interna en V2.
+  const zonaSTR = calcZonaSTR(
+    input.comuna ?? "",
+    airbnbData.percentiles.average_daily_rate.p50,
+    airbnbData.percentiles.occupancy.p50,
+  );
+  const recomendacionModalidad = calcRecomendacionModalidad(
+    sobreRentaPct,
+    zonaSTR.tierZona,
+  );
+
   return {
     veredicto,
     ejesAplicados: ejes,
@@ -939,6 +974,8 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     engineSignal: veredicto,
     francoVerdict: veredicto,
     subsidioTasa,
+    zonaSTR,
+    recomendacionModalidad,
   };
 }
 

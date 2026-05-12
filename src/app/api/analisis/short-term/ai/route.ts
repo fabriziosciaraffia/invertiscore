@@ -329,6 +329,24 @@ Clínica/hospital más cercano: ${clinica.nombre} a ${distClinicaTxt} (demanda m
 Zona negocios/turismo: ${zonaNT.nombre} a ${distZonaTxt} (demanda corporativa)
 Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR Santiago, +34% vs promedio)
 
+=== VIABILIDAD STR POR ZONA (Commit 4 · honestidad de modalidad) ===
+${r.zonaSTR
+  ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
+ADR percentil vs Santiago: p${r.zonaSTR.percentilADR}
+Ocupación percentil vs Santiago: p${r.zonaSTR.percentilOcupacion}
+Revenue percentil vs Santiago: p${r.zonaSTR.percentilRevenue}
+${r.zonaSTR.comunaNoListada ? "(comuna no incluida en universo benchmark V1 — usar caveat al mencionar percentiles)" : ""}`
+  : "(motor pre-Commit 4 · sin zonaSTR)"}
+
+Recomendación modalidad motor: ${r.recomendacionModalidad ?? "(no disponible)"}
+${r.recomendacionModalidad === "LTR_PREFERIDO"
+  ? `→ OBLIGATORIO en \`vsLTR.contenido\` o \`vsLTR.estrategiaSugerida\`: decir explícitamente que en esta zona, LTR rinde mejor neto que STR. La complejidad operativa del STR no se justifica acá. NO endulces — la doctrina §1.1 exige asesor honesto.`
+  : r.recomendacionModalidad === "STR_VENTAJA_CLARA"
+    ? `→ En \`vsLTR.contenido\`: cuantifica la magnitud del upside STR sobre LTR (sobre-renta clara > +15%). El esfuerzo operativo se justifica.`
+    : r.recomendacionModalidad === "INDIFERENTE"
+      ? `→ En \`vsLTR.contenido\`: decir "está parejo". La decisión depende del esfuerzo operativo que el usuario quiera asumir y su perfil de riesgo.`
+      : ""}
+
 === SUBSIDIO LEY 21.748 (palanca financiera ajena al motor) ===
 ${r.subsidioTasa
   ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${r.subsidioTasa.tasaConSubsidio.toFixed(1)}%
