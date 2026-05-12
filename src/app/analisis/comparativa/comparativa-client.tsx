@@ -34,6 +34,7 @@ import {
   normalizeLegacyVerdict,
 } from "@/lib/types";
 import { readFrancoVerdict } from "@/lib/results-helpers";
+import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
 
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -101,17 +102,17 @@ function CurrencyToggle({
 }
 
 // ─── Fallback de recomendacionModalidad para análisis legacy ─────────────
+// Delega en `deriveRecomendacionModalidad` del motor (única fuente de verdad
+// compartida con el endpoint comparativa/ai server-side).
 function deriveRecomendacionFallback(
   strResults: ShortTermResult | null,
 ): RecomendacionModalidadAmbas {
   if (!strResults) return "INDIFERENTE";
-  // Si el motor (Commit 4+) ya la calculó, úsala.
-  if (strResults.recomendacionModalidad) return strResults.recomendacionModalidad;
-  // Fallback: lógica equivalente sin zonaSTR (asume tier "media").
-  const sobre = strResults.comparativa?.sobreRentaPct ?? 0;
-  if (sobre < 0.05) return "LTR_PREFERIDO";
-  if (sobre >= 0.15) return "STR_VENTAJA_CLARA";
-  return "INDIFERENTE";
+  return deriveRecomendacionModalidad({
+    recomendacionModalidad: strResults.recomendacionModalidad,
+    zonaSTR: strResults.zonaSTR,
+    sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
+  });
 }
 
 // ─── Veredicto unificado de la modalidad recomendada ─────────────────────

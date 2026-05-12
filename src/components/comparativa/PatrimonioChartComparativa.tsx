@@ -27,9 +27,11 @@ export function PatrimonioChartComparativa(p: Props) {
     const ltrProj = p.ltrResults.projections ?? [];
     const strProj = p.strResults.projections ?? [];
 
-    // Merge por año. LTR usa `anio`, STR usa `year`. Año 0 = capital inicial
-    // (patrimonio = pie + costos cierre + amoblamiento STR, todos negativos).
-    const maxYears = Math.max(ltrProj.length, strProj.length);
+    // Capar a la intersección de ambas projections + max 10 años (spec 3b).
+    // Si capamos al min(LTR.length, STR.length) hasta 10, comparamos manzanas
+    // con manzanas. Antes el chart extendía a 20 años con STR=null y la
+    // leyenda decía "STR llega a $0" falsamente.
+    const overlap = Math.min(ltrProj.length, strProj.length, 10);
     const data: Array<{ year: number; ltr: number | null; str: number | null }> = [];
 
     // Año 0 — patrimonio negativo igual al capital inicial aportado.
@@ -41,7 +43,7 @@ export function PatrimonioChartComparativa(p: Props) {
       str: -strCapitalInicial,
     });
 
-    for (let i = 0; i < maxYears; i++) {
+    for (let i = 0; i < overlap; i++) {
       const ltrRow = ltrProj[i];
       const strRow = strProj[i];
       const year = ltrRow?.anio ?? strRow?.year ?? (i + 1);

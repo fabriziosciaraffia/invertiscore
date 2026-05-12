@@ -48,13 +48,17 @@ export function HeroComparativa(p: Props) {
         ? `Renta corta justifica el esfuerzo: ${deltaPctNOI > 0 ? "+" : ""}${fmtPct(deltaPctNOI * 100, 0)} en flujo neto`
         : "Ambas opciones rinden parecido — la decisión es por esfuerzo";
 
+  const zonaInfo = p.zona
+    ? `Tu zona (tier ${p.zona.tierZona}, p${p.zona.percentilADR} ADR · p${p.zona.percentilOcupacion} occ) `
+    : "";
+
   const bajada =
     p.recomendacion === "LTR_PREFERIDO"
       ? p.zona?.tierZona === "baja"
         ? `La demanda STR en ${p.comuna} es baja (tier ${p.zona.tierZona}, score ${p.zona.score}/100). El esfuerzo operativo de Airbnb no compensa acá.`
         : "La sobre-renta STR vs LTR es marginal. La complejidad operativa no se justifica."
       : p.recomendacion === "STR_VENTAJA_CLARA"
-        ? `Tu zona ${p.zona ? `(${p.zona.tierZona}, p${p.zona.percentilADR} ADR · p${p.zona.percentilOcupacion} occ)` : ""} sostiene el modelo. Si puedes asumir 8-12 hrs/semana o aceptar 20% al administrador, STR rinde más.`
+        ? `${zonaInfo}${zonaInfo ? "sostiene" : "Los números sostienen"} el modelo. Si puedes asumir 8-12 hrs/semana o aceptar 20% al administrador, STR rinde más.`
         : "La diferencia neta es chica. Lo que decide es cuánto tiempo quieres dedicarle.";
 
   // Veredicto unificado — tono visual del Patrón 1 según severidad.

@@ -100,9 +100,30 @@ Si dudás, omitir es preferible a inventar.
 PARTE II — DOCTRINA DE EXPRESIÓN
 ═══════════════════════════════════════════════════════════════════
 
-## §2.1 Voz
+## §2.1 Voz · TUTEO NEUTRO CHILENO ESTRICTO
 
-Tuteo neutro chileno: "tú decidís", "tu balance", "puedes". NUNCA "vos tenés / pensá / dale / che". NUNCA chilenismos coloquiales ("cachái", "weón", "po"). NUNCA clichés de apertura ("Te voy a hablar claro", "Vamos al grano").
+Esta es la regla más importante de expresión. Su violación rompe la identidad de marca.
+
+USA SIEMPRE estas formas (tuteo):
+- "tú decides", "tu balance", "puedes", "tienes", "quieres", "pierdes"
+- "empiezas", "buscas", "operas", "insistes", "vives", "vienes", "dices"
+- "sientes", "pasas", "vuelves", "haces", "compras", "vendes", "esperas", "ganas"
+- Imperativos: "mira", "piensa", "deja", "espera", "aporta", "decide"
+
+NUNCA uses estas formas (voseo argentino — PROHIBIDAS):
+- ❌ "vos tenés", "tenés", "perdés", "querés", "empezás", "buscás", "operás"
+- ❌ "insistís", "vivís", "venís", "decís", "sentís", "pasás", "volvés"
+- ❌ "hacés", "comprás", "vendés", "esperás", "ganás", "elegís"
+- ❌ Imperativos voseo: "mirá", "pensá", "dejá", "esperá", "aportá", "decidí"
+
+Ejemplo contrastado:
+- PROHIBIDO: "Si querés salir vas a perdés meses. Empezá LTR y vas viendo."
+- CORRECTO: "Si quieres salir vas a perder meses. Empieza con LTR y vas viendo."
+
+NUNCA chilenismos coloquiales ("cachái", "weón", "po", "bacán", "fome").
+NUNCA clichés de apertura ("Te voy a hablar claro", "Vamos al grano", "Mira, esto es así").
+
+REGLA DE AUTO-CHEQUEO antes de devolver el JSON: revisa cada verbo conjugado en 2ª persona singular. Si termina en -ás / -és / -ís con tilde (no -as / -es / -is sin tilde) Y es un verbo regular (no estar/ir/dar/ver/ser), es voseo: cámbialo. Esta verificación es no negociable.
 
 ## §2.2 Anti-patrones (no hacer)
 
@@ -184,6 +205,124 @@ JSON exacto, sin texto adicional:
   "recomendacionFranco": "<LTR_PREFERIDO | STR_VENTAJA_CLARA | INDIFERENTE>",
   "recomendacionRationale": "<opcional · solo si recomendacionFranco ≠ engineRecommendation>"
 }`;
+
+/**
+ * Sanitizer voseo→tuteo. Safety net cuando el LLM desliza voseo argentino
+ * pese a las instrucciones del prompt. Mapping table explícito, no regex
+ * pattern, para evitar falsos positivos con palabras como "demás", "país",
+ * "interés", "estás" (irregular = mismo en tuteo/voseo).
+ *
+ * Auditado contra outputs reales generados con SYSTEM_PROMPT_AMBAS v0.
+ * Lista extendida sobre la marcha cuando aparezcan nuevos verbos.
+ */
+// Lookbehind/lookahead negativos sobre letras ASCII + acentos hispanos.
+// Más confiable que `\b` de JS, que NO reconoce vocales acentuadas como
+// word chars (entonces \b después de "mirá" no marca límite y la regex falla).
+const LETTER_LOOKBEHIND = "(?<![A-Za-zÀ-ÿ])";
+const LETTER_LOOKAHEAD = "(?![A-Za-zÀ-ÿ])";
+
+function voseoEntry(voseo: string, tuteo: string): Array<[RegExp, string]> {
+  const cap = voseo.charAt(0).toUpperCase() + voseo.slice(1);
+  const capTuteo = tuteo.charAt(0).toUpperCase() + tuteo.slice(1);
+  return [
+    [new RegExp(`${LETTER_LOOKBEHIND}${voseo}${LETTER_LOOKAHEAD}`, "g"), tuteo],
+    [new RegExp(`${LETTER_LOOKBEHIND}${cap}${LETTER_LOOKAHEAD}`, "g"), capTuteo],
+  ];
+}
+
+const VOSEO_TO_TUTEO: Array<[RegExp, string]> = [
+  // ─── Indicativo presente — verbos regulares ─────────────────────────────
+  ...voseoEntry("perdés", "pierdes"),
+  ...voseoEntry("empezás", "empiezas"),
+  ...voseoEntry("querés", "quieres"),
+  ...voseoEntry("insistís", "insistes"),
+  ...voseoEntry("operás", "operas"),
+  ...voseoEntry("buscás", "buscas"),
+  ...voseoEntry("tenés", "tienes"),
+  ...voseoEntry("venís", "vienes"),
+  ...voseoEntry("decís", "dices"),
+  ...voseoEntry("vivís", "vives"),
+  ...voseoEntry("sentís", "sientes"),
+  ...voseoEntry("pensás", "piensas"),
+  ...voseoEntry("mirás", "miras"),
+  ...voseoEntry("dejás", "dejas"),
+  ...voseoEntry("aportás", "aportas"),
+  ...voseoEntry("pagás", "pagas"),
+  ...voseoEntry("esperás", "esperas"),
+  ...voseoEntry("ganás", "ganas"),
+  ...voseoEntry("creés", "crees"),
+  ...voseoEntry("pasás", "pasas"),
+  ...voseoEntry("volvés", "vuelves"),
+  ...voseoEntry("hacés", "haces"),
+  ...voseoEntry("comprás", "compras"),
+  ...voseoEntry("vendés", "vendes"),
+  ...voseoEntry("preferís", "prefieres"),
+  ...voseoEntry("elegís", "eliges"),
+  ...voseoEntry("abrís", "abres"),
+  ...voseoEntry("entrás", "entras"),
+  ...voseoEntry("salís", "sales"),
+  ...voseoEntry("ponés", "pones"),
+  ...voseoEntry("recuperás", "recuperas"),
+  ...voseoEntry("sabés", "sabes"),
+  ...voseoEntry("agarrás", "agarras"),
+  ...voseoEntry("llevás", "llevas"),
+  ...voseoEntry("generás", "generas"),
+  ...voseoEntry("movés", "mueves"),
+  ...voseoEntry("cubrís", "cubres"),
+  ...voseoEntry("subís", "subes"),
+  ...voseoEntry("bajás", "bajas"),
+  ...voseoEntry("armás", "armas"),
+  ...voseoEntry("aceptás", "aceptas"),
+  ...voseoEntry("negociás", "negocias"),
+  ...voseoEntry("evaluás", "evalúas"),
+  ...voseoEntry("invertís", "inviertes"),
+  ...voseoEntry("arriendás", "arriendas"),
+  ...voseoEntry("completás", "completas"),
+
+  // ─── Imperativos voseo (terminan en vocal acentuada sin s) ──────────────
+  ...voseoEntry("mirá", "mira"),
+  ...voseoEntry("pensá", "piensa"),
+  ...voseoEntry("dejá", "deja"),
+  ...voseoEntry("vení", "ven"),
+  ...voseoEntry("decí", "di"),
+  ...voseoEntry("hacé", "haz"),
+  ...voseoEntry("esperá", "espera"),
+  ...voseoEntry("aportá", "aporta"),
+  ...voseoEntry("pedí", "pide"),
+  ...voseoEntry("andá", "anda"),
+  ...voseoEntry("buscá", "busca"),
+  ...voseoEntry("negociá", "negocia"),
+  ...voseoEntry("validá", "valida"),
+  ...voseoEntry("subí", "sube"),
+  ...voseoEntry("bajá", "baja"),
+];
+
+
+export function sanitizeVoseo(text: string): string {
+  let out = text;
+  for (const [pattern, replacement] of VOSEO_TO_TUTEO) {
+    out = out.replace(pattern, replacement);
+  }
+  return out;
+}
+
+import type { AIAnalysisComparativa } from "./types";
+
+export function sanitizeComparativaAI(ai: AIAnalysisComparativa): AIAnalysisComparativa {
+  return {
+    ...ai,
+    headline: sanitizeVoseo(ai.headline ?? ""),
+    conviene: {
+      quienDeberiasSer: sanitizeVoseo(ai.conviene?.quienDeberiasSer ?? ""),
+      balance: sanitizeVoseo(ai.conviene?.balance ?? ""),
+      switchPath: sanitizeVoseo(ai.conviene?.switchPath ?? ""),
+      cierre: sanitizeVoseo(ai.conviene?.cierre ?? ""),
+    },
+    recomendacionRationale: ai.recomendacionRationale
+      ? sanitizeVoseo(ai.recomendacionRationale)
+      : undefined,
+  };
+}
 
 /**
  * Helper compartido: extrae cifra absoluta y signo formateado en CLP chileno.

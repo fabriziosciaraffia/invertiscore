@@ -211,3 +211,31 @@ export function calcRecomendacionModalidad(
   if (sobreRentaPct >= 0.15) return "STR_VENTAJA_CLARA";
   return "INDIFERENTE";
 }
+
+/**
+ * Fallback para análisis legacy pre-Commit 4 que no tienen
+ * `recomendacionModalidad` ni `zonaSTR` en results. Reusa la misma lógica
+ * de umbral pero asume tier "media" cuando la zona no está clasificada.
+ *
+ * Pasos:
+ *  1) Si el STR result ya tiene `recomendacionModalidad`, devolverla.
+ *  2) Si tiene `zonaSTR.tierZona`, aplicar regla completa.
+ *  3) Si no, asumir tier "media" y decidir solo por sobreRentaPct.
+ *
+ * Único lugar canónico para esta lógica — usar acá tanto en server
+ * (endpoint comparativa/ai) como en cliente (comparativa-client) para
+ * evitar divergencias entre lo que ve el Hero y lo que recibe la IA.
+ */
+export function deriveRecomendacionModalidad(input: {
+  recomendacionModalidad?: RecomendacionModalidadSTR;
+  zonaSTR?: { tierZona?: ZonaSTRScore["tierZona"] };
+  sobreRentaPct?: number;
+}): RecomendacionModalidadSTR {
+  if (input.recomendacionModalidad) return input.recomendacionModalidad;
+  const sobre = input.sobreRentaPct ?? 0;
+  const tier = input.zonaSTR?.tierZona;
+  if (tier === "baja") return "LTR_PREFERIDO";
+  if (sobre < 0.05) return "LTR_PREFERIDO";
+  if (sobre >= 0.15) return "STR_VENTAJA_CLARA";
+  return "INDIFERENTE";
+}

@@ -10,7 +10,9 @@ import {
   fmtCLPAmbas,
   fmtUFAmbas,
   fmtPctAmbas,
+  sanitizeComparativaAI,
 } from "@/lib/ai-generation-ambas";
+import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
 
 const anthropic = new Anthropic();
 
@@ -122,10 +124,14 @@ export async function POST(request: Request) {
     const strPatY10 = strY10?.patrimonioNeto ?? 0;
     const deltaPatY10 = strPatY10 - ltrPatY10;
 
-    // Zona STR
+    // Zona STR + recomendación (con fallback para análisis pre-Commit 4)
     const zona = strResults.zonaSTR;
-    const reco = strResults.recomendacionModalidad ?? "INDIFERENTE";
     const sobreRentaPct = strResults.comparativa?.sobreRentaPct ?? 0;
+    const reco = deriveRecomendacionModalidad({
+      recomendacionModalidad: strResults.recomendacionModalidad,
+      zonaSTR: zona,
+      sobreRentaPct,
+    });
 
     // Modo gestión + comisión administrador
     const modoGestion = (strInput?.modoGestion as string) ?? "auto";
@@ -227,6 +233,10 @@ Responde SOLO con el JSON.`;
     if (!aiResult.recomendacionFranco) {
       aiResult.recomendacionFranco = aiResult.engineRecommendation;
     }
+
+    // Sanitizer voseo→tuteo (safety net; el prompt ya prohíbe voseo pero el
+    // LLM puede deslizar formas argentinas en tonos confrontacionales).
+    aiResult = sanitizeComparativaAI(aiResult);
 
     // ─── Persistencia (cache permanente en ltr.results.comparativaAI) ────
     const updatedResults = {
