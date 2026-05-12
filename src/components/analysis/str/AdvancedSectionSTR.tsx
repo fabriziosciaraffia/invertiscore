@@ -67,18 +67,32 @@ export function AdvancedSectionSTR({
             className="font-mono uppercase"
             style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text-secondary)", fontWeight: 500 }}
           >
-            ⏳ SIMULACIÓN INTERACTIVA
+            SIMULACIÓN INTERACTIVA
           </span>
         </div>
-        <p className="font-body text-[14px] m-0 mb-4 text-[var(--franco-text)] leading-[1.5]">
-          Indicadores avanzados, patrimonio proyectado y escenarios de venta. Explora cómo se comporta tu inversión año a año.
-        </p>
-        <span
-          className="font-mono uppercase inline-block"
-          style={{ fontSize: 11, letterSpacing: "1px", color: "var(--franco-text)", fontWeight: 600 }}
+        {/* Preguntas-anzuelo (Patrón 7.C — paridad con LTR collapsed). Serif
+            Bold + interlinea generosa. Invitan a explorar sin enumerar. */}
+        <p
+          className="font-heading font-bold m-0 mb-1.5 text-[var(--franco-text)] leading-[1.35]"
+          style={{ fontSize: 19 }}
         >
-          Explorar ↓
-        </span>
+          ¿Cuánto patrimonio acumulas en 10 años?
+        </p>
+        <p
+          className="font-heading font-bold m-0 mb-4 text-[var(--franco-text)] leading-[1.35]"
+          style={{ fontSize: 19 }}
+        >
+          ¿Qué pasa si vendes en año 5?
+        </p>
+        <div className="flex justify-end">
+          <span
+            className="font-mono uppercase inline-flex items-center gap-1"
+            style={{ fontSize: 11, letterSpacing: "1.5px", color: "var(--franco-text-secondary)", fontWeight: 500 }}
+          >
+            Explorar simulación
+            <span aria-hidden>↓</span>
+          </span>
+        </div>
       </button>
     );
   }
@@ -99,7 +113,7 @@ export function AdvancedSectionSTR({
             className="font-mono uppercase block mb-1"
             style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text-secondary)", fontWeight: 500 }}
           >
-            ⏳ SIMULACIÓN INTERACTIVA
+            SIMULACIÓN INTERACTIVA
           </span>
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
             Indicadores avanzados · Patrimonio · Venta
@@ -118,7 +132,7 @@ export function AdvancedSectionSTR({
       <div className="px-5 md:px-7 py-6">
         {sectionHeader("07", "ESCENARIOS", "Cómo varía con la ocupación del mercado")}
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-4 leading-[1.6]">
-          Los escenarios usan los percentiles de ingresos brutos del mercado AirROI para tu zona. La base (percentil 50) es la mediana esperable; conservador (percentil 25) y agresivo (percentil 75) son los extremos plausibles.
+          Los escenarios usan los percentiles de ingresos brutos del mercado de la zona. La base (percentil 50) es la mediana esperable; conservador (percentil 25) y agresivo (percentil 75) son los extremos plausibles.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <EscenarioCard escenario={results.escenarios.conservador} subtitle="Percentil 25 — caída de demanda" currency={currency} valorUF={valorUF} />

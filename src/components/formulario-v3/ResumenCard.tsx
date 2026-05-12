@@ -232,7 +232,7 @@ export function ResumenCard({
           <Cell
             label="Ocupación"
             value={airRoi?.isLoading ? "—" : ocupacionDisplay}
-            tooltip="Porcentaje de noches ocupadas estimado por AirROI. Base del escenario neutro del análisis."
+            tooltip="Porcentaje de noches ocupadas estimado con datos de mercado de la zona. Base del escenario neutro del análisis."
           />
           <Cell
             label="Modo gestión"
@@ -409,11 +409,11 @@ function IngresoBrutoCell({ airRoi }: { airRoi?: AirRoiSuggestion }) {
       <Cell
         label="Ingreso bruto"
         value={isLoading ? "—" : value > 0 ? `${fmtCLP(value)}/mes` : "—"}
-        tooltip="Estimación del ingreso bruto mensual de Airbnb basada en datos AirROI (ADR × ocupación esperada × días). No incluye comisión plataforma ni costos operativos. Editable en Ajustar."
+        tooltip="Estimación del ingreso bruto mensual de Airbnb basada en datos de mercado de la zona (ADR × ocupación esperada × días). No incluye comisión plataforma ni costos operativos. Editable en Ajustar."
       />
       {isLoading && (
         <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-muted)] animate-pulse">
-          Estimando con AirROI…
+          Estimando con datos de mercado…
         </p>
       )}
       {!isLoading && error && (
@@ -428,7 +428,7 @@ function IngresoBrutoCell({ airRoi }: { airRoi?: AirRoiSuggestion }) {
       )}
       {!isLoading && !error && value > 0 && source === "calculator_direct" && (
         <p className="font-mono text-[11px] mt-1 m-0 leading-snug text-[var(--franco-text-secondary)]">
-          ● Estimación directa AirROI
+          ● Estimación directa de datos de mercado
         </p>
       )}
     </div>

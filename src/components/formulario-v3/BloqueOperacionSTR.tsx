@@ -349,7 +349,7 @@ export function BloqueOperacionSTR({
 
         {adrBaselineSugerido == null ? (
           <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0">
-            Esperando estimación de AirROI para calcular el preview…
+            Esperando estimación de datos de mercado para calcular el preview…
           </p>
         ) : (
           <div className="space-y-1.5">

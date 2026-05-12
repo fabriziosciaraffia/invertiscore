@@ -655,10 +655,10 @@ function DrawerContent({
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
             Esta tabla muestra tu NOI mensual si la zona rinde a distintos
             percentiles de los ingresos brutos del mercado sin ajustes
-            (percentil 25 a percentil 90 de AirROI sin factor de tu propiedad).
-            Percentil 50 = mediana de zona. Distinto del drawer 02
-            “Escenarios calibrados”, que ya aplica el factor de tu edificio
-            y nivel de amoblamiento sobre la base.
+            (percentil 25 a percentil 90 de los datos de mercado de la zona,
+            sin factor de tu propiedad). Percentil 50 = mediana de zona.
+            Distinto del drawer 02 “Escenarios calibrados”, que ya aplica el
+            factor de tu edificio y nivel de amoblamiento sobre la base.
           </p>
           <div className="grid grid-cols-1 gap-0">
             <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">

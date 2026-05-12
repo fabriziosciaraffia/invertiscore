@@ -143,7 +143,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
       <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
         {(adrEsOverride || occEsOverride)
           ? "Ajustaste uno o más valores manualmente. Los ejes operativos siguen mostrados como referencia, pero el motor está usando tus valores en el cálculo."
-          : "Estas estimaciones se basan en data de operadores reales en Santiago (proforma Andes STR Providencia 2025 + análisis 149 listings AirROI). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
+          : "Estas estimaciones se basan en datos de operadores reales en Santiago (proforma de operador profesional Providencia 2025 + análisis de 149 propiedades comparables de la zona). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
       </p>
     </div>
   );
