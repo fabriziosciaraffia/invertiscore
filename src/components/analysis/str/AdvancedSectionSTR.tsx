@@ -132,12 +132,12 @@ export function AdvancedSectionSTR({
       <div className="px-5 md:px-7 py-6">
         {sectionHeader("07", "ESCENARIOS", "Cómo varía con la ocupación del mercado")}
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-4 leading-[1.6]">
-          Los escenarios usan los percentiles de ingresos brutos del mercado de la zona. La base (percentil 50) es la mediana esperable; conservador (percentil 25) y agresivo (percentil 75) son los extremos plausibles.
+          Los escenarios usan los percentiles de ingresos brutos del mercado de la zona. La base es la mediana del mercado (percentil 50), la operación esperable; conservador es la cuarta parte más baja (p25) y agresivo es la cuarta parte más alta (p75) — los extremos plausibles.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <EscenarioCard escenario={results.escenarios.conservador} subtitle="Percentil 25 — caída de demanda" currency={currency} valorUF={valorUF} />
-          <EscenarioCard escenario={results.escenarios.base} subtitle="Percentil 50 — operación esperable" currency={currency} valorUF={valorUF} featured />
-          <EscenarioCard escenario={results.escenarios.agresivo} subtitle="Percentil 75 — temporada alta" currency={currency} valorUF={valorUF} />
+          <EscenarioCard escenario={results.escenarios.conservador} subtitle="Cuarta parte más baja del mercado (p25) — caída de demanda" currency={currency} valorUF={valorUF} />
+          <EscenarioCard escenario={results.escenarios.base} subtitle="Mediana del mercado (p50) — operación esperable" currency={currency} valorUF={valorUF} featured />
+          <EscenarioCard escenario={results.escenarios.agresivo} subtitle="Cuarta parte más alta del mercado (p75) — temporada alta" currency={currency} valorUF={valorUF} />
         </div>
       </div>
 

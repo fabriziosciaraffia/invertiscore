@@ -151,8 +151,8 @@ export function SubjectCardGridSTR({
         ? `NOI P25: −${fmtMoney(Math.abs(noiP25), currency, valorUF)}`
         : `NOI P25: ${fmtMoney(noiP25, currency, valorUF)}`,
       sub: sensibilidadGap > 0
-        ? `Caída de ${fmtPct(sensibilidadGap * 100, 0)} en escenario pesimista`
-        : "Proyección robusta a escenarios bajos",
+        ? `Caída del ${fmtPct(sensibilidadGap * 100, 0)} si rinde como la cuarta parte más baja del mercado`
+        : "Aguanta caer a la cuarta parte más baja del mercado sin desplomarse",
       color: noiP25 < 0 || sensibilidadGap > 0.4 ? "var(--signal-red)" : "var(--franco-text)",
     },
     ventajaLtr: {
@@ -355,7 +355,7 @@ function RiesgosLista({ contenido }: { contenido: string | null | undefined }) {
   const usandoFallback = parsed.length === 0;
   const riesgos = usandoFallback
     ? [
-        { titulo: "Caída de ocupación", descripcion: "Si la ocupación baja al p25 del mercado, el flujo se da vuelta. Mantén un fondo de reserva de 3-6 meses de costos fijos." },
+        { titulo: "Caída de ocupación", descripcion: "Si la ocupación baja a la cuarta parte más baja del mercado (p25), el flujo se da vuelta. Mantén un fondo de reserva de 3-6 meses de costos fijos." },
         { titulo: "Regulación cambia", descripcion: "La asamblea del edificio o la municipalidad pueden restringir Airbnb. Revisa el reglamento antes de invertir en amoblamiento." },
         { titulo: "Costos de rotación subestimados", descripcion: "Sábanas, toallas y amenidades suelen ser 5-8% del bruto, no 3%. Subestimar este rubro infla artificialmente la rentabilidad." },
       ]
@@ -517,7 +517,7 @@ function DrawerContent({
     return (
       <>
         <NarrativeIA text={seccion?.contenido} />
-        <DrawerSection label="Escenario base (P50)">
+        <DrawerSection label="Escenario base (mediana del mercado · p50)">
           <DataRow
             label="Ingresos brutos anuales"
             value={fmtMoney(base.revenueAnual, currency, valorUF)}
@@ -654,11 +654,12 @@ function DrawerContent({
         <DrawerSection label="¿Qué pasa si el mercado se mueve?">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
             Esta tabla muestra tu NOI mensual si la zona rinde a distintos
-            percentiles de los ingresos brutos del mercado sin ajustes
-            (percentil 25 a percentil 90 de los datos de mercado de la zona,
-            sin factor de tu propiedad). Percentil 50 = mediana de zona.
-            Distinto del drawer 02 “Escenarios calibrados”, que ya aplica el
-            factor de tu edificio y nivel de amoblamiento sobre la base.
+            percentiles de los ingresos brutos del mercado sin ajustes,
+            desde la cuarta parte más baja (p25) hasta el 10% más alto del
+            mercado (p90), sin factor de tu propiedad. La mediana del
+            mercado (p50) es la base. Distinto del drawer 02 “Escenarios
+            calibrados”, que ya aplica el factor de tu edificio y nivel
+            de amoblamiento sobre la base.
           </p>
           <div className="grid grid-cols-1 gap-0">
             <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
@@ -709,7 +710,7 @@ function DrawerContent({
             tooltip="Ingresos brutos mínimos anuales que cubren costos operativos + dividendo. Por debajo de este número, pones plata cada mes."
           />
           <DataRow
-            label="% de los ingresos brutos medianos (percentil 50)"
+            label="% de los ingresos brutos medianos (p50)"
             value={fmtPct(breakEvenPct * 100, 0)}
             isCritical={breakEvenPct > 1}
             tooltip="Si esta cifra es >100%, ni siquiera operando al nivel mediano del mercado cubres costos. Riesgo estructural — la operación depende de superar al mercado típico."

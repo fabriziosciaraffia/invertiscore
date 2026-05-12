@@ -143,7 +143,7 @@ export function HeroVerdictBlockSTR({
   const alertText = isRojo
     ? "El sobre-rendimiento contra LTR no compensa el riesgo operativo. Revisar antes de avanzar."
     : isAjusta
-      ? "Los números cierran solo bajo el escenario base. Si la ocupación cae al percentil 25 del mercado, la operación deja de tener sentido."
+      ? "Los números cierran solo bajo el escenario base. Si la ocupación cae a la cuarta parte más baja del mercado (percentil 25), la operación deja de tener sentido."
       : "El depto ofrece una ventaja clara vs arriendo largo. Revisa los riesgos operativos antes de cerrar.";
 
   return (
