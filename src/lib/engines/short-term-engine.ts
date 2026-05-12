@@ -35,8 +35,15 @@ export interface AirbnbData {
 }
 
 // 'mixto' se mantiene en el union para no romper análisis legacy persistidos
-// con ese valor. El form ya no lo expone; nuevos análisis solo serán
-// 'residencial_puro' o 'dedicado'. Migración 2026-05-10 confirmó 0 rows.
+// con ese valor. El wizard v3 (formulario-v3/BloqueOperacionSTR) ya no lo
+// expone — nuevos análisis solo serán 'residencial_puro' o 'dedicado'.
+//
+// Auditoría 2026-05-12 (Commit 3b cleanup): 3 análisis STR aún tienen
+// tipoEdificio='mixto' en DB (input_data + results.ejesAplicados). El formulario
+// legacy `src/app/analisis/renta-corta/page.tsx` (no linkeado desde el flujo
+// principal) sigue exponiendo 'mixto' como opción; mantener back-compat tanto
+// del union como del factor ADR (1.05) hasta que ese formulario se desmantele
+// o los 3 análisis legacy se reanalicen.
 export type TipoEdificioSTR = 'residencial_puro' | 'mixto' | 'dedicado';
 export type HabilitacionSTR = 'basico' | 'estandar' | 'premium';
 

@@ -3,9 +3,9 @@ import FrancoLogo from "@/components/franco-logo";
 
 // Disclaimer canonico unificado — antes habia 2 variantes y ausencias.
 // Cambios materiales: agrega obligacion de verificar datos + clausula
-// 'no reemplaza opinion profesional'.
+// 'no reemplaza opinion profesional'. Voz tuteo neutro chileno (§2.1).
 export const DISCLAIMER_CANONICO =
-  "Análisis informativo, no constituye asesoría financiera. Verificá los datos antes de tomar decisiones. Refranco no garantiza resultados ni reemplaza la opinión de un profesional.";
+  "Análisis informativo, no constituye asesoría financiera. Verifica los datos antes de tomar decisiones. Refranco no garantiza resultados ni reemplaza la opinión de un profesional.";
 
 interface AppFooterProps {
   variant: "minimal" | "rich";
