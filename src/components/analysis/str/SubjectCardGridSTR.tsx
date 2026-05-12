@@ -158,10 +158,10 @@ export function SubjectCardGridSTR({
     ventajaLtr: {
       value: `${sobreRenta >= 0 ? "+" : ""}${fmtMoney(sobreRenta, currency, valorUF)}/mes`,
       sub: paybackMeses > 0
-        ? `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR · payback amoblamiento ${paybackMeses}m`
+        ? `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR · recupera amoblamiento en ${paybackMeses}m`
         : paybackMeses === 0
           ? `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR`
-          : `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR · payback no recupera`,
+          : `${fmtPct(sobreRentaPct * 100, 0)} sobre LTR · sobre-renta no compensa amoblamiento`,
       color: sobreRenta < 0 ? "var(--signal-red)" : "var(--franco-text)",
     },
     tipoHuesped: guestProfileSync
@@ -519,22 +519,22 @@ function DrawerContent({
         <NarrativeIA text={seccion?.contenido} />
         <DrawerSection label="Escenario base (P50)">
           <DataRow
-            label="Revenue anual bruto"
+            label="Ingresos brutos anuales"
             value={fmtMoney(base.revenueAnual, currency, valorUF)}
             tooltip="Total de ingresos del año asumiendo la mediana del mercado de la zona. Sin descontar costos."
           />
           <DataRow
-            label="NOI mensual"
+            label="NOI mensual (ingreso neto operativo)"
             value={fmtMoney(base.noiMensual, currency, valorUF)}
             tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo."
           />
           <DataRow
-            label="CAP Rate"
+            label="CAP Rate (rentabilidad bruta sobre precio)"
             value={fmtPct(base.capRate * 100, 2)}
             tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
           />
           <DataRow
-            label="Cash-on-Cash"
+            label="Cash-on-Cash (retorno sobre capital invertido)"
             value={fmtPct(base.cashOnCash * 100, 1)}
             isCritical={base.cashOnCash < 0}
             tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos cierre + amoblamiento). Si es negativo, pones plata extra cada mes."
@@ -542,7 +542,7 @@ function DrawerContent({
           <DataRow
             label="Rentabilidad bruta"
             value={fmtPct(base.rentabilidadBruta * 100, 2)}
-            tooltip="Revenue anual dividido por precio de compra, sin descontar nada. Útil sólo como referencia rápida — el corredor te muestra esto."
+            tooltip="Ingresos brutos anuales divididos por precio de compra, sin descontar nada. Útil sólo como referencia rápida — el corredor te muestra esto."
           />
         </DrawerSection>
         {/* Commit 3a · 2026-05-12: renombrado de "Conservador (p25) / Base (p50)
@@ -559,12 +559,12 @@ function DrawerContent({
           <DataRow
             label="Base"
             value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="Escenario más probable: ADR y ocupación calibrados a la mediana de la zona, ajustados por los ejes operacionales de tu propiedad (tipo de edificio + habilitación + gestión)."
+            tooltip="Escenario más probable: ADR y ocupación calibrados a la mediana de la zona, ajustados por los ejes operativos de tu propiedad (tipo de edificio + habilitación + gestión)."
           />
           <DataRow
             label="Optimista"
             value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si superás al promedio del mercado. Requiere pricing dinámico, fotos profesionales y reviews ≥4,7. Está calibrado sobre tu base — no es el P75 del mercado raw."
+            tooltip="NOI si superás al promedio del mercado. Requiere pricing dinámico, fotos profesionales y reviews ≥4,7. Está calibrado sobre tu base — no es el percentil 75 del mercado sin ajustes."
           />
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />
@@ -654,10 +654,11 @@ function DrawerContent({
         <DrawerSection label="¿Qué pasa si el mercado se mueve?">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
             Esta tabla muestra tu NOI mensual si la zona rinde a distintos
-            percentiles del revenue de mercado RAW (P25-P90 de AirROI sin
-            factor de tu propiedad). P50 = mediana de zona. Distinto del
-            drawer 02 “Escenarios calibrados”, que ya aplica el factor de tu
-            edificio y nivel de amoblamiento sobre la base.
+            percentiles de los ingresos brutos del mercado sin ajustes
+            (percentil 25 a percentil 90 de AirROI sin factor de tu propiedad).
+            Percentil 50 = mediana de zona. Distinto del drawer 02
+            “Escenarios calibrados”, que ya aplica el factor de tu edificio
+            y nivel de amoblamiento sobre la base.
           </p>
           <div className="grid grid-cols-1 gap-0">
             <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
@@ -700,15 +701,15 @@ function DrawerContent({
         <DrawerSection label="Punto de equilibrio">
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
             Para que tu flujo no quede en aporte mensual, necesitas generar
-            al menos este revenue:
+            al menos estos ingresos brutos:
           </p>
           <DataRow
-            label="Revenue anual de equilibrio"
+            label="Ingresos brutos anuales de equilibrio"
             value={fmtMoney(breakEvenAnual, currency, valorUF)}
-            tooltip="Revenue mínimo anual que cubre costos operativos + dividendo. Por debajo de este número, pones plata cada mes."
+            tooltip="Ingresos brutos mínimos anuales que cubren costos operativos + dividendo. Por debajo de este número, pones plata cada mes."
           />
           <DataRow
-            label="% del revenue mediano (P50)"
+            label="% de los ingresos brutos medianos (percentil 50)"
             value={fmtPct(breakEvenPct * 100, 0)}
             isCritical={breakEvenPct > 1}
             tooltip="Si esta cifra es >100%, ni siquiera operando al nivel mediano del mercado cubres costos. Riesgo estructural — la operación depende de superar al mercado típico."
@@ -816,12 +817,12 @@ function DrawerContent({
             label="Sobre-renta vs LTR"
             value={(results.comparativa.sobreRenta >= 0 ? "+" : "") + fmtMoney(results.comparativa.sobreRenta, currency, valorUF)}
             isCritical={isCritical}
-            tooltip="Cuánto más genera STR vs LTR cada mes. Bajo 30% suele no compensar el esfuerzo operacional adicional."
+            tooltip="Cuánto más genera STR vs LTR cada mes. Bajo 30% suele no compensar el esfuerzo operativo adicional."
           />
         </DrawerSection>
         <DrawerSection label="Recuperación amoblamiento">
           <DataRow
-            label="Payback amoblamiento"
+            label="Recuperación de inversión en amoblamiento"
             value={
               payback < 0
                 ? "Sobre-renta no compensa"
@@ -881,7 +882,7 @@ function DrawerContent({
       </DrawerSection>
 
       {riesgosSec?.contenido && operacionSec?.contenido && (
-        <DrawerSection label="Contexto operacional">
+        <DrawerSection label="Contexto operativo">
           <p className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] m-0 whitespace-pre-wrap">
             {operacionSec.contenido}
           </p>

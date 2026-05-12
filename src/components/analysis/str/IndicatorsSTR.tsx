@@ -39,12 +39,12 @@ export function IndicatorsSTR({
       style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
     >
       <KPICard
-        label="NOI MENSUAL"
+        label="NOI MENSUAL (ING. NETO OPERATIVO)"
         value={fmtMoney(base.noiMensual, currency, valorUF)}
         sub="Base · antes de dividendo"
         tone={base.noiMensual < 0 ? "bad" : "neutral"}
         size="small"
-        tooltip="NOI = ingreso neto operacional mensual = ingreso bruto - comisión gestión - costos operativos. Aún sin descontar dividendo."
+        tooltip="NOI = ingreso neto operativo mensual = ingreso bruto - comisión gestión - costos operativos. Aún sin descontar dividendo."
       />
       <KPICard
         label="CAP RATE"
@@ -63,7 +63,7 @@ export function IndicatorsSTR({
         tooltip="Retorno anual sobre lo que efectivamente pusiste de tu bolsillo (pie + amoblamiento + gastos cierre)."
       />
       <KPICard
-        label="PAYBACK AMOBLAMIENTO"
+        label="RECUPERACIÓN AMOBLAMIENTO"
         value={
           payback < 0
             ? "—"
@@ -88,7 +88,7 @@ export function IndicatorsSTR({
         }
         tone={!hasTir ? "neutral" : tirValue < 0 ? "bad" : "neutral"}
         size="small"
-        tooltip="Tasa interna de retorno considerando capital inicial, flujos operacionales año a año y venta del activo al año del horizonte."
+        tooltip="Tasa interna de retorno considerando capital inicial, flujos operativos año a año y venta del activo al año del horizonte."
       />
     </div>
   );

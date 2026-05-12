@@ -134,7 +134,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
           )}
         </div>
         <div className="flex justify-between font-mono text-[13px]">
-          <span className="text-[var(--franco-text)]">Revenue mensual estimado</span>
+          <span className="text-[var(--franco-text)]">Ingresos brutos mensuales estimados</span>
           <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(revenueMensualBase, currency, valorUF)}</span>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
       {/* Caveat */}
       <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
         {(adrEsOverride || occEsOverride)
-          ? "Ajustaste uno o más valores manualmente. Los ejes operacionales siguen mostrados como referencia, pero el motor está usando tus valores en el cálculo."
+          ? "Ajustaste uno o más valores manualmente. Los ejes operativos siguen mostrados como referencia, pero el motor está usando tus valores en el cálculo."
           : "Estas estimaciones se basan en data de operadores reales en Santiago (proforma Andes STR Providencia 2025 + análisis 149 listings AirROI). Calibración en mejora continua a medida que más usuarios usan Franco STR."}
       </p>
     </div>

@@ -32,7 +32,7 @@ function tratamientoFor(v: STRVerdict): Tratamiento {
 }
 
 const VERDICT_TOOLTIPS_STR: Record<string, string> = {
-  COMPRAR: "El depto cumple los criterios de renta corta: ventaja sobre LTR clara, NOI sólido, payback razonable.",
+  COMPRAR: "El depto cumple los criterios de renta corta: ventaja sobre LTR clara, NOI sólido, recuperación de inversión razonable.",
   "AJUSTA SUPUESTOS": "El depto tiene potencial STR pero algún parámetro (ocupación, comisión, costos) está justo. Hay que ajustar antes de operar.",
   "BUSCAR OTRA": "Los números STR no superan al LTR. Mejor revisar otra propiedad o cambiar la estrategia.",
 };
@@ -147,10 +147,10 @@ export function HeroVerdictBlockSTR({
       ? "ANTES DE SEGUIR, DECIDE"
       : "CONSIDERA ANTES DE AVANZAR";
   const alertText = isRojo
-    ? "El sobre-rendimiento contra LTR no compensa el riesgo operacional. Revisar antes de avanzar."
+    ? "El sobre-rendimiento contra LTR no compensa el riesgo operativo. Revisar antes de avanzar."
     : isAjusta
-      ? "Los números cierran solo bajo el escenario base. Si la ocupación cae al p25, la operación deja de tener sentido."
-      : "El depto ofrece una ventaja clara vs arriendo largo. Revisa los riesgos operacionales antes de cerrar.";
+      ? "Los números cierran solo bajo el escenario base. Si la ocupación cae al percentil 25 del mercado, la operación deja de tener sentido."
+      : "El depto ofrece una ventaja clara vs arriendo largo. Revisa los riesgos operativos antes de cerrar.";
 
   return (
     <div
