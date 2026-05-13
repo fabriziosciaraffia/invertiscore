@@ -21,11 +21,15 @@ import { fmtMoney, fmtPct } from "../utils";
  *      - grid 3 DatoCards (NOI · Cash-on-Cash · Ventaja vs LTR)
  *      - reencuadre IA (prose Sans)
  *      - cajaAccionable IA en StateBox al cierre
- *      - opcional: nota Franco-diverge-del-motor
  *
  * Commit C · 2026-05-12: Hero embebe narrativa IA inline (paridad LTR).
  * Antes la narrativa vivía en AIInsightSTR como bloque separado abajo del
  * Hero. Audit H1.1 identificó la inconsistencia con LTR Hero.
+ *
+ * Commit E.2 · 2026-05-13: eliminada la caja "Franco diverge del motor".
+ * La doctrina post-E.2 prohíbe contradecir al motor en el render — un solo
+ * veredicto, la IA narra el matiz. La divergencia legítima va a
+ * `ai.francoCaveat` audit-only.
  *
  * Fallback elegante: si `ai` es null o `conviene.*` campos faltan, el Hero
  * renderiza la versión motor-only (alert hardcoded + DatoCards) sin
@@ -115,16 +119,6 @@ export function HeroVerdictBlockSTR({
   const aiVeredictoFrase = aiConviene?.veredictoFrase?.trim() || null;
   const aiReencuadre = aiConviene?.reencuadre?.trim() || null;
   const aiCaja = aiConviene?.cajaAccionable?.trim() || null;
-
-  // Detección Franco-diverge-del-motor (skill §1.7).
-  const francoVerdictNorm = ai?.francoVerdict
-    ? ((normalizeLegacyVerdict(ai.francoVerdict) as STRVerdict | null) ?? ai.francoVerdict)
-    : null;
-  const engineSignalNorm = ai?.engineSignal
-    ? ((normalizeLegacyVerdict(ai.engineSignal) as STRVerdict | null) ?? ai.engineSignal)
-    : null;
-  const diverge = !!francoVerdictNorm && !!engineSignalNorm && francoVerdictNorm !== engineSignalNorm;
-  const rationale = diverge ? ai?.francoVerdictRationale?.trim() || null : null;
 
   // Construcción de los 3 DatoCards desde el motor
   const base = results.escenarios.base;
@@ -320,33 +314,6 @@ export function HeroVerdictBlockSTR({
           </StateBox>
         )}
 
-        {/* Franco-diverge-del-motor (skill §1.7) — solo si Franco emite veredicto
-            distinto al motor + razón. Patrón 4 sin Signal Red (bloque Ink-only). */}
-        {diverge && rationale && (
-          <div
-            className="mt-4 p-3"
-            style={{
-              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-              borderLeft: "3px solid var(--franco-text)",
-              borderRadius: "0 8px 8px 0",
-            }}
-          >
-            <p
-              className="font-mono uppercase mb-1.5 m-0"
-              style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text)", fontWeight: 600 }}
-            >
-              Franco diverge del motor
-            </p>
-            <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
-              <span className="font-mono">Motor: {engineSignalNorm}</span>
-              {" · "}
-              <span className="font-mono font-medium">Franco: {francoVerdictNorm}</span>
-            </p>
-            <p className="font-body text-[13px] text-[var(--franco-text)] mt-1.5 m-0 leading-[1.55] whitespace-pre-wrap italic">
-              {rationale}
-            </p>
-          </div>
-        )}
       </div>
     </div>
   );

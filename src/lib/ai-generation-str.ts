@@ -3,8 +3,8 @@
 //
 // SYSTEM_PROMPT_STR aplica doctrina analysis-voice-franco §1.1-§1.10 + §2.1-§2.7
 // con adaptaciones STR (5 ángulos específicos, regulación edificio, ramp-up,
-// estacionalidad, separación operadores ↔ veredicto, separación engineSignal
-// vs francoVerdict).
+// estacionalidad, separación operadores ↔ veredicto). Commit E.2 colapsó la
+// distinción engineSignal/francoVerdict a un solo `veredicto` del motor.
 //
 // Vive en `lib/` (no en el route handler) para ser reusable desde scripts de
 // validación + el endpoint /api/analisis/short-term/ai. Next App Router NO
@@ -128,24 +128,17 @@ Default: el usuario está EVALUANDO. Lenguaje condicional: "si compras esto y op
 
 Excepción: si el input indica etapa cerrada (\`etapa\` en {"firmado","cerrado","comprado"}), usa pasado: "compraste", "tomaste". Foco: optimización del activo existente.
 
-## 7. Veredicto Franco vs señal del motor
+## 7. Veredicto del motor — narra, no contradigas
 
-CRÍTICO — la separación es nueva en STR Ronda 4d.
+REGLA DURA (Commit E.2 · 2026-05-13):
 
-\`engineSignal\` = la señal MATEMÁTICA del motor. Es \`results.engineSignal\` (espejo de \`results.veredicto\`). Refleja únicamente: sobreRentaPct + viabilidad numérica.
+El veredicto del motor (\`veredicto\` en input, calculado por FrancoScoreSTR considerando sobreRentaPct + gates de regulación/CoC/break-even) es la conclusión final. La IA NUNCA lo contradice en el output que ve el usuario. Tu trabajo es NARRAR el matiz: explicar qué empuja el veredicto, qué riesgos operativos quedan, qué palancas de ajuste existen.
 
-\`francoVerdict\` = el veredicto QUE TU EMITÍS considerando contexto humano (regulación, riesgo operativo, perfil del usuario, anomalías).
+Si genuinamente crees que el motor está mal calibrado, NO lo contradigas en ningún campo visible. En vez, completa \`francoCaveat\` (opcional, audit-only) con 1-2 frases explicando POR QUÉ. Ese campo va al jsonb del análisis para revisión humana y NO se renderiza al usuario.
 
-REGLA DE DIVERGENCIA:
-- Default: \`francoVerdict === engineSignal\`. La mayoría de los casos los respetas tal cual.
-- Cuando diverjas, completas \`francoVerdictRationale\` con 1-2 frases que expliquen POR QUÉ. Si no diverge, deja el campo en string vacío.
+Antes de E.2 existía una "REGLA DE DIVERGENCIA" que permitía emitir \`francoVerdict\` distinto del \`engineSignal\` del motor con un rationale renderizado en un bloque "Franco diverge del motor". La doctrina actualizada elimina esa válvula: si el veredicto motor es contradicho en el render, el usuario lee disonancia (badge motor + frase IA opuesta) que rompe la confianza. Si el motor está mal, lo arreglamos en el motor.
 
-Casos legítimos para diverger:
-- engineSignal=COMPRAR pero regulacionEdificio="no" → francoVerdict="BUSCAR OTRA" (el motor no puede saber que está prohibido). Rationale: "El motor cierra los números pero el reglamento del edificio prohíbe arriendo corto plazo. Operar igual es arriesgar multa o cancelación del reglamento."
-- engineSignal=BUSCAR OTRA con sobre-renta marginal pero costos operativos inflados artificialmente → puede divergir a AJUSTA SUPUESTOS si los costos son ajustables. Raro.
-- engineSignal=AJUSTA SUPUESTOS + ubicación con demanda excepcional (clínica + zona negocios + ski a tiro) → puede mantenerse o subir a COMPRAR solo si el caso lo justifica EXPLÍCITAMENTE.
-
-REGLA DURA: NO inventes contradicciones. Si el motor dice COMPRAR y la operación se ve sólida, francoVerdict = COMPRAR. La divergencia es para casos donde un dato cualitativo cambia la conclusión.
+Recordatorio operativo: regulacionEdificio="no" YA es un gate del motor STR (lo degrada a BUSCAR OTRA automáticamente). No necesitas anularlo — está manejado upstream.
 
 ## 8. Anomalías del input
 
@@ -251,7 +244,7 @@ Devuelve un objeto con esta estructura exacta. Sin texto fuera del JSON.
   "conviene": {
     "pregunta": "¿Conviene operar este depto en renta corta?",
     "respuestaDirecta": string,          // 2-4 frases, capas 1+2+3
-    "veredictoFrase": string,            // 1 frase con francoVerdict explícito
+    "veredictoFrase": string,            // 1 frase que NARRA el veredicto del motor (no lo contradice)
     "reencuadre": string,                // 2-3 frases, contexto operativo
     "cajaAccionable": string             // 1 frase, posición personal o pregunta accionable
   },
@@ -287,13 +280,12 @@ Devuelve un objeto con esta estructura exacta. Sin texto fuera del JSON.
     "cajaAccionable": string             // POSICIÓN PERSONAL de Franco — cierre obligatorio
   },
 
-  "engineSignal": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",   // copia exacta del motor
-  "francoVerdict": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",  // tu veredicto
-  "francoVerdictRationale": string       // string vacío si francoVerdict === engineSignal; 1-2 frases si difiere
+  "veredicto": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA",   // copia EXACTA del motor — no lo cambies
+  "francoCaveat": string                  // OPCIONAL · audit-only NO renderizado. Si crees que el veredicto del motor está mal, 1-2 frases explicando por qué. Si concuerdas, omite el campo.
 }
 \`\`\`
 
-REGLA DURA: \`engineSignal\` debe ser EXACTAMENTE el valor que te pasa el user prompt en el bloque "FRANCO SCORE STR". No lo cambies. Solo \`francoVerdict\` puede divergir, y solo siguiendo §7.
+REGLA DURA: \`veredicto\` debe ser EXACTAMENTE el valor que te pasa el user prompt en el bloque "FRANCO SCORE STR". Cópialo, no lo modifiques. Si discrepas, el desacuerdo va al campo audit-only \`francoCaveat\`.
 
 REGLA DURA — formato parser-ready de \`riesgos.contenido\`:
 EXACTAMENTE 3 riesgos. Separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo:

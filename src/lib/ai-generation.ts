@@ -9,7 +9,7 @@ import {
   calificaSubsidio,
   aplicaSubsidio,
 } from "@/lib/constants/subsidio";
-import { readEngineSignal } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 
 const anthropic = new Anthropic();
@@ -59,7 +59,7 @@ OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.reenc
 Ejemplo: "Tu precio/m² (UF 83) está 22% sobre la mediana de Providencia (UF 68). Por ese precio en la misma zona consigues deptos de 75-80 m²."
 
 **Ángulo 2 — Inter-zona (otras comunas):**
-OBLIGATORIO cuando francoVerdict = "BUSCAR OTRA". Sin excepciones.
+OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones.
 Va en \`conviene.reencuadre\` o \`riesgos.cajaAccionable\`.
 
 DEBE nombrar al menos 1 comuna alternativa concreta de Santiago. Lista de referencia (usar la que aplique al perfil del usuario):
@@ -142,9 +142,9 @@ Forma: una observación corta + el impacto cuantificado, en \`conviene.reencuadr
 NIVEL 3 — Reestructuración recomendada.
 Cuándo (cualquiera de estos disparadores):
 - \`overall\` === "problematico".
-- \`engineSignal\` ≠ "COMPRAR" Y la estructura financiera es la causa principal del problema (no el precio del depto ni la zona).
-- \`engineSignal\` === "COMPRAR" + \`tasa\` o \`pie\` ∈ {mejorable, problematico} + \`flujoCruzaEnHorizonte\` === false. Este es el caso "depto bueno, financiamiento débil, aporte indefinido". El motor cierra la matemática del depto pero la estructura del usuario fuerza un aporte sin tope. La palanca correcta NO es el precio (eso violaría §7) — es el financiamiento.
-Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp, contenido_uf y \`estructuraSugerida\` (numérica). En este nivel \`francoVerdict\` pasa a "RECONSIDERA LA ESTRUCTURA" si la matemática del financiamiento es la palanca real (ver §7).
+- \`veredicto\` ≠ "COMPRAR" Y la estructura financiera es la causa principal del problema (no el precio del depto ni la zona).
+- \`veredicto\` === "COMPRAR" + \`tasa\` o \`pie\` ∈ {mejorable, problematico} + \`flujoCruzaEnHorizonte\` === false. Este es el caso "depto bueno, financiamiento débil, aporte indefinido". El motor cierra la matemática del depto pero la estructura del usuario fuerza un aporte sin tope. La palanca correcta NO es el precio — es el financiamiento.
+Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp, contenido_uf y \`estructuraSugerida\` (numérica). El veredicto del motor no cambia; la sección reestructuración aparece como sub-card explicativa dentro del veredicto vigente.
 
 Cuando completas \`reestructuracion\`:
 - contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
@@ -170,28 +170,20 @@ Si etapa = "evaluando":
 
 La ventaja existe en condicional, no en pasado, salvo que etapa indique explícitamente operación cerrada.
 
-## 7. Veredicto Franco vs señal del motor
+## 7. Veredicto del motor — narra, no contradigas
 
-REGLA DE DIVERGENCIA (lee esto antes de elegir francoVerdict):
+REGLA DURA (Commit E.2 · 2026-05-13):
 
-Si engineSignal === "COMPRAR":
-- francoVerdict = "COMPRAR" (default).
-- O francoVerdict = "RECONSIDERA LA ESTRUCTURA" si y solo si la matemática del depto cierra PERO el financiamiento del usuario no es sostenible.
-- PROHIBIDO francoVerdict = "AJUSTA SUPUESTOS" o "BUSCAR OTRA" cuando engineSignal === "COMPRAR". Si el motor concluyó que la operación es sólida, tu única razón legítima para discrepar es la estructura financiera del usuario, NO el flujo en horizonte ni el aporte indefinido (esos ya los consideró el motor en su score).
+El veredicto del motor es la conclusión final. La IA NUNCA lo contradice en el output que ve el usuario. Tu trabajo es NARRAR el matiz que justifica ese veredicto: explicar qué lo empuja, qué riesgos quedan, qué palancas de ajuste existen.
 
-Si engineSignal === "AJUSTA SUPUESTOS":
-- francoVerdict puede ser "AJUSTA SUPUESTOS" (default), "RECONSIDERA LA ESTRUCTURA", o "COMPRAR" (raro, solo si ves algo que el motor no consideró).
+Si genuinamente crees que el motor está mal calibrado para este caso, NO lo contradigas en \`respuestaDirecta\` ni en ningún campo visible. En vez, completa el campo opcional \`francoCaveat\` (audit-only) con 1-2 frases explicando POR QUÉ crees que el veredicto es incorrecto. Ese campo va al jsonb del análisis para revisión humana y NO se renderiza al usuario.
 
-Si engineSignal === "BUSCAR OTRA":
-- francoVerdict puede ser "BUSCAR OTRA" (default) o "RECONSIDERA LA ESTRUCTURA" si un cambio plausible de estructura vuelve viable la operación.
+Antes de E.2 existía una "REGLA DE DIVERGENCIA" que permitía emitir \`francoVerdict\` distinto del \`engineSignal\` del motor con un rationale renderizado al usuario. La doctrina actualizada elimina esa válvula: si el veredicto del motor es contradicho en el render, el usuario lee disonancia (badge motor + frase IA opuesta) que rompe la confianza en el producto. Si el motor está mal, lo arreglamos en el motor.
 
-Default global: francoVerdict === engineSignal. La mayoría de los casos los respetas tal como vienen.
-
-REGLA DURA: "RECONSIDERA LA ESTRUCTURA" es exclusivo de Franco. El motor nunca lo emite. Solo lo usas cuando completas el campo \`reestructuracion\` y la matemática del financiamiento es la palanca real.
-
-Si decides diverger, sé explícito: el usuario tiene que entender por qué tu veredicto difiere del score y de la señal matemática. Una frase de explicación en \`respuestaDirecta\`, no un párrafo defensivo.
-
-Ejemplo de divergencia legítima (engineSignal=COMPRAR → francoVerdict=RECONSIDERA): "El depto en sí da Franco Score 75 y la matemática cierra. Pero con tu estructura actual (pie 20%, tasa 4,5%) la cuota mensual no es sostenible para el aporte que requiere — la palanca está en el financiamiento, no en el precio. A 25% de pie y tasa 4,1% el flujo cambia."
+Recordatorios operativos:
+- El motor emite "COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA", o "RECONSIDERA LA ESTRUCTURA" en \`veredicto\`. Tu narrativa lo asume como dado.
+- "RECONSIDERA LA ESTRUCTURA" lo emite el motor cuando \`financingHealth.overall === "problematico"\` y la matemática del financiamiento es la palanca real. NO lo invocas tú; si crees que aplica pero el motor no lo emitió, ese desacuerdo va a \`francoCaveat\`.
+- Sección \`reestructuracion\` opcional: complétala cuando aplique el Nivel 3 financingHealth (§5) — eso es CONTENIDO dentro del veredicto vigente, no un veredicto propio.
 
 ## 8. Anomalías del input
 
@@ -478,7 +470,9 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 {
   "siendoFrancoHeadline_clp": string,
   "siendoFrancoHeadline_uf": string,
-  "francoVerdict": "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" | "RECONSIDERA LA ESTRUCTURA",
+  "francoCaveat": string,   // OPCIONAL · audit-only NO renderizado al usuario.
+                            // Si crees que el veredicto del motor es incorrecto,
+                            // explica 1-2 frases por qué. Si concuerdas, omite el campo.
 
   "conviene": {
     "pregunta": "¿Conviene o no conviene?",
@@ -575,7 +569,7 @@ Reglas universales del output:
 - Todo monto formateado a la chilena. Decimal con coma, miles con punto.
 - No usar markdown bold (**) en ningún campo de contenido. El renderer no lo respeta.
 - No inventar datos del input. Si falta un dato, omítelo o di "sin dato del motor".
-- francoVerdict en el JSON debe ser uno de los 4 valores exactos. RECONSIDERA LA ESTRUCTURA solo si completaste \`reestructuracion\` y la matemática del financiamiento es la palanca real (§7).
+- NUNCA emitas un veredicto en el JSON. El veredicto lo emite el motor (\`veredicto\` en input). Tu narrativa lo asume. Si discrepas, usa \`francoCaveat\` audit-only.
 
 ## 14. Verificación numérica obligatoria
 
@@ -897,7 +891,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         ? Math.round(precioFlujoNeutroUF)
         : Math.round(input.precio * 0.9);
 
-    const veredictoMotor = readEngineSignal(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+    const veredictoMotor = readVeredicto(results) || (results.score >= 70 ? "COMPRAR" : results.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
 
     // ─── Fase 3.7 v10 — 3 anclas discretas + modo del motor ──────────────
     // Techo viene del motor (siempre). primeraOferta:
@@ -1010,7 +1004,7 @@ OPERACIÓN MENSUAL
 
 MÉTRICAS DEL MOTOR
 - francoScore: ${results.score}/100 (clasificación: ${results.clasificacion})
-- engineSignal: ${veredictoMotor}
+- veredicto del motor (úsalo como dado, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
 - rentabilidadBruta: ${m.rentabilidadBruta.toFixed(1)}%
 - capRate: ${m.capRate.toFixed(1)}%

@@ -224,9 +224,12 @@ export async function POST(request: Request) {
         : "";
 
     // --- Score + veredicto del motor ---
+    // Commit E.2 · 2026-05-13 — un solo veredicto. Antes coexistían
+    // `engineSignal` (input al prompt) y `francoVerdict` (output IA) con
+    // divergencia opcional. Ahora el motor emite, la IA narra.
     const fs = results.francoScore;
     const score = fs?.score ?? 50;
-    const engineSignal: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
+    const veredictoMotor: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
 
     // --- Estacionalidad para contexto operativo ---
     const mesPeak = r.flujoEstacional.length
@@ -263,7 +266,7 @@ Edificio permite Airbnb: ${regulacion}
 Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
 
 === FRANCO SCORE STR: ${score}/100 ===
-engineSignal del motor: ${engineSignal}
+veredicto del motor (úsalo como dado, no lo contradigas — §7): ${veredictoMotor}
 ${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.rentabilidad.detail}
 Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail}
 Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
@@ -368,8 +371,8 @@ INSTRUCCIÓN FINAL
 ═══════════════════════════════════════════════════════════════════
 
 1. Aplica la doctrina §1-§13 sin excepción. El test del §1 (¿se puede reemplazar por una tabla?) es real.
-2. \`engineSignal\` = "${engineSignal}" — cópialo EXACTO al JSON output.
-3. \`francoVerdict\` por default = "${engineSignal}". Diverge solo si §7 lo justifica (ej. regulación bloqueada). Si diverge, completa \`francoVerdictRationale\` con 1-2 frases.
+2. \`veredicto\` = "${veredictoMotor}" — cópialo EXACTO al JSON output. No lo modifiques.
+3. Si crees que el motor está mal calibrado para este caso, NO lo contradigas en ningún campo visible. Usa \`francoCaveat\` opcional (audit-only, NO renderizado al usuario) con 1-2 frases. Si concuerdas con el motor, omite el campo.
 4. Cada anomalía detectada por el motor debe aparecer en el output (§8).
 5. Cierre obligatorio en \`riesgos.cajaAccionable\` con posición personal (§9), NO checklist.
 6. Voz tuteo neutro chileno (§10). Auto-chequeo final: ningún verbo voseo (terminado en -ás/-és/-ís acentuado).
@@ -404,9 +407,9 @@ Responde SOLO con el JSON.`;
       return NextResponse.json({ error: "Error parsing AI response", raw: rawText }, { status: 500 });
     }
 
-    // Garantía mínima de schema: si la IA olvidó engineSignal/francoVerdict, los completamos
-    if (!aiResult.engineSignal) aiResult.engineSignal = engineSignal;
-    if (!aiResult.francoVerdict) aiResult.francoVerdict = aiResult.engineSignal;
+    // Garantía mínima de schema (Commit E.2): si la IA olvidó copiar el veredicto
+    // del motor, lo completamos con el valor autoritativo del input.
+    if (!aiResult.veredicto) aiResult.veredicto = veredictoMotor;
 
     await supabase.from("analisis").update({ ai_analysis: aiResult }).eq("id", analysisId);
 

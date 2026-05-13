@@ -17,13 +17,13 @@ import {
 } from "@/components/comparativa/DrawersInlineComparativa";
 import type {
   FullAnalysisResult,
-  FrancoVerdict,
+  Veredicto,
   AIAnalysisComparativa,
   RecomendacionModalidadAmbas,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
-import { readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
 
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -65,7 +65,7 @@ function deriveRecomendacionFallback(
 
 function deriveVerdictUnificado(
   reco: RecomendacionModalidadAmbas,
-  ltrVerdict: FrancoVerdict | null,
+  ltrVerdict: Veredicto | null,
   strVerdict: STRVerdict | null,
 ): STRVerdict {
   if (reco === "LTR_PREFERIDO") {
@@ -107,7 +107,7 @@ export function SharedComparativaClient(p: Props) {
     [p.strResults],
   );
   const ltrVerdict = useMemo(
-    () => readFrancoVerdict(p.ltrResults) ?? null,
+    () => readVeredicto(p.ltrResults) ?? null,
     [p.ltrResults],
   );
   const strVerdict = useMemo<STRVerdict | null>(

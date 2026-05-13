@@ -91,7 +91,7 @@ Si dudas, omitir es preferible a inventar.
 
 - §1.5 Salud financiera: si hay info, intégrala en cierre o switchPath. Si no, omite.
 - §1.6 Tiempos verbales: el usuario aún NO compró. Lenguaje condicional informativo ("si eliges STR vas a aportar X"). NUNCA "el depto te cuesta X".
-- §1.7 Veredicto Franco vs motor: \`recomendacionFranco\` puede coincidir o diverger de \`engineRecommendation\`. Si diverge, completa \`recomendacionRationale\` con 1-2 frases.
+- §1.7 Veredicto del motor (Commit E.2 · 2026-05-13): cópialo en \`recomendacion\` sin contradecirlo. Tu trabajo es narrar el matiz. Si discrepas, usa \`francoCaveat\` audit-only NO renderizado. La caja "Franco diverge del motor" fue eliminada del producto.
 - §1.8 Tier usuario: asume "estandar" salvo que el input diga otra cosa.
 - §1.9 Anomalías: si el motor reporta zonaSTR.comunaNoListada o tierZona "baja", refuerza en quienDeberiasSer o cierre.
 - §1.10 Cierre: posición personal, no checklist. Síntesis + condición + costo emocional cuando hay tensión.
@@ -156,7 +156,7 @@ REGLA DE AUTO-CHEQUEO antes de devolver el JSON: revisa cada verbo conjugado en 
 
 ## §2.6 Largos por sección
 
-- \`headline\`: 1 frase, máx 25 palabras. Refleja \`recomendacionFranco\`.
+- \`headline\`: 1 frase, máx 25 palabras. Refleja la \`recomendacion\` del motor (no la contradice).
 - \`conviene.quienDeberiasSer\`: 3-5 frases.
 - \`conviene.balance\`: 3-5 frases. Mínimo 2 cifras absolutas concretas.
 - \`conviene.switchPath\`: 3-5 frases. Concreto sobre la propiedad analizada.
@@ -203,9 +203,8 @@ JSON exacto, sin texto adicional:
     "switchPath": "<3-5 frases sobre viabilidad LTR↔STR para esta propiedad>",
     "cierre": "<2-3 frases con posición personal>"
   },
-  "engineRecommendation": "<LTR_PREFERIDO | STR_VENTAJA_CLARA | INDIFERENTE>",
-  "recomendacionFranco": "<LTR_PREFERIDO | STR_VENTAJA_CLARA | INDIFERENTE>",
-  "recomendacionRationale": "<opcional · solo si recomendacionFranco ≠ engineRecommendation>"
+  "recomendacion": "<LTR_PREFERIDO | STR_VENTAJA_CLARA | INDIFERENTE>",
+  "francoCaveat": "<OPCIONAL · audit-only NO renderizado · 1-2 frases si crees que la recomendación del motor es incorrecta · omitir si concuerdas>"
 }`;
 
 /**
@@ -320,8 +319,8 @@ export function sanitizeComparativaAI(ai: AIAnalysisComparativa): AIAnalysisComp
       switchPath: sanitizeVoseo(ai.conviene?.switchPath ?? ""),
       cierre: sanitizeVoseo(ai.conviene?.cierre ?? ""),
     },
-    recomendacionRationale: ai.recomendacionRationale
-      ? sanitizeVoseo(ai.recomendacionRationale)
+    francoCaveat: ai.francoCaveat
+      ? sanitizeVoseo(ai.francoCaveat)
       : undefined,
   };
 }

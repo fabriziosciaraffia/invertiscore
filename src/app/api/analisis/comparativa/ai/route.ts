@@ -187,9 +187,9 @@ INSTRUCCIÓN FINAL
 ═══════════════════════════════════════════════════════════════════
 
 1. Aplica doctrina §1-§3 sin excepción. Test §1.1 real: cada párrafo debe interpretar, no recitar.
-2. \`engineRecommendation\` = "${reco}" — cópialo EXACTO al JSON.
-3. \`recomendacionFranco\` por default = "${reco}". Diverge solo si la doctrina lo justifica; si diverge, completá \`recomendacionRationale\` con 1-2 frases.
-4. \`headline\` refleja \`recomendacionFranco\`, 1 frase, máx 25 palabras.
+2. \`recomendacion\` = "${reco}" — cópialo EXACTO al JSON. No lo modifiques.
+3. Si crees que la recomendación del motor está mal calibrada, NO la contradigas en ningún campo visible. Usa \`francoCaveat\` opcional (audit-only, NO renderizado al usuario) con 1-2 frases. Si concuerdas, omite el campo.
+4. \`headline\` refleja la \`recomendacion\` del motor, 1 frase, máx 25 palabras.
 5. Los 4 ángulos del \`conviene\` siguen la disciplina §1.3 + §2.6 (largos).
 6. Voz §2.1: tuteo neutro chileno. Auto-check: ningún voseo (-ás/-és/-ís acentuado). Ningún chilenismo coloquial. Ningún cliché de apertura.
 7. \`cierre\` con posición personal §1.10. NO checklist.
@@ -226,12 +226,10 @@ Responde SOLO con el JSON.`;
       );
     }
 
-    // Garantía mínima de schema
-    if (!aiResult.engineRecommendation) {
-      aiResult.engineRecommendation = reco as RecomendacionModalidadAmbas;
-    }
-    if (!aiResult.recomendacionFranco) {
-      aiResult.recomendacionFranco = aiResult.engineRecommendation;
+    // Garantía mínima de schema (Commit E.2 · 2026-05-13): si la IA olvidó
+    // copiar la recomendación del motor, la completamos con el valor autoritativo.
+    if (!aiResult.recomendacion) {
+      aiResult.recomendacion = reco as RecomendacionModalidadAmbas;
     }
 
     // Sanitizer voseo→tuteo (safety net; el prompt ya prohíbe voseo pero el

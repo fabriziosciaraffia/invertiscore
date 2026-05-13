@@ -4,7 +4,7 @@ import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
 import { generateAiAnalysis } from "@/lib/ai-generation";
-import { readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
@@ -105,7 +105,7 @@ export async function POST(request: Request) {
               user.user_metadata?.nombre || user.user_metadata?.full_name || "",
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
-              readFrancoVerdict(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
+              readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
               data.id,
             );
           } catch (e) {

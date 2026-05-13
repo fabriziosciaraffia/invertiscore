@@ -1,5 +1,5 @@
 import { extractRiesgos } from "@/components/ui/AnalysisDrawer";
-import { readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import type { AISection, AINegociacionSection, FullAnalysisResult } from "@/lib/types";
 import { parseUFString } from "./utils";
 
@@ -198,7 +198,7 @@ export function MiniCard({
           }
           if (section === "riesgos") {
             const score = results?.score ?? 0;
-            const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+            const veredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
             if (veredicto === "COMPRAR") return "¿Qué cuidar?";
             if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
             return "¿Qué riesgos asume tu negociación?";

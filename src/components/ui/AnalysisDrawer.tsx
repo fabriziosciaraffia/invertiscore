@@ -10,7 +10,7 @@ import type {
   AnalisisInput,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
-import { readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
@@ -1784,7 +1784,8 @@ function DrawerRiesgos({
 // ─── Reestructuración drawer ────────────────────────
 // Aparece solo cuando aiAnalysis.reestructuracion existe (Nivel 3 del
 // escalonado financingHealth, skill §1.5). Suele venir junto con
-// francoVerdict === "RECONSIDERA LA ESTRUCTURA".
+// veredicto === "RECONSIDERA LA ESTRUCTURA" (E.3 funde este veredicto en
+// AJUSTA SUPUESTOS + sub-card reestructuración).
 function DrawerReestructuracion({
   data,
   currency,
@@ -2031,7 +2032,7 @@ export function AnalysisDrawer({
     }
     if (activeKey === "riesgos") {
       const score = results.score ?? 0;
-      const veredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+      const veredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
       if (veredicto === "COMPRAR") return "¿Qué cuidar?";
       if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
       return "¿Qué riesgos asume tu negociación?"; // AJUSTA

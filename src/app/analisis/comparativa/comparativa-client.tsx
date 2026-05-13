@@ -25,7 +25,7 @@ import {
 } from "@/components/comparativa/DrawersComparativa";
 import type {
   FullAnalysisResult,
-  FrancoVerdict,
+  Veredicto,
   AIAnalysisComparativa,
   RecomendacionModalidadAmbas,
 } from "@/lib/types";
@@ -33,7 +33,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
   normalizeLegacyVerdict,
 } from "@/lib/types";
-import { readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
 
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
@@ -119,11 +119,11 @@ function deriveRecomendacionFallback(
 // ─── Veredicto unificado de la modalidad recomendada ─────────────────────
 function deriveVerdictUnificado(
   reco: RecomendacionModalidadAmbas,
-  ltrVerdict: FrancoVerdict | null,
+  ltrVerdict: Veredicto | null,
   strVerdict: STRVerdict | null,
 ): STRVerdict {
   if (reco === "LTR_PREFERIDO") {
-    // Coercer LTR FrancoVerdict (4 valores) a STRVerdict (3) — RECONSIDERA → AJUSTA.
+    // Coercer LTR Veredicto (4 valores incl. RECONSIDERA) a STRVerdict (3) — RECONSIDERA → AJUSTA.
     if (ltrVerdict === "BUSCAR OTRA") return "BUSCAR OTRA";
     if (ltrVerdict === "COMPRAR") return "COMPRAR";
     return "AJUSTA SUPUESTOS"; // AJUSTA SUPUESTOS, RECONSIDERA LA ESTRUCTURA, null
@@ -161,7 +161,7 @@ export function ComparativaClient(p: Props) {
 
   // Veredictos individuales
   const ltrVerdict = useMemo(
-    () => readFrancoVerdict(p.ltrResults) ?? null,
+    () => readVeredicto(p.ltrResults) ?? null,
     [p.ltrResults],
   );
   const strVerdict = useMemo<STRVerdict | null>(

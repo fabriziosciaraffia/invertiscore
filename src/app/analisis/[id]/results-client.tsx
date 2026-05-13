@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections } from "@/lib/analysis";
-import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
@@ -245,17 +245,19 @@ export function PremiumResults({
 
   // PostHog: track analysis view
   useEffect(() => {
-    const engineSignal = readEngineSignal(results);
-    const francoVerdict = readFrancoVerdict(results);
+    const veredicto = readVeredicto(results);
     posthog?.capture('analysis_viewed', {
       analysis_id: analysisId,
       comuna,
       score,
-      engineSignal,
-      francoVerdict,
-      // En Fase 3 Franco diverge del motor; este flag deja filtrar overrides
-      // en PostHog sin string comparison.
-      francoOverridesEngine: francoVerdict !== engineSignal,
+      veredicto,
+      // Commit E.2 · 2026-05-13 — flag deprecado, siempre false. Antes filtraba
+      // análisis donde `francoVerdict !== engineSignal`; tras colapsar a un
+      // solo `veredicto`, la divergencia ya no existe en producción. Se mantiene
+      // el campo en el event schema para continuidad de queries históricas;
+      // queries nuevas deben ignorarlo. Eliminar en una iteración posterior
+      // cuando PostHog haya rotado el período de retención.
+      francoOverridesEngine: false,
       is_owner: !isSharedView && !isSharedLink,
       is_shared_view: isSharedView || isSharedLink,
       access_level: accessLevel,
@@ -1074,7 +1076,7 @@ export function PremiumResults({
       tooltip: "Arriendo mensual estimado o ajustado por el usuario.",
     },
   ];
-  const resolvedVeredicto = readFrancoVerdict(results) || (score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
+  const resolvedVeredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
 
   const mainContent = (
     <>

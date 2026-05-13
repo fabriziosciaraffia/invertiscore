@@ -101,17 +101,11 @@ export function NarrativaIAComparativa({ ltrId, strId, cached }: Props) {
             isClosing={true}
           />
 
-          {ai.recomendacionRationale && ai.recomendacionFranco !== ai.engineRecommendation && (
-            <p
-              className="font-body text-[12px] mt-5 pt-4 border-t border-[var(--franco-border)] text-[var(--franco-text-secondary)] italic"
-              style={{ lineHeight: 1.6 }}
-            >
-              <span className="font-mono uppercase text-[10px] tracking-[2px] mr-2 not-italic">
-                NOTA·FRANCO:
-              </span>
-              {ai.recomendacionRationale}
-            </p>
-          )}
+          {/* Commit E.2 · 2026-05-13 — eliminada la nota "NOTA·FRANCO"
+              que mostraba `recomendacionRationale` cuando recomendacionFranco
+              divergía de engineRecommendation. La doctrina post-E.2 prohíbe
+              contradecir al motor en el render. Si la IA discrepa, lo reporta
+              en `francoCaveat` audit-only NO renderizado al usuario. */}
         </>
       )}
     </div>

@@ -260,10 +260,9 @@ export interface ShortTermResult {
   // Opcionales para no romper análisis STR persistidos pre-4b.
   projections?: YearProjectionSTR[];
   exitScenario?: ExitScenarioSTR;
-  // Señal del motor (matemática pura). Espejo de `veredicto` desde 4b.
-  // En 4d la IA podrá producir `francoVerdict` distinto considerando perfil.
-  engineSignal?: STRVerdict;
-  francoVerdict?: STRVerdict;
+  // Commit E.2 · 2026-05-13 — campos `engineSignal` y `francoVerdict` removidos.
+  // El veredicto único vive en `veredicto` (arriba). Read-path tolera análisis
+  // legacy con cualquiera de las tres llaves via `readVeredicto()`.
 
   // Commit 3a · 2026-05-12 — Subsidio Ley 21.748 (paridad con LTR).
   // Aplica a viviendas nuevas ≤ 4.000 UF (primera vivienda). Rebaja la tasa
@@ -997,10 +996,10 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     sensibilidadPrecio,
     projections,
     exitScenario,
-    // engineSignal y francoVerdict ya NO se emiten desde el motor STR.
-    // FrancoScoreSTR es la única fuente del veredicto canónico (Commit E.1).
-    // Los campos en el tipo siguen opcionales para back-compat con análisis
-    // persistidos pre-E.1 que sí los tienen poblados.
+    // Commit E.2 · 2026-05-13 — el motor STR ya no emite `engineSignal` ni
+    // `francoVerdict`. FrancoScoreSTR es la única fuente del veredicto canónico
+    // y se persiste como `veredicto` directo. Análisis legacy con esas llaves
+    // se siguen leyendo via `readVeredicto()` (results-helpers.ts).
     subsidioTasa,
     zonaSTR,
     recomendacionModalidad,

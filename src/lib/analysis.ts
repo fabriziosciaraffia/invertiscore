@@ -20,7 +20,7 @@ import {
   aplicaSubsidio,
 } from "./constants/subsidio";
 import { classifyFinancingHealth } from "./financing-health";
-import type { EngineSignal } from "./types";
+import type { Veredicto } from "./types";
 
 // El valor de la UF se pasa explícitamente como parámetro a cada función que
 // lo necesita. Antes existía un módulo-level `UF_CLP` mutable vía `setUFValue`,
@@ -870,8 +870,8 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
  * (Excelente/Buena/Regular/Débil/Evitar) que generaba disonancia con
  * el veredicto del Hero. Commit E.1 revert visual · 2026-05-13.
  *
- * Devuelve la banda base (sin overrides de gates); la veredicto final
- * persistida es `engineSignal`, que puede degradar o elevar respecto a
+ * Devuelve la banda base (sin overrides de gates); el `veredicto` final
+ * persistido en `FullAnalysisResult` puede degradar o elevar respecto a
  * esta banda por señales estructurales (CoC severo, etc.).
  */
 function getClasificacion(score: number): { clasificacion: string; color: string } {
@@ -1171,12 +1171,12 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
-  // engineSignal: base por score + overrides como gates explícitos.
+  // veredicto: base por score + overrides como gates explícitos.
   // Commit E.1 · 2026-05-13: thresholds unificados LTR+STR a 70 / 45 / 0
   // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
   // Antes era 70 / 40. La sub-banda 40-44 ahora cae a BUSCAR OTRA, no a
   // AJUSTA — coherente con la severidad de la zona.
-  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
   // NOTA: los siguientes overrides actúan como gates de seguridad explícitos
   // (audit §2.4). Pueden hacer que el badge contradiga la banda del score —
@@ -1198,25 +1198,25 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
     (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
   ) {
-    engineSignal = "BUSCAR OTRA";
+    veredicto = "BUSCAR OTRA";
   } else if (
     // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
     // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
-    engineSignal === "COMPRAR" &&
+    veredicto === "COMPRAR" &&
     (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
   ) {
-    engineSignal = "AJUSTA SUPUESTOS";
+    veredicto = "AJUSTA SUPUESTOS";
   }
 
   // GATE 3 — fuerza COMPRAR (upgrade lock-in cuando todo cierra).
   // Único override que sube. NO se aplica si GATE 1 ya cerró a BUSCAR.
   if (
-    engineSignal !== "BUSCAR OTRA" &&
+    veredicto !== "BUSCAR OTRA" &&
     metrics.flujoNetoMensual >= 0 &&
     metrics.rentabilidadNeta >= 4 &&
     (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
   ) {
-    engineSignal = "COMPRAR";
+    veredicto = "COMPRAR";
   }
 
   let resumenEjecutivo: string;
@@ -1252,10 +1252,10 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     score: clamp(score, 0, 100),
     clasificacion,
     clasificacionColor,
-    engineSignal,
-    // En esta fase francoVerdict === engineSignal. Diverge en Fase 3 cuando el
-    // refactor de prompts incorpora perfil de usuario (skill §1.7).
-    francoVerdict: engineSignal,
+    // Commit E.2 · 2026-05-13 — un solo campo de veredicto. Antes coexistían
+    // `engineSignal` (motor) y `francoVerdict` (UI) con divergencia opcional;
+    // la doctrina post-E.2 lo colapsa a un solo valor del motor.
+    veredicto,
     resumenEjecutivo,
     desglose,
     metrics,

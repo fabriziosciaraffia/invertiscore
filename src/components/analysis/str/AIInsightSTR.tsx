@@ -26,16 +26,21 @@ import { normalizeLegacyVerdict } from "@/lib/types";
  */
 
 // ─── Discriminator ────────────────────────────────────────────────
+// Commit E.2 · 2026-05-13 — chequeo de `veredicto` (campo único). Análisis IA
+// legacy con `engineSignal` y/o `francoVerdict` se aceptan también (compat).
 function hasAiSTRv2(ai: unknown): ai is AIAnalysisSTRv2 {
   if (!ai || typeof ai !== "object") return false;
   const a = ai as Record<string, unknown>;
+  const hasVerdictField =
+    typeof a.veredicto === "string"
+    || typeof a.engineSignal === "string"
+    || typeof a.francoVerdict === "string";
   return (
     typeof a.siendoFrancoHeadline_clp === "string"
     && typeof a.conviene === "object"
     && a.conviene !== null
     && typeof (a.conviene as Record<string, unknown>).respuestaDirecta === "string"
-    && typeof a.engineSignal === "string"
-    && typeof a.francoVerdict === "string"
+    && hasVerdictField
   );
 }
 
@@ -109,12 +114,13 @@ function LoadingState() {
 // riesgos) ahora viven en los drawers — ver SubjectCardGridSTR.tsx.
 function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
   const headline = ai.siendoFrancoHeadline_clp || ai.siendoFrancoHeadline_uf;
-  // Commit 1 · 2026-05-11: normalizar veredictos cacheados en IA legacy.
-  // Cache pre-Commit 1 emitía "VIABLE"/"NO RECOMENDADO"; render unifica al
-  // vocabulario canónico antes de mostrarlos en badge/divergencia.
-  const francoVerdictNorm = (normalizeLegacyVerdict(ai.francoVerdict) as STRVerdict | null) ?? ai.francoVerdict;
-  const engineSignalNorm = (normalizeLegacyVerdict(ai.engineSignal) as STRVerdict | null) ?? ai.engineSignal;
-  const verdictDiverge = francoVerdictNorm !== engineSignalNorm;
+  // Commit E.2 · 2026-05-13 — veredicto único. Lee `veredicto` (post-E.2);
+  // fallback `francoVerdict` / `engineSignal` para análisis IA cacheados pre-E.2.
+  // Cache pre-Commit 1 emitía "VIABLE"/"NO RECOMENDADO" — normalizamos al
+  // vocabulario canónico antes de pintar el badge.
+  const aiAny = ai as unknown as { veredicto?: string; francoVerdict?: string; engineSignal?: string };
+  const rawVerdict = aiAny.veredicto ?? aiAny.francoVerdict ?? aiAny.engineSignal;
+  const veredictoNorm = (normalizeLegacyVerdict(rawVerdict) as STRVerdict | null) ?? (rawVerdict as STRVerdict | undefined);
 
   return (
     <>
@@ -124,37 +130,15 @@ function RenderApertura({ ai }: { ai: AIAnalysisSTRv2 }) {
         </h3>
       )}
 
-      {/* Veredicto Franco — explícito si diverge del motor.
-          Patrón 4 prohíbe Signal Red en AI Insight: bloque va Ink-only. */}
-      {verdictDiverge && ai.francoVerdictRationale && (
-        <div
-          className="mb-5 p-4 not-italic"
-          style={{
-            background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-            borderLeft: "3px solid var(--franco-text)",
-            borderRadius: "0 8px 8px 0",
-          }}
-        >
-          <p className="font-mono uppercase mb-1.5" style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text)", fontWeight: 500 }}>
-            FRANCO DIVERGE DEL MOTOR
-          </p>
-          <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
-            <span className="font-mono">Motor: {engineSignalNorm}</span> &nbsp;·&nbsp;{" "}
-            <span className="font-mono font-medium">Franco: {francoVerdictNorm}</span>
-          </p>
-          <p className="font-body italic text-[13px] text-[var(--franco-text)] mt-2 m-0 leading-[1.55]">
-            {ai.francoVerdictRationale}
-          </p>
-        </div>
-      )}
-
       {/* Sección 01 — ¿CONVIENE? (apertura, sin numeración 02-06: esas
-          viven en drawers) */}
+          viven en drawers).
+          Commit E.2 · 2026-05-13: eliminada la caja "Franco diverge del motor".
+          La doctrina post-E.2 prohíbe contradecir al motor en el render. */}
       <div className="font-body italic text-[14px] text-[var(--franco-text)] leading-[1.65]">
         <SeccionApertura
           label="¿CONVIENE?"
           pregunta={ai.conviene.pregunta}
-          verdictBadge={francoVerdictNorm as STRVerdict}
+          verdictBadge={veredictoNorm}
         >
           <p className="m-0">{ai.conviene.respuestaDirecta}</p>
           {ai.conviene.veredictoFrase && (

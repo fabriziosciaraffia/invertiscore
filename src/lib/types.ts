@@ -181,8 +181,14 @@ export interface NegociacionScenario {
 //
 // Usar `normalizeLegacyVerdict()` (en este mismo archivo) para coercer
 // strings legacy de DB al vocabulario canónico antes de pasarlos a la UI.
-export type EngineSignal = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
-export type FrancoVerdict =
+// Commit E.2 · 2026-05-13 — colapso `engineSignal` ↔ `francoVerdict` a un solo
+// concepto. La doctrina §1.7 evolucionó: el motor emite el veredicto, la IA
+// narra el matiz, la IA NO contradice. Mantener dos campos separados generaba
+// la divergencia que el audit-commit-e §3 identificó como deuda metodológica.
+//
+// "RECONSIDERA LA ESTRUCTURA" permanece en la union por back-compat con análisis
+// legacy LTR; E.3 lo funde en "AJUSTA SUPUESTOS" + sub-card reestructuración.
+export type Veredicto =
   | "COMPRAR"
   | "AJUSTA SUPUESTOS"
   | "BUSCAR OTRA"
@@ -201,7 +207,7 @@ export type FrancoVerdict =
  *   normalizeLegacyVerdict("COMPRAR")            → "COMPRAR"
  *   normalizeLegacyVerdict("garbage")            → null
  */
-export function normalizeLegacyVerdict(raw: string | null | undefined): FrancoVerdict | null {
+export function normalizeLegacyVerdict(raw: string | null | undefined): Veredicto | null {
   if (!raw || typeof raw !== "string") return null;
   switch (raw.trim().toUpperCase()) {
     case "COMPRAR":
@@ -225,12 +231,12 @@ export interface FullAnalysisResult {
   score: number;
   clasificacion: string;
   clasificacionColor: string;
-  // Señal del motor (matemática pura del depto). Antes era `veredicto`.
-  // Ver analysis-voice-franco/SKILL.md §1.7.
-  engineSignal: EngineSignal;
-  // Veredicto Franco que muestra la UI. En esta fase es idéntico a engineSignal;
-  // diverge en Fase 3 cuando el refactor de prompts incorpora perfil de usuario.
-  francoVerdict: FrancoVerdict;
+  // Veredicto canónico unificado (Commit E.2 · 2026-05-13). Antes coexistían
+  // `engineSignal` (motor) y `francoVerdict` (UI), idénticos en producción pero
+  // habilitados a diverger por prompt. La divergencia generaba disonancia
+  // visual (badge motor + frase IA contradictoria). Ahora una sola señal:
+  // el motor emite, la IA narra, no contradice.
+  veredicto: Veredicto;
   resumenEjecutivo: string;
   desglose: Desglose;
   metrics: AnalysisMetrics;
@@ -362,8 +368,8 @@ export interface AINegociacionWalkAway {
 
 // Sección opcional que aparece solo cuando Franco activa el Nivel 3 del
 // escalonado de financingHealth (skill §1.5). Va entre `negociacion` y
-// `largoPlazo` en el render. Si está presente, el francoVerdict suele ser
-// "RECONSIDERA LA ESTRUCTURA".
+// `largoPlazo` en el render. Cuando está presente, el veredicto motor suele
+// ser "RECONSIDERA LA ESTRUCTURA" (E.3 lo funde en AJUSTA SUPUESTOS).
 export interface AIReestructuracionSection {
   contenido_clp: string;
   contenido_uf: string;
@@ -385,9 +391,11 @@ export interface AIAnalysisV2 {
   reestructuracion?: AIReestructuracionSection;
   largoPlazo: AISection;
   riesgos: AISection;
-  // Veredicto que Franco emite. Puede coincidir o no con engineSignal del motor.
-  // Opcional para backward-compat con análisis IA generados antes del refactor.
-  francoVerdict?: FrancoVerdict;
+  // Commit E.2 · 2026-05-13 — campo audit-only NO renderizado al usuario.
+  // Si la IA cree que el veredicto del motor está mal calibrado, lo reporta
+  // acá para revisión humana. La regla operativa post-E.2: la IA NUNCA
+  // contradice el motor en el render; este campo es la válvula de escape.
+  francoCaveat?: string;
 }
 
 // ─── STR — IA Análisis v2 (Ronda 4d) ──────────────────────────────
@@ -432,11 +440,14 @@ export interface AIAnalysisSTRv2 {
   operacion: AISectionSTRv2;
   largoPlazo: AISectionSTRv2;
   riesgos: AISectionSTRv2;
-  // Meta — separación de roles motor ↔ Franco (skill §1.7).
-  engineSignal: STRVerdict;
-  francoVerdict: STRVerdict;
-  // Solo cuando francoVerdict ≠ engineSignal — explica la divergencia en 1-2 frases.
-  francoVerdictRationale?: string;
+  // Commit E.2 · 2026-05-13 — campo único de veredicto. Antes coexistían
+  // `engineSignal` y `francoVerdict` con divergencia opcional + rationale
+  // que la UI renderizaba como caja "Franco diverge del motor". La doctrina
+  // post-E.2 colapsa a un solo veredicto del motor; la IA narra, no contradice.
+  veredicto: STRVerdict;
+  // Audit-only NO renderizado. Si la IA cree que el motor está mal calibrado,
+  // lo reporta acá para revisión humana sin contradecir al usuario.
+  francoCaveat?: string;
 }
 
 // ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Commit 3b · 2026-05-12) ──
@@ -453,7 +464,7 @@ export type RecomendacionModalidadAmbas =
   | "INDIFERENTE";
 
 export interface AIAnalysisComparativa {
-  // Headline — 1 frase máx 25 palabras, refleja recomendacionFranco.
+  // Headline — 1 frase máx 25 palabras, refleja recomendacion del motor.
   headline: string;
   conviene: {
     quienDeberiasSer: string;
@@ -461,13 +472,14 @@ export interface AIAnalysisComparativa {
     switchPath: string;
     cierre: string;
   };
-  // Recomendación del motor (input) — copiada al output para trazabilidad.
-  engineRecommendation: RecomendacionModalidadAmbas;
-  // Recomendación que Franco emite. Default = engineRecommendation; puede
-  // diverger si la doctrina lo justifica (ej. perfil que no tolera STR).
-  recomendacionFranco: RecomendacionModalidadAmbas;
-  // Solo si Franco diverge del motor — explica en 1-2 frases.
-  recomendacionRationale?: string;
+  // Commit E.2 · 2026-05-13 — campo único de recomendación. Antes coexistían
+  // `engineRecommendation`, `recomendacionFranco` y `recomendacionRationale`
+  // con divergencia opcional. La doctrina post-E.2 colapsa a un solo valor:
+  // el motor recomienda, la IA narra el matiz, no contradice.
+  recomendacion: RecomendacionModalidadAmbas;
+  // Audit-only NO renderizado. Si la IA cree que la recomendación del motor
+  // es incorrecta, lo reporta acá para revisión humana.
+  francoCaveat?: string;
 }
 
 export interface Analisis {

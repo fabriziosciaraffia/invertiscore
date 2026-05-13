@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { Loader2, AlertTriangle } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
-import { readEngineSignal, readFrancoVerdict } from "@/lib/results-helpers";
+import { readVeredicto } from "@/lib/results-helpers";
 
 // Per-source storage + return-URL map. Keep in sync with the form files.
 // v1 = /analisis/nuevo (classic form)
@@ -234,16 +234,16 @@ export function ResumenConfirmacion({
           localStorage.setItem(sourceCfg.guestKey, JSON.stringify(guestValue));
         }
       } catch { /* ignore */ }
-      const engineSignal = readEngineSignal(data.results);
-      const francoVerdict = readFrancoVerdict(data.results);
+      const veredicto = readVeredicto(data.results);
       posthog?.capture("analysis_created", {
         comuna: apiPayload.comuna,
         tipo: apiPayload.tipo,
         dormitorios: apiPayload.dormitorios,
         score: data.score,
-        engineSignal,
-        francoVerdict,
-        francoOverridesEngine: francoVerdict !== engineSignal,
+        veredicto,
+        // Commit E.2 · 2026-05-13 — flag deprecado, siempre false. Ver
+        // comentario en results-client.tsx para contexto.
+        francoOverridesEngine: false,
         is_premium: false,
         source: payload.source ?? "v1",
       });
