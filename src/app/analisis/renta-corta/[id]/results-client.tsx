@@ -27,6 +27,7 @@ import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroVerdictBlockSTR } from "@/components/analysis/str/HeroVerdictBlockSTR";
+import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
@@ -107,8 +108,15 @@ export function STRResultsClient({
   }, [accessLevel, aiAnalysis, aiLoading, aiError, loadAi]);
 
   // ─── Datos derivados ──────────────────────────────
+  // Commit E.0 (2026-05-13): eliminado fallback `score ?? 50`. Análisis legacy
+  // sin FrancoScoreSTR persistido pasan score=null al Hero (renderiza "—") y
+  // dispara banner "Análisis incompleto · regenera" arriba del Hero. Antes
+  // mostrábamos un 50 inventado que contradecía slider visual y badge motor
+  // (bug Lastarria). El veredicto sigue cayendo a results.veredicto (motor)
+  // mientras no se elimina la divergencia en E.2.
   const francoScore = results.francoScore;
-  const score = francoScore?.score ?? 50;
+  const score: number | null = francoScore?.score ?? null;
+  const isIncompleteScore = score === null;
   const veredicto: STRVerdict =
     (francoScore?.veredicto as STRVerdict) ?? results.veredicto;
 
@@ -152,6 +160,18 @@ export function STRResultsClient({
       <AppNav variant="app" />
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
+        {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
+            Análisis STR generados antes del FrancoScoreSTR (Commit 2) no tienen
+            score persistido. Antes mostrábamos "50" hardcoded; ahora "—" en el
+            Hero + este banner que invita a regenerar. */}
+        {isIncompleteScore && (
+          <div className="mb-4">
+            <StateBox variant="left-border" state="attention" label="Análisis incompleto">
+              Este análisis fue generado con una versión anterior del motor y no tiene Franco Score persistido. Regenera el análisis para ver el score completo y las recomendaciones actualizadas.
+            </StateBox>
+          </div>
+        )}
+
         {/* 01 · VEREDICTO — Hero con narrativa IA inline (Commit C · 2026-05-12).
             Embebe ai.conviene.{respuestaDirecta, veredictoFrase, reencuadre,
             cajaAccionable} cuando hay análisis IA. Fallback elegante a alert

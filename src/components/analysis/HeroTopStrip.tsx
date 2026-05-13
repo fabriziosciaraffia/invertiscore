@@ -26,7 +26,7 @@ export function HeroTopStrip({
   toggleGroupBorder,
   dividerDashedColor,
 }: {
-  score: number;
+  score: number | null;
   veredicto: string;
   propiedadTitle: string;
   propiedadSubtitle: string;
@@ -135,10 +135,17 @@ export function HeroTopStrip({
             </span>
           </div>
 
-          {/* Score number izq + bar+axis a la derecha (horizontal) */}
+          {/* Score number izq + bar+axis a la derecha (horizontal).
+              Score null (análisis legacy sin FrancoScore) → "—" + barra
+              atenuada sin dot. Evita mostrar un score 50 inventado que
+              contradice slider y badge (bug Lastarria · Commit E.0). */}
           <div className="flex items-center gap-3">
-            <p className="font-mono text-[28px] md:text-[32px] font-bold leading-none text-[var(--franco-text)] m-0 shrink-0">
-              {score}
+            <p
+              className={`font-mono text-[28px] md:text-[32px] font-bold leading-none m-0 shrink-0 ${
+                score === null ? "text-[var(--franco-text-secondary)]" : "text-[var(--franco-text)]"
+              }`}
+            >
+              {score === null ? "—" : score}
             </p>
             <div className="flex-1 min-w-0">
               <ScoreBarInline score={score} />

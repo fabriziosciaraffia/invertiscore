@@ -57,7 +57,10 @@ export function HeroVerdictBlockSTR({
    * con alert hardcoded. Pasarlo activa la doctrina §1.1 (asesor inline). */
   ai?: AIAnalysisSTRv2 | null;
   veredicto: STRVerdict;
-  score: number;
+  /** Score 0-100 del FrancoScoreSTR. Null cuando el análisis es legacy sin
+   * FrancoScore persistido (en ese caso el Hero renderiza "—" en lugar de
+   * un score inventado · Commit E.0). */
+  score: number | null;
   propiedadTitle: string;
   propiedadSubtitle: string;
   metadataItems: { label: string; value: string; tooltip?: string }[];
