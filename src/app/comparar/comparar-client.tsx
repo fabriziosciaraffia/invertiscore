@@ -25,17 +25,24 @@ function getScoreLabel(score: number) {
   return "BUSCAR OTRA";
 }
 
-function formatCLP(n: number) {
+// Defensa universal: el jsonb `results.metrics` puede traer campos undefined
+// según el tipo de análisis (LTR no expone airbnb, STR puede no exponer LTR,
+// análisis legacy carecen de keys nuevas). Antes de E.1-fix, formatPct sin
+// `?? 0` crasheaba el render entero de /comparar al combinar tipos.
+function formatCLP(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   if (Math.abs(n) >= 1_000_000) return `${n >= 0 ? "" : "-"}$${(Math.abs(n) / 1_000_000).toFixed(1)}M`;
   if (Math.abs(n) >= 1_000) return `${n >= 0 ? "" : "-"}$${Math.round(Math.abs(n) / 1000).toLocaleString("es-CL")}K`;
   return `$${Math.round(n).toLocaleString("es-CL")}`;
 }
 
-function formatPct(n: number) {
+function formatPct(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   return n.toFixed(1).replace(".", ",") + "%";
 }
 
-function formatUF(n: number) {
+function formatUF(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "—";
   return `UF ${n.toLocaleString("es-CL", { maximumFractionDigits: 1 })}`;
 }
 
@@ -153,26 +160,23 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
       {
         label: "ROI Total",
         values: analisis.map((a) => {
-          const exit = a.results?.exitScenario;
-          return exit ? `${exit.multiplicadorCapital.toFixed(2)}x` : "—";
+          const m = a.results?.exitScenario?.multiplicadorCapital;
+          return Number.isFinite(m) ? `${(m as number).toFixed(2)}x` : "—";
         }),
         raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,
       },
       {
         label: "TIR",
-        values: analisis.map((a) => {
-          const exit = a.results?.exitScenario;
-          return exit ? formatPct(exit.tir) : "—";
-        }),
+        values: analisis.map((a) => formatPct(a.results?.exitScenario?.tir)),
         raw: analisis.map((a) => a.results?.exitScenario?.tir ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Multiplicador capital",
         values: analisis.map((a) => {
-          const exit = a.results?.exitScenario;
-          return exit ? `${exit.multiplicadorCapital.toFixed(1)}x` : "—";
+          const m = a.results?.exitScenario?.multiplicadorCapital;
+          return Number.isFinite(m) ? `${(m as number).toFixed(1)}x` : "—";
         }),
         raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,
@@ -192,25 +196,25 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
       },
       {
         label: "Rentabilidad",
-        values: analisis.map((a) => a.desglose?.rentabilidad != null ? String(Math.round(a.desglose.rentabilidad)) : "—"),
+        values: analisis.map((a) => Number.isFinite(a.desglose?.rentabilidad) ? String(Math.round(a.desglose!.rentabilidad)) : "—"),
         raw: analisis.map((a) => a.desglose?.rentabilidad ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Flujo Caja",
-        values: analisis.map((a) => a.desglose?.flujoCaja != null ? String(Math.round(a.desglose.flujoCaja)) : "—"),
+        values: analisis.map((a) => Number.isFinite(a.desglose?.flujoCaja) ? String(Math.round(a.desglose!.flujoCaja)) : "—"),
         raw: analisis.map((a) => a.desglose?.flujoCaja ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Plusvalía",
-        values: analisis.map((a) => a.desglose?.plusvalia != null ? String(Math.round(a.desglose.plusvalia)) : "—"),
+        values: analisis.map((a) => Number.isFinite(a.desglose?.plusvalia) ? String(Math.round(a.desglose!.plusvalia)) : "—"),
         raw: analisis.map((a) => a.desglose?.plusvalia ?? 0),
         higherIsBetter: true,
       },
       {
         label: "Eficiencia",
-        values: analisis.map((a) => a.desglose?.eficiencia != null ? String(Math.round(a.desglose.eficiencia)) : "—"),
+        values: analisis.map((a) => Number.isFinite(a.desglose?.eficiencia) ? String(Math.round(a.desglose!.eficiencia)) : "—"),
         raw: analisis.map((a) => a.desglose?.eficiencia ?? 0),
         higherIsBetter: true,
       },
@@ -271,10 +275,15 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
             const p = getPoint(i, 1);
             return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(255,255,255,0.08)" strokeWidth="1" />;
           })}
-          {/* Data polygons */}
+          {/* Data polygons.
+              Defensa contra desglose NaN/ausente: análisis STR pueden no
+              poblar `desglose` LTR. `?? 0` no atrapa NaN, así que validamos
+              finitos antes de proyectar — si no, el SVG emite "NaN,NaN" y
+              ensucia consola sin romper el render. */}
           {analisis.map((a, ai) => {
             const points = dims.map((dim, di) => {
-              const val = a.desglose?.[dim] ?? 0;
+              const raw = a.desglose?.[dim];
+              const val = Number.isFinite(raw) ? (raw as number) : 0;
               const pct = Math.min(val / 100, 1);
               return getPoint(di, pct);
             });
@@ -292,7 +301,8 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
           {/* Data points */}
           {analisis.map((a, ai) =>
             dims.map((dim, di) => {
-              const val = a.desglose?.[dim] ?? 0;
+              const raw = a.desglose?.[dim];
+              const val = Number.isFinite(raw) ? (raw as number) : 0;
               const pct = Math.min(val / 100, 1);
               const p = getPoint(di, pct);
               return <circle key={`${a.id}-${di}`} cx={p.x} cy={p.y} r="3" fill={CHART_COLORS[ai]} />;
