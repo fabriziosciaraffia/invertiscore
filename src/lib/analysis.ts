@@ -864,12 +864,20 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
   return clamp(score, 0, 100);
 }
 
+/**
+ * Mapea score 0-100 a las 3 bandas de veredicto canónicas (skill
+ * analysis-voice-franco §1.7). Reemplaza la taxonomía de 5 buckets
+ * (Excelente/Buena/Regular/Débil/Evitar) que generaba disonancia con
+ * el veredicto del Hero. Commit E.1 revert visual · 2026-05-13.
+ *
+ * Devuelve la banda base (sin overrides de gates); la veredicto final
+ * persistida es `engineSignal`, que puede degradar o elevar respecto a
+ * esta banda por señales estructurales (CoC severo, etc.).
+ */
 function getClasificacion(score: number): { clasificacion: string; color: string } {
-  if (score >= 80) return { clasificacion: "Excelente", color: "positive" };
-  if (score >= 65) return { clasificacion: "Buena", color: "blue" };
-  if (score >= 50) return { clasificacion: "Regular", color: "yellow" };
-  if (score >= 30) return { clasificacion: "Débil", color: "orange" };
-  return { clasificacion: "Evitar", color: "red" };
+  if (score >= 70) return { clasificacion: "COMPRAR", color: "positive" };
+  if (score >= 45) return { clasificacion: "AJUSTA SUPUESTOS", color: "yellow" };
+  return { clasificacion: "BUSCAR OTRA", color: "red" };
 }
 
 // =========================================
@@ -1166,8 +1174,8 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
   // engineSignal: base por score + overrides como gates explícitos.
   // Commit E.1 · 2026-05-13: thresholds unificados LTR+STR a 70 / 45 / 0
   // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
-  // Antes era 70 / 40. Sub-banda 40-44 (clasificación "Débil") ahora cae a
-  // BUSCAR OTRA, no a AJUSTA — coherente con la severidad de la zona.
+  // Antes era 70 / 40. La sub-banda 40-44 ahora cae a BUSCAR OTRA, no a
+  // AJUSTA — coherente con la severidad de la zona.
   let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
   // NOTA: los siguientes overrides actúan como gates de seguridad explícitos

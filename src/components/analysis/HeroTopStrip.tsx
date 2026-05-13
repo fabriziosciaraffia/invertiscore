@@ -1,7 +1,7 @@
 "use client";
 
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { ScoreBarInline, ScoreBarBandLabel } from "./ScoreBarInline";
+import { ScoreBarInline } from "./ScoreBarInline";
 import { FRANCO_SCORE_TOOLTIP, VERDICT_TOOLTIPS } from "./AIInsightSection";
 
 /**
@@ -151,10 +151,6 @@ export function HeroTopStrip({
               <ScoreBarInline score={score} />
             </div>
           </div>
-          {/* Sub-texto banda · Commit E.1 · 2026-05-13.
-              "zona <interpretativa> · banda <veredicto>" da contexto verbal
-              a la posición del dot. Solo se muestra si hay score. */}
-          <ScoreBarBandLabel score={score} veredicto={veredicto} />
         </div>
 
       </div>

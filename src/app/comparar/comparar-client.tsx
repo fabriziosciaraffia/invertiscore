@@ -11,18 +11,18 @@ const CHART_COLORS = ["#B0BEC5", "#3b82f6", "#f59e0b"];
 const UF_CLP = 38800;
 
 function getScoreColor(score: number) {
-  if (score >= 65) return "var(--franco-positive)";
-  if (score >= 50) return "#eab308";
-  if (score >= 30) return "#f59e0b";
+  if (score >= 70) return "var(--franco-positive)";
+  if (score >= 45) return "#eab308";
   return "#ef4444";
 }
 
+// Commit E.1 revert visual · 2026-05-13: colapsado de 5 buckets
+// interpretativos (Excelente/Buena/Regular/Débil/Evitar) a las 3 bandas
+// canónicas de veredicto. Thresholds 70/45/0 idénticos al motor LTR/STR.
 function getScoreLabel(score: number) {
-  if (score >= 80) return "Excelente";
-  if (score >= 65) return "Buena";
-  if (score >= 50) return "Regular";
-  if (score >= 30) return "Débil";
-  return "Evitar";
+  if (score >= 70) return "COMPRAR";
+  if (score >= 45) return "AJUSTA SUPUESTOS";
+  return "BUSCAR OTRA";
 }
 
 function formatCLP(n: number) {
