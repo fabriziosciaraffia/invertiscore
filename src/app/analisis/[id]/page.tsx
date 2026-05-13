@@ -71,13 +71,18 @@ export default async function AnalisisDetallePage({
     redirect(user ? "/dashboard" : "/");
   }
 
-  // Commit E.1 · 2026-05-13 — guard simétrico LTR↔STR.
-  // Si abren un análisis STR en /analisis/[id], redirigimos a la vista STR.
-  // Antes: la página seguía y `recomputeResultsForLegacy` rompía contra el
-  // shape de ShortTermResult, generando UI rota (síntoma del bug Lastarria).
+  // Commit E.1.1 · 2026-05-13 — guard simétrico LTR↔STR con precedencia
+  // estricta. La columna SQL `tipo_analisis` es autoritativa; el flag jsonb
+  // `results.tipoAnalisis` se consulta SOLO cuando la columna es null
+  // (análisis pre-migration 20260510). Sin esta precedencia, los 44 análisis
+  // con metadata inconsistente (SQL=long-term, jsonb=short-term — restos de
+  // bugs anteriores) producían un redirect loop entre LTR y STR.
   const rawTipo = (data as Record<string, unknown>).tipo_analisis;
   const rawResultsForGuard = (data as { results?: { tipoAnalisis?: string } }).results;
-  if (rawTipo === "short-term" || rawResultsForGuard?.tipoAnalisis === "short-term") {
+  if (
+    rawTipo === "short-term" ||
+    (rawTipo == null && rawResultsForGuard?.tipoAnalisis === "short-term")
+  ) {
     redirect(`/analisis/renta-corta/${params.id}`);
   }
 
