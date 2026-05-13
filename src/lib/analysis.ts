@@ -1163,17 +1163,27 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
-  // engineSignal: base por score + overrides por señales fuertes.
-  // Antes era `veredicto`. Ver analysis-voice-franco/SKILL.md §1.7 para el rename.
-  // Commit 1 · 2026-05-11: vocabulario unificado con STR. Thresholds (70 / 40)
-  // idénticos; solo cambia "AJUSTA EL PRECIO" → "AJUSTA SUPUESTOS".
-  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 40 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+  // engineSignal: base por score + overrides como gates explícitos.
+  // Commit E.1 · 2026-05-13: thresholds unificados LTR+STR a 70 / 45 / 0
+  // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
+  // Antes era 70 / 40. Sub-banda 40-44 (clasificación "Débil") ahora cae a
+  // BUSCAR OTRA, no a AJUSTA — coherente con la severidad de la zona.
+  let engineSignal: EngineSignal = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
 
-  // NOTE: These overrides can make the badge contradict the score bar visually.
-  // This is intentional: structural signals (extreme flujo, zero break-even) override the composite score.
+  // NOTA: los siguientes overrides actúan como gates de seguridad explícitos
+  // (audit §2.4). Pueden hacer que el badge contradiga la banda del score —
+  // intencional: señales estructurales (CoC severo, break-even imposible)
+  // priman sobre el promedio compuesto.
 
   const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
   const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
+  const flujoMuyNegativoRatio =
+    metrics.ingresoMensual > 0
+      ? metrics.flujoNetoMensual / metrics.ingresoMensual
+      : 0;
+
+  // GATE 1 — fuerza BUSCAR OTRA (señales más severas).
+  // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
   if (
     metrics.cashOnCash < -30 ||
     breakEvenTasa === -1 ||
@@ -1181,9 +1191,19 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
   ) {
     engineSignal = "BUSCAR OTRA";
+  } else if (
+    // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
+    // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
+    engineSignal === "COMPRAR" &&
+    (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
+  ) {
+    engineSignal = "AJUSTA SUPUESTOS";
   }
 
+  // GATE 3 — fuerza COMPRAR (upgrade lock-in cuando todo cierra).
+  // Único override que sube. NO se aplica si GATE 1 ya cerró a BUSCAR.
   if (
+    engineSignal !== "BUSCAR OTRA" &&
     metrics.flujoNetoMensual >= 0 &&
     metrics.rentabilidadNeta >= 4 &&
     (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0

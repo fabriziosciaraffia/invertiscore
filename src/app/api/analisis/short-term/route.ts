@@ -263,6 +263,10 @@ export async function POST(request: Request) {
         direccion: body.direccion || null,
         tipo: "Departamento",
         tipo_analisis: "short-term",
+        // Commit E.1 · 2026-05-13: análisis STR nuevos en metodología v2
+        // (thresholds 70/45 unificados con LTR · sin engine.veredicto · gates
+        // explícitos CoC/break-even/regulación). Pre-E queda como v1.
+        methodology_version: "v2",
         dormitorios: body.dormitorios,
         banos: body.banos,
         superficie: body.superficieUtil,

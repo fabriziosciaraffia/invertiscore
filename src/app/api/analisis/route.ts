@@ -44,6 +44,10 @@ export async function POST(request: Request) {
         direccion: body.direccion || null,
         tipo: body.tipo,
         tipo_analisis: "long-term",
+        // Commit E.1 · 2026-05-13: análisis nuevos usan metodología v2
+        // (thresholds 70/45/0 unificados · slider 3 segmentos · sin fallback
+        // score 50). Análisis pre-Commit-E quedan como v1 (legacy preservation).
+        methodology_version: "v2",
         dormitorios: body.dormitorios,
         banos: body.banos,
         superficie: body.superficie,

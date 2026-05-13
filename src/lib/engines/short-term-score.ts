@@ -318,35 +318,51 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   );
   score = Math.max(0, Math.min(100, score));
 
-  // Commit 1 · 2026-05-11: vocabulario unificado con LTR. Thresholds del
-  // score (65 / 40) idénticos; solo cambia la string emitida.
+  // Commit E.1 · 2026-05-13: thresholds unificados LTR+STR a 70 / 45 / 0
+  // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
+  // Antes: 65 / 40. Bandas coherentes con slider visual de 3 segmentos.
   let veredicto: 'COMPRAR' | 'AJUSTA SUPUESTOS' | 'BUSCAR OTRA';
-  if (score >= 65) veredicto = 'COMPRAR';
-  else if (score >= 40) veredicto = 'AJUSTA SUPUESTOS';
+  if (score >= 70) veredicto = 'COMPRAR';
+  else if (score >= 45) veredicto = 'AJUSTA SUPUESTOS';
   else veredicto = 'BUSCAR OTRA';
 
+  // Gates explícitos (audit §2.4). Orden: BUSCAR (severos) → max AJUSTA
+  // (degrade COMPRAR) → resto se respeta del score base.
   let overrideApplied: string | null = null;
-
   const sobreRentaPct = inputs.results.comparativa.sobreRentaPct;
+  const coc = base.cashOnCash; // decimal (-0.10 = -10%)
+  const beRatio = inputs.results.breakEvenPctDelMercado; // 1.00 = break-even al precio del mercado
 
-  if (sobreRentaPct < 0 && veredicto === 'COMPRAR') {
-    veredicto = 'AJUSTA SUPUESTOS';
-    overrideApplied = 'LTR genera más que STR — máximo AJUSTA SUPUESTOS';
-  }
-
-  if (inputs.regulacionEdificio === 'no' && veredicto === 'COMPRAR') {
-    veredicto = 'AJUSTA SUPUESTOS';
-    overrideApplied = 'Edificio no permite Airbnb — máximo AJUSTA SUPUESTOS';
-  }
-
-  if (base.flujoCajaMensual < -250000 && sobreRentaPct < 0.10) {
+  // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
+  if (inputs.regulacionEdificio === 'no') {
+    veredicto = 'BUSCAR OTRA';
+    overrideApplied = 'Edificio no permite Airbnb — operación inviable';
+  } else if (coc < -0.30) {
+    veredicto = 'BUSCAR OTRA';
+    overrideApplied = 'Cash-on-Cash <-30% — pérdida estructural insostenible';
+  } else if (beRatio > 1.30) {
+    veredicto = 'BUSCAR OTRA';
+    overrideApplied = 'Break-even >130% del mercado — depende de occ/ADR fuera de alcance';
+  } else if (base.flujoCajaMensual < -250000 && sobreRentaPct < 0.10) {
     veredicto = 'BUSCAR OTRA';
     overrideApplied = 'Flujo muy negativo sin ventaja clara sobre LTR';
-  }
-
-  if (base.capRate < 0.02) {
+  } else if (base.capRate < 0.02) {
     veredicto = 'BUSCAR OTRA';
     overrideApplied = 'CAP Rate bajo 2% — NOI mínimo, no justifica operación STR';
+  }
+
+  // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; nunca toca BUSCAR).
+  if (veredicto === 'COMPRAR') {
+    if (sobreRentaPct < 0) {
+      veredicto = 'AJUSTA SUPUESTOS';
+      overrideApplied = 'LTR genera más que STR — máximo AJUSTA SUPUESTOS';
+    } else if (coc < -0.10) {
+      veredicto = 'AJUSTA SUPUESTOS';
+      overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
+    } else if (beRatio > 1.10) {
+      veredicto = 'AJUSTA SUPUESTOS';
+      overrideApplied = 'Break-even >110% del mercado — margen operativo apretado';
+    }
   }
 
   return {

@@ -204,7 +204,14 @@ export interface EjesAplicadosSTR {
 }
 
 export interface ShortTermResult {
+  /** Veredicto canónico del análisis. Post-Commit E.1: el motor lo emite como
+   * placeholder = legacyEngineVeredicto, pero el api route lo sobrescribe con
+   * `francoScore.veredicto` al persistir. UI lee francoScore.veredicto directo. */
   veredicto: STRVerdict;
+  /** Veredicto del heurístico antiguo del motor (sobreRentaPct >= 0.10).
+   * Audit-only desde Commit E.1 — NO leer en UI. Permite comparar pre/post
+   * recalibración de thresholds. */
+  legacyEngineVeredicto?: STRVerdict;
 
   // Calibración v1 — qué ejes se aplicaron. Opcional para compat retroactiva.
   ejesAplicados?: EjesAplicadosSTR;
@@ -892,16 +899,24 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     };
   });
 
-  // --- 7. Veredicto ---
-  // Commit 1 · 2026-05-11: vocabulario unificado con LTR. Thresholds idénticos
-  // (sobreRentaPct), solo cambia la string emitida.
-  let veredicto: STRVerdict;
+  // --- 7. Veredicto (legacy audit-only) ---
+  // Commit E.1 · 2026-05-13: el motor STR YA NO emite el veredicto canónico.
+  // FrancoScoreSTR (short-term-score.ts) es la única fuente de verdad. Esta
+  // heurística se preserva como `legacyEngineVeredicto` para auditoría de
+  // análisis legacy y comparación pre/post recalibración. El api route
+  // sobrescribe `result.veredicto` con `francoScore.veredicto` al persistir,
+  // por lo que la UI nunca lee este valor.
+  //
+  // La heurística antigua decía "STR conviene si renta +10% más que LTR"
+  // ignorando CoC / break-even / flujo — caso degenerado: depto que rinde
+  // +42% sobre LTR pero pierde plata cada mes recibía COMPRAR.
+  let legacyEngineVeredicto: STRVerdict;
   if (sobreRentaPct >= 0.10) {
-    veredicto = 'COMPRAR';
+    legacyEngineVeredicto = 'COMPRAR';
   } else if (sobreRentaPct >= 0 && base.noiMensual > 0) {
-    veredicto = 'AJUSTA SUPUESTOS';
+    legacyEngineVeredicto = 'AJUSTA SUPUESTOS';
   } else {
-    veredicto = 'BUSCAR OTRA';
+    legacyEngineVeredicto = 'BUSCAR OTRA';
   }
 
   // --- 8. Projections + Exit (Ronda 4b) ---
@@ -955,7 +970,11 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   );
 
   return {
-    veredicto,
+    // `veredicto` se preserva como placeholder de tipo. El api route
+    // sobrescribe con `francoScore.veredicto` al persistir, por lo que UI
+    // nunca lee este valor. Ver `legacyEngineVeredicto` para el audit value.
+    veredicto: legacyEngineVeredicto,
+    legacyEngineVeredicto,
     ejesAplicados: ejes,
     pie,
     montoCredito,
@@ -978,8 +997,10 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     sensibilidadPrecio,
     projections,
     exitScenario,
-    engineSignal: veredicto,
-    francoVerdict: veredicto,
+    // engineSignal y francoVerdict ya NO se emiten desde el motor STR.
+    // FrancoScoreSTR es la única fuente del veredicto canónico (Commit E.1).
+    // Los campos en el tipo siguen opcionales para back-compat con análisis
+    // persistidos pre-E.1 que sí los tienen poblados.
     subsidioTasa,
     zonaSTR,
     recomendacionModalidad,

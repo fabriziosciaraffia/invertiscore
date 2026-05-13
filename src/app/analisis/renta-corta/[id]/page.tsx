@@ -65,9 +65,19 @@ export default async function STRResultPage({
 
   const results = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;
 
-  // Redirect to LTR page if not a short-term analysis
-  if (!results?.tipoAnalisis || results.tipoAnalisis !== "short-term") {
+  // Commit E.1 · 2026-05-13 — guard simétrico LTR↔STR.
+  // Antes solo se chequeaba results.tipoAnalisis (jsonb). Ahora se valida
+  // PRIMERO la columna SQL `tipo_analisis` (más confiable) y luego el flag
+  // jsonb para back-compat con análisis pre-migration 20260510.
+  const tipoCol = (data as Record<string, unknown>).tipo_analisis;
+  if (tipoCol === "long-term" || (tipoCol == null && results?.tipoAnalisis !== "short-term")) {
     redirect(`/analisis/${params.id}`);
+  }
+
+  // Salvavidas: si quedamos en la rama STR pero `results` es null (registro
+  // corrupto), mandamos al dashboard antes de pasar null al client component.
+  if (!results) {
+    redirect(user ? "/dashboard" : "/");
   }
 
   // Access level determination (same pattern as LTR)
