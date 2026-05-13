@@ -30,7 +30,6 @@ import { HeroVerdictBlockSTR } from "@/components/analysis/str/HeroVerdictBlockS
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
-import { AIInsightSTR } from "@/components/analysis/str/AIInsightSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
 
 interface STRResultsProps {
@@ -153,9 +152,15 @@ export function STRResultsClient({
       <AppNav variant="app" />
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
-        {/* 01 · VEREDICTO — Hero */}
+        {/* 01 · VEREDICTO — Hero con narrativa IA inline (Commit C · 2026-05-12).
+            Embebe ai.conviene.{respuestaDirecta, veredictoFrase, reencuadre,
+            cajaAccionable} cuando hay análisis IA. Fallback elegante a alert
+            hardcoded si análisis legacy sin IA o IA con campos faltantes.
+            Reemplaza el flujo previo Hero + AIInsightSTR-debajo por paridad
+            estructural con HeroVerdictBlock LTR (audit H1.1). */}
         <HeroVerdictBlockSTR
           results={results}
+          ai={aiAnalysis as never}
           veredicto={veredicto}
           score={score}
           propiedadTitle={propiedadTitle}
@@ -166,24 +171,27 @@ export function STRResultsClient({
           valorUF={ufValue}
         />
 
-        {/* gap mayor 40px — Hero → Cards */}
+        {/* Indicador de loading IA — un pelo abajo del Hero cuando el análisis
+            premium aún no llega. Bajo perfil para no romper el flujo visual. */}
+        {aiLoading && !aiAnalysis && (
+          <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-signal-red mr-2 animate-pulse" aria-hidden />
+            Franco está completando el análisis…
+          </p>
+        )}
+        {aiError && !aiAnalysis && (
+          <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
+            ● Análisis IA no disponible · {aiError}
+          </p>
+        )}
+
+        {/* gap menor 24px — Hero → Cards */}
         <div style={{ height: 24 }} />
 
         {/* Commit 4 · 2026-05-12 — Viabilidad STR honesta por zona.
             Aparece sólo cuando tierZona = "baja" o recomendacionModalidad =
             "LTR_PREFERIDO". Doctrina Franco: decir cuando STR no conviene. */}
         <ViabilidadSTRBanner results={results} />
-
-        {/* Apertura IA (Patrón 4) — siendoFrancoHeadline + conviene.
-            Paralelo a cómo el LTR embebe el conviene dentro del Hero
-            (Commit 2 2026-05-11 — el resto de secciones IA vive en drawers). */}
-        <AIInsightSTR
-          ai={aiAnalysis as never}
-          loading={aiLoading}
-          error={aiError}
-        />
-
-        <div style={{ height: 24 }} />
 
         {/* Calibración v1 — bloque pedagógico "¿Cómo llegamos a este número?" */}
         {results.ejesAplicados && (

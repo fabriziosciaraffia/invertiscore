@@ -1,10 +1,11 @@
 "use client";
 
-import type { DatoClave } from "@/lib/types";
+import type { DatoClave, AIAnalysisSTRv2 } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import { HeroTopStrip } from "../HeroTopStrip";
 import { DatoCard } from "../DatoCard";
+import { StateBox } from "@/components/ui/StateBox";
 import { fmtMoney, fmtPct } from "../utils";
 
 /**
@@ -13,14 +14,22 @@ import { fmtMoney, fmtPct } from "../utils";
  * Estructura espejo de HeroVerdictBlock LTR:
  *   1. <HeroTopStrip /> — propiedad + score + metadata
  *   2. Divider sólido
- *   3. Cuerpo: tag "01 · VEREDICTO" + pregunta + alert callout +
- *      grid 3 DatoCards (NOI · Cash-on-Cash · Ventaja vs LTR)
+ *   3. Cuerpo:
+ *      - tag "01 · VEREDICTO" + pregunta
+ *      - respuestaDirecta IA (prose Sans, paridad LTR)
+ *      - alert callout: badge + veredictoFrase IA (o fallback hardcoded)
+ *      - grid 3 DatoCards (NOI · Cash-on-Cash · Ventaja vs LTR)
+ *      - reencuadre IA (prose Sans)
+ *      - cajaAccionable IA en StateBox al cierre
+ *      - opcional: nota Franco-diverge-del-motor
  *
- * Commit 1 · 2026-05-11: vocabulario unificado con LTR (COMPRAR / AJUSTA
- * SUPUESTOS / BUSCAR OTRA). El tratamiento visual sigue el mismo patrón:
- *   COMPRAR          → Ink neutro, badge invertido
- *   AJUSTA SUPUESTOS → Ink secundario, badge texto Signal Red
- *   BUSCAR OTRA      → wash Signal Red, badge sólido
+ * Commit C · 2026-05-12: Hero embebe narrativa IA inline (paridad LTR).
+ * Antes la narrativa vivía en AIInsightSTR como bloque separado abajo del
+ * Hero. Audit H1.1 identificó la inconsistencia con LTR Hero.
+ *
+ * Fallback elegante: si `ai` es null o `conviene.*` campos faltan, el Hero
+ * renderiza la versión motor-only (alert hardcoded + DatoCards) sin
+ * sub-bloques IA. Backward-compat con análisis legacy pre-Commit C.
  */
 
 type Tratamiento = "neutro" | "ajusta" | "rojo";
@@ -33,6 +42,7 @@ function tratamientoFor(v: STRVerdict): Tratamiento {
 
 export function HeroVerdictBlockSTR({
   results,
+  ai,
   veredicto,
   score,
   propiedadTitle,
@@ -43,6 +53,9 @@ export function HeroVerdictBlockSTR({
   valorUF,
 }: {
   results: ShortTermResult;
+  /** Análisis IA v2. Si null/undefined, el Hero renderiza versión motor-only
+   * con alert hardcoded. Pasarlo activa la doctrina §1.1 (asesor inline). */
+  ai?: AIAnalysisSTRv2 | null;
   veredicto: STRVerdict;
   score: number;
   propiedadTitle: string;
@@ -52,10 +65,7 @@ export function HeroVerdictBlockSTR({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   valorUF: number;
 }) {
-  // Commit 1 · 2026-05-11: normalizar veredicto recibido para soportar
-  // legacy DB ("VIABLE", "AJUSTA ESTRATEGIA", "NO RECOMENDADO"). El render
-  // siempre usa el vocabulario unificado. La variable local sombrea la prop
-  // — los renders abajo usan `veredicto` ya normalizado.
+  // Normalizar veredicto legacy DB ("VIABLE", "AJUSTA ESTRATEGIA", etc).
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _veredictoOriginal: string = veredicto;
   veredicto = (normalizeLegacyVerdict(veredicto) as STRVerdict | null) ?? "BUSCAR OTRA";
@@ -94,10 +104,29 @@ export function HeroVerdictBlockSTR({
     ? "0.5px solid color-mix(in srgb, var(--signal-red) 30%, transparent)"
     : undefined;
 
+  // ─── IA fields (opcional) ──────────────────────────────────────────
+  // Si `ai.conviene` existe con los 4 campos, el Hero embebe la narrativa
+  // Franco inline (paridad LTR). Si faltan campos, fallback al hardcoded.
+  const aiConviene = ai?.conviene;
+  const aiRespuesta = aiConviene?.respuestaDirecta?.trim() || null;
+  const aiVeredictoFrase = aiConviene?.veredictoFrase?.trim() || null;
+  const aiReencuadre = aiConviene?.reencuadre?.trim() || null;
+  const aiCaja = aiConviene?.cajaAccionable?.trim() || null;
+
+  // Detección Franco-diverge-del-motor (skill §1.7).
+  const francoVerdictNorm = ai?.francoVerdict
+    ? ((normalizeLegacyVerdict(ai.francoVerdict) as STRVerdict | null) ?? ai.francoVerdict)
+    : null;
+  const engineSignalNorm = ai?.engineSignal
+    ? ((normalizeLegacyVerdict(ai.engineSignal) as STRVerdict | null) ?? ai.engineSignal)
+    : null;
+  const diverge = !!francoVerdictNorm && !!engineSignalNorm && francoVerdictNorm !== engineSignalNorm;
+  const rationale = diverge ? ai?.francoVerdictRationale?.trim() || null : null;
+
   // Construcción de los 3 DatoCards desde el motor
   const base = results.escenarios.base;
   const noiMensual = base.noiMensual;
-  const cashOnCash = base.cashOnCash; // decimal
+  const cashOnCash = base.cashOnCash;
   const sobreRenta = results.comparativa.sobreRenta;
   const sobreRentaPct = results.comparativa.sobreRentaPct;
 
@@ -128,23 +157,35 @@ export function HeroVerdictBlockSTR({
     },
   ];
 
-  // Pregunta + alert por veredicto
-  const pregunta = isRojo
-    ? "¿Conviene operar este depto en renta corta?"
-    : isAjusta
-      ? "¿Cómo puedes hacer rendir este depto en renta corta?"
-      : "¿Es buena oportunidad para renta corta?";
+  // Pregunta — usa la del IA si está, fallback a hardcoded por veredicto
+  const aiPregunta = aiConviene?.pregunta?.trim() || null;
+  const pregunta = aiPregunta
+    ?? (isRojo
+      ? "¿Conviene operar este depto en renta corta?"
+      : isAjusta
+        ? "¿Cómo puedes hacer rendir este depto en renta corta?"
+        : "¿Es buena oportunidad para renta corta?");
 
+  // Alert callout: label + texto. Si hay IA veredictoFrase, lo usamos como
+  // texto principal del callout. Si no, fallback al hardcoded.
   const alertLabel = isRojo
     ? "ANTES DE SEGUIR, DECIDE"
     : isAjusta
       ? "ANTES DE SEGUIR, DECIDE"
       : "CONSIDERA ANTES DE AVANZAR";
-  const alertText = isRojo
+  const alertTextFallback = isRojo
     ? "El sobre-rendimiento contra LTR no compensa el riesgo operativo. Revisar antes de avanzar."
     : isAjusta
       ? "Los números cierran solo bajo el escenario base. Si la ocupación cae a la cuarta parte más baja del mercado (percentil 25), la operación deja de tener sentido."
       : "El depto ofrece una ventaja clara vs arriendo largo. Revisa los riesgos operativos antes de cerrar.";
+  const alertText = aiVeredictoFrase ?? alertTextFallback;
+
+  // Label dinámico para la cajaAccionable según veredicto (paridad LTR)
+  const cajaLabel = isRojo
+    ? "Próximos pasos:"
+    : isAjusta
+      ? "Antes de avanzar:"
+      : "Considera antes de cerrar:";
 
   return (
     <div
@@ -166,7 +207,6 @@ export function HeroVerdictBlockSTR({
         dividerDashedColor={dividerDashedColor}
       />
 
-      {/* Divider sólido entre TopStrip y Body */}
       <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />
 
       {/* BODY */}
@@ -185,14 +225,14 @@ export function HeroVerdictBlockSTR({
           {pregunta}
         </h2>
 
-        {/* Grid 3 DatoCards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-5">
-          {datosClave.map((dato, i) => (
-            <DatoCard key={i} dato={dato} currency={currency} />
-          ))}
-        </div>
+        {/* IA respuestaDirecta — paridad LTR (post-pregunta, pre-callout) */}
+        {aiRespuesta && (
+          <p className="font-body text-[14px] md:text-[15px] text-[var(--franco-text)] leading-[1.65] m-0 mb-3 whitespace-pre-wrap">
+            {aiRespuesta}
+          </p>
+        )}
 
-        {/* Alert callout — border-left por veredicto */}
+        {/* Alert callout — badge + veredictoFrase IA o fallback hardcoded */}
         <div
           className="px-4 py-3"
           style={{
@@ -214,10 +254,96 @@ export function HeroVerdictBlockSTR({
           >
             {alertLabel}
           </p>
-          <p className="font-body text-[13px] md:text-[14px] text-[var(--franco-text)] m-0 leading-[1.5]">
+          <p className="font-body text-[13px] md:text-[14px] text-[var(--franco-text)] m-0 leading-[1.5] whitespace-pre-wrap">
             {alertText}
           </p>
         </div>
+
+        {/* Grid 3 DatoCards (motor) */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 my-5">
+          {datosClave.map((dato, i) => (
+            <DatoCard key={i} dato={dato} currency={currency} />
+          ))}
+        </div>
+
+        {/* IA reencuadre — post-DatoCards, paridad LTR */}
+        {aiReencuadre && (
+          <p className="font-body text-[14px] md:text-[15px] text-[var(--franco-text)] leading-[1.65] m-0 mb-4 whitespace-pre-wrap">
+            {aiReencuadre}
+          </p>
+        )}
+
+        {/* IA cajaAccionable — StateBox final con label dinámico (paridad LTR) */}
+        {aiCaja && (
+          <StateBox
+            variant="left-border"
+            state={isNeutro ? "neutral" : "negative"}
+            className="mt-2"
+            style={{
+              background: isRojo
+                ? "color-mix(in srgb, var(--signal-red) 6%, transparent)"
+                : isNeutro
+                  ? "var(--franco-elevated)"
+                  : "var(--franco-card)",
+              borderRadius: "0 8px 8px 0",
+              ...(isNeutro ? { borderLeft: "3px solid var(--franco-text-secondary)" } : {}),
+            }}
+          >
+            {isNeutro ? (
+              <p
+                className="font-mono uppercase mb-2 m-0"
+                style={{ fontSize: 10, letterSpacing: "0.08em", color: "var(--franco-text-tertiary)", fontWeight: 600 }}
+              >
+                {cajaLabel}
+              </p>
+            ) : (
+              <span
+                className="font-mono uppercase inline-block px-2.5 py-1 rounded mb-2"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.08em",
+                  fontWeight: 600,
+                  color: badgeText,
+                  background: badgeBg,
+                  border: badgeBorder,
+                }}
+              >
+                {cajaLabel}
+              </span>
+            )}
+            <p className="font-body text-[13px] md:text-[14px] text-[var(--franco-text)] m-0 leading-[1.55] whitespace-pre-wrap">
+              {aiCaja}
+            </p>
+          </StateBox>
+        )}
+
+        {/* Franco-diverge-del-motor (skill §1.7) — solo si Franco emite veredicto
+            distinto al motor + razón. Patrón 4 sin Signal Red (bloque Ink-only). */}
+        {diverge && rationale && (
+          <div
+            className="mt-4 p-3"
+            style={{
+              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+              borderLeft: "3px solid var(--franco-text)",
+              borderRadius: "0 8px 8px 0",
+            }}
+          >
+            <p
+              className="font-mono uppercase mb-1.5 m-0"
+              style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text)", fontWeight: 600 }}
+            >
+              Franco diverge del motor
+            </p>
+            <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-[1.55]">
+              <span className="font-mono">Motor: {engineSignalNorm}</span>
+              {" · "}
+              <span className="font-mono font-medium">Franco: {francoVerdictNorm}</span>
+            </p>
+            <p className="font-body text-[13px] text-[var(--franco-text)] mt-1.5 m-0 leading-[1.55] whitespace-pre-wrap italic">
+              {rationale}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

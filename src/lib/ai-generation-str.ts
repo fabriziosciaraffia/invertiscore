@@ -197,7 +197,7 @@ Anglicismos prohibidos en el OUTPUT al usuario (PROHIBIDOS):
 - "uplift" → usa "uplift de ADR" solo si lo glosas; preferible "incremento sobre la tarifa base".
 - "yield" → usa "rendimiento" o "rentabilidad".
 - "occupancy rate" → usa "ocupación".
-- "revenue" → usa "ingresos" o "facturación" en prosa al usuario. En tooltips técnicos puede aparecer.
+- "revenue" → PROHIBIDO en TODO el output al usuario. ALWAYS usa "ingresos brutos" o "ingresos". Aplica a prosa narrativa, tooltips, glosas, valores JSON, ejemplos. Si el motor te pasa una métrica internal llamada "revenue", la traduces a "ingresos brutos" antes de mencionarla. NO existe escenario donde "revenue" sea aceptable en output al usuario.
 - "amenities" → puedes usarlo pero glosado la primera vez: "amenidades (toallas, sábanas, café, jabones)".
 - "ADR" sin glosa → la primera mención debe ir glosada: "tarifa diaria promedio (ADR)". Después puede ir pelado.
 - "Cash-on-Cash", "CAP rate", "TIR", "NOI" → asumidos por el tier estándar (no glosar).
@@ -313,7 +313,12 @@ El render coloca cada sección IA en un drawer específico de la página. Escrib
 - \`rentabilidad\` (mismo campo, segundo uso) → drawer "04 · Sensibilidad" (tabla P25/P50/P75/P90 del motor + punto de equilibrio). Si activas Ángulo 6, va acá idealmente.
 - \`vsLTR\` → drawer "05 · Ventaja vs LTR" (tabla NOI LTR/STR + estrategia con cifra).
 - \`riesgos\` + \`operacion\` → drawer "06 · Factibilidad y riesgos" (regulación + 3 riesgos parseados + contexto operacional).
-- \`conviene\` queda en la apertura IA (Patrón 4) arriba del fold, paralelo al Hero LTR.
+- \`conviene\` se embebe INLINE dentro del Hero (Commit C · 2026-05-12 · paridad LTR). Los 4 campos cumplen roles específicos:
+  · \`respuestaDirecta\` (2-4 frases) → renderizado entre la pregunta y el alert callout. Lleva el peso narrativo: diagnóstico + causa + recomendación.
+  · \`veredictoFrase\` (1 frase concisa) → texto del alert callout que reemplaza al fallback hardcoded del motor. Debe ser leíble de un vistazo.
+  · \`reencuadre\` (2-3 frases) → post-DatoCards. Contextualiza los KPIs en lenguaje de inversor.
+  · \`cajaAccionable\` (1-2 frases) → StateBox al cierre del Hero. Cumple §1.10 (posición personal Franco).
+  Los 4 son OBLIGATORIOS — el Hero degrada elegantemente si falta alguno, pero la doctrina requiere los 4 para satisfacer paridad estructural LTR.
 
 Cada \`cajaAccionable\` cierra su drawer respectivo — debe ser standalone, sin asumir que el usuario leyó otras secciones.
 
