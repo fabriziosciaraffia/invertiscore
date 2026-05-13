@@ -1783,9 +1783,11 @@ function DrawerRiesgos({
 
 // ─── Reestructuración drawer ────────────────────────
 // Aparece solo cuando aiAnalysis.reestructuracion existe (Nivel 3 del
-// escalonado financingHealth, skill §1.5). Suele venir junto con
-// veredicto === "RECONSIDERA LA ESTRUCTURA" (E.3 funde este veredicto en
-// AJUSTA SUPUESTOS + sub-card reestructuración).
+// escalonado financingHealth, skill §1.5). Commit E.3 · 2026-05-13 — la
+// presencia del drawer es independiente del veredicto: el veredicto sigue
+// siendo el del motor (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3),
+// y el drawer aparece como tab adicional con la palanca de reestructuración
+// financiera. No es un veredicto distinto.
 function DrawerReestructuracion({
   data,
   currency,

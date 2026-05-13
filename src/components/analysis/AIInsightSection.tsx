@@ -13,7 +13,10 @@ import { parseUFString } from "./utils";
  * consumidores via clase `italic` en sus contenedores.
  */
 
-/** Estilos visuales por veredicto (4 variantes per skill Patrón 1). */
+/** Estilos visuales por veredicto (3 variantes canónicas per skill Patrón 1).
+ *  Commit E.3 · 2026-05-13 — entrada "RECONSIDERA LA ESTRUCTURA" eliminada;
+ *  análisis legacy con ese veredicto se coercen a "AJUSTA SUPUESTOS" en
+ *  read-path (normalizeLegacyVerdict en types.ts). */
 export const VERDICT_STYLES: Record<
   string,
   { color: string; bg: string; border: string; bgInner: string; borderInner: string }
@@ -38,16 +41,6 @@ export const VERDICT_STYLES: Record<
     border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
     bgInner: "color-mix(in srgb, var(--signal-red) 15%, transparent)",
     borderInner: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
-  },
-  // 4to veredicto exclusivo de Franco. El depto está bien, la matemática del
-  // financiamiento no. Tonos neutros Ink (sin Signal Red) — distinción por
-  // composición + icono Calculator + tag "AJUSTA EL FINANCIAMIENTO".
-  "RECONSIDERA LA ESTRUCTURA": {
-    color: "var(--franco-text-secondary)",
-    bg: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-    border: "color-mix(in srgb, var(--franco-text) 12%, transparent)",
-    bgInner: "color-mix(in srgb, var(--franco-text) 8%, transparent)",
-    borderInner: "color-mix(in srgb, var(--franco-text) 20%, transparent)",
   },
 };
 

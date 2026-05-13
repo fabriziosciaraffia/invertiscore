@@ -123,10 +123,10 @@ function deriveVerdictUnificado(
   strVerdict: STRVerdict | null,
 ): STRVerdict {
   if (reco === "LTR_PREFERIDO") {
-    // Coercer LTR Veredicto (4 valores incl. RECONSIDERA) a STRVerdict (3) — RECONSIDERA → AJUSTA.
+    // LTR Veredicto y STRVerdict comparten los 3 valores canónicos desde E.3.
     if (ltrVerdict === "BUSCAR OTRA") return "BUSCAR OTRA";
     if (ltrVerdict === "COMPRAR") return "COMPRAR";
-    return "AJUSTA SUPUESTOS"; // AJUSTA SUPUESTOS, RECONSIDERA LA ESTRUCTURA, null
+    return "AJUSTA SUPUESTOS";
   }
   if (reco === "STR_VENTAJA_CLARA") {
     return strVerdict ?? "COMPRAR";
@@ -298,11 +298,7 @@ export function ComparativaClient(p: Props) {
             costoAmoblamiento={p.costoAmoblamiento}
             modoGestion={p.modoGestion}
             comisionAdministrador={p.comisionAdministrador}
-            ltrVerdict={
-              ltrVerdict === "RECONSIDERA LA ESTRUCTURA"
-                ? "AJUSTA SUPUESTOS"
-                : (ltrVerdict as STRVerdict | null)
-            }
+            ltrVerdict={ltrVerdict}
             strVerdict={strVerdict}
             currency={currency}
             ufValue={uf}

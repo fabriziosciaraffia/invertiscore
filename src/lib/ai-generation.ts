@@ -144,7 +144,7 @@ Cuándo (cualquiera de estos disparadores):
 - \`overall\` === "problematico".
 - \`veredicto\` ≠ "COMPRAR" Y la estructura financiera es la causa principal del problema (no el precio del depto ni la zona).
 - \`veredicto\` === "COMPRAR" + \`tasa\` o \`pie\` ∈ {mejorable, problematico} + \`flujoCruzaEnHorizonte\` === false. Este es el caso "depto bueno, financiamiento débil, aporte indefinido". El motor cierra la matemática del depto pero la estructura del usuario fuerza un aporte sin tope. La palanca correcta NO es el precio — es el financiamiento.
-Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp, contenido_uf y \`estructuraSugerida\` (numérica). El veredicto del motor no cambia; la sección reestructuración aparece como sub-card explicativa dentro del veredicto vigente.
+Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp, contenido_uf y \`estructuraSugerida\` (numérica). Adicionalmente, indícalo explícitamente en \`negociacion.contenido\` si aplica: la palanca de ajuste correcta es la estructura financiera, no el precio. El veredicto del motor (típicamente AJUSTA SUPUESTOS cuando aplica Nivel 3) NO cambia; la sección reestructuración aparece como sub-card explicativa dentro de ese veredicto.
 
 Cuando completas \`reestructuracion\`:
 - contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
@@ -181,8 +181,8 @@ Si genuinamente crees que el motor está mal calibrado para este caso, NO lo con
 Antes de E.2 existía una "REGLA DE DIVERGENCIA" que permitía emitir \`francoVerdict\` distinto del \`engineSignal\` del motor con un rationale renderizado al usuario. La doctrina actualizada elimina esa válvula: si el veredicto del motor es contradicho en el render, el usuario lee disonancia (badge motor + frase IA opuesta) que rompe la confianza en el producto. Si el motor está mal, lo arreglamos en el motor.
 
 Recordatorios operativos:
-- El motor emite "COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA", o "RECONSIDERA LA ESTRUCTURA" en \`veredicto\`. Tu narrativa lo asume como dado.
-- "RECONSIDERA LA ESTRUCTURA" lo emite el motor cuando \`financingHealth.overall === "problematico"\` y la matemática del financiamiento es la palanca real. NO lo invocas tú; si crees que aplica pero el motor no lo emitió, ese desacuerdo va a \`francoCaveat\`.
+- El motor emite SOLO 3 valores en \`veredicto\`: "COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA". Tu narrativa lo asume como dado.
+- Commit E.3 · 2026-05-13: el veredicto "RECONSIDERA LA ESTRUCTURA" fue fundido en "AJUSTA SUPUESTOS". Cuando el problema es la estructura financiera (no el precio), el veredicto sigue siendo AJUSTA SUPUESTOS y completas la sección \`reestructuracion\` como contenido adicional. No emitas "RECONSIDERA LA ESTRUCTURA" — la UI ya no lo soporta como veredicto distinto y el read-path lo coerce a AJUSTA si aparece.
 - Sección \`reestructuracion\` opcional: complétala cuando aplique el Nivel 3 financingHealth (§5) — eso es CONTENIDO dentro del veredicto vigente, no un veredicto propio.
 
 ## 8. Anomalías del input

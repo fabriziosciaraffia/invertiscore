@@ -163,36 +163,36 @@ export interface NegociacionScenario {
   razon?: string;
 }
 
-// Vocabulario unificado de veredictos (Commit 1 · 2026-05-11).
-// LTR + STR comparten los 3 valores base; LTR agrega el 4to (RECONSIDERA
-// LA ESTRUCTURA) que solo Franco emite cuando el problema es financiero,
-// no del depto. Ver analysis-voice-franco/SKILL.md §1.5 + §1.7.
+// Vocabulario unificado de veredictos. 3 valores canónicos compartidos por
+// LTR y STR (audit-commit-e §4 + skill analysis-voice-franco §1.7).
 //
-// Migración desde vocabulario antiguo (read path, no destructivo en DB):
+// Commit E.2 · 2026-05-13 — colapso `engineSignal` ↔ `francoVerdict` a un solo
+// concepto. El motor emite el veredicto; la IA narra el matiz, no contradice.
+//
+// Commit E.3 · 2026-05-13 — fusión "RECONSIDERA LA ESTRUCTURA" en "AJUSTA
+// SUPUESTOS". RECONSIDERA era un 4to veredicto activado cuando la palanca
+// de ajuste era la estructura de financiamiento (no el precio del depto).
+// La doctrina actualizada lo trata como sub-tipo de AJUSTA: el veredicto
+// sigue siendo AJUSTA SUPUESTOS, y la sección `reestructuracion` aparece
+// como CONTENIDO dentro del veredicto, no como veredicto propio.
+//
+// Migración legacy (read path, no destructivo en DB):
 //   LTR antiguo:
 //     "COMPRAR"             → "COMPRAR"                    (sin cambio)
 //     "AJUSTA EL PRECIO"    → "AJUSTA SUPUESTOS"
 //     "BUSCAR OTRA"         → "BUSCAR OTRA"                (sin cambio)
-//     "RECONSIDERA LA ESTRUCTURA" → "RECONSIDERA LA ESTRUCTURA" (sin cambio)
+//     "RECONSIDERA LA ESTRUCTURA" → "AJUSTA SUPUESTOS"     (E.3 coerce)
 //   STR antiguo:
 //     "VIABLE"              → "COMPRAR"
 //     "AJUSTA ESTRATEGIA"   → "AJUSTA SUPUESTOS"
 //     "NO RECOMENDADO"      → "BUSCAR OTRA"
 //
-// Usar `normalizeLegacyVerdict()` (en este mismo archivo) para coercer
-// strings legacy de DB al vocabulario canónico antes de pasarlos a la UI.
-// Commit E.2 · 2026-05-13 — colapso `engineSignal` ↔ `francoVerdict` a un solo
-// concepto. La doctrina §1.7 evolucionó: el motor emite el veredicto, la IA
-// narra el matiz, la IA NO contradice. Mantener dos campos separados generaba
-// la divergencia que el audit-commit-e §3 identificó como deuda metodológica.
-//
-// "RECONSIDERA LA ESTRUCTURA" permanece en la union por back-compat con análisis
-// legacy LTR; E.3 lo funde en "AJUSTA SUPUESTOS" + sub-card reestructuración.
+// Usar `normalizeLegacyVerdict()` para coercer strings legacy de DB al
+// vocabulario canónico antes de pasarlos a la UI.
 export type Veredicto =
   | "COMPRAR"
   | "AJUSTA SUPUESTOS"
-  | "BUSCAR OTRA"
-  | "RECONSIDERA LA ESTRUCTURA";
+  | "BUSCAR OTRA";
 
 /**
  * Mapea cualquier string de veredicto (legacy o canónico, LTR o STR) al
@@ -200,12 +200,13 @@ export type Veredicto =
  * reconocible — los consumers deben proteger con fallback ("—", placeholder).
  *
  * Ejemplos:
- *   normalizeLegacyVerdict("AJUSTA EL PRECIO")   → "AJUSTA SUPUESTOS"
- *   normalizeLegacyVerdict("VIABLE")             → "COMPRAR"
- *   normalizeLegacyVerdict("AJUSTA ESTRATEGIA")  → "AJUSTA SUPUESTOS"
- *   normalizeLegacyVerdict("NO RECOMENDADO")     → "BUSCAR OTRA"
- *   normalizeLegacyVerdict("COMPRAR")            → "COMPRAR"
- *   normalizeLegacyVerdict("garbage")            → null
+ *   normalizeLegacyVerdict("AJUSTA EL PRECIO")        → "AJUSTA SUPUESTOS"
+ *   normalizeLegacyVerdict("VIABLE")                  → "COMPRAR"
+ *   normalizeLegacyVerdict("AJUSTA ESTRATEGIA")       → "AJUSTA SUPUESTOS"
+ *   normalizeLegacyVerdict("NO RECOMENDADO")          → "BUSCAR OTRA"
+ *   normalizeLegacyVerdict("RECONSIDERA LA ESTRUCTURA") → "AJUSTA SUPUESTOS"  (E.3)
+ *   normalizeLegacyVerdict("COMPRAR")                 → "COMPRAR"
+ *   normalizeLegacyVerdict("garbage")                 → null
  */
 export function normalizeLegacyVerdict(raw: string | null | undefined): Veredicto | null {
   if (!raw || typeof raw !== "string") return null;
@@ -216,12 +217,14 @@ export function normalizeLegacyVerdict(raw: string | null | undefined): Veredict
     case "AJUSTA SUPUESTOS":
     case "AJUSTA EL PRECIO":
     case "AJUSTA ESTRATEGIA":
+    // Commit E.3 · 2026-05-13 — RECONSIDERA legacy se coerce a AJUSTA
+    // SUPUESTOS. La sub-card reestructuración persiste por presencia
+    // del campo `aiAnalysis.reestructuracion`, independiente del veredicto.
+    case "RECONSIDERA LA ESTRUCTURA":
       return "AJUSTA SUPUESTOS";
     case "BUSCAR OTRA":
     case "NO RECOMENDADO":
       return "BUSCAR OTRA";
-    case "RECONSIDERA LA ESTRUCTURA":
-      return "RECONSIDERA LA ESTRUCTURA";
     default:
       return null;
   }
@@ -368,8 +371,9 @@ export interface AINegociacionWalkAway {
 
 // Sección opcional que aparece solo cuando Franco activa el Nivel 3 del
 // escalonado de financingHealth (skill §1.5). Va entre `negociacion` y
-// `largoPlazo` en el render. Cuando está presente, el veredicto motor suele
-// ser "RECONSIDERA LA ESTRUCTURA" (E.3 lo funde en AJUSTA SUPUESTOS).
+// `largoPlazo` en el render. Commit E.3 · 2026-05-13: la presencia de esta
+// sección NO altera el veredicto (que sigue siendo AJUSTA SUPUESTOS); es
+// contenido adicional que explica que la palanca de ajuste es financiera.
 export interface AIReestructuracionSection {
   contenido_clp: string;
   contenido_uf: string;

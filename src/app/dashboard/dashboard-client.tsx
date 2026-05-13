@@ -24,14 +24,13 @@ type VerdictFilter = "todos" | AnyVerdict;
 type TypeFilter = "todos" | "ltr" | "str";
 
 function getVerdict(score: number, veredictoMotor?: string): LTRVerdict {
+  // Commit E.3 · 2026-05-13 — normalizeLegacyVerdict coerce RECONSIDERA →
+  // AJUSTA SUPUESTOS. El dashboard ya no necesita branch especial.
+  // Fallback por score sigue thresholds canónicos E.1 (70 / 45 / 0).
   const norm = normalizeLegacyVerdict(veredictoMotor);
-  // RECONSIDERA LA ESTRUCTURA solo aplica al render del veredicto Franco
-  // (badge LTR detallado). En dashboard listing colapsa a COMPRAR para no
-  // sumar un 4to filtro.
-  if (norm && norm !== "RECONSIDERA LA ESTRUCTURA") return norm;
-  if (norm === "RECONSIDERA LA ESTRUCTURA") return "COMPRAR";
-  if (score >= 75) return "COMPRAR";
-  if (score >= 40) return "AJUSTA SUPUESTOS";
+  if (norm) return norm;
+  if (score >= 70) return "COMPRAR";
+  if (score >= 45) return "AJUSTA SUPUESTOS";
   return "BUSCAR OTRA";
 }
 
@@ -40,8 +39,7 @@ function getSTRVerdict(item: Analisis): STRVerdict {
   const r = item.results as any;
   const raw = r?.francoScore?.veredicto ?? r?.veredicto;
   const norm = normalizeLegacyVerdict(raw);
-  if (norm && norm !== "RECONSIDERA LA ESTRUCTURA") return norm;
-  return "BUSCAR OTRA";
+  return norm ?? "BUSCAR OTRA";
 }
 
 function getSTRScore(item: Analisis): number | null {
@@ -177,9 +175,10 @@ function VerdictBadge({ verdict }: { verdict: string }) {
       border: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
     },
   };
-  // Coerce legacy strings on render (no DB rewrite).
+  // Coerce legacy strings on render (no DB rewrite). normalizeLegacyVerdict
+  // mapea RECONSIDERA legacy → AJUSTA SUPUESTOS desde E.3.
   const normalized = normalizeLegacyVerdict(verdict);
-  const displayLabel = normalized === "RECONSIDERA LA ESTRUCTURA" ? "RECONSIDERA" : (normalized ?? verdict);
+  const displayLabel = normalized ?? verdict;
   const s = styles[displayLabel] || styles["AJUSTA SUPUESTOS"];
   return (
     <span

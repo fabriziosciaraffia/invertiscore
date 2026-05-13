@@ -248,11 +248,7 @@ export function SharedComparativaClient(p: Props) {
             costoAmoblamiento={p.costoAmoblamiento}
             modoGestion={p.modoGestion}
             comisionAdministrador={p.comisionAdministrador}
-            ltrVerdict={
-              ltrVerdict === "RECONSIDERA LA ESTRUCTURA"
-                ? "AJUSTA SUPUESTOS"
-                : (ltrVerdict as STRVerdict | null)
-            }
+            ltrVerdict={ltrVerdict}
             strVerdict={strVerdict}
             currency={currency}
             ufValue={uf}

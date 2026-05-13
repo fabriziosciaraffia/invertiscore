@@ -4,7 +4,9 @@ import Link from "next/link";
 import { ArrowRight, Home, Building2 } from "lucide-react";
 import { fmtMoney, fmtPct } from "@/components/analysis/utils";
 
-type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA" | "RECONSIDERA LA ESTRUCTURA";
+// Commit E.3 · 2026-05-13 — Veredicto canónico unificado a 3 valores.
+// "RECONSIDERA LA ESTRUCTURA" se fundió en "AJUSTA SUPUESTOS".
+type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
 interface Props {
   ltrId: string;
