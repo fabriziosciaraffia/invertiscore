@@ -55,6 +55,13 @@ function getAnyVerdict(item: Analisis): AnyVerdict {
 }
 
 function isShortTerm(item: Analisis): boolean {
+  // Paridad con guards LTR/STR (E.1.1): columna SQL es autoritativa, jsonb
+  // solo cubre análisis pre-migration 20260510 (cuando la columna era null).
+  // Antes leía jsonb solo; eso desincronizaba filtros/conteos del dashboard
+  // de los redirects que páginas individuales ya hacían por SQL.
+  const sqlTipo = (item as unknown as { tipo_analisis?: string | null }).tipo_analisis;
+  if (sqlTipo === "short-term") return true;
+  if (sqlTipo === "long-term") return false;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = item.results as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

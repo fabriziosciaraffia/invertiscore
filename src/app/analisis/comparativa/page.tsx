@@ -53,10 +53,18 @@ export default async function ComparativaPage({
   }
 
   // Validación de IDs cruzados: ?ltr= debe ser análisis LTR (no marcado como
-  // "short-term") y ?str= debe ser STR. Si están cruzados redirigimos.
-  const ltrType = (ltrRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
-  const strType = (strRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis;
-  if (ltrType === "short-term" || strType !== "short-term") {
+  // "short-term") y ?str= debe ser STR. Paridad con guards LTR/STR (E.1.1):
+  // SQL `tipo_analisis` es autoritativa; jsonb solo se consulta cuando SQL
+  // es null (análisis pre-migration 20260510).
+  const ltrSql = (ltrRow as Record<string, unknown>).tipo_analisis as string | null | undefined;
+  const strSql = (strRow as Record<string, unknown>).tipo_analisis as string | null | undefined;
+  const ltrIsSTR =
+    ltrSql === "short-term" ||
+    (ltrSql == null && (ltrRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis === "short-term");
+  const strIsSTR =
+    strSql === "short-term" ||
+    (strSql == null && (strRow.results as { tipoAnalisis?: string } | null)?.tipoAnalisis === "short-term");
+  if (ltrIsSTR || !strIsSTR) {
     redirect(user ? "/dashboard" : "/");
   }
 
