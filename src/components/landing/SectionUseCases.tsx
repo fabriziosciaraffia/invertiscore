@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import Reveal from "./Reveal";
+import SectionHeader from "./SectionHeader";
 
 type Profile = {
   id: string;
@@ -147,14 +148,11 @@ function StickyVariant() {
       <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
         {/* Header permanente */}
         <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
-          <div className="max-w-[820px]">
-            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-              04 · Para quién
-            </span>
-            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
-              Franco resuelve preguntas distintas según quién pregunta.
-            </h2>
-          </div>
+          <SectionHeader
+            eyebrow="04 · Para quién"
+            title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
+            className="max-w-[820px]"
+          />
         </div>
 
         {/* Body: sidebar + detalle, centrado vertical */}
@@ -222,19 +220,14 @@ function StaticVariant() {
 
   return (
     <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
-      <Reveal as="div" className="max-w-[820px]">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-          04 · Para quién
-        </span>
-        <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
-          Franco resuelve preguntas distintas según quién pregunta.
-        </h2>
-        <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[var(--landing-text-secondary)] md:text-[15px]">
-          Tres perfiles, tres dolores, la misma respuesta honesta.
-        </p>
-      </Reveal>
+      <SectionHeader
+        eyebrow="04 · Para quién"
+        title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
+        subhead="Tres perfiles, tres dolores, la misma respuesta honesta."
+        className="max-w-[820px]"
+      />
 
-      <Reveal as="div" delay={0.15} className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
+      <Reveal as="div" delay={0.15} className="grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
         <nav
           className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"
           aria-label="Perfiles"

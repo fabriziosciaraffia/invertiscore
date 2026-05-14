@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import Reveal, { RevealItem } from "./Reveal";
+import SectionHeader from "./SectionHeader";
 
 /**
  * Sección 08 · Pricing — fondo Ink 100, 3 cards (la del medio dark + destacada).
@@ -14,22 +15,18 @@ export default function SectionPricing() {
     >
       <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
-        <Reveal as="div" className="mx-auto max-w-[760px] text-center">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-            08 · Precios
-          </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[38px]">
-            Empieza gratis. Paga cuando lo necesites.
-          </h2>
-          <p className="mt-4 font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
-            Sin tarjeta para empezar. Sin compromiso mensual obligatorio.
-          </p>
-        </Reveal>
+        <SectionHeader
+          eyebrow="08 · Precios"
+          title={"Empieza gratis.\nPaga cuando lo necesites."}
+          subhead="Sin tarjeta para empezar. Sin compromiso mensual obligatorio."
+          align="center"
+          className="mx-auto max-w-[760px]"
+        />
 
         {/* Cards */}
         <Reveal
           as="div"
-          className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3"
+          className="grid grid-cols-1 gap-5 md:grid-cols-3"
           stagger={0.1}
           delay={0.1}
         >

@@ -1,6 +1,7 @@
 "use client";
 
 import Reveal, { RevealItem } from "./Reveal";
+import SectionHeader from "./SectionHeader";
 
 /**
  * Sección 02 · Problema — fondo Ink 100 (#FAFAF8).
@@ -12,22 +13,16 @@ export default function SectionProblem() {
   return (
     <section className="relative flex min-h-screen items-center">
       <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
-        <Reveal as="div" className="max-w-[760px]">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-            02 · El problema
-          </span>
-          <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
-            La matemática del depto de inversión cambió.
-          </h2>
-          <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[var(--landing-text-secondary)] md:text-[15px]">
-            Tasas más altas, arriendos que no acompañaron y gastos que nadie suma
-            en el análisis.
-          </p>
-        </Reveal>
+        <SectionHeader
+          eyebrow="02 · El problema"
+          title={"La matemática del depto\nde inversión cambió."}
+          subhead="Tasas más altas, arriendos que no acompañaron y gastos que nadie suma en el análisis."
+          className="max-w-[760px]"
+        />
 
         <Reveal
           as="div"
-          className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5"
+          className="grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5"
           stagger={0.1}
           delay={0.1}
         >

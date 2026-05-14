@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import Reveal from "./Reveal";
+import SectionHeader from "./SectionHeader";
 
 /**
  * Sección 06 · Objeciones — fondo Ink 900.
@@ -94,14 +95,11 @@ export default function SectionObjections() {
           se incrusta dentro del bloque 01 para que no se pierda del viewport. */}
       {mode !== "sticky" && (
         <div className="mx-auto max-w-[1280px] px-6 pt-14 md:pt-[72px]">
-          <div className="max-w-[820px]">
-            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-              06 · Lo que vas a pensar
-            </span>
-            <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[40px]">
-              Cuatro razones para confiar antes de hacer click.
-            </h2>
-          </div>
+          <SectionHeader
+            eyebrow="06 · Lo que vas a pensar"
+            title={"Cuatro razones para confiar\nantes de hacer click."}
+            className="max-w-[820px]"
+          />
         </div>
       )}
 

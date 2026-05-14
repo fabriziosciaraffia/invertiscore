@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import SectionHeader from "./SectionHeader";
 
 /**
  * Sección 03 · Qué hace Franco — 3 modos según viewport y motion:
@@ -65,18 +66,12 @@ export default function SectionWhatFrancoDoes() {
   const HeaderOutside = (
     <div>
       <div className="mx-auto max-w-[1280px] px-6 pb-8 pt-14 md:pb-10 md:pt-[72px]">
-        <div className="max-w-[820px]">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-            03 · Qué hace Franco
-          </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[44px]">
-            Le hacemos a tu depto las preguntas que tu cotización no responde.
-          </h2>
-          <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
-            Tres pasos, 30 segundos, una posición clara. Así trabaja Franco con
-            el caso del depto en Providencia.
-          </p>
-        </div>
+        <SectionHeader
+          eyebrow="03 · Qué hace Franco"
+          title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
+          subhead="Tres pasos, 30 segundos, una posición clara. Así trabaja Franco con el caso del depto en Providencia."
+          className="max-w-[820px]"
+        />
       </div>
     </div>
   );
