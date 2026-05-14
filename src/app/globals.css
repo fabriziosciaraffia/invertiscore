@@ -166,6 +166,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Landing — snap selectivo (solo desktop >= 768px). El contenedor
+ * activador vive en SnapScrollEnable.tsx, que añade scroll-snap-type
+ * al <html> mientras la landing está montada. */
+@media (min-width: 768px) {
+  .snap-section-start {
+    scroll-snap-align: start;
+  }
+}
+
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

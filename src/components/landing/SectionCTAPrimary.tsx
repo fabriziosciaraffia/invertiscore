@@ -5,22 +5,22 @@ import Link from "next/link";
  */
 export default function SectionCTAPrimary() {
   return (
-    <section className="bg-[#E8E6E1]">
-      <div className="mx-auto max-w-[820px] px-6 py-24 text-center md:py-32">
+    <section className="snap-section-start flex min-h-[80vh] items-center bg-[#E8E6E1]">
+      <div className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
         <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
           05 · Tu turno
         </span>
-        <h2 className="mt-5 font-heading text-[36px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[52px]">
+        <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
           Antes de firmar,
           <br />
           ve si los números cierran.
         </h2>
-        <p className="mx-auto mt-5 max-w-[560px] font-body text-[16px] leading-[1.55] text-[#0F0F0F]/72 md:text-[17px]">
+        <p className="mx-auto mt-4 max-w-[560px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
           Ingresas precio, comuna y arriendo esperado. Franco te entrega
           veredicto en 30 segundos.
         </p>
 
-        <div className="mt-9 flex flex-col items-center gap-4">
+        <div className="mt-8 flex flex-col items-center gap-4">
           <Link
             href="/register"
             className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"

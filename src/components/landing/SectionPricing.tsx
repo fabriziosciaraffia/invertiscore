@@ -5,23 +5,26 @@ import Link from "next/link";
  */
 export default function SectionPricing() {
   return (
-    <section id="pricing" className="bg-[#FAFAF8]">
-      <div className="mx-auto max-w-[1280px] px-6 py-20 md:py-28">
+    <section
+      id="pricing"
+      className="snap-section-start flex min-h-screen items-center bg-[#FAFAF8]"
+    >
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
         <div className="mx-auto max-w-[760px] text-center">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
             08 · Precios
           </span>
-          <h2 className="mt-5 font-heading text-[36px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
+          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[38px]">
             Empieza gratis. Paga cuando lo necesites.
           </h2>
-          <p className="mt-5 font-body text-[16px] leading-[1.55] text-[#0F0F0F]/72">
+          <p className="mt-4 font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
             Sin tarjeta para empezar. Sin compromiso mensual obligatorio.
           </p>
         </div>
 
         {/* Cards */}
-        <div className="mt-12 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
           <PricingCard
             label="Demo"
             title="Tu primer análisis, gratis."
@@ -71,7 +74,7 @@ export default function SectionPricing() {
         </div>
 
         {/* Footer */}
-        <p className="mt-10 text-center font-body text-[14px] text-[#0F0F0F]/72">
+        <p className="mt-8 text-center font-body text-[14px] text-[#0F0F0F]/70">
           ¿Eres corredor o family officer?{" "}
           <Link
             href="/register"

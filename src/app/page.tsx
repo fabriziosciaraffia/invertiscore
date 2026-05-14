@@ -1,4 +1,5 @@
 import LandingNav from "@/components/landing/LandingNav";
+import SnapScrollEnable from "@/components/landing/SnapScrollEnable";
 import SectionHero from "@/components/landing/SectionHero";
 import SectionProblem from "@/components/landing/SectionProblem";
 import SectionWhatFrancoDoes from "@/components/landing/SectionWhatFrancoDoes";
@@ -19,6 +20,7 @@ export const metadata = {
 export default function LandingPage() {
   return (
     <div data-theme="light" className="min-h-screen bg-[#E8E6E1] text-[#0F0F0F]">
+      <SnapScrollEnable />
       <LandingNav />
       <main>
         <SectionHero />

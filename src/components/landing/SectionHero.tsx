@@ -6,8 +6,10 @@ import Link from "next/link";
  */
 export default function SectionHero() {
   return (
-    <section className="relative bg-[#E8E6E1]">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-12 px-6 pb-24 pt-16 md:grid-cols-[1.05fr_1fr] md:gap-16 md:pb-32 md:pt-24">
+    <section
+      className="snap-section-start relative flex min-h-screen items-center bg-[#E8E6E1]"
+    >
+      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-10 px-6 py-14 md:grid-cols-[1.05fr_1fr] md:gap-14 md:py-[72px]">
         {/* Columna izquierda — copy */}
         <div className="flex flex-col">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
@@ -18,7 +20,7 @@ export default function SectionHero() {
             ¿Y si el depto no se paga solo?
           </h1>
 
-          <p className="mt-6 max-w-[480px] font-body text-[17px] leading-[1.55] text-[#0F0F0F]/72 md:text-[18px]">
+          <p className="mt-6 max-w-[480px] font-body text-[17px] leading-[1.55] text-[#0F0F0F]/70 md:text-[18px]">
             Antes de invertir, ve si dan los números para no terminar poniendo
             plata de tu bolsillo cada mes.
           </p>

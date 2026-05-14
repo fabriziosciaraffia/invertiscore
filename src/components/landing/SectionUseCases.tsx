@@ -71,23 +71,23 @@ export default function SectionUseCases() {
   const profile = PROFILES[active];
 
   return (
-    <section className="bg-[#0F0F0F] text-[#FAFAF8]">
-      <div className="mx-auto max-w-[1280px] px-6 py-24 md:py-32">
+    <section className="flex min-h-screen items-center bg-[#0F0F0F] text-[#FAFAF8]">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
         <div className="max-w-[820px]">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
             04 · Para quién
           </span>
-          <h2 className="mt-5 font-heading text-[36px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[48px]">
+          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
             Franco resuelve preguntas distintas según quién pregunta.
           </h2>
-          <p className="mt-5 max-w-[640px] font-body text-[16px] leading-[1.55] text-[#FAFAF8]/72 md:text-[17px]">
+          <p className="mt-4 max-w-[640px] font-body text-[15px] leading-[1.55] text-[#FAFAF8]/70 md:text-[16px]">
             Tres perfiles, tres dolores, la misma respuesta honesta.
           </p>
         </div>
 
         {/* Layout: tabs horizontales mobile / sidebar desktop */}
-        <div className="mt-12 grid grid-cols-1 gap-8 md:grid-cols-[300px_1fr] md:gap-12">
+        <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-[300px_1fr] md:gap-12">
           {/* Sidebar (mobile: scroll horizontal) */}
           <nav
             className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"

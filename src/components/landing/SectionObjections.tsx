@@ -5,19 +5,19 @@
 export default function SectionObjections() {
   return (
     <section className="bg-[#0F0F0F] text-[#FAFAF8]">
-      <div className="mx-auto max-w-[1280px] px-6 py-24 md:py-32">
+      <div className="mx-auto max-w-[1280px] px-6 pb-14 pt-14 md:pb-[72px] md:pt-[72px]">
         {/* Header */}
         <div className="max-w-[820px]">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
             06 · Lo que vas a pensar
           </span>
-          <h2 className="mt-5 font-heading text-[36px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[48px]">
+          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
             Cuatro razones para confiar antes de hacer click.
           </h2>
         </div>
 
         {/* Bloques */}
-        <div className="mt-12">
+        <div className="mt-10">
           <ObjectionBlock
             n="01"
             ghostSide="right"
@@ -97,7 +97,7 @@ function ObjectionBlock({
       <h3 className="mt-4 font-heading text-[24px] font-bold leading-[1.2] tracking-[-0.005em] text-[#FAFAF8] md:text-[28px]">
         {title}
       </h3>
-      <p className="mt-4 font-body text-[15px] leading-[1.65] text-[#FAFAF8]/72">
+      <p className="mt-4 font-body text-[15px] leading-[1.65] text-[#FAFAF8]/70">
         {body}
       </p>
     </div>
@@ -126,7 +126,7 @@ function ObjectionBlock({
         {n}
       </span>
 
-      <div className="relative grid grid-cols-1 items-center gap-10 px-2 py-14 md:grid-cols-2 md:gap-16 md:py-20">
+      <div className="relative grid grid-cols-1 items-center gap-10 px-2 py-12 md:min-h-[80vh] md:grid-cols-2 md:gap-14 md:py-14">
         {visualSide === "left" ? (
           <>
             <div className="order-2 md:order-1">{visual}</div>

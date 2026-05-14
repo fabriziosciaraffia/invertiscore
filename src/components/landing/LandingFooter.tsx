@@ -102,7 +102,7 @@ function FooterCol({
           <li key={it.label}>
             <Link
               href={it.href}
-              className="font-body text-[14px] text-[#FAFAF8]/72 transition-colors hover:text-[#FAFAF8]"
+              className="font-body text-[14px] text-[#FAFAF8]/70 transition-colors hover:text-[#FAFAF8]"
             >
               {it.label}
             </Link>

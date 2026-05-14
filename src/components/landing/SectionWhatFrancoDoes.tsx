@@ -8,15 +8,15 @@ export default function SectionWhatFrancoDoes() {
     <section id="que-hace-franco" className="contents">
       {/* Header — ink-200 */}
       <div className="bg-[#E8E6E1]">
-        <div className="mx-auto max-w-[1280px] px-6 pb-12 pt-24 md:pb-16 md:pt-32">
+        <div className="mx-auto max-w-[1280px] px-6 pb-8 pt-14 md:pb-10 md:pt-[72px]">
           <div className="max-w-[820px]">
             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
               03 · Qué hace Franco
             </span>
-            <h2 className="mt-5 font-heading text-[36px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[52px]">
+            <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
               Le hacemos a tu depto las preguntas que tu cotización no responde.
             </h2>
-            <p className="mt-5 max-w-[680px] font-body text-[16px] leading-[1.55] text-[#0F0F0F]/72 md:text-[17px]">
+            <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
               Tres pasos, 30 segundos, una posición clara. Así trabaja Franco con
               el caso del depto en Providencia.
             </p>
@@ -96,8 +96,8 @@ function Step({
   dark?: boolean;
 }) {
   return (
-    <div style={{ background: bg }}>
-      <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-6 px-6 py-16 md:grid-cols-[180px_1fr] md:gap-10 md:py-24">
+    <div style={{ background: bg }} className="md:flex md:min-h-[90vh] md:items-center">
+      <div className="mx-auto grid w-full max-w-[1280px] grid-cols-1 gap-6 px-6 py-14 md:grid-cols-[180px_1fr] md:gap-10 md:py-[72px]">
         {/* Numeral */}
         <div className="flex md:block">
           <span

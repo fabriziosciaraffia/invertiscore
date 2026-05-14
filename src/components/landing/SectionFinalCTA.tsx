@@ -6,7 +6,7 @@ import Link from "next/link";
  */
 export default function SectionFinalCTA() {
   return (
-    <section className="relative overflow-hidden bg-[#0F0F0F] text-[#FAFAF8]">
+    <section className="snap-section-start relative flex min-h-screen items-center overflow-hidden bg-[#0F0F0F] text-[#FAFAF8]">
       {/* Numeral fantasma */}
       <span
         className="pointer-events-none absolute select-none font-heading font-bold leading-none tracking-[-0.05em]"
@@ -22,7 +22,7 @@ export default function SectionFinalCTA() {
         09
       </span>
 
-      <div className="relative mx-auto max-w-[820px] px-6 py-32 text-center md:py-40">
+      <div className="relative mx-auto w-full max-w-[820px] px-6 py-16 text-center md:py-[88px]">
         <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
           09 · Tu turno
         </span>
@@ -31,7 +31,7 @@ export default function SectionFinalCTA() {
           <br />
           no se paga solo?
         </h2>
-        <p className="mx-auto mt-6 max-w-[560px] font-body text-[16px] leading-[1.55] text-[#FAFAF8]/72 md:text-[17px]">
+        <p className="mx-auto mt-6 max-w-[560px] font-body text-[16px] leading-[1.55] text-[#FAFAF8]/70 md:text-[17px]">
           30 segundos y decides con fundamentos. Antes de firmar 25 años.
         </p>
 
