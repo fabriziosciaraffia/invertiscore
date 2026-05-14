@@ -5,7 +5,7 @@ import Link from "next/link";
  */
 export default function SectionCTAPrimary() {
   return (
-    <section className="snap-section-start flex min-h-[80vh] items-center bg-[#E8E6E1]">
+    <section className="snap-section-start flex min-h-screen items-center bg-[#E8E6E1]">
       <div className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
         <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
           05 · Tu turno

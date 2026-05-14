@@ -12,7 +12,10 @@ export default function SnapScrollEnable() {
     const mq = window.matchMedia("(min-width: 768px)");
 
     const apply = () => {
-      html.style.scrollSnapType = mq.matches ? "y mandatory" : "";
+      // proximity (no mandatory) para que el footer sea accesible
+      // después del último snap target (Pricing). mandatory bloqueaba
+      // el scroll más allá del último anchor.
+      html.style.scrollSnapType = mq.matches ? "y proximity" : "";
     };
 
     apply();

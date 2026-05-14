@@ -126,7 +126,9 @@ function StickyVariant() {
       const total = rect.height - window.innerHeight;
       if (total <= 0) return;
       const p = Math.min(1, Math.max(0, -rect.top / total));
-      const idx = p >= 0.66 ? 2 : p >= 0.33 ? 1 : 0;
+      // Thresholds 0-0.33 step 1, 0.33-0.6 step 2, 0.6+ step 3.
+      // Step 3 entra antes para que la salida hacia s04 no requiera buffer extra.
+      const idx = p >= 0.6 ? 2 : p >= 0.33 ? 1 : 0;
       setActiveStep(idx);
     };
     const onScroll = () => {
@@ -147,15 +149,15 @@ function StickyVariant() {
     <div
       ref={containerRef}
       className="snap-section-start relative"
-      style={{ height: "200vh" }}
+      style={{ height: "300vh" }}
     >
       <div
-        className="sticky top-0 flex h-screen w-full flex-col overflow-hidden transition-colors duration-500"
+        className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full items-center overflow-hidden transition-colors duration-500"
         style={{ background: step.bg }}
       >
-        <div className="mx-auto grid h-full w-full max-w-[1280px] grid-cols-[140px_1fr] gap-8 px-6 py-10">
+        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-[140px_1fr] items-center gap-8 px-6 py-8">
           {/* Numeral fijo */}
-          <div className="flex items-start pt-1">
+          <div className="flex items-center pt-1">
             <span
               key={step.numeral}
               className="font-heading font-bold leading-[0.85] tracking-[-0.04em] transition-colors duration-500"
@@ -169,8 +171,9 @@ function StickyVariant() {
             </span>
           </div>
 
-          {/* Contenido derecha */}
-          <div className="relative flex h-full flex-col">
+          {/* Contenido derecha — altura fija para que los slides absolute
+              tengan espacio reservado y la sticky inner los centre verticalmente. */}
+          <div className="relative min-h-[640px]">
             {STEPS.map((s, i) => {
               const isActive = i === activeStep;
               const isFirst = i === 0;

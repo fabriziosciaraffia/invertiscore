@@ -72,22 +72,22 @@ export default function SectionUseCases() {
 
   return (
     <section className="snap-section-start flex min-h-screen items-center bg-[#0F0F0F] text-[#FAFAF8]">
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
         {/* Header */}
         <div className="max-w-[820px]">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
             04 · Para quién
           </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
+          <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[32px]">
             Franco resuelve preguntas distintas según quién pregunta.
           </h2>
-          <p className="mt-4 max-w-[640px] font-body text-[15px] leading-[1.55] text-[#FAFAF8]/70 md:text-[16px]">
+          <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[#FAFAF8]/70 md:text-[15px]">
             Tres perfiles, tres dolores, la misma respuesta honesta.
           </p>
         </div>
 
         {/* Layout: tabs horizontales mobile / sidebar desktop */}
-        <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-[300px_1fr] md:gap-12">
+        <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
           {/* Sidebar (mobile: scroll horizontal) */}
           <nav
             className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"
@@ -123,29 +123,29 @@ export default function SectionUseCases() {
           </nav>
 
           {/* Detalle */}
-          <div key={profile.id} className="min-h-[420px] animate-fadeIn md:pl-2">
+          <div key={profile.id} className="min-h-[360px] animate-fadeIn md:pl-2">
             <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#FAFAF8]/55">
               Tu pregunta
             </p>
-            <h3 className="mt-3 font-heading text-[28px] font-bold italic leading-[1.18] tracking-[-0.005em] text-[#FAFAF8] md:text-[36px]">
+            <h3 className="mt-2 font-heading text-[24px] font-bold italic leading-[1.18] tracking-[-0.005em] text-[#FAFAF8] md:text-[28px]">
               &ldquo;{profile.question}&rdquo;
             </h3>
-            <p className="mt-5 max-w-[640px] font-body text-[15px] leading-[1.65] text-[#888780]">
+            <p className="mt-4 max-w-[640px] font-body text-[14px] leading-[1.6] text-[#888780]">
               {profile.body}
             </p>
 
             {/* KPI cards */}
-            <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
               {profile.kpis.map((k) => (
                 <div
                   key={k.label}
-                  className="rounded-md border border-[rgba(250,250,248,0.08)] bg-[#1A1A1A] px-4 py-4"
+                  className="rounded-md border border-[rgba(250,250,248,0.08)] bg-[#1A1A1A] px-3.5 py-3"
                 >
                   <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
                     {k.label}
                   </p>
                   <p
-                    className="mt-2 font-mono text-[18px] font-semibold"
+                    className="mt-1.5 font-mono text-[16px] font-semibold"
                     style={{ color: k.red ? "#FF5C66" : "#FAFAF8" }}
                   >
                     {k.value}
@@ -155,7 +155,7 @@ export default function SectionUseCases() {
             </div>
 
             {/* CTA */}
-            <div className="mt-8">
+            <div className="mt-6">
               <Link
                 href={profile.ctaHref}
                 className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.18)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"

@@ -6,7 +6,7 @@ import Link from "next/link";
  */
 export default function SectionFinalCTA() {
   return (
-    <section className="snap-section-start relative flex min-h-screen items-center overflow-hidden bg-[#0F0F0F] text-[#FAFAF8]">
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-[#0F0F0F] text-[#FAFAF8]">
       {/* Numeral fantasma */}
       <span
         className="pointer-events-none absolute select-none font-heading font-bold leading-none tracking-[-0.05em]"

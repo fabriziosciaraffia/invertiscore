@@ -147,40 +147,41 @@ function StickyVariant() {
     <div
       ref={containerRef}
       className="snap-section-start relative"
-      style={{ height: "250vh" }}
+      style={{ height: "350vh" }}
     >
-      <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
+      <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
+        {/* Header permanente — visible en todos los bloques. */}
+        <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
+          <div className="max-w-[820px]">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+              06 · Lo que vas a pensar
+            </span>
+            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[#FAFAF8] md:text-[32px]">
+              Cuatro razones para confiar antes de hacer click.
+            </h2>
+          </div>
+        </div>
+
         {/* Numeral fantasma — alterna lado según paridad */}
         <span
           key={block.n}
           className="pointer-events-none absolute select-none font-heading font-bold leading-none tracking-[-0.04em] transition-[left,right,opacity] duration-500"
           style={{
-            color: "rgba(200,50,60,0.06)",
+            color: "rgba(200,50,60,0.08)",
             fontSize: "clamp(180px, 24vw, 280px)",
-            top: "50%",
+            top: "55%",
             transform: "translateY(-50%)",
             [block.ghostSide]: "-2vw",
+            zIndex: 0,
           }}
           aria-hidden="true"
         >
           {block.n}
         </span>
 
-        <div className="relative mx-auto w-full max-w-[1280px] px-6">
-          {/* Header de sección — sólo en bloque 01 */}
-          {activeBlock === 0 && (
-            <div className="mb-7 max-w-[820px] transition-opacity duration-300">
-              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
-                06 · Lo que vas a pensar
-              </span>
-              <h2 className="mt-2 font-heading text-[24px] font-bold leading-[1.12] tracking-[-0.01em] text-[#FAFAF8] md:text-[28px]">
-                Cuatro razones para confiar antes de hacer click.
-              </h2>
-            </div>
-          )}
-
+        <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 items-center px-6 pb-10">
           {/* Slides */}
-          <div className="relative">
+          <div className="relative min-h-[480px] w-full">
             {BLOCKS.map((b, i) => {
               const isActive = i === activeBlock;
               return (
@@ -245,13 +246,13 @@ function CopyBlock({ block }: { block: BlockDef }) {
       <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#FAFAF8]/55">
         {block.label}
       </span>
-      <p className="mt-3 font-body text-[16px] italic leading-[1.4] text-[#FAFAF8]/55">
+      <p className="mt-2 font-body text-[15px] italic leading-[1.4] text-[#FAFAF8]/55">
         &ldquo;{block.quote}&rdquo;
       </p>
-      <h3 className="mt-4 font-heading text-[24px] font-bold leading-[1.2] tracking-[-0.005em] text-[#FAFAF8] md:text-[28px]">
+      <h3 className="mt-3 font-heading text-[22px] font-bold leading-[1.2] tracking-[-0.005em] text-[#FAFAF8] md:text-[26px]">
         {block.title}
       </h3>
-      <p className="mt-4 font-body text-[15px] leading-[1.65] text-[#FAFAF8]/70">
+      <p className="mt-3 font-body text-[14px] leading-[1.6] text-[#FAFAF8]/70">
         {block.body}
       </p>
     </div>

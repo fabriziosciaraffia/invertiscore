@@ -6,23 +6,23 @@
 export default function SectionProblem() {
   return (
     <section className="snap-section-start flex min-h-screen items-center bg-[#FAFAF8]">
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
         {/* Header */}
         <div className="max-w-[760px]">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
             02 · El problema
           </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[40px]">
+          <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[32px]">
             La matemática del depto de inversión cambió.
           </h2>
-          <p className="mt-4 max-w-[640px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
+          <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[#0F0F0F]/70 md:text-[15px]">
             Tasas más altas, arriendos que no acompañaron y gastos que nadie suma
             en el análisis.
           </p>
         </div>
 
         {/* Grid 3 cards */}
-        <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
+        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-5">
           <ProblemCard
             label="01 · Tasa hipotecaria"
             big="4.5%"
@@ -48,20 +48,20 @@ export default function SectionProblem() {
         </div>
 
         {/* Bloque negro */}
-        <div className="mt-8 rounded-2xl bg-[#0F0F0F] p-7 md:p-10">
-          <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-[auto_1px_1fr] md:gap-10">
-            <p className="font-heading text-[56px] font-bold leading-none tracking-[-0.025em] text-[#C8323C] md:text-[76px]">
+        <div className="mt-6 rounded-xl bg-[#0F0F0F] p-6 md:p-8">
+          <div className="grid grid-cols-1 items-center gap-5 md:grid-cols-[auto_1px_1fr] md:gap-8">
+            <p className="font-heading text-[48px] font-bold leading-none tracking-[-0.025em] text-[#C8323C] md:text-[64px]">
               92,1%
             </p>
             <div className="hidden h-full w-px bg-[rgba(250,250,248,0.12)] md:block" aria-hidden="true" />
-            <div className="md:pl-2">
+            <div className="md:pl-1">
               <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
                 Resultado
               </p>
-              <p className="mt-2.5 font-heading text-[20px] font-bold leading-[1.25] text-[#FAFAF8] md:text-[24px]">
+              <p className="mt-2 font-heading text-[18px] font-bold leading-[1.25] text-[#FAFAF8] md:text-[22px]">
                 de los deptos de inversión pierden plata cada mes.
               </p>
-              <p className="mt-2.5 font-body text-[14px] leading-[1.55] text-[#FAFAF8]/70 md:text-[15px]">
+              <p className="mt-2 font-body text-[13px] leading-[1.5] text-[#FAFAF8]/70 md:text-[14px]">
                 Más de la mitad pone $200.000 o más cada mes, durante 25 años.
               </p>
             </div>
@@ -69,7 +69,7 @@ export default function SectionProblem() {
         </div>
 
         {/* Footnote */}
-        <p className="mt-5 max-w-[860px] font-body text-[11px] leading-[1.55] text-[#0F0F0F]/45">
+        <p className="mt-4 max-w-[860px] font-body text-[11px] leading-[1.5] text-[#0F0F0F]/45">
           Datos sobre 12.944 departamentos en venta, 24 comunas Gran Santiago.
           Cap rate y flujo con precio publicado ajustado −10%. Supuestos: pie
           20%, crédito 25 años, tasa 4.5% UF, gastos 31.7%.
@@ -96,7 +96,7 @@ function ProblemCard({
 }) {
   return (
     <div
-      className="rounded-xl p-6 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
+      className="rounded-xl p-5 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5"
       style={
         highlighted
           ? {
@@ -115,19 +115,19 @@ function ProblemCard({
         {label}
       </p>
       <p
-        className="mt-4 font-heading font-bold leading-none tracking-[-0.02em]"
-        style={{ color: bigColor, fontSize: "48px" }}
+        className="mt-3 font-heading font-bold leading-none tracking-[-0.02em]"
+        style={{ color: bigColor, fontSize: "42px" }}
       >
         {big}
       </p>
-      <p className="mt-3 font-mono text-[11px] font-medium text-[#0F0F0F]/55">
+      <p className="mt-2.5 font-mono text-[11px] font-medium text-[#0F0F0F]/55">
         {sublabel}
       </p>
       <div
-        className="my-4 h-px w-full"
+        className="my-3.5 h-px w-full"
         style={{ background: highlighted ? "rgba(200,50,60,0.18)" : "rgba(15,15,15,0.08)" }}
       />
-      <p className="font-body text-[14px] leading-[1.55] text-[#0F0F0F]/80">
+      <p className="font-body text-[13px] leading-[1.5] text-[#0F0F0F]/80">
         {body}
       </p>
     </div>
