@@ -79,7 +79,9 @@ export default function SectionWhatFrancoDoes() {
     };
   }, []);
 
-  const Header = (
+  // Header de sección — solo se muestra fuera del sticky (carousel y stack
+  // lo necesitan; en modo sticky se incrusta dentro del step 0).
+  const HeaderOutside = (
     <div className="bg-[#E8E6E1]">
       <div className="mx-auto max-w-[1280px] px-6 pb-8 pt-14 md:pb-10 md:pt-[72px]">
         <div className="max-w-[820px]">
@@ -100,7 +102,7 @@ export default function SectionWhatFrancoDoes() {
 
   return (
     <section id="que-hace-franco" className="contents">
-      {Header}
+      {mode !== "sticky" && HeaderOutside}
       {mode === "sticky" && <StickyVariant />}
       {mode === "carousel" && <CarouselVariant />}
       {mode === "stack" && <StackVariant />}
@@ -142,20 +144,24 @@ function StickyVariant() {
   const step = STEPS[activeStep];
 
   return (
-    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
+    <div
+      ref={containerRef}
+      className="snap-section-start relative"
+      style={{ height: "200vh" }}
+    >
       <div
-        className="sticky top-0 flex h-screen w-full items-center overflow-hidden transition-colors duration-500"
+        className="sticky top-0 flex h-screen w-full flex-col overflow-hidden transition-colors duration-500"
         style={{ background: step.bg }}
       >
-        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-[180px_1fr] gap-10 px-6">
+        <div className="mx-auto grid h-full w-full max-w-[1280px] grid-cols-[140px_1fr] gap-8 px-6 py-10">
           {/* Numeral fijo */}
-          <div className="flex items-start">
+          <div className="flex items-start pt-1">
             <span
               key={step.numeral}
               className="font-heading font-bold leading-[0.85] tracking-[-0.04em] transition-colors duration-500"
               style={{
                 color: step.numeralColor,
-                fontSize: "clamp(80px, 14vw, 144px)",
+                fontSize: "clamp(56px, 8vw, 96px)",
               }}
               aria-hidden="true"
             >
@@ -164,13 +170,14 @@ function StickyVariant() {
           </div>
 
           {/* Contenido derecha */}
-          <div className="relative flex flex-col">
+          <div className="relative flex h-full flex-col">
             {STEPS.map((s, i) => {
               const isActive = i === activeStep;
+              const isFirst = i === 0;
               return (
                 <div
                   key={s.numeral}
-                  className={`absolute inset-0 flex flex-col gap-8 transition-[opacity,transform] duration-[400ms] ease-out ${
+                  className={`absolute inset-0 flex flex-col gap-5 transition-[opacity,transform] duration-[400ms] ease-out ${
                     isActive ? "pointer-events-auto" : "pointer-events-none"
                   }`}
                   style={{
@@ -179,6 +186,25 @@ function StickyVariant() {
                   }}
                   aria-hidden={!isActive}
                 >
+                  {/* Header de sección — sólo en step 0 */}
+                  {isFirst && (
+                    <div className="pb-1">
+                      <span
+                        className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
+                        style={{ color: s.labelColor }}
+                      >
+                        03 · Qué hace Franco
+                      </span>
+                      <h2
+                        className="mt-2 font-heading text-[24px] font-bold leading-[1.12] tracking-[-0.01em] md:text-[28px]"
+                        style={{ color: s.textColor }}
+                      >
+                        Le hacemos a tu depto las preguntas que tu cotización no
+                        responde.
+                      </h2>
+                    </div>
+                  )}
+
                   <div className="max-w-[680px]">
                     <span
                       className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]"
@@ -187,20 +213,23 @@ function StickyVariant() {
                       Paso {s.numeral}
                     </span>
                     <h3
-                      className="mt-3 font-heading text-[28px] font-bold leading-[1.15] tracking-[-0.01em] md:text-[36px]"
+                      className="mt-2 font-heading text-[22px] font-bold leading-[1.18] tracking-[-0.01em] md:text-[26px]"
                       style={{ color: s.textColor }}
                     >
                       {s.title}
                     </h3>
                     <p
-                      className="mt-4 font-body text-[15px] leading-[1.6] md:text-[16px]"
+                      className="mt-2 max-w-[600px] font-body text-[13px] leading-[1.5] md:text-[14px]"
                       style={{ color: s.secondaryColor }}
                     >
                       {s.body}
                     </p>
                   </div>
 
-                  <FrameSlot stepIndex={i} dark={!!s.dark} />
+                  {/* Frame slot — limitado en alto para encajar en viewport */}
+                  <div className="min-h-0 flex-1 overflow-hidden">
+                    <FrameSlot stepIndex={i} dark={!!s.dark} compact />
+                  </div>
                 </div>
               );
             })}
@@ -389,20 +418,28 @@ function StackVariant() {
 
 /* ====================== Frame slot por paso (visual) ====================== */
 
-function FrameSlot({ stepIndex, dark }: { stepIndex: number; dark: boolean }) {
+function FrameSlot({
+  stepIndex,
+  dark,
+  compact = false,
+}: {
+  stepIndex: number;
+  dark: boolean;
+  compact?: boolean;
+}) {
   const frameTokens = dark
     ? ({ "--frame-bg": "#1A1A1A", "--frame-border": "rgba(250,250,248,0.10)" } as React.CSSProperties)
     : ({ "--frame-bg": "#FFFFFF", "--frame-border": "rgba(15,15,15,0.10)" } as React.CSSProperties);
   return (
-    <div style={frameTokens}>
-      {stepIndex === 0 && <ZoneDrawerFrame />}
+    <div style={frameTokens} className={compact ? "h-full" : undefined}>
+      {stepIndex === 0 && <ZoneDrawerFrame compact={compact} />}
       {stepIndex === 1 && (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-          <CostoDrawerFrame />
-          <PatrimonioDrawerFrame />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <CostoDrawerFrame compact={compact} />
+          <PatrimonioDrawerFrame compact={compact} />
         </div>
       )}
-      {stepIndex === 2 && <HeroResultFrame />}
+      {stepIndex === 2 && <HeroResultFrame compact={compact} />}
     </div>
   );
 }
@@ -452,11 +489,16 @@ function BrowserFrame({
 
 /* ───────────────────── Paso 01 · Zone Drawer ───────────────────── */
 
-function ZoneDrawerFrame() {
+function ZoneDrawerFrame({ compact = false }: { compact?: boolean }) {
   return (
     <BrowserFrame url="refranco.ai/analisis/providencia/zona">
       <div className="grid grid-cols-1 gap-0 md:grid-cols-[1.1fr_1fr]">
-        <div className="relative h-[280px] overflow-hidden bg-[#F0F0EC] md:h-[360px]">
+        <div
+          className={`relative overflow-hidden bg-[#F0F0EC] ${
+            compact ? "" : "h-[280px] md:h-[360px]"
+          }`}
+          style={compact ? { height: 220 } : undefined}
+        >
           <svg className="absolute inset-0 h-full w-full" aria-hidden="true">
             <defs>
               <pattern id="zonegrid" width="32" height="32" patternUnits="userSpaceOnUse">
@@ -531,7 +573,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 /* ───────────────────── Paso 02 · Costo + Patrimonio ───────────────────── */
 
-function CostoDrawerFrame() {
+function CostoDrawerFrame({ compact = false }: { compact?: boolean }) {
   const rows: Array<{ label: string; value: string; pct: number; sign: "+" | "−" }> = [
     { label: "Arriendo bruto", value: "$950.000", pct: 100, sign: "+" },
     { label: "GGCC", value: "−$110.000", pct: 12, sign: "−" },
@@ -541,7 +583,7 @@ function CostoDrawerFrame() {
   ];
   return (
     <BrowserFrame url="refranco.ai/.../costo-mensual">
-      <div className="p-5">
+      <div className={compact ? "p-4" : "p-5"}>
         <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/55">
           02 · Costo mensual
         </p>
@@ -580,10 +622,10 @@ function CostoDrawerFrame() {
   );
 }
 
-function PatrimonioDrawerFrame() {
+function PatrimonioDrawerFrame({ compact = false }: { compact?: boolean }) {
   return (
     <BrowserFrame url="refranco.ai/.../patrimonio">
-      <div className="p-5">
+      <div className={compact ? "p-4" : "p-5"}>
         <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/55">
           09 · Patrimonio
         </p>
@@ -640,11 +682,11 @@ function PatrimonioDrawerFrame() {
 
 /* ───────────────────── Paso 03 · Hero result ───────────────────── */
 
-function HeroResultFrame() {
+function HeroResultFrame({ compact = false }: { compact?: boolean }) {
   const score = 66;
   return (
     <BrowserFrame url="refranco.ai/analisis/providencia-2d2b" dark>
-      <div className="p-6 md:p-7">
+      <div className={compact ? "p-5" : "p-6 md:p-7"}>
         <div className="flex items-baseline justify-between border-b border-dashed border-[rgba(250,250,248,0.10)] pb-4">
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[rgba(250,250,248,0.55)]">
             01 · Veredicto

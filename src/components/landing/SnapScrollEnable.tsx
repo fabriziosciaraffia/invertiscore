@@ -12,7 +12,7 @@ export default function SnapScrollEnable() {
     const mq = window.matchMedia("(min-width: 768px)");
 
     const apply = () => {
-      html.style.scrollSnapType = mq.matches ? "y proximity" : "";
+      html.style.scrollSnapType = mq.matches ? "y mandatory" : "";
     };
 
     apply();

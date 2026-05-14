@@ -71,7 +71,7 @@ export default function SectionUseCases() {
   const profile = PROFILES[active];
 
   return (
-    <section className="flex min-h-screen items-center bg-[#0F0F0F] text-[#FAFAF8]">
+    <section className="snap-section-start flex min-h-screen items-center bg-[#0F0F0F] text-[#FAFAF8]">
       <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
         <div className="max-w-[820px]">

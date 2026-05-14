@@ -88,17 +88,20 @@ export default function SectionObjections() {
 
   return (
     <section className="bg-[#0F0F0F] text-[#FAFAF8]">
-      {/* Header */}
-      <div className="mx-auto max-w-[1280px] px-6 pt-14 md:pt-[72px]">
-        <div className="max-w-[820px]">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
-            06 · Lo que vas a pensar
-          </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
-            Cuatro razones para confiar antes de hacer click.
-          </h2>
+      {/* Header — fuera del sticky solo en accordion/stack; en modo sticky
+          se incrusta dentro del bloque 01 para que no se pierda del viewport. */}
+      {mode !== "sticky" && (
+        <div className="mx-auto max-w-[1280px] px-6 pt-14 md:pt-[72px]">
+          <div className="max-w-[820px]">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+              06 · Lo que vas a pensar
+            </span>
+            <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
+              Cuatro razones para confiar antes de hacer click.
+            </h2>
+          </div>
         </div>
-      </div>
+      )}
 
       {mode === "sticky" && <StickyVariant />}
       {mode === "accordion" && <AccordionVariant />}
@@ -141,7 +144,11 @@ function StickyVariant() {
   const block = BLOCKS[activeBlock];
 
   return (
-    <div ref={containerRef} className="relative mt-10" style={{ height: "400vh" }}>
+    <div
+      ref={containerRef}
+      className="snap-section-start relative"
+      style={{ height: "250vh" }}
+    >
       <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
         {/* Numeral fantasma — alterna lado según paridad */}
         <span
@@ -149,7 +156,7 @@ function StickyVariant() {
           className="pointer-events-none absolute select-none font-heading font-bold leading-none tracking-[-0.04em] transition-[left,right,opacity] duration-500"
           style={{
             color: "rgba(200,50,60,0.06)",
-            fontSize: "clamp(180px, 26vw, 320px)",
+            fontSize: "clamp(180px, 24vw, 280px)",
             top: "50%",
             transform: "translateY(-50%)",
             [block.ghostSide]: "-2vw",
@@ -160,6 +167,18 @@ function StickyVariant() {
         </span>
 
         <div className="relative mx-auto w-full max-w-[1280px] px-6">
+          {/* Header de sección — sólo en bloque 01 */}
+          {activeBlock === 0 && (
+            <div className="mb-7 max-w-[820px] transition-opacity duration-300">
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+                06 · Lo que vas a pensar
+              </span>
+              <h2 className="mt-2 font-heading text-[24px] font-bold leading-[1.12] tracking-[-0.01em] text-[#FAFAF8] md:text-[28px]">
+                Cuatro razones para confiar antes de hacer click.
+              </h2>
+            </div>
+          )}
+
           {/* Slides */}
           <div className="relative">
             {BLOCKS.map((b, i) => {
@@ -167,7 +186,7 @@ function StickyVariant() {
               return (
                 <div
                   key={b.n}
-                  className={`grid grid-cols-2 items-center gap-14 transition-[opacity,transform] duration-[400ms] ease-out ${
+                  className={`grid grid-cols-2 items-center gap-12 transition-[opacity,transform] duration-[400ms] ease-out ${
                     isActive ? "" : "absolute inset-0 pointer-events-none"
                   }`}
                   style={{
