@@ -67,7 +67,7 @@ export default function SectionWhatFrancoDoes() {
     <div>
       <div className="mx-auto max-w-[1280px] px-6 pb-8 pt-14 md:pb-10 md:pt-[72px]">
         <SectionHeader
-          eyebrow="03 · Qué hace Franco"
+          eyebrow="04 · Cómo funciona"
           title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
           subhead="Tres pasos, 30 segundos, una posición clara. Así trabaja Franco con el caso del depto en Providencia."
           className="max-w-[820px]"
@@ -132,7 +132,7 @@ function StickyVariant() {
         <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
           <div className="max-w-[820px]">
             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
-              03 · Qué hace Franco
+              04 · Cómo funciona
             </span>
             <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
               Le hacemos a tu depto las preguntas que tu cotización no responde.
@@ -384,44 +384,34 @@ function FrameSlot({
   );
 }
 
-/* ───────────────────── Browser frame chrome ───────────────────── */
-
+/* ───────────────────── Frame Linear-style (sin chrome) ───────────────────── */
+/**
+ * Contenedor limpio sin metáfora de navegador. El contenido del drawer es
+ * protagonista. Acepta `dark` para alinear el bg del frame al tema oscuro
+ * cuando el drawer renderiza contenido sobre fondo Ink.
+ *
+ * El argumento `url` se conserva en la firma para evitar que los call-sites
+ * rompan, pero se ignora a propósito.
+ */
 function BrowserFrame({
-  url,
   children,
   dark = false,
 }: {
-  url: string;
+  url?: string;
   children: React.ReactNode;
   dark?: boolean;
 }) {
   return (
     <div
-      className="overflow-hidden rounded-xl shadow-[0_20px_40px_-12px_rgba(15,15,15,0.18)]"
-      style={{ background: "var(--frame-bg)", border: "0.5px solid var(--frame-border)" }}
+      className="overflow-hidden"
+      style={{
+        background: dark ? "#0F0F0F" : "var(--frame-bg)",
+        border: "0.5px solid var(--frame-border)",
+        borderRadius: 16,
+        boxShadow:
+          "0 30px 60px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.08)",
+      }}
     >
-      <div
-        className="flex items-center gap-3 px-4 py-2.5"
-        style={{
-          background: dark ? "#0F0F0F" : "#F0F0EC",
-          borderBottom: dark ? "0.5px solid rgba(250,250,248,0.08)" : "0.5px solid rgba(15,15,15,0.06)",
-        }}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#C8323C]" />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: dark ? "rgba(250,250,248,0.18)" : "rgba(15,15,15,0.18)" }} />
-          <span className="h-2.5 w-2.5 rounded-full" style={{ background: dark ? "rgba(250,250,248,0.18)" : "rgba(15,15,15,0.18)" }} />
-        </div>
-        <div
-          className="ml-2 flex-1 truncate rounded-md px-3 py-1 font-mono text-[10px] font-medium tracking-[0.04em]"
-          style={{
-            background: dark ? "rgba(250,250,248,0.06)" : "rgba(15,15,15,0.04)",
-            color: dark ? "rgba(250,250,248,0.6)" : "rgba(15,15,15,0.5)",
-          }}
-        >
-          {url}
-        </div>
-      </div>
       {children}
     </div>
   );

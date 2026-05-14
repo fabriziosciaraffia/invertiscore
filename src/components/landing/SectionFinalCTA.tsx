@@ -36,12 +36,12 @@ export default function SectionFinalCTA() {
         }}
         aria-hidden="true"
       >
-        09
+        10
       </motion.span>
 
       <div className="relative mx-auto w-full max-w-[820px] px-6 py-16 md:py-[88px]">
         <SectionHeader
-          eyebrow="09 · Tu turno"
+          eyebrow="10 · Tu turno"
           title={"¿Y si el depto\nno se paga solo?"}
           subhead="30 segundos y decides con fundamentos. Antes de firmar 25 años."
           align="center"

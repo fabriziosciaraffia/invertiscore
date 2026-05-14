@@ -3,6 +3,7 @@ import SmoothScroll from "@/components/landing/SmoothScroll";
 import { LandingThemeProvider } from "@/components/landing/LandingTheme";
 import SectionHero from "@/components/landing/SectionHero";
 import SectionProblem from "@/components/landing/SectionProblem";
+import SectionWhatFrancoIs from "@/components/landing/SectionWhatFrancoIs";
 import SectionWhatFrancoDoes from "@/components/landing/SectionWhatFrancoDoes";
 import SectionUseCases from "@/components/landing/SectionUseCases";
 import SectionCTAPrimary from "@/components/landing/SectionCTAPrimary";
@@ -32,6 +33,7 @@ export default function LandingPage() {
         <main>
           <SectionHero />
           <SectionProblem />
+          <SectionWhatFrancoIs />
           <SectionWhatFrancoDoes />
           <SectionUseCases />
           <SectionCTAPrimary />

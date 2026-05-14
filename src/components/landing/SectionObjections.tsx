@@ -96,7 +96,7 @@ export default function SectionObjections() {
       {mode !== "sticky" && (
         <div className="mx-auto max-w-[1280px] px-6 pt-14 md:pt-[72px]">
           <SectionHeader
-            eyebrow="06 · Lo que vas a pensar"
+            eyebrow="07 · Lo que vas a pensar"
             title={"Cuatro razones para confiar\nantes de hacer click."}
             className="max-w-[820px]"
           />

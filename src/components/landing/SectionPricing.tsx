@@ -16,7 +16,7 @@ export default function SectionPricing() {
       <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
         <SectionHeader
-          eyebrow="08 · Precios"
+          eyebrow="09 · Precios"
           title={"Empieza gratis.\nPaga cuando lo necesites."}
           subhead="Sin tarjeta para empezar. Sin compromiso mensual obligatorio."
           align="center"

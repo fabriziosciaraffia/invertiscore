@@ -149,7 +149,7 @@ function StickyVariant() {
         {/* Header permanente */}
         <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
           <SectionHeader
-            eyebrow="04 · Para quién"
+            eyebrow="05 · Para quién"
             title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
             className="max-w-[820px]"
           />
@@ -221,7 +221,7 @@ function StaticVariant() {
   return (
     <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
       <SectionHeader
-        eyebrow="04 · Para quién"
+        eyebrow="05 · Para quién"
         title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
         subhead="Tres perfiles, tres dolores, la misma respuesta honesta."
         className="max-w-[820px]"

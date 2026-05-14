@@ -11,7 +11,7 @@ export default function SectionCTASecondary() {
     <section className="flex min-h-screen items-center">
       <div className="mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
         <SectionHeader
-          eyebrow="07 · Ya lo sabes todo"
+          eyebrow="08 · Ya lo sabes todo"
           title={"30 segundos y decides\ncon fundamentos."}
           subhead="Sin tarjeta, sin compromiso. Si los números no cierran, mejor saberlo ahora."
           align="center"

@@ -11,7 +11,7 @@ export default function SectionCTAPrimary() {
     <section className="relative flex min-h-screen items-center">
       <div className="mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
         <SectionHeader
-          eyebrow="05 · Tu turno"
+          eyebrow="06 · Tu turno"
           title={"Antes de firmar,\nve si los números cierran."}
           subhead="Ingresas precio, comuna y arriendo esperado. Franco te entrega veredicto en 30 segundos."
           align="center"
