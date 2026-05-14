@@ -1,9 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import Reveal from "./Reveal";
-import SectionHeader from "./SectionHeader";
+import { useRef, useState } from "react";
+import {
+  motion,
+  useInView,
+  useReducedMotion,
+  type Variants,
+} from "framer-motion";
+import LandingModal from "./LandingModal";
+
+/**
+ * Sección 05 · Para quién — grid de 3 cards con modal al click.
+ *
+ * - Header gigante 56-72px scroll-driven (mismo patrón que s02).
+ * - 3 cards en grid con animación de entrada stagger slide+fade.
+ * - Click en card → modal con detalle completo (pregunta, body, KPIs, CTA).
+ */
+
+const EASE = [0.215, 0.61, 0.355, 1] as const;
 
 type Profile = {
   id: string;
@@ -64,244 +79,217 @@ const PROFILES: ReadonlyArray<Profile> = [
   },
 ];
 
-/**
- * Sección 04 · Use cases — fondo Ink 100 (#FAFAF8).
- * Desktop: sticky scroll narrativo 300vh con header permanente arriba,
- * sidebar fijo izquierda, detalle cambia según scrollYProgress.
- * Mobile/reduced motion: stack vertical con click manual en sidebar.
- */
 export default function SectionUseCases() {
-  const [mode, setMode] = useState<"sticky" | "static">("static");
-
-  useEffect(() => {
-    const compute = () => {
-      const m = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      const d = window.matchMedia("(min-width: 768px)").matches;
-      setMode(m && d ? "sticky" : "static");
-    };
-    compute();
-    const mqMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const mqDesk = window.matchMedia("(min-width: 768px)");
-    mqMotion.addEventListener("change", compute);
-    mqDesk.addEventListener("change", compute);
-    return () => {
-      mqMotion.removeEventListener("change", compute);
-      mqDesk.removeEventListener("change", compute);
-    };
-  }, []);
+  const [active, setActive] = useState<Profile | null>(null);
 
   return (
-    <section className="text-[var(--landing-text)]">
-      {mode === "sticky" ? <StickyVariant /> : <StaticVariant />}
+    <section className="relative">
+      <div className="mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
+        <UseCasesHeader />
+        <Cards onSelect={setActive} />
+      </div>
+
+      <LandingModal
+        open={!!active}
+        onClose={() => setActive(null)}
+        ariaLabel={active ? active.label : "Detalle del perfil"}
+      >
+        {active && <ProfileDetail profile={active} />}
+      </LandingModal>
     </section>
   );
 }
 
-/* ============================ Sticky (desktop) ============================ */
+/* ============================ Header ============================ */
 
-function StickyVariant() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(0);
+function UseCasesHeader() {
+  const reduce = useReducedMotion();
+  const lines = ["Franco resuelve preguntas distintas", "según quién pregunta."];
 
-  useEffect(() => {
-    let rafId = 0;
-    const update = () => {
-      rafId = 0;
-      const el = containerRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const total = rect.height - window.innerHeight;
-      if (total <= 0) return;
-      const p = Math.min(1, Math.max(0, -rect.top / total));
-      const idx = p >= 0.66 ? 2 : p >= 0.33 ? 1 : 0;
-      setActive(idx);
-    };
-    const onScroll = () => {
-      if (rafId) return;
-      rafId = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (rafId) cancelAnimationFrame(rafId);
-    };
-  }, []);
-
-  const handleSidebarClick = (i: number) => {
-    const el = containerRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const total = rect.height - window.innerHeight;
-    if (total <= 0) return;
-    const containerTop = window.scrollY + rect.top;
-    // Aterrizar en el centro del rango del perfil i para que esté activo
-    const targetP = i === 0 ? 0.1 : i === 1 ? 0.45 : 0.8;
-    const targetY = containerTop + total * targetP;
-    const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number) => void } }).__lenis;
-    if (lenis) lenis.scrollTo(targetY);
-    else window.scrollTo({ top: targetY, behavior: "smooth" });
-  };
+  const lineVariant = (i: number): Variants => ({
+    hidden: { y: reduce ? "0%" : "105%" },
+    show: {
+      y: "0%",
+      transition: {
+        duration: 0.75,
+        ease: EASE,
+        delay: reduce ? 0 : 0.15 + i * 0.15,
+      },
+    },
+  });
 
   return (
-    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
-      <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
-        {/* Header permanente */}
-        <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
-          <SectionHeader
-            eyebrow="05 · Para quién"
-            title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
-            className="max-w-[820px]"
-          />
-        </div>
+    <motion.div
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
+      className="mb-[8vh]"
+    >
+      <motion.p
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="font-mono font-medium uppercase text-[#C8323C]"
+        style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 24 }}
+      >
+        05 · Para quién
+      </motion.p>
 
-        {/* Body: sidebar + detalle, centrado vertical */}
-        <div className="relative mx-auto flex w-full max-w-[1280px] flex-1 items-center px-6 pb-10">
-          <div className="grid w-full grid-cols-[340px_1fr] gap-12">
-            {/* Sidebar */}
-            <nav className="flex flex-col gap-1" aria-label="Perfiles">
-              {PROFILES.map((p, i) => {
-                const isActive = i === active;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => handleSidebarClick(i)}
-                    className="w-full rounded-r-md text-left transition-[background,opacity,border-color,color] duration-200"
-                    style={{
-                      background: isActive ? "rgba(200,50,60,0.06)" : "transparent",
-                      borderLeft: isActive ? "2px solid #C8323C" : "2px solid transparent",
-                      opacity: isActive ? 1 : 0.55,
-                      padding: "14px 18px",
-                    }}
-                    aria-pressed={isActive}
-                  >
-                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
-                      {p.label}
-                    </p>
-                    <p className="mt-1 font-body text-[13px] leading-[1.4] text-[var(--landing-text-secondary)]">
-                      {p.shortLabel}
-                    </p>
-                  </button>
-                );
-              })}
-            </nav>
+      <h2
+        className="font-heading font-bold leading-[1.05] tracking-[-0.02em] text-[var(--landing-text)]"
+        style={{ maxWidth: 1100, marginBottom: 24 }}
+      >
+        {lines.map((line, i) => (
+          <span
+            key={i}
+            className="block overflow-hidden"
+            style={{ lineHeight: 1.05 }}
+          >
+            <motion.span
+              className="block"
+              style={{ fontSize: "clamp(40px, 6.4vw, 72px)" }}
+              variants={lineVariant(i)}
+            >
+              {line}
+            </motion.span>
+          </span>
+        ))}
+      </h2>
 
-            {/* Detalle */}
-            <div className="relative min-h-[360px]">
-              {PROFILES.map((p, i) => (
-                <div
-                  key={p.id}
-                  className={`absolute inset-0 flex flex-col gap-5 transition-[opacity,transform] duration-[400ms] ease-out ${
-                    i === active ? "pointer-events-auto" : "pointer-events-none"
-                  }`}
-                  style={{
-                    opacity: i === active ? 1 : 0,
-                    transform: i === active ? "translateY(0)" : "translateY(16px)",
-                  }}
-                  aria-hidden={i !== active}
-                >
-                  <ProfileDetail profile={p} />
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <motion.p
+        initial={reduce ? false : { opacity: 0, y: 16 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.5, ease: EASE, delay: 0.6 }}
+        className="max-w-[680px] font-body text-[var(--landing-text-secondary)]"
+        style={{ fontSize: 17, lineHeight: 1.55 }}
+      >
+        Tres perfiles, tres dolores, la misma respuesta honesta. Click en
+        una para ver cómo Franco resuelve el caso.
+      </motion.p>
+    </motion.div>
   );
 }
 
-/* ============================ Static (mobile / reduced) ============================ */
+/* ============================ Cards grid ============================ */
 
-function StaticVariant() {
-  const [active, setActive] = useState(0);
-  const profile = PROFILES[active];
+function Cards({ onSelect }: { onSelect: (p: Profile) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-15% 0px -15% 0px" });
+  const reduce = useReducedMotion();
 
   return (
-    <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
-      <SectionHeader
-        eyebrow="05 · Para quién"
-        title={"Franco resuelve preguntas distintas\nsegún quién pregunta."}
-        subhead="Tres perfiles, tres dolores, la misma respuesta honesta."
-        className="max-w-[820px]"
-      />
-
-      <Reveal as="div" delay={0.15} className="grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
-        <nav
-          className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"
-          aria-label="Perfiles"
+    <div ref={ref} className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
+      {PROFILES.map((p, i) => (
+        <motion.button
+          key={p.id}
+          type="button"
+          onClick={() => onSelect(p)}
+          initial={reduce ? false : { opacity: 0, y: 32 }}
+          animate={
+            inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }
+          }
+          transition={{
+            duration: 0.7,
+            ease: EASE,
+            delay: reduce ? 0 : 0.1 + i * 0.12,
+          }}
+          className="group relative flex h-full flex-col rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:p-8"
+          style={{
+            background: "var(--landing-card-bg)",
+            border: "0.5px solid var(--landing-card-border)",
+            boxShadow:
+              "0 1px 0 rgba(0,0,0,0.04), 0 12px 24px -16px rgba(0,0,0,0.18)",
+          }}
         >
-          {PROFILES.map((p, i) => {
-            const isActive = i === active;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => setActive(i)}
-                className="group shrink-0 rounded-r-md text-left transition-[background,opacity,border-color,color] duration-200 md:w-full"
-                style={{
-                  background: isActive ? "rgba(200,50,60,0.06)" : "transparent",
-                  borderLeft: isActive ? "2px solid #C8323C" : "2px solid transparent",
-                  opacity: isActive ? 1 : 0.55,
-                  padding: "14px 18px",
-                }}
-                aria-pressed={isActive}
-              >
-                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
-                  {p.label}
-                </p>
-                <p className="mt-1 font-body text-[13px] leading-[1.4] text-[var(--landing-text-secondary)]">
-                  {p.shortLabel}
-                </p>
-              </button>
-            );
-          })}
-        </nav>
+          <span
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 10, letterSpacing: "0.16em" }}
+          >
+            {p.label}
+          </span>
+          <h3
+            className="mt-4 font-heading font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
+            style={{ fontSize: "clamp(20px, 2.2vw, 26px)" }}
+          >
+            {p.shortLabel}
+          </h3>
+          <p
+            className="mt-3 font-body italic leading-[1.5] text-[var(--landing-text-secondary)]"
+            style={{ fontSize: 15 }}
+          >
+            &ldquo;{p.question}&rdquo;
+          </p>
 
-        <div key={profile.id} className="min-h-[360px] animate-fadeIn md:pl-2">
-          <ProfileDetail profile={profile} />
-        </div>
-      </Reveal>
+          <div className="mt-7 flex-1" />
+
+          <span
+            className="inline-flex items-center gap-2 font-mono font-semibold uppercase text-[#C8323C] transition-transform duration-200 group-hover:translate-x-0.5"
+            style={{ fontSize: 11, letterSpacing: "0.12em" }}
+          >
+            Ver caso completo
+            <span aria-hidden="true">→</span>
+          </span>
+        </motion.button>
+      ))}
     </div>
   );
 }
 
-/* ============================ Profile detail (shared) ============================ */
+/* ============================ Modal content ============================ */
 
 function ProfileDetail({ profile }: { profile: Profile }) {
   return (
-    <>
-      <div>
-        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
-          Tu pregunta
-        </p>
-        <h3 className="mt-2 font-heading text-[28px] font-bold italic leading-[1.18] tracking-[-0.005em] text-[var(--landing-text)] md:text-[36px]">
-          &ldquo;{profile.question}&rdquo;
-        </h3>
-        <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.6] text-[var(--landing-text-secondary)] md:text-[16px]">
-          {profile.body}
-        </p>
-      </div>
+    <div className="px-7 py-9 md:px-10 md:py-12">
+      <p
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 10, letterSpacing: "0.16em" }}
+      >
+        {profile.label}
+      </p>
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <p
+        className="mt-3 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 10, letterSpacing: "0.16em" }}
+      >
+        Tu pregunta
+      </p>
+      <h3
+        className="mt-2 font-heading font-bold italic leading-[1.18] tracking-[-0.005em] text-[var(--landing-text)]"
+        style={{ fontSize: "clamp(24px, 3.2vw, 34px)" }}
+      >
+        &ldquo;{profile.question}&rdquo;
+      </h3>
+      <p
+        className="mt-5 max-w-[640px] font-body leading-[1.6] text-[var(--landing-text-secondary)]"
+        style={{ fontSize: 16 }}
+      >
+        {profile.body}
+      </p>
+
+      <div className="mt-7 grid grid-cols-1 gap-3 sm:grid-cols-3">
         {profile.kpis.map((k) => (
           <div
             key={k.label}
-            className="rounded-md border px-5 py-5"
+            className="rounded-md px-4 py-4"
             style={{
-              background: "var(--landing-card-bg)",
-              borderColor: "var(--landing-card-border)",
-              boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
+              background: "var(--landing-card-bg-soft)",
+              border: "0.5px solid var(--landing-card-border)",
             }}
           >
-            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-secondary)]">
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+            >
               {k.label}
             </p>
             <p
-              className="mt-1.5 font-mono text-[18px] font-semibold"
-              style={{ color: k.red ? "#C8323C" : "var(--landing-text)" }}
+              className="mt-1.5 font-mono font-semibold"
+              style={{
+                fontSize: 18,
+                color: k.red ? "#C8323C" : "var(--landing-text)",
+              }}
             >
               {k.value}
             </p>
@@ -309,17 +297,20 @@ function ProfileDetail({ profile }: { profile: Profile }) {
         ))}
       </div>
 
-      <div>
+      <div className="mt-8">
         <Link
           href={profile.ctaHref}
           className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
         >
           {profile.ctaText}
-          <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
+          <span
+            aria-hidden="true"
+            className="transition-transform duration-200 group-hover:translate-x-0.5"
+          >
             →
           </span>
         </Link>
       </div>
-    </>
+    </div>
   );
 }

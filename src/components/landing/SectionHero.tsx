@@ -70,7 +70,10 @@ export default function SectionHero() {
   const cardIntense = !isMigrated && !skipToFinal;
 
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden">
+    <section
+      className="relative flex items-center overflow-hidden"
+      style={{ minHeight: "100vh", height: "100vh" }}
+    >
       <div
         className="mx-auto w-full px-6 py-20"
         style={{
@@ -101,20 +104,20 @@ export default function SectionHero() {
               initial={
                 reduce
                   ? false
-                  : { opacity: 0, scale: 0.85, y: 40, rotate: -8 }
+                  : { opacity: 0, scale: 0.92, y: "100vh", rotate: -8 }
               }
               animate={
                 skipToFinal
                   ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
                   : !cardVisible
-                    ? { opacity: 0, scale: 0.85, y: 40, rotate: -8 }
+                    ? { opacity: 0, scale: 0.92, y: "100vh", rotate: -8 }
                     : isMigrated
                       ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
                       : { opacity: 1, scale: 1, y: 0, rotate: -8 }
               }
               transition={{
-                duration: isMigrated ? 1.0 : 0.7,
-                ease: isMigrated ? EASE_MIGRATE : EASE,
+                duration: isMigrated ? 1.0 : 0.95,
+                ease: EASE_MIGRATE,
               }}
               style={{ originX: 0.5, originY: 0.5 }}
             >
