@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Reveal from "./Reveal";
 
 type Profile = {
   id: string;
@@ -14,7 +15,7 @@ type Profile = {
   ctaHref: string;
 };
 
-const PROFILES: Profile[] = [
+const PROFILES: ReadonlyArray<Profile> = [
   {
     id: "01",
     label: "01 · Primera inversión",
@@ -63,112 +64,269 @@ const PROFILES: Profile[] = [
 ];
 
 /**
- * Sección 04 · Use cases — fondo Ink 900 (dark).
- * Sidebar 300px + detalle dinámico con fade 200ms.
+ * Sección 04 · Use cases — fondo Ink 100 (#FAFAF8).
+ * Desktop: sticky scroll narrativo 300vh con header permanente arriba,
+ * sidebar fijo izquierda, detalle cambia según scrollYProgress.
+ * Mobile/reduced motion: stack vertical con click manual en sidebar.
  */
 export default function SectionUseCases() {
-  const [active, setActive] = useState(0);
-  const profile = PROFILES[active];
+  const [mode, setMode] = useState<"sticky" | "static">("static");
+
+  useEffect(() => {
+    const compute = () => {
+      const m = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      const d = window.matchMedia("(min-width: 768px)").matches;
+      setMode(m && d ? "sticky" : "static");
+    };
+    compute();
+    const mqMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mqDesk = window.matchMedia("(min-width: 768px)");
+    mqMotion.addEventListener("change", compute);
+    mqDesk.addEventListener("change", compute);
+    return () => {
+      mqMotion.removeEventListener("change", compute);
+      mqDesk.removeEventListener("change", compute);
+    };
+  }, []);
 
   return (
-    <section className="snap-section-start flex min-h-screen items-center bg-[#0F0F0F] text-[#FAFAF8]">
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
-        {/* Header */}
-        <div className="max-w-[820px]">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
-            04 · Para quién
-          </span>
-          <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[32px]">
-            Franco resuelve preguntas distintas según quién pregunta.
-          </h2>
-          <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[#FAFAF8]/70 md:text-[15px]">
-            Tres perfiles, tres dolores, la misma respuesta honesta.
-          </p>
+    <section className="text-[var(--landing-text)]">
+      {mode === "sticky" ? <StickyVariant /> : <StaticVariant />}
+    </section>
+  );
+}
+
+/* ============================ Sticky (desktop) ============================ */
+
+function StickyVariant() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    let rafId = 0;
+    const update = () => {
+      rafId = 0;
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      if (total <= 0) return;
+      const p = Math.min(1, Math.max(0, -rect.top / total));
+      const idx = p >= 0.66 ? 2 : p >= 0.33 ? 1 : 0;
+      setActive(idx);
+    };
+    const onScroll = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, []);
+
+  const handleSidebarClick = (i: number) => {
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const total = rect.height - window.innerHeight;
+    if (total <= 0) return;
+    const containerTop = window.scrollY + rect.top;
+    // Aterrizar en el centro del rango del perfil i para que esté activo
+    const targetP = i === 0 ? 0.1 : i === 1 ? 0.45 : 0.8;
+    const targetY = containerTop + total * targetP;
+    const lenis = (window as unknown as { __lenis?: { scrollTo: (y: number) => void } }).__lenis;
+    if (lenis) lenis.scrollTo(targetY);
+    else window.scrollTo({ top: targetY, behavior: "smooth" });
+  };
+
+  return (
+    <div ref={containerRef} className="relative" style={{ height: "300vh" }}>
+      <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
+        {/* Header permanente */}
+        <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
+          <div className="max-w-[820px]">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
+              04 · Para quién
+            </span>
+            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
+              Franco resuelve preguntas distintas según quién pregunta.
+            </h2>
+          </div>
         </div>
 
-        {/* Layout: tabs horizontales mobile / sidebar desktop */}
-        <div className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
-          {/* Sidebar (mobile: scroll horizontal) */}
-          <nav
-            className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"
-            aria-label="Perfiles"
-          >
-            {PROFILES.map((p, i) => {
-              const isActive = i === active;
-              return (
-                <button
+        {/* Body: sidebar + detalle, centrado vertical */}
+        <div className="relative mx-auto flex w-full max-w-[1280px] flex-1 items-center px-6 pb-10">
+          <div className="grid w-full grid-cols-[340px_1fr] gap-12">
+            {/* Sidebar */}
+            <nav className="flex flex-col gap-1" aria-label="Perfiles">
+              {PROFILES.map((p, i) => {
+                const isActive = i === active;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => handleSidebarClick(i)}
+                    className="w-full rounded-r-md text-left transition-[background,opacity,border-color,color] duration-200"
+                    style={{
+                      background: isActive ? "rgba(200,50,60,0.06)" : "transparent",
+                      borderLeft: isActive ? "2px solid #C8323C" : "2px solid transparent",
+                      opacity: isActive ? 1 : 0.55,
+                      padding: "14px 18px",
+                    }}
+                    aria-pressed={isActive}
+                  >
+                    <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
+                      {p.label}
+                    </p>
+                    <p className="mt-1 font-body text-[13px] leading-[1.4] text-[var(--landing-text-secondary)]">
+                      {p.shortLabel}
+                    </p>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Detalle */}
+            <div className="relative min-h-[360px]">
+              {PROFILES.map((p, i) => (
+                <div
                   key={p.id}
-                  type="button"
-                  onClick={() => setActive(i)}
-                  className={`group shrink-0 rounded-r-md text-left transition-[background,opacity,border-color,color] duration-200 md:w-full ${
-                    isActive
-                      ? "bg-[rgba(200,50,60,0.12)] opacity-100"
-                      : "bg-transparent opacity-50 hover:opacity-80"
+                  className={`absolute inset-0 flex flex-col gap-5 transition-[opacity,transform] duration-[400ms] ease-out ${
+                    i === active ? "pointer-events-auto" : "pointer-events-none"
                   }`}
                   style={{
-                    borderLeft: isActive ? "2px solid #C8323C" : "2px solid transparent",
-                    padding: "14px 18px",
+                    opacity: i === active ? 1 : 0,
+                    transform: i === active ? "translateY(0)" : "translateY(16px)",
                   }}
-                  aria-pressed={isActive}
+                  aria-hidden={i !== active}
                 >
-                  <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/65">
-                    {p.label}
-                  </p>
-                  <p className="mt-1 font-body text-[13px] leading-[1.4] text-[#FAFAF8]/85">
-                    {p.shortLabel}
-                  </p>
-                </button>
-              );
-            })}
-          </nav>
-
-          {/* Detalle */}
-          <div key={profile.id} className="min-h-[360px] animate-fadeIn md:pl-2">
-            <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#FAFAF8]/55">
-              Tu pregunta
-            </p>
-            <h3 className="mt-2 font-heading text-[24px] font-bold italic leading-[1.18] tracking-[-0.005em] text-[#FAFAF8] md:text-[28px]">
-              &ldquo;{profile.question}&rdquo;
-            </h3>
-            <p className="mt-4 max-w-[640px] font-body text-[14px] leading-[1.6] text-[#888780]">
-              {profile.body}
-            </p>
-
-            {/* KPI cards */}
-            <div className="mt-6 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-              {profile.kpis.map((k) => (
-                <div
-                  key={k.label}
-                  className="rounded-md border border-[rgba(250,250,248,0.08)] bg-[#1A1A1A] px-3.5 py-3"
-                >
-                  <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
-                    {k.label}
-                  </p>
-                  <p
-                    className="mt-1.5 font-mono text-[16px] font-semibold"
-                    style={{ color: k.red ? "#FF5C66" : "#FAFAF8" }}
-                  >
-                    {k.value}
-                  </p>
+                  <ProfileDetail profile={p} />
                 </div>
               ))}
-            </div>
-
-            {/* CTA */}
-            <div className="mt-6">
-              <Link
-                href={profile.ctaHref}
-                className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.18)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
-              >
-                {profile.ctaText}
-                <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
-                  →
-                </span>
-              </Link>
             </div>
           </div>
         </div>
       </div>
-    </section>
+    </div>
+  );
+}
+
+/* ============================ Static (mobile / reduced) ============================ */
+
+function StaticVariant() {
+  const [active, setActive] = useState(0);
+  const profile = PROFILES[active];
+
+  return (
+    <div className="mx-auto w-full max-w-[1280px] px-6 py-10 md:py-12">
+      <Reveal as="div" className="max-w-[820px]">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
+          04 · Para quién
+        </span>
+        <h2 className="mt-3 font-heading text-[28px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
+          Franco resuelve preguntas distintas según quién pregunta.
+        </h2>
+        <p className="mt-3 max-w-[640px] font-body text-[14px] leading-[1.5] text-[var(--landing-text-secondary)] md:text-[15px]">
+          Tres perfiles, tres dolores, la misma respuesta honesta.
+        </p>
+      </Reveal>
+
+      <Reveal as="div" delay={0.15} className="mt-7 grid grid-cols-1 gap-6 md:grid-cols-[300px_1fr] md:gap-10">
+        <nav
+          className="-mx-6 flex gap-2 overflow-x-auto scrollbar-hide px-6 md:mx-0 md:flex-col md:gap-1 md:overflow-visible md:px-0"
+          aria-label="Perfiles"
+        >
+          {PROFILES.map((p, i) => {
+            const isActive = i === active;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setActive(i)}
+                className="group shrink-0 rounded-r-md text-left transition-[background,opacity,border-color,color] duration-200 md:w-full"
+                style={{
+                  background: isActive ? "rgba(200,50,60,0.06)" : "transparent",
+                  borderLeft: isActive ? "2px solid #C8323C" : "2px solid transparent",
+                  opacity: isActive ? 1 : 0.55,
+                  padding: "14px 18px",
+                }}
+                aria-pressed={isActive}
+              >
+                <p className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
+                  {p.label}
+                </p>
+                <p className="mt-1 font-body text-[13px] leading-[1.4] text-[var(--landing-text-secondary)]">
+                  {p.shortLabel}
+                </p>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div key={profile.id} className="min-h-[360px] animate-fadeIn md:pl-2">
+          <ProfileDetail profile={profile} />
+        </div>
+      </Reveal>
+    </div>
+  );
+}
+
+/* ============================ Profile detail (shared) ============================ */
+
+function ProfileDetail({ profile }: { profile: Profile }) {
+  return (
+    <>
+      <div>
+        <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
+          Tu pregunta
+        </p>
+        <h3 className="mt-2 font-heading text-[28px] font-bold italic leading-[1.18] tracking-[-0.005em] text-[var(--landing-text)] md:text-[36px]">
+          &ldquo;{profile.question}&rdquo;
+        </h3>
+        <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.6] text-[var(--landing-text-secondary)] md:text-[16px]">
+          {profile.body}
+        </p>
+      </div>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {profile.kpis.map((k) => (
+          <div
+            key={k.label}
+            className="rounded-md border px-5 py-5"
+            style={{
+              background: "var(--landing-card-bg)",
+              borderColor: "var(--landing-card-border)",
+              boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
+            }}
+          >
+            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-secondary)]">
+              {k.label}
+            </p>
+            <p
+              className="mt-1.5 font-mono text-[18px] font-semibold"
+              style={{ color: k.red ? "#C8323C" : "var(--landing-text)" }}
+            >
+              {k.value}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <Link
+          href={profile.ctaHref}
+          className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
+        >
+          {profile.ctaText}
+          <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
+            →
+          </span>
+        </Link>
+      </div>
+    </>
   );
 }

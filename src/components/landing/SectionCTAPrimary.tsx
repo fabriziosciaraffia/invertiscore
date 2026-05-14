@@ -1,21 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import Reveal from "./Reveal";
 
 /**
  * Sección 05 · CTA primario — fondo Ink 200, centered.
  */
 export default function SectionCTAPrimary() {
   return (
-    <section className="snap-section-start flex min-h-screen items-center bg-[#E8E6E1]">
-      <div className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
+    <section className="relative flex min-h-screen items-center">
+      <Reveal as="div" className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
           05 · Tu turno
         </span>
-        <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
+        <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[44px]">
           Antes de firmar,
           <br />
           ve si los números cierran.
         </h2>
-        <p className="mx-auto mt-4 max-w-[560px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
+        <p className="mx-auto mt-4 max-w-[560px] font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
           Ingresas precio, comuna y arriendo esperado. Franco te entrega
           veredicto en 30 segundos.
         </p>
@@ -30,11 +33,11 @@ export default function SectionCTAPrimary() {
               →
             </span>
           </Link>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/45">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
             Sin tarjeta&nbsp;&nbsp;·&nbsp;&nbsp;1 análisis gratis&nbsp;&nbsp;·&nbsp;&nbsp;veredicto en 30s
           </p>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

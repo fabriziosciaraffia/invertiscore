@@ -1,6 +1,6 @@
 import LandingNav from "@/components/landing/LandingNav";
-import SnapScrollEnable from "@/components/landing/SnapScrollEnable";
 import SmoothScroll from "@/components/landing/SmoothScroll";
+import { LandingThemeProvider } from "@/components/landing/LandingTheme";
 import SectionHero from "@/components/landing/SectionHero";
 import SectionProblem from "@/components/landing/SectionProblem";
 import SectionWhatFrancoDoes from "@/components/landing/SectionWhatFrancoDoes";
@@ -20,22 +20,28 @@ export const metadata = {
 
 export default function LandingPage() {
   return (
-    <div data-theme="light" className="min-h-screen bg-[#E8E6E1] text-[#0F0F0F]">
-      <SnapScrollEnable />
-      <SmoothScroll />
-      <LandingNav />
-      <main>
-        <SectionHero />
-        <SectionProblem />
-        <SectionWhatFrancoDoes />
-        <SectionUseCases />
-        <SectionCTAPrimary />
-        <SectionObjections />
-        <SectionCTASecondary />
-        <SectionPricing />
-        <SectionFinalCTA />
-      </main>
-      <LandingFooter />
-    </div>
+    <LandingThemeProvider>
+      <div
+        data-franco-root
+        data-franco-theme="dark"
+        className="min-h-screen"
+        style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
+      >
+        <SmoothScroll />
+        <LandingNav />
+        <main>
+          <SectionHero />
+          <SectionProblem />
+          <SectionWhatFrancoDoes />
+          <SectionUseCases />
+          <SectionCTAPrimary />
+          <SectionObjections />
+          <SectionCTASecondary />
+          <SectionPricing />
+          <SectionFinalCTA />
+        </main>
+        <LandingFooter />
+      </div>
+    </LandingThemeProvider>
   );
 }

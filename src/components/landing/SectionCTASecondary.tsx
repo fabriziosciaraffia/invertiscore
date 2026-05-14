@@ -1,21 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import Reveal from "./Reveal";
 
 /**
  * Sección 07 · CTA secundario — fondo Ink 100, centered.
  */
 export default function SectionCTASecondary() {
   return (
-    <section className="snap-section-start flex min-h-screen items-center bg-[#FAFAF8]">
-      <div className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
-        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
+    <section className="flex min-h-screen items-center">
+      <Reveal as="div" className="mx-auto w-full max-w-[820px] px-6 py-14 text-center md:py-[72px]">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
           07 · Ya lo sabes todo
         </span>
-        <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
+        <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[44px]">
           30 segundos y decides
           <br />
           con fundamentos.
         </h2>
-        <p className="mx-auto mt-4 max-w-[560px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
+        <p className="mx-auto mt-4 max-w-[560px] font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
           Sin tarjeta, sin compromiso. Si los números no cierran, mejor saberlo
           ahora.
         </p>
@@ -30,11 +33,11 @@ export default function SectionCTASecondary() {
               →
             </span>
           </Link>
-          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/45">
+          <p className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
             1 análisis gratis&nbsp;&nbsp;·&nbsp;&nbsp;sin tarjeta&nbsp;&nbsp;·&nbsp;&nbsp;30 segundos
           </p>
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }

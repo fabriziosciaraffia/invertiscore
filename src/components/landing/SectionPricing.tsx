@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import Reveal, { RevealItem } from "./Reveal";
 
 /**
  * Sección 08 · Pricing — fondo Ink 100, 3 cards (la del medio dark + destacada).
@@ -7,24 +10,29 @@ export default function SectionPricing() {
   return (
     <section
       id="pricing"
-      className="snap-section-start flex min-h-screen items-center bg-[#FAFAF8]"
+      className="relative flex min-h-screen items-center"
     >
       <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
-        <div className="mx-auto max-w-[760px] text-center">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
+        <Reveal as="div" className="mx-auto max-w-[760px] text-center">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
             08 · Precios
           </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[38px]">
+          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[38px]">
             Empieza gratis. Paga cuando lo necesites.
           </h2>
-          <p className="mt-4 font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
+          <p className="mt-4 font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
             Sin tarjeta para empezar. Sin compromiso mensual obligatorio.
           </p>
-        </div>
+        </Reveal>
 
         {/* Cards */}
-        <div className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">
+        <Reveal
+          as="div"
+          className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3"
+          stagger={0.1}
+          delay={0.1}
+        >
           <PricingCard
             label="Demo"
             title="Tu primer análisis, gratis."
@@ -71,10 +79,10 @@ export default function SectionPricing() {
             ctaHref="/pricing"
             ctaVariant="outline"
           />
-        </div>
+        </Reveal>
 
         {/* Footer */}
-        <p className="mt-8 text-center font-body text-[14px] text-[#0F0F0F]/70">
+        <p className="mt-8 text-center font-body text-[14px] text-[var(--landing-text-secondary)]">
           ¿Eres corredor o family officer?{" "}
           <Link
             href="/register"
@@ -117,7 +125,7 @@ function PricingCard({
   const checkColor = dark ? "rgba(250,250,248,0.85)" : "rgba(15,15,15,0.85)";
 
   return (
-    <div
+    <RevealItem
       className="relative flex flex-col rounded-2xl p-7 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 md:p-8"
       style={{
         background: dark ? "#0F0F0F" : "#FFFFFF",
@@ -175,8 +183,8 @@ function PricingCard({
           ctaVariant === "solid"
             ? "bg-[#C8323C] text-white shadow-[0_2px_0_rgba(0,0,0,0.18)] hover:brightness-95"
             : dark
-              ? "border border-[rgba(250,250,248,0.18)] text-[#FAFAF8] hover:bg-[rgba(250,250,248,0.05)]"
-              : "border border-[rgba(15,15,15,0.18)] text-[#0F0F0F] hover:bg-[rgba(15,15,15,0.04)]"
+              ? "border border-[rgba(250,250,248,0.18)] text-[var(--landing-text)] hover:bg-[rgba(250,250,248,0.05)]"
+              : "border border-[rgba(15,15,15,0.18)] text-[var(--landing-text)] hover:bg-[rgba(15,15,15,0.04)]"
         }`}
       >
         {ctaText}
@@ -184,6 +192,6 @@ function PricingCard({
           →
         </span>
       </Link>
-    </div>
+    </RevealItem>
   );
 }

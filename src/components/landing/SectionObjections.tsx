@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
+import Reveal from "./Reveal";
 
 /**
  * Sección 06 · Objeciones — fondo Ink 900.
@@ -87,16 +89,16 @@ export default function SectionObjections() {
   }, []);
 
   return (
-    <section className="bg-[#0F0F0F] text-[#FAFAF8]">
+    <section className="relative ">
       {/* Header — fuera del sticky solo en accordion/stack; en modo sticky
           se incrusta dentro del bloque 01 para que no se pierda del viewport. */}
       {mode !== "sticky" && (
         <div className="mx-auto max-w-[1280px] px-6 pt-14 md:pt-[72px]">
           <div className="max-w-[820px]">
-            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
               06 · Lo que vas a pensar
             </span>
-            <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#FAFAF8] md:text-[40px]">
+            <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[40px]">
               Cuatro razones para confiar antes de hacer click.
             </h2>
           </div>
@@ -115,6 +117,13 @@ export default function SectionObjections() {
 function StickyVariant() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [activeBlock, setActiveBlock] = useState(0);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start end", "end start"],
+  });
+  // Parallax leve del numeral fantasma (más lento que scroll, 30px max)
+  const yGhost = useTransform(scrollYProgress, [0, 1], [30, -30]);
 
   useEffect(() => {
     let rafId = 0;
@@ -146,42 +155,43 @@ function StickyVariant() {
   return (
     <div
       ref={containerRef}
-      className="snap-section-start relative"
+      className="relative"
       style={{ height: "350vh" }}
     >
       <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
         {/* Header permanente — visible en todos los bloques. */}
         <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
           <div className="max-w-[820px]">
-            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
               06 · Lo que vas a pensar
             </span>
-            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[#FAFAF8] md:text-[32px]">
+            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
               Cuatro razones para confiar antes de hacer click.
             </h2>
           </div>
         </div>
 
-        {/* Numeral fantasma — alterna lado según paridad */}
-        <span
+        {/* Numeral fantasma — alterna lado según paridad, parallax leve */}
+        <motion.span
           key={block.n}
           className="pointer-events-none absolute select-none font-heading font-bold leading-none tracking-[-0.04em] transition-[left,right,opacity] duration-500"
           style={{
             color: "rgba(200,50,60,0.08)",
             fontSize: "clamp(180px, 24vw, 280px)",
             top: "55%",
-            transform: "translateY(-50%)",
+            translateY: "-50%",
             [block.ghostSide]: "-2vw",
             zIndex: 0,
+            y: reduce ? 0 : yGhost,
           }}
           aria-hidden="true"
         >
           {block.n}
-        </span>
+        </motion.span>
 
-        <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 items-center px-6 pb-10">
+        <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 items-center justify-center px-6 pb-10">
           {/* Slides */}
-          <div className="relative min-h-[480px] w-full">
+          <div className="relative flex min-h-[440px] w-full items-center">
             {BLOCKS.map((b, i) => {
               const isActive = i === activeBlock;
               return (
@@ -219,6 +229,8 @@ function StickyVariant() {
           </div>
         </div>
 
+
+
         {/* Dots verticales */}
         <div className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col gap-3 md:flex" aria-hidden="true">
           {BLOCKS.map((_, i) => {
@@ -243,16 +255,16 @@ function StickyVariant() {
 function CopyBlock({ block }: { block: BlockDef }) {
   return (
     <div className="max-w-[520px]">
-      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[#FAFAF8]/55">
+      <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
         {block.label}
       </span>
-      <p className="mt-2 font-body text-[15px] italic leading-[1.4] text-[#FAFAF8]/55">
+      <p className="mt-2 font-body text-[15px] italic leading-[1.4] text-[var(--landing-text-muted)]">
         &ldquo;{block.quote}&rdquo;
       </p>
-      <h3 className="mt-3 font-heading text-[22px] font-bold leading-[1.2] tracking-[-0.005em] text-[#FAFAF8] md:text-[26px]">
+      <h3 className="mt-3 font-heading text-[22px] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--landing-text)] md:text-[26px]">
         {block.title}
       </h3>
-      <p className="mt-3 font-body text-[14px] leading-[1.6] text-[#FAFAF8]/70">
+      <p className="mt-3 font-body text-[14px] leading-[1.6] text-[var(--landing-text-secondary)]">
         {block.body}
       </p>
     </div>
@@ -291,15 +303,15 @@ function AccordionVariant() {
                   {b.n}
                 </span>
                 <div className="flex-1 pt-1">
-                  <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
+                  <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
                     {b.label}
                   </span>
-                  <p className="mt-1 font-body text-[14px] italic leading-[1.4] text-[#FAFAF8]/65">
+                  <p className="mt-1 font-body text-[14px] italic leading-[1.4] text-[var(--landing-text-muted)]">
                     &ldquo;{b.quote}&rdquo;
                   </p>
                 </div>
                 <span
-                  className="mt-1 font-mono text-[14px] text-[#FAFAF8]/55 transition-transform duration-300"
+                  className="mt-1 font-mono text-[14px] text-[var(--landing-text-muted)] transition-transform duration-300"
                   style={{ transform: isOpen ? "rotate(180deg)" : "rotate(0)" }}
                   aria-hidden="true"
                 >
@@ -314,10 +326,10 @@ function AccordionVariant() {
               >
                 <div className="min-h-0 overflow-hidden">
                   <div className="space-y-5 px-4 pb-5">
-                    <h3 className="font-heading text-[20px] font-bold leading-[1.2] tracking-[-0.005em] text-[#FAFAF8]">
+                    <h3 className="font-heading text-[20px] font-bold leading-[1.2] tracking-[-0.005em] text-[var(--landing-text)]">
                       {b.title}
                     </h3>
-                    <p className="font-body text-[14px] leading-[1.6] text-[#FAFAF8]/70">
+                    <p className="font-body text-[14px] leading-[1.6] text-[var(--landing-text-secondary)]">
                       {b.body}
                     </p>
                     <VisualSlot which={b.visualKey} />
@@ -348,7 +360,7 @@ function StackVariant() {
 
 function StackBlock({ block, isLast }: { block: BlockDef; isLast: boolean }) {
   return (
-    <div
+    <Reveal as="div"
       className="relative overflow-hidden"
       style={{
         borderTop: "0.5px solid rgba(250,250,248,0.10)",
@@ -388,7 +400,7 @@ function StackBlock({ block, isLast }: { block: BlockDef; isLast: boolean }) {
           </>
         )}
       </div>
-    </div>
+    </Reveal>
   );
 }
 
@@ -417,11 +429,11 @@ function DataCardsGrid() {
           key={it.label}
           className="rounded-md border border-[rgba(250,250,248,0.08)] bg-[rgba(250,250,248,0.03)] px-4 py-5"
         >
-          <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
+          <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
             {it.label}
           </p>
-          <p className="mt-2 font-mono text-[20px] font-semibold text-[#FAFAF8]">{it.big}</p>
-          <p className="mt-1 font-body text-[12px] leading-[1.4] text-[#FAFAF8]/55">{it.sub}</p>
+          <p className="mt-2 font-mono text-[20px] font-semibold text-[var(--landing-text)]">{it.big}</p>
+          <p className="mt-1 font-body text-[12px] leading-[1.4] text-[var(--landing-text-muted)]">{it.sub}</p>
         </div>
       ))}
     </div>
@@ -441,8 +453,8 @@ function SmartFormMock() {
   ];
   return (
     <div className="overflow-hidden rounded-xl border border-[rgba(250,250,248,0.10)] bg-[#1A1A1A] shadow-[0_20px_40px_-12px_rgba(0,0,0,0.4)]">
-      <div className="border-b border-[rgba(250,250,248,0.08)] bg-[#0F0F0F] px-5 py-3">
-        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
+      <div className="border-b border-[rgba(250,250,248,0.08)] px-5 py-3">
+        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
           Nuevo análisis · paso 1 de 3
         </p>
       </div>
@@ -460,10 +472,10 @@ function SmartFormMock() {
                 }}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
+                  <p className="font-mono text-[9px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
                     {r.label}
                   </p>
-                  <p className="mt-1 font-mono text-[14px] font-semibold text-[#FAFAF8]">{r.value}</p>
+                  <p className="mt-1 font-mono text-[14px] font-semibold text-[var(--landing-text)]">{r.value}</p>
                 </div>
                 <span
                   className="shrink-0 rounded-sm px-2 py-1 font-mono text-[8px] font-semibold uppercase tracking-[0.1em]"
@@ -494,10 +506,10 @@ function CostHero() {
       >
         $0
       </p>
-      <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FAFAF8]">
+      <p className="mt-5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--landing-text)]">
         Primer análisis
       </p>
-      <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[#FAFAF8]/55">
+      <p className="mt-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
         Sin tarjeta · sin compromiso
       </p>
     </div>
@@ -521,7 +533,7 @@ function AIRecommendations() {
           className="rounded-r-md py-3 pl-4 pr-4"
           style={{ borderLeft: "2px solid #C8323C", background: "rgba(250,250,248,0.03)" }}
         >
-          <p className="font-body text-[14px] leading-[1.55] text-[#FAFAF8]/85">
+          <p className="font-body text-[14px] leading-[1.55] text-[var(--landing-text-secondary)]">
             <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#C8323C]">
               {it.verb}
             </span>

@@ -15,12 +15,8 @@ type StepDef = {
   numeral: "01" | "02" | "03";
   title: string;
   body: string;
-  bg: string;
-  numeralColor: string;
-  textColor: string;
-  secondaryColor: string;
-  labelColor: string;
-  dark?: boolean;
+  /** Si true, numeral en Signal Red (highlight del último step). */
+  highlight?: boolean;
 };
 
 const STEPS: ReadonlyArray<StepDef> = [
@@ -28,32 +24,17 @@ const STEPS: ReadonlyArray<StepDef> = [
     numeral: "01",
     title: "Cruza tu caso con el mercado.",
     body: "12.944 propiedades comparables, 195 estaciones de metro, POIs georreferenciados. Tu depto no se evalúa aislado, se ubica en el mapa real del mercado.",
-    bg: "#E8E6E1",
-    numeralColor: "rgba(15,15,15,0.92)",
-    textColor: "#0F0F0F",
-    secondaryColor: "rgba(15,15,15,0.7)",
-    labelColor: "rgba(15,15,15,0.55)",
   },
   {
     numeral: "02",
     title: "Saca todas las cuentas.",
     body: "Flujo real mes a mes, contemplando gastos que nadie suma. Proyección patrimonial a 10 años con aporte real, valor del depto y patrimonio neto.",
-    bg: "#FAFAF8",
-    numeralColor: "rgba(15,15,15,0.92)",
-    textColor: "#0F0F0F",
-    secondaryColor: "rgba(15,15,15,0.7)",
-    labelColor: "rgba(15,15,15,0.55)",
   },
   {
     numeral: "03",
     title: "Se la juega.",
     body: "Score, veredicto, precio sugerido, costo real, riesgos. Sin matices que diluyan la decisión.",
-    bg: "#0F0F0F",
-    numeralColor: "#C8323C",
-    textColor: "#FAFAF8",
-    secondaryColor: "rgba(250,250,248,0.7)",
-    labelColor: "rgba(250,250,248,0.55)",
-    dark: true,
+    highlight: true,
   },
 ];
 
@@ -82,16 +63,16 @@ export default function SectionWhatFrancoDoes() {
   // Header de sección — solo se muestra fuera del sticky (carousel y stack
   // lo necesitan; en modo sticky se incrusta dentro del step 0).
   const HeaderOutside = (
-    <div className="bg-[#E8E6E1]">
+    <div>
       <div className="mx-auto max-w-[1280px] px-6 pb-8 pt-14 md:pb-10 md:pt-[72px]">
         <div className="max-w-[820px]">
-          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#0F0F0F]/55">
+          <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
             03 · Qué hace Franco
           </span>
-          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[#0F0F0F] md:text-[44px]">
+          <h2 className="mt-4 font-heading text-[32px] font-bold leading-[1.1] tracking-[-0.01em] text-[var(--landing-text)] md:text-[44px]">
             Le hacemos a tu depto las preguntas que tu cotización no responde.
           </h2>
-          <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.55] text-[#0F0F0F]/70 md:text-[16px]">
+          <p className="mt-4 max-w-[680px] font-body text-[15px] leading-[1.55] text-[var(--landing-text-secondary)] md:text-[16px]">
             Tres pasos, 30 segundos, una posición clara. Así trabaja Franco con
             el caso del depto en Providencia.
           </p>
@@ -148,21 +129,31 @@ function StickyVariant() {
   return (
     <div
       ref={containerRef}
-      className="snap-section-start relative"
+      className="relative"
       style={{ height: "300vh" }}
     >
-      <div
-        className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full items-center overflow-hidden transition-colors duration-500"
-        style={{ background: step.bg }}
-      >
-        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-[140px_1fr] items-center gap-8 px-6 py-8">
-          {/* Numeral fijo */}
-          <div className="flex items-center pt-1">
+      <div className="sticky top-[64px] flex h-[calc(100vh-64px)] w-full flex-col overflow-hidden">
+        {/* Header permanente — visible en los 3 pasos */}
+        <div className="mx-auto w-full max-w-[1280px] px-6 pt-8">
+          <div className="max-w-[820px]">
+            <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
+              03 · Qué hace Franco
+            </span>
+            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
+              Le hacemos a tu depto las preguntas que tu cotización no responde.
+            </h2>
+          </div>
+        </div>
+
+        {/* Body: numeral + slide centrado verticalmente */}
+        <div className="mx-auto grid w-full max-w-[1280px] flex-1 grid-cols-[140px_1fr] items-center gap-8 px-6 pb-8">
+          {/* Numeral fijo — Signal Red sólo cuando highlight (step 3). */}
+          <div className="flex items-center">
             <span
               key={step.numeral}
               className="font-heading font-bold leading-[0.85] tracking-[-0.04em] transition-colors duration-500"
               style={{
-                color: step.numeralColor,
+                color: step.highlight ? "#C8323C" : "var(--landing-text)",
                 fontSize: "clamp(56px, 8vw, 96px)",
               }}
               aria-hidden="true"
@@ -171,16 +162,14 @@ function StickyVariant() {
             </span>
           </div>
 
-          {/* Contenido derecha — altura fija para que los slides absolute
-              tengan espacio reservado y la sticky inner los centre verticalmente. */}
-          <div className="relative min-h-[640px]">
+          {/* Contenido derecha */}
+          <div className="relative min-h-[440px]">
             {STEPS.map((s, i) => {
               const isActive = i === activeStep;
-              const isFirst = i === 0;
               return (
                 <div
                   key={s.numeral}
-                  className={`absolute inset-0 flex flex-col gap-5 transition-[opacity,transform] duration-[400ms] ease-out ${
+                  className={`absolute inset-0 flex flex-col justify-center gap-5 transition-[opacity,transform] duration-[400ms] ease-out ${
                     isActive ? "pointer-events-auto" : "pointer-events-none"
                   }`}
                   style={{
@@ -189,49 +178,21 @@ function StickyVariant() {
                   }}
                   aria-hidden={!isActive}
                 >
-                  {/* Header de sección — sólo en step 0 */}
-                  {isFirst && (
-                    <div className="pb-1">
-                      <span
-                        className="font-mono text-[10px] font-medium uppercase tracking-[0.18em]"
-                        style={{ color: s.labelColor }}
-                      >
-                        03 · Qué hace Franco
-                      </span>
-                      <h2
-                        className="mt-2 font-heading text-[24px] font-bold leading-[1.12] tracking-[-0.01em] md:text-[28px]"
-                        style={{ color: s.textColor }}
-                      >
-                        Le hacemos a tu depto las preguntas que tu cotización no
-                        responde.
-                      </h2>
-                    </div>
-                  )}
-
                   <div className="max-w-[680px]">
-                    <span
-                      className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]"
-                      style={{ color: s.labelColor }}
-                    >
+                    <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
                       Paso {s.numeral}
                     </span>
-                    <h3
-                      className="mt-2 font-heading text-[22px] font-bold leading-[1.18] tracking-[-0.01em] md:text-[26px]"
-                      style={{ color: s.textColor }}
-                    >
+                    <h3 className="mt-2 font-heading text-[22px] font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)] md:text-[26px]">
                       {s.title}
                     </h3>
-                    <p
-                      className="mt-2 max-w-[600px] font-body text-[13px] leading-[1.5] md:text-[14px]"
-                      style={{ color: s.secondaryColor }}
-                    >
+                    <p className="mt-2 max-w-[600px] font-body text-[13px] leading-[1.5] text-[var(--landing-text-secondary)] md:text-[14px]">
                       {s.body}
                     </p>
                   </div>
 
                   {/* Frame slot — limitado en alto para encajar en viewport */}
                   <div className="min-h-0 flex-1 overflow-hidden">
-                    <FrameSlot stepIndex={i} dark={!!s.dark} compact />
+                    <FrameSlot stepIndex={i} dark={false} compact />
                   </div>
                 </div>
               );
@@ -240,11 +201,7 @@ function StickyVariant() {
         </div>
 
         {/* Indicador vertical */}
-        <StepDots
-          count={3}
-          activeIndex={activeStep}
-          tone={step.dark ? "dark" : "light"}
-        />
+        <StepDots count={3} activeIndex={activeStep} />
       </div>
     </div>
   );
@@ -253,16 +210,13 @@ function StickyVariant() {
 function StepDots({
   count,
   activeIndex,
-  tone,
 }: {
   count: number;
   activeIndex: number;
-  tone: "dark" | "light";
 }) {
-  const baseColor =
-    tone === "dark" ? "rgba(250,250,248,0.25)" : "rgba(15,15,15,0.25)";
-  const activeColor =
-    tone === "dark" ? "rgba(250,250,248,0.85)" : "rgba(15,15,15,0.85)";
+  // Color de dots usa el secundario del tema activo. Inactivos con opacity.
+  const baseColor = "var(--landing-text-muted)";
+  const activeColor = "var(--landing-text)";
   return (
     <div
       className="absolute right-6 top-1/2 hidden -translate-y-1/2 flex-col gap-3 md:flex"
@@ -304,7 +258,7 @@ function CarouselVariant() {
   }, []);
 
   return (
-    <div className="bg-[#E8E6E1]">
+    <div>
       {/* Dots header */}
       <div className="px-6 pt-2">
         <div className="flex items-center gap-2" aria-hidden="true">
@@ -331,39 +285,33 @@ function CarouselVariant() {
           <div
             key={s.numeral}
             className="snap-start shrink-0 px-6 py-10"
-            style={{ width: "90vw", background: s.bg }}
+            style={{ width: "90vw" }}
           >
             <div className="flex items-baseline gap-4">
               <span
                 className="font-heading font-bold leading-none tracking-[-0.04em]"
-                style={{ color: s.numeralColor, fontSize: "72px" }}
+                style={{
+                  color: s.highlight ? "#C8323C" : "var(--landing-text)",
+                  fontSize: "72px",
+                }}
                 aria-hidden="true"
               >
                 {s.numeral}
               </span>
-              <span
-                className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]"
-                style={{ color: s.labelColor }}
-              >
+              <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
                 Paso {s.numeral}
               </span>
             </div>
 
-            <h3
-              className="mt-5 font-heading text-[26px] font-bold leading-[1.15] tracking-[-0.01em]"
-              style={{ color: s.textColor }}
-            >
+            <h3 className="mt-5 font-heading text-[26px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--landing-text)]">
               {s.title}
             </h3>
-            <p
-              className="mt-3 font-body text-[14px] leading-[1.55]"
-              style={{ color: s.secondaryColor }}
-            >
+            <p className="mt-3 font-body text-[14px] leading-[1.55] text-[var(--landing-text-secondary)]">
               {s.body}
             </p>
 
             <div className="mt-6">
-              <FrameSlot stepIndex={i} dark={!!s.dark} />
+              <FrameSlot stepIndex={i} dark={false} />
             </div>
           </div>
         ))}
@@ -378,12 +326,15 @@ function StackVariant() {
   return (
     <>
       {STEPS.map((s, i) => (
-        <div key={s.numeral} style={{ background: s.bg }}>
+        <div key={s.numeral}>
           <div className="mx-auto grid max-w-[1280px] grid-cols-1 gap-6 px-6 py-14 md:grid-cols-[180px_1fr] md:gap-10 md:py-[72px]">
             <div>
               <span
                 className="font-heading font-bold leading-[0.85] tracking-[-0.04em]"
-                style={{ color: s.numeralColor, fontSize: "clamp(80px, 14vw, 144px)" }}
+                style={{
+                  color: s.highlight ? "#C8323C" : "var(--landing-text)",
+                  fontSize: "clamp(80px, 14vw, 144px)",
+                }}
                 aria-hidden="true"
               >
                 {s.numeral}
@@ -391,26 +342,17 @@ function StackVariant() {
             </div>
             <div className="flex flex-col gap-8 md:gap-10">
               <div className="max-w-[680px]">
-                <span
-                  className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]"
-                  style={{ color: s.labelColor }}
-                >
+                <span className="font-mono text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
                   Paso {s.numeral}
                 </span>
-                <h3
-                  className="mt-3 font-heading text-[28px] font-bold leading-[1.15] tracking-[-0.01em] md:text-[36px]"
-                  style={{ color: s.textColor }}
-                >
+                <h3 className="mt-3 font-heading text-[28px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--landing-text)] md:text-[36px]">
                   {s.title}
                 </h3>
-                <p
-                  className="mt-4 font-body text-[15px] leading-[1.6] md:text-[16px]"
-                  style={{ color: s.secondaryColor }}
-                >
+                <p className="mt-4 font-body text-[15px] leading-[1.6] text-[var(--landing-text-secondary)] md:text-[16px]">
                   {s.body}
                 </p>
               </div>
-              <FrameSlot stepIndex={i} dark={!!s.dark} />
+              <FrameSlot stepIndex={i} dark={false} />
             </div>
           </div>
         </div>
@@ -526,17 +468,17 @@ function ZoneDrawerFrame({ compact = false }: { compact?: boolean }) {
               <circle r="3" fill="#FFFFFF" />
             </g>
           </svg>
-          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[#0F0F0F]/60">
+          <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between font-mono text-[9px] font-medium uppercase tracking-[0.12em] text-[var(--landing-text-secondary)]">
             <span>20 POIs · 1.2 km radio</span>
             <span>Providencia centro</span>
           </div>
         </div>
         <div className="flex flex-col gap-4 p-5">
           <div>
-            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/55">
+            <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
               06 · Zona
             </p>
-            <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[#0F0F0F]">
+            <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[var(--landing-text)]">
               ¿Qué tan demandada está esta zona?
             </p>
           </div>
@@ -544,10 +486,10 @@ function ZoneDrawerFrame({ compact = false }: { compact?: boolean }) {
             className="rounded-r-md py-3 pl-3 pr-3"
             style={{ borderLeft: "3px solid #FAFAF8", background: "rgba(15,15,15,0.04)" }}
           >
-            <p className="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-[#0F0F0F]/65">
+            <p className="font-mono text-[8px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
               ★ Insight Franco IA
             </p>
-            <p className="mt-1.5 font-body text-[11px] italic leading-[1.5] text-[#0F0F0F]/80">
+            <p className="mt-1.5 font-body text-[11px] italic leading-[1.5] text-[var(--landing-text-secondary)]">
               Demanda alta sostenida: 3 universidades, metro a 350m, comercio 24/7 en 4 cuadras.
             </p>
           </div>
@@ -566,10 +508,10 @@ function ZoneDrawerFrame({ compact = false }: { compact?: boolean }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-md bg-[rgba(15,15,15,0.04)] px-2.5 py-2">
-      <p className="font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-[#0F0F0F]/55">
+      <p className="font-mono text-[8px] font-medium uppercase tracking-[0.12em] text-[var(--landing-text-muted)]">
         {label}
       </p>
-      <p className="mt-1 font-mono text-[13px] font-semibold text-[#0F0F0F]">{value}</p>
+      <p className="mt-1 font-mono text-[13px] font-semibold text-[var(--landing-text)]">{value}</p>
     </div>
   );
 }
@@ -587,23 +529,23 @@ function CostoDrawerFrame({ compact = false }: { compact?: boolean }) {
   return (
     <BrowserFrame url="refranco.ai/.../costo-mensual">
       <div className={compact ? "p-4" : "p-5"}>
-        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/55">
+        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
           02 · Costo mensual
         </p>
-        <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[#0F0F0F]">
+        <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[var(--landing-text)]">
           ¿Cuánto sale de tu bolsillo?
         </p>
         <div className="mt-4 space-y-2">
           {rows.map((r) => (
             <div key={r.label} className="grid grid-cols-[1fr_70px_70px] items-center gap-2">
-              <span className="truncate font-body text-[11px] text-[#0F0F0F]/80">{r.label}</span>
+              <span className="truncate font-body text-[11px] text-[var(--landing-text-secondary)]">{r.label}</span>
               <div className="h-1.5 rounded-full bg-[rgba(15,15,15,0.06)]">
                 <div
                   className="h-full rounded-full"
                   style={{ width: `${r.pct}%`, background: r.sign === "+" ? "#B4B2A9" : "#C8323C" }}
                 />
               </div>
-              <span className="text-right font-mono text-[10px] font-medium text-[#0F0F0F]">
+              <span className="text-right font-mono text-[10px] font-medium text-[var(--landing-text)]">
                 {r.value}
               </span>
             </div>
@@ -629,10 +571,10 @@ function PatrimonioDrawerFrame({ compact = false }: { compact?: boolean }) {
   return (
     <BrowserFrame url="refranco.ai/.../patrimonio">
       <div className={compact ? "p-4" : "p-5"}>
-        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[#0F0F0F]/55">
+        <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[var(--landing-text-muted)]">
           09 · Patrimonio
         </p>
-        <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[#0F0F0F]">
+        <p className="mt-2 font-heading text-[15px] font-bold leading-tight text-[var(--landing-text)]">
           Patrimonio neto a 10 años
         </p>
         <div className="mt-4">
@@ -664,19 +606,19 @@ function PatrimonioDrawerFrame({ compact = false }: { compact?: boolean }) {
             })}
           </svg>
         </div>
-        <div className="mt-3 flex flex-wrap gap-3 font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-[#0F0F0F]/65">
+        <div className="mt-3 flex flex-wrap gap-3 font-mono text-[9px] font-medium uppercase tracking-[0.08em] text-[var(--landing-text-muted)]">
           <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[#C8323C]" /> Aporte</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[rgba(15,15,15,0.18)]" /> Valor depto</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-[#0F0F0F]" /> Neto</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm" /> Neto</span>
         </div>
         <div
           className="mt-4 rounded-r-md py-3 pl-3 pr-3"
           style={{ borderLeft: "3px solid #5F5E5A", background: "rgba(15,15,15,0.04)" }}
         >
-          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#0F0F0F]/65">
+          <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[var(--landing-text-muted)]">
             Patrimonio año 10
           </p>
-          <p className="mt-1 font-mono text-[18px] font-bold text-[#0F0F0F]">$196.792.800</p>
+          <p className="mt-1 font-mono text-[18px] font-bold text-[var(--landing-text)]">$196.792.800</p>
         </div>
       </div>
     </BrowserFrame>
@@ -694,14 +636,14 @@ function HeroResultFrame({ compact = false }: { compact?: boolean }) {
           <span className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-[rgba(250,250,248,0.55)]">
             01 · Veredicto
           </span>
-          <span className="font-heading text-[14px] font-bold text-[#FAFAF8]">Depto 2D2B Providencia</span>
+          <span className="font-heading text-[14px] font-bold text-[var(--landing-text)]">Depto 2D2B Providencia</span>
         </div>
         <div className="mt-5 grid grid-cols-1 items-center gap-5 md:grid-cols-[1fr_1fr]">
           <div>
             <p className="font-mono text-[9px] font-medium uppercase tracking-[0.16em] text-[rgba(250,250,248,0.55)]">
               Franco Score
             </p>
-            <p className="mt-2 font-heading text-[56px] font-bold leading-none tracking-[-0.02em] text-[#FAFAF8]">
+            <p className="mt-2 font-heading text-[56px] font-bold leading-none tracking-[-0.02em] text-[var(--landing-text)]">
               {score}
               <span className="font-heading text-[20px] text-[rgba(250,250,248,0.35)]">/100</span>
             </p>
@@ -717,7 +659,7 @@ function HeroResultFrame({ compact = false }: { compact?: boolean }) {
                   style={{ width: `${score}%`, background: "linear-gradient(90deg,#C8323C 0%,#888780 60%,#B4B2A9 100%)" }}
                 />
                 <div
-                  className="absolute -top-[3px] h-[10px] w-[10px] -translate-x-1/2 rounded-full border-2 border-[#FAFAF8] bg-[#0F0F0F]"
+                  className="absolute -top-[3px] h-[10px] w-[10px] -translate-x-1/2 rounded-full border-2 border-[#FAFAF8]"
                   style={{ left: `${score}%` }}
                   aria-hidden="true"
                 />

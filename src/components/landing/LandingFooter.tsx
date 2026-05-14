@@ -1,30 +1,49 @@
 import Link from "next/link";
 
 /**
- * Footer landing — fondo #0A0A0A, 4 columnas + bottom bar.
+ * Footer landing — hereda fondo del tema activo. Tagline reemplaza
+ * la descripción larga.
  */
 export default function LandingFooter() {
   return (
-    <footer className="bg-[#0A0A0A] text-[#FAFAF8]">
+    <footer className="border-t text-[var(--landing-text)]" style={{ borderColor: "var(--landing-divider)" }}>
       <div className="mx-auto max-w-[1280px] px-6 py-16 md:py-20">
         <div className="grid grid-cols-1 gap-10 md:grid-cols-[2fr_1fr_1fr_1fr] md:gap-12">
-          {/* Col 1 — wordmark + descripción */}
+          {/* Col 1 — wordmark + tagline */}
           <div>
-            <div data-theme="light" className="inline-flex">
-              {/* Forzar wordmark sobre dark: aplico inversion manual */}
+            <div className="inline-flex flex-col">
               <span className="inline-flex items-baseline">
-                <span className="font-heading text-[36px] italic font-light leading-none text-[rgba(250,250,248,0.32)]" style={{ marginRight: "-0.08em" }}>
+                <span
+                  className="font-heading text-[36px] italic font-light leading-none"
+                  style={{ color: "var(--landing-wm-re)", marginRight: "-0.08em" }}
+                >
                   re
                 </span>
-                <span className="font-heading text-[36px] font-bold leading-none text-[#FAFAF8]">
+                <span
+                  className="font-heading text-[36px] font-bold leading-none"
+                  style={{ color: "var(--landing-wm-franco)" }}
+                >
                   franco
                 </span>
-                <span className="font-body font-semibold tracking-wide text-[#C8323C]" style={{ fontSize: "0.35em", letterSpacing: "0.1em", marginLeft: 1 }}>
+                <span
+                  className="font-body font-semibold tracking-wide text-[#C8323C]"
+                  style={{ fontSize: "0.35em", letterSpacing: "0.1em", marginLeft: 1 }}
+                >
                   .ai
                 </span>
               </span>
+              <span
+                className="mt-2 font-mono uppercase"
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.18em",
+                  color: "var(--landing-text-secondary)",
+                }}
+              >
+                Real estate en su estado más franco
+              </span>
             </div>
-            <p className="mt-6 max-w-[360px] font-body text-[14px] leading-[1.6] text-[#FAFAF8]/55">
+            <p className="mt-5 max-w-[360px] font-body text-[14px] leading-[1.6] text-[var(--landing-text-muted)]">
               Análisis de inversión inmobiliaria con datos reales. Para que
               decidas con criterio, no con corazonadas.
             </p>
@@ -63,19 +82,19 @@ export default function LandingFooter() {
         {/* Bottom bar */}
         <div
           className="mt-12 flex flex-col gap-4 pt-6 md:flex-row md:items-center md:justify-between"
-          style={{ borderTop: "0.5px solid rgba(250,250,248,0.10)" }}
+          style={{ borderTop: "0.5px solid var(--landing-divider)" }}
         >
-          <p className="font-mono text-[11px] font-medium text-[#FAFAF8]/45">
+          <p className="font-mono text-[11px] font-medium text-[var(--landing-text-muted)]">
             © 2026 refranco.ai · Santiago, Chile
           </p>
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] font-medium text-[#FAFAF8]/45">
-            <Link href="/terms" className="transition-colors hover:text-[#FAFAF8]/80">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2 font-mono text-[11px] font-medium text-[var(--landing-text-muted)]">
+            <Link href="/terms" className="transition-opacity hover:opacity-80">
               Términos
             </Link>
-            <Link href="/privacy" className="transition-colors hover:text-[#FAFAF8]/80">
+            <Link href="/privacy" className="transition-opacity hover:opacity-80">
               Privacidad
             </Link>
-            <span className="italic text-[#FAFAF8]/35">
+            <span className="italic">
               Análisis informativo · no constituye asesoría financiera
             </span>
           </div>
@@ -94,7 +113,7 @@ function FooterCol({
 }) {
   return (
     <div>
-      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[#FAFAF8]/55">
+      <p className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
         {title}
       </p>
       <ul className="mt-5 space-y-3">
@@ -102,7 +121,7 @@ function FooterCol({
           <li key={it.label}>
             <Link
               href={it.href}
-              className="font-body text-[14px] text-[#FAFAF8]/70 transition-colors hover:text-[#FAFAF8]"
+              className="font-body text-[14px] text-[var(--landing-text-secondary)] transition-opacity hover:opacity-90"
             >
               {it.label}
             </Link>
