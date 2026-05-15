@@ -602,104 +602,246 @@ function Cierre({ scrollYProgress }: { scrollYProgress: MotionValue<number> }) {
 
 /* ============================ Mobile ============================ */
 
+/* ============================ Mobile ============================ */
+
+// Timings mobile (container 450vh). Cada stat ocupa pantalla completa, sin
+// acumular visualmente. Antes del 92.1% un frame resumen muestra los 3 stats
+// compactos coexistiendo — preserva el momento narrativo de la acumulación.
+const M_TITLE_END = 0.15;
+const M_STAT1_START = 0.15;
+const M_STAT1_END = 0.27;
+const M_STAT2_START = 0.27;
+const M_STAT2_END = 0.40;
+const M_STAT3_START = 0.40;
+const M_STAT3_END = 0.52;
+// [0.52, 0.65] gap de transición
+const M_FRAME_START = 0.65;
+const M_FRAME_VISIBLE_END = 0.70;
+const M_FRAME_END = 0.72;
+const M_RESULT_START = 0.72;
+const M_RESULT_PHASE_B = 0.75;
+const M_RESULT_FADE_OUT_START = 0.86;
+const M_RESULT_FADE_OUT_END = 0.88;
+const M_CIERRE_L1_START = 0.88;
+const M_CIERRE_L1_END = 0.94;
+const M_CIERRE_L2_START = 0.94;
+const M_CIERRE_L2_END = 1.0;
+
+// Textos cortos para el frame resumen (versión condensada de los kickers).
+const FRAME_SHORTS = ["Tasas más altas", "Cap rate bajo", "Un tercio desaparece"];
+
 function MobileLayout() {
+  const ref = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end end"],
+  });
+
   return (
-    <div className="mx-auto w-full max-w-[640px] px-5 py-[12vh]">
-      <p
-        className="font-mono font-medium uppercase text-[#C8323C]"
-        style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 14 }}
-      >
-        02 · El problema
-      </p>
-      <h2
-        className="font-heading font-bold leading-[1.04] tracking-[-0.02em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(34px, 8.4vw, 48px)" }}
-      >
-        La matemática del depto<br />de inversión{" "}
-        <span className="text-[#C8323C]">cambió.</span>
-      </h2>
-      <p
-        className="mt-4 font-body text-[var(--landing-text-secondary)]"
-        style={{ fontSize: 15, lineHeight: 1.55 }}
-      >
-        Antes los números calzaban. Hoy no.
-      </p>
-
-      <div className="mt-12 space-y-10">
-        {STATS.map((s) => (
-          <MobileStatRow key={s.id} data={s} />
-        ))}
+    <div ref={ref} className="relative" style={{ height: "450vh" }}>
+      <div className="sticky top-0 h-screen w-full overflow-hidden">
+        <MobileTitle scrollYProgress={scrollYProgress} />
+        <MobileStatScreen
+          scrollYProgress={scrollYProgress}
+          data={STATS[0]}
+          blockStart={M_STAT1_START}
+          blockEnd={M_STAT1_END}
+        />
+        <MobileStatScreen
+          scrollYProgress={scrollYProgress}
+          data={STATS[1]}
+          blockStart={M_STAT2_START}
+          blockEnd={M_STAT2_END}
+        />
+        <MobileStatScreen
+          scrollYProgress={scrollYProgress}
+          data={STATS[2]}
+          blockStart={M_STAT3_START}
+          blockEnd={M_STAT3_END}
+        />
+        <MobileFrame scrollYProgress={scrollYProgress} />
+        <MobileResultBlock scrollYProgress={scrollYProgress} />
+        <MobileCierreBlock scrollYProgress={scrollYProgress} />
       </div>
-
-      <MobileResult />
-
-      <h3
-        className="mt-14 font-heading font-bold leading-[1.04] tracking-[-0.02em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(28px, 8vw, 40px)" }}
-      >
-        <span className="block">Antes, comprar era seguro.</span>
-        <span className="block">
-          Hoy, hay que <span className="text-[#C8323C]">analizar.</span>
-        </span>
-      </h3>
     </div>
   );
 }
 
-function MobileStatRow({ data }: { data: StatData }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 90%", "start 50%"],
-  });
+/* ============================ Mobile · Título ============================ */
+
+function MobileTitle({
+  scrollYProgress,
+}: {
+  scrollYProgress: MotionValue<number>;
+}) {
   const opacityMV = useMotionValue(0);
-  const yMV = useMotionValue(40);
+  const line1MV = useMotionValue("105%");
+  const line2MV = useMotionValue("105%");
+  const subOpacityMV = useMotionValue(0);
+  const eyebrowOpacityMV = useMotionValue(0);
 
   useEffect(() => {
     const update = (v: number) => {
-      const t = easeOutQuart(clamp01(v));
-      opacityMV.set(t);
-      yMV.set(40 * (1 - t));
+      // Visible hasta 0.13, fade-out [0.13, 0.15]
+      let op = 1;
+      if (v >= 0.13) op = clamp01((M_TITLE_END - v) / 0.02);
+      opacityMV.set(op);
+
+      // Eyebrow fade-in primero
+      const eyeT = clamp01(v / 0.025);
+      eyebrowOpacityMV.set(eyeT);
+
+      // Mask reveal H2 con stagger
+      const t1 = clamp01((v - 0.025) / 0.04);
+      line1MV.set(`${105 * (1 - easeOutQuart(t1))}%`);
+      const t2 = clamp01((v - 0.06) / 0.04);
+      line2MV.set(`${105 * (1 - easeOutQuart(t2))}%`);
+
+      // Subhead al final
+      const subT = clamp01((v - 0.09) / 0.04);
+      subOpacityMV.set(subT);
     };
     update(scrollYProgress.get());
     const unsub = scrollYProgress.on("change", update);
     return () => unsub();
-  }, [scrollYProgress, opacityMV, yMV]);
+  }, [scrollYProgress, opacityMV, line1MV, line2MV, subOpacityMV, eyebrowOpacityMV]);
 
   return (
-    <motion.div ref={ref} style={{ opacity: opacityMV, y: yMV }}>
+    <motion.div
+      style={{ opacity: opacityMV }}
+      className="pointer-events-none absolute inset-0 flex flex-col justify-center px-6"
+    >
+      <motion.p
+        className="font-mono font-medium uppercase text-[#C8323C]"
+        style={{
+          opacity: eyebrowOpacityMV,
+          fontSize: 11,
+          letterSpacing: "0.06em",
+          marginBottom: 16,
+        }}
+      >
+        02 · El problema
+      </motion.p>
+      <h2
+        className="font-heading font-bold leading-[1.08] tracking-[-0.02em] text-[var(--landing-text)]"
+        style={{ fontSize: "clamp(26px, 6.8vw, 32px)" }}
+      >
+        <span className="block overflow-hidden" style={{ lineHeight: 1.08 }}>
+          <motion.span className="block" style={{ y: line1MV }}>
+            La matemática del depto
+          </motion.span>
+        </span>
+        <span className="block overflow-hidden" style={{ lineHeight: 1.08 }}>
+          <motion.span className="block" style={{ y: line2MV }}>
+            de inversión <span className="text-[#C8323C]">cambió.</span>
+          </motion.span>
+        </span>
+      </h2>
+      <motion.p
+        className="font-body text-[var(--landing-text-secondary)]"
+        style={{
+          opacity: subOpacityMV,
+          fontSize: 15,
+          lineHeight: 1.5,
+          marginTop: 20,
+          maxWidth: 360,
+        }}
+      >
+        Antes los números calzaban. Hoy no.
+      </motion.p>
+    </motion.div>
+  );
+}
+
+/* ============================ Mobile · Stat full-screen ============================ */
+
+function MobileStatScreen({
+  scrollYProgress,
+  data,
+  blockStart,
+  blockEnd,
+}: {
+  scrollYProgress: MotionValue<number>;
+  data: StatData;
+  blockStart: number;
+  blockEnd: number;
+}) {
+  const opacityMV = useMotionValue(0);
+  const yMV = useMotionValue(40);
+  const IN_FADE = 0.03;
+  const OUT_FADE = 0.02;
+
+  useEffect(() => {
+    const update = (v: number) => {
+      let op = 0;
+      let y = 40;
+      if (v < blockStart || v >= blockEnd) {
+        op = 0;
+        y = 40;
+      } else if (v < blockStart + IN_FADE) {
+        const t = easeOutQuart((v - blockStart) / IN_FADE);
+        op = t;
+        y = 40 * (1 - t);
+      } else if (v >= blockEnd - OUT_FADE) {
+        op = clamp01((blockEnd - v) / OUT_FADE);
+        y = 0;
+      } else {
+        op = 1;
+        y = 0;
+      }
+      opacityMV.set(op);
+      yMV.set(y);
+    };
+    update(scrollYProgress.get());
+    const unsub = scrollYProgress.on("change", update);
+    return () => unsub();
+  }, [scrollYProgress, blockStart, blockEnd, opacityMV, yMV]);
+
+  return (
+    <motion.div
+      style={{ opacity: opacityMV, y: yMV }}
+      className="pointer-events-none absolute inset-0 flex flex-col justify-center px-6"
+    >
       <p
         className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 11, letterSpacing: "0.18em", marginBottom: 8 }}
+        style={{ fontSize: 14, letterSpacing: "0.18em", marginBottom: 18 }}
       >
         {data.id}
       </p>
       <p
         className="font-heading font-bold leading-[0.9] tracking-[-0.04em]"
         style={{
-          fontSize: "clamp(64px, 17vw, 96px)",
+          fontSize: "clamp(80px, 22vw, 110px)",
           color: data.color,
+          marginBottom: 24,
         }}
       >
         {data.big}
       </p>
       <p
-        className="mt-3 font-heading font-bold leading-[1.15] tracking-[-0.01em] text-[var(--landing-text)]"
-        style={{ fontSize: 22 }}
+        className="font-heading font-bold leading-[1.2] tracking-[-0.01em] text-[var(--landing-text)]"
+        style={{
+          fontSize: "clamp(24px, 6.8vw, 30px)",
+          marginBottom: data.kickerSub ? 6 : 12,
+        }}
       >
         {data.kicker}
       </p>
       {data.kickerSub && (
         <p
-          className="mt-1 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 11, letterSpacing: "0.12em" }}
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            marginBottom: 12,
+          }}
         >
           {data.kickerSub}
         </p>
       )}
       <p
-        className="mt-2 font-body text-[var(--landing-text-muted)]"
-        style={{ fontSize: 14, lineHeight: 1.5 }}
+        className="font-body text-[var(--landing-text-muted)]"
+        style={{ fontSize: 15, lineHeight: 1.5, maxWidth: 320 }}
       >
         {data.description}
       </p>
@@ -707,65 +849,276 @@ function MobileStatRow({ data }: { data: StatData }) {
   );
 }
 
-function MobileResult() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 85%", "start 40%"],
-  });
+/* ============================ Mobile · Frame resumen ============================ */
+
+function MobileFrame({
+  scrollYProgress,
+}: {
+  scrollYProgress: MotionValue<number>;
+}) {
   const opacityMV = useMotionValue(0);
-  const scaleMV = useMotionValue(0.92);
 
   useEffect(() => {
     const update = (v: number) => {
-      const t = easeOutQuart(clamp01(v));
-      opacityMV.set(t);
-      scaleMV.set(0.92 + 0.08 * t);
+      let op = 0;
+      if (v >= M_FRAME_START && v < M_FRAME_VISIBLE_END) op = 1;
+      else if (v >= M_FRAME_VISIBLE_END && v < M_FRAME_END) {
+        op = clamp01((M_FRAME_END - v) / (M_FRAME_END - M_FRAME_VISIBLE_END));
+      }
+      opacityMV.set(op);
     };
     update(scrollYProgress.get());
     const unsub = scrollYProgress.on("change", update);
     return () => unsub();
-  }, [scrollYProgress, opacityMV, scaleMV]);
+  }, [scrollYProgress, opacityMV]);
 
   return (
     <motion.div
-      ref={ref}
-      style={{ opacity: opacityMV, scale: scaleMV }}
-      className="mt-14 flex flex-col items-center text-center"
+      style={{ opacity: opacityMV }}
+      className="pointer-events-none absolute inset-0 flex flex-col justify-center px-6"
+    >
+      <MobileFrameRow
+        scrollYProgress={scrollYProgress}
+        data={STATS[0]}
+        rowStart={M_FRAME_START}
+        short={FRAME_SHORTS[0]}
+        hasDivider
+      />
+      <MobileFrameRow
+        scrollYProgress={scrollYProgress}
+        data={STATS[1]}
+        rowStart={M_FRAME_START + 0.01}
+        short={FRAME_SHORTS[1]}
+        hasDivider
+      />
+      <MobileFrameRow
+        scrollYProgress={scrollYProgress}
+        data={STATS[2]}
+        rowStart={M_FRAME_START + 0.02}
+        short={FRAME_SHORTS[2]}
+      />
+    </motion.div>
+  );
+}
+
+function MobileFrameRow({
+  scrollYProgress,
+  data,
+  rowStart,
+  short,
+  hasDivider,
+}: {
+  scrollYProgress: MotionValue<number>;
+  data: StatData;
+  rowStart: number;
+  short: string;
+  hasDivider?: boolean;
+}) {
+  const opacityMV = useMotionValue(0);
+  const yMV = useMotionValue(20);
+
+  useEffect(() => {
+    const update = (v: number) => {
+      const t = easeOutQuart(clamp01((v - rowStart) / 0.03));
+      opacityMV.set(t);
+      yMV.set(20 * (1 - t));
+    };
+    update(scrollYProgress.get());
+    const unsub = scrollYProgress.on("change", update);
+    return () => unsub();
+  }, [scrollYProgress, rowStart, opacityMV, yMV]);
+
+  return (
+    <motion.div
+      style={{
+        opacity: opacityMV,
+        y: yMV,
+        display: "grid",
+        gridTemplateColumns: "130px 1fr",
+        alignItems: "center",
+        columnGap: 20,
+        paddingTop: 18,
+        paddingBottom: 18,
+        borderBottom: hasDivider ? "0.5px solid var(--landing-divider)" : "none",
+      }}
     >
       <p
-        className="font-mono font-medium uppercase text-[#C8323C]"
-        style={{ fontSize: 11, letterSpacing: "0.18em", marginBottom: 8 }}
+        className="font-heading font-bold leading-none tracking-[-0.04em]"
+        style={{ fontSize: 44, color: data.color }}
       >
-        Resultado
+        {data.big}
       </p>
       <p
-        className="font-heading font-bold leading-[0.88] tracking-[-0.045em] text-[#C8323C]"
-        style={{ fontSize: "clamp(108px, 32vw, 140px)" }}
+        className="font-body leading-[1.3] text-[var(--landing-text)]"
+        style={{ fontSize: 15, fontWeight: 600 }}
       >
-        92,1%
-      </p>
-      <p
-        className="mt-3 max-w-[400px] font-heading font-bold leading-[1.2] tracking-[-0.01em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(20px, 5.4vw, 26px)" }}
-      >
-        de los deptos de inversión pierden plata cada mes.
-      </p>
-      <p
-        className="mt-3 max-w-[400px] font-heading leading-[1.35] tracking-[-0.005em] text-[var(--landing-text)]"
-        style={{ fontSize: 18, fontWeight: 600 }}
-      >
-        <span style={{ fontWeight: 700 }}>$240.000</span> al mes.{" "}
-        <span style={{ fontWeight: 700 }}>$71 millones</span> acumulados en 25
-        años.
-      </p>
-      <p
-        className="mt-4 max-w-[420px] font-mono text-[var(--landing-text-muted)]"
-        style={{ fontSize: 11, letterSpacing: "0.06em", lineHeight: 1.5 }}
-      >
-        n=12.944 · 24 comunas · pie 20% · crédito 25 años · tasa 4,5% UF
+        {short}
       </p>
     </motion.div>
+  );
+}
+
+/* ============================ Mobile · Resultado 92,1% ============================ */
+
+function MobileResultBlock({
+  scrollYProgress,
+}: {
+  scrollYProgress: MotionValue<number>;
+}) {
+  const containerOpacityMV = useMotionValue(0);
+  const labelSizeMV = useMotionValue(28);
+  const labelMarginMV = useMotionValue(0);
+  const containerYMV = useMotionValue(0);
+  const mainOpacityMV = useMotionValue(0);
+  const labelEntryYMV = useMotionValue(20);
+  const [shown, setShown] = useState("0,0");
+
+  useEffect(() => {
+    const update = (v: number) => {
+      // Phase A: "RESULTADO" grande aparece [0.72, 0.75]
+      const phaseAT = clamp01((v - M_RESULT_START) / (M_RESULT_PHASE_B - M_RESULT_START));
+      const easedA = easeOutQuart(phaseAT);
+
+      // Phase B: label se reduce + 92.1% aparece [0.75, 0.85]
+      const phaseBT = clamp01((v - M_RESULT_PHASE_B) / (0.85 - M_RESULT_PHASE_B));
+      const easedB = easeOutQuart(phaseBT);
+
+      // Fade-out [0.86, 0.88]
+      const fadeT = clamp01(
+        (v - M_RESULT_FADE_OUT_START) /
+          (M_RESULT_FADE_OUT_END - M_RESULT_FADE_OUT_START),
+      );
+
+      const baseVisible = phaseAT > 0 ? 1 : 0;
+      containerOpacityMV.set(baseVisible * (1 - fadeT));
+      containerYMV.set(-30 * fadeT);
+
+      labelEntryYMV.set(20 * (1 - easedA));
+      labelSizeMV.set(28 - 17 * easedB); // 28 → 11
+      labelMarginMV.set(8 * easedB);
+
+      mainOpacityMV.set(easedB);
+
+      const n = phaseBT * 92.1;
+      setShown(n.toFixed(1).replace(".", ","));
+    };
+    update(scrollYProgress.get());
+    const unsub = scrollYProgress.on("change", update);
+    return () => unsub();
+  }, [
+    scrollYProgress,
+    containerOpacityMV,
+    labelSizeMV,
+    labelMarginMV,
+    containerYMV,
+    mainOpacityMV,
+    labelEntryYMV,
+  ]);
+
+  return (
+    <motion.div
+      style={{ opacity: containerOpacityMV, y: containerYMV }}
+      className="pointer-events-none absolute inset-0 flex flex-col justify-center px-6"
+    >
+      <motion.p
+        className="font-mono font-medium uppercase text-[#C8323C]"
+        style={{
+          fontSize: labelSizeMV,
+          letterSpacing: "0.16em",
+          marginBottom: labelMarginMV,
+          y: labelEntryYMV,
+        }}
+      >
+        Resultado
+      </motion.p>
+      <motion.div style={{ opacity: mainOpacityMV }}>
+        <p
+          className="font-heading font-bold leading-[0.88] tracking-[-0.045em] text-[#C8323C]"
+          style={{ fontSize: "clamp(96px, 32vw, 136px)" }}
+        >
+          {shown}%
+        </p>
+        <p
+          className="mt-3 font-heading font-bold leading-[1.2] tracking-[-0.01em] text-[var(--landing-text)]"
+          style={{ fontSize: "clamp(20px, 5.4vw, 24px)", maxWidth: 360 }}
+        >
+          de los deptos de inversión pierden plata cada mes.
+        </p>
+        <p
+          className="mt-3 font-heading leading-[1.35] tracking-[-0.005em] text-[var(--landing-text)]"
+          style={{ fontSize: 16, fontWeight: 600, maxWidth: 360 }}
+        >
+          <span style={{ fontWeight: 700 }}>$240.000</span> al mes.{" "}
+          <span style={{ fontWeight: 700 }}>$71 millones</span> acumulados en 25
+          años.
+        </p>
+        <p
+          className="mt-3 font-mono text-[var(--landing-text-muted)]"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.04em",
+            lineHeight: 1.5,
+            maxWidth: 360,
+          }}
+        >
+          n=12.944 · 24 comunas · pie 20% · crédito 25 años · tasa 4,5% UF
+        </p>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ============================ Mobile · Cierre ============================ */
+
+function MobileCierreBlock({
+  scrollYProgress,
+}: {
+  scrollYProgress: MotionValue<number>;
+}) {
+  const line1OpacityMV = useMotionValue(0);
+  const line2OpacityMV = useMotionValue(0);
+
+  useEffect(() => {
+    const update = (v: number) => {
+      const t1 = clamp01(
+        (v - M_CIERRE_L1_START) / (M_CIERRE_L1_END - M_CIERRE_L1_START),
+      );
+      line1OpacityMV.set(t1);
+      const t2 = clamp01(
+        (v - M_CIERRE_L2_START) / (M_CIERRE_L2_END - M_CIERRE_L2_START),
+      );
+      line2OpacityMV.set(t2);
+    };
+    update(scrollYProgress.get());
+    const unsub = scrollYProgress.on("change", update);
+    return () => unsub();
+  }, [scrollYProgress, line1OpacityMV, line2OpacityMV]);
+
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-center px-6">
+      <h3 className="font-heading font-bold leading-[1.05] tracking-[-0.02em] text-[var(--landing-text)]">
+        <motion.span
+          className="block"
+          style={{
+            opacity: line1OpacityMV,
+            fontSize: "clamp(28px, 8vw, 38px)",
+            lineHeight: 1.08,
+          }}
+        >
+          Antes, comprar era seguro.
+        </motion.span>
+        <motion.span
+          className="block"
+          style={{
+            opacity: line2OpacityMV,
+            fontSize: "clamp(28px, 8vw, 38px)",
+            lineHeight: 1.08,
+          }}
+        >
+          Hoy, hay que <span className="text-[#C8323C]">analizar.</span>
+        </motion.span>
+      </h3>
+    </div>
   );
 }
 
