@@ -84,17 +84,18 @@ export default function SectionHeader({
       </motion.p>
 
       <h2
-        className="font-heading font-bold leading-[1.15] tracking-[-0.015em] text-[var(--landing-text)]"
+        className="font-heading font-bold leading-[1.1] tracking-[-0.015em] text-[var(--landing-text)]"
         style={{ marginBottom: 24 }}
       >
         {lines.map((line, i) => (
           <span
             key={i}
             className="block overflow-hidden"
-            style={{ lineHeight: 1.15 }}
+            style={{ lineHeight: 1.1 }}
           >
             <motion.span
-              className="block text-[28px] md:text-[32px] lg:text-[38px]"
+              className="block"
+              style={{ fontSize: "clamp(36px, 5.5vw, 56px)" }}
               variants={lineVariants(i)}
             >
               {line}

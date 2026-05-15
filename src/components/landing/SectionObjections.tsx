@@ -121,18 +121,18 @@ function ObjectionsHeader() {
       </motion.p>
 
       <h2
-        className="font-heading font-bold leading-[1.05] tracking-[-0.02em] text-[var(--landing-text)]"
+        className="font-heading font-bold leading-[1.1] tracking-[-0.015em] text-[var(--landing-text)]"
         style={{ maxWidth: 1100, marginBottom: 24 }}
       >
         {lines.map((line, i) => (
           <span
             key={i}
             className="block overflow-hidden"
-            style={{ lineHeight: 1.05 }}
+            style={{ lineHeight: 1.1 }}
           >
             <motion.span
               className="block"
-              style={{ fontSize: "clamp(40px, 6.4vw, 72px)" }}
+              style={{ fontSize: "clamp(36px, 5.5vw, 56px)" }}
               variants={lineVariant(i)}
             >
               {line}
@@ -160,25 +160,35 @@ function ObjectionsHeader() {
 
 function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15% 0px -15% 0px" });
+  const inView = useInView(ref, { once: true, margin: "-10% 0px -10% 0px" });
   const reduce = useReducedMotion();
 
   return (
     <div ref={ref} className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
-      {BLOCKS.map((b, i) => (
-        <motion.button
-          key={b.n}
-          type="button"
-          onClick={() => onSelect(b)}
-          initial={reduce ? false : { opacity: 0, y: 32 }}
-          animate={
-            inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }
-          }
-          transition={{
-            duration: 0.7,
-            ease: EASE,
-            delay: reduce ? 0 : 0.1 + i * 0.1,
-          }}
+      {BLOCKS.map((b, i) => {
+        // Alternar entrada lateral: índices pares (0,2) entran desde la
+        // izquierda con rotate -3°; impares (1,3) desde la derecha con +3°.
+        const fromLeft = i % 2 === 0;
+        const initialX = fromLeft ? -120 : 120;
+        const initialRot = fromLeft ? -3 : 3;
+        return (
+          <motion.button
+            key={b.n}
+            type="button"
+            onClick={() => onSelect(b)}
+            initial={
+              reduce ? false : { opacity: 0, x: initialX, rotate: initialRot }
+            }
+            animate={
+              inView || reduce
+                ? { opacity: 1, x: 0, rotate: 0 }
+                : { opacity: 0, x: initialX, rotate: initialRot }
+            }
+            transition={{
+              duration: 0.8,
+              ease: EASE,
+              delay: reduce ? 0 : 0.1 + i * 0.15,
+            }}
           className="group relative flex flex-col gap-5 rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:flex-row md:items-start md:gap-7 md:p-9"
           style={{
             background: "var(--landing-card-bg)",
@@ -226,7 +236,8 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
             </div>
           </div>
         </motion.button>
-      ))}
+        );
+      })}
     </div>
   );
 }

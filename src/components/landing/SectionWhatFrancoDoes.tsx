@@ -134,7 +134,10 @@ function StickyVariant() {
             <span className="font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--landing-text-muted)]">
               04 · Cómo funciona
             </span>
-            <h2 className="mt-2 font-heading text-[28px] font-bold leading-[1.12] tracking-[-0.01em] text-[var(--landing-text)] md:text-[32px]">
+            <h2
+              className="mt-2 font-heading font-bold leading-[1.1] tracking-[-0.015em] text-[var(--landing-text)]"
+              style={{ fontSize: "clamp(36px, 5.5vw, 56px)" }}
+            >
               Le hacemos a tu depto las preguntas que tu cotización no responde.
             </h2>
           </div>
