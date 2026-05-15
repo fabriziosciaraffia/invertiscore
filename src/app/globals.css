@@ -183,6 +183,21 @@ html {
   --landing-nav-border: rgba(250,250,248,0.08);
   --landing-wm-re: rgba(250,250,248,0.32);
   --landing-wm-franco: #FAFAF8;
+
+  /* F.11 · Premium polish tokens (sombras stack, gradients, bordes) */
+  --landing-shadow-card-1: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --landing-shadow-card-2: 0 8px 16px rgba(0, 0, 0, 0.2);
+  --landing-shadow-card-3: 0 24px 48px rgba(0, 0, 0, 0.3);
+  --landing-shadow-mockup:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 8px 16px rgba(0, 0, 0, 0.3),
+    0 24px 48px rgba(0, 0, 0, 0.4),
+    0 60px 120px rgba(0, 0, 0, 0.3);
+  --landing-card-bg-gradient: linear-gradient(180deg, #1A1A1A 0%, #0F0F0F 100%);
+  --landing-mockup-bg-gradient: linear-gradient(180deg, #1F1F1F 0%, #0F0F0F 100%);
+  --landing-border-light: 0.5px solid rgba(255, 255, 255, 0.08);
+  --landing-border-top-highlight: 0.5px solid rgba(255, 255, 255, 0.12);
+  --landing-glow-signal: 0 0 80px rgba(200, 50, 60, 0.08);
 }
 
 [data-franco-theme="light"] {
@@ -198,6 +213,21 @@ html {
   --landing-nav-border: rgba(15,15,15,0.08);
   --landing-wm-re: rgba(15,15,15,0.20);
   --landing-wm-franco: #0F0F0F;
+
+  /* F.11 · Premium polish tokens (sombras stack, gradients, bordes) */
+  --landing-shadow-card-1: 0 1px 2px rgba(15, 15, 15, 0.04);
+  --landing-shadow-card-2: 0 8px 16px rgba(15, 15, 15, 0.04);
+  --landing-shadow-card-3: 0 24px 48px rgba(15, 15, 15, 0.06);
+  --landing-shadow-mockup:
+    0 1px 2px rgba(15, 15, 15, 0.04),
+    0 8px 16px rgba(15, 15, 15, 0.06),
+    0 24px 48px rgba(15, 15, 15, 0.08),
+    0 60px 120px rgba(15, 15, 15, 0.06);
+  --landing-card-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #FAFAF8 100%);
+  --landing-mockup-bg-gradient: linear-gradient(180deg, #FFFFFF 0%, #F5F4F0 100%);
+  --landing-border-light: 0.5px solid rgba(15, 15, 15, 0.08);
+  --landing-border-top-highlight: 0.5px solid rgba(255, 255, 255, 0.6);
+  --landing-glow-signal: 0 0 80px rgba(200, 50, 60, 0.08);
 }
 
 .scrollbar-hide {
@@ -343,4 +373,70 @@ input[type="number"] {
     opacity: 1;
     transform: none;
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────
+ * F.11 · Utility classes: cards y mockups premium polish.
+ * Stack de sombras + gradient sutil + borde top-highlight (interior
+ * de la card) que da sensación de "lit from above" estilo Linear.
+ * ───────────────────────────────────────────────────────────────── */
+.franco-card {
+  background: var(--landing-card-bg-gradient);
+  border: var(--landing-border-light);
+  border-radius: 8px;
+  padding: 32px;
+  box-shadow:
+    var(--landing-shadow-card-1),
+    var(--landing-shadow-card-2),
+    var(--landing-shadow-card-3);
+  position: relative;
+}
+
+.franco-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.franco-mockup {
+  background: var(--landing-mockup-bg-gradient);
+  border: var(--landing-border-light);
+  border-radius: 16px;
+  box-shadow: var(--landing-shadow-mockup);
+  position: relative;
+  overflow: hidden;
+}
+
+.franco-mockup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  pointer-events: none;
+  border-top: var(--landing-border-top-highlight);
+}
+
+/* Glow Signal Red sutil — para destacar mockups con tono crítico
+ * (resultados negativos, scores bajos, etc.). Usar con moderación. */
+.franco-glow-signal {
+  position: relative;
+}
+
+.franco-glow-signal::after {
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: var(--landing-glow-signal);
+  pointer-events: none;
+  z-index: -1;
 }

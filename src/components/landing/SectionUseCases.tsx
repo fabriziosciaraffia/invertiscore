@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
-  useInView,
   useReducedMotion,
+  useScroll,
+  useTransform,
+  type MotionValue,
   type Variants,
 } from "framer-motion";
 import LandingModal from "./LandingModal";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
  * Sección 05 · Para quién — grid de 3 cards con modal al click.
@@ -81,13 +84,29 @@ const PROFILES: ReadonlyArray<Profile> = [
 
 export default function SectionUseCases() {
   const [active, setActive] = useState<Profile | null>(null);
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const apply = () => setIsDesktop(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
 
   return (
     <section className="relative">
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
+      <div className="mx-auto w-full max-w-[1280px] px-6 pt-[14vh] md:pt-[16vh]">
         <UseCasesHeader />
-        <Cards onSelect={setActive} />
       </div>
+
+      {isDesktop ? (
+        <CardsStack3D onSelect={setActive} />
+      ) : (
+        <div className="mx-auto w-full max-w-[1280px] px-6 pb-[14vh] md:pb-[16vh]">
+          <CardsStatic onSelect={setActive} />
+        </div>
+      )}
 
       <LandingModal
         open={!!active}
@@ -157,45 +176,182 @@ function UseCasesHeader() {
         ))}
       </h2>
 
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, ease: EASE, delay: 0.6 }}
-        className="max-w-[680px] font-body text-[var(--landing-text-secondary)]"
-        style={{ fontSize: 17, lineHeight: 1.55 }}
-      >
-        Tres perfiles, tres dolores, la misma respuesta honesta. Click en
-        una para ver cómo Franco resuelve el caso.
-      </motion.p>
+      {/* F.11 test: subhead reemplazado por <RevealOnScroll> para validar */}
+      <RevealOnScroll delay={0.6} y={16} duration={0.5}>
+        <p
+          className="max-w-[680px] font-body text-[var(--landing-text-secondary)]"
+          style={{ fontSize: 17, lineHeight: 1.55 }}
+        >
+          Tres perfiles, tres dolores, la misma respuesta honesta. Click en
+          una para ver cómo Franco resuelve el caso.
+        </p>
+      </RevealOnScroll>
     </motion.div>
   );
 }
 
-/* ============================ Cards grid ============================ */
+/* ============================ Cards stack 3D (desktop, sticky 200vh) ============================ */
 
-function Cards({ onSelect }: { onSelect: (p: Profile) => void }) {
+/**
+ * 3 cards inician apiladas en el centro con offset/rotate y se separan
+ * al grid 3-cols a medida que el usuario scrollea. Implementación sticky:
+ *
+ *   - Container wrapper de 200vh
+ *   - Inner sticky top-0 h-screen, contenido vertical-centered
+ *   - Cards renderizadas en grid 3-cols (slots fijos), cada una recibe un
+ *     transform scroll-driven que las trae desde el centro al slot final.
+ *
+ * Estado inicial (scrollYProgress = 0):
+ *   - Card 1 (slot izq):  translateX +120% (al centro), translateY 20, rotateZ -6°, scale 0.92
+ *   - Card 2 (slot mid):  translateX 0,                  translateY 0,  rotateZ 0°,  scale 0.92
+ *   - Card 3 (slot der):  translateX -120%,              translateY 20, rotateZ 6°,  scale 0.92
+ *
+ * Estado final (scrollYProgress >= 0.7):
+ *   - Todas en su slot natural: translateX 0, translateY 0, rotateZ 0, scale 1.
+ *
+ * prefers-reduced-motion: render directo en estado final, sin scroll-driven.
+ */
+function CardsStack3D({ onSelect }: { onSelect: (p: Profile) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-15% 0px -15% 0px" });
   const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start start", "end end"],
+  });
+
+  // 3 perfiles, transforms diferenciados por índice
+  const initialOffsets = [
+    { x: "120%", y: 20, rot: -6, z: 1 },
+    { x: "0%", y: 0, rot: 0, z: 3 },
+    { x: "-120%", y: 20, rot: 6, z: 1 },
+  ];
 
   return (
-    <div ref={ref} className="grid grid-cols-1 gap-5 md:grid-cols-3 md:gap-6">
+    <div ref={ref} className="relative" style={{ height: "200vh" }}>
+      <div className="sticky top-0 flex h-screen items-center">
+        <div className="mx-auto grid w-full max-w-[1280px] grid-cols-3 gap-6 px-6">
+          {PROFILES.map((p, i) => {
+            const cfg = initialOffsets[i];
+            return (
+              <Stack3DCard
+                key={p.id}
+                profile={p}
+                onSelect={onSelect}
+                scrollYProgress={scrollYProgress}
+                initialX={cfg.x}
+                initialY={cfg.y}
+                initialRot={cfg.rot}
+                initialZ={cfg.z}
+                reduce={!!reduce}
+              />
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Stack3DCard({
+  profile: p,
+  onSelect,
+  scrollYProgress,
+  initialX,
+  initialY,
+  initialRot,
+  initialZ,
+  reduce,
+}: {
+  profile: Profile;
+  onSelect: (p: Profile) => void;
+  scrollYProgress: MotionValue<number>;
+  initialX: string;
+  initialY: number;
+  initialRot: number;
+  initialZ: number;
+  reduce: boolean;
+}) {
+  // El stack se separa entre 0 y 0.7 del progreso, último 30% es buffer estable.
+  const range = [0, 0.7];
+  const x = useTransform(scrollYProgress, range, [initialX, "0%"]);
+  const y = useTransform(scrollYProgress, range, [initialY, 0]);
+  const rotate = useTransform(scrollYProgress, range, [initialRot, 0]);
+  const scale = useTransform(scrollYProgress, range, [0.92, 1]);
+
+  return (
+    <motion.button
+      type="button"
+      onClick={() => onSelect(p)}
+      style={
+        reduce
+          ? { zIndex: "auto" }
+          : { x, y, rotate, scale, zIndex: initialZ, willChange: "transform" }
+      }
+      className="group relative flex h-full flex-col rounded-2xl p-7 text-left transition-[box-shadow,border-color] duration-300 md:p-8"
+    >
+      {/* Inner card con bg y border (separado para no chocar con motion transform) */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-2xl"
+        style={{
+          background: "var(--landing-card-bg)",
+          border: "0.5px solid var(--landing-card-border)",
+          boxShadow:
+            "0 1px 0 rgba(0,0,0,0.04), 0 24px 48px -16px rgba(0,0,0,0.28)",
+        }}
+      />
+      <span
+        className="relative z-[1] font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 10, letterSpacing: "0.16em" }}
+      >
+        {p.label}
+      </span>
+      <h3
+        className="relative z-[1] mt-4 font-heading font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
+        style={{ fontSize: "clamp(20px, 2.2vw, 26px)" }}
+      >
+        {p.shortLabel}
+      </h3>
+      <p
+        className="relative z-[1] mt-3 font-body italic leading-[1.5] text-[var(--landing-text-secondary)]"
+        style={{ fontSize: 15 }}
+      >
+        &ldquo;{p.question}&rdquo;
+      </p>
+
+      <div className="relative z-[1] mt-7 flex-1" />
+
+      <span
+        className="relative z-[1] inline-flex items-center gap-2 font-mono font-semibold uppercase text-[#C8323C] transition-transform duration-200 group-hover:translate-x-0.5"
+        style={{ fontSize: 11, letterSpacing: "0.12em" }}
+      >
+        Ver caso completo
+        <span aria-hidden="true">→</span>
+      </span>
+    </motion.button>
+  );
+}
+
+/* ============================ Cards static (mobile <768px) ============================ */
+
+function CardsStatic({ onSelect }: { onSelect: (p: Profile) => void }) {
+  const reduce = useReducedMotion();
+  return (
+    <div className="grid grid-cols-1 gap-5">
       {PROFILES.map((p, i) => (
         <motion.button
           key={p.id}
           type="button"
           onClick={() => onSelect(p)}
-          initial={reduce ? false : { opacity: 0, y: 32 }}
-          animate={
-            inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }
-          }
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
           transition={{
-            duration: 0.7,
+            duration: 0.6,
             ease: EASE,
-            delay: reduce ? 0 : 0.1 + i * 0.12,
+            delay: reduce ? 0 : 0.1 + i * 0.1,
           }}
-          className="group relative flex h-full flex-col rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:p-8"
+          className="group relative flex h-full flex-col rounded-2xl p-7 text-left"
           style={{
             background: "var(--landing-card-bg)",
             border: "0.5px solid var(--landing-card-border)",
@@ -222,10 +378,8 @@ function Cards({ onSelect }: { onSelect: (p: Profile) => void }) {
             &ldquo;{p.question}&rdquo;
           </p>
 
-          <div className="mt-7 flex-1" />
-
           <span
-            className="inline-flex items-center gap-2 font-mono font-semibold uppercase text-[#C8323C] transition-transform duration-200 group-hover:translate-x-0.5"
+            className="mt-6 inline-flex items-center gap-2 font-mono font-semibold uppercase text-[#C8323C]"
             style={{ fontSize: 11, letterSpacing: "0.12em" }}
           >
             Ver caso completo
