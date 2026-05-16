@@ -201,6 +201,11 @@ html {
   --landing-border-light: 0.5px solid rgba(255, 255, 255, 0.08);
   --landing-border-top-highlight: 0.5px solid rgba(255, 255, 255, 0.12);
   --landing-glow-signal: 0 0 80px rgba(200, 50, 60, 0.08);
+
+  /* F.11 Phase 2.6b · tokens del mapa de comparables del hero. */
+  --landing-map-bg: #161616;
+  --landing-map-grid: rgba(255, 255, 255, 0.08);
+  --landing-map-avenue: rgba(255, 255, 255, 0.15);
 }
 
 [data-franco-theme="light"] {
@@ -234,6 +239,11 @@ html {
   --landing-border-light: 0.5px solid rgba(15, 15, 15, 0.08);
   --landing-border-top-highlight: 0.5px solid rgba(255, 255, 255, 0.6);
   --landing-glow-signal: 0 0 80px rgba(200, 50, 60, 0.08);
+
+  /* F.11 Phase 2.6b · tokens del mapa de comparables del hero. */
+  --landing-map-bg: #F0EEE8;
+  --landing-map-grid: rgba(0, 0, 0, 0.08);
+  --landing-map-avenue: rgba(0, 0, 0, 0.12);
 }
 
 .scrollbar-hide {

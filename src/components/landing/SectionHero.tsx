@@ -6,30 +6,29 @@ import { motion, useReducedMotion } from "framer-motion";
 import HeroMobileCard from "./HeroMobileCard";
 
 /**
- * Sección 01 · Hero (F.11 Phase 2.4 · reset estilo Linear).
+ * Sección 01 · Hero (F.11 Phase 2.6).
  *
  * Layout fijo desde t=0: grid 2 cols (1fr / 380px) en desktop, 1 col
- * en mobile con mockup debajo. Sin phase machine, sin migración.
+ * en mobile con mockup debajo.
  *
- * Timing lineal:
+ * Timing inicial (desbloquea el loop del mockup tras la entrada):
  *   t=0     eyebrow
- *   t=0.2   H1 línea 1 mask reveal
- *   t=0.5   H1 línea 2 mask reveal (Signal Red)
+ *   t=0.2   H1 línea 1
+ *   t=0.5   H1 línea 2 (Signal Red)
  *   t=0.9   subhead
  *   t=1.4   CTA + microcopy
- *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile, opacity 0→1)
- *   t=2.7+  mockup internals stagger (0..6)
- *   t≈5.4   fin
+ *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile)
+ *   t=2.7   loopArmed → HeroMobileCard arranca el ciclo solo
  *
- * Skip on scroll: si scrollY > 50, salta a estado final.
- * prefers-reduced-motion: layout final desde t=0.
+ * Skip on scroll: si scrollY > 50, skipToFinal=true → mockup salta a
+ * results-stable estático, sin loop. prefers-reduced-motion → idem.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function SectionHero() {
   const reduce = useReducedMotion();
-  const [internalStep, setInternalStep] = useState(reduce ? 6 : -1);
+  const [loopArmed, setLoopArmed] = useState(!!reduce);
   const [skipped, setSkipped] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
 
@@ -43,22 +42,17 @@ export default function SectionHero() {
 
   useEffect(() => {
     if (reduce) return;
-    const stepTimings = [2700, 2900, 3200, 3400, 4600, 4900, 5400];
-    const timers = stepTimings.map((t, i) =>
-      setTimeout(() => setInternalStep((cur) => Math.max(cur, i)), t),
-    );
+    const armTimer = setTimeout(() => setLoopArmed(true), 2700);
 
     const onScroll = () => {
       if (window.scrollY > 50) {
-        timers.forEach((t) => clearTimeout(t));
         setSkipped(true);
-        setInternalStep(6);
       }
     };
     window.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
-      timers.forEach((t) => clearTimeout(t));
+      clearTimeout(armTimer);
       window.removeEventListener("scroll", onScroll);
     };
   }, [reduce]);
@@ -95,8 +89,8 @@ export default function SectionHero() {
               }}
             >
               <HeroMobileCard
-                internalStep={skipToFinal ? 6 : internalStep}
                 skipToFinal={skipToFinal}
+                loopArmed={loopArmed}
               />
             </motion.div>
           </div>

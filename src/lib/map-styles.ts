@@ -81,3 +81,44 @@ export function francoMapStaticStyleParams(theme: FrancoMapTheme): string[] {
   const styles = francoMapStyleForTheme(theme);
   return styles.map((s) => `style=${styleToStaticParam(s)}`);
 }
+
+/**
+ * Construye una URL completa para Google Static Maps con el estilo Franco
+ * (dark o light). Sin markers — el caller dibuja los pins encima como
+ * overlay SVG/HTML. Devuelve null si la API key no está disponible.
+ *
+ * Tamaños comunes:
+ *   332×180 display + scale 2 → request 664×360 (ideal para hero mockup).
+ */
+export function getStaticMapUrl({
+  lat,
+  lng,
+  zoom = 16,
+  width,
+  height,
+  scale = 2,
+  theme = "dark",
+}: {
+  lat: number;
+  lng: number;
+  zoom?: number;
+  width: number;
+  height: number;
+  scale?: 1 | 2;
+  theme?: FrancoMapTheme;
+}): string | null {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  if (!apiKey) return null;
+
+  const parts: string[] = [
+    `center=${lat.toFixed(6)},${lng.toFixed(6)}`,
+    `zoom=${zoom}`,
+    `size=${width}x${height}`,
+    `scale=${scale}`,
+    "maptype=roadmap",
+    ...francoMapStaticStyleParams(theme),
+    `key=${apiKey}`,
+  ];
+
+  return `https://maps.googleapis.com/maps/api/staticmap?${parts.join("&")}`;
+}
