@@ -61,7 +61,11 @@ const BULLETS: ReadonlyArray<Bullet> = [
 
 export default function SectionWhatFrancoIs() {
   return (
-    <section id="que-es-franco" className="relative">
+    <section
+      id="que-es-franco"
+      className="relative"
+      style={{ background: "var(--franco-bg-base)" }}
+    >
       <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <SectionHeader
           eyebrow="03 · Qué es Franco"

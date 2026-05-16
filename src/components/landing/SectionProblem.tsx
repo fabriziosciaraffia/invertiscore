@@ -54,7 +54,10 @@ const STATS: ReadonlyArray<Stat> = [
 
 export default function SectionProblem() {
   return (
-    <section className="relative">
+    <section
+      className="relative"
+      style={{ background: "var(--franco-bg-alt)" }}
+    >
       <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <ProblemHeader />
 
@@ -130,6 +133,16 @@ function ProblemHeader() {
       whileInView="show"
       viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
     >
+      <motion.div
+        variants={eyebrowV}
+        aria-hidden="true"
+        style={{
+          width: 24,
+          height: 1,
+          background: "rgba(200, 50, 60, 0.6)",
+          marginBottom: 16,
+        }}
+      />
       <motion.p
         variants={eyebrowV}
         className="font-mono font-medium uppercase text-[#C8323C]"

@@ -12,6 +12,7 @@ export default function SectionPricing() {
     <section
       id="pricing"
       className="relative flex min-h-screen items-center"
+      style={{ background: "var(--franco-bg-alt)" }}
     >
       <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}

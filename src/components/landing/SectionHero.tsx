@@ -74,7 +74,7 @@ export default function SectionHero() {
   return (
     <section
       className="relative flex items-start overflow-hidden md:items-center"
-      style={{ minHeight: "100vh" }}
+      style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-28 md:py-20">
         <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_380px] md:gap-16">

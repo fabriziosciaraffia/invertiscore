@@ -67,7 +67,10 @@ export default function SectionObjections() {
   const [active, setActive] = useState<Block | null>(null);
 
   return (
-    <section className="relative">
+    <section
+      className="relative"
+      style={{ background: "var(--franco-bg-alt)" }}
+    >
       <div className="mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
         <ObjectionsHeader />
         <Cards onSelect={setActive} />
@@ -109,6 +112,19 @@ function ObjectionsHeader() {
       viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
       className="mb-[8vh]"
     >
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.4, ease: EASE }}
+        aria-hidden="true"
+        style={{
+          width: 24,
+          height: 1,
+          background: "rgba(200, 50, 60, 0.6)",
+          marginBottom: 16,
+        }}
+      />
       <motion.p
         initial={reduce ? false : { opacity: 0, y: 12 }}
         whileInView={{ opacity: 1, y: 0 }}

@@ -58,7 +58,11 @@ const STEPS: ReadonlyArray<Step> = [
 
 export default function SectionWhatFrancoDoes() {
   return (
-    <section id="que-hace-franco" className="relative">
+    <section
+      id="que-hace-franco"
+      className="relative"
+      style={{ background: "var(--franco-bg-alt)" }}
+    >
       <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <SectionHeader
           eyebrow="04 · Cómo funciona"

@@ -4,11 +4,15 @@ import Link from "next/link";
 import SectionHeader from "./SectionHeader";
 
 /**
- * Sección 07 · CTA secundario — centered.
+ * Sección 08 · CTA secundario — bg base + botón outline (F.11 Phase 2.5).
+ * No se invierte para no competir con s06 y s10 (dos rojos seguidos = ruido).
  */
 export default function SectionCTASecondary() {
   return (
-    <section className="flex min-h-screen items-center">
+    <section
+      className="flex min-h-screen items-center"
+      style={{ background: "var(--franco-bg-base)" }}
+    >
       <div className="mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
         <SectionHeader
           eyebrow="08 · Ya lo sabes todo"
@@ -20,7 +24,7 @@ export default function SectionCTASecondary() {
         <div className="flex flex-col items-center gap-4">
           <Link
             href="/register"
-            className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
+            className="group inline-flex items-center gap-2 rounded-md border border-[#C8323C] bg-transparent px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C8323C] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[rgba(200,50,60,0.06)]"
           >
             Analizar mi departamento ahora
             <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">

@@ -172,6 +172,9 @@ html {
  * desde Tailwind arbitrary values. */
 [data-franco-theme="dark"] {
   --landing-bg: #0F0F0F;
+  /* F.11 Phase 2.5 · ritmo visual sutil — alterna entre base e alt por sección. */
+  --franco-bg-base: #0F0F0F;
+  --franco-bg-alt: #161616;
   --landing-text: #FAFAF8;
   --landing-text-secondary: #888780;
   --landing-text-muted: rgba(250,250,248,0.55);
@@ -202,6 +205,9 @@ html {
 
 [data-franco-theme="light"] {
   --landing-bg: #FAFAF8;
+  /* F.11 Phase 2.5 · ritmo visual sutil — alterna entre base e alt por sección. */
+  --franco-bg-base: #FAFAF7;
+  --franco-bg-alt: #F4F2EC;
   --landing-text: #0F0F0F;
   --landing-text-secondary: #5F5E5A;
   --landing-text-muted: rgba(15,15,15,0.55);
