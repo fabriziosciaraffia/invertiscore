@@ -10,10 +10,15 @@ import {
 import { useEffect, useState } from "react";
 
 /**
- * Card del Hero, estilo Linear: contenedor limpio sin metáfora "celular".
- * El contenido es protagonista — sin dynamic island, status bar, ni home
- * indicator. Border-radius 24px, border 0.5px sutil, sombra fuerte para
- * que la card flote sobre el fondo.
+ * Card del Hero (F.11 Phase 2.4 · estilo Linear).
+ *
+ * Contenedor sin metáfora "celular" — sin frame iPhone, dynamic island,
+ * status bar, home indicator ni bezel. Usa `.franco-mockup` (gradient bg +
+ * border-radius 16px + sombra stack 4 niveles + top-highlight) para que
+ * la card respire como un mockup limpio que flota sobre el fondo.
+ *
+ * El score "61" lleva `.franco-glow-signal` para un halo rojo sutil que
+ * subraya el contexto crítico (puntaje en zona de ajuste).
  *
  * `internalStep` orquesta la entrada escalonada del contenido:
  *   0 → header app visible (refranco.ai + ↗)
@@ -24,9 +29,6 @@ import { useEffect, useState } from "react";
  *   5 → 3 KPI cards stagger 150ms
  *   6 → caja Franco (label rojo + cita italic, sin avatar)
  *
- * `intense` controla la intensidad de la sombra (true en fase protagonista,
- * false tras la migración a layout final).
- *
  * `skipToFinal` fuerza render del estado completo de inmediato.
  */
 
@@ -36,33 +38,18 @@ const SCORE = 61;
 export default function HeroMobileCard({
   internalStep,
   skipToFinal = false,
-  intense = true,
 }: {
   internalStep: number;
   skipToFinal?: boolean;
-  intense?: boolean;
 }) {
   const reduce = useReducedMotion();
   const showAll = skipToFinal || !!reduce;
 
   const step = (n: number) => showAll || internalStep >= n;
 
-  const shadowIntense =
-    "0 40px 80px rgba(0,0,0,0.25), 0 12px 32px rgba(0,0,0,0.12)";
-  const shadowSettled =
-    "0 20px 40px rgba(0,0,0,0.12), 0 4px 12px rgba(0,0,0,0.06)";
-
   return (
-    <div className="relative" style={{ width: 360, maxWidth: "100%" }}>
-      <div
-        className="relative overflow-hidden transition-shadow duration-500 ease-out"
-        style={{
-          background: "var(--landing-card-bg)",
-          borderRadius: 24,
-          border: "0.5px solid var(--landing-card-border)",
-          boxShadow: intense ? shadowIntense : shadowSettled,
-        }}
-      >
+    <div className="relative" style={{ width: 380, maxWidth: "100%" }}>
+      <div className="franco-mockup">
         <div className="px-5 pb-6 pt-5">
           {/* a) Header app: wordmark + ↗ */}
           <motion.div
@@ -145,7 +132,12 @@ export default function HeroMobileCard({
             </motion.p>
 
             <div className="mt-2 flex items-baseline justify-between">
-              <ScoreNumber active={step(3)} skipToFinal={showAll} />
+              <span
+                className="franco-glow-signal"
+                style={{ display: "inline-block" }}
+              >
+                <ScoreNumber active={step(3)} skipToFinal={showAll} />
+              </span>
 
               <motion.span
                 initial={false}

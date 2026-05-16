@@ -6,52 +6,52 @@ import { motion, useReducedMotion } from "framer-motion";
 import HeroMobileCard from "./HeroMobileCard";
 
 /**
- * Sección 01 · Hero — secuencia animada con migración de layout.
+ * Sección 01 · Hero (F.11 Phase 2.4 · reset estilo Linear).
  *
- * Phase machine:
- * t=0     eyebrow fade-in
- * t=0.2   H1 línea 1 mask reveal ("¿Y si el depto")
- * t=1.1   H1 línea 2 mask reveal Signal Red ("no se paga solo?") + scale 1.05→1
- * t=1.8   subhead fade-in
- * t=2.3   CTA + microcopy fade-in
- * t=2.9   Card mobile entra (centrada abajo, tilt -8°)
- * t=3.5+  Card internals escalonados (0..6 en internalStep)
- * t=7.5   Migración layout: single-col centered → 2-cols (copy izq, card der)
- *         Duration 1000ms cubic-bezier(0.22, 1, 0.36, 1), card → tilt 0°
- * t=8.5   Estado final estable
+ * Layout fijo desde t=0: grid 2 cols (1fr / 380px) en desktop, 1 col
+ * en mobile con mockup debajo. Sin phase machine, sin migración.
  *
- * Skip on scroll: si scrollY > 50 antes de t=8.5, salta a estado final.
- * prefers-reduced-motion: inicia directamente en estado final.
+ * Timing lineal:
+ *   t=0     eyebrow
+ *   t=0.2   H1 línea 1 mask reveal
+ *   t=0.5   H1 línea 2 mask reveal (Signal Red)
+ *   t=0.9   subhead
+ *   t=1.4   CTA + microcopy
+ *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile, opacity 0→1)
+ *   t=2.7+  mockup internals stagger (0..6)
+ *   t≈5.4   fin
+ *
+ * Skip on scroll: si scrollY > 50, salta a estado final.
+ * prefers-reduced-motion: layout final desde t=0.
  */
 
-const EASE = [0.215, 0.61, 0.355, 1] as const;
-const EASE_MIGRATE = [0.22, 1, 0.36, 1] as const;
-
-type Phase = "intro" | "card" | "internals" | "migrate" | "final";
+const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function SectionHero() {
   const reduce = useReducedMotion();
-  const [phase, setPhase] = useState<Phase>(reduce ? "final" : "intro");
   const [internalStep, setInternalStep] = useState(reduce ? 6 : -1);
   const [skipped, setSkipped] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(true);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   useEffect(() => {
     if (reduce) return;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    timers.push(setTimeout(() => setPhase("card"), 2900));
-    timers.push(setTimeout(() => setPhase("internals"), 3500));
-    const stepTimings = [3500, 3800, 4200, 4400, 5600, 5900, 6500];
-    stepTimings.forEach((t, i) => {
-      timers.push(setTimeout(() => setInternalStep(i), t));
-    });
-    timers.push(setTimeout(() => setPhase("migrate"), 7500));
-    timers.push(setTimeout(() => setPhase("final"), 8500));
+    const stepTimings = [2700, 2900, 3200, 3400, 4600, 4900, 5400];
+    const timers = stepTimings.map((t, i) =>
+      setTimeout(() => setInternalStep((cur) => Math.max(cur, i)), t),
+    );
 
     const onScroll = () => {
       if (window.scrollY > 50) {
         timers.forEach((t) => clearTimeout(t));
         setSkipped(true);
-        setPhase("final");
         setInternalStep(6);
       }
     };
@@ -63,68 +63,40 @@ export default function SectionHero() {
     };
   }, [reduce]);
 
-  const isMigrated = phase === "migrate" || phase === "final";
-  const cardVisible =
-    phase === "card" || phase === "internals" || isMigrated;
   const skipToFinal = !!reduce || skipped;
-  const cardIntense = !isMigrated && !skipToFinal;
+
+  const mockupInitial = reduce
+    ? false
+    : isDesktop
+      ? { opacity: 0, x: 80, y: 0 }
+      : { opacity: 0, x: 0, y: 40 };
 
   return (
     <section
-      className="relative flex items-center overflow-hidden"
-      style={{ minHeight: "100vh", height: "100vh" }}
+      className="relative flex items-start overflow-hidden md:items-center"
+      style={{ minHeight: "100vh" }}
     >
-      <div
-        className="mx-auto w-full px-6 py-20"
-        style={{
-          maxWidth: isMigrated ? 1200 : 900,
-          transition:
-            "max-width 1000ms cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        <div
-          className={
-            isMigrated
-              ? "grid grid-cols-1 items-center gap-14 md:grid-cols-[1fr_400px]"
-              : "flex flex-col items-center gap-12 text-center"
-          }
-          style={{
-            transition:
-              "all 1000ms cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        >
+      <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-28 md:py-20">
+        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_380px] md:gap-16">
           {/* Columna copy */}
-          <div className={isMigrated ? "text-left" : "text-center"}>
+          <div className="text-left">
             <HeroCopy reduce={!!reduce} skipToFinal={skipToFinal} />
           </div>
 
-          {/* Card mobile */}
-          <div className="flex justify-center">
+          {/* Mockup */}
+          <div className="flex justify-center md:justify-end">
             <motion.div
-              initial={
-                reduce
-                  ? false
-                  : { opacity: 0, scale: 0.92, y: "100vh", rotate: -8 }
-              }
-              animate={
-                skipToFinal
-                  ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
-                  : !cardVisible
-                    ? { opacity: 0, scale: 0.92, y: "100vh", rotate: -8 }
-                    : isMigrated
-                      ? { opacity: 1, scale: 1, y: 0, rotate: 0 }
-                      : { opacity: 1, scale: 1, y: 0, rotate: -8 }
-              }
+              initial={mockupInitial}
+              animate={{ opacity: 1, x: 0, y: 0 }}
               transition={{
-                duration: isMigrated ? 1.0 : 0.95,
-                ease: EASE_MIGRATE,
+                duration: 0.85,
+                ease: EASE,
+                delay: skipToFinal ? 0 : 1.8,
               }}
-              style={{ originX: 0.5, originY: 0.5 }}
             >
               <HeroMobileCard
                 internalStep={skipToFinal ? 6 : internalStep}
                 skipToFinal={skipToFinal}
-                intense={cardIntense}
               />
             </motion.div>
           </div>
@@ -164,7 +136,7 @@ function HeroCopy({
             className="block"
             initial={reduce ? false : { y: "105%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.75, ease: EASE, delay: delay(0.2) }}
+            transition={{ duration: 0.7, ease: EASE, delay: delay(0.2) }}
           >
             ¿Y si el depto
           </motion.span>
@@ -172,13 +144,9 @@ function HeroCopy({
         <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
           <motion.span
             className="block text-[#C8323C]"
-            initial={reduce ? false : { y: "105%", scale: 1.05 }}
-            animate={{ y: "0%", scale: 1 }}
-            transition={{
-              duration: 0.85,
-              ease: EASE,
-              delay: delay(1.1),
-            }}
+            initial={reduce ? false : { y: "105%" }}
+            animate={{ y: "0%" }}
+            transition={{ duration: 0.75, ease: EASE, delay: delay(0.5) }}
           >
             no se paga solo?
           </motion.span>
@@ -186,9 +154,9 @@ function HeroCopy({
       </h1>
 
       <motion.p
-        initial={reduce ? false : { opacity: 0, y: 16 }}
+        initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE, delay: delay(1.8) }}
+        transition={{ duration: 0.4, ease: EASE, delay: delay(0.9) }}
         className="mt-7 max-w-[540px] font-body text-[var(--landing-text-secondary)]"
         style={{ fontSize: 18, lineHeight: 1.55 }}
       >
@@ -197,10 +165,10 @@ function HeroCopy({
       </motion.p>
 
       <motion.div
-        initial={reduce ? false : { opacity: 0, y: 16 }}
+        initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: EASE, delay: delay(2.3) }}
-        className="mt-9 flex flex-col items-center gap-3 md:items-start"
+        transition={{ duration: 0.4, ease: EASE, delay: delay(1.4) }}
+        className="mt-9 flex flex-col items-start gap-3"
       >
         <Link
           href="/register"
