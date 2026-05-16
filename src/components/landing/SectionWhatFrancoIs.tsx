@@ -116,18 +116,18 @@ function FrancoIsHeader() {
       </motion.p>
 
       <h2
-        className="font-heading font-bold leading-[1.05] tracking-[-0.02em] text-[var(--landing-text)]"
+        className="font-heading font-bold leading-[1.1] tracking-[-0.015em] text-[var(--landing-text)]"
         style={{ maxWidth: 980 }}
       >
         {lines.map((line, i) => (
           <span
             key={i}
             className="block overflow-hidden"
-            style={{ lineHeight: 1.05 }}
+            style={{ lineHeight: 1.1 }}
           >
             <motion.span
               className="block"
-              style={{ fontSize: "clamp(40px, 6.4vw, 72px)" }}
+              style={{ fontSize: "clamp(36px, 5.5vw, 56px)" }}
               variants={lineVariant(i)}
             >
               {line}
