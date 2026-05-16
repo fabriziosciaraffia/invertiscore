@@ -1,242 +1,208 @@
 "use client";
 
-import { useRef } from "react";
-import {
-  motion,
-  useInView,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
+import SectionHeader from "./SectionHeader";
+import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
- * Sección 03 · Qué es Franco — secuencial scroll-driven (mismo patrón que s02).
+ * Sección 03 · Qué es Franco (F.11 Phase 2.2 · reset estilo Linear).
  *
- *   ┌─────────────────────────────────────────────────────────┐
- *   │ Header sticky en contenedor de 60vh:                    │
- *   │   Eyebrow "03 · QUÉ ES FRANCO" · Signal Red             │
- *   │   H2 56-72px "No es una calculadora. / Es un asesor."   │
- *   │   Subhead muted                                          │
- *   │                                                          │
- *   │ Bullet 01 INTERPRETA ─── ~40vh                          │
- *   │ Bullet 02 IDENTIFICA ─── ~40vh                          │
- *   │ Bullet 03 PROPONE ────── ~40vh                          │
- *   │ Bullet 04 VIGILA ─────── ~40vh                          │
- *   │                                                          │
- *   │ Caja Franco grande con cita italic (cierre) ─── ~60vh   │
- *   └─────────────────────────────────────────────────────────┘
+ * Layout natural sin sticky scroll. 2 cols en desktop:
+ *  ┌──────────────────┬──────────────────┐
+ *  │ Header                              │
+ *  ├──────────────────┼──────────────────┤
+ *  │ 4 bullets        │ Caja Franco      │
+ *  │ INTERPRETA       │ (cita + acciones)│
+ *  │ IDENTIFICA       │                  │
+ *  │ PROPONE          │                  │
+ *  │ VIGILA           │                  │
+ *  └──────────────────┴──────────────────┘
+ *
+ * Mobile: grid colapsa a 1 col, caja debajo de bullets.
+ * Animaciones: solo RevealOnScroll con stagger.
  */
 
-const EASE = [0.215, 0.61, 0.355, 1] as const;
-
-type Bullet = { index: string; verb: string; rest: string };
+type Bullet = {
+  id: "01" | "02" | "03" | "04";
+  verb: "INTERPRETA" | "IDENTIFICA" | "PROPONE" | "VIGILA";
+  title: string;
+  description: string;
+};
 
 const BULLETS: ReadonlyArray<Bullet> = [
   {
-    index: "01",
+    id: "01",
     verb: "INTERPRETA",
-    rest: "tu caso con todos los gastos reales — no sólo el dividendo.",
+    title: "Lee todos los gastos reales de tu caso.",
+    description:
+      "Contribuciones, GGCC, vacancia, mantención. Nada se queda fuera de la ecuación.",
   },
   {
-    index: "02",
+    id: "02",
     verb: "IDENTIFICA",
-    rest: "el problema concreto: precio, estructura del financiamiento o modalidad.",
+    title: "Encuentra dónde está el problema real.",
+    description:
+      "Precio sobre mercado, estructura mal armada, modalidad equivocada. No solo te muestra el síntoma — te dice la causa.",
   },
   {
-    index: "03",
+    id: "03",
     verb: "PROPONE",
-    rest: "alternativas: negociar, reestructurar, cambiar a Airbnb o buscar otra.",
+    title: "Da alternativas concretas para actuar.",
+    description:
+      "Negociar el precio, reestructurar el pie, cambiar la modalidad a Airbnb, buscar otra opción. Cada caso tiene su salida.",
   },
   {
-    index: "04",
+    id: "04",
     verb: "VIGILA",
-    rest: "los riesgos a largo plazo: vacancia, mantención mayor, cambios de tasa.",
+    title: "Anticipa riesgos del análisis a largo plazo.",
+    description:
+      "Tasas que pueden subir, vacancia, plusvalía de la zona, eventos del barrio. Franco te muestra qué podría salir mal.",
   },
 ];
 
 export default function SectionWhatFrancoIs() {
   return (
     <section id="que-es-franco" className="relative">
-      <div className="mx-auto w-full max-w-[1280px] px-6">
-        {/* Sticky parent 60vh — header se queda visible durante el inicio
-            de la sección y luego se libera. */}
-        <div className="relative" style={{ height: "60vh" }}>
-          <div className="sticky top-24 pt-[12vh]">
-            <FrancoIsHeader />
+      <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
+        <SectionHeader
+          eyebrow="03 · Qué es Franco"
+          title={"No es una calculadora.\nEs un asesor con IA."}
+          subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
+        />
+
+        <div className="mt-16 grid grid-cols-1 gap-12 md:mt-24 lg:grid-cols-2 lg:gap-16">
+          {/* Columna izquierda · 4 bullets */}
+          <div>
+            {BULLETS.map((b, i) => (
+              <RevealOnScroll key={b.id} delay={i * 0.1}>
+                <BulletItem data={b} last={i === BULLETS.length - 1} />
+              </RevealOnScroll>
+            ))}
           </div>
-        </div>
 
-        {/* Bullets secuenciales — cada uno aparece al entrar al viewport */}
-        <div className="space-y-[18vh] pt-[4vh] pb-[10vh]">
-          {BULLETS.map((b) => (
-            <BulletRow key={b.index} bullet={b} />
-          ))}
+          {/* Columna derecha · Caja Franco */}
+          <RevealOnScroll delay={0.4}>
+            <FrancoBox />
+          </RevealOnScroll>
         </div>
-
-        {/* Caja Franco grande al cierre */}
-        <FrancoQuoteClose />
       </div>
     </section>
   );
 }
 
-/* ============================ Sticky header ============================ */
+/* ============================ Bullet ============================ */
 
-function FrancoIsHeader() {
-  const reduce = useReducedMotion();
-  const lines = ["No es una calculadora.", "Es un asesor con IA."];
-
-  const lineVariant = (i: number): Variants => ({
-    hidden: { y: reduce ? "0%" : "105%" },
-    show: {
-      y: "0%",
-      transition: {
-        duration: 0.75,
-        ease: EASE,
-        delay: reduce ? 0 : 0.15 + i * 0.15,
-      },
-    },
-  });
-
+function BulletItem({ data, last }: { data: Bullet; last: boolean }) {
   return (
-    <motion.div
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: "-10% 0px -20% 0px" }}
-      style={{ pointerEvents: "none" }}
-    >
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.4, ease: EASE }}
+    <div style={{ marginBottom: last ? 0 : 40 }}>
+      <p
         className="font-mono font-medium uppercase text-[#C8323C]"
-        style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 24 }}
+        style={{
+          fontSize: 11,
+          letterSpacing: "0.06em",
+          marginBottom: 12,
+        }}
       >
-        03 · Qué es Franco
-      </motion.p>
-
-      <h2
-        className="font-heading font-bold leading-[1.1] tracking-[-0.015em] text-[var(--landing-text)]"
-        style={{ maxWidth: 980 }}
+        {data.id} · {data.verb}
+      </p>
+      <p
+        className="font-body font-semibold text-[var(--landing-text)]"
+        style={{
+          fontSize: "clamp(18px, 1.8vw, 22px)",
+          lineHeight: 1.3,
+          marginBottom: 12,
+        }}
       >
-        {lines.map((line, i) => (
-          <span
-            key={i}
-            className="block overflow-hidden"
-            style={{ lineHeight: 1.1 }}
-          >
-            <motion.span
-              className="block"
-              style={{ fontSize: "clamp(36px, 5.5vw, 56px)" }}
-              variants={lineVariant(i)}
-            >
-              {line}
-            </motion.span>
-          </span>
-        ))}
-      </h2>
-
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 16 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ duration: 0.5, ease: EASE, delay: 0.6 }}
-        className="mt-6 max-w-[680px] font-body text-[var(--landing-text-secondary)]"
-        style={{ fontSize: 17, lineHeight: 1.55 }}
+        {data.title}
+      </p>
+      <p
+        className="font-body text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 15,
+          lineHeight: 1.6,
+          maxWidth: 420,
+        }}
       >
-        Franco interpreta tu caso, identifica el problema real y propone
-        alternativas concretas. No te entrega solo números — te dice qué
-        hacer con ellos.
-      </motion.p>
-    </motion.div>
-  );
-}
-
-/* ============================ Bullet (sequential) ============================ */
-
-function BulletRow({ bullet }: { bullet: Bullet }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-25% 0px -25% 0px" });
-  const reduce = useReducedMotion();
-
-  return (
-    <div
-      ref={ref}
-      className="grid grid-cols-1 items-baseline gap-6 md:grid-cols-[100px_1fr] md:gap-10"
-      style={{ minHeight: "32vh" }}
-    >
-      <motion.p
-        initial={reduce ? false : { opacity: 0, x: -16 }}
-        animate={
-          inView || reduce ? { opacity: 1, x: 0 } : { opacity: 0, x: -16 }
-        }
-        transition={{ duration: 0.7, ease: EASE }}
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 13, letterSpacing: "0.18em" }}
-      >
-        {bullet.index}
-      </motion.p>
-
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 24 }}
-        animate={
-          inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }
-        }
-        transition={{ duration: 0.8, ease: EASE, delay: 0.1 }}
-        className="font-heading leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(28px, 3.6vw, 44px)" }}
-      >
-        <span className="font-mono font-semibold uppercase text-[#C8323C]">
-          {bullet.verb}
-        </span>{" "}
-        <span className="font-body font-normal text-[var(--landing-text-secondary)]">
-          {bullet.rest}
-        </span>
-      </motion.p>
+        {data.description}
+      </p>
     </div>
   );
 }
 
-/* ============================ Caja Franco (cierre) ============================ */
+/* ============================ Caja Franco ============================ */
 
-function FrancoQuoteClose() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-20% 0px -20% 0px" });
-  const reduce = useReducedMotion();
-
+function FrancoBox() {
   return (
-    <motion.div
-      ref={ref}
-      initial={reduce ? false : { opacity: 0, y: 32 }}
-      animate={inView || reduce ? { opacity: 1, y: 0 } : { opacity: 0, y: 32 }}
-      transition={{ duration: 0.9, ease: EASE }}
-      className="relative mx-auto py-[10vh]"
-      style={{ maxWidth: 980 }}
+    <div
+      className="franco-card"
+      // Border-left Signal Red 3px para enfatizar (override local sobre .franco-card).
+      style={{ borderLeft: "3px solid #C8323C" }}
     >
-      <div
-        className="relative rounded-2xl px-8 py-12 md:px-12 md:py-16"
+      <p
+        className="font-mono font-semibold uppercase text-[#C8323C]"
         style={{
-          background: "var(--landing-card-bg-soft)",
-          border: "0.5px solid var(--landing-card-border)",
-          borderLeft: "4px solid #C8323C",
-          boxShadow:
-            "0 24px 48px rgba(0,0,0,0.14), 0 8px 16px rgba(0,0,0,0.06)",
+          fontSize: 11,
+          letterSpacing: "0.10em",
+          marginBottom: 16,
         }}
       >
-        <p
-          className="font-mono font-semibold uppercase text-[#C8323C]"
-          style={{ fontSize: 12, letterSpacing: "0.16em" }}
-        >
-          Siendo franco
-        </p>
-        <p
-          className="mt-6 font-body italic leading-[1.35] text-[var(--landing-text)]"
-          style={{ fontSize: "clamp(24px, 3.4vw, 40px)" }}
-        >
-          &ldquo;Excelente ubicación al precio equivocado. Negocia hasta UF
-          4.900 y opera en Airbnb. Así el flujo se sostiene.&rdquo;
-        </p>
-      </div>
-    </motion.div>
+        Siendo franco
+      </p>
+      <p
+        className="font-heading italic font-semibold leading-[1.4] text-[var(--landing-text)]"
+        style={{
+          fontSize: "clamp(22px, 2.4vw, 28px)",
+          marginBottom: 32,
+        }}
+      >
+        “Excelente ubicación al precio equivocado. Negocia hasta UF 4.900 y
+        opera en Airbnb. Así el flujo se sostiene.”
+      </p>
+      <div
+        style={{
+          borderTop: "0.5px solid var(--landing-divider)",
+          marginBottom: 24,
+        }}
+      />
+      <p
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.06em",
+          marginBottom: 16,
+        }}
+      >
+        Qué hace en este caso
+      </p>
+      <ul
+        className="font-body text-[var(--landing-text)]"
+        style={{
+          fontSize: 14,
+          lineHeight: 1.7,
+          listStyle: "none",
+          padding: 0,
+        }}
+      >
+        {[
+          "Renegociar UF 5.500 → UF 4.900",
+          "Evaluar modo Airbnb (+$148K/mes vs arriendo)",
+          "Recalcular con pie 30%",
+        ].map((action) => (
+          <li key={action} style={{ paddingLeft: 16, position: "relative" }}>
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                left: 0,
+                color: "#C8323C",
+                fontWeight: 700,
+              }}
+            >
+              ·
+            </span>
+            {action}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
