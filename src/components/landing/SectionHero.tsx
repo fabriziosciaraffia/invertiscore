@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import HeroMobileCard from "./HeroMobileCard";
 
@@ -20,8 +20,12 @@ import HeroMobileCard from "./HeroMobileCard";
  *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile)
  *   t=2.7   loopArmed → HeroMobileCard arranca el ciclo solo
  *
- * Skip on scroll: si scrollY > 50, skipToFinal=true → mockup salta a
- * results-stable estático, sin loop. prefers-reduced-motion → idem.
+ * Pausa reversible cuando el hero deja el viewport: IntersectionObserver
+ * sobre la sección entera. Cuando el hero está visible (>= 20% intersect)
+ * Y el loop ya armó (post-2700ms), el mockup corre el ciclo; cuando sale
+ * de viewport, pausa. Al volver, reinicia desde form-empty (Opción B,
+ * sin continuidad pero sin estado complejo).
+ * prefers-reduced-motion → final estático directo, sin loop.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
@@ -29,8 +33,14 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export default function SectionHero() {
   const reduce = useReducedMotion();
   const [loopArmed, setLoopArmed] = useState(!!reduce);
-  const [skipped, setSkipped] = useState(false);
+  const [isHeroVisible, setIsHeroVisible] = useState(true);
   const [isDesktop, setIsDesktop] = useState(true);
+  const sectionRef = useRef<HTMLElement>(null);
+  const loopArmedRef = useRef(!!reduce);
+
+  useEffect(() => {
+    loopArmedRef.current = loopArmed;
+  }, [loopArmed]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -42,22 +52,30 @@ export default function SectionHero() {
 
   useEffect(() => {
     if (reduce) return;
+
     const armTimer = setTimeout(() => setLoopArmed(true), 2700);
 
-    const onScroll = () => {
-      if (window.scrollY > 50) {
-        setSkipped(true);
-      }
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
+    const section = sectionRef.current;
+    if (!section || typeof IntersectionObserver === "undefined") {
+      return () => clearTimeout(armTimer);
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!loopArmedRef.current) return;
+        const visible =
+          entry.isIntersecting && entry.intersectionRatio >= 0.2;
+        setIsHeroVisible(visible);
+      },
+      { threshold: [0, 0.2, 0.5] },
+    );
+    observer.observe(section);
 
     return () => {
       clearTimeout(armTimer);
-      window.removeEventListener("scroll", onScroll);
+      observer.disconnect();
     };
   }, [reduce]);
-
-  const skipToFinal = !!reduce || skipped;
 
   const mockupInitial = reduce
     ? false
@@ -67,6 +85,7 @@ export default function SectionHero() {
 
   return (
     <section
+      ref={sectionRef}
       className="relative flex items-start overflow-hidden md:items-center"
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
@@ -74,7 +93,7 @@ export default function SectionHero() {
         <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_380px] md:gap-16">
           {/* Columna copy */}
           <div className="text-left">
-            <HeroCopy reduce={!!reduce} skipToFinal={skipToFinal} />
+            <HeroCopy reduce={!!reduce} />
           </div>
 
           {/* Mockup */}
@@ -85,12 +104,12 @@ export default function SectionHero() {
               transition={{
                 duration: 0.85,
                 ease: EASE,
-                delay: skipToFinal ? 0 : 1.8,
+                delay: reduce ? 0 : 1.8,
               }}
             >
               <HeroMobileCard
-                skipToFinal={skipToFinal}
                 loopArmed={loopArmed}
+                heroVisible={isHeroVisible}
               />
             </motion.div>
           </div>
@@ -100,14 +119,8 @@ export default function SectionHero() {
   );
 }
 
-function HeroCopy({
-  reduce,
-  skipToFinal,
-}: {
-  reduce: boolean;
-  skipToFinal: boolean;
-}) {
-  const delay = (sec: number) => (reduce || skipToFinal ? 0 : sec);
+function HeroCopy({ reduce }: { reduce: boolean }) {
+  const delay = (sec: number) => (reduce ? 0 : sec);
 
   return (
     <>

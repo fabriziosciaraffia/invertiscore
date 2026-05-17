@@ -18,11 +18,15 @@ import { getStaticMapUrl } from "@/lib/map-styles";
  *   2. Caja Franco (border-left Signal Red).
  *   3. 3 cards UBICACIÓN / PRECIO / FLUJO con stagger.
  *
- * Pausas:
- *   · IntersectionObserver threshold 0.5 → fuera viewport pausa.
+ * Pausas (reversibles, el loop reanuda desde form-empty al volver):
+ *   · IntersectionObserver propio (threshold 0.2 + rootMargin -10%
+ *     bottom) → mockup fuera de viewport pausa.
+ *   · heroVisible prop (IO de la sección Hero en SectionHero) → hero
+ *     fuera de viewport pausa.
  *   · Hover sobre mockup → pausa.
- *   · skipToFinal (scroll fuera del hero) → results-stable estático.
- *   · prefers-reduced-motion → idem.
+ *
+ * Estado final estático (no loop):
+ *   · prefers-reduced-motion → Results estático desde t=0.
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
@@ -77,11 +81,11 @@ const INSIGHT_CARDS: ReadonlyArray<{ eyebrow: string; text: string }> = [
 ];
 
 export default function HeroMobileCard({
-  skipToFinal = false,
   loopArmed = false,
+  heroVisible = true,
 }: {
-  skipToFinal?: boolean;
   loopArmed?: boolean;
+  heroVisible?: boolean;
 }) {
   const reduce = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -104,8 +108,9 @@ export default function HeroMobileCard({
   const [showFranco, setShowFranco] = useState(false);
   const [activeCards, setActiveCards] = useState(0);
 
-  const showFinalStatic = reduce || skipToFinal;
-  const shouldLoop = !showFinalStatic && loopArmed && isVisible && !isHovered;
+  const showFinalStatic = !!reduce;
+  const shouldLoop =
+    !showFinalStatic && loopArmed && heroVisible && isVisible && !isHovered;
 
   // IntersectionObserver — pausa fuera de viewport.
   useEffect(() => {
@@ -113,13 +118,13 @@ export default function HeroMobileCard({
     if (!el || typeof IntersectionObserver === "undefined") return;
     const obs = new IntersectionObserver(
       ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.5 },
+      { threshold: 0.2, rootMargin: "0px 0px -10% 0px" },
     );
     obs.observe(el);
     return () => obs.disconnect();
   }, []);
 
-  // Static final state (reduce-motion / skipToFinal).
+  // Static final state (solo prefers-reduced-motion).
   useEffect(() => {
     if (!showFinalStatic) return;
     setPhase("results-stable");
