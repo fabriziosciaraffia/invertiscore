@@ -42,3 +42,31 @@ next-env.d.ts
 .vercel
 
 .env*.local
+
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+ms-playwright/
+.playwright-mcp/
+
+# auth cookies y secrets locales de sesión
+.auth-cookies*.json
+.cookies-*
+.prod-cookies-*
+*.local.json
+
+# claude runtime
+.claude/scheduled_tasks.lock
+
+# screenshots de sesión (audit / iteración visual)
+audit-*.png
+f*-*.png
+e*-*.png
+commit*-*.png
+prod-*.png
+hero-*.png
+landing-*.png
+
+# dumps de auditoría
+audit/
