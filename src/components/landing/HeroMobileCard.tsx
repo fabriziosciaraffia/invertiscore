@@ -113,15 +113,23 @@ export default function HeroMobileCard({
     !showFinalStatic && loopArmed && heroVisible && isVisible && !isHovered;
 
   // IntersectionObserver — pausa fuera de viewport.
+  // rootMargin en px (no %) por compat con Safari iOS < 14.5.
+  // try/catch defensivo: si el browser tira SyntaxError o el constructor falla,
+  // fallback a "visible" y dejar correr el loop sin pausa por viewport.
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setIsVisible(entry.isIntersecting),
-      { threshold: 0.2, rootMargin: "0px 0px -10% 0px" },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    try {
+      const obs = new IntersectionObserver(
+        ([entry]) => setIsVisible(entry.isIntersecting),
+        { threshold: 0.2, rootMargin: "0px 0px -50px 0px" },
+      );
+      obs.observe(el);
+      return () => obs.disconnect();
+    } catch {
+      setIsVisible(true);
+      return () => {};
+    }
   }, []);
 
   // Static final state (solo prefers-reduced-motion).
@@ -303,6 +311,9 @@ export default function HeroMobileCard({
       style={{ width: 380, maxWidth: "100%" }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
+      onTouchCancel={() => setIsHovered(false)}
     >
       <div className="franco-mockup" style={{ height: 620 }}>
         <div className="relative h-full">
@@ -438,25 +449,34 @@ function FormLayer({
               Buscar dirección…
             </span>
           )}
-          {cursorVisible && (
-            <motion.span
-              animate={{ opacity: [1, 1, 0, 0] }}
-              transition={{
-                duration: 0.9,
-                repeat: Infinity,
-                times: [0, 0.5, 0.5, 1],
-              }}
-              aria-hidden="true"
-              style={{
-                display: "inline-block",
-                width: 1,
-                height: 13,
-                background: "var(--landing-text)",
-                marginLeft: 2,
-                verticalAlign: "text-bottom",
-              }}
-            />
-          )}
+          {/* Cursor siempre montado, animate controlado: evita unmount con
+              repeat:Infinity (bug framer-motion + Safari iOS al cleanup). */}
+          <motion.span
+            animate={
+              cursorVisible
+                ? { opacity: [1, 1, 0, 0] }
+                : { opacity: 0 }
+            }
+            transition={
+              cursorVisible
+                ? {
+                    duration: 0.9,
+                    repeat: Infinity,
+                    times: [0, 0.5, 0.5, 1],
+                  }
+                : { duration: 0 }
+            }
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: 1,
+              height: 13,
+              background: "var(--landing-text)",
+              marginLeft: 2,
+              verticalAlign: "text-bottom",
+              pointerEvents: "none",
+            }}
+          />
         </span>
         {dropdownVisible && (
           <motion.div
@@ -704,22 +724,26 @@ function ComparablesMap({ mapStage }: { mapStage: number }) {
             transition={{ duration: 0.4, ease: "backOut" }}
             style={{ transformBox: "fill-box", transformOrigin: "center" }}
           >
-            {mapStage >= 5 && (
-              <motion.circle
-                cx={MAP_PIN_RED.x}
-                cy={MAP_PIN_RED.y}
-                fill="none"
-                stroke="#C8323C"
-                strokeWidth={1.5}
-                initial={{ r: 8, opacity: 0.5 }}
-                animate={{ r: 18, opacity: 0 }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeOut",
-                }}
-              />
-            )}
+            {/* Ring siempre montado, animate controlado: evita unmount con
+                repeat:Infinity (bug framer-motion + Safari iOS al cleanup). */}
+            <motion.circle
+              cx={MAP_PIN_RED.x}
+              cy={MAP_PIN_RED.y}
+              fill="none"
+              stroke="#C8323C"
+              strokeWidth={1.5}
+              initial={{ r: 8, opacity: 0 }}
+              animate={
+                mapStage >= 5
+                  ? { r: [8, 18], opacity: [0.5, 0] }
+                  : { r: 8, opacity: 0 }
+              }
+              transition={
+                mapStage >= 5
+                  ? { duration: 2, repeat: Infinity, ease: "easeOut" }
+                  : { duration: 0 }
+              }
+            />
             <circle
               cx={MAP_PIN_RED.x}
               cy={MAP_PIN_RED.y}

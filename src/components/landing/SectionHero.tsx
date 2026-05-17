@@ -60,21 +60,28 @@ export default function SectionHero() {
       return () => clearTimeout(armTimer);
     }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!loopArmedRef.current) return;
-        const visible =
-          entry.isIntersecting && entry.intersectionRatio >= 0.2;
-        setIsHeroVisible(visible);
-      },
-      { threshold: [0, 0.2, 0.5] },
-    );
-    observer.observe(section);
+    // try/catch defensivo: si el constructor falla (Safari iOS antiguo
+    // u otro motivo), fallback a heroVisible=true para no romper el árbol.
+    try {
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (!loopArmedRef.current) return;
+          const visible =
+            entry.isIntersecting && entry.intersectionRatio >= 0.2;
+          setIsHeroVisible(visible);
+        },
+        { threshold: [0, 0.2, 0.5] },
+      );
+      observer.observe(section);
 
-    return () => {
-      clearTimeout(armTimer);
-      observer.disconnect();
-    };
+      return () => {
+        clearTimeout(armTimer);
+        observer.disconnect();
+      };
+    } catch {
+      setIsHeroVisible(true);
+      return () => clearTimeout(armTimer);
+    }
   }, [reduce]);
 
   const mockupInitial = reduce
