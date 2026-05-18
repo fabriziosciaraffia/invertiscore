@@ -88,25 +88,26 @@ export default function SectionHero() {
   return (
     <section
       ref={sectionRef}
-      className="relative flex items-start overflow-x-hidden md:items-center"
+      className="relative overflow-x-hidden"
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-28 md:py-20">
-        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_480px] md:gap-16">
-          {/* Columna copy */}
-          <div className="text-left">
-            <HeroCopy reduce={!!reduce} />
-          </div>
+      {/* Container del copy. En md+ deja padding-right reservado para
+          que las cards no invadan el copy. */}
+      <div className="mx-auto w-full max-w-6xl px-6 pt-28 pb-12 md:py-20 md:pr-[500px]">
+        <HeroCopy reduce={!!reduce} />
+      </div>
 
-          {/* Mockup (cada card hace su entry internamente · ver HeroMobileCard) */}
-          <div className="flex justify-center md:justify-end">
-            <HeroMobileCard
-              loopArmed={loopArmed}
-              heroVisible={isHeroVisible}
-              isDesktop={isDesktop}
-            />
-          </div>
-        </div>
+      {/* Wrapper del mockup · una sola instance, reposicionado por CSS:
+           Mobile: in-flow después del copy (dentro de max-w-6xl visualmente)
+           Desktop: absolute al section, anclado al borde derecho del viewport. */}
+      <div
+        className="mx-auto w-full max-w-6xl px-6 pb-12 md:absolute md:right-0 md:top-0 md:bottom-0 md:p-0 md:max-w-none md:mx-0 md:flex md:items-center md:w-auto"
+      >
+        <HeroMobileCard
+          loopArmed={loopArmed}
+          heroVisible={isHeroVisible}
+          isDesktop={isDesktop}
+        />
       </div>
     </section>
   );
