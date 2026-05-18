@@ -5,47 +5,54 @@ import { useEffect, useRef, useState } from "react";
 import { getStaticMapUrl } from "@/lib/map-styles";
 
 /**
- * Hero mockup como asesor — loop continuo Form → Results (~12s ciclo).
- * F.11 Phase 2.6 v2.
+ * Hero mockup — 2 cards estilo Linear/build (F.11 Phase 2.7 Etapa 2).
  *
- * Form:
- *   · Dirección con typing char-por-char + autocompletar (3 sugerencias).
- *   · Precio + superficie con counters animados.
- *   · Mapa comparables (200×120, 4 pins, pin central rojo) + caption.
+ * Estructura:
+ *   · CARD 1 · FORM (atrás, opacity base 0.7) — dirección + counters + mapa
+ *   · CARD 2 · RESULTS (frente, opacity base 0.4) — score + Franco + 3 cards
  *
- * Results (reordenado · veredicto primero):
- *   1. Score 61 + badge AJUSTAR + línea italic.
- *   2. Caja Franco (border-left Signal Red).
- *   3. 3 cards UBICACIÓN / PRECIO / FLUJO con stagger.
+ * Desktop: ambas absolute en wrapper relative · Card 1 top:0 left:-50 width:420
+ *          (mask izquierdo), Card 2 top:140 left:50 width:440. Borde derecho
+ *          cortado vía borderRight:none, viewport recorta visualmente.
+ * Mobile: stack vertical · Card 1 ancho 100% con mask inferior (~55% visible)
+ *         + margin-bottom:-30px (overlap) · Card 2 protagonista debajo.
  *
- * Pausas (reversibles, el loop reanuda desde form-empty al volver):
- *   · IntersectionObserver propio (threshold 0.2 + rootMargin -10%
- *     bottom) → mockup fuera de viewport pausa.
- *   · heroVisible prop (IO de la sección Hero en SectionHero) → hero
- *     fuera de viewport pausa.
- *   · Hover sobre mockup → pausa.
+ * Loop ~10s (Opción A):
+ *   t=0-3000   form-active: Card 1 a 1.0, Card 2 a 0.4 · Form anima.
+ *   t=3000-3500 transition: Card 1 a 0.7.
+ *   t=3500-9000 results-active: Card 2 a 1.0, Card 1 a 0.7 · Results anima.
+ *   t=9000-10000 stable: ambas a 1.0.
+ *   t=10000 reset → t=0.
  *
- * Estado final estático (no loop):
- *   · prefers-reduced-motion → Results estático desde t=0.
+ * Entrada inicial escalonada (Phase 2.7):
+ *   t=1800 Card 2 entra (x:80→0, opacity:0→0.4)
+ *   t=2000 Card 1 entra (x:80→0, opacity:0→0.7)
+ *   loopArmed externo (t=2700 desde SectionHero) → loop arranca.
+ *
+ * Pausas reversibles:
+ *   · IntersectionObserver propio (threshold 0.2 + rootMargin -50px) · Phase 2.6e
+ *   · heroVisible prop (IO de la sección Hero)
+ *   · Hover/touch sobre wrapper externo
+ *
+ * Estado final estático: prefers-reduced-motion → ambas opacity 1.0, contenido
+ * completo, sin loop.
+ *
+ * Defensivo Safari iOS (Phase 2.6e):
+ *   · IO en try/catch con fallback a visible=true
+ *   · motion con repeat:Infinity siempre montadas (cursor + pin ring)
+ *   · onTouchStart/End/Cancel + onMouseEnter/Leave
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
-const TYPING_SPEED_MS = 40;
+const TYPING_SPEED_MS = 50;
 const DIRECCION = "Av. Pedro de Valdivia 1850, Providencia";
 
 type LoopPhase =
-  | "form-empty"
-  | "form-typing-address"
-  | "form-dropdown-visible"
-  | "form-address-selected"
-  | "form-counters-filling"
-  | "form-map-revealing"
-  | "form-submitting"
-  | "results-score"
-  | "results-franco"
-  | "results-cards"
-  | "results-stable"
-  | "results-fading";
+  | "idle"
+  | "form-active"
+  | "transition"
+  | "results-active"
+  | "stable";
 
 const SUGGESTIONS = [
   "Av. Pedro de Valdivia 1850, Providencia",
@@ -53,17 +60,15 @@ const SUGGESTIONS = [
   "Av. Pedro de Valdivia 1234, Providencia",
 ];
 
-/* Coordenadas del depto ejemplo (Av. Pedro de Valdivia 1850, Providencia)
- * para la Maps Static API + posiciones pixel de los pins sobre el mapa. */
 const MAP_CENTER = { lat: -33.4297, lng: -70.6113 };
-const MAP_VIEW_W = 332;
-const MAP_VIEW_H = 180;
+const MAP_VIEW_W = 380;
+const MAP_VIEW_H = 100;
 const MAP_PINS_GRAY = [
-  { id: "p1", x: 80, y: 60, value: "UF 5.200" },
-  { id: "p2", x: 220, y: 80, value: "UF 5.500" },
-  { id: "p4", x: 240, y: 130, value: "UF 6.000" },
+  { id: "p1", x: 90, y: 38, value: "UF 5.200" },
+  { id: "p2", x: 270, y: 32, value: "UF 5.500" },
+  { id: "p4", x: 305, y: 72, value: "UF 6.000" },
 ] as const;
-const MAP_PIN_RED = { x: 160, y: 100, value: "UF 5.800" } as const;
+const MAP_PIN_RED = { x: 185, y: 55, value: "UF 5.800" } as const;
 
 const INSIGHT_CARDS: ReadonlyArray<{ eyebrow: string; text: string }> = [
   {
@@ -83,25 +88,34 @@ const INSIGHT_CARDS: ReadonlyArray<{ eyebrow: string; text: string }> = [
 export default function HeroMobileCard({
   loopArmed = false,
   heroVisible = true,
+  isDesktop = true,
 }: {
   loopArmed?: boolean;
   heroVisible?: boolean;
+  isDesktop?: boolean;
 }) {
   const reduce = useReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
+
   const [isVisible, setIsVisible] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  const [phase, setPhase] = useState<LoopPhase>("form-empty");
+  // Entradas escalonadas (Card 2 antes que Card 1 según spec).
+  const [card1Entered, setCard1Entered] = useState(!!reduce);
+  const [card2Entered, setCard2Entered] = useState(!!reduce);
+
+  const [phase, setPhase] = useState<LoopPhase>(reduce ? "stable" : "idle");
+
+  // Form sub-state
   const [typedText, setTypedText] = useState("");
+  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
   const [precioCount, setPrecioCount] = useState(0);
   const [superficieCount, setSuperficieCount] = useState(0);
-  // mapStage drives the Maps Static reveal stagger:
-  //   0 hidden · 1 container (img + frame visible) · 2 pin1 · 3 pin2
-  //   4 pin4 · 5 pin3 red (ring pulses) · 6 caption
+  // mapStage 0 hidden · 1 container · 2..4 pins gris · 5 pin rojo + ring · 6 caption
   const [mapStage, setMapStage] = useState(0);
-  const [buttonPress, setButtonPress] = useState(false);
+
+  // Results sub-state
   const [scoreCount, setScoreCount] = useState(0);
   const [showBadge, setShowBadge] = useState(false);
   const [showLine, setShowLine] = useState(false);
@@ -110,12 +124,16 @@ export default function HeroMobileCard({
 
   const showFinalStatic = !!reduce;
   const shouldLoop =
-    !showFinalStatic && loopArmed && heroVisible && isVisible && !isHovered;
+    !showFinalStatic &&
+    loopArmed &&
+    heroVisible &&
+    isVisible &&
+    !isHovered &&
+    card1Entered &&
+    card2Entered;
 
-  // IntersectionObserver — pausa fuera de viewport.
-  // rootMargin en px (no %) por compat con Safari iOS < 14.5.
-  // try/catch defensivo: si el browser tira SyntaxError o el constructor falla,
-  // fallback a "visible" y dejar correr el loop sin pausa por viewport.
+  // IntersectionObserver propio del mockup — pausa fuera de viewport.
+  // rootMargin en px (no %) por compat con Safari iOS < 14.5 (Phase 2.6e).
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
@@ -132,11 +150,28 @@ export default function HeroMobileCard({
     }
   }, []);
 
-  // Static final state (solo prefers-reduced-motion).
+  // Entrada escalonada de las cards.
+  useEffect(() => {
+    if (showFinalStatic) {
+      setCard1Entered(true);
+      setCard2Entered(true);
+      return;
+    }
+    const t2 = setTimeout(() => setCard2Entered(true), 1800);
+    const t1 = setTimeout(() => setCard1Entered(true), 2000);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [showFinalStatic]);
+
+  // Estado estático final (prefers-reduced-motion).
   useEffect(() => {
     if (!showFinalStatic) return;
-    setPhase("results-stable");
+    setPhase("stable");
     setTypedText(DIRECCION);
+    setDropdownVisible(false);
+    setAutocompleteHighlight(false);
     setPrecioCount(5800);
     setSuperficieCount(58);
     setMapStage(6);
@@ -147,7 +182,7 @@ export default function HeroMobileCard({
     setActiveCards(3);
   }, [showFinalStatic]);
 
-  // Loop.
+  // Loop principal.
   useEffect(() => {
     if (!shouldLoop) return;
 
@@ -182,24 +217,17 @@ export default function HeroMobileCard({
     };
 
     const runCycle = () => {
-      // Reset.
-      setPhase("form-empty");
+      // === FORM ACTIVE (0-3000ms) ===
+      setPhase("form-active");
       setTypedText("");
+      setDropdownVisible(false);
       setAutocompleteHighlight(false);
       setPrecioCount(0);
       setSuperficieCount(0);
       setMapStage(0);
-      setButtonPress(false);
-      setScoreCount(0);
-      setShowBadge(false);
-      setShowLine(false);
-      setShowFranco(false);
-      setActiveCards(0);
 
-      // t=500 cursor enters address field (visual: phase change → field focused via CSS)
-      // t=800 typing starts
-      T(800, () => {
-        setPhase("form-typing-address");
+      // t=400 typing arranca
+      T(400, () => {
         let i = 0;
         typingInterval = setInterval(() => {
           if (!mounted) return;
@@ -212,77 +240,60 @@ export default function HeroMobileCard({
         }, TYPING_SPEED_MS);
       });
 
-      // t=2300 dropdown appears (typing may still continue briefly)
-      T(2300, () => {
+      // t=1000 dropdown aparece
+      T(1000, () => setDropdownVisible(true));
+      // t=1200 highlight primer match
+      T(1200, () => setAutocompleteHighlight(true));
+      // t=1500 selección · cierra dropdown
+      T(1500, () => {
         if (typingInterval) {
           clearInterval(typingInterval);
           typingInterval = null;
         }
-        setPhase("form-dropdown-visible");
-      });
-
-      // t=2800 highlight first suggestion
-      T(2800, () => setAutocompleteHighlight(true));
-
-      // t=3100 click → dropdown closes, address filled
-      T(3100, () => {
-        setPhase("form-address-selected");
         setTypedText(DIRECCION);
+        setDropdownVisible(false);
         setAutocompleteHighlight(false);
       });
 
-      // t=3400 counters
-      T(3400, () => {
-        setPhase("form-counters-filling");
+      // t=1700 counters Precio/Superficie
+      T(1700, () => {
         animateCounter(setPrecioCount, 0, 5800, 700);
         animateCounter(setSuperficieCount, 0, 58, 700);
       });
 
-      // t=4400 map reveal — Maps Static image + SVG pin overlay stagger.
-      T(4400, () => {
-        setPhase("form-map-revealing");
-        setMapStage(1); // container + map img fade-in (300ms)
+      // t=2300 mapa stagger reveal
+      T(2300, () => setMapStage(1));
+      T(2500, () => setMapStage(2));
+      T(2650, () => setMapStage(3));
+      T(2800, () => setMapStage(4));
+      T(2950, () => setMapStage(5));
+      T(3000, () => setMapStage(6));
+
+      // === TRANSITION (3000-3500ms) ===
+      T(3000, () => setPhase("transition"));
+
+      // === RESULTS ACTIVE (3500-9000ms) ===
+      T(3500, () => {
+        setPhase("results-active");
+        setScoreCount(0);
+        setShowBadge(false);
+        setShowLine(false);
+        setShowFranco(false);
+        setActiveCards(0);
+        animateCounter(setScoreCount, 0, 61, 1200);
       });
-      T(4900, () => setMapStage(2)); // pin 1 (gray)
-      T(5050, () => setMapStage(3)); // pin 2 (gray)
-      T(5200, () => setMapStage(4)); // pin 4 (gray)
-      T(5400, () => setMapStage(5)); // pin 3 red central + ring pulsing
-      T(5900, () => setMapStage(6)); // caption
+      T(4700, () => setShowBadge(true));
+      T(5000, () => setShowLine(true));
+      T(5500, () => setShowFranco(true));
+      T(6300, () => setActiveCards(1));
+      T(6600, () => setActiveCards(2));
+      T(6900, () => setActiveCards(3));
 
-      // t=6000 submit press
-      T(6000, () => {
-        setPhase("form-submitting");
-        setButtonPress(true);
-      });
-      T(6150, () => setButtonPress(false));
+      // === STABLE (9000-10000ms) ===
+      T(9000, () => setPhase("stable"));
 
-      // t=6200 crossfade to results
-      T(6200, () => setPhase("results-score"));
-      // t=6500 score counter
-      T(6500, () => animateCounter(setScoreCount, 0, 61, 1200));
-      // t=7000 badge
-      T(7000, () => setShowBadge(true));
-      // t=7300 line
-      T(7300, () => setShowLine(true));
-
-      // t=7800 Caja Franco — VEREDICTO PRIMERO
-      T(7800, () => {
-        setPhase("results-franco");
-        setShowFranco(true);
-      });
-
-      // Cards stagger.
-      T(8600, () => {
-        setPhase("results-cards");
-        setActiveCards(1);
-      });
-      T(9100, () => setActiveCards(2));
-      T(9600, () => setActiveCards(3));
-
-      // Stable + fade + loop.
-      T(10300, () => setPhase("results-stable"));
-      T(11500, () => setPhase("results-fading"));
-      T(12000, () => runCycle());
+      // === RESET → próximo ciclo ===
+      T(10000, runCycle);
     };
 
     runCycle();
@@ -295,88 +306,141 @@ export default function HeroMobileCard({
     };
   }, [shouldLoop]);
 
-  const isFormPhase = phase.startsWith("form-");
-  const isResultsPhase =
-    phase === "results-score" ||
-    phase === "results-franco" ||
-    phase === "results-cards" ||
-    phase === "results-stable";
-  const cursorVisible = phase === "form-typing-address";
-  const dropdownVisible = phase === "form-dropdown-visible";
+  // === Render derived values ===
+  const card1Opacity = !card1Entered
+    ? 0
+    : phase === "form-active" || phase === "stable"
+      ? 1.0
+      : 0.7;
+  const card2Opacity = !card2Entered
+    ? 0
+    : phase === "results-active" || phase === "stable"
+      ? 1.0
+      : 0.4;
+  const enterOffset = isDesktop ? { x: 80, y: 0 } : { x: 0, y: 40 };
+  const card1Anim = !card1Entered ? enterOffset : { x: 0, y: 0 };
+  const card2Anim = !card2Entered ? enterOffset : { x: 0, y: 0 };
+
+  const cursorVisible =
+    phase === "form-active" && typedText.length < DIRECCION.length;
+
+  // === Card layout styles (responsive vía isDesktop prop) ===
+  const card1Style: React.CSSProperties = isDesktop
+    ? {
+        position: "absolute",
+        top: 0,
+        left: -100,
+        width: 380,
+        padding: "18px 20px",
+        borderRadius: "12px 0 0 12px",
+        borderRight: "none",
+        maskImage:
+          "linear-gradient(90deg, transparent 0%, #000 8%, #000 100%)",
+        WebkitMaskImage:
+          "linear-gradient(90deg, transparent 0%, #000 8%, #000 100%)",
+        zIndex: 1,
+        willChange: "opacity, transform",
+      }
+    : {
+        position: "relative",
+        width: "100%",
+        padding: 12,
+        borderRadius: "8px 8px 0 0",
+        borderBottom: "none",
+        marginBottom: -30,
+        maskImage:
+          "linear-gradient(180deg, #000 0%, #000 55%, transparent 100%)",
+        WebkitMaskImage:
+          "linear-gradient(180deg, #000 0%, #000 55%, transparent 100%)",
+        zIndex: 1,
+        willChange: "opacity, transform",
+      };
+  const card2Style: React.CSSProperties = isDesktop
+    ? {
+        position: "absolute",
+        top: 140,
+        left: 80,
+        width: 440,
+        padding: 22,
+        borderRadius: "12px 0 0 12px",
+        borderRight: "none",
+        zIndex: 2,
+        willChange: "opacity, transform",
+      }
+    : {
+        position: "relative",
+        width: "100%",
+        padding: 16,
+        zIndex: 2,
+        willChange: "opacity, transform",
+      };
+
+  const wrapperStyle: React.CSSProperties = isDesktop
+    ? { position: "relative", width: "100%", minHeight: 580 }
+    : { position: "relative", width: "100%" };
 
   return (
     <div
       ref={containerRef}
-      className="relative"
-      style={{ width: 380, maxWidth: "100%" }}
+      style={wrapperStyle}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onTouchStart={() => setIsHovered(true)}
       onTouchEnd={() => setIsHovered(false)}
       onTouchCancel={() => setIsHovered(false)}
     >
-      <div className="franco-mockup" style={{ height: 620 }}>
-        <div className="relative h-full">
-          <HeaderApp />
+      {/* CARD 1 · FORM */}
+      <motion.div
+        className="franco-mockup"
+        animate={{ opacity: card1Opacity, ...card1Anim }}
+        transition={{ duration: 0.6, ease: EASE }}
+        style={card1Style}
+        aria-label="Mockup formulario"
+      >
+        <FormCard
+          typedText={typedText}
+          cursorVisible={cursorVisible}
+          dropdownVisible={dropdownVisible}
+          autocompleteHighlight={autocompleteHighlight}
+          precioCount={precioCount}
+          superficieCount={superficieCount}
+          mapStage={mapStage}
+        />
+      </motion.div>
 
-          {/* Form layer */}
-          <motion.div
-            className="absolute inset-x-0 px-6"
-            style={{ top: 50, bottom: 0 }}
-            animate={{ opacity: isFormPhase ? 1 : 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            aria-hidden={!isFormPhase}
-          >
-            <FormLayer
-              typedText={typedText}
-              cursorVisible={cursorVisible}
-              dropdownVisible={dropdownVisible}
-              autocompleteHighlight={autocompleteHighlight}
-              precioCount={precioCount}
-              superficieCount={superficieCount}
-              mapStage={mapStage}
-              buttonPress={buttonPress}
-            />
-          </motion.div>
-
-          {/* Results layer */}
-          <motion.div
-            className="absolute inset-x-0 px-6"
-            style={{ top: 50, bottom: 0 }}
-            animate={{ opacity: isResultsPhase ? 1 : 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            aria-hidden={!isResultsPhase}
-          >
-            <ResultsLayer
-              scoreCount={scoreCount}
-              showBadge={showBadge}
-              showLine={showLine}
-              showFranco={showFranco}
-              activeCards={activeCards}
-            />
-          </motion.div>
-        </div>
-      </div>
+      {/* CARD 2 · RESULTS */}
+      <motion.div
+        className="franco-mockup"
+        animate={{ opacity: card2Opacity, ...card2Anim }}
+        transition={{ duration: 0.6, ease: EASE }}
+        style={card2Style}
+        aria-label="Mockup resultados"
+      >
+        <ResultsCard
+          scoreCount={scoreCount}
+          showBadge={showBadge}
+          showLine={showLine}
+          showFranco={showFranco}
+          activeCards={activeCards}
+        />
+      </motion.div>
     </div>
   );
 }
 
-/* ===================== Header app ===================== */
+/* ===================== Sub-components ===================== */
 
-function HeaderApp() {
+function HeaderApp({ label }: { label: string }) {
   return (
     <div
-      className="flex items-center justify-between px-6"
-      style={{
-        height: 46,
-        borderBottom: "0.5px solid var(--landing-divider)",
-      }}
+      className="flex items-center justify-between"
+      style={{ height: 28, marginBottom: 12 }}
     >
       <span className="inline-flex items-baseline">
         <span
           className="font-heading italic font-light"
           style={{
-            fontSize: 13,
+            fontSize: 12,
             color: "var(--landing-wm-re)",
             marginRight: "-0.08em",
           }}
@@ -385,7 +449,7 @@ function HeaderApp() {
         </span>
         <span
           className="font-heading font-bold"
-          style={{ fontSize: 13, color: "var(--landing-wm-franco)" }}
+          style={{ fontSize: 12, color: "var(--landing-wm-franco)" }}
         >
           franco
         </span>
@@ -397,19 +461,44 @@ function HeaderApp() {
         </span>
       </span>
       <span
-        className="font-mono text-[var(--landing-text-muted)]"
-        style={{ fontSize: 11 }}
-        aria-hidden="true"
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 9, letterSpacing: "0.14em" }}
       >
-        ↗
+        {label}
       </span>
     </div>
   );
 }
 
-/* ===================== Form layer ===================== */
+function FormField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative" style={{ marginBottom: 10 }}>
+      <p
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}
+      >
+        {label}
+      </p>
+      <div
+        style={{
+          paddingBottom: 5,
+          borderBottom: "0.5px solid var(--landing-divider)",
+          minHeight: 20,
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
 
-function FormLayer({
+function FormCard({
   typedText,
   cursorVisible,
   dropdownVisible,
@@ -417,7 +506,6 @@ function FormLayer({
   precioCount,
   superficieCount,
   mapStage,
-  buttonPress,
 }: {
   typedText: string;
   cursorVisible: boolean;
@@ -426,21 +514,15 @@ function FormLayer({
   precioCount: number;
   superficieCount: number;
   mapStage: number;
-  buttonPress: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col pt-5">
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 10, letterSpacing: "0.14em", marginBottom: 16 }}
-      >
-        Nuevo análisis
-      </p>
+    <div>
+      <HeaderApp label="Nuevo análisis · 4 comparables" />
 
       <FormField label="Dirección">
         <span
           className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 13 }}
+          style={{ fontSize: 12 }}
         >
           {typedText ? (
             typedText
@@ -449,13 +531,10 @@ function FormLayer({
               Buscar dirección…
             </span>
           )}
-          {/* Cursor siempre montado, animate controlado: evita unmount con
-              repeat:Infinity (bug framer-motion + Safari iOS al cleanup). */}
+          {/* Cursor siempre montado · animate condicional (Phase 2.6e). */}
           <motion.span
             animate={
-              cursorVisible
-                ? { opacity: [1, 1, 0, 0] }
-                : { opacity: 0 }
+              cursorVisible ? { opacity: [1, 1, 0, 0] } : { opacity: 0 }
             }
             transition={
               cursorVisible
@@ -470,7 +549,7 @@ function FormLayer({
             style={{
               display: "inline-block",
               width: 1,
-              height: 13,
+              height: 12,
               background: "var(--landing-text)",
               marginLeft: 2,
               verticalAlign: "text-bottom",
@@ -486,11 +565,11 @@ function FormLayer({
             className="absolute left-0 right-0 z-10"
             style={{
               top: "100%",
-              marginTop: 6,
+              marginTop: 4,
               background: "var(--landing-card-bg)",
               border: "0.5px solid var(--landing-card-border)",
               borderRadius: 6,
-              padding: "4px",
+              padding: 4,
               boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
             }}
           >
@@ -499,7 +578,7 @@ function FormLayer({
                 key={s}
                 className="font-body text-[var(--landing-text)]"
                 style={{
-                  fontSize: 11.5,
+                  fontSize: 11,
                   padding: "5px 8px",
                   borderRadius: 4,
                   background:
@@ -520,11 +599,11 @@ function FormLayer({
         )}
       </FormField>
 
-      <div className="mt-4 grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <FormField label="Precio">
           <span
             className="font-mono font-medium text-[var(--landing-text)]"
-            style={{ fontSize: 13 }}
+            style={{ fontSize: 12 }}
           >
             UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
           </span>
@@ -532,85 +611,17 @@ function FormLayer({
         <FormField label="Superficie">
           <span
             className="font-mono font-medium text-[var(--landing-text)]"
-            style={{ fontSize: 13 }}
+            style={{ fontSize: 12 }}
           >
             {superficieCount > 0 ? `${superficieCount} m²` : "—"}
           </span>
         </FormField>
       </div>
 
-      {/* Mapa comparables */}
-      <div className="mt-5">
-        <ComparablesMap mapStage={mapStage} />
-      </div>
-
-      {/* Botón Analizar */}
-      <div className="mt-auto pb-4">
-        <motion.div
-          animate={buttonPress ? { scale: 0.95 } : { scale: 1 }}
-          transition={{ duration: 0.15, ease: EASE }}
-          className="inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-4 py-2"
-          style={{ boxShadow: "0 2px 0 rgba(0,0,0,0.08)" }}
-        >
-          <span
-            className="font-mono font-semibold uppercase tracking-[0.08em] text-white"
-            style={{ fontSize: 11 }}
-          >
-            Analizar
-          </span>
-          <span
-            aria-hidden="true"
-            className="text-white"
-            style={{ fontSize: 11 }}
-          >
-            →
-          </span>
-        </motion.div>
-      </div>
+      <ComparablesMap mapStage={mapStage} />
     </div>
   );
 }
-
-function FormField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}
-      >
-        {label}
-      </p>
-      <div
-        style={{
-          paddingBottom: 6,
-          borderBottom: "0.5px solid var(--landing-divider)",
-          minHeight: 22,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/* ===================== Comparables map (Maps Static + SVG overlay) =====
- * F.11 Phase 2.6c — mapa real de Google Static Maps con dark style
- * (`getStaticMapUrl` reutiliza la paleta de `map-styles.ts`, misma que
- * el drawer zone-insight). Encima, overlay SVG con 4 pins (3 grises +
- * 1 rojo central con ring pulsante).
- *
- * Si la NEXT_PUBLIC_GOOGLE_MAPS_API_KEY no está definida o el <img>
- * falla, cae a un fallback "Mapa no disponible" sin bloquear el resto
- * del mockup.
- *
- * Reveal stagger por mapStage 1..6.
- */
 
 function ComparablesMap({ mapStage }: { mapStage: number }) {
   const [imgError, setImgError] = useState(false);
@@ -627,162 +638,133 @@ function ComparablesMap({ mapStage }: { mapStage: number }) {
   const showFallback = !mapUrl || imgError;
 
   return (
-    <div>
-      <motion.div
-        initial={false}
-        animate={{ opacity: mapStage >= 1 ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: EASE }}
-        style={{
-          position: "relative",
-          width: "100%",
-          height: MAP_VIEW_H,
-          borderRadius: 6,
-          overflow: "hidden",
-          border: "0.5px solid var(--landing-card-border)",
-          background: "var(--landing-map-bg)",
-        }}
-      >
-        {/* Capa 1 · mapa real (o fallback) */}
-        {showFallback ? (
-          <div
-            className="flex h-full items-center justify-center font-mono uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 10, letterSpacing: "0.12em" }}
-          >
-            Mapa no disponible
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={mapUrl}
-            alt=""
-            loading="eager"
-            onError={() => setImgError(true)}
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              display: "block",
-            }}
-            aria-hidden="true"
-          />
-        )}
-
-        {/* Capa 2 · pins overlay SVG */}
-        <svg
-          viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
-          width="100%"
-          height={MAP_VIEW_H}
-          preserveAspectRatio="none"
+    <motion.div
+      initial={false}
+      animate={{ opacity: mapStage >= 1 ? 1 : 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      style={{
+        position: "relative",
+        width: "100%",
+        height: MAP_VIEW_H,
+        borderRadius: 6,
+        overflow: "hidden",
+        border: "0.5px solid var(--landing-card-border)",
+        background: "var(--landing-map-bg)",
+        marginTop: 4,
+      }}
+    >
+      {showFallback ? (
+        <div
+          className="flex h-full items-center justify-center font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 10, letterSpacing: "0.12em" }}
+        >
+          Mapa no disponible
+        </div>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={mapUrl}
+          alt=""
+          loading="eager"
+          onError={() => setImgError(true)}
           style={{
             position: "absolute",
             inset: 0,
-            pointerEvents: "none",
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            display: "block",
           }}
           aria-hidden="true"
-        >
-          {/* Pins grises */}
-          {MAP_PINS_GRAY.map((pin, i) => {
-            const visible = mapStage >= 2 + i;
-            return (
-              <motion.g
-                key={pin.id}
-                initial={false}
-                animate={
-                  visible
-                    ? { opacity: 1, scale: 1 }
-                    : { opacity: 0, scale: 0.4 }
-                }
-                transition={{ duration: 0.2, ease: "easeOut" }}
-                style={{
-                  transformBox: "fill-box",
-                  transformOrigin: "center",
-                }}
-              >
-                <circle
-                  cx={pin.x}
-                  cy={pin.y}
-                  r={3}
-                  fill="#C8C8C8"
-                  stroke="#0F0F0F"
-                  strokeWidth={1.5}
-                />
-                <PinLabel x={pin.x} y={pin.y - 10} text={pin.value} />
-              </motion.g>
-            );
-          })}
+        />
+      )}
 
-          {/* Pin rojo central + ring pulsante */}
-          <motion.g
-            initial={false}
+      <svg
+        viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
+        width="100%"
+        height={MAP_VIEW_H}
+        preserveAspectRatio="none"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+        }}
+        aria-hidden="true"
+      >
+        {MAP_PINS_GRAY.map((pin, i) => {
+          const visible = mapStage >= 2 + i;
+          return (
+            <motion.g
+              key={pin.id}
+              initial={false}
+              animate={
+                visible ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.4 }
+              }
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              style={{ transformBox: "fill-box", transformOrigin: "center" }}
+            >
+              <circle
+                cx={pin.x}
+                cy={pin.y}
+                r={3}
+                fill="#C8C8C8"
+                stroke="#0F0F0F"
+                strokeWidth={1.5}
+              />
+              <PinLabel x={pin.x} y={pin.y - 10} text={pin.value} />
+            </motion.g>
+          );
+        })}
+
+        <motion.g
+          initial={false}
+          animate={
+            mapStage >= 5
+              ? { opacity: 1, scale: 1 }
+              : { opacity: 0, scale: 0.3 }
+          }
+          transition={{ duration: 0.4, ease: "backOut" }}
+          style={{ transformBox: "fill-box", transformOrigin: "center" }}
+        >
+          {/* Ring siempre montado · animate controlado (Phase 2.6e). */}
+          <motion.circle
+            cx={MAP_PIN_RED.x}
+            cy={MAP_PIN_RED.y}
+            fill="none"
+            stroke="#C8323C"
+            strokeWidth={1.5}
+            initial={{ r: 8, opacity: 0 }}
             animate={
               mapStage >= 5
-                ? { opacity: 1, scale: 1 }
-                : { opacity: 0, scale: 0.3 }
+                ? { r: [8, 18], opacity: [0.5, 0] }
+                : { r: 8, opacity: 0 }
             }
-            transition={{ duration: 0.4, ease: "backOut" }}
-            style={{ transformBox: "fill-box", transformOrigin: "center" }}
-          >
-            {/* Ring siempre montado, animate controlado: evita unmount con
-                repeat:Infinity (bug framer-motion + Safari iOS al cleanup). */}
-            <motion.circle
-              cx={MAP_PIN_RED.x}
-              cy={MAP_PIN_RED.y}
-              fill="none"
-              stroke="#C8323C"
-              strokeWidth={1.5}
-              initial={{ r: 8, opacity: 0 }}
-              animate={
-                mapStage >= 5
-                  ? { r: [8, 18], opacity: [0.5, 0] }
-                  : { r: 8, opacity: 0 }
-              }
-              transition={
-                mapStage >= 5
-                  ? { duration: 2, repeat: Infinity, ease: "easeOut" }
-                  : { duration: 0 }
-              }
-            />
-            <circle
-              cx={MAP_PIN_RED.x}
-              cy={MAP_PIN_RED.y}
-              r={4}
-              fill="#C8323C"
-              stroke="#0F0F0F"
-              strokeWidth={2}
-            />
-            <PinLabel
-              x={MAP_PIN_RED.x}
-              y={MAP_PIN_RED.y - 12}
-              text={MAP_PIN_RED.value}
-              accent
-            />
-          </motion.g>
-        </svg>
-      </motion.div>
-
-      {/* Caption */}
-      <motion.p
-        initial={false}
-        animate={{ opacity: mapStage >= 6 ? 1 : 0 }}
-        transition={{ duration: 0.4, ease: EASE }}
-        className="font-mono uppercase text-[var(--landing-text-muted)]"
-        style={{
-          fontSize: 10,
-          letterSpacing: "0.06em",
-          marginTop: 8,
-        }}
-      >
-        4 comparables · 280m al metro · Providencia centro
-      </motion.p>
-    </div>
+            transition={
+              mapStage >= 5
+                ? { duration: 2, repeat: Infinity, ease: "easeOut" }
+                : { duration: 0 }
+            }
+          />
+          <circle
+            cx={MAP_PIN_RED.x}
+            cy={MAP_PIN_RED.y}
+            r={4}
+            fill="#C8323C"
+            stroke="#0F0F0F"
+            strokeWidth={2}
+          />
+          <PinLabel
+            x={MAP_PIN_RED.x}
+            y={MAP_PIN_RED.y - 12}
+            text={MAP_PIN_RED.value}
+            accent
+          />
+        </motion.g>
+      </svg>
+    </motion.div>
   );
 }
 
-/* Pin label con fondo oscuro semi-transparente para legibilidad sobre
- * el mapa real (cualquier tono). `accent` para el pin rojo: texto blanco
- * bold + bg ligeramente más opaco. */
 function PinLabel({
   x,
   y,
@@ -794,7 +776,6 @@ function PinLabel({
   text: string;
   accent?: boolean;
 }) {
-  // Estimate width by char count (~5.5px per char at fontSize 10).
   const charW = accent ? 6.2 : 5.6;
   const padX = 4;
   const padY = 2;
@@ -826,9 +807,7 @@ function PinLabel({
   );
 }
 
-/* ===================== Results layer ===================== */
-
-function ResultsLayer({
+function ResultsCard({
   scoreCount,
   showBadge,
   showLine,
@@ -842,21 +821,26 @@ function ResultsLayer({
   activeCards: number;
 }) {
   return (
-    <div className="flex h-full flex-col pt-4 pb-5">
-      {/* Score header */}
-      <div className="flex items-baseline justify-between">
-        <span
-          className="franco-glow-signal"
-          style={{ display: "inline-block" }}
-        >
+    <div>
+      <HeaderApp label="Resultado" />
+
+      <div
+        className="flex items-baseline justify-between"
+        style={{ marginBottom: 4 }}
+      >
+        <span className="franco-glow-signal" style={{ display: "inline-block" }}>
           <span
             className="font-heading font-bold leading-none tracking-tight text-[var(--landing-text)]"
-            style={{ fontSize: 60 }}
+            style={{ fontSize: 42 }}
           >
             {scoreCount}
             <span
-              className="font-heading"
-              style={{ fontSize: 18, color: "var(--landing-text-muted)" }}
+              className="font-mono"
+              style={{
+                fontSize: 11,
+                color: "var(--landing-text-muted)",
+                marginLeft: 2,
+              }}
             >
               /100
             </span>
@@ -865,9 +849,7 @@ function ResultsLayer({
         <motion.span
           initial={false}
           animate={
-            showBadge
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 0, scale: 0.9 }
+            showBadge ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }
           }
           transition={{ duration: 0.3, ease: EASE }}
           className="font-mono font-semibold uppercase"
@@ -892,38 +874,37 @@ function ResultsLayer({
         style={{
           fontSize: 13,
           color: "var(--landing-text-muted)",
-          marginTop: 8,
-          marginBottom: 16,
+          marginTop: 6,
+          marginBottom: 14,
         }}
       >
         Buena propiedad. Precio incómodo.
       </motion.p>
 
-      {/* Caja Franco · VEREDICTO PRIMERO */}
       <motion.div
         initial={false}
         animate={showFranco ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
         transition={{ duration: 0.6, ease: EASE }}
         style={{
           borderLeft: "2px solid #C8323C",
-          background: "rgba(200,50,60,0.04)",
-          padding: "10px 12px",
+          background: "rgba(200,50,60,0.05)",
+          padding: "9px 11px",
         }}
       >
         <p
           className="font-mono font-semibold uppercase"
           style={{
-            fontSize: 10,
+            fontSize: 9,
             letterSpacing: "0.08em",
             color: "#C8323C",
-            marginBottom: 4,
+            marginBottom: 3,
           }}
         >
           Siendo franco
         </p>
         <p
           className="font-heading italic text-[var(--landing-text-secondary)]"
-          style={{ fontSize: 13, lineHeight: 1.5 }}
+          style={{ fontSize: 12, lineHeight: 1.5 }}
         >
           &ldquo;Negocia hasta UF 5.100 y el flujo cuadra. Si no cede, la misma
           plata en Airbnb te da +$180K mensuales — pero requiere que te
@@ -931,8 +912,7 @@ function ResultsLayer({
         </p>
       </motion.div>
 
-      {/* 3 insight cards */}
-      <div className="mt-4 flex flex-col gap-3">
+      <div className="mt-3 flex flex-col gap-2.5">
         {INSIGHT_CARDS.map((card, i) => (
           <motion.div
             key={card.eyebrow}
@@ -947,17 +927,17 @@ function ResultsLayer({
             <p
               className="font-mono font-semibold uppercase"
               style={{
-                fontSize: 11,
+                fontSize: 9,
                 letterSpacing: "0.08em",
                 color: "#C8323C",
-                marginBottom: 4,
+                marginBottom: 3,
               }}
             >
               {card.eyebrow}
             </p>
             <p
               className="font-body text-[var(--landing-text-secondary)]"
-              style={{ fontSize: 13, lineHeight: 1.45 }}
+              style={{ fontSize: 11, lineHeight: 1.45 }}
             >
               {card.text}
             </p>
