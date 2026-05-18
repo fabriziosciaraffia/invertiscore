@@ -6,26 +6,25 @@ import { motion, useReducedMotion } from "framer-motion";
 import HeroMobileCard from "./HeroMobileCard";
 
 /**
- * Sección 01 · Hero (F.11 Phase 2.7 Etapa 2).
+ * Sección 01 · Hero (F.11 Phase 2.6).
  *
- * Layout fijo desde t=0: grid 2 cols (1fr / 520px) en desktop, 1 col
- * en mobile con mockup debajo. Section overflow-x:hidden — las 2 cards
- * del mockup (absolute desktop) cortan limpio al borde del viewport.
+ * Layout fijo desde t=0: grid 2 cols (1fr / 380px) en desktop, 1 col
+ * en mobile con mockup debajo.
  *
- * Timing inicial:
+ * Timing inicial (desbloquea el loop del mockup tras la entrada):
  *   t=0     eyebrow
  *   t=0.2   H1 línea 1
  *   t=0.5   H1 línea 2 (Signal Red)
  *   t=0.9   subhead
  *   t=1.4   CTA + microcopy
- *   t=1.8   Card 2 (Results) entra (internamente en HeroMobileCard)
- *   t=2.0   Card 1 (Form) entra (internamente)
- *   t=2.7   loopArmed → HeroMobileCard arranca el ciclo (form-active)
+ *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile)
+ *   t=2.7   loopArmed → HeroMobileCard arranca el ciclo solo
  *
  * Pausa reversible cuando el hero deja el viewport: IntersectionObserver
  * sobre la sección entera. Cuando el hero está visible (>= 20% intersect)
  * Y el loop ya armó (post-2700ms), el mockup corre el ciclo; cuando sale
- * de viewport, pausa. Al volver, reinicia desde form-active.
+ * de viewport, pausa. Al volver, reinicia desde form-empty (Opción B,
+ * sin continuidad pero sin estado complejo).
  * prefers-reduced-motion → final estático directo, sin loop.
  */
 
@@ -85,26 +84,41 @@ export default function SectionHero() {
     }
   }, [reduce]);
 
+  const mockupInitial = reduce
+    ? false
+    : isDesktop
+      ? { opacity: 0, x: 80, y: 0 }
+      : { opacity: 0, x: 0, y: 40 };
+
   return (
     <section
       ref={sectionRef}
-      className="relative flex items-start overflow-x-hidden md:items-center"
+      className="relative flex items-start overflow-hidden md:items-center"
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-28 md:py-20">
-        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_480px] md:gap-16">
+        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_380px] md:gap-16">
           {/* Columna copy */}
           <div className="text-left">
             <HeroCopy reduce={!!reduce} />
           </div>
 
-          {/* Mockup (cada card hace su entry internamente · ver HeroMobileCard) */}
+          {/* Mockup */}
           <div className="flex justify-center md:justify-end">
-            <HeroMobileCard
-              loopArmed={loopArmed}
-              heroVisible={isHeroVisible}
-              isDesktop={isDesktop}
-            />
+            <motion.div
+              initial={mockupInitial}
+              animate={{ opacity: 1, x: 0, y: 0 }}
+              transition={{
+                duration: 0.85,
+                ease: EASE,
+                delay: reduce ? 0 : 1.8,
+              }}
+            >
+              <HeroMobileCard
+                loopArmed={loopArmed}
+                heroVisible={isHeroVisible}
+              />
+            </motion.div>
           </div>
         </div>
       </div>
