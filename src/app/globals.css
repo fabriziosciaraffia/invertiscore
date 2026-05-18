@@ -206,11 +206,6 @@ html {
   --landing-map-bg: #161616;
   --landing-map-grid: rgba(255, 255, 255, 0.08);
   --landing-map-avenue: rgba(255, 255, 255, 0.15);
-
-  /* F.11 Phase 2.7 Etapa 3 · bg sólido para mockups del Hero (cards 2.7).
-   * Distinto al --franco-bg-base (#0F0F0F) para que las cards se separen
-   * visualmente del fondo de la section. */
-  --landing-mockup-solid-bg: #1A1A1A;
 }
 
 [data-franco-theme="light"] {
@@ -247,9 +242,6 @@ html {
 
   /* F.11 Phase 2.6b · tokens del mapa de comparables del hero. */
   --landing-map-bg: #F0EEE8;
-
-  /* F.11 Phase 2.7 Etapa 3 · bg sólido para mockups del Hero · light. */
-  --landing-mockup-solid-bg: #FFFFFF;
   --landing-map-grid: rgba(0, 0, 0, 0.08);
   --landing-map-avenue: rgba(0, 0, 0, 0.12);
 }

@@ -5,49 +5,39 @@ import { useEffect, useRef, useState } from "react";
 import { getStaticMapUrl } from "@/lib/map-styles";
 
 /**
- * Hero mockup — 2 cards sólidas, extendidas al viewport (F.11 Phase 2.7 Etapa 3).
+ * Hero mockup — 2 cards estilo Linear/build (F.11 Phase 2.7 Etapa 2).
  *
- * Concepto:
- *   · Card 2 (Results) es la protagonista PERMANENTE — opacity 1.0 siempre.
- *   · Card 1 (Form) es el "input que se ejecuta" — alterna entre apagada
- *     (opacity 0.55 + brightness 0.7) y activa (opacity 1.0 + brightness 1.0).
+ * Estructura:
+ *   · CARD 1 · FORM (atrás, opacity base 0.7) — dirección + counters + mapa
+ *   · CARD 2 · RESULTS (frente, opacity base 0.4) — score + Franco + 3 cards
  *
- * Desktop:
- *   · Cards sólidas (no translúcidas) con bg de la section.
- *   · Card 2 anclada al borde DERECHO del viewport (right:0, width 440, height 480)
- *     con border-radius 14px 0 0 14px y box-shadow lateral izquierdo.
- *   · Card 1 detrás-izquierda (right:220, top:30, width 400, height 420),
- *     asoma 90px por la izquierda de Card 2.
+ * Desktop: ambas absolute en wrapper relative · Card 1 top:0 left:-50 width:420
+ *          (mask izquierdo), Card 2 top:140 left:50 width:440. Borde derecho
+ *          cortado vía borderRight:none, viewport recorta visualmente.
+ * Mobile: stack vertical · Card 1 ancho 100% con mask inferior (~55% visible)
+ *         + margin-bottom:-30px (overlap) · Card 2 protagonista debajo.
  *
- * Mobile:
- *   · Stack vertical · Card 2 ARRIBA (asoma desde abajo del viewport above-the-fold)
- *     · Card 1 ABAJO (visible al scrollear).
- *   · Sin mask · cards sólidas con radius completo (Card 2 corta con bottom 0
- *     para sugerir continuación al scroll).
- *
- * Loop ~10s (Opción A modificada · Card 2 nunca dim):
- *   t=0-3000   form-active: Card 1 sube a 1.0 / brightness 1 · Form anima.
- *                            Card 2 sigue al 100%.
- *   t=3000-3500 transition: Card 1 baja a 0.55 / brightness 0.7.
- *   t=3500-9000 results-active: Card 2 anima internamente (score, badge, etc.)
- *                                Card 1 apagada.
- *   t=9000-10000 stable: ambas estables · Card 1 a 1.0 (preview previo al reset).
+ * Loop ~10s (Opción A):
+ *   t=0-3000   form-active: Card 1 a 1.0, Card 2 a 0.4 · Form anima.
+ *   t=3000-3500 transition: Card 1 a 0.7.
+ *   t=3500-9000 results-active: Card 2 a 1.0, Card 1 a 0.7 · Results anima.
+ *   t=9000-10000 stable: ambas a 1.0.
  *   t=10000 reset → t=0.
  *
- * Entrada inicial:
- *   t=1800 Card 2 entra (x:80→0 desktop / y:40→0 mobile, opacity:0→1)
- *   t=2000 Card 1 entra (x:80→0 / y:40→0, opacity:0→0.55, brightness:0→0.7)
+ * Entrada inicial escalonada (Phase 2.7):
+ *   t=1800 Card 2 entra (x:80→0, opacity:0→0.4)
+ *   t=2000 Card 1 entra (x:80→0, opacity:0→0.7)
  *   loopArmed externo (t=2700 desde SectionHero) → loop arranca.
  *
- * Pausas reversibles (Phase 2.6e):
- *   · IntersectionObserver propio (threshold 0.2 + rootMargin -50px)
+ * Pausas reversibles:
+ *   · IntersectionObserver propio (threshold 0.2 + rootMargin -50px) · Phase 2.6e
  *   · heroVisible prop (IO de la sección Hero)
  *   · Hover/touch sobre wrapper externo
  *
- * Estado final estático: prefers-reduced-motion → ambas opacity 1.0,
- * brightness 1.0, contenido completo, sin loop.
+ * Estado final estático: prefers-reduced-motion → ambas opacity 1.0, contenido
+ * completo, sin loop.
  *
- * Defensivo Safari iOS (Phase 2.6e intactos):
+ * Defensivo Safari iOS (Phase 2.6e):
  *   · IO en try/catch con fallback a visible=true
  *   · motion con repeat:Infinity siempre montadas (cursor + pin ring)
  *   · onTouchStart/End/Cancel + onMouseEnter/Leave
@@ -317,19 +307,16 @@ export default function HeroMobileCard({
   }, [shouldLoop]);
 
   // === Render derived values ===
-  // Card 2 (Results) es protagonista permanente: opacity 1.0 siempre tras entry.
-  // Card 1 (Form) alterna entre 0.55 base + brightness 0.7 ↔ 1.0 active.
   const card1Opacity = !card1Entered
     ? 0
     : phase === "form-active" || phase === "stable"
       ? 1.0
-      : 0.55;
-  const card1Brightness = !card1Entered
-    ? 0.7
-    : phase === "form-active" || phase === "stable"
-      ? 1.0
       : 0.7;
-  const card2Opacity = !card2Entered ? 0 : 1.0;
+  const card2Opacity = !card2Entered
+    ? 0
+    : phase === "results-active" || phase === "stable"
+      ? 1.0
+      : 0.4;
   const enterOffset = isDesktop ? { x: 80, y: 0 } : { x: 0, y: 40 };
   const card1Anim = !card1Entered ? enterOffset : { x: 0, y: 0 };
   const card2Anim = !card2Entered ? enterOffset : { x: 0, y: 0 };
@@ -338,46 +325,45 @@ export default function HeroMobileCard({
     phase === "form-active" && typedText.length < DIRECCION.length;
 
   // === Card layout styles (responsive vía isDesktop prop) ===
-  // bg sólido en ambas: backgroundColor override del gradient transparent de
-  // .franco-mockup. El background-image (gradient sutil interno) se preserva.
-  const solidBg = "var(--landing-mockup-solid-bg)";
   const card1Style: React.CSSProperties = isDesktop
     ? {
         position: "absolute",
-        top: 30,
-        right: 220,
-        width: 400,
-        height: 420,
-        padding: "16px 18px",
-        backgroundColor: solidBg,
-        borderRadius: "14px 0 0 14px",
+        top: 0,
+        left: -100,
+        width: 380,
+        padding: "18px 20px",
+        borderRadius: "12px 0 0 12px",
         borderRight: "none",
+        maskImage:
+          "linear-gradient(90deg, transparent 0%, #000 8%, #000 100%)",
+        WebkitMaskImage:
+          "linear-gradient(90deg, transparent 0%, #000 8%, #000 100%)",
         zIndex: 1,
-        willChange: "opacity, filter, transform",
+        willChange: "opacity, transform",
       }
     : {
         position: "relative",
         width: "100%",
-        padding: 14,
-        backgroundColor: solidBg,
-        borderRadius: 14,
-        marginTop: 24,
+        padding: 12,
+        borderRadius: "8px 8px 0 0",
+        borderBottom: "none",
+        marginBottom: -30,
+        maskImage:
+          "linear-gradient(180deg, #000 0%, #000 55%, transparent 100%)",
+        WebkitMaskImage:
+          "linear-gradient(180deg, #000 0%, #000 55%, transparent 100%)",
         zIndex: 1,
-        willChange: "opacity, filter, transform",
+        willChange: "opacity, transform",
       };
   const card2Style: React.CSSProperties = isDesktop
     ? {
         position: "absolute",
-        top: 0,
-        right: 0,
+        top: 140,
+        left: 80,
         width: 440,
-        height: 480,
         padding: 22,
-        backgroundColor: solidBg,
-        borderRadius: "14px 0 0 14px",
+        borderRadius: "12px 0 0 12px",
         borderRight: "none",
-        boxShadow:
-          "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
         zIndex: 2,
         willChange: "opacity, transform",
       }
@@ -385,15 +371,12 @@ export default function HeroMobileCard({
         position: "relative",
         width: "100%",
         padding: 16,
-        backgroundColor: solidBg,
-        borderRadius: 14,
         zIndex: 2,
         willChange: "opacity, transform",
       };
 
-  // Wrapper desktop: width 460 (Card 2 ocupa right edge), height 480 (mismo que Card 2).
   const wrapperStyle: React.CSSProperties = isDesktop
-    ? { position: "relative", width: 460, height: 480 }
+    ? { position: "relative", width: "100%", minHeight: 580 }
     : { position: "relative", width: "100%" };
 
   return (
@@ -406,10 +389,26 @@ export default function HeroMobileCard({
       onTouchEnd={() => setIsHovered(false)}
       onTouchCancel={() => setIsHovered(false)}
     >
-      {/* CARD 2 · RESULTS — protagonista permanente.
-          Renderizada PRIMERO en el DOM para que en mobile flow vertical
-          aparezca arriba (asoma above-the-fold). En desktop ambas son
-          absolute · z-index decide stacking. */}
+      {/* CARD 1 · FORM */}
+      <motion.div
+        className="franco-mockup"
+        animate={{ opacity: card1Opacity, ...card1Anim }}
+        transition={{ duration: 0.6, ease: EASE }}
+        style={card1Style}
+        aria-label="Mockup formulario"
+      >
+        <FormCard
+          typedText={typedText}
+          cursorVisible={cursorVisible}
+          dropdownVisible={dropdownVisible}
+          autocompleteHighlight={autocompleteHighlight}
+          precioCount={precioCount}
+          superficieCount={superficieCount}
+          mapStage={mapStage}
+        />
+      </motion.div>
+
+      {/* CARD 2 · RESULTS */}
       <motion.div
         className="franco-mockup"
         animate={{ opacity: card2Opacity, ...card2Anim }}
@@ -423,30 +422,6 @@ export default function HeroMobileCard({
           showLine={showLine}
           showFranco={showFranco}
           activeCards={activeCards}
-        />
-      </motion.div>
-
-      {/* CARD 1 · FORM — input que se ejecuta · alterna apagada/activa.
-          En mobile aparece debajo de Card 2 (segundo en flujo). */}
-      <motion.div
-        className="franco-mockup"
-        animate={{
-          opacity: card1Opacity,
-          filter: `brightness(${card1Brightness})`,
-          ...card1Anim,
-        }}
-        transition={{ duration: 0.6, ease: EASE }}
-        style={card1Style}
-        aria-label="Mockup formulario"
-      >
-        <FormCard
-          typedText={typedText}
-          cursorVisible={cursorVisible}
-          dropdownVisible={dropdownVisible}
-          autocompleteHighlight={autocompleteHighlight}
-          precioCount={precioCount}
-          superficieCount={superficieCount}
-          mapStage={mapStage}
         />
       </motion.div>
     </div>
