@@ -83,7 +83,7 @@ export default function SectionHeader({
     <motion.div
       initial="hidden"
       whileInView="show"
-      viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
+      viewport={{ once: true, margin: "-100px 0px -100px 0px" }}
       className={`${align === "center" ? "text-center" : ""} ${className ?? ""}`}
     >
       {!hideHairline && (

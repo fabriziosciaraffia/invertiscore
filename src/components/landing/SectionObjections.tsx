@@ -109,7 +109,7 @@ function ObjectionsHeader() {
     <motion.div
       initial="hidden"
       whileInView="show"
-      viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
+      viewport={{ once: true, margin: "-100px 0px -100px 0px" }}
       className="mb-[8vh]"
     >
       <motion.div
@@ -176,7 +176,7 @@ function ObjectionsHeader() {
 
 function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
   const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-10% 0px -10% 0px" });
+  const inView = useInView(ref, { once: true, margin: "-50px 0px -50px 0px" });
   const reduce = useReducedMotion();
 
   return (

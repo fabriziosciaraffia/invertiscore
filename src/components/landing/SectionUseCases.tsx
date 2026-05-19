@@ -144,7 +144,7 @@ function UseCasesHeader() {
     <motion.div
       initial="hidden"
       whileInView="show"
-      viewport={{ once: true, margin: "-15% 0px -15% 0px" }}
+      viewport={{ once: true, margin: "-100px 0px -100px 0px" }}
       className="mb-[8vh]"
     >
       <motion.div
@@ -361,7 +361,7 @@ function CardsStatic({ onSelect }: { onSelect: (p: Profile) => void }) {
           onClick={() => onSelect(p)}
           initial={reduce ? false : { opacity: 0, y: 24 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-10% 0px -10% 0px" }}
+          viewport={{ once: true, margin: "-50px 0px -50px 0px" }}
           transition={{
             duration: 0.6,
             ease: EASE,
