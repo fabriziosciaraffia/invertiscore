@@ -206,6 +206,11 @@ html {
   --landing-map-bg: #161616;
   --landing-map-grid: rgba(255, 255, 255, 0.08);
   --landing-map-avenue: rgba(255, 255, 255, 0.15);
+
+  /* F.11 Phase 2.7 Etapa 4 · bg sólido para mockups del Hero (cards 2.7).
+   * Distinto al --franco-bg-base (#0F0F0F) para que las cards se separen
+   * visualmente del fondo de la section. Re-agregado tras revert de Etapa 3. */
+  --landing-mockup-solid-bg: #1A1A1A;
 }
 
 [data-franco-theme="light"] {
@@ -244,6 +249,12 @@ html {
   --landing-map-bg: #F0EEE8;
   --landing-map-grid: rgba(0, 0, 0, 0.08);
   --landing-map-avenue: rgba(0, 0, 0, 0.12);
+
+  /* F.11 Phase 2.7 Etapa 4 · bg sólido mockups Hero · light.
+   * Etapa 7 · ajustado de #FFFFFF a #F2F0EA: el blanco puro no contrastaba
+   * con el bg crema #FAFAF7 de la section (delta 5 unidades, imperceptible).
+   * #F2F0EA queda 8 unidades más oscuro, da contraste visible. */
+  --landing-mockup-solid-bg: #F2F0EA;
 }
 
 .scrollbar-hide {

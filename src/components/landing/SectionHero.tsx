@@ -3,45 +3,46 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import HeroMobileCard from "./HeroMobileCard";
+import HeroAnimatedDesktop from "./HeroAnimatedDesktop";
+import HeroStaticMobile from "./HeroStaticMobile";
 
 /**
- * Sección 01 · Hero (F.11 Phase 2.6).
+ * Sección 01 · Hero (F.11 Phase 2.7 Etapa 4).
  *
- * Layout fijo desde t=0: grid 2 cols (1fr / 380px) en desktop, 1 col
- * en mobile con mockup debajo.
+ * Branch responsivo limpio:
+ *   · Mobile (max 767px) → HeroStaticMobile · 2 cards estáticas sin framer-motion.
+ *   · Desktop (≥768px)   → HeroAnimatedDesktop · 2 cards con loop animado completo.
  *
- * Timing inicial (desbloquea el loop del mockup tras la entrada):
+ * Motivación del split: el NotFoundError iOS WebKit (Phase 2.6 series) era
+ * causado por el reconciler React + framer-motion ejecutándose en mobile. La
+ * solución Phase 2.6h (forzar reduce-motion en mobile) bypaseaba el bug pero
+ * mobile quedaba sin Hero diferenciado. Etapa 4 separa los paths: mobile no
+ * monta NINGÚN motion del Hero, desktop conserva el loop completo de Etapa 3.
+ *
+ * Timing inicial desktop:
  *   t=0     eyebrow
  *   t=0.2   H1 línea 1
  *   t=0.5   H1 línea 2 (Signal Red)
  *   t=0.9   subhead
  *   t=1.4   CTA + microcopy
- *   t=1.8   mockup entry (x:80→0 desktop / y:40→0 mobile)
- *   t=2.7   loopArmed → HeroMobileCard arranca el ciclo solo
+ *   t=1.8   Card 2 entra
+ *   t=2.0   Card 1 entra
+ *   t=2.7   loopArmed → arranca cycle
  *
- * Pausa reversible cuando el hero deja el viewport: IntersectionObserver
- * sobre la sección entera. Cuando el hero está visible (>= 20% intersect)
- * Y el loop ya armó (post-2700ms), el mockup corre el ciclo; cuando sale
- * de viewport, pausa. Al volver, reinicia desde form-empty (Opción B,
- * sin continuidad pero sin estado complejo).
- * prefers-reduced-motion → final estático directo, sin loop.
+ * Pausa reversible desktop: IntersectionObserver sobre la sección. Cuando el
+ * hero está visible (≥20% intersect) Y loop ya armó, el mockup corre el cycle.
+ *
+ * prefers-reduced-motion (desktop) → final estático directo sin loop.
+ * Mobile siempre static.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function SectionHero() {
-  const reduceMotion = useReducedMotion();
-  // Phase 2.6h · fix defensivo: en mobile, tratamos como reduce-motion.
-  // Skip entry animations + skip loop arming + skip IO observer. Hero
-  // renderiza estado final desde t=0. Bypasea NotFoundError iOS 26.x.
-  const isMobile =
-    typeof window !== "undefined" &&
-    window.matchMedia("(max-width: 767px)").matches;
-  const reduce = reduceMotion || isMobile;
+  const reduce = useReducedMotion();
   const [loopArmed, setLoopArmed] = useState(!!reduce);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
-  const [isDesktop, setIsDesktop] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const loopArmedRef = useRef(!!reduce);
 
@@ -49,16 +50,19 @@ export default function SectionHero() {
     loopArmedRef.current = loopArmed;
   }, [loopArmed]);
 
+  // Detección mobile via matchMedia + listener · post-mount para evitar
+  // hydration mismatch (server-side asume desktop).
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
   }, []);
 
+  // armTimer + IO solo en desktop · skip si reduce-motion o mobile.
   useEffect(() => {
-    if (reduce) return;
+    if (reduce || isMobile) return;
 
     const armTimer = setTimeout(() => setLoopArmed(true), 2700);
 
@@ -67,8 +71,6 @@ export default function SectionHero() {
       return () => clearTimeout(armTimer);
     }
 
-    // try/catch defensivo: si el constructor falla (Safari iOS antiguo
-    // u otro motivo), fallback a heroVisible=true para no romper el árbol.
     try {
       const observer = new IntersectionObserver(
         ([entry]) => {
@@ -89,51 +91,41 @@ export default function SectionHero() {
       setIsHeroVisible(true);
       return () => clearTimeout(armTimer);
     }
-  }, [reduce]);
-
-  const mockupInitial = reduce
-    ? false
-    : isDesktop
-      ? { opacity: 0, x: 80, y: 0 }
-      : { opacity: 0, x: 0, y: 40 };
+  }, [reduce, isMobile]);
 
   return (
     <section
       ref={sectionRef}
-      className="relative flex items-start overflow-hidden md:items-center"
+      className="relative flex items-start overflow-x-hidden md:items-center"
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-6xl px-6 pb-12 pt-28 md:py-20">
-        <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-[1fr_380px] md:gap-16">
-          {/* Columna copy */}
-          <div className="text-left">
-            <HeroCopy reduce={!!reduce} />
+      {isMobile ? (
+        /* === Mobile · stack vertical estático === */
+        <div className="mx-auto w-full max-w-6xl px-6 pt-28 pb-12">
+          <HeroCopy reduce mobile />
+          <HeroStaticMobile />
+        </div>
+      ) : (
+        /* === Desktop · grid con cards absolute al viewport derecho === */
+        <>
+          <div className="mx-auto w-full max-w-6xl px-6 pt-28 pb-12 md:py-20 md:px-0 md:pr-[500px]">
+            <HeroCopy reduce={!!reduce} mobile={false} />
           </div>
-
-          {/* Mockup */}
-          <div className="flex justify-center md:justify-end">
-            <motion.div
-              initial={mockupInitial}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{
-                duration: 0.85,
-                ease: EASE,
-                delay: reduce ? 0 : 1.8,
-              }}
-            >
-              <HeroMobileCard
+          <div className="hidden md:flex absolute right-0 top-0 bottom-0 items-center pointer-events-none">
+            <div className="pointer-events-auto">
+              <HeroAnimatedDesktop
                 loopArmed={loopArmed}
                 heroVisible={isHeroVisible}
               />
-            </motion.div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </section>
   );
 }
 
-function HeroCopy({ reduce }: { reduce: boolean }) {
+function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
   const delay = (sec: number) => (reduce ? 0 : sec);
 
   return (
@@ -149,8 +141,12 @@ function HeroCopy({ reduce }: { reduce: boolean }) {
       </motion.p>
 
       <h1
-        className="mt-7 font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(48px, 8.5vw, 88px)" }}
+        className={`${mobile ? "mt-4" : "mt-7"} font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]`}
+        style={{
+          fontSize: mobile
+            ? "clamp(32px, 9.5vw, 48px)"
+            : "clamp(48px, 8.5vw, 88px)",
+        }}
       >
         <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
           <motion.span
@@ -178,8 +174,8 @@ function HeroCopy({ reduce }: { reduce: boolean }) {
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: EASE, delay: delay(0.9) }}
-        className="mt-7 max-w-[540px] font-body text-[var(--landing-text-secondary)]"
-        style={{ fontSize: 18, lineHeight: 1.55 }}
+        className={`${mobile ? "mt-4" : "mt-7"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
+        style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
       >
         Antes de invertir, ve si dan los números para no terminar poniendo
         plata de tu bolsillo cada mes.
@@ -189,7 +185,7 @@ function HeroCopy({ reduce }: { reduce: boolean }) {
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: EASE, delay: delay(1.4) }}
-        className="mt-9 flex flex-col items-start gap-3"
+        className={`${mobile ? "mt-5" : "mt-9"} flex flex-col items-start gap-3`}
       >
         <Link
           href="/register"
