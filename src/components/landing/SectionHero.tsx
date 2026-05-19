@@ -31,7 +31,14 @@ import HeroMobileCard from "./HeroMobileCard";
 const EASE = [0.22, 1, 0.36, 1] as const;
 
 export default function SectionHero() {
-  const reduce = useReducedMotion();
+  const reduceMotion = useReducedMotion();
+  // Phase 2.6h · fix defensivo: en mobile, tratamos como reduce-motion.
+  // Skip entry animations + skip loop arming + skip IO observer. Hero
+  // renderiza estado final desde t=0. Bypasea NotFoundError iOS 26.x.
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 767px)").matches;
+  const reduce = reduceMotion || isMobile;
   const [loopArmed, setLoopArmed] = useState(!!reduce);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
   const [isDesktop, setIsDesktop] = useState(true);

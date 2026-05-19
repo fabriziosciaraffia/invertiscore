@@ -87,7 +87,18 @@ export default function HeroMobileCard({
   loopArmed?: boolean;
   heroVisible?: boolean;
 }) {
-  const reduce = useReducedMotion();
+  const reduceMotion = useReducedMotion();
+  // Phase 2.6h · fix defensivo: en mobile (max 767px), tratamos el Hero
+  // como reduce-motion forzado. Stack: framer-motion 12.38.0 race contra
+  // React reconciler en WebKit iOS 26.x → NotFoundError persistente que
+  // no responde a always-mounted ni rootMargin px. El path showFinalStatic
+  // bypasea el loop entero y renderiza estado final inicialmente. Inline
+  // matchMedia (no useState) para evitar 1 frame de animation antes del
+  // freeze — acepta hydration mismatch warning en dev como trade-off.
+  const isMobile =
+    typeof window !== "undefined" &&
+    window.matchMedia("(max-width: 767px)").matches;
+  const reduce = reduceMotion || isMobile;
   const containerRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
