@@ -99,9 +99,9 @@ export default function SectionHero() {
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       {isMobile ? (
-        /* === Mobile · stack vertical estático ·
-             pt-16 = ~64px (H1 inicia ~70px debajo del nav) === */
-        <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-12">
+        /* === Mobile · stack vertical estático · px-3 (12px) da el ancho
+             que necesita el H1 12vw para caber en 2 líneas. pt-16 = ~64px. === */
+        <div className="mx-auto w-full max-w-6xl px-2 pt-16 pb-12">
           <HeroCopy reduce mobile />
           <HeroStaticMobile />
         </div>
@@ -134,7 +134,7 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
         className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
         style={{
           fontSize: mobile
-            ? "clamp(38px, 11vw, 52px)"
+            ? "clamp(42px, 12vw, 58px)"
             : "clamp(48px, 8.5vw, 88px)",
         }}
       >

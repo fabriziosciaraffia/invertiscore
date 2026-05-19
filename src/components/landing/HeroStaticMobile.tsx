@@ -1,7 +1,27 @@
 "use client";
 
 import { getStaticMapUrl } from "@/lib/map-styles";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+/* Hook · detecta si el tema actual es light leyendo data-franco-theme
+ * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
+function useIsLight(): boolean {
+  const [isLight, setIsLight] = useState(false);
+  useEffect(() => {
+    const root = document.querySelector("[data-franco-root]");
+    if (!root) return;
+    const update = () =>
+      setIsLight(root.getAttribute("data-franco-theme") === "light");
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-franco-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
+  return isLight;
+}
 
 /**
  * Hero static mockup · MOBILE-ONLY (F.11 Phase 2.7 Etapa 6).
@@ -79,21 +99,21 @@ export default function HeroStaticMobile() {
 /* ===================== Card 1 · Form (estático) ===================== */
 
 function FormCardStatic() {
+  const isLight = useIsLight();
   return (
     <div
       className="franco-mockup"
       style={{
         position: "absolute",
         top: 0,
-        left: -16,
-        width: "78%",
+        left: 12,
+        width: "72%",
         height: 480,
         padding: 14,
         backgroundColor: "var(--landing-mockup-solid-bg)",
-        borderRadius: "0 22px 22px 0",
-        borderLeft: "none",
-        opacity: 0.55,
-        filter: "brightness(0.7)",
+        borderRadius: 22,
+        opacity: isLight ? 0.72 : 0.55,
+        filter: isLight ? "none" : "brightness(0.7)",
         zIndex: 1,
       }}
     >
@@ -141,13 +161,12 @@ function ResultsCardStatic() {
       style={{
         position: "absolute",
         top: 80,
-        right: -16,
-        width: "84%",
+        right: 12,
+        width: "78%",
         height: 480,
         padding: 16,
         backgroundColor: "var(--landing-mockup-solid-bg)",
-        borderRadius: "22px 0 0 22px",
-        borderRight: "none",
+        borderRadius: 22,
         boxShadow:
           "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
         zIndex: 2,

@@ -4,6 +4,26 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { getStaticMapUrl } from "@/lib/map-styles";
 
+/* Hook · detecta si el tema actual es light leyendo data-franco-theme
+ * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
+function useIsLight(): boolean {
+  const [isLight, setIsLight] = useState(false);
+  useEffect(() => {
+    const root = document.querySelector("[data-franco-root]");
+    if (!root) return;
+    const update = () =>
+      setIsLight(root.getAttribute("data-franco-theme") === "light");
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-franco-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
+  return isLight;
+}
+
 /**
  * Hero animated mockup · DESKTOP-ONLY (F.11 Phase 2.7 Etapa 4).
  *
@@ -95,6 +115,7 @@ export default function HeroAnimatedDesktop({
   heroVisible?: boolean;
 }) {
   const reduce = useReducedMotion();
+  const isLight = useIsLight();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [isVisible, setIsVisible] = useState(true);
@@ -308,17 +329,21 @@ export default function HeroAnimatedDesktop({
 
   // === Render derived values ===
   // Card 2 (Results) es protagonista permanente: opacity 1.0 siempre tras entry.
-  // Card 1 (Form) alterna entre 0.55 base + brightness 0.7 ↔ 1.0 active.
+  // Card 1 (Form) alterna entre dim (base) ↔ activa según la fase.
+  // Dim DARK: opacity 0.55 + brightness 0.7 · LIGHT: opacity 0.72 sin brightness
+  //   (brightness < 1 sobre bg #F2F0EA da gris muerto; en light basta opacity).
+  const dimOpacity = isLight ? 0.72 : 0.55;
+  const dimBrightness = isLight ? 1.0 : 0.7;
   const card1Opacity = !card1Entered
     ? 0
     : phase === "form-active" || phase === "stable"
       ? 1.0
-      : 0.55;
+      : dimOpacity;
   const card1Brightness = !card1Entered
-    ? 0.7
+    ? dimBrightness
     : phase === "form-active" || phase === "stable"
       ? 1.0
-      : 0.7;
+      : dimBrightness;
   const card2Opacity = !card2Entered ? 0 : 1.0;
   const enterOffset = { x: 80, y: 0 };
   const card1Anim = !card1Entered ? enterOffset : { x: 0, y: 0 };
@@ -334,36 +359,34 @@ export default function HeroAnimatedDesktop({
   const card1Style: React.CSSProperties = {
     position: "absolute",
     top: 30,
-    right: 220,
+    right: 232,
     width: 360,
     height: 500,
     padding: "18px 20px",
     backgroundColor: solidBg,
-    borderRadius: "22px 0 0 22px",
-    borderRight: "none",
+    borderRadius: 22,
     zIndex: 1,
     willChange: "opacity, filter, transform",
   };
   const card2Style: React.CSSProperties = {
     position: "absolute",
     top: 0,
-    right: 0,
+    right: 32,
     width: 400,
     height: 540,
     padding: "24px 22px",
     backgroundColor: solidBg,
-    borderRadius: "22px 0 0 22px",
-    borderRight: "none",
+    borderRadius: 22,
     boxShadow:
       "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
     zIndex: 2,
     willChange: "opacity, transform",
   };
 
-  // Wrapper: width 420 (Card 2 ocupa right edge), height 540 (mismo que Card 2).
+  // Wrapper: width 432 (Card 2 right edge 32 + 400 width), height 540.
   const wrapperStyle: React.CSSProperties = {
     position: "relative",
-    width: 420,
+    width: 432,
     height: 540,
   };
 
