@@ -19,12 +19,11 @@ import HeroStaticMobile from "./HeroStaticMobile";
  * mobile quedaba sin Hero diferenciado. Etapa 4 separa los paths: mobile no
  * monta NINGÚN motion del Hero, desktop conserva el loop completo de Etapa 3.
  *
- * Timing inicial desktop:
- *   t=0     eyebrow
- *   t=0.2   H1 línea 1
- *   t=0.5   H1 línea 2 (Signal Red)
- *   t=0.9   subhead
- *   t=1.4   CTA + microcopy
+ * Timing inicial desktop (Etapa 8 · sin eyebrow ni microcopy):
+ *   t=0     H1 línea 1
+ *   t=0.3   H1 línea 2 (Signal Red)
+ *   t=0.7   subhead
+ *   t=1.1   CTA
  *   t=1.8   Card 2 entra
  *   t=2.0   Card 1 entra
  *   t=2.7   loopArmed → arranca cycle
@@ -100,8 +99,9 @@ export default function SectionHero() {
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       {isMobile ? (
-        /* === Mobile · stack vertical estático === */
-        <div className="mx-auto w-full max-w-6xl px-6 pt-28 pb-12">
+        /* === Mobile · stack vertical estático ·
+             pt-16 = ~64px (H1 inicia ~70px debajo del nav) === */
+        <div className="mx-auto w-full max-w-6xl px-6 pt-16 pb-12">
           <HeroCopy reduce mobile />
           <HeroStaticMobile />
         </div>
@@ -130,21 +130,11 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
 
   return (
     <>
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: EASE, delay: delay(0) }}
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 10, letterSpacing: "0.18em" }}
-      >
-        34.000+ deptos · arriendo largo y airbnb · 24 comunas
-      </motion.p>
-
       <h1
-        className={`${mobile ? "mt-4" : "mt-7"} font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]`}
+        className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
         style={{
           fontSize: mobile
-            ? "clamp(32px, 9.5vw, 48px)"
+            ? "clamp(38px, 11vw, 52px)"
             : "clamp(48px, 8.5vw, 88px)",
         }}
       >
@@ -153,7 +143,7 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
             className="block"
             initial={reduce ? false : { y: "105%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.7, ease: EASE, delay: delay(0.2) }}
+            transition={{ duration: 0.7, ease: EASE, delay: delay(0) }}
           >
             ¿Y si el depto
           </motion.span>
@@ -163,7 +153,7 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
             className="block text-[#C8323C]"
             initial={reduce ? false : { y: "105%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.75, ease: EASE, delay: delay(0.5) }}
+            transition={{ duration: 0.75, ease: EASE, delay: delay(0.3) }}
           >
             no se paga solo?
           </motion.span>
@@ -173,8 +163,8 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
       <motion.p
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: delay(0.9) }}
-        className={`${mobile ? "mt-4" : "mt-7"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
+        transition={{ duration: 0.4, ease: EASE, delay: delay(0.7) }}
+        className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
         style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
       >
         Antes de invertir, ve si dan los números para no terminar poniendo
@@ -184,8 +174,8 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: delay(1.4) }}
-        className={`${mobile ? "mt-5" : "mt-9"} flex flex-col items-start gap-3`}
+        transition={{ duration: 0.4, ease: EASE, delay: delay(1.1) }}
+        className={`${mobile ? "mt-6" : "mt-10"} flex items-start`}
       >
         <Link
           href="/register"
@@ -199,14 +189,6 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
             →
           </span>
         </Link>
-        <p
-          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 10, letterSpacing: "0.16em" }}
-        >
-          Precio · comuna · arriendo&nbsp;&nbsp;·&nbsp;&nbsp;veredicto en
-          30s&nbsp;&nbsp;·&nbsp;&nbsp;sin tarjeta&nbsp;&nbsp;·&nbsp;&nbsp;1
-          análisis gratis
-        </p>
       </motion.div>
     </>
   );
