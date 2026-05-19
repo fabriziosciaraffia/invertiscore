@@ -478,46 +478,55 @@ function FormLayer({
             }}
           />
         </span>
-        {dropdownVisible && (
-          <motion.div
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18, ease: EASE }}
-            className="absolute left-0 right-0 z-10"
-            style={{
-              top: "100%",
-              marginTop: 6,
-              background: "var(--landing-card-bg)",
-              border: "0.5px solid var(--landing-card-border)",
-              borderRadius: 6,
-              padding: "4px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
-            }}
-          >
-            {SUGGESTIONS.map((s, i) => (
-              <div
-                key={s}
-                className="font-body text-[var(--landing-text)]"
-                style={{
-                  fontSize: 11.5,
-                  padding: "5px 8px",
-                  borderRadius: 4,
-                  background:
-                    i === 0 && autocompleteHighlight
-                      ? "rgba(200,50,60,0.10)"
-                      : "transparent",
-                  color:
-                    i === 0 && autocompleteHighlight
-                      ? "var(--landing-text)"
-                      : "var(--landing-text-secondary)",
-                  transition: "background 0.18s ease",
-                }}
-              >
-                {s}
-              </div>
-            ))}
-          </motion.div>
-        )}
+        {/* Dropdown siempre montado · animate condicional (Phase 2.6f).
+            Convertido de `{dropdownVisible && <motion.div>}` para evitar el
+            mount/unmount race de framer-motion 12.38.0 con React reconciler
+            en WebKit iOS (NotFoundError: removeChild). Mismo patrón que
+            cursor parpadeo y pin ring de Phase 2.6e. */}
+        <motion.div
+          initial={false}
+          animate={
+            dropdownVisible
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: -4 }
+          }
+          transition={{ duration: 0.18, ease: EASE }}
+          className="absolute left-0 right-0 z-10"
+          aria-hidden={!dropdownVisible}
+          style={{
+            top: "100%",
+            marginTop: 6,
+            background: "var(--landing-card-bg)",
+            border: "0.5px solid var(--landing-card-border)",
+            borderRadius: 6,
+            padding: "4px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+            pointerEvents: dropdownVisible ? "auto" : "none",
+          }}
+        >
+          {SUGGESTIONS.map((s, i) => (
+            <div
+              key={s}
+              className="font-body text-[var(--landing-text)]"
+              style={{
+                fontSize: 11.5,
+                padding: "5px 8px",
+                borderRadius: 4,
+                background:
+                  i === 0 && autocompleteHighlight
+                    ? "rgba(200,50,60,0.10)"
+                    : "transparent",
+                color:
+                  i === 0 && autocompleteHighlight
+                    ? "var(--landing-text)"
+                    : "var(--landing-text-secondary)",
+                transition: "background 0.18s ease",
+              }}
+            >
+              {s}
+            </div>
+          ))}
+        </motion.div>
       </FormField>
 
       <div className="mt-4 grid grid-cols-2 gap-4">
