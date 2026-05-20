@@ -54,7 +54,11 @@ ms-playwright/
 .auth-cookies*.json
 .cookies-*
 .prod-cookies-*
+.set-cookies*
 *.local.json
+
+# config local MCP (servidores externos)
+.mcp.json
 
 # claude runtime
 .claude/scheduled_tasks.lock
@@ -67,6 +71,21 @@ commit*-*.png
 prod-*.png
 hero-*.png
 landing-*.png
+
+# screenshots dev en root (no afecta public/ ni src/)
+/*.png
+phase*.png
+step*-*.png
+cards-ds-*.png
+caso*-*.png
+
+# scripts y docs dev locales
+scripts/dev-*
+docs/audit-*.md
+
+# artefactos locales
+outputs/
+supabase/seeds/
 
 # dumps de auditoría
 audit/
