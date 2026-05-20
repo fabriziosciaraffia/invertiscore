@@ -208,8 +208,8 @@ function MockupStep01() {
       );
     };
 
-    T(400, () => setDropdownVisible(true));
-    T(800, () => setShowMap(true));
+    T(600, () => setDropdownVisible(true));
+    T(900, () => setShowMap(true));
 
     return () => {
       mounted = false;
@@ -502,25 +502,26 @@ function MockupStep01() {
 
 
 
+
 /* ============================ Mockup · 02 Análisis ============================
  *
- * F.11 Phase 2.9 · Análisis con barra progreso + 3 bloques (Costos / Ingresos /
- * Resultado) + footer fuente. Single-pass animation con useInView once.
+ * F.11 Phase 2.10 · "Franco preparando análisis" · 5 líneas checklist con
+ * checks verdes + 1 línea calculando con dot pulsante infinito. Single-pass
+ * animation con useInView once.
  *
  * Animación entrada:
- *   t=0     header visible · "procesando" pulsing (loop opacity en motion.span)
- *   t=0-1500 barra progreso 0→100% (rAF continuo)
- *   t=1500  phase → "completado" (barra fade-out, label cambia)
- *   t=1700  Bloque 1 Costos reales fade-in + counters (78.400, 95.000, 173.400)
- *   t=2700  Bloque 2 Ingresos proyectados fade-in + counters (UF 18, $145K)
- *   t=3500  Bloque 3 Resultado fade-in + counters (5,0% verde, −$290K rojo)
- *   t=4400  Footer fade-in
+ *   t=0     header · contador "1 de 5" · línea 1 fade-in + counter contrib + barra 0→20%
+ *   t=600   contador "2 de 5" · línea 2 + counters comps/mediana/este + barra 20→40%
+ *   t=1200  contador "3 de 5" · línea 3 fade-in + chips stagger 100ms + barra 40→60%
+ *   t=1800  contador "4 de 5" · línea 4 + counter gastos + barra 60→80%
+ *   t=2400  línea 5 fade-in con dot pulsante infinito (queda "4 de 5", barra 80%)
+ *   t=3000  footer fade-in
  *
  * Safe vs NotFoundError (Phase 2.6e/f):
- *   · Bloques always-mounted con motion.div animate condicional
- *   · "procesando" / "completado" labels always-mounted, opacity controlado
- *   · Counters via rAF manual con cleanup
- *   · NO {cond && <motion>}, NO AnimatePresence
+ *   · 5 líneas always-mounted con motion.div animate condicional opacity
+ *   · 3 chips always-mounted, animate condicional con stagger
+ *   · Dot pulsante línea 5: always-mounted con animate=[1,0.3,1] repeat Infinity
+ *   · Counters via rAF con cleanup
  */
 
 function MockupStep02() {
@@ -531,40 +532,41 @@ function MockupStep02() {
   });
   const reduce = useReducedMotion();
 
+  const [stepIdx, setStepIdx] = useState(1);
   const [progress, setProgress] = useState(0);
-  const [phase, setPhase] = useState<"procesando" | "completado">("procesando");
-  const [showCostos, setShowCostos] = useState(false);
-  const [showIngresos, setShowIngresos] = useState(false);
-  const [showResultado, setShowResultado] = useState(false);
+  const [showLine1, setShowLine1] = useState(false);
+  const [showLine2, setShowLine2] = useState(false);
+  const [showLine3, setShowLine3] = useState(false);
+  const [showLine4, setShowLine4] = useState(false);
+  const [showLine5, setShowLine5] = useState(false);
   const [showFooter, setShowFooter] = useState(false);
+  // chipsCount: cuántos chips de la línea 3 están visibles (0..3) · stagger
+  const [chipsCount, setChipsCount] = useState(0);
 
   const [contribCount, setContribCount] = useState(0);
+  const [compsCount, setCompsCount] = useState(0);
+  const [medianaCount, setMedianaCount] = useState(0);
+  const [esteCount, setEsteCount] = useState(0);
   const [gastosCount, setGastosCount] = useState(0);
-  const [totalEgresosCount, setTotalEgresosCount] = useState(0);
-  const [arriendoCount, setArriendoCount] = useState(0);
-  const [airbnbCount, setAirbnbCount] = useState(0);
-  // capRateCount va 0→50, render val/10 → "5,0"
-  const [capRateCount, setCapRateCount] = useState(0);
-  // flujoCount va 0→290000 (positivo), render con "−$" + val/1000 + "K"
-  const [flujoCount, setFlujoCount] = useState(0);
 
   useEffect(() => {
     if (!isInView) return;
 
     if (reduce) {
-      setProgress(100);
-      setPhase("completado");
-      setShowCostos(true);
-      setShowIngresos(true);
-      setShowResultado(true);
+      setStepIdx(4);
+      setProgress(80);
+      setShowLine1(true);
+      setShowLine2(true);
+      setShowLine3(true);
+      setShowLine4(true);
+      setShowLine5(true);
       setShowFooter(true);
+      setChipsCount(3);
       setContribCount(78400);
-      setGastosCount(95000);
-      setTotalEgresosCount(173400);
-      setArriendoCount(18);
-      setAirbnbCount(145);
-      setCapRateCount(50);
-      setFlujoCount(290000);
+      setCompsCount(145);
+      setMedianaCount(89);
+      setEsteCount(92);
+      setGastosCount(120000);
       return;
     }
 
@@ -599,36 +601,44 @@ function MockupStep02() {
       rafIds.push(requestAnimationFrame(tick));
     };
 
-    // t=0-1500: barra progreso
-    animateValue(setProgress, 0, 100, 1500, false);
+    // Línea 1 · SII conectado
+    setShowLine1(true);
+    animateValue(setContribCount, 0, 78400, 600);
+    animateValue(setProgress, 0, 20, 600, false);
 
-    // t=1500: cambio de fase
-    T(1500, () => setPhase("completado"));
-
-    // t=1700: Bloque 1 · Costos reales
-    T(1700, () => {
-      setShowCostos(true);
-      animateValue(setContribCount, 0, 78400, 800);
-      animateValue(setGastosCount, 0, 95000, 800);
-      animateValue(setTotalEgresosCount, 0, 173400, 1000);
+    // Línea 2 · Comparables
+    T(600, () => {
+      setStepIdx(2);
+      setShowLine2(true);
+      animateValue(setCompsCount, 0, 145, 600);
+      animateValue(setMedianaCount, 0, 89, 600);
+      animateValue(setEsteCount, 0, 92, 600);
+      animateValue(setProgress, 20, 40, 600, false);
     });
 
-    // t=2700: Bloque 2 · Ingresos proyectados
-    T(2700, () => {
-      setShowIngresos(true);
-      animateValue(setArriendoCount, 0, 18, 800);
-      animateValue(setAirbnbCount, 0, 145, 800);
+    // Línea 3 · Modalidad con chips
+    T(1200, () => {
+      setStepIdx(3);
+      setShowLine3(true);
+      animateValue(setProgress, 40, 60, 600, false);
+    });
+    T(1300, () => setChipsCount(1));
+    T(1400, () => setChipsCount(2));
+    T(1500, () => setChipsCount(3));
+
+    // Línea 4 · Gastos
+    T(1800, () => {
+      setStepIdx(4);
+      setShowLine4(true);
+      animateValue(setGastosCount, 0, 120000, 600);
+      animateValue(setProgress, 60, 80, 600, false);
     });
 
-    // t=3500: Bloque 3 · Resultado
-    T(3500, () => {
-      setShowResultado(true);
-      animateValue(setCapRateCount, 0, 50, 800);
-      animateValue(setFlujoCount, 0, 290000, 1000);
-    });
+    // Línea 5 · Calculando (loop infinito en el dot, no avanza stepIdx)
+    T(2400, () => setShowLine5(true));
 
-    // t=4400: Footer
-    T(4400, () => setShowFooter(true));
+    // Footer
+    T(3000, () => setShowFooter(true));
 
     return () => {
       mounted = false;
@@ -637,91 +647,48 @@ function MockupStep02() {
     };
   }, [isInView, reduce]);
 
-  const isProcesando = phase === "procesando";
-  const capRateStr = (capRateCount / 10).toFixed(1).replace(".", ",");
-  const flujoStr = Math.round(flujoCount / 1000);
-
   return (
     <div
       ref={containerRef}
       className="franco-mockup"
       style={{
         padding: 20,
-        aspectRatio: "4 / 3",
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Header · label izq + estado procesando/completado der */}
+      {/* Header · label izq + contador "X de 5" der */}
       <div
         className="flex items-center justify-between"
-        style={{ marginBottom: 8 }}
+        style={{ marginBottom: 10 }}
       >
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 10, letterSpacing: "0.12em" }}
         >
-          Análisis en curso
+          Franco preparando análisis
         </p>
-        <div style={{ position: "relative", height: 14, minWidth: 90 }}>
-          {/* "procesando" pulsing · always-mounted, opacity animate condicional */}
-          <motion.span
-            initial={false}
-            animate={
-              isProcesando
-                ? { opacity: [1, 0.5, 1] }
-                : { opacity: 0 }
-            }
-            transition={
-              isProcesando
-                ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" }
-                : { duration: 0.3, ease: S01_EASE }
-            }
-            className="font-mono font-semibold uppercase"
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              fontSize: 9,
-              letterSpacing: "0.14em",
-              color: "#C8323C",
-            }}
-            aria-hidden={!isProcesando}
-          >
-            • procesando
-          </motion.span>
-          {/* "completado" · always-mounted, fade-in cuando phase cambia */}
-          <motion.span
-            initial={false}
-            animate={!isProcesando ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.3, ease: S01_EASE }}
-            className="font-mono font-semibold uppercase text-[var(--landing-text-muted)]"
-            style={{
-              position: "absolute",
-              right: 0,
-              top: 0,
-              fontSize: 9,
-              letterSpacing: "0.14em",
-            }}
-            aria-hidden={isProcesando}
-          >
-            ✓ completado
-          </motion.span>
-        </div>
+        <span
+          className="font-mono font-medium uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            color: "#C8323C",
+          }}
+        >
+          • {stepIdx} de 5
+        </span>
       </div>
 
-      {/* Barra progreso · fade-out cuando completado */}
-      <motion.div
-        initial={false}
-        animate={{ opacity: isProcesando ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
+      {/* Barra progreso */}
+      <div
         style={{
           width: "100%",
           height: 3,
           background: "var(--landing-divider)",
-          borderRadius: 1,
+          borderRadius: 2,
           overflow: "hidden",
-          marginBottom: 14,
+          marginBottom: 18,
         }}
       >
         <div
@@ -729,149 +696,113 @@ function MockupStep02() {
             height: "100%",
             width: `${progress}%`,
             background: "#C8323C",
-            borderRadius: 1,
+            borderRadius: 2,
           }}
         />
-      </motion.div>
+      </div>
 
-      {/* Bloque 1 · Costos reales */}
-      <motion.div
-        initial={false}
-        animate={showCostos ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
-        aria-hidden={!showCostos}
-        style={{ marginBottom: 10 }}
-      >
-        <p
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-            marginBottom: 3,
-          }}
-        >
-          Costos reales
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Contribuciones SII:{" "}
-          <span className="font-mono font-medium">
-            ${contribCount.toLocaleString("es-CL")}
-          </span>{" "}
-          / mes
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Gastos comunes est.:{" "}
-          <span className="font-mono font-medium">
-            ${gastosCount.toLocaleString("es-CL")}
-          </span>{" "}
-          / mes
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45, fontWeight: 600 }}
-        >
-          Total egresos:{" "}
-          <span className="font-mono font-semibold">
-            ${totalEgresosCount.toLocaleString("es-CL")}
-          </span>{" "}
-          / mes
-        </p>
-      </motion.div>
-
-      {/* Bloque 2 · Ingresos proyectados */}
-      <motion.div
-        initial={false}
-        animate={showIngresos ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
-        aria-hidden={!showIngresos}
-        style={{ marginBottom: 10 }}
-      >
-        <p
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-            marginBottom: 3,
-          }}
-        >
-          Ingresos proyectados
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Arriendo largo sugerido:{" "}
-          <span className="font-mono font-medium">UF {arriendoCount}</span>{" "}
-          / mes
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Airbnb sugerido:{" "}
-          <span className="font-mono font-medium">${airbnbCount}K</span>{" "}
-          / día · 65% ocupación
-        </p>
-      </motion.div>
-
-      {/* Bloque 3 · Resultado */}
-      <motion.div
-        initial={false}
-        animate={showResultado ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
-        aria-hidden={!showResultado}
-        style={{ marginBottom: 10 }}
-      >
-        <p
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-            marginBottom: 3,
-          }}
-        >
-          Resultado
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Cap rate:{" "}
-          <span
-            className="font-mono font-medium"
-            style={{ color: "#10B981" }}
+      {/* Línea 1 · SII */}
+      <S02Line show={showLine1} marginBottom={12}>
+        <CheckCircle />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
           >
-            {capRateStr}%
-          </span>
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Flujo mensual:{" "}
-          <span
-            className="font-mono font-medium"
-            style={{ color: "#C8323C" }}
+            Conectado con SII
+          </p>
+          <p
+            className="font-body text-[var(--landing-text-muted)]"
+            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
           >
-            −${flujoStr}K
-          </span>
-        </p>
-        <p
-          className="font-mono uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 9, letterSpacing: "0.08em", marginTop: 2 }}
-        >
-          Sobre mediana zona · negativo
-        </p>
-      </motion.div>
+            Contribuciones:{" "}
+            <span className="font-mono text-[var(--landing-text)]">
+              ${contribCount.toLocaleString("es-CL")}
+            </span>{" "}
+            / mes
+          </p>
+        </div>
+      </S02Line>
+
+      {/* Línea 2 · Comparables */}
+      <S02Line show={showLine2} marginBottom={12}>
+        <CheckCircle />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
+          >
+            <span className="font-mono">{compsCount}</span> comparables en zona
+          </p>
+          <p
+            className="font-body text-[var(--landing-text-muted)]"
+            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
+          >
+            Mediana:{" "}
+            <span className="font-mono">UF {medianaCount}/m²</span> · este:{" "}
+            <span className="font-mono">UF {esteCount}/m²</span>
+          </p>
+        </div>
+      </S02Line>
+
+      {/* Línea 3 · Modalidad con chips */}
+      <S02Line show={showLine3} marginBottom={12}>
+        <CheckCircle />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
+          >
+            Modalidad sugerida
+          </p>
+          <div
+            className="flex"
+            style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}
+          >
+            <Chip show={chipsCount >= 1}>ARRIENDO UF 18</Chip>
+            <Chip show={chipsCount >= 2}>AIRBNB $145K/d</Chip>
+            <Chip show={chipsCount >= 3} active>
+              AMBAS
+            </Chip>
+          </div>
+        </div>
+      </S02Line>
+
+      {/* Línea 4 · Gastos */}
+      <S02Line show={showLine4} marginBottom={12}>
+        <CheckCircle />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
+          >
+            Gastos operativos estimados
+          </p>
+          <p
+            className="font-body text-[var(--landing-text-muted)]"
+            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
+          >
+            Comunes + admin:{" "}
+            <span className="font-mono text-[var(--landing-text)]">
+              ${gastosCount.toLocaleString("es-CL")}
+            </span>{" "}
+            / mes
+          </p>
+        </div>
+      </S02Line>
+
+      {/* Línea 5 · Calculando (loading) */}
+      <S02Line show={showLine5} marginBottom={14}>
+        <LoadingCircle />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
+          >
+            Calculando flujo y veredicto…
+          </p>
+        </div>
+      </S02Line>
 
       {/* Footer · fuente */}
       <motion.p
@@ -888,6 +819,125 @@ function MockupStep02() {
         Fuente · 34.000+ propiedades · Airbnb en tiempo real
       </motion.p>
     </div>
+  );
+}
+
+/* Línea genérica del checklist · always-mounted con animate condicional opacity. */
+function S02Line({
+  show,
+  marginBottom,
+  children,
+}: {
+  show: boolean;
+  marginBottom?: number;
+  children: ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+      transition={{ duration: 0.3, ease: S01_EASE }}
+      aria-hidden={!show}
+      className="flex items-start"
+      style={{ gap: 10, marginBottom }}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* Check verde · circle 14px con tick SVG. */
+function CheckCircle() {
+  return (
+    <div
+      className="flex items-center justify-center flex-shrink-0"
+      style={{
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        background: "rgba(16,185,129,0.15)",
+        marginTop: 1,
+      }}
+      aria-hidden="true"
+    >
+      <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+        <path
+          d="M1 4.5 L3.5 7 L8 1.5"
+          stroke="#10B981"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </div>
+  );
+}
+
+/* Loading circle · border Signal Red + dot interior con pulse infinito.
+   Always-mounted motion.div (Phase 2.6e/f). */
+function LoadingCircle() {
+  return (
+    <div
+      className="flex items-center justify-center flex-shrink-0"
+      style={{
+        width: 14,
+        height: 14,
+        borderRadius: 7,
+        border: "1.5px solid #C8323C",
+        background: "transparent",
+        marginTop: 1,
+      }}
+      aria-hidden="true"
+    >
+      <motion.div
+        animate={{ opacity: [1, 0.3, 1] }}
+        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: 3,
+          background: "#C8323C",
+        }}
+      />
+    </div>
+  );
+}
+
+/* Chip de modalidad · always-mounted, opacity controlled. */
+function Chip({
+  show,
+  active = false,
+  children,
+}: {
+  show: boolean;
+  active?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <motion.span
+      initial={false}
+      animate={show ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.2, ease: S01_EASE }}
+      aria-hidden={!show}
+      className="font-mono uppercase"
+      style={{
+        fontSize: 10,
+        letterSpacing: "0.04em",
+        padding: "4px 9px",
+        borderRadius: 14,
+        background: active
+          ? "rgba(200,50,60,0.18)"
+          : "rgba(200,50,60,0.10)",
+        border: active
+          ? "1px solid #C8323C"
+          : "0.5px solid rgba(200,50,60,0.35)",
+        color: active ? "#FFFFFF" : "var(--landing-text)",
+        fontWeight: active ? 600 : 500,
+        whiteSpace: "nowrap",
+      }}
+    >
+      {children}
+    </motion.span>
   );
 }
 
