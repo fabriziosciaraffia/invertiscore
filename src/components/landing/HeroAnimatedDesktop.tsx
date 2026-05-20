@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { getStaticMapUrl } from "@/lib/map-styles";
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme
  * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
@@ -25,49 +24,51 @@ function useIsLight(): boolean {
 }
 
 /**
- * Hero animated mockup · DESKTOP-ONLY (F.11 Phase 2.7 Etapa 4).
- *
- * Cherry-pick del 2-card de Etapa 3 (commit 237818a) + safeguards 2.6f
- * (dropdown always-mounted) + 2.6g (rootMargin px). NO se monta en mobile
- * (SectionHero hace branch isMobile y renderiza HeroStaticMobile en su lugar)
- * para evitar NotFoundError iOS WebKit del React reconciler + framer-motion.
+ * Hero animated mockup · DESKTOP-ONLY (F.11 Phase 2.12 · recicla s04 cards).
  *
  * Estructura:
  *   · CARD 2 · Results — protagonista PERMANENTE (opacity 1.0 siempre).
- *     right:0 anclada al viewport · width 440 · height 480.
+ *     right:0 dentro del wrapper · width 420 · height 640.
  *   · CARD 1 · Form — "input que se ejecuta" · alterna apagada (0.55, brightness 0.7)
- *     vs activa (1.0, brightness 1.0) según fase del loop.
- *     right:220 top:30 · width 400 · height 420 · asoma 90px a la izquierda.
+ *     vs activa (1.0) según fase del loop.
+ *     right:200 top:30 · width 380 · height 560 · asoma 160px a la izq.
+ *
+ * Contenido = cards Step01 + Step03 de s04 SectionWhatFrancoDoes:
+ *   · Form (Step01): header wordmark + dirección + dropdown autocomplete
+ *     + chips USADO/NUEVO + precio (UF/CLP toggle) / superficie + mapa
+ *     real WebP (theme-aware) + botón ANALIZAR.
+ *   · Results (Step03): header wordmark + Hero score block (FRANCO SCORE +
+ *     ? + AJUSTA SUPUESTOS outlined + score 61 Mono Bold 30px + tracker
+ *     gradient + dot + BUSCAR/AJUSTA/COMPRAR labels) + cita italic Sans
+ *     + Caja Franco (border-left 3px Signal Red, esquinas izq cuadradas)
+ *     + 4 mini-cards (Mono Bold values, Mono uppercase sublabels) + bloque
+ *     Patrimonio (11 barras stagger + línea Patrimonio neto).
  *
  * Loop ~10s (Card 2 nunca dim):
- *   t=0-3000   form-active: Card 1 brillante · Form anima (tipeo, dropdown, counters, mapa).
- *   t=3000-3500 transition: Card 1 vuelve a dim.
- *   t=3500-9000 results-active: Card 2 anima internamente (score 0→61, badge, caja Franco, cards).
- *   t=9000-10000 stable: ambas finales.
- *   t=10000 reset.
+ *   t=0-3000     form-active: Card 1 brillante · typing + dropdown + chips
+ *                + counters + mapa fade-in.
+ *   t=3000-3500  transition: Card 1 dim back.
+ *   t=3500-9000  results-active: Card 2 anima score 0→61 + tracker + badge
+ *                + cita + Caja + 4 mini-cards stagger + patrimonio (11 barras
+ *                stagger 80ms + línea draw 1s via stroke-dashoffset).
+ *   t=9000-10000 stable: pausa.
+ *   t=10000 reset → próximo cycle.
  *
- * Entrada escalonada:
- *   t=1800 Card 2 (x:80→0, opacity:0→1)
- *   t=2000 Card 1 (x:80→0, opacity:0→0.55, brightness:0→0.7)
- *   loopArmed externo (t=2700 desde SectionHero) → loop arranca.
- *
- * Pausas reversibles:
- *   · IO propio (threshold 0.2 + rootMargin "-50px") · Phase 2.6e/g
- *   · heroVisible prop (IO de SectionHero)
- *   · Hover/touch sobre wrapper externo
- *
+ * Pausas reversibles: IO propio + heroVisible prop + hover/touch wrapper.
  * prefers-reduced-motion → estado final estable sin loop.
  *
  * Defensivos Safari iOS (Phase 2.6e/f intactos):
  *   · IO en try/catch con fallback visible=true
- *   · motion con repeat:Infinity siempre montadas (cursor + pin ring)
- *   · dropdown always-mounted (Phase 2.6f)
+ *   · dropdown always-mounted (animate condicional)
+ *   · motion rects SVG always-mounted (animate height/y attribute)
+ *   · polyline path always-mounted (strokeDashoffset CSS)
+ *   · cursor del input siempre montado (animate condicional opacity)
  *   · onTouchStart/End/Cancel + onMouseEnter/Leave
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
 const TYPING_SPEED_MS = 50;
-const DIRECCION = "Av. Pedro de Valdivia 1850, Providencia";
+const DIRECCION = "Av. Manuel Montt 1234, Providencia";
 
 type LoopPhase =
   | "idle"
@@ -77,35 +78,24 @@ type LoopPhase =
   | "stable";
 
 const SUGGESTIONS = [
-  "Av. Pedro de Valdivia 1850, Providencia",
-  "Av. Pedro de Valdivia 2200, Providencia",
-  "Av. Pedro de Valdivia 1234, Providencia",
+  "Av. Manuel Montt 1234, Providencia, Chile",
+  "Av. Manuel Montt 1250, Providencia, Chile",
 ];
 
-const MAP_CENTER = { lat: -33.4297, lng: -70.6113 };
-const MAP_VIEW_W = 380;
-const MAP_VIEW_H = 100;
-const MAP_PINS_GRAY = [
-  { id: "p1", x: 90, y: 38, value: "UF 5.200" },
-  { id: "p2", x: 270, y: 32, value: "UF 5.500" },
-  { id: "p4", x: 305, y: 72, value: "UF 6.000" },
-] as const;
-const MAP_PIN_RED = { x: 185, y: 55, value: "UF 5.800" } as const;
-
-const INSIGHT_CARDS: ReadonlyArray<{ eyebrow: string; text: string }> = [
-  {
-    eyebrow: "UBICACIÓN",
-    text: "A 280m del metro Pedro de Valdivia y rodeado de oficinas. Demanda de arriendo alta y estable — vacancia esperada baja.",
-  },
-  {
-    eyebrow: "PRECIO",
-    text: "Estás pagando UF 100/m². La zona transa en UF 89. 12% sobre el promedio sin justificación clara.",
-  },
-  {
-    eyebrow: "FLUJO",
-    text: "Vas a poner $310.000 mensuales de tu bolsillo. En 25 años son $93M. Ojo con eso.",
-  },
-];
+/* ===== Patrimonio chart constants (mismo modelo que s04 Step03) ===== */
+const APORTE = [60, 78, 96, 115, 135, 156, 178, 200, 220, 235, 250];
+const VALOR = [250, 270, 290, 305, 315, 325, 340, 350, 360, 370, 380];
+const NETO = [80, 120, 165, 215, 270, 330, 395, 465, 540, 625, 720];
+const GRID_VALUES = [0, 400, 800];
+const BAR_W = 22;
+const BAR_GAP = 25;
+const CHART_LEFT = 54;
+const CHART_TOP = 8;
+const CHART_BOTTOM_Y = 98;
+const MAX_V = 800;
+const INNER_H = CHART_BOTTOM_Y - CHART_TOP;
+const v2y = (v: number) => CHART_BOTTOM_Y - (v / MAX_V) * INNER_H;
+const barX = (i: number) => CHART_LEFT + i * (BAR_W + BAR_GAP);
 
 export default function HeroAnimatedDesktop({
   loopArmed = false,
@@ -121,27 +111,40 @@ export default function HeroAnimatedDesktop({
   const [isVisible, setIsVisible] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Entradas escalonadas (Card 2 antes que Card 1 según spec).
   const [card1Entered, setCard1Entered] = useState(!!reduce);
   const [card2Entered, setCard2Entered] = useState(!!reduce);
 
   const [phase, setPhase] = useState<LoopPhase>(reduce ? "stable" : "idle");
 
-  // Form sub-state
+  // ─── Form sub-state ─────────────────────────────
   const [typedText, setTypedText] = useState("");
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
+  const [showChips, setShowChips] = useState(false);
   const [precioCount, setPrecioCount] = useState(0);
   const [superficieCount, setSuperficieCount] = useState(0);
-  // mapStage 0 hidden · 1 container · 2..4 pins gris · 5 pin rojo + ring · 6 caption
-  const [mapStage, setMapStage] = useState(0);
+  const [showMap, setShowMap] = useState(false);
 
-  // Results sub-state
-  const [scoreCount, setScoreCount] = useState(0);
-  const [showBadge, setShowBadge] = useState(false);
-  const [showLine, setShowLine] = useState(false);
-  const [showFranco, setShowFranco] = useState(false);
-  const [activeCards, setActiveCards] = useState(0);
+  // ─── Results sub-state ──────────────────────────
+  // Initial values = FINAL state. Card 2 es protagonista permanente:
+  // muestra contenido completo apenas entra. El loop solo "resetea" al iniciar
+  // results-active (t=3500 del cycle) y re-anima. Durante form-active /
+  // transition / stable, Card 2 mantiene el estado final del ciclo anterior.
+  const [scoreCount, setScoreCount] = useState(61);
+  const [barPct, setBarPct] = useState(61);
+  const [showBadge, setShowBadge] = useState(true);
+  const [showLine, setShowLine] = useState(true);
+  const [showCaja, setShowCaja] = useState(true);
+  const [showCard02, setShowCard02] = useState(true);
+  const [showCard03, setShowCard03] = useState(true);
+  const [showCard04, setShowCard04] = useState(true);
+  const [showCard05, setShowCard05] = useState(true);
+  const [costoCount, setCostoCount] = useState(310);
+  const [negociCount, setNegociCount] = useState(4900);
+  const [largoCount, setLargoCount] = useState(1450);
+  const [showPatri, setShowPatri] = useState(true);
+  const [barIdx, setBarIdx] = useState(11);
+  const [linePct, setLinePct] = useState(100);
 
   const showFinalStatic = !!reduce;
   const shouldLoop =
@@ -153,8 +156,7 @@ export default function HeroAnimatedDesktop({
     card1Entered &&
     card2Entered;
 
-  // IntersectionObserver propio del mockup — pausa fuera de viewport.
-  // rootMargin en px (no %) por compat con Safari iOS < 14.5 (Phase 2.6e).
+  // IntersectionObserver propio — pausa fuera de viewport.
   useEffect(() => {
     const el = containerRef.current;
     if (!el || typeof IntersectionObserver === "undefined") return;
@@ -193,17 +195,28 @@ export default function HeroAnimatedDesktop({
     setTypedText(DIRECCION);
     setDropdownVisible(false);
     setAutocompleteHighlight(false);
-    setPrecioCount(5800);
-    setSuperficieCount(58);
-    setMapStage(6);
+    setShowChips(true);
+    setPrecioCount(5500);
+    setSuperficieCount(60);
+    setShowMap(true);
     setScoreCount(61);
+    setBarPct(61);
     setShowBadge(true);
     setShowLine(true);
-    setShowFranco(true);
-    setActiveCards(3);
+    setShowCaja(true);
+    setShowCard02(true);
+    setShowCard03(true);
+    setShowCard04(true);
+    setShowCard05(true);
+    setCostoCount(310);
+    setNegociCount(4900);
+    setLargoCount(1450);
+    setShowPatri(true);
+    setBarIdx(11);
+    setLinePct(100);
   }, [showFinalStatic]);
 
-  // Loop principal.
+  // ─── Loop principal ──────────────────────────────
   useEffect(() => {
     if (!shouldLoop) return;
 
@@ -217,13 +230,15 @@ export default function HeroAnimatedDesktop({
       from: number,
       to: number,
       duration: number,
+      round = true,
     ) => {
       const start = performance.now();
       const tick = (now: number) => {
         if (!mounted) return;
         const t = Math.min(1, (now - start) / duration);
         const eased = 1 - Math.pow(1 - t, 3);
-        setter(Math.round(from + (to - from) * eased));
+        const val = from + (to - from) * eased;
+        setter(round ? Math.round(val) : val);
         if (t < 1) rafIds.push(requestAnimationFrame(tick));
       };
       rafIds.push(requestAnimationFrame(tick));
@@ -238,14 +253,17 @@ export default function HeroAnimatedDesktop({
     };
 
     const runCycle = () => {
-      // === FORM ACTIVE (0-3000ms) ===
+      // ===== FORM ACTIVE (0-3000ms) =====
+      // Solo reset del Form sub-state · Card 2 mantiene contenido del ciclo
+      // anterior visible (es protagonista permanente).
       setPhase("form-active");
       setTypedText("");
       setDropdownVisible(false);
       setAutocompleteHighlight(false);
+      setShowChips(false);
       setPrecioCount(0);
       setSuperficieCount(0);
-      setMapStage(0);
+      setShowMap(false);
 
       // t=400 typing arranca
       T(400, () => {
@@ -261,11 +279,9 @@ export default function HeroAnimatedDesktop({
         }, TYPING_SPEED_MS);
       });
 
-      // t=1000 dropdown aparece
+      // t=1000 dropdown aparece · t=1200 highlight · t=1500 cierra
       T(1000, () => setDropdownVisible(true));
-      // t=1200 highlight primer match
       T(1200, () => setAutocompleteHighlight(true));
-      // t=1500 selección · cierra dropdown
       T(1500, () => {
         if (typingInterval) {
           clearInterval(typingInterval);
@@ -276,44 +292,71 @@ export default function HeroAnimatedDesktop({
         setAutocompleteHighlight(false);
       });
 
-      // t=1700 counters Precio/Superficie
+      // t=1700 chips TIPO + counters Precio/Superficie
       T(1700, () => {
-        animateCounter(setPrecioCount, 0, 5800, 700);
-        animateCounter(setSuperficieCount, 0, 58, 700);
+        setShowChips(true);
+        animateCounter(setPrecioCount, 0, 5500, 700);
+        animateCounter(setSuperficieCount, 0, 60, 700);
       });
 
-      // t=2300 mapa stagger reveal
-      T(2300, () => setMapStage(1));
-      T(2500, () => setMapStage(2));
-      T(2650, () => setMapStage(3));
-      T(2800, () => setMapStage(4));
-      T(2950, () => setMapStage(5));
-      T(3000, () => setMapStage(6));
+      // t=2200 mapa fade-in
+      T(2200, () => setShowMap(true));
 
-      // === TRANSITION (3000-3500ms) ===
+      // ===== TRANSITION (3000-3500ms) =====
       T(3000, () => setPhase("transition"));
 
-      // === RESULTS ACTIVE (3500-9000ms) ===
+      // ===== RESULTS ACTIVE (3500-9000ms) =====
+      // Reset Card 2 sub-state → re-animate desde cero para mostrar la
+      // construcción del análisis. Card 2 estuvo "estable final" durante
+      // form-active + transition; ahora "vuelve a calcularse".
       T(3500, () => {
         setPhase("results-active");
         setScoreCount(0);
+        setBarPct(0);
         setShowBadge(false);
         setShowLine(false);
-        setShowFranco(false);
-        setActiveCards(0);
+        setShowCaja(false);
+        setShowCard02(false);
+        setShowCard03(false);
+        setShowCard04(false);
+        setShowCard05(false);
+        setCostoCount(0);
+        setNegociCount(0);
+        setLargoCount(0);
+        setShowPatri(false);
+        setBarIdx(0);
+        setLinePct(0);
         animateCounter(setScoreCount, 0, 61, 1200);
+        animateCounter(setBarPct, 0, 61, 1200, false);
       });
       T(4700, () => setShowBadge(true));
-      T(5000, () => setShowLine(true));
-      T(5500, () => setShowFranco(true));
-      T(6300, () => setActiveCards(1));
-      T(6600, () => setActiveCards(2));
-      T(6900, () => setActiveCards(3));
+      T(4900, () => setShowLine(true));
+      T(5300, () => setShowCaja(true));
+      T(5900, () => {
+        setShowCard02(true);
+        animateCounter(setCostoCount, 0, 310, 700);
+      });
+      T(6100, () => {
+        setShowCard03(true);
+        animateCounter(setNegociCount, 0, 4900, 700);
+      });
+      T(6300, () => {
+        setShowCard04(true);
+        animateCounter(setLargoCount, 0, 1450, 700);
+      });
+      T(6500, () => setShowCard05(true));
+      T(6900, () => setShowPatri(true));
+      for (let i = 0; i < 11; i++) {
+        T(7100 + i * 80, () =>
+          setBarIdx((prev) => (prev > i ? prev : i + 1)),
+        );
+      }
+      T(8000, () => animateCounter(setLinePct, 0, 100, 1000, false));
 
-      // === STABLE (9000-10000ms) ===
+      // ===== STABLE (9000-10000ms) =====
       T(9000, () => setPhase("stable"));
 
-      // === RESET → próximo ciclo ===
+      // ===== RESET → próximo ciclo =====
       T(10000, runCycle);
     };
 
@@ -327,11 +370,7 @@ export default function HeroAnimatedDesktop({
     };
   }, [shouldLoop]);
 
-  // === Render derived values ===
-  // Card 2 (Results) es protagonista permanente: opacity 1.0 siempre tras entry.
-  // Card 1 (Form) alterna entre dim (base) ↔ activa según la fase.
-  // Dim DARK: opacity 0.55 + brightness 0.7 · LIGHT: opacity 0.72 sin brightness
-  //   (brightness < 1 sobre bg #F2F0EA da gris muerto; en light basta opacity).
+  // ─── Render derived values ──────────────────────
   const dimOpacity = isLight ? 0.72 : 0.55;
   const dimBrightness = isLight ? 1.0 : 0.7;
   const card1Opacity = !card1Entered
@@ -352,41 +391,47 @@ export default function HeroAnimatedDesktop({
   const cursorVisible =
     phase === "form-active" && typedText.length < DIRECCION.length;
 
-  // === Card layout styles · desktop-only ===
-  // bg sólido en ambas: backgroundColor override del gradient transparent de
-  // .franco-mockup. El background-image (gradient sutil interno) se preserva.
   const solidBg = "var(--landing-mockup-solid-bg)";
+
+  // Cards sizing · Phase 2.12 (alturas ajustadas a contenido · Card 1 dentro
+  // del wrapper para no invadir el grid cell del copy en SectionHero).
+  // Wrapper 500 wide × 540 tall: contiene Card 2 (420 a la derecha) y Card 1
+  // (380 a la izquierda con right:100). Card 1 left edge ≈ 20px from wrapper
+  // left → no escapa de su grid cell → no overlap con H1.
   const card1Style: React.CSSProperties = {
     position: "absolute",
     top: 30,
-    right: 232,
-    width: 360,
-    height: 500,
-    padding: "18px 20px",
+    right: 100,
+    width: 380,
+    height: 480,
+    padding: "16px 18px",
     backgroundColor: solidBg,
     borderRadius: 22,
     zIndex: 1,
     willChange: "opacity, filter, transform",
+    overflow: "hidden",
   };
   const card2Style: React.CSSProperties = {
     position: "absolute",
     top: 0,
-    right: 32,
-    width: 400,
+    right: 0,
+    width: 420,
     height: 540,
-    padding: "24px 22px",
+    padding: "16px 18px",
     backgroundColor: solidBg,
     borderRadius: 22,
     boxShadow:
       "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
     zIndex: 2,
     willChange: "opacity, transform",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
   };
 
-  // Wrapper: width 432 (Card 2 right edge 32 + 400 width), height 540.
   const wrapperStyle: React.CSSProperties = {
     position: "relative",
-    width: 432,
+    width: 500,
     height: 540,
   };
 
@@ -400,8 +445,7 @@ export default function HeroAnimatedDesktop({
       onTouchEnd={() => setIsHovered(false)}
       onTouchCancel={() => setIsHovered(false)}
     >
-      {/* CARD 2 · RESULTS — protagonista permanente.
-          Ambas cards son absolute; z-index decide stacking. */}
+      {/* CARD 2 · RESULTS — protagonista permanente */}
       <motion.div
         className="franco-mockup"
         animate={{ opacity: card2Opacity, ...card2Anim }}
@@ -411,14 +455,24 @@ export default function HeroAnimatedDesktop({
       >
         <ResultsCard
           scoreCount={scoreCount}
+          barPct={barPct}
           showBadge={showBadge}
           showLine={showLine}
-          showFranco={showFranco}
-          activeCards={activeCards}
+          showCaja={showCaja}
+          showCard02={showCard02}
+          showCard03={showCard03}
+          showCard04={showCard04}
+          showCard05={showCard05}
+          costoCount={costoCount}
+          negociCount={negociCount}
+          largoCount={largoCount}
+          showPatri={showPatri}
+          barIdx={barIdx}
+          linePct={linePct}
         />
       </motion.div>
 
-      {/* CARD 1 · FORM — input que se ejecuta · alterna apagada/activa. */}
+      {/* CARD 1 · FORM — input que se ejecuta · alterna apagada/activa */}
       <motion.div
         className="franco-mockup"
         animate={{
@@ -435,50 +489,58 @@ export default function HeroAnimatedDesktop({
           cursorVisible={cursorVisible}
           dropdownVisible={dropdownVisible}
           autocompleteHighlight={autocompleteHighlight}
+          showChips={showChips}
           precioCount={precioCount}
           superficieCount={superficieCount}
-          mapStage={mapStage}
+          showMap={showMap}
+          isLight={isLight}
         />
       </motion.div>
     </div>
   );
 }
 
-/* ===================== Sub-components ===================== */
+/* ===================== Shared sub-components ===================== */
+
+function MockupWordmark() {
+  return (
+    <span className="inline-flex items-baseline" aria-label="refranco.ai">
+      <span
+        className="font-heading italic font-light"
+        style={{
+          fontSize: 11,
+          color: "var(--landing-wm-re)",
+          marginRight: "-0.08em",
+        }}
+      >
+        re
+      </span>
+      <span
+        className="font-heading font-bold"
+        style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
+      >
+        franco
+      </span>
+      <span
+        className="font-body font-semibold text-[#C8323C]"
+        style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
+      >
+        .ai
+      </span>
+    </span>
+  );
+}
 
 function HeaderApp({ label }: { label: string }) {
   return (
     <div
       className="flex items-center justify-between"
-      style={{ height: 28, marginBottom: 12 }}
+      style={{ marginBottom: 10 }}
     >
-      <span className="inline-flex items-baseline">
-        <span
-          className="font-heading italic font-light"
-          style={{
-            fontSize: 12,
-            color: "var(--landing-wm-re)",
-            marginRight: "-0.08em",
-          }}
-        >
-          re
-        </span>
-        <span
-          className="font-heading font-bold"
-          style={{ fontSize: 12, color: "var(--landing-wm-franco)" }}
-        >
-          franco
-        </span>
-        <span
-          className="font-body font-semibold text-[#C8323C]"
-          style={{ fontSize: 7, marginLeft: 1, letterSpacing: "0.1em" }}
-        >
-          .ai
-        </span>
-      </span>
+      <MockupWordmark />
       <span
         className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em" }}
+        style={{ fontSize: 9, letterSpacing: "0.12em" }}
       >
         {label}
       </span>
@@ -486,94 +548,87 @@ function HeaderApp({ label }: { label: string }) {
   );
 }
 
-function FormField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative" style={{ marginBottom: 10 }}>
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}
-      >
-        {label}
-      </p>
-      <div
-        style={{
-          paddingBottom: 5,
-          borderBottom: "0.5px solid var(--landing-divider)",
-          minHeight: 20,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
+/* ===================== Card 1 · Form (animado) ===================== */
 
 function FormCard({
   typedText,
   cursorVisible,
   dropdownVisible,
   autocompleteHighlight,
+  showChips,
   precioCount,
   superficieCount,
-  mapStage,
+  showMap,
+  isLight,
 }: {
   typedText: string;
   cursorVisible: boolean;
   dropdownVisible: boolean;
   autocompleteHighlight: boolean;
+  showChips: boolean;
   precioCount: number;
   superficieCount: number;
-  mapStage: number;
+  showMap: boolean;
+  isLight: boolean;
 }) {
   return (
     <div>
-      <HeaderApp label="Nuevo análisis · 4 comparables" />
+      <HeaderApp label="Nuevo análisis" />
 
-      <FormField label="Dirección">
-        <span
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12 }}
+      {/* Dirección · con typing + dropdown autocomplete */}
+      <div style={{ marginBottom: 10 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
         >
-          {typedText ? (
-            typedText
-          ) : (
-            <span style={{ color: "var(--landing-text-muted)" }}>
-              Buscar dirección…
-            </span>
-          )}
-          {/* Cursor siempre montado · animate condicional (Phase 2.6e). */}
-          <motion.span
-            animate={
-              cursorVisible ? { opacity: [1, 1, 0, 0] } : { opacity: 0 }
-            }
-            transition={
-              cursorVisible
-                ? {
-                    duration: 0.9,
-                    repeat: Infinity,
-                    times: [0, 0.5, 0.5, 1],
-                  }
-                : { duration: 0 }
-            }
-            aria-hidden="true"
-            style={{
-              display: "inline-block",
-              width: 1,
-              height: 12,
-              background: "var(--landing-text)",
-              marginLeft: 2,
-              verticalAlign: "text-bottom",
-              pointerEvents: "none",
-            }}
-          />
-        </span>
-        {/* Dropdown siempre montado · animate condicional (Phase 2.6f). */}
+          Dirección
+        </p>
+        <div
+          style={{
+            borderBottom: "0.5px solid var(--landing-divider)",
+            paddingBottom: 4,
+            minHeight: 20,
+          }}
+        >
+          <span
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12 }}
+          >
+            {typedText ? (
+              typedText
+            ) : (
+              <span style={{ color: "var(--landing-text-muted)" }}>
+                Buscar dirección…
+              </span>
+            )}
+            {/* Cursor always-mounted · animate condicional (Phase 2.6e). */}
+            <motion.span
+              animate={
+                cursorVisible ? { opacity: [1, 1, 0, 0] } : { opacity: 0 }
+              }
+              transition={
+                cursorVisible
+                  ? {
+                      duration: 0.9,
+                      repeat: Infinity,
+                      times: [0, 0.5, 0.5, 1],
+                    }
+                  : { duration: 0 }
+              }
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 1,
+                height: 12,
+                background: "var(--landing-text)",
+                marginLeft: 2,
+                verticalAlign: "text-bottom",
+                pointerEvents: "none",
+              }}
+            />
+          </span>
+        </div>
+        {/* Dropdown always-mounted in-flow · animate condicional (Phase 2.6f). */}
         <motion.div
           initial={false}
           animate={
@@ -582,16 +637,14 @@ function FormCard({
               : { opacity: 0, y: -4 }
           }
           transition={{ duration: 0.18, ease: EASE }}
-          className="absolute left-0 right-0 z-10"
           aria-hidden={!dropdownVisible}
           style={{
-            top: "100%",
             marginTop: 4,
             background: "var(--landing-card-bg)",
             border: "0.5px solid var(--landing-card-border)",
-            borderRadius: 6,
-            padding: 4,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+            borderRadius: 5,
+            padding: 3,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
             pointerEvents: dropdownVisible ? "auto" : "none",
           }}
         >
@@ -601,8 +654,8 @@ function FormCard({
               className="font-body text-[var(--landing-text)]"
               style={{
                 fontSize: 11,
-                padding: "5px 8px",
-                borderRadius: 4,
+                padding: "4px 6px",
+                borderRadius: 3,
                 background:
                   i === 0 && autocompleteHighlight
                     ? "rgba(200,50,60,0.10)"
@@ -618,353 +671,692 @@ function FormCard({
             </div>
           ))}
         </motion.div>
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Precio">
-          <span
-            className="font-mono font-medium text-[var(--landing-text)]"
-            style={{ fontSize: 12 }}
-          >
-            UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
-          </span>
-        </FormField>
-        <FormField label="Superficie">
-          <span
-            className="font-mono font-medium text-[var(--landing-text)]"
-            style={{ fontSize: 12 }}
-          >
-            {superficieCount > 0 ? `${superficieCount} m²` : "—"}
-          </span>
-        </FormField>
       </div>
 
-      <ComparablesMap mapStage={mapStage} />
+      {/* Tipo · chips · always-mounted, opacity controlled */}
+      <motion.div
+        initial={false}
+        animate={showChips ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.25, ease: EASE }}
+        style={{ marginBottom: 10 }}
+      >
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
+        >
+          Tipo
+        </p>
+        <div className="flex" style={{ gap: 6 }}>
+          <span
+            className="font-mono font-bold uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid #C8323C",
+              color: "#C8323C",
+              background: "transparent",
+            }}
+          >
+            Usado
+          </span>
+          <span
+            className="font-mono font-medium uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid var(--landing-divider)",
+              color: "var(--landing-text-muted)",
+            }}
+          >
+            Nuevo
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Grid Precio (UF/CLP toggle) + Superficie */}
+      <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
+        <div>
+          <div
+            className="flex items-center justify-between"
+            style={{ marginBottom: 3 }}
+          >
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+            >
+              Precio
+            </p>
+            <div
+              className="flex"
+              style={{
+                fontSize: 7,
+                fontFamily: "var(--font-mono)",
+                border: "0.5px solid var(--landing-divider)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <span
+                style={{
+                  padding: "1px 4px",
+                  background: "var(--landing-divider)",
+                  color: "var(--landing-text)",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                UF
+              </span>
+              <span
+                style={{
+                  padding: "1px 4px",
+                  color: "var(--landing-text-muted)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                CLP
+              </span>
+            </div>
+          </div>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
+            >
+              UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+          >
+            Superficie
+          </p>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
+            >
+              {superficieCount > 0 ? `${superficieCount} m²` : "—"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mapa real WebP · theme-aware · fade-in via opacity */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: showMap ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: "340 / 120",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 6,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={
+            isLight
+              ? "/landing/map-comparables-light.png"
+              : "/landing/map-comparables.webp"
+          }
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+          aria-hidden="true"
+        />
+      </motion.div>
+
+      {/* Botón ANALIZAR */}
+      <div
+        style={{
+          marginTop: 12,
+          padding: "7px 12px",
+          background: "#C8323C",
+          color: "#FAFAF8",
+          borderRadius: 6,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          fontFamily: "var(--font-mono, monospace)",
+        }}
+      >
+        Analizar
+        <span aria-hidden="true">→</span>
+      </div>
     </div>
   );
 }
 
-function ComparablesMap({ mapStage }: { mapStage: number }) {
-  const [imgError, setImgError] = useState(false);
-
-  const mapUrl = getStaticMapUrl({
-    lat: MAP_CENTER.lat,
-    lng: MAP_CENTER.lng,
-    zoom: 16,
-    width: MAP_VIEW_W,
-    height: MAP_VIEW_H,
-    scale: 2,
-    theme: "dark",
-  });
-  const showFallback = !mapUrl || imgError;
-
-  return (
-    <motion.div
-      initial={false}
-      animate={{ opacity: mapStage >= 1 ? 1 : 0 }}
-      transition={{ duration: 0.3, ease: EASE }}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: MAP_VIEW_H,
-        borderRadius: 6,
-        overflow: "hidden",
-        border: "0.5px solid var(--landing-card-border)",
-        background: "var(--landing-map-bg)",
-        marginTop: 4,
-      }}
-    >
-      {showFallback ? (
-        <div
-          className="flex h-full items-center justify-center font-mono uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 10, letterSpacing: "0.12em" }}
-        >
-          Mapa no disponible
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={mapUrl}
-          alt=""
-          loading="eager"
-          onError={() => setImgError(true)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
-          aria-hidden="true"
-        />
-      )}
-
-      <svg
-        viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
-        width="100%"
-        height={MAP_VIEW_H}
-        preserveAspectRatio="none"
-        style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
-        }}
-        aria-hidden="true"
-      >
-        {MAP_PINS_GRAY.map((pin, i) => {
-          const visible = mapStage >= 2 + i;
-          return (
-            <motion.g
-              key={pin.id}
-              initial={false}
-              animate={
-                visible ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.4 }
-              }
-              transition={{ duration: 0.2, ease: "easeOut" }}
-              style={{ transformBox: "fill-box", transformOrigin: "center" }}
-            >
-              <circle
-                cx={pin.x}
-                cy={pin.y}
-                r={3}
-                fill="#C8C8C8"
-                stroke="#0F0F0F"
-                strokeWidth={1.5}
-              />
-              <PinLabel x={pin.x} y={pin.y - 10} text={pin.value} />
-            </motion.g>
-          );
-        })}
-
-        <motion.g
-          initial={false}
-          animate={
-            mapStage >= 5
-              ? { opacity: 1, scale: 1 }
-              : { opacity: 0, scale: 0.3 }
-          }
-          transition={{ duration: 0.4, ease: "backOut" }}
-          style={{ transformBox: "fill-box", transformOrigin: "center" }}
-        >
-          {/* Ring siempre montado · animate controlado (Phase 2.6e). */}
-          <motion.circle
-            cx={MAP_PIN_RED.x}
-            cy={MAP_PIN_RED.y}
-            fill="none"
-            stroke="#C8323C"
-            strokeWidth={1.5}
-            initial={{ r: 8, opacity: 0 }}
-            animate={
-              mapStage >= 5
-                ? { r: [8, 18], opacity: [0.5, 0] }
-                : { r: 8, opacity: 0 }
-            }
-            transition={
-              mapStage >= 5
-                ? { duration: 2, repeat: Infinity, ease: "easeOut" }
-                : { duration: 0 }
-            }
-          />
-          <circle
-            cx={MAP_PIN_RED.x}
-            cy={MAP_PIN_RED.y}
-            r={4}
-            fill="#C8323C"
-            stroke="#0F0F0F"
-            strokeWidth={2}
-          />
-          <PinLabel
-            x={MAP_PIN_RED.x}
-            y={MAP_PIN_RED.y - 12}
-            text={MAP_PIN_RED.value}
-            accent
-          />
-        </motion.g>
-      </svg>
-    </motion.div>
-  );
-}
-
-function PinLabel({
-  x,
-  y,
-  text,
-  accent = false,
-}: {
-  x: number;
-  y: number;
-  text: string;
-  accent?: boolean;
-}) {
-  const charW = accent ? 6.2 : 5.6;
-  const padX = 4;
-  const padY = 2;
-  const w = text.length * charW + padX * 2;
-  const h = accent ? 13 : 12;
-  return (
-    <>
-      <rect
-        x={x - w / 2}
-        y={y - h + padY}
-        width={w}
-        height={h}
-        rx={2}
-        fill="rgba(15,15,15,0.72)"
-      />
-      <text
-        x={x}
-        y={y - 1}
-        textAnchor="middle"
-        fontFamily="var(--font-mono)"
-        fontSize={accent ? 10 : 9}
-        fontWeight={accent ? 700 : 500}
-        letterSpacing="0.02em"
-        fill="#FFFFFF"
-      >
-        {text}
-      </text>
-    </>
-  );
-}
+/* ===================== Card 2 · Results (animado) ===================== */
 
 function ResultsCard({
   scoreCount,
+  barPct,
   showBadge,
   showLine,
-  showFranco,
-  activeCards,
+  showCaja,
+  showCard02,
+  showCard03,
+  showCard04,
+  showCard05,
+  costoCount,
+  negociCount,
+  largoCount,
+  showPatri,
+  barIdx,
+  linePct,
 }: {
   scoreCount: number;
+  barPct: number;
   showBadge: boolean;
   showLine: boolean;
-  showFranco: boolean;
-  activeCards: number;
+  showCaja: boolean;
+  showCard02: boolean;
+  showCard03: boolean;
+  showCard04: boolean;
+  showCard05: boolean;
+  costoCount: number;
+  negociCount: number;
+  largoCount: number;
+  showPatri: boolean;
+  barIdx: number;
+  linePct: number;
 }) {
-  return (
-    <div>
-      <HeaderApp label="Resultado" />
+  const netoPoints = NETO.map(
+    (v, i) => `${barX(i) + BAR_W / 2},${v2y(v)}`,
+  ).join(" ");
 
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <HeaderApp label="Completado" />
+
+      {/* Hero veredicto · score + tracker + badge outlined */}
       <div
-        className="flex items-baseline justify-between"
-        style={{ marginBottom: 4 }}
+        style={{
+          background: "var(--landing-mockup-solid-bg)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 10,
+          padding: 12,
+          marginBottom: 8,
+        }}
       >
-        <span className="franco-glow-signal" style={{ display: "inline-block" }}>
+        {/* Eyebrow row */}
+        <div className="flex items-center" style={{ gap: 5, marginBottom: 8 }}>
           <span
-            className="font-heading font-bold leading-none tracking-tight text-[var(--landing-text)]"
-            style={{ fontSize: 42 }}
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.12em" }}
+          >
+            Franco score
+          </span>
+          <span
+            aria-hidden="true"
+            className="font-mono text-[var(--landing-text-muted)]"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              border: "0.5px solid currentColor",
+              fontSize: 7,
+              lineHeight: 1,
+            }}
+          >
+            ?
+          </span>
+          <motion.span
+            initial={false}
+            animate={
+              showBadge
+                ? { opacity: 1, scale: 1 }
+                : { opacity: 0, scale: 0.92 }
+            }
+            transition={{ duration: 0.25, ease: EASE }}
+            aria-hidden={!showBadge}
+            className="font-mono uppercase"
+            style={{
+              marginLeft: "auto",
+              background: "transparent",
+              color: "#C8323C",
+              border: "0.5px solid #C8323C",
+              padding: "5px 9px",
+              borderRadius: 4,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ajusta supuestos
+          </motion.span>
+        </div>
+
+        {/* Score row · número Mono Bold + tracker */}
+        <div className="flex items-center" style={{ gap: 12 }}>
+          <span
+            className="font-mono font-bold text-[var(--landing-text)]"
+            style={{
+              fontSize: 30,
+              lineHeight: 0.95,
+              letterSpacing: "-0.02em",
+              flexShrink: 0,
+            }}
           >
             {scoreCount}
-            <span
-              className="font-mono"
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
               style={{
-                fontSize: 11,
-                color: "var(--landing-text-muted)",
-                marginLeft: 2,
+                position: "relative",
+                height: 3,
+                background:
+                  "linear-gradient(to right, #C8323C 0%, #B4B2A9 100%)",
+                borderRadius: 1.5,
               }}
             >
-              /100
-            </span>
-          </span>
-        </span>
-        <motion.span
-          initial={false}
-          animate={
-            showBadge ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.9 }
-          }
-          transition={{ duration: 0.3, ease: EASE }}
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.08em",
-            padding: "4px 8px",
-            borderRadius: 4,
-            background: "#C8323C",
-            color: "#FAFAF8",
-          }}
-        >
-          Ajustar supuestos
-        </motion.span>
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${barPct}%`,
+                  top: "50%",
+                  width: 11,
+                  height: 11,
+                  borderRadius: "50%",
+                  background: "#C8323C",
+                  border: "2px solid var(--landing-mockup-solid-bg)",
+                  transform: "translate(-50%, -50%)",
+                }}
+                aria-hidden="true"
+              />
+            </div>
+            <div style={{ position: "relative", height: 11, marginTop: 3 }}>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  fontSize: 9,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Buscar
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: 0,
+                  transform: "translateX(-50%)",
+                  fontSize: 9,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Ajusta
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  fontSize: 9,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Comprar
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Cita italic Sans */}
       <motion.p
         initial={false}
         animate={showLine ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.4, ease: EASE }}
-        className="font-heading italic"
+        transition={{ duration: 0.35, ease: EASE }}
+        aria-hidden={!showLine}
+        className="font-body italic text-[var(--landing-text)]"
         style={{
-          fontSize: 13,
-          color: "var(--landing-text-muted)",
-          marginTop: 6,
-          marginBottom: 14,
+          fontSize: 12,
+          lineHeight: 1.4,
+          margin: 0,
+          marginBottom: 6,
+          paddingLeft: 2,
         }}
       >
         Buena propiedad. Precio incómodo.
       </motion.p>
 
+      {/* Caja Franco · border-left 3px Signal Red */}
       <motion.div
         initial={false}
-        animate={showFranco ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
-        transition={{ duration: 0.6, ease: EASE }}
+        animate={showCaja ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+        transition={{ duration: 0.35, ease: EASE }}
+        aria-hidden={!showCaja}
         style={{
-          borderLeft: "2px solid #C8323C",
-          background: "rgba(200,50,60,0.05)",
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderLeft: "3px solid #C8323C",
+          borderRadius: "0 6px 6px 0",
           padding: "9px 11px",
+          marginBottom: 8,
         }}
       >
         <p
           className="font-mono font-semibold uppercase"
           style={{
-            fontSize: 9,
-            letterSpacing: "0.08em",
+            fontSize: 8,
+            letterSpacing: "0.14em",
             color: "#C8323C",
             marginBottom: 3,
           }}
         >
-          Siendo franco
+          Antes de negociar
         </p>
         <p
-          className="font-heading italic text-[var(--landing-text-secondary)]"
-          style={{ fontSize: 12, lineHeight: 1.5 }}
+          className="font-body italic text-[var(--landing-text)]"
+          style={{ fontSize: 11, lineHeight: 1.4, margin: 0 }}
         >
-          &ldquo;Negocia hasta UF 5.100 y el flujo cuadra. Si no cede, la misma
-          plata en Airbnb te da +$180K mensuales — pero requiere que te
-          involucres en gestión.&rdquo;
+          Negocia hasta{" "}
+          <span className="font-mono font-bold text-[var(--landing-text)]">
+            UF 4.900
+          </span>{" "}
+          y el flujo cuadra. Si no cede, prueba Airbnb — te da{" "}
+          <span className="font-mono font-bold text-[var(--landing-text)]">
+            +$180K/mes
+          </span>{" "}
+          pero requiere gestión.
         </p>
       </motion.div>
 
-      <div className="mt-3 flex flex-col gap-2.5">
-        {INSIGHT_CARDS.map((card, i) => (
-          <motion.div
-            key={card.eyebrow}
-            initial={false}
-            animate={
-              activeCards > i
-                ? { opacity: 1, y: 0 }
-                : { opacity: 0, y: 12 }
-            }
-            transition={{ duration: 0.4, ease: EASE }}
-          >
-            <p
-              className="font-mono font-semibold uppercase"
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.08em",
-                color: "#C8323C",
-                marginBottom: 3,
-              }}
-            >
-              {card.eyebrow}
-            </p>
-            <p
-              className="font-body text-[var(--landing-text-secondary)]"
-              style={{ fontSize: 11, lineHeight: 1.45 }}
-            >
-              {card.text}
-            </p>
-          </motion.div>
-        ))}
+      {/* Grid 2x2 mini-cards */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 6,
+          marginBottom: 8,
+        }}
+      >
+        <MiniCard
+          show={showCard02}
+          eyebrow="02 · Costo mensual"
+          value={`−$${costoCount}K`}
+          valueColor="#C8323C"
+          sublabel="Flujo de bolsillo"
+        />
+        <MiniCard
+          show={showCard03}
+          eyebrow="03 · Negociación"
+          value={`UF ${negociCount.toLocaleString("es-CL")}`}
+          valueColor="var(--landing-text)"
+          sublabel="Precio sugerido"
+        />
+        <MiniCard
+          show={showCard04}
+          eyebrow="04 · Largo plazo"
+          value={`+UF ${largoCount.toLocaleString("es-CL")}`}
+          valueColor="var(--landing-text)"
+          sublabel="Plusvalía 10 años"
+        />
+        <MiniCard
+          show={showCard05}
+          eyebrow="05 · Riesgos"
+          value="3 medios"
+          valueColor="var(--landing-text)"
+          sublabel="Vacancia · tasa · m²"
+        />
       </div>
+
+      {/* Bloque Patrimonio */}
+      <motion.div
+        initial={false}
+        animate={showPatri ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        aria-hidden={!showPatri}
+        style={{
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 8,
+          padding: 10,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <div
+          className="flex items-baseline justify-between"
+          style={{ marginBottom: 6, gap: 8 }}
+        >
+          <p
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 8, letterSpacing: "0.12em" }}
+          >
+            09 · Patrimonio
+          </p>
+          <p
+            className="font-heading font-bold text-[var(--landing-text)]"
+            style={{ fontSize: 12, lineHeight: 1.2 }}
+          >
+            Cómo crece tu capital
+          </p>
+        </div>
+
+        <svg
+          viewBox="0 0 560 130"
+          preserveAspectRatio="xMidYMid meet"
+          style={{ width: "100%", height: "auto", display: "block" }}
+          aria-hidden="true"
+        >
+          {GRID_VALUES.map((v) => {
+            const y = v2y(v);
+            return (
+              <g key={`grid-${v}`}>
+                <line
+                  x1={CHART_LEFT}
+                  x2={552}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--landing-card-border)"
+                  strokeWidth={0.5}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={CHART_LEFT - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="font-mono"
+                  style={{ fontSize: 9, fill: "var(--landing-text-muted)" }}
+                >
+                  {v === 0 ? "$0" : `$${v}M`}
+                </text>
+              </g>
+            );
+          })}
+
+          {APORTE.map((ap, i) => {
+            const val = VALOR[i];
+            const visible = i < barIdx;
+            const aporteY = v2y(ap);
+            const aporteH = CHART_BOTTOM_Y - aporteY;
+            const valorY = v2y(ap + val);
+            const valorH = aporteY - valorY;
+            const x = barX(i);
+            return (
+              <g key={`bar-${i}`}>
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? aporteY : CHART_BOTTOM_Y,
+                    height: visible ? aporteH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  x={x}
+                  width={BAR_W}
+                  fill="#C8323C"
+                />
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? valorY : aporteY,
+                    height: visible ? valorH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  x={x}
+                  width={BAR_W}
+                  fill="var(--landing-text)"
+                  fillOpacity={0.5}
+                />
+              </g>
+            );
+          })}
+
+          <polyline
+            points={netoPoints}
+            fill="none"
+            stroke="var(--landing-text)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={100}
+            style={{
+              strokeDasharray: 100,
+              strokeDashoffset: 100 - linePct,
+            }}
+          />
+          {NETO.map((v, i) => {
+            const dotPct = (i / 10) * 100;
+            const dotVisible = linePct >= dotPct - 0.5;
+            return (
+              <circle
+                key={`dot-${i}`}
+                cx={barX(i) + BAR_W / 2}
+                cy={v2y(v)}
+                r={2}
+                fill="var(--landing-text)"
+                style={{
+                  opacity: dotVisible ? 1 : 0,
+                  transition: "opacity 200ms linear",
+                }}
+              />
+            );
+          })}
+
+          {NETO.map((_, i) => (
+            <text
+              key={`xl-${i}`}
+              x={barX(i) + BAR_W / 2}
+              y={113}
+              textAnchor="middle"
+              className="font-mono"
+              style={{ fontSize: 9, fill: "var(--landing-text-muted)" }}
+            >
+              a{i}
+            </text>
+          ))}
+        </svg>
+      </motion.div>
     </div>
+  );
+}
+
+function MiniCard({
+  show,
+  eyebrow,
+  value,
+  valueColor,
+  sublabel,
+}: {
+  show: boolean;
+  eyebrow: string;
+  value: string;
+  valueColor: string;
+  sublabel: string;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      aria-hidden={!show}
+      style={{
+        background: "var(--landing-card-bg-soft)",
+        border: "0.5px solid var(--landing-card-border)",
+        borderRadius: 7,
+        padding: "8px 10px",
+      }}
+    >
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 3 }}
+      >
+        <span
+          className="font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 8, letterSpacing: "0.1em" }}
+        >
+          {eyebrow}
+        </span>
+        <span
+          className="font-mono text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9 }}
+          aria-hidden="true"
+        >
+          →
+        </span>
+      </div>
+      <p
+        className="font-mono font-bold"
+        style={{
+          fontSize: 14,
+          lineHeight: 1.15,
+          color: valueColor,
+          margin: 0,
+          marginBottom: 2,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {value}
+      </p>
+      <p
+        className="font-mono uppercase text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 8,
+          letterSpacing: "0.06em",
+          lineHeight: 1.3,
+          margin: 0,
+        }}
+      >
+        {sublabel}
+      </p>
+    </motion.div>
   );
 }

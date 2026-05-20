@@ -1,6 +1,5 @@
 "use client";
 
-import { getStaticMapUrl } from "@/lib/map-styles";
 import { useEffect, useState } from "react";
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme
@@ -24,57 +23,76 @@ function useIsLight(): boolean {
 }
 
 /**
- * Hero static mockup · MOBILE-ONLY (F.11 Phase 2.7 Etapa 6).
+ * Hero static mockup · MOBILE-ONLY (F.11 Phase 2.12 · recicla s04 cards).
  *
  * SIN framer-motion · SIN AnimatePresence · SIN useInView. Solo divs
- * con CSS estático. Evita el NotFoundError iOS WebKit que afectaba al
- * componente animado (Phase 2.6 series no lo resolvieron).
+ * con CSS estático. Evita el NotFoundError iOS WebKit del componente animado.
  *
- * Layout estilo Linear · 2 cards SUPERPUESTAS (no apiladas):
- *   · Container relative con height fijo ~380px, ambas cards absolute.
- *   · CARD 1 · Form (atrás) — top:0, left:-16px (asoma izq), dim
- *     permanente (opacity 0.55 + brightness 0.7), z-index 1.
- *   · CARD 2 · Results (frente) — top:80px, right:-16px (asoma der),
- *     overlap con Card 1, opacity 1, z-index 2.
- *   · Bottom de cards corta con viewport · invita al scroll para ver el
- *     contenido completo.
+ * Contenido = estado final estático de las cards Step01 y Step03 de s04:
+ *   · CARD 1 (atrás-izq, dim permanente, z-index 1):
+ *     Header wordmark + Dirección con dropdown + chips Tipo USADO/NUEVO
+ *     + Precio/Superficie + mapa WebP real (theme-aware) + botón ANALIZAR.
+ *   · CARD 2 (frente-der, protagonista, z-index 2):
+ *     Header wordmark + Hero score block (FRANCO SCORE + ? + AJUSTA SUPUESTOS
+ *     badge outlined + score 61 Mono Bold + tracker bar con dot 61% +
+ *     BUSCAR/AJUSTA/COMPRAR labels) + cita italic + Caja Franco
+ *     (border-left 3px Signal Red, esquinas izq cuadradas) + 4 mini-cards
+ *     (Mono Bold values + Mono uppercase sublabels) + bloque Patrimonio
+ *     (11 barras stacked Aporte/Valor + línea Patrimonio neto).
  *
- * Above-the-fold (390x844):
- *   · Copy compacto (eyebrow + H1 reducido + subhead + CTA) ~360-400px
- *   · Card 1 + Card 2 superpuestas asomando ~40% visible cada una
- *
- * Contenido = estado final del cycle de HeroAnimatedDesktop:
- *   · Form: dirección, precio, superficie, mapa con 4 pins (sin pulsing)
- *   · Results: score 61, badge AJUSTAR SUPUESTOS, línea italic, caja
- *     Franco con cita, 3 cards UBICACIÓN/PRECIO/FLUJO.
+ * Design system: solo Ink scale + Signal Red. Sin verde, sin amber.
+ * Theme-aware (dark + light) via CSS vars.
  */
 
-const DIRECCION = "Av. Pedro de Valdivia 1850, Providencia";
+/* ===================== Helpers compartidos ===================== */
 
-const MAP_CENTER = { lat: -33.4297, lng: -70.6113 };
-const MAP_VIEW_W = 320;
-const MAP_VIEW_H = 80;
-const MAP_PINS_GRAY = [
-  { id: "p1", x: 70, y: 28, value: "UF 5.200" },
-  { id: "p2", x: 220, y: 22, value: "UF 5.500" },
-  { id: "p4", x: 250, y: 56, value: "UF 6.000" },
-] as const;
-const MAP_PIN_RED = { x: 150, y: 44, value: "UF 5.800" } as const;
+function MockupWordmark() {
+  return (
+    <span className="inline-flex items-baseline" aria-label="refranco.ai">
+      <span
+        className="font-heading italic font-light"
+        style={{
+          fontSize: 11,
+          color: "var(--landing-wm-re)",
+          marginRight: "-0.08em",
+        }}
+      >
+        re
+      </span>
+      <span
+        className="font-heading font-bold"
+        style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
+      >
+        franco
+      </span>
+      <span
+        className="font-body font-semibold text-[#C8323C]"
+        style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
+      >
+        .ai
+      </span>
+    </span>
+  );
+}
 
-const INSIGHT_CARDS: ReadonlyArray<{ eyebrow: string; text: string }> = [
-  {
-    eyebrow: "UBICACIÓN",
-    text: "A 280m del metro Pedro de Valdivia y rodeado de oficinas. Demanda de arriendo alta y estable — vacancia esperada baja.",
-  },
-  {
-    eyebrow: "PRECIO",
-    text: "Estás pagando UF 100/m². La zona transa en UF 89. 12% sobre el promedio sin justificación clara.",
-  },
-  {
-    eyebrow: "FLUJO",
-    text: "Vas a poner $310.000 mensuales de tu bolsillo. En 25 años son $93M. Ojo con eso.",
-  },
-];
+function HeaderApp({ label }: { label: string }) {
+  return (
+    <div
+      className="flex items-center justify-between"
+      style={{ marginBottom: 10 }}
+    >
+      <MockupWordmark />
+      <span
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 9, letterSpacing: "0.12em" }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+/* ===================== Layout shell ===================== */
 
 export default function HeroStaticMobile() {
   return (
@@ -82,9 +100,9 @@ export default function HeroStaticMobile() {
       style={{
         position: "relative",
         width: "100%",
-        height: 560,
+        height: 570,
         marginTop: 16,
-        marginBottom: 80,
+        marginBottom: 64,
         overflow: "visible",
       }}
     >
@@ -96,7 +114,7 @@ export default function HeroStaticMobile() {
   );
 }
 
-/* ===================== Card 1 · Form (estático) ===================== */
+/* ===================== Card 1 · Form estático (Step01 final) ===================== */
 
 function FormCardStatic() {
   const isLight = useIsLight();
@@ -108,7 +126,7 @@ function FormCardStatic() {
         top: 0,
         left: 12,
         width: "72%",
-        height: 480,
+        height: 420,
         padding: 14,
         backgroundColor: "var(--landing-mockup-solid-bg)",
         borderRadius: 22,
@@ -117,380 +135,688 @@ function FormCardStatic() {
         zIndex: 1,
       }}
     >
-      <HeaderApp label="Nuevo análisis · 4 comparables" />
+      <HeaderApp label="Nuevo análisis" />
 
-      <FormField label="Dirección">
-        <span
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12 }}
+      {/* Dirección · con dropdown autocomplete in-flow seleccionado */}
+      <div style={{ marginBottom: 10 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
         >
-          {DIRECCION}
-        </span>
-      </FormField>
-
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Precio">
+          Dirección
+        </p>
+        <div
+          style={{
+            borderBottom: "0.5px solid var(--landing-divider)",
+            paddingBottom: 4,
+          }}
+        >
           <span
-            className="font-mono font-medium text-[var(--landing-text)]"
+            className="font-body text-[var(--landing-text)]"
             style={{ fontSize: 12 }}
           >
-            UF 5.800
+            Av. Manuel Montt 1234, Providencia
           </span>
-        </FormField>
-        <FormField label="Superficie">
-          <span
-            className="font-mono font-medium text-[var(--landing-text)]"
-            style={{ fontSize: 12 }}
+        </div>
+        <div
+          style={{
+            marginTop: 4,
+            background: "var(--landing-card-bg)",
+            border: "0.5px solid var(--landing-card-border)",
+            borderRadius: 5,
+            padding: 3,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+          }}
+        >
+          <div
+            className="font-body text-[var(--landing-text)]"
+            style={{
+              fontSize: 11,
+              padding: "4px 6px",
+              borderRadius: 3,
+              background: "rgba(200,50,60,0.10)",
+            }}
           >
-            58 m²
-          </span>
-        </FormField>
+            Av. Manuel Montt 1234, Providencia, Chile
+          </div>
+          <div
+            className="font-body text-[var(--landing-text-secondary)]"
+            style={{ fontSize: 11, padding: "4px 6px", borderRadius: 3 }}
+          >
+            Av. Manuel Montt 1250, Providencia, Chile
+          </div>
+        </div>
       </div>
 
-      <StaticMap />
+      {/* Tipo · chips USADO (outline Signal Red) / NUEVO (inactivo Ink) */}
+      <div style={{ marginBottom: 10 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
+        >
+          Tipo
+        </p>
+        <div className="flex" style={{ gap: 6 }}>
+          <span
+            className="font-mono font-bold uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid #C8323C",
+              color: "#C8323C",
+              background: "transparent",
+            }}
+          >
+            Usado
+          </span>
+          <span
+            className="font-mono font-medium uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid var(--landing-divider)",
+              color: "var(--landing-text-muted)",
+            }}
+          >
+            Nuevo
+          </span>
+        </div>
+      </div>
+
+      {/* Grid Precio (con UF/CLP toggle) + Superficie */}
+      <div
+        className="grid grid-cols-2"
+        style={{ gap: 12, marginBottom: 12 }}
+      >
+        <div>
+          <div
+            className="flex items-center justify-between"
+            style={{ marginBottom: 3 }}
+          >
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+            >
+              Precio
+            </p>
+            <div
+              className="flex"
+              style={{
+                fontSize: 7,
+                fontFamily: "var(--font-mono)",
+                border: "0.5px solid var(--landing-divider)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <span
+                style={{
+                  padding: "1px 4px",
+                  background: "var(--landing-divider)",
+                  color: "var(--landing-text)",
+                  fontWeight: 700,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                UF
+              </span>
+              <span
+                style={{
+                  padding: "1px 4px",
+                  color: "var(--landing-text-muted)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                CLP
+              </span>
+            </div>
+          </div>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
+            >
+              UF 5.500
+            </span>
+          </div>
+        </div>
+        <div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+          >
+            Superficie
+          </p>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
+            >
+              60 m²
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mapa real WebP · theme-aware */}
+      <div
+        className="relative w-full overflow-hidden"
+        style={{
+          aspectRatio: "340 / 120",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 6,
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={
+            isLight
+              ? "/landing/map-comparables-light.png"
+              : "/landing/map-comparables.webp"
+          }
+          alt=""
+          className="w-full h-full object-cover"
+          loading="lazy"
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Botón ANALIZAR */}
+      <div
+        style={{
+          marginTop: 12,
+          padding: "7px 12px",
+          background: "#C8323C",
+          color: "#FAFAF8",
+          borderRadius: 6,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          fontSize: 10,
+          fontWeight: 500,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          fontFamily: "var(--font-mono, monospace)",
+        }}
+      >
+        Analizar
+        <span aria-hidden="true">→</span>
+      </div>
     </div>
   );
 }
 
-/* ===================== Card 2 · Results (estático) ===================== */
+/* ===================== Card 2 · Results estático (Step03 final) ===================== */
+
+const APORTE = [60, 78, 96, 115, 135, 156, 178, 200, 220, 235, 250];
+const VALOR = [250, 270, 290, 305, 315, 325, 340, 350, 360, 370, 380];
+const NETO = [80, 120, 165, 215, 270, 330, 395, 465, 540, 625, 720];
+const GRID_VALUES = [0, 400, 800];
+const BAR_W = 22;
+const BAR_GAP = 25;
+const CHART_LEFT = 54;
+const CHART_TOP = 8;
+const CHART_BOTTOM_Y = 98;
+const MAX_V = 800;
+const INNER_H = CHART_BOTTOM_Y - CHART_TOP;
+const v2y = (v: number) => CHART_BOTTOM_Y - (v / MAX_V) * INNER_H;
+const barX = (i: number) => CHART_LEFT + i * (BAR_W + BAR_GAP);
 
 function ResultsCardStatic() {
+  const netoPoints = NETO.map(
+    (v, i) => `${barX(i) + BAR_W / 2},${v2y(v)}`,
+  ).join(" ");
+
   return (
     <div
       className="franco-mockup"
       style={{
         position: "absolute",
-        top: 80,
+        top: 70,
         right: 12,
         width: "78%",
-        height: 480,
-        padding: 16,
+        height: 500,
+        padding: 12,
         backgroundColor: "var(--landing-mockup-solid-bg)",
         borderRadius: 22,
         boxShadow:
           "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
         zIndex: 2,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
-      <HeaderApp label="Resultado" />
+      <HeaderApp label="Completado" />
 
+      {/* Hero veredicto */}
       <div
-        className="flex items-baseline justify-between"
-        style={{ marginBottom: 4 }}
+        style={{
+          background: "var(--landing-mockup-solid-bg)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 10,
+          padding: 11,
+          marginBottom: 8,
+        }}
       >
-        <span
-          className="franco-glow-signal"
-          style={{ display: "inline-block" }}
+        {/* Eyebrow row */}
+        <div
+          className="flex items-center"
+          style={{ gap: 5, marginBottom: 6 }}
         >
           <span
-            className="font-heading font-bold leading-none tracking-tight text-[var(--landing-text)]"
-            style={{ fontSize: 42 }}
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.12em" }}
+          >
+            Franco score
+          </span>
+          <span
+            aria-hidden="true"
+            className="font-mono text-[var(--landing-text-muted)]"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 11,
+              height: 11,
+              borderRadius: "50%",
+              border: "0.5px solid currentColor",
+              fontSize: 7,
+              lineHeight: 1,
+            }}
+          >
+            ?
+          </span>
+          <span
+            className="font-mono uppercase"
+            style={{
+              marginLeft: "auto",
+              background: "transparent",
+              color: "#C8323C",
+              border: "0.5px solid #C8323C",
+              padding: "4px 7px",
+              borderRadius: 3,
+              fontSize: 8,
+              fontWeight: 700,
+              letterSpacing: "0.1em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ajusta supuestos
+          </span>
+        </div>
+
+        {/* Score + tracker row */}
+        <div className="flex items-center" style={{ gap: 10 }}>
+          <span
+            className="font-mono font-bold text-[var(--landing-text)]"
+            style={{
+              fontSize: 26,
+              lineHeight: 0.95,
+              letterSpacing: "-0.02em",
+              flexShrink: 0,
+            }}
           >
             61
-            <span
-              className="font-mono"
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div
               style={{
-                fontSize: 11,
-                color: "var(--landing-text-muted)",
-                marginLeft: 2,
+                position: "relative",
+                height: 3,
+                background: "linear-gradient(to right, #C8323C 0%, #B4B2A9 100%)",
+                borderRadius: 1.5,
               }}
             >
-              /100
-            </span>
-          </span>
-        </span>
-        <span
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 9,
-            letterSpacing: "0.08em",
-            padding: "4px 8px",
-            borderRadius: 4,
-            background: "#C8323C",
-            color: "#FAFAF8",
-          }}
-        >
-          Ajustar supuestos
-        </span>
+              <div
+                style={{
+                  position: "absolute",
+                  left: "61%",
+                  top: "50%",
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: "#C8323C",
+                  border: "2px solid var(--landing-mockup-solid-bg)",
+                  transform: "translate(-50%, -50%)",
+                }}
+                aria-hidden="true"
+              />
+            </div>
+            <div
+              style={{
+                position: "relative",
+                height: 10,
+                marginTop: 3,
+              }}
+            >
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  fontSize: 8,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Buscar
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: 0,
+                  transform: "translateX(-50%)",
+                  fontSize: 8,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Ajusta
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  fontSize: 8,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Comprar
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
+      {/* Cita italic Sans */}
       <p
-        className="font-heading italic"
+        className="font-body italic text-[var(--landing-text)]"
         style={{
-          fontSize: 13,
-          color: "var(--landing-text-muted)",
-          marginTop: 6,
-          marginBottom: 14,
+          fontSize: 12,
+          lineHeight: 1.35,
+          margin: 0,
+          marginBottom: 6,
+          paddingLeft: 2,
         }}
       >
         Buena propiedad. Precio incómodo.
       </p>
 
+      {/* Caja Franco · border-left 3px Signal Red, esquinas izq cuadradas */}
       <div
         style={{
-          borderLeft: "2px solid #C8323C",
-          background: "rgba(200,50,60,0.05)",
-          padding: "9px 11px",
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderLeft: "3px solid #C8323C",
+          borderRadius: "0 6px 6px 0",
+          padding: "9px 10px",
+          marginBottom: 7,
         }}
       >
         <p
           className="font-mono font-semibold uppercase"
           style={{
-            fontSize: 9,
-            letterSpacing: "0.08em",
+            fontSize: 8,
+            letterSpacing: "0.14em",
             color: "#C8323C",
             marginBottom: 3,
           }}
         >
-          Siendo franco
+          Antes de negociar
         </p>
         <p
-          className="font-heading italic text-[var(--landing-text-secondary)]"
-          style={{ fontSize: 12, lineHeight: 1.5 }}
+          className="font-body italic text-[var(--landing-text)]"
+          style={{ fontSize: 11, lineHeight: 1.4, margin: 0 }}
         >
-          &ldquo;Negocia hasta UF 5.100 y el flujo cuadra. Si no cede, la misma
-          plata en Airbnb te da +$180K mensuales — pero requiere que te
-          involucres en gestión.&rdquo;
+          Negocia hasta{" "}
+          <span className="font-mono font-bold text-[var(--landing-text)]">
+            UF 4.900
+          </span>{" "}
+          y el flujo cuadra. Si no cede, prueba Airbnb — te da{" "}
+          <span className="font-mono font-bold text-[var(--landing-text)]">
+            +$180K/mes
+          </span>{" "}
+          pero requiere gestión.
         </p>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2.5">
-        {INSIGHT_CARDS.map((card) => (
-          <div key={card.eyebrow}>
-            <p
-              className="font-mono font-semibold uppercase"
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.08em",
-                color: "#C8323C",
-                marginBottom: 3,
-              }}
-            >
-              {card.eyebrow}
-            </p>
-            <p
-              className="font-body text-[var(--landing-text-secondary)]"
-              style={{ fontSize: 11, lineHeight: 1.45 }}
-            >
-              {card.text}
-            </p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ===================== Shared sub-components ===================== */
-
-function HeaderApp({ label }: { label: string }) {
-  return (
-    <div
-      className="flex items-center justify-between"
-      style={{ height: 28, marginBottom: 12 }}
-    >
-      <span className="inline-flex items-baseline">
-        <span
-          className="font-heading italic font-light"
-          style={{
-            fontSize: 12,
-            color: "var(--landing-wm-re)",
-            marginRight: "-0.08em",
-          }}
-        >
-          re
-        </span>
-        <span
-          className="font-heading font-bold"
-          style={{ fontSize: 12, color: "var(--landing-wm-franco)" }}
-        >
-          franco
-        </span>
-        <span
-          className="font-body font-semibold text-[#C8323C]"
-          style={{ fontSize: 7, marginLeft: 1, letterSpacing: "0.1em" }}
-        >
-          .ai
-        </span>
-      </span>
-      <span
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em" }}
-      >
-        {label}
-      </span>
-    </div>
-  );
-}
-
-function FormField({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="relative" style={{ marginBottom: 10 }}>
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 4 }}
-      >
-        {label}
-      </p>
+      {/* Grid 2x2 mini-cards */}
       <div
         style={{
-          paddingBottom: 5,
-          borderBottom: "0.5px solid var(--landing-divider)",
-          minHeight: 20,
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 5,
+          marginBottom: 7,
         }}
       >
-        {children}
+        <MiniCard
+          eyebrow="02 · Costo mensual"
+          value="−$310K"
+          valueColor="#C8323C"
+          sublabel="Flujo de bolsillo"
+        />
+        <MiniCard
+          eyebrow="03 · Negociación"
+          value="UF 4.900"
+          valueColor="var(--landing-text)"
+          sublabel="Precio sugerido"
+        />
+        <MiniCard
+          eyebrow="04 · Largo plazo"
+          value="+UF 1.450"
+          valueColor="var(--landing-text)"
+          sublabel="Plusvalía 10 años"
+        />
+        <MiniCard
+          eyebrow="05 · Riesgos"
+          value="3 medios"
+          valueColor="var(--landing-text)"
+          sublabel="Vacancia · tasa · m²"
+        />
+      </div>
+
+      {/* Bloque Patrimonio */}
+      <div
+        style={{
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 8,
+          padding: 9,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <div
+          className="flex items-baseline justify-between"
+          style={{ marginBottom: 6, gap: 8 }}
+        >
+          <p
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 8, letterSpacing: "0.12em" }}
+          >
+            09 · Patrimonio
+          </p>
+          <p
+            className="font-heading font-bold text-[var(--landing-text)]"
+            style={{ fontSize: 11, lineHeight: 1.2 }}
+          >
+            Cómo crece tu capital
+          </p>
+        </div>
+
+        <svg
+          viewBox="0 0 560 130"
+          preserveAspectRatio="xMidYMid meet"
+          style={{ width: "100%", height: "auto", display: "block" }}
+          aria-hidden="true"
+        >
+          {GRID_VALUES.map((v) => {
+            const y = v2y(v);
+            return (
+              <g key={`grid-${v}`}>
+                <line
+                  x1={CHART_LEFT}
+                  x2={552}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--landing-card-border)"
+                  strokeWidth={0.5}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={CHART_LEFT - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="font-mono"
+                  style={{ fontSize: 9, fill: "var(--landing-text-muted)" }}
+                >
+                  {v === 0 ? "$0" : `$${v}M`}
+                </text>
+              </g>
+            );
+          })}
+
+          {APORTE.map((ap, i) => {
+            const val = VALOR[i];
+            const aporteY = v2y(ap);
+            const aporteH = CHART_BOTTOM_Y - aporteY;
+            const valorY = v2y(ap + val);
+            const valorH = aporteY - valorY;
+            const x = barX(i);
+            return (
+              <g key={`bar-${i}`}>
+                <rect x={x} y={aporteY} width={BAR_W} height={aporteH} fill="#C8323C" />
+                <rect
+                  x={x}
+                  y={valorY}
+                  width={BAR_W}
+                  height={valorH}
+                  fill="var(--landing-text)"
+                  fillOpacity={0.5}
+                />
+              </g>
+            );
+          })}
+
+          <polyline
+            points={netoPoints}
+            fill="none"
+            stroke="var(--landing-text)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          {NETO.map((v, i) => (
+            <circle
+              key={`dot-${i}`}
+              cx={barX(i) + BAR_W / 2}
+              cy={v2y(v)}
+              r={2}
+              fill="var(--landing-text)"
+            />
+          ))}
+
+          {NETO.map((_, i) => (
+            <text
+              key={`xl-${i}`}
+              x={barX(i) + BAR_W / 2}
+              y={113}
+              textAnchor="middle"
+              className="font-mono"
+              style={{ fontSize: 9, fill: "var(--landing-text-muted)" }}
+            >
+              a{i}
+            </text>
+          ))}
+        </svg>
       </div>
     </div>
   );
 }
 
-/* ===================== Mapa estático (sin animations) ===================== */
-
-function StaticMap() {
-  const [imgError, setImgError] = useState(false);
-  const mapUrl = getStaticMapUrl({
-    lat: MAP_CENTER.lat,
-    lng: MAP_CENTER.lng,
-    zoom: 16,
-    width: MAP_VIEW_W,
-    height: MAP_VIEW_H,
-    scale: 2,
-    theme: "dark",
-  });
-  const showFallback = !mapUrl || imgError;
-
+function MiniCard({
+  eyebrow,
+  value,
+  valueColor,
+  sublabel,
+}: {
+  eyebrow: string;
+  value: string;
+  valueColor: string;
+  sublabel: string;
+}) {
   return (
     <div
       style={{
-        position: "relative",
-        width: "100%",
-        height: MAP_VIEW_H,
-        borderRadius: 6,
-        overflow: "hidden",
+        background: "var(--landing-card-bg-soft)",
         border: "0.5px solid var(--landing-card-border)",
-        background: "var(--landing-map-bg)",
-        marginTop: 4,
+        borderRadius: 7,
+        padding: "7px 9px",
       }}
     >
-      {showFallback ? (
-        <div
-          className="flex h-full items-center justify-center font-mono uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 10, letterSpacing: "0.12em" }}
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 3 }}
+      >
+        <span
+          className="font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 8, letterSpacing: "0.1em" }}
         >
-          Mapa no disponible
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={mapUrl}
-          alt=""
-          loading="eager"
-          onError={() => setImgError(true)}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            display: "block",
-          }}
+          {eyebrow}
+        </span>
+        <span
+          className="font-mono text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9 }}
           aria-hidden="true"
-        />
-      )}
-
-      <svg
-        viewBox={`0 0 ${MAP_VIEW_W} ${MAP_VIEW_H}`}
-        width="100%"
-        height={MAP_VIEW_H}
-        preserveAspectRatio="none"
+        >
+          →
+        </span>
+      </div>
+      <p
+        className="font-mono font-bold"
         style={{
-          position: "absolute",
-          inset: 0,
-          pointerEvents: "none",
+          fontSize: 13,
+          lineHeight: 1.15,
+          color: valueColor,
+          margin: 0,
+          marginBottom: 2,
+          letterSpacing: "-0.01em",
         }}
-        aria-hidden="true"
       >
-        {MAP_PINS_GRAY.map((pin) => (
-          <g key={pin.id}>
-            <circle
-              cx={pin.x}
-              cy={pin.y}
-              r={3}
-              fill="#C8C8C8"
-              stroke="#0F0F0F"
-              strokeWidth={1.5}
-            />
-            <PinLabel x={pin.x} y={pin.y - 10} text={pin.value} />
-          </g>
-        ))}
-
-        {/* Pin rojo central · sin ring pulsante */}
-        <g>
-          <circle
-            cx={MAP_PIN_RED.x}
-            cy={MAP_PIN_RED.y}
-            r={4}
-            fill="#C8323C"
-            stroke="#0F0F0F"
-            strokeWidth={2}
-          />
-          <PinLabel
-            x={MAP_PIN_RED.x}
-            y={MAP_PIN_RED.y - 12}
-            text={MAP_PIN_RED.value}
-            accent
-          />
-        </g>
-      </svg>
+        {value}
+      </p>
+      <p
+        className="font-mono uppercase text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 8,
+          letterSpacing: "0.06em",
+          lineHeight: 1.3,
+          margin: 0,
+        }}
+      >
+        {sublabel}
+      </p>
     </div>
-  );
-}
-
-function PinLabel({
-  x,
-  y,
-  text,
-  accent = false,
-}: {
-  x: number;
-  y: number;
-  text: string;
-  accent?: boolean;
-}) {
-  const charW = accent ? 6.2 : 5.6;
-  const padX = 4;
-  const padY = 2;
-  const w = text.length * charW + padX * 2;
-  const h = accent ? 13 : 12;
-  return (
-    <>
-      <rect
-        x={x - w / 2}
-        y={y - h + padY}
-        width={w}
-        height={h}
-        rx={2}
-        fill="rgba(15,15,15,0.72)"
-      />
-      <text
-        x={x}
-        y={y - 1}
-        textAnchor="middle"
-        fontFamily="var(--font-mono)"
-        fontSize={accent ? 10 : 9}
-        fontWeight={accent ? 700 : 500}
-        letterSpacing="0.02em"
-        fill="#FFFFFF"
-      >
-        {text}
-      </text>
-    </>
   );
 }

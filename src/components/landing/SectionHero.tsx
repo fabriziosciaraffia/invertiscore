@@ -106,20 +106,22 @@ export default function SectionHero() {
           <HeroStaticMobile />
         </div>
       ) : (
-        /* === Desktop · grid con cards absolute al viewport derecho === */
-        <>
-          <div className="mx-auto w-full max-w-6xl px-6 pt-28 pb-12 md:py-20 md:px-0 md:pr-[500px]">
-            <HeroCopy reduce={!!reduce} mobile={false} />
-          </div>
-          <div className="hidden md:flex absolute right-0 top-0 bottom-0 items-center pointer-events-none">
-            <div className="pointer-events-auto">
+        /* === Desktop · grid simétrico dentro del container max-w-6xl ===
+             Phase 2.12 · cards ya no anchored al viewport. Ambos bloques
+             viven dentro del container con el mismo respiro de borde (px-8). */
+        <div className="mx-auto w-full max-w-6xl px-8 md:py-20">
+          <div className="grid grid-cols-[1.1fr_1fr] items-center gap-8">
+            <div>
+              <HeroCopy reduce={!!reduce} mobile={false} />
+            </div>
+            <div className="relative flex items-center justify-end">
               <HeroAnimatedDesktop
                 loopArmed={loopArmed}
                 heroVisible={isHeroVisible}
               />
             </div>
           </div>
-        </>
+        </div>
       )}
     </section>
   );
