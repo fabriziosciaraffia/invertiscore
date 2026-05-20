@@ -35,7 +35,7 @@ const STEPS: ReadonlyArray<Step> = [
     eyebrow: "Datos del depto",
     title: "Ingresas el depto que estás evaluando.",
     description:
-      "Dirección, precio, superficie, modalidad. 30 segundos. Franco autocompleta el resto con datos del SII, TocToc y tu zona.",
+      "Dirección, precio, superficie, modalidad. 30 segundos.",
     mockup: <MockupStep01 />,
   },
   {
@@ -43,7 +43,7 @@ const STEPS: ReadonlyArray<Step> = [
     eyebrow: "Análisis en 30 segundos",
     title: "Calcula contribuciones, flujos y comparables.",
     description:
-      "Conectamos con SII para contribuciones reales, TocToc para comparables de tu zona, y modelos propios para proyección de arriendos largos y Airbnb.",
+      "Franco autocompleta el resto con datos del SII, +34.000 propiedades y precios Airbnb en tiempo real.",
     mockupLeft: true,
     mockup: <MockupStep02 />,
   },
@@ -186,9 +186,6 @@ function MockupStep01() {
 
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [showMap, setShowMap] = useState(false);
-  const [showFranco, setShowFranco] = useState(false);
-  const [arriendoCount, setArriendoCount] = useState(0);
-  const [airbnbCount, setAirbnbCount] = useState(0);
 
   useEffect(() => {
     if (!isInView) return;
@@ -197,15 +194,11 @@ function MockupStep01() {
     if (reduce) {
       setDropdownVisible(true);
       setShowMap(true);
-      setShowFranco(true);
-      setArriendoCount(18);
-      setAirbnbCount(145000);
       return;
     }
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
-    const rafIds: number[] = [];
 
     const T = (offset: number, fn: () => void) => {
       timers.push(
@@ -215,35 +208,12 @@ function MockupStep01() {
       );
     };
 
-    const animateCounter = (
-      setter: (n: number) => void,
-      from: number,
-      to: number,
-      duration: number,
-    ) => {
-      const start = performance.now();
-      const tick = (now: number) => {
-        if (!mounted) return;
-        const t = Math.min(1, (now - start) / duration);
-        const eased = 1 - Math.pow(1 - t, 3);
-        setter(Math.round(from + (to - from) * eased));
-        if (t < 1) rafIds.push(requestAnimationFrame(tick));
-      };
-      rafIds.push(requestAnimationFrame(tick));
-    };
-
     T(400, () => setDropdownVisible(true));
     T(800, () => setShowMap(true));
-    T(1400, () => setShowFranco(true));
-    T(1700, () => {
-      animateCounter(setArriendoCount, 0, 18, 1200);
-      animateCounter(setAirbnbCount, 0, 145000, 1200);
-    });
 
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
-      rafIds.forEach(cancelAnimationFrame);
     };
   }, [isInView, reduce]);
 
@@ -504,44 +474,6 @@ function MockupStep01() {
         />
       </motion.div>
 
-      {/* Franco sugiere · always-mounted, opacity animate condicional */}
-      <motion.div
-        initial={false}
-        animate={showFranco ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
-        aria-hidden={!showFranco}
-        style={{ marginTop: 12 }}
-      >
-        <p
-          className="font-mono font-semibold uppercase"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-            marginBottom: 4,
-          }}
-        >
-          Franco sugiere
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Arriendo largo:{" "}
-          <span className="font-mono font-medium">UF {arriendoCount}</span>{" "}
-          / mes
-        </p>
-        <p
-          className="font-body text-[var(--landing-text)]"
-          style={{ fontSize: 12, lineHeight: 1.45 }}
-        >
-          Airbnb:{" "}
-          <span className="font-mono font-medium">
-            ${airbnbCount.toLocaleString("es-CL")}
-          </span>{" "}
-          / día promedio
-        </p>
-      </motion.div>
 
       {/* Botón Analizar */}
       <div
@@ -570,99 +502,391 @@ function MockupStep01() {
 
 
 
-/* ============================ Mockup · 02 Análisis ============================ */
+/* ============================ Mockup · 02 Análisis ============================
+ *
+ * F.11 Phase 2.9 · Análisis con barra progreso + 3 bloques (Costos / Ingresos /
+ * Resultado) + footer fuente. Single-pass animation con useInView once.
+ *
+ * Animación entrada:
+ *   t=0     header visible · "procesando" pulsing (loop opacity en motion.span)
+ *   t=0-1500 barra progreso 0→100% (rAF continuo)
+ *   t=1500  phase → "completado" (barra fade-out, label cambia)
+ *   t=1700  Bloque 1 Costos reales fade-in + counters (78.400, 95.000, 173.400)
+ *   t=2700  Bloque 2 Ingresos proyectados fade-in + counters (UF 18, $145K)
+ *   t=3500  Bloque 3 Resultado fade-in + counters (5,0% verde, −$290K rojo)
+ *   t=4400  Footer fade-in
+ *
+ * Safe vs NotFoundError (Phase 2.6e/f):
+ *   · Bloques always-mounted con motion.div animate condicional
+ *   · "procesando" / "completado" labels always-mounted, opacity controlado
+ *   · Counters via rAF manual con cleanup
+ *   · NO {cond && <motion>}, NO AnimatePresence
+ */
 
 function MockupStep02() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, {
+    once: true,
+    margin: "-50px 0px -50px 0px",
+  });
+  const reduce = useReducedMotion();
+
+  const [progress, setProgress] = useState(0);
+  const [phase, setPhase] = useState<"procesando" | "completado">("procesando");
+  const [showCostos, setShowCostos] = useState(false);
+  const [showIngresos, setShowIngresos] = useState(false);
+  const [showResultado, setShowResultado] = useState(false);
+  const [showFooter, setShowFooter] = useState(false);
+
+  const [contribCount, setContribCount] = useState(0);
+  const [gastosCount, setGastosCount] = useState(0);
+  const [totalEgresosCount, setTotalEgresosCount] = useState(0);
+  const [arriendoCount, setArriendoCount] = useState(0);
+  const [airbnbCount, setAirbnbCount] = useState(0);
+  // capRateCount va 0→50, render val/10 → "5,0"
+  const [capRateCount, setCapRateCount] = useState(0);
+  // flujoCount va 0→290000 (positivo), render con "−$" + val/1000 + "K"
+  const [flujoCount, setFlujoCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    if (reduce) {
+      setProgress(100);
+      setPhase("completado");
+      setShowCostos(true);
+      setShowIngresos(true);
+      setShowResultado(true);
+      setShowFooter(true);
+      setContribCount(78400);
+      setGastosCount(95000);
+      setTotalEgresosCount(173400);
+      setArriendoCount(18);
+      setAirbnbCount(145);
+      setCapRateCount(50);
+      setFlujoCount(290000);
+      return;
+    }
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const rafIds: number[] = [];
+
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    const animateValue = (
+      setter: (n: number) => void,
+      from: number,
+      to: number,
+      duration: number,
+      round = true,
+    ) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (!mounted) return;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = from + (to - from) * eased;
+        setter(round ? Math.round(val) : val);
+        if (t < 1) rafIds.push(requestAnimationFrame(tick));
+      };
+      rafIds.push(requestAnimationFrame(tick));
+    };
+
+    // t=0-1500: barra progreso
+    animateValue(setProgress, 0, 100, 1500, false);
+
+    // t=1500: cambio de fase
+    T(1500, () => setPhase("completado"));
+
+    // t=1700: Bloque 1 · Costos reales
+    T(1700, () => {
+      setShowCostos(true);
+      animateValue(setContribCount, 0, 78400, 800);
+      animateValue(setGastosCount, 0, 95000, 800);
+      animateValue(setTotalEgresosCount, 0, 173400, 1000);
+    });
+
+    // t=2700: Bloque 2 · Ingresos proyectados
+    T(2700, () => {
+      setShowIngresos(true);
+      animateValue(setArriendoCount, 0, 18, 800);
+      animateValue(setAirbnbCount, 0, 145, 800);
+    });
+
+    // t=3500: Bloque 3 · Resultado
+    T(3500, () => {
+      setShowResultado(true);
+      animateValue(setCapRateCount, 0, 50, 800);
+      animateValue(setFlujoCount, 0, 290000, 1000);
+    });
+
+    // t=4400: Footer
+    T(4400, () => setShowFooter(true));
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+      rafIds.forEach(cancelAnimationFrame);
+    };
+  }, [isInView, reduce]);
+
+  const isProcesando = phase === "procesando";
+  const capRateStr = (capRateCount / 10).toFixed(1).replace(".", ",");
+  const flujoStr = Math.round(flujoCount / 1000);
+
   return (
     <div
+      ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 28, aspectRatio: "4 / 3" }}
+      style={{
+        padding: 20,
+        aspectRatio: "4 / 3",
+        display: "flex",
+        flexDirection: "column",
+      }}
     >
+      {/* Header · label izq + estado procesando/completado der */}
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 20,
-        }}
+        className="flex items-center justify-between"
+        style={{ marginBottom: 8 }}
       >
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 10, letterSpacing: "0.12em" }}
         >
-          Análisis en curso · Paso 2
+          Análisis en curso
         </p>
-        <span
-          className="font-mono font-semibold uppercase text-[#C8323C]"
-          style={{ fontSize: 9, letterSpacing: "0.14em" }}
-        >
-          • procesando
-        </span>
+        <div style={{ position: "relative", height: 14, minWidth: 90 }}>
+          {/* "procesando" pulsing · always-mounted, opacity animate condicional */}
+          <motion.span
+            initial={false}
+            animate={
+              isProcesando
+                ? { opacity: [1, 0.5, 1] }
+                : { opacity: 0 }
+            }
+            transition={
+              isProcesando
+                ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" }
+                : { duration: 0.3, ease: S01_EASE }
+            }
+            className="font-mono font-semibold uppercase"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              fontSize: 9,
+              letterSpacing: "0.14em",
+              color: "#C8323C",
+            }}
+            aria-hidden={!isProcesando}
+          >
+            • procesando
+          </motion.span>
+          {/* "completado" · always-mounted, fade-in cuando phase cambia */}
+          <motion.span
+            initial={false}
+            animate={!isProcesando ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.3, ease: S01_EASE }}
+            className="font-mono font-semibold uppercase text-[var(--landing-text-muted)]"
+            style={{
+              position: "absolute",
+              right: 0,
+              top: 0,
+              fontSize: 9,
+              letterSpacing: "0.14em",
+            }}
+            aria-hidden={isProcesando}
+          >
+            ✓ completado
+          </motion.span>
+        </div>
       </div>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 10,
-        }}
-      >
-        <MockKPI label="Fórmula SII" value="$78.400 / mes" hint="Contribuciones" />
-        <MockKPI label="Cap rate" value="5,0%" hint="Mediano" />
-        <MockKPI
-          label="Flujo mensual"
-          value="−$290K"
-          hint="Negativo"
-          red
-        />
-        <MockKPI label="Arriendo esperado" value="UF 19" hint="LTR / mes" />
-      </div>
-    </div>
-  );
-}
 
-function MockKPI({
-  label,
-  value,
-  hint,
-  red,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  red?: boolean;
-}) {
-  return (
-    <div
-      style={{
-        background: "var(--landing-card-bg-soft)",
-        border: "0.5px solid var(--landing-card-border)",
-        borderRadius: 6,
-        padding: 12,
-      }}
-    >
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 6 }}
-      >
-        {label}
-      </p>
-      <p
-        className="font-heading font-bold"
+      {/* Barra progreso · fade-out cuando completado */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: isProcesando ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
         style={{
-          fontSize: 18,
-          lineHeight: 1,
-          color: red ? "#C8323C" : "var(--landing-text)",
-          marginBottom: 4,
+          width: "100%",
+          height: 3,
+          background: "var(--landing-divider)",
+          borderRadius: 1,
+          overflow: "hidden",
+          marginBottom: 14,
         }}
       >
-        {value}
-      </p>
-      <p
-        className="font-mono uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.08em" }}
+        <div
+          style={{
+            height: "100%",
+            width: `${progress}%`,
+            background: "#C8323C",
+            borderRadius: 1,
+          }}
+        />
+      </motion.div>
+
+      {/* Bloque 1 · Costos reales */}
+      <motion.div
+        initial={false}
+        animate={showCostos ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        aria-hidden={!showCostos}
+        style={{ marginBottom: 10 }}
       >
-        {hint}
-      </p>
+        <p
+          className="font-mono font-semibold uppercase"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            color: "#C8323C",
+            marginBottom: 3,
+          }}
+        >
+          Costos reales
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Contribuciones SII:{" "}
+          <span className="font-mono font-medium">
+            ${contribCount.toLocaleString("es-CL")}
+          </span>{" "}
+          / mes
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Gastos comunes est.:{" "}
+          <span className="font-mono font-medium">
+            ${gastosCount.toLocaleString("es-CL")}
+          </span>{" "}
+          / mes
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45, fontWeight: 600 }}
+        >
+          Total egresos:{" "}
+          <span className="font-mono font-semibold">
+            ${totalEgresosCount.toLocaleString("es-CL")}
+          </span>{" "}
+          / mes
+        </p>
+      </motion.div>
+
+      {/* Bloque 2 · Ingresos proyectados */}
+      <motion.div
+        initial={false}
+        animate={showIngresos ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        aria-hidden={!showIngresos}
+        style={{ marginBottom: 10 }}
+      >
+        <p
+          className="font-mono font-semibold uppercase"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            color: "#C8323C",
+            marginBottom: 3,
+          }}
+        >
+          Ingresos proyectados
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Arriendo largo sugerido:{" "}
+          <span className="font-mono font-medium">UF {arriendoCount}</span>{" "}
+          / mes
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Airbnb sugerido:{" "}
+          <span className="font-mono font-medium">${airbnbCount}K</span>{" "}
+          / día · 65% ocupación
+        </p>
+      </motion.div>
+
+      {/* Bloque 3 · Resultado */}
+      <motion.div
+        initial={false}
+        animate={showResultado ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        aria-hidden={!showResultado}
+        style={{ marginBottom: 10 }}
+      >
+        <p
+          className="font-mono font-semibold uppercase"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.12em",
+            color: "#C8323C",
+            marginBottom: 3,
+          }}
+        >
+          Resultado
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Cap rate:{" "}
+          <span
+            className="font-mono font-medium"
+            style={{ color: "#10B981" }}
+          >
+            {capRateStr}%
+          </span>
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Flujo mensual:{" "}
+          <span
+            className="font-mono font-medium"
+            style={{ color: "#C8323C" }}
+          >
+            −${flujoStr}K
+          </span>
+        </p>
+        <p
+          className="font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.08em", marginTop: 2 }}
+        >
+          Sobre mediana zona · negativo
+        </p>
+      </motion.div>
+
+      {/* Footer · fuente */}
+      <motion.p
+        initial={false}
+        animate={showFooter ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        className="font-mono uppercase text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.08em",
+          marginTop: "auto",
+        }}
+      >
+        Fuente · 34.000+ propiedades · Airbnb en tiempo real
+      </motion.p>
     </div>
   );
 }
