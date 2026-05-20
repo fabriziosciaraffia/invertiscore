@@ -54,7 +54,7 @@ ms-playwright/
 .auth-cookies*.json
 .cookies-*
 .prod-cookies-*
-.set-cookies*
+.set-*cookies*
 *.local.json
 
 # config local MCP (servidores externos)
@@ -74,13 +74,18 @@ landing-*.png
 
 # screenshots dev en root (no afecta public/ ni src/)
 /*.png
+/*.jpg
 phase*.png
+phase*.jpg
 step*-*.png
 cards-ds-*.png
 caso*-*.png
 
 # scripts y docs dev locales
 scripts/dev-*
+scripts/audit-*
+scripts/find-*
+scripts/probe-*
 docs/audit-*.md
 
 # artefactos locales
