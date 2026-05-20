@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
 import { RevealOnScroll } from "./RevealOnScroll";
 
@@ -149,36 +150,410 @@ function StepText({ data }: { data: Step }) {
   );
 }
 
-/* ============================ Mockup · 01 Datos del depto ============================ */
+/* ============================ Mockup · 01 Datos del depto ============================
+ *
+ * F.11 Phase 2.8 · Enriquecido con mapa comparables + bloque Franco sugiere.
+ *
+ * Animación entrada single-pass (no loop):
+ *   t=0     header + form fields visibles
+ *   t=400   dropdown autocomplete fade-in (in-flow)
+ *   t=800   mapa fade-in
+ *   t=1000  pins verdes (45) stagger interno · delay i*15ms · total ~675ms
+ *   t=1700  pin rojo central
+ *   t=1900  bloque "Franco sugiere" fade-in
+ *   t=2200  counters arrancan (arriendo 0→18 UF, airbnb 0→$145.000)
+ *   t=3400  estado final estable
+ *
+ * Trigger: useInView con once:true → dispara una vez al entrar al viewport.
+ * prefers-reduced-motion → estado final inmediato sin animation.
+ *
+ * Safe vs NotFoundError (Phase 2.6e/f patrón):
+ *   · Pins SVG always-mounted (motion.g con animate condicional, no {cond &&})
+ *   · Bloque Franco motion.div always-mounted
+ *   · Mapa <img> normal con opacity vía motion.div wrapper
+ *   · Counters vía rAF manual con flag mounted en cleanup
+ */
+
+const S01_EASE = [0.215, 0.61, 0.355, 1] as const;
 
 function MockupStep01() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, {
+    once: true,
+    margin: "-50px 0px -50px 0px",
+  });
+  const reduce = useReducedMotion();
+
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [showFranco, setShowFranco] = useState(false);
+  const [arriendoCount, setArriendoCount] = useState(0);
+  const [airbnbCount, setAirbnbCount] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    // Reduce motion: estado final inmediato.
+    if (reduce) {
+      setDropdownVisible(true);
+      setShowMap(true);
+      setShowFranco(true);
+      setArriendoCount(18);
+      setAirbnbCount(145000);
+      return;
+    }
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const rafIds: number[] = [];
+
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    const animateCounter = (
+      setter: (n: number) => void,
+      from: number,
+      to: number,
+      duration: number,
+    ) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (!mounted) return;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setter(Math.round(from + (to - from) * eased));
+        if (t < 1) rafIds.push(requestAnimationFrame(tick));
+      };
+      rafIds.push(requestAnimationFrame(tick));
+    };
+
+    T(400, () => setDropdownVisible(true));
+    T(800, () => setShowMap(true));
+    T(1400, () => setShowFranco(true));
+    T(1700, () => {
+      animateCounter(setArriendoCount, 0, 18, 1200);
+      animateCounter(setAirbnbCount, 0, 145000, 1200);
+    });
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+      rafIds.forEach(cancelAnimationFrame);
+    };
+  }, [isInView, reduce]);
+
   return (
     <div
+      ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 28, aspectRatio: "4 / 3" }}
+      style={{ padding: 20 }}
     >
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 10, letterSpacing: "0.12em", marginBottom: 20 }}
+      {/* Header · logo refranco.ai mini + label "Nuevo análisis" */}
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 14 }}
       >
-        Nuevo análisis · Paso 1
-      </p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <MockField label="Dirección" value="Av. Manuel Montt 1234, Providencia" />
-        <MockField label="Precio" value="UF 5.500" />
-        <MockField label="Superficie" value="60 m²" />
-        <MockField label="Dormitorios" value="2" />
+        <span className="inline-flex items-baseline">
+          <span
+            className="font-heading italic font-light"
+            style={{
+              fontSize: 11,
+              color: "var(--landing-wm-re)",
+              marginRight: "-0.08em",
+            }}
+          >
+            re
+          </span>
+          <span
+            className="font-heading font-bold"
+            style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
+          >
+            franco
+          </span>
+          <span
+            className="font-body font-semibold text-[#C8323C]"
+            style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
+          >
+            .ai
+          </span>
+        </span>
+        <span
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em" }}
+        >
+          Nuevo análisis
+        </span>
       </div>
+
+      {/* Campo Dirección · estilo Google Places autocomplete.
+          Dropdown in-flow (no absolute) para que NO tape los chips TIPO. */}
+      <div style={{ marginBottom: 10 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+        >
+          Dirección
+        </p>
+        <div
+          style={{
+            borderBottom: "0.5px solid var(--landing-divider)",
+            paddingBottom: 4,
+          }}
+        >
+          <span
+            className="font-body text-[var(--landing-text)]"
+            style={{ fontSize: 12, fontWeight: 500 }}
+          >
+            Av. Manuel Montt 1234, Providencia
+          </span>
+        </div>
+        {/* Dropdown autocomplete · always-mounted in-flow (Phase 2.6f patrón).
+            Ocupa ~40px de altura desde t=0 (hidden con opacity:0) para evitar
+            CLS · fade-in a t=400ms del trigger isInView. */}
+        <motion.div
+          initial={false}
+          animate={
+            dropdownVisible
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: -4 }
+          }
+          transition={{ duration: 0.18, ease: S01_EASE }}
+          aria-hidden={!dropdownVisible}
+          style={{
+            marginTop: 4,
+            background: "var(--landing-card-bg)",
+            border: "0.5px solid var(--landing-card-border)",
+            borderRadius: 5,
+            padding: 3,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+            pointerEvents: dropdownVisible ? "auto" : "none",
+          }}
+        >
+          <div
+            className="font-body text-[var(--landing-text)]"
+            style={{
+              fontSize: 11,
+              padding: "4px 6px",
+              borderRadius: 3,
+              background: "rgba(200,50,60,0.10)",
+            }}
+          >
+            Av. Manuel Montt 1234, Providencia, Chile
+          </div>
+          <div
+            className="font-body text-[var(--landing-text-secondary)]"
+            style={{
+              fontSize: 11,
+              padding: "4px 6px",
+              borderRadius: 3,
+            }}
+          >
+            Av. Manuel Montt 1250, Providencia, Chile
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Tipo · chips Usado / Nuevo */}
+      <div style={{ marginBottom: 10 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
+        >
+          Tipo
+        </p>
+        <div className="flex" style={{ gap: 6 }}>
+          <span
+            className="font-mono font-semibold uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "1px solid #C8323C",
+              color: "#C8323C",
+              background: "rgba(200,50,60,0.08)",
+            }}
+          >
+            Usado
+          </span>
+          <span
+            className="font-mono font-medium uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid var(--landing-divider)",
+              color: "var(--landing-text-muted)",
+            }}
+          >
+            Nuevo
+          </span>
+        </div>
+      </div>
+
+      {/* Grid Precio / Superficie */}
+      <div
+        className="grid grid-cols-2"
+        style={{ gap: 12, marginBottom: 12 }}
+      >
+        <div>
+          <div
+            className="flex items-center justify-between"
+            style={{ marginBottom: 3 }}
+          >
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em" }}
+            >
+              Precio
+            </p>
+            <div
+              className="flex"
+              style={{
+                fontSize: 7,
+                fontFamily: "var(--font-mono)",
+                border: "0.5px solid var(--landing-divider)",
+                borderRadius: 3,
+                overflow: "hidden",
+              }}
+            >
+              <span
+                style={{
+                  padding: "1px 4px",
+                  background: "var(--landing-divider)",
+                  color: "var(--landing-text)",
+                  fontWeight: 600,
+                  letterSpacing: "0.06em",
+                }}
+              >
+                UF
+              </span>
+              <span
+                style={{
+                  padding: "1px 4px",
+                  color: "var(--landing-text-muted)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                CLP
+              </span>
+            </div>
+          </div>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-body text-[var(--landing-text)]"
+              style={{ fontSize: 12, fontWeight: 500 }}
+            >
+              UF 5.500
+            </span>
+          </div>
+        </div>
+        <div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+          >
+            Superficie
+          </p>
+          <div
+            style={{
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
+            }}
+          >
+            <span
+              className="font-body text-[var(--landing-text)]"
+              style={{ fontSize: 12, fontWeight: 500 }}
+            >
+              60 m²
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Mapa comparables · screenshot del producto real (incluye pins +
+          label "145 comparables cerca" baked-in en la imagen). Fade-in
+          cuando isInView dispara showMap a t=800ms. */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: showMap ? 1 : 0 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        className="relative w-full overflow-hidden rounded-md"
+        style={{
+          aspectRatio: "340 / 120",
+          border: "0.5px solid var(--landing-card-border)",
+        }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/landing/map-comparables.webp"
+          alt="Mapa con 145 comparables cerca"
+          className="w-full h-full object-cover"
+          loading="lazy"
+        />
+      </motion.div>
+
+      {/* Franco sugiere · always-mounted, opacity animate condicional */}
+      <motion.div
+        initial={false}
+        animate={showFranco ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.3, ease: S01_EASE }}
+        aria-hidden={!showFranco}
+        style={{ marginTop: 12 }}
+      >
+        <p
+          className="font-mono font-semibold uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.12em",
+            color: "#C8323C",
+            marginBottom: 4,
+          }}
+        >
+          Franco sugiere
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Arriendo largo:{" "}
+          <span className="font-mono font-medium">UF {arriendoCount}</span>{" "}
+          / mes
+        </p>
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{ fontSize: 12, lineHeight: 1.45 }}
+        >
+          Airbnb:{" "}
+          <span className="font-mono font-medium">
+            ${airbnbCount.toLocaleString("es-CL")}
+          </span>{" "}
+          / día promedio
+        </p>
+      </motion.div>
+
+      {/* Botón Analizar */}
       <div
         style={{
-          marginTop: 24,
-          padding: "10px 16px",
+          marginTop: 14,
+          padding: "8px 14px",
           background: "#C8323C",
           color: "#FAFAF8",
           borderRadius: 6,
           display: "inline-flex",
           alignItems: "center",
-          gap: 8,
+          gap: 6,
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: "0.08em",
@@ -193,29 +568,7 @@ function MockupStep01() {
   );
 }
 
-function MockField({ label, value }: { label: string; value: string }) {
-  return (
-    <div
-      style={{
-        borderBottom: "0.5px solid var(--landing-divider)",
-        paddingBottom: 6,
-      }}
-    >
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 2 }}
-      >
-        {label}
-      </p>
-      <p
-        className="font-body text-[var(--landing-text)]"
-        style={{ fontSize: 13, fontWeight: 500 }}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
+
 
 /* ============================ Mockup · 02 Análisis ============================ */
 
