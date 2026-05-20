@@ -176,6 +176,62 @@ function StepText({ data }: { data: Step }) {
 
 const S01_EASE = [0.215, 0.61, 0.355, 1] as const;
 
+/* Hook · detecta si el tema actual es light leyendo data-franco-theme
+ * en el elemento [data-franco-root]. Mismo patrón que HeroAnimatedDesktop /
+ * HeroStaticMobile · re-evalúa via MutationObserver. */
+function useLandingIsLight(): boolean {
+  const [isLight, setIsLight] = useState(false);
+  useEffect(() => {
+    const root = document.querySelector("[data-franco-root]");
+    if (!root) return;
+    const update = () =>
+      setIsLight(root.getAttribute("data-franco-theme") === "light");
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-franco-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
+  return isLight;
+}
+
+/* Wordmark refranco.ai reutilizable (header de los 3 mockups · Phase 2.11
+ * skill alignment). Mantiene la receta del wordmark global:
+ *   "re"     Source Serif 4 Light italic 11px ·  color landing-wm-re
+ *   "franco" Source Serif 4 Bold 11px      ·  color landing-wm-franco
+ *   ".ai"    IBM Plex Sans Semibold 6px     ·  Signal Red (CLAUDE.md override)
+ */
+function MockupWordmark() {
+  return (
+    <span className="inline-flex items-baseline" aria-label="refranco.ai">
+      <span
+        className="font-heading italic font-light"
+        style={{
+          fontSize: 11,
+          color: "var(--landing-wm-re)",
+          marginRight: "-0.08em",
+        }}
+      >
+        re
+      </span>
+      <span
+        className="font-heading font-bold"
+        style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
+      >
+        franco
+      </span>
+      <span
+        className="font-body font-semibold text-[#C8323C]"
+        style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
+      >
+        .ai
+      </span>
+    </span>
+  );
+}
+
 function MockupStep01() {
   const containerRef = useRef<HTMLDivElement>(null);
   const isInView = useInView(containerRef, {
@@ -183,6 +239,7 @@ function MockupStep01() {
     margin: "-50px 0px -50px 0px",
   });
   const reduce = useReducedMotion();
+  const isLight = useLandingIsLight();
 
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [showMap, setShowMap] = useState(false);
@@ -223,35 +280,12 @@ function MockupStep01() {
       className="franco-mockup"
       style={{ padding: 20 }}
     >
-      {/* Header · logo refranco.ai mini + label "Nuevo análisis" */}
+      {/* Header · wordmark refranco.ai + label "Nuevo análisis" */}
       <div
         className="flex items-center justify-between"
         style={{ marginBottom: 14 }}
       >
-        <span className="inline-flex items-baseline">
-          <span
-            className="font-heading italic font-light"
-            style={{
-              fontSize: 11,
-              color: "var(--landing-wm-re)",
-              marginRight: "-0.08em",
-            }}
-          >
-            re
-          </span>
-          <span
-            className="font-heading font-bold"
-            style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
-          >
-            franco
-          </span>
-          <span
-            className="font-body font-semibold text-[#C8323C]"
-            style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
-          >
-            .ai
-          </span>
-        </span>
+        <MockupWordmark />
         <span
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em" }}
@@ -277,7 +311,7 @@ function MockupStep01() {
         >
           <span
             className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500 }}
+            style={{ fontSize: 12, fontWeight: 400 }}
           >
             Av. Manuel Montt 1234, Providencia
           </span>
@@ -338,15 +372,15 @@ function MockupStep01() {
         </p>
         <div className="flex" style={{ gap: 6 }}>
           <span
-            className="font-mono font-semibold uppercase"
+            className="font-mono font-bold uppercase"
             style={{
               fontSize: 10,
               letterSpacing: "0.08em",
               padding: "3px 10px",
               borderRadius: 4,
-              border: "1px solid #C8323C",
+              border: "0.5px solid #C8323C",
               color: "#C8323C",
-              background: "rgba(200,50,60,0.08)",
+              background: "transparent",
             }}
           >
             Usado
@@ -398,7 +432,7 @@ function MockupStep01() {
                   padding: "1px 4px",
                   background: "var(--landing-divider)",
                   color: "var(--landing-text)",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   letterSpacing: "0.06em",
                 }}
               >
@@ -422,8 +456,8 @@ function MockupStep01() {
             }}
           >
             <span
-              className="font-body text-[var(--landing-text)]"
-              style={{ fontSize: 12, fontWeight: 500 }}
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
             >
               UF 5.500
             </span>
@@ -443,8 +477,8 @@ function MockupStep01() {
             }}
           >
             <span
-              className="font-body text-[var(--landing-text)]"
-              style={{ fontSize: 12, fontWeight: 500 }}
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
             >
               60 m²
             </span>
@@ -467,7 +501,11 @@ function MockupStep01() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/landing/map-comparables.webp"
+          src={
+            isLight
+              ? "/landing/map-comparables-light.png"
+              : "/landing/map-comparables.webp"
+          }
           alt="Mapa con 145 comparables cerca"
           className="w-full h-full object-cover"
           loading="lazy"
@@ -475,7 +513,7 @@ function MockupStep01() {
       </motion.div>
 
 
-      {/* Botón Analizar */}
+      {/* Botón Analizar · CTA primario Signal Red (uso #1) · Mono Medium 500 */}
       <div
         style={{
           marginTop: 14,
@@ -487,7 +525,7 @@ function MockupStep01() {
           alignItems: "center",
           gap: 6,
           fontSize: 11,
-          fontWeight: 600,
+          fontWeight: 500,
           letterSpacing: "0.08em",
           textTransform: "uppercase",
           fontFamily: "var(--font-mono, monospace)",
@@ -657,17 +695,12 @@ function MockupStep02() {
         flexDirection: "column",
       }}
     >
-      {/* Header · label izq + contador "X de 5" der */}
+      {/* Header · wordmark refranco.ai + contador "X de 5" */}
       <div
         className="flex items-center justify-between"
         style={{ marginBottom: 10 }}
       >
-        <p
-          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 10, letterSpacing: "0.12em" }}
-        >
-          Franco preparando análisis
-        </p>
+        <MockupWordmark />
         <span
           className="font-mono font-medium uppercase"
           style={{
@@ -846,7 +879,8 @@ function S02Line({
   );
 }
 
-/* Check verde · circle 14px con tick SVG. */
+/* Check Ink · circle 14px con tick SVG (skill: verde PROHIBIDO → Ink 400).
+ * Patrón 6 Loading Editorial: "Done: dot sólido Ink 400". */
 function CheckCircle() {
   return (
     <div
@@ -855,7 +889,7 @@ function CheckCircle() {
         width: 14,
         height: 14,
         borderRadius: 7,
-        background: "rgba(16,185,129,0.15)",
+        background: "color-mix(in srgb, var(--landing-text) 16%, transparent)",
         marginTop: 1,
       }}
       aria-hidden="true"
@@ -863,7 +897,7 @@ function CheckCircle() {
       <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
         <path
           d="M1 4.5 L3.5 7 L8 1.5"
-          stroke="#10B981"
+          stroke="#B4B2A9"
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -903,7 +937,10 @@ function LoadingCircle() {
   );
 }
 
-/* Chip de modalidad · always-mounted, opacity controlled. */
+/* Chip de modalidad · always-mounted, opacity controlled.
+ * Activo: Ink invertido (Patrón 5 Form Step "toggle activo en Ink invertido").
+ * Inactivo: surface neutra Ink, sin tinte Signal Red.
+ * Pesos mono permitidos: 400/500/700. */
 function Chip({
   show,
   active = false,
@@ -926,13 +963,15 @@ function Chip({
         padding: "4px 9px",
         borderRadius: 14,
         background: active
-          ? "rgba(200,50,60,0.18)"
-          : "rgba(200,50,60,0.10)",
+          ? "var(--landing-text)"
+          : "var(--landing-card-bg-soft)",
         border: active
-          ? "1px solid #C8323C"
-          : "0.5px solid rgba(200,50,60,0.35)",
-        color: active ? "#FFFFFF" : "var(--landing-text)",
-        fontWeight: active ? 600 : 500,
+          ? "1px solid var(--landing-text)"
+          : "0.5px solid var(--landing-card-border)",
+        color: active
+          ? "var(--landing-mockup-solid-bg)"
+          : "var(--landing-text-muted)",
+        fontWeight: active ? 700 : 500,
         whiteSpace: "nowrap",
       }}
     >
@@ -941,120 +980,747 @@ function Chip({
   );
 }
 
-/* ============================ Mockup · 03 Veredicto ============================ */
+/* ============================ Mockup · 03 Veredicto ============================
+ *
+ * Imita el Hero de la página de resultados LTR real: header · hero veredicto
+ * (score + badge + barra + frase) · caja Franco · grid 2x2 mini-cards ·
+ * bloque patrimonio (chart real estilo Patrón 7.B.3).
+ *
+ * Paleta strict design-system-franco: solo Signal Red (acento único) + escala
+ * Ink + blancos. No verde, no amber.
+ *
+ * Animación entrada (single-pass, useInView once):
+ *   t=400    Hero fade + score 0→61 + barra 0→61% (1.2s)
+ *   t=1600   badge AJUSTA SUPUESTOS
+ *   t=1800   línea veredicto italic
+ *   t=2200   caja Franco
+ *   t=2800   cards stagger 200ms con counters (02 · 03 · 04 · 05)
+ *   t=3800   patrimonio fade
+ *   t=4000   11 barras stagger 80ms · grow from bottom (motion attribute)
+ *   t=4880   path patrimonio neto draws via strokeDashoffset (1.5s)
+ *
+ * Safe vs NotFoundError: todo always-mounted; counters via rAF con cleanup;
+ * SVG rects/path always-mounted, height/dashoffset via motion attribute.
+ */
+
+const S03_BAR_W = 22;
+const S03_BAR_GAP = 25;
+const S03_CHART_LEFT = 54;
+const S03_CHART_TOP = 8;
+const S03_CHART_BOTTOM_Y = 98;
+const S03_MAX_VALUE = 800;
+const S03_INNER_H = S03_CHART_BOTTOM_Y - S03_CHART_TOP;
+const S03_X_LABEL_Y = 113;
+const S03_v2y = (v: number) =>
+  S03_CHART_BOTTOM_Y - (v / S03_MAX_VALUE) * S03_INNER_H;
+const S03_barX = (i: number) =>
+  S03_CHART_LEFT + i * (S03_BAR_W + S03_BAR_GAP);
+
+const S03_APORTE = [60, 78, 96, 115, 135, 156, 178, 200, 220, 235, 250];
+const S03_VALOR = [250, 270, 290, 305, 315, 325, 340, 350, 360, 370, 380];
+const S03_NETO = [80, 120, 165, 215, 270, 330, 395, 465, 540, 625, 720];
+const S03_GRID_VALUES = [0, 400, 800];
 
 function MockupStep03() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, {
+    once: true,
+    margin: "-50px 0px -50px 0px",
+  });
+  const reduce = useReducedMotion();
+
+  // Hero
+  const [showHero, setShowHero] = useState(false);
+  const [scoreCount, setScoreCount] = useState(0);
+  const [barPct, setBarPct] = useState(0);
+  const [showBadge, setShowBadge] = useState(false);
+  const [showVerdictLine, setShowVerdictLine] = useState(false);
+  // Caja
+  const [showCaja, setShowCaja] = useState(false);
+  // Mini-cards
+  const [showCard02, setShowCard02] = useState(false);
+  const [showCard03, setShowCard03] = useState(false);
+  const [showCard04, setShowCard04] = useState(false);
+  const [showCard05, setShowCard05] = useState(false);
+  const [costoCount, setCostoCount] = useState(0);
+  const [negociCount, setNegociCount] = useState(0);
+  const [largoCount, setLargoCount] = useState(0);
+  // Patrimonio
+  const [showPatri, setShowPatri] = useState(false);
+  const [barIdx, setBarIdx] = useState(0);
+  const [linePct, setLinePct] = useState(0);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    if (reduce) {
+      setShowHero(true);
+      setScoreCount(61);
+      setBarPct(61);
+      setShowBadge(true);
+      setShowVerdictLine(true);
+      setShowCaja(true);
+      setShowCard02(true);
+      setShowCard03(true);
+      setShowCard04(true);
+      setShowCard05(true);
+      setCostoCount(310);
+      setNegociCount(4900);
+      setLargoCount(1450);
+      setShowPatri(true);
+      setBarIdx(11);
+      setLinePct(100);
+      return;
+    }
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const rafIds: number[] = [];
+
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    const animateValue = (
+      setter: (n: number) => void,
+      from: number,
+      to: number,
+      duration: number,
+      round = true,
+    ) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (!mounted) return;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = from + (to - from) * eased;
+        setter(round ? Math.round(val) : val);
+        if (t < 1) rafIds.push(requestAnimationFrame(tick));
+      };
+      rafIds.push(requestAnimationFrame(tick));
+    };
+
+    T(400, () => {
+      setShowHero(true);
+      animateValue(setScoreCount, 0, 61, 1200);
+      animateValue(setBarPct, 0, 61, 1200, false);
+    });
+    T(1600, () => setShowBadge(true));
+    T(1800, () => setShowVerdictLine(true));
+    T(2200, () => setShowCaja(true));
+    T(2800, () => {
+      setShowCard02(true);
+      animateValue(setCostoCount, 0, 310, 700);
+    });
+    T(3000, () => {
+      setShowCard03(true);
+      animateValue(setNegociCount, 0, 4900, 700);
+    });
+    T(3200, () => {
+      setShowCard04(true);
+      animateValue(setLargoCount, 0, 1450, 700);
+    });
+    T(3400, () => setShowCard05(true));
+    T(3800, () => setShowPatri(true));
+    for (let i = 0; i < 11; i++) {
+      T(4000 + i * 80, () =>
+        setBarIdx((prev) => (prev > i ? prev : i + 1)),
+      );
+    }
+    T(4880, () => animateValue(setLinePct, 0, 100, 1500, false));
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+      rafIds.forEach(cancelAnimationFrame);
+    };
+  }, [isInView, reduce]);
+
+  const netoPoints = S03_NETO.map(
+    (v, i) => `${S03_barX(i) + S03_BAR_W / 2},${S03_v2y(v)}`,
+  ).join(" ");
+
   return (
     <div
+      ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 28, aspectRatio: "4 / 3" }}
+      style={{ padding: 18, display: "flex", flexDirection: "column" }}
     >
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 10, letterSpacing: "0.12em", marginBottom: 16 }}
-      >
-        Resultado · Franco score
-      </p>
+      {/* Header · wordmark refranco.ai + label "Completado" */}
       <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 12 }}
+      >
+        <MockupWordmark />
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 10, letterSpacing: "0.08em" }}
+        >
+          Completado
+        </p>
+      </div>
+
+      {/* HERO VEREDICTO · score + barra-tracker estilo producto real */}
+      <motion.div
+        initial={false}
+        animate={showHero ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.5, ease: S01_EASE }}
+        aria-hidden={!showHero}
         style={{
-          display: "flex",
-          alignItems: "baseline",
-          gap: 14,
-          marginBottom: 12,
+          background: "var(--landing-mockup-solid-bg)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 10,
+          padding: 14,
+          marginBottom: 8,
         }}
       >
-        <p
-          className="font-heading font-bold text-[var(--landing-text)]"
-          style={{
-            fontSize: 56,
-            lineHeight: 0.9,
-            letterSpacing: "-0.03em",
-          }}
-        >
-          61
-        </p>
-        <p
-          className="font-mono text-[var(--landing-text-muted)]"
-          style={{ fontSize: 13, fontWeight: 500 }}
-        >
-          / 100
-        </p>
+        {/* Eyebrow row · FRANCO SCORE + ? + badge */}
         <div
-          style={{
-            marginLeft: "auto",
-            background: "#C8323C",
-            color: "#FAFAF8",
-            padding: "4px 10px",
-            borderRadius: 4,
-            fontSize: 10,
-            fontWeight: 700,
-            letterSpacing: "0.1em",
-            textTransform: "uppercase",
-            fontFamily: "var(--font-mono, monospace)",
-          }}
+          className="flex items-center"
+          style={{ gap: 6, marginBottom: 8 }}
         >
-          Ajustar
+          <span
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 10, letterSpacing: "0.12em" }}
+          >
+            Franco score
+          </span>
+          <span
+            aria-hidden="true"
+            className="font-mono text-[var(--landing-text-muted)]"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              border: "0.5px solid currentColor",
+              fontSize: 8,
+              lineHeight: 1,
+            }}
+          >
+            ?
+          </span>
+          <motion.span
+            initial={false}
+            animate={showBadge ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.25, ease: S01_EASE }}
+            aria-hidden={!showBadge}
+            className="font-mono uppercase"
+            style={{
+              marginLeft: "auto",
+              background: "transparent",
+              color: "#C8323C",
+              border: "0.5px solid #C8323C",
+              padding: "6px 10px",
+              borderRadius: 4,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.12em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ajusta supuestos
+          </motion.span>
         </div>
-      </div>
-      <div
+
+        {/* Score row · número + barra-tracker con dot */}
+        <div
+          className="flex items-center"
+          style={{ gap: 14 }}
+        >
+          <span
+            className="font-mono font-bold text-[var(--landing-text)]"
+            style={{
+              fontSize: 30,
+              lineHeight: 0.95,
+              letterSpacing: "-0.02em",
+              flexShrink: 0,
+            }}
+          >
+            {scoreCount}
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Barra-tracker · gradient red→gris claro */}
+            <div
+              style={{
+                position: "relative",
+                height: 3,
+                background: "linear-gradient(to right, #C8323C 0%, #B4B2A9 100%)",
+                borderRadius: 1.5,
+              }}
+            >
+              {/* Dot tracker · posición 0→61% */}
+              <div
+                style={{
+                  position: "absolute",
+                  left: `${barPct}%`,
+                  top: "50%",
+                  width: 12,
+                  height: 12,
+                  borderRadius: "50%",
+                  background: "#C8323C",
+                  border: "2px solid var(--landing-mockup-solid-bg)",
+                  transform: "translate(-50%, -50%)",
+                }}
+                aria-hidden="true"
+              />
+            </div>
+            {/* Labels equidistantes */}
+            <div
+              style={{
+                position: "relative",
+                height: 12,
+                marginTop: 4,
+              }}
+            >
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  top: 0,
+                  fontSize: 10,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Buscar
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: 0,
+                  transform: "translateX(-50%)",
+                  fontSize: 10,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Ajusta
+              </span>
+              <span
+                className="font-mono uppercase text-[var(--landing-text-muted)]"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: 0,
+                  fontSize: 10,
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+              >
+                Comprar
+              </span>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Subtítulo · cita italic (sale del Hero, vive como bloque aparte) */}
+      <motion.p
+        initial={false}
+        animate={showVerdictLine ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.35, ease: S01_EASE }}
+        aria-hidden={!showVerdictLine}
+        className="font-body italic text-[var(--landing-text)]"
         style={{
-          position: "relative",
-          height: 4,
-          background: "var(--landing-divider)",
-          borderRadius: 2,
-          marginBottom: 20,
+          fontSize: 14,
+          lineHeight: 1.4,
+          margin: 0,
+          marginBottom: 4,
+          paddingLeft: 2,
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: 0,
-            bottom: 0,
-            width: "61%",
-            background: "#C8323C",
-            borderRadius: 2,
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: "61%",
-            top: "50%",
-            width: 12,
-            height: 12,
-            background: "#C8323C",
-            borderRadius: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        />
-      </div>
-      <div
+        Buena propiedad. Precio incómodo.
+      </motion.p>
+
+      {/* CAJA FRANCO */}
+      <motion.div
+        initial={false}
+        animate={showCaja ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+        transition={{ duration: 0.35, ease: S01_EASE }}
+        aria-hidden={!showCaja}
         style={{
           background: "var(--landing-card-bg-soft)",
           border: "0.5px solid var(--landing-card-border)",
-          borderLeft: "2px solid #C8323C",
-          borderRadius: 4,
-          padding: 12,
+          borderLeft: "3px solid #C8323C",
+          borderRadius: "0 6px 6px 0",
+          padding: "11px 12px",
+          marginBottom: 8,
         }}
       >
         <p
-          className="font-mono font-semibold uppercase text-[#C8323C]"
+          className="font-mono font-semibold uppercase"
           style={{
             fontSize: 9,
             letterSpacing: "0.14em",
-            marginBottom: 6,
+            color: "#C8323C",
+            marginBottom: 4,
           }}
         >
-          Siendo franco
+          Antes de negociar
         </p>
         <p
-          className="font-heading italic font-semibold text-[var(--landing-text)]"
-          style={{ fontSize: 13, lineHeight: 1.4 }}
+          className="font-body italic text-[var(--landing-text)]"
+          style={{ fontSize: 13, lineHeight: 1.45, margin: 0 }}
         >
-          “Buena ubicación, precio incómodo. Negocia hasta UF 4.900.”
+          Negocia hasta{" "}
+          <span
+            className="font-mono font-bold text-[var(--landing-text)]"
+          >
+            UF 4.900
+          </span>{" "}
+          y el flujo cuadra. Si no cede, prueba Airbnb — te da{" "}
+          <span
+            className="font-mono font-bold text-[var(--landing-text)]"
+          >
+            +$180K/mes
+          </span>{" "}
+          pero requiere gestión.
         </p>
+      </motion.div>
+
+      {/* GRID 2x2 MINI-CARDS */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 6,
+          marginBottom: 8,
+        }}
+      >
+        <S03MiniCard
+          show={showCard02}
+          eyebrow="02 · Costo mensual"
+          value={`−$${costoCount}K`}
+          valueColor="#C8323C"
+          sublabel="Flujo de bolsillo"
+        />
+        <S03MiniCard
+          show={showCard03}
+          eyebrow="03 · Negociación"
+          value={`UF ${negociCount.toLocaleString("es-CL")}`}
+          valueColor="var(--landing-text)"
+          sublabel="Precio sugerido"
+        />
+        <S03MiniCard
+          show={showCard04}
+          eyebrow="04 · Largo plazo"
+          value={`+UF ${largoCount.toLocaleString("es-CL")}`}
+          valueColor="var(--landing-text)"
+          sublabel="Plusvalía 10 años"
+        />
+        <S03MiniCard
+          show={showCard05}
+          eyebrow="05 · Riesgos"
+          value="3 medios"
+          valueColor="var(--landing-text)"
+          sublabel="Vacancia · tasa · m²"
+        />
       </div>
+
+      {/* PATRIMONIO BLOCK */}
+      <motion.div
+        initial={false}
+        animate={showPatri ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.4, ease: S01_EASE }}
+        aria-hidden={!showPatri}
+        style={{
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 8,
+          padding: 11,
+        }}
+      >
+        <div
+          className="flex items-baseline justify-between"
+          style={{ marginBottom: 8, gap: 12 }}
+        >
+          <p
+            className="font-mono uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.12em" }}
+          >
+            09 · Patrimonio
+          </p>
+          <p
+            className="font-heading font-bold text-[var(--landing-text)]"
+            style={{ fontSize: 14, lineHeight: 1.2 }}
+          >
+            Cómo crece tu capital
+          </p>
+        </div>
+
+        <svg
+          viewBox="0 0 560 130"
+          preserveAspectRatio="xMidYMid meet"
+          style={{ width: "100%", height: "auto", display: "block" }}
+          aria-hidden="true"
+        >
+          {/* Gridlines + Y labels */}
+          {S03_GRID_VALUES.map((v) => {
+            const y = S03_v2y(v);
+            return (
+              <g key={`grid-${v}`}>
+                <line
+                  x1={S03_CHART_LEFT}
+                  x2={552}
+                  y1={y}
+                  y2={y}
+                  stroke="var(--landing-card-border)"
+                  strokeWidth={0.5}
+                  strokeDasharray="2 3"
+                />
+                <text
+                  x={S03_CHART_LEFT - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="font-mono"
+                  style={{
+                    fontSize: 9,
+                    fill: "var(--landing-text-muted)",
+                  }}
+                >
+                  {v === 0 ? "$0" : `$${v}M`}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* Barras stack: aporte (red) abajo + valor (gris) arriba */}
+          {S03_APORTE.map((aporte, i) => {
+            const valor = S03_VALOR[i];
+            const visible = i < barIdx;
+            const aporteY = S03_v2y(aporte);
+            const aporteH = S03_CHART_BOTTOM_Y - aporteY;
+            const valorY = S03_v2y(aporte + valor);
+            const valorH = aporteY - valorY;
+            const x = S03_barX(i);
+            return (
+              <g key={`bar-${i}`}>
+                {/* Aporte acumulado · Signal Red */}
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? aporteY : S03_CHART_BOTTOM_Y,
+                    height: visible ? aporteH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: S01_EASE }}
+                  x={x}
+                  width={S03_BAR_W}
+                  fill="#C8323C"
+                />
+                {/* Valor depto · Ink 100 con opacity 50% (skill Patrón 7.B.3) */}
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? valorY : aporteY,
+                    height: visible ? valorH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: S01_EASE }}
+                  x={x}
+                  width={S03_BAR_W}
+                  fill="var(--landing-text)"
+                  fillOpacity={0.5}
+                />
+              </g>
+            );
+          })}
+
+          {/* Línea Patrimonio neto · path con dashoffset animado */}
+          <polyline
+            points={netoPoints}
+            fill="none"
+            stroke="var(--landing-text)"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            pathLength={100}
+            style={{
+              strokeDasharray: 100,
+              strokeDashoffset: 100 - linePct,
+            }}
+          />
+          {/* Puntos sobre cada año (visibles solo si la línea ya pasó). */}
+          {S03_NETO.map((v, i) => {
+            const dotPct = (i / 10) * 100;
+            const dotVisible = linePct >= dotPct - 0.5;
+            return (
+              <circle
+                key={`dot-${i}`}
+                cx={S03_barX(i) + S03_BAR_W / 2}
+                cy={S03_v2y(v)}
+                r={2}
+                fill="var(--landing-text)"
+                style={{
+                  opacity: dotVisible ? 1 : 0,
+                  transition: "opacity 200ms linear",
+                }}
+              />
+            );
+          })}
+
+          {/* X-axis labels */}
+          {S03_NETO.map((_, i) => (
+            <text
+              key={`xl-${i}`}
+              x={S03_barX(i) + S03_BAR_W / 2}
+              y={S03_X_LABEL_Y}
+              textAnchor="middle"
+              className="font-mono"
+              style={{
+                fontSize: 9,
+                fill: "var(--landing-text-muted)",
+              }}
+            >
+              a{i}
+            </text>
+          ))}
+        </svg>
+
+        {/* Leyenda */}
+        <div
+          className="flex items-center justify-center"
+          style={{ gap: 18, paddingTop: 4, flexWrap: "wrap" }}
+        >
+          <S03LegendItem swatch={<S03Dot color="#C8323C" />} label="Aporte acumulado" />
+          <S03LegendItem swatch={<S03Dot color="var(--landing-text)" opacity={0.5} />} label="Valor depto" />
+          <S03LegendItem swatch={<S03LineSwatch />} label="Patrimonio neto" />
+        </div>
+      </motion.div>
     </div>
+  );
+}
+
+function S03MiniCard({
+  show,
+  eyebrow,
+  value,
+  valueColor,
+  sublabel,
+}: {
+  show: boolean;
+  eyebrow: string;
+  value: string;
+  valueColor: string;
+  sublabel: string;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+      transition={{ duration: 0.3, ease: S01_EASE }}
+      aria-hidden={!show}
+      style={{
+        background: "var(--landing-card-bg-soft)",
+        border: "0.5px solid var(--landing-card-border)",
+        borderRadius: 8,
+        padding: "9px 11px",
+      }}
+    >
+      <div
+        className="flex items-center justify-between"
+        style={{ marginBottom: 4 }}
+      >
+        <span
+          className="font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.1em" }}
+        >
+          {eyebrow}
+        </span>
+        <span
+          className="font-mono text-[var(--landing-text-muted)]"
+          style={{ fontSize: 10 }}
+          aria-hidden="true"
+        >
+          →
+        </span>
+      </div>
+      <p
+        className="font-mono font-bold"
+        style={{
+          fontSize: 16,
+          lineHeight: 1.15,
+          color: valueColor,
+          margin: 0,
+          marginBottom: 3,
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {value}
+      </p>
+      <p
+        className="font-mono uppercase text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 9,
+          letterSpacing: "0.06em",
+          lineHeight: 1.3,
+          margin: 0,
+        }}
+      >
+        {sublabel}
+      </p>
+    </motion.div>
+  );
+}
+
+function S03Dot({ color, opacity }: { color: string; opacity?: number }) {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: 7,
+        height: 7,
+        borderRadius: "50%",
+        background: color,
+        opacity,
+      }}
+    />
+  );
+}
+
+function S03LineSwatch() {
+  return (
+    <span
+      aria-hidden="true"
+      style={{
+        display: "inline-block",
+        width: 12,
+        height: 1.5,
+        background: "var(--landing-text)",
+        borderRadius: 1,
+      }}
+    />
+  );
+}
+
+function S03LegendItem({
+  swatch,
+  label,
+}: {
+  swatch: ReactNode;
+  label: string;
+}) {
+  return (
+    <span
+      className="inline-flex items-center"
+      style={{ gap: 6 }}
+    >
+      {swatch}
+      <span
+        className="font-mono text-[var(--landing-text)]"
+        style={{ fontSize: 9, letterSpacing: "0.04em" }}
+      >
+        {label}
+      </span>
+    </span>
   );
 }
