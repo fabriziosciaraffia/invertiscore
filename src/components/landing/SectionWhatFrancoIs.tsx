@@ -125,14 +125,14 @@ export default function SectionWhatFrancoIs() {
       className="relative"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
+      <div className="mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <SectionHeader
           eyebrow="03 · Qué es Franco"
           title={"No es una calculadora.\nEs un asesor con IA."}
           subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
         />
 
-        <div className="mt-16 grid grid-cols-1 gap-12 md:mt-24 lg:grid-cols-2 lg:gap-16 lg:items-center">
+        <div className="mt-10 grid grid-cols-1 gap-10 md:mt-14 lg:grid-cols-2 lg:gap-16 lg:items-center">
           {/* Columna izquierda · 4 bullets */}
           <div>
             {BULLETS.map((b, i) => (
@@ -232,8 +232,10 @@ function BulletItem({ data, last }: { data: Bullet; last: boolean }) {
 
 function FrancoInsightCards() {
   const containerRef = useRef<HTMLDivElement>(null);
+  // once:false → useInView toggle on/off cuando entra/sale del viewport.
+  // El loop solo corre cuando está visible.
   const isInView = useInView(containerRef, {
-    once: true,
+    once: false,
     margin: "-50px 0px -50px 0px",
   });
   const reduce = useReducedMotion();
@@ -241,6 +243,11 @@ function FrancoInsightCards() {
 
   const [showBack, setShowBack] = useState(false);
   const [dimBack, setDimBack] = useState(false);
+  // 3 segmentos del insight de zona (fade stagger simulando typewriter
+  // sentence-by-sentence · más lento que un fade único, da tiempo a leer).
+  const [showSeg1, setShowSeg1] = useState(false);
+  const [showSeg2, setShowSeg2] = useState(false);
+  const [showSeg3, setShowSeg3] = useState(false);
   const [showFront, setShowFront] = useState(false);
   const [showHeader, setShowHeader] = useState(false);
   const [showH1, setShowH1] = useState(false);
@@ -254,6 +261,9 @@ function FrancoInsightCards() {
     if (reduce) {
       setShowBack(true);
       setDimBack(true);
+      setShowSeg1(true);
+      setShowSeg2(true);
+      setShowSeg3(true);
       setShowFront(true);
       setShowHeader(true);
       setShowH1(true);
@@ -273,19 +283,43 @@ function FrancoInsightCards() {
       );
     };
 
-    // Card 01 (atractores) aparece SOLA primero · pausa larga para que el
-    // lector recorra el insight de zona antes de que Card 02 entre encima.
-    T(0, () => setShowBack(true));
-    // Tras 3000ms, Card 02 entra superpuesta y Card 01 transita a dim.
-    T(3000, () => {
-      setDimBack(true);
-      setShowFront(true);
-    });
-    T(3500, () => setShowHeader(true));
-    T(3700, () => setShowH1(true));
-    T(4100, () => setShowH2(true));
-    T(4500, () => setShowH3(true));
-    T(5000, () => setShowCita(true));
+    // Loop continuo: cada ciclo ~22s. Card 01 sola con texto sentence-by-
+    // sentence, después Card 02 entra y construye los 3 hallazgos.
+    const runCycle = () => {
+      // Reset todos los estados al inicio del ciclo.
+      setShowBack(false);
+      setDimBack(false);
+      setShowSeg1(false);
+      setShowSeg2(false);
+      setShowSeg3(false);
+      setShowFront(false);
+      setShowHeader(false);
+      setShowH1(false);
+      setShowH2(false);
+      setShowH3(false);
+      setShowCita(false);
+
+      // Card 01 aparece y el texto se construye en cascada continua y rápida
+      // (segmentos solapados con stagger 700ms · feel typewriter continuo).
+      T(200, () => setShowBack(true));
+      T(500, () => setShowSeg1(true));
+      T(1200, () => setShowSeg2(true));
+      T(1900, () => setShowSeg3(true));
+      // Card 02 entra superpuesta · Card 01 transita a dim.
+      T(5000, () => {
+        setDimBack(true);
+        setShowFront(true);
+      });
+      T(5500, () => setShowHeader(true));
+      T(5900, () => setShowH1(true));
+      T(7500, () => setShowH2(true));
+      T(9100, () => setShowH3(true));
+      T(10800, () => setShowCita(true));
+      // Loop reset al final del ciclo (14s).
+      T(14000, runCycle);
+    };
+
+    runCycle();
 
     return () => {
       mounted = false;
@@ -311,10 +345,10 @@ function FrancoInsightCards() {
   return (
     <div
       ref={containerRef}
+      className="min-h-[680px] lg:min-h-[600px]"
       style={{
         position: "relative",
         width: "100%",
-        minHeight: 560,
       }}
     >
       {/* CARD 01 · ATRACTORES DE ZONA (aparece sola primero, después dim) */}
@@ -383,19 +417,44 @@ function FrancoInsightCards() {
         >
           ★ Insight de zona
         </p>
+        {/* Body en 3 segmentos · fade stagger (efecto typewriter sentence-by-
+            sentence). Each segment is a motion.span always-mounted with
+            animate condicional opacity (Phase 2.6e/f safe). */}
         <p
           className="font-body italic text-[var(--landing-text-secondary)]"
           style={{ fontSize: 12.5, lineHeight: 1.55, margin: 0 }}
         >
-          Triple conectividad de metro (Manuel Montt{" "}
-          <Datum>245m</Datum>, Pedro de Valdivia <Datum>396m</Datum>, Salvador{" "}
-          <Datum>1km</Datum>) genera demanda sostenida. INACAP y DuocUC en un
-          radio de <Datum>800m</Datum> atraen estudiantes y jóvenes
-          profesionales; Parque Inés de Suárez a pasos suma calidad de vida.
-          El arriendo estimado de <Datum>$950.000</Datum> se posiciona en el{" "}
-          <Datum>percentil 58</Datum> del rango local (
-          <Datum>$640K–$1.347M</Datum>): compite sin castigar precio y
-          mantiene vacancia baja.
+          <motion.span
+            initial={false}
+            animate={showSeg1 ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+            aria-hidden={!showSeg1}
+          >
+            Triple conectividad de metro (Manuel Montt{" "}
+            <Datum>245m</Datum>, Pedro de Valdivia <Datum>396m</Datum>,
+            Salvador <Datum>1km</Datum>) genera demanda sostenida.
+          </motion.span>{" "}
+          <motion.span
+            initial={false}
+            animate={showSeg2 ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+            aria-hidden={!showSeg2}
+          >
+            INACAP y DuocUC en un radio de <Datum>800m</Datum> atraen
+            estudiantes y jóvenes profesionales; Parque Inés de Suárez a
+            pasos suma calidad de vida.
+          </motion.span>{" "}
+          <motion.span
+            initial={false}
+            animate={showSeg3 ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.5, ease: EASE }}
+            aria-hidden={!showSeg3}
+          >
+            El arriendo estimado de <Datum>$950.000</Datum> se posiciona en
+            el <Datum>percentil 58</Datum> del rango local (
+            <Datum>$640K–$1.347M</Datum>): compite sin castigar precio y
+            mantiene vacancia baja.
+          </motion.span>
         </p>
       </motion.div>
 
