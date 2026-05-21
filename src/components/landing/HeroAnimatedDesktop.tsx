@@ -397,8 +397,12 @@ export default function HeroAnimatedDesktop({
       ? dimBrightness
       : 1.0;
   const card2Opacity = showCard2 ? 1.0 : 0;
-  const enterOffset = { x: 80, y: 0 };
-  const card1Anim = !card1Entered ? enterOffset : { x: 0, y: 0 };
+  // Phase 2.13 · Card 1 parte centrada (translateX +40px de su posición
+  // final right:100), después se desliza a su lugar cuando Card 2 entra.
+  // Wrapper 500 wide, Card 1 width 380 → centered en wrapper = right:60 =
+  // current right:100 + 40px de offset.
+  const card1X = !card1Entered ? 80 : showCard2 ? 0 : 40;
+  const card1Anim = { x: card1X, y: 0 };
   // Card 2 slide-in cuando entra (showCard2 false→true).
   const card2Anim = showCard2 ? { x: 0, y: 0 } : { x: 30, y: 0 };
 

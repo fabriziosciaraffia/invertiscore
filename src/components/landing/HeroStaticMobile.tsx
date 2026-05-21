@@ -169,6 +169,10 @@ export default function HeroStaticMobile() {
     : showCard2
       ? dimBrightness
       : 1.0;
+  // Phase 2.13 · Card 1 parte centrada → mueve a su pos cuando Card 2 entra.
+  // Container ~350px, Card 1 width 72% ≈ 252, current left:12 → centered
+  // left = (350-252)/2 ≈ 49 → translateX +37px desde su left:12 final.
+  const card1X = !card1Entered ? 0 : showCard2 ? 0 : 32;
   const card2Opacity = showCard2 ? 1.0 : 0;
   const card2X = showCard2 ? 0 : 24;
 
@@ -184,8 +188,12 @@ export default function HeroStaticMobile() {
         overflow: "visible",
       }}
     >
-      {/* CARD 1 · FORM (atrás · entra primero, dim cuando Card 2 entra) */}
-      <FormCardStatic opacity={card1Opacity} brightness={card1Brightness} />
+      {/* CARD 1 · FORM (atrás · entra primero centrada, dim cuando Card 2 entra) */}
+      <FormCardStatic
+        opacity={card1Opacity}
+        brightness={card1Brightness}
+        translateX={card1X}
+      />
       {/* CARD 2 · RESULTS (frente · entra después con slide + fade) */}
       <ResultsCardStatic opacity={card2Opacity} translateX={card2X} />
     </div>
@@ -197,16 +205,18 @@ export default function HeroStaticMobile() {
 function FormCardStatic({
   opacity,
   brightness,
+  translateX,
 }: {
   opacity: number;
   brightness: number;
+  translateX: number;
 }) {
   const isLight = useIsLight();
   return (
     <motion.div
       className="franco-mockup"
       initial={false}
-      animate={{ opacity, filter: `brightness(${brightness})` }}
+      animate={{ opacity, filter: `brightness(${brightness})`, x: translateX }}
       transition={{ duration: 0.6, ease: EASE }}
       style={{
         position: "absolute",
@@ -218,7 +228,7 @@ function FormCardStatic({
         backgroundColor: "var(--landing-mockup-solid-bg)",
         borderRadius: 22,
         zIndex: 1,
-        willChange: "opacity, filter",
+        willChange: "opacity, filter, transform",
         // isLight retained to keep theme-aware reference for future fields;
         // current props handle the dim driven by parent state.
         ...(isLight ? {} : {}),
