@@ -112,7 +112,10 @@ export default function HeroAnimatedDesktop({
   const [isHovered, setIsHovered] = useState(false);
 
   const [card1Entered, setCard1Entered] = useState(!!reduce);
-  const [card2Entered, setCard2Entered] = useState(!!reduce);
+  // showCard2 controla visibilidad Card 2 dentro del loop.
+  // Phase 2.13 pattern (s03): Card 1 sola primero, después Card 2 entra
+  // superpuesta. Al final del ciclo Card 2 sale y Card 1 vuelve a brillar.
+  const [showCard2, setShowCard2] = useState(!!reduce);
 
   const [phase, setPhase] = useState<LoopPhase>(reduce ? "stable" : "idle");
 
@@ -153,8 +156,7 @@ export default function HeroAnimatedDesktop({
     heroVisible &&
     isVisible &&
     !isHovered &&
-    card1Entered &&
-    card2Entered;
+    card1Entered;
 
   // IntersectionObserver propio — pausa fuera de viewport.
   useEffect(() => {
@@ -173,18 +175,17 @@ export default function HeroAnimatedDesktop({
     }
   }, []);
 
-  // Entrada escalonada de las cards.
+  // Entrada inicial · solo Card 1. Card 2 entra recién en el primer ciclo
+  // del loop (t=3000 de cycle) — efecto s03 "Card 1 sola primero".
   useEffect(() => {
     if (showFinalStatic) {
       setCard1Entered(true);
-      setCard2Entered(true);
+      setShowCard2(true);
       return;
     }
-    const t2 = setTimeout(() => setCard2Entered(true), 1800);
-    const t1 = setTimeout(() => setCard1Entered(true), 2000);
+    const t1 = setTimeout(() => setCard1Entered(true), 1800);
     return () => {
       clearTimeout(t1);
-      clearTimeout(t2);
     };
   }, [showFinalStatic]);
 
@@ -253,10 +254,10 @@ export default function HeroAnimatedDesktop({
     };
 
     const runCycle = () => {
-      // ===== FORM ACTIVE (0-3000ms) =====
-      // Solo reset del Form sub-state · Card 2 mantiene contenido del ciclo
-      // anterior visible (es protagonista permanente).
+      // ===== FORM ACTIVE (0-3000ms) · Card 1 SOLA =====
+      // Card 2 oculta al iniciar cada ciclo · efecto s03 "Card 1 sola primero".
       setPhase("form-active");
+      setShowCard2(false);
       setTypedText("");
       setDropdownVisible(false);
       setAutocompleteHighlight(false);
@@ -264,6 +265,25 @@ export default function HeroAnimatedDesktop({
       setPrecioCount(0);
       setSuperficieCount(0);
       setShowMap(false);
+
+      // Reset Card 2 sub-state ahora · cuando showCard2 pase a true en
+      // t=3000, Card 2 hace fade-in VACÍA y va construyéndose progresivo
+      // (no flash del estado final del ciclo anterior).
+      setScoreCount(0);
+      setBarPct(0);
+      setShowBadge(false);
+      setShowLine(false);
+      setShowCaja(false);
+      setShowCard02(false);
+      setShowCard03(false);
+      setShowCard04(false);
+      setShowCard05(false);
+      setCostoCount(0);
+      setNegociCount(0);
+      setLargoCount(0);
+      setShowPatri(false);
+      setBarIdx(0);
+      setLinePct(0);
 
       // t=400 typing arranca
       T(400, () => {
@@ -302,30 +322,17 @@ export default function HeroAnimatedDesktop({
       // t=2200 mapa fade-in
       T(2200, () => setShowMap(true));
 
-      // ===== TRANSITION (3000-3500ms) =====
-      T(3000, () => setPhase("transition"));
+      // ===== TRANSITION (3000-3500ms) · Card 2 entra =====
+      T(3000, () => {
+        setPhase("transition");
+        setShowCard2(true);
+      });
 
       // ===== RESULTS ACTIVE (3500-9000ms) =====
-      // Reset Card 2 sub-state → re-animate desde cero para mostrar la
-      // construcción del análisis. Card 2 estuvo "estable final" durante
-      // form-active + transition; ahora "vuelve a calcularse".
+      // Card 2 ya está visible y vacía (reset al inicio del cycle).
+      // Ahora se construye progresivamente.
       T(3500, () => {
         setPhase("results-active");
-        setScoreCount(0);
-        setBarPct(0);
-        setShowBadge(false);
-        setShowLine(false);
-        setShowCaja(false);
-        setShowCard02(false);
-        setShowCard03(false);
-        setShowCard04(false);
-        setShowCard05(false);
-        setCostoCount(0);
-        setNegociCount(0);
-        setLargoCount(0);
-        setShowPatri(false);
-        setBarIdx(0);
-        setLinePct(0);
         animateCounter(setScoreCount, 0, 61, 1200);
         animateCounter(setBarPct, 0, 61, 1200, false);
       });
@@ -353,8 +360,11 @@ export default function HeroAnimatedDesktop({
       }
       T(8000, () => animateCounter(setLinePct, 0, 100, 1000, false));
 
-      // ===== STABLE (9000-10000ms) =====
+      // ===== STABLE (9000-9500ms) =====
       T(9000, () => setPhase("stable"));
+
+      // ===== EXIT (9500-10000ms) · Card 2 sale, Card 1 vuelve a brillar ===
+      T(9500, () => setShowCard2(false));
 
       // ===== RESET → próximo ciclo =====
       T(10000, runCycle);
@@ -371,22 +381,26 @@ export default function HeroAnimatedDesktop({
   }, [shouldLoop]);
 
   // ─── Render derived values ──────────────────────
+  // Phase 2.13 pattern: Card 1 brilla cuando está sola (showCard2 false).
+  // Card 1 se atenúa cuando Card 2 entra (showCard2 true).
+  // Card 2 opacity se controla por showCard2 (entra/sale en cada ciclo).
   const dimOpacity = isLight ? 0.72 : 0.55;
   const dimBrightness = isLight ? 1.0 : 0.7;
   const card1Opacity = !card1Entered
     ? 0
-    : phase === "form-active" || phase === "stable"
-      ? 1.0
-      : dimOpacity;
+    : showCard2
+      ? dimOpacity
+      : 1.0;
   const card1Brightness = !card1Entered
     ? dimBrightness
-    : phase === "form-active" || phase === "stable"
-      ? 1.0
-      : dimBrightness;
-  const card2Opacity = !card2Entered ? 0 : 1.0;
+    : showCard2
+      ? dimBrightness
+      : 1.0;
+  const card2Opacity = showCard2 ? 1.0 : 0;
   const enterOffset = { x: 80, y: 0 };
   const card1Anim = !card1Entered ? enterOffset : { x: 0, y: 0 };
-  const card2Anim = !card2Entered ? enterOffset : { x: 0, y: 0 };
+  // Card 2 slide-in cuando entra (showCard2 false→true).
+  const card2Anim = showCard2 ? { x: 0, y: 0 } : { x: 30, y: 0 };
 
   const cursorVisible =
     phase === "form-active" && typedText.length < DIRECCION.length;

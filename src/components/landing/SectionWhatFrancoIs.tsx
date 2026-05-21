@@ -1,63 +1,122 @@
 "use client";
 
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
- * Sección 03 · Qué es Franco (F.11 Phase 2.2 · reset estilo Linear).
+ * Sección 03 · Qué es Franco (F.11 Phase 2.13 · caja Franco rediseñada).
  *
- * Layout natural sin sticky scroll. 2 cols en desktop:
- *  ┌──────────────────┬──────────────────┐
- *  │ Header                              │
- *  ├──────────────────┼──────────────────┤
- *  │ 4 bullets        │ Caja Franco      │
- *  │ INTERPRETA       │ (cita + acciones)│
- *  │ IDENTIFICA       │                  │
- *  │ PROPONE          │                  │
- *  │ VIGILA           │                  │
- *  └──────────────────┴──────────────────┘
+ * Layout 2 cols (desktop ≥1024px):
+ *  ┌──────────────────┬──────────────────────────┐
+ *  │ Header                                       │
+ *  ├──────────────────┼──────────────────────────┤
+ *  │ 4 bullets        │ Insight Cards (2 cards   │
+ *  │ INTERPRETA       │ superpuestas: atractores │
+ *  │ IDENTIFICA       │ atrás + hallazgos Franco │
+ *  │ PROPONE          │ adelante)                │
+ *  │ VIGILA           │                          │
+ *  └──────────────────┴──────────────────────────┘
  *
- * Mobile: grid colapsa a 1 col, caja debajo de bullets.
- * Animaciones: solo RevealOnScroll con stagger.
+ * Mobile: grid colapsa a 1 col, cards debajo de bullets.
+ * Animación bullets: RevealOnScroll stagger 100ms.
+ * Animación cards: single-pass useInView once (back→front→header→3 hallazgos→cita).
  */
+
+const EASE = [0.215, 0.61, 0.355, 1] as const;
+
+/* Hook · detecta si el tema actual es light leyendo data-franco-theme. */
+function useLandingIsLight(): boolean {
+  const [isLight, setIsLight] = useState(false);
+  useEffect(() => {
+    const root = document.querySelector("[data-franco-root]");
+    if (!root) return;
+    const update = () =>
+      setIsLight(root.getAttribute("data-franco-theme") === "light");
+    update();
+    const obs = new MutationObserver(update);
+    obs.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-franco-theme"],
+    });
+    return () => obs.disconnect();
+  }, []);
+  return isLight;
+}
 
 type Bullet = {
   id: "01" | "02" | "03" | "04";
   verb: "INTERPRETA" | "IDENTIFICA" | "PROPONE" | "VIGILA";
   title: string;
-  description: string;
+  example: ReactNode;
 };
 
 const BULLETS: ReadonlyArray<Bullet> = [
   {
     id: "01",
     verb: "INTERPRETA",
-    title: "Lee todos los gastos reales de tu caso.",
-    description:
-      "Contribuciones, GGCC, vacancia, mantención. Nada se queda fuera de la ecuación.",
+    title: "Lee los gastos reales que tú pasarías por alto.",
+    example: (
+      <>
+        <ArrowRed /> Contribuciones SII <Hi>$78.400</Hi> · GGCC{" "}
+        <Hi>$95.000</Hi> · vacancia
+      </>
+    ),
   },
   {
     id: "02",
     verb: "IDENTIFICA",
-    title: "Encuentra dónde está el problema real.",
-    description:
-      "Precio sobre mercado, estructura mal armada, modalidad equivocada. No solo te muestra el síntoma — te dice la causa.",
+    title: "Encuentra la causa, no el síntoma.",
+    example: (
+      <>
+        <ArrowRed /> &ldquo;Tu arriendo <Hi>UF 22</Hi> no es real: la zona
+        transa en <Hi>UF 18</Hi>&rdquo;
+      </>
+    ),
   },
   {
     id: "03",
     verb: "PROPONE",
-    title: "Da alternativas concretas para actuar.",
-    description:
-      "Negociar el precio, reestructurar el pie, cambiar la modalidad a Airbnb, buscar otra opción. Cada caso tiene su salida.",
+    title: "Da la salida concreta para tu caso.",
+    example: (
+      <>
+        <ArrowRed /> &ldquo;Sube el pie a <Hi>30%</Hi>, extiende a{" "}
+        <Hi>25 años</Hi>: flujo <Hi>−$310K</Hi> → <Hi>−$90K</Hi>&rdquo;
+      </>
+    ),
   },
   {
     id: "04",
     verb: "VIGILA",
-    title: "Anticipa riesgos del análisis a largo plazo.",
-    description:
-      "Tasas que pueden subir, vacancia, plusvalía de la zona, eventos del barrio. Franco te muestra qué podría salir mal.",
+    title: "Anticipa lo que puede salir mal.",
+    example: (
+      <>
+        <ArrowRed /> Tasa al alza · plusvalía zona <Hi>+34%</Hi> · vacancia
+        estacional
+      </>
+    ),
   },
 ];
+
+/* Helpers de bullet · ArrowRed (flecha Signal Red al inicio del ejemplo)
+ * + Hi (highlight Mono blanco bold para datos cuantitativos inline). */
+function ArrowRed() {
+  return (
+    <span
+      aria-hidden="true"
+      style={{ color: "#C8323C", fontWeight: 700, marginRight: 4 }}
+    >
+      →
+    </span>
+  );
+}
+
+function Hi({ children }: { children: ReactNode }) {
+  return (
+    <span className="font-normal">{children}</span>
+  );
+}
 
 export default function SectionWhatFrancoIs() {
   return (
@@ -73,7 +132,7 @@ export default function SectionWhatFrancoIs() {
           subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
         />
 
-        <div className="mt-16 grid grid-cols-1 gap-12 md:mt-24 lg:grid-cols-2 lg:gap-16">
+        <div className="mt-16 grid grid-cols-1 gap-12 md:mt-24 lg:grid-cols-2 lg:gap-16 lg:items-center">
           {/* Columna izquierda · 4 bullets */}
           <div>
             {BULLETS.map((b, i) => (
@@ -83,10 +142,8 @@ export default function SectionWhatFrancoIs() {
             ))}
           </div>
 
-          {/* Columna derecha · Caja Franco */}
-          <RevealOnScroll delay={0.4}>
-            <FrancoBox />
-          </RevealOnScroll>
+          {/* Columna derecha · 2 cards superpuestas con insight + atractores */}
+          <FrancoInsightCards />
         </div>
       </div>
     </section>
@@ -97,116 +154,453 @@ export default function SectionWhatFrancoIs() {
 
 function BulletItem({ data, last }: { data: Bullet; last: boolean }) {
   return (
-    <div style={{ marginBottom: last ? 0 : 40 }}>
-      <p
-        className="font-mono font-medium uppercase text-[#C8323C]"
+    <div
+      className="flex"
+      style={{
+        gap: 16,
+        padding: "18px 0",
+        borderBottom: last
+          ? "none"
+          : "0.5px solid var(--landing-card-border)",
+      }}
+    >
+      {/* Número grande Source Serif Bold · 18% opacity del color de texto
+          (theme-aware via color-mix). */}
+      <span
+        className="font-heading font-bold"
         style={{
-          fontSize: 11,
-          letterSpacing: "0.06em",
-          marginBottom: 12,
+          width: 42,
+          flexShrink: 0,
+          fontSize: 30,
+          lineHeight: 1,
+          color:
+            "color-mix(in srgb, var(--landing-text) 18%, transparent)",
         }}
+        aria-hidden="true"
       >
-        {data.id} · {data.verb}
-      </p>
-      <p
-        className="font-body font-semibold text-[var(--landing-text)]"
-        style={{
-          fontSize: "clamp(18px, 1.8vw, 22px)",
-          lineHeight: 1.3,
-          marginBottom: 12,
-        }}
-      >
-        {data.title}
-      </p>
-      <p
-        className="font-body text-[var(--landing-text-muted)]"
-        style={{
-          fontSize: 15,
-          lineHeight: 1.6,
-          maxWidth: 420,
-        }}
-      >
-        {data.description}
-      </p>
+        {data.id}
+      </span>
+
+      <div style={{ flex: 1, minWidth: 0 }}>
+        {/* Verbo · Mono Bold Signal Red uppercase */}
+        <p
+          className="font-mono font-bold uppercase"
+          style={{
+            fontSize: 10,
+            letterSpacing: "0.1em",
+            color: "#C8323C",
+            marginBottom: 5,
+            margin: "0 0 5px 0",
+          }}
+        >
+          {data.verb}
+        </p>
+
+        {/* Título · Sans Semibold 600 (override usuario sobre el cap default
+            del skill — pediste explícitamente fontWeight 600 para énfasis del
+            título de bullet). */}
+        <p
+          className="font-body text-[var(--landing-text)]"
+          style={{
+            fontSize: 15,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            margin: "0 0 6px 0",
+          }}
+        >
+          {data.title}
+        </p>
+
+        {/* Ejemplo · Mono 11px muted · → Signal Red al inicio + datums Hi
+            blanco bold inline. */}
+        <p
+          className="font-mono text-[var(--landing-text-muted)]"
+          style={{
+            fontSize: 11,
+            lineHeight: 1.4,
+            margin: 0,
+          }}
+        >
+          {data.example}
+        </p>
+      </div>
     </div>
   );
 }
 
-/* ============================ Caja Franco ============================ */
+/* ============================ Insight Cards (2 superpuestas) ============================ */
 
-function FrancoBox() {
+function FrancoInsightCards() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, {
+    once: true,
+    margin: "-50px 0px -50px 0px",
+  });
+  const reduce = useReducedMotion();
+  const isLight = useLandingIsLight();
+
+  const [showBack, setShowBack] = useState(false);
+  const [dimBack, setDimBack] = useState(false);
+  const [showFront, setShowFront] = useState(false);
+  const [showHeader, setShowHeader] = useState(false);
+  const [showH1, setShowH1] = useState(false);
+  const [showH2, setShowH2] = useState(false);
+  const [showH3, setShowH3] = useState(false);
+  const [showCita, setShowCita] = useState(false);
+
+  useEffect(() => {
+    if (!isInView) return;
+
+    if (reduce) {
+      setShowBack(true);
+      setDimBack(true);
+      setShowFront(true);
+      setShowHeader(true);
+      setShowH1(true);
+      setShowH2(true);
+      setShowH3(true);
+      setShowCita(true);
+      return;
+    }
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    // Card 01 (atractores) aparece SOLA primero · pausa larga para que el
+    // lector recorra el insight de zona antes de que Card 02 entre encima.
+    T(0, () => setShowBack(true));
+    // Tras 3000ms, Card 02 entra superpuesta y Card 01 transita a dim.
+    T(3000, () => {
+      setDimBack(true);
+      setShowFront(true);
+    });
+    T(3500, () => setShowHeader(true));
+    T(3700, () => setShowH1(true));
+    T(4100, () => setShowH2(true));
+    T(4500, () => setShowH3(true));
+    T(5000, () => setShowCita(true));
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [isInView, reduce]);
+
+  const dimOpacity = isLight ? 0.72 : 0.5;
+  const dimBrightness = isLight ? 1.0 : 0.7;
+  const backOpacity = !showBack ? 0 : dimBack ? dimOpacity : 1.0;
+  const backBrightness = !dimBack ? 1.0 : dimBrightness;
+
+  // Card visual common · ambas cards misma forma (radius full + border Ink).
+  const cardCommon: React.CSSProperties = {
+    position: "absolute",
+    width: "84%",
+    background: "var(--landing-mockup-solid-bg)",
+    border: "0.5px solid var(--landing-card-border)",
+    borderRadius: 14,
+    padding: 20,
+  };
+
   return (
     <div
-      className="franco-card"
-      // Border-left Signal Red 3px para enfatizar (override local sobre .franco-card).
-      style={{ borderLeft: "3px solid #C8323C" }}
+      ref={containerRef}
+      style={{
+        position: "relative",
+        width: "100%",
+        minHeight: 560,
+      }}
     >
-      <p
-        className="font-mono font-semibold uppercase text-[#C8323C]"
+      {/* CARD 01 · ATRACTORES DE ZONA (aparece sola primero, después dim) */}
+      <motion.div
+        initial={false}
+        animate={
+          showBack
+            ? { opacity: backOpacity, scale: 1, filter: `brightness(${backBrightness})` }
+            : { opacity: 0, scale: 0.96, filter: `brightness(${backBrightness})` }
+        }
+        transition={{ duration: 0.5, ease: EASE }}
+        aria-hidden={!showBack}
+        style={{
+          ...cardCommon,
+          top: 0,
+          left: 0,
+          zIndex: 1,
+        }}
+      >
+        {/* Header · wordmark + label */}
+        <div
+          className="flex items-center justify-between"
+          style={{ marginBottom: 12 }}
+        >
+          <MockupWordmark />
+          <span
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.12em" }}
+          >
+            Atractores de zona
+          </span>
+        </div>
+
+        {/* Mapa · theme-aware */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{
+            height: 180,
+            border: "0.5px solid var(--landing-card-border)",
+            borderRadius: 8,
+            marginBottom: 14,
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={
+              isLight
+                ? "/landing/map-atractores-light.png"
+                : "/landing/map-atractores.png"
+            }
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+            aria-hidden="true"
+          />
+        </div>
+
+        {/* AI insight · narrativa Sans italic (estilo drawer 06 Zona) */}
+        <p
+          className="font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.14em",
+            marginBottom: 6,
+          }}
+        >
+          ★ Insight de zona
+        </p>
+        <p
+          className="font-body italic text-[var(--landing-text-secondary)]"
+          style={{ fontSize: 12.5, lineHeight: 1.55, margin: 0 }}
+        >
+          Triple conectividad de metro (Manuel Montt{" "}
+          <Datum>245m</Datum>, Pedro de Valdivia <Datum>396m</Datum>, Salvador{" "}
+          <Datum>1km</Datum>) genera demanda sostenida. INACAP y DuocUC en un
+          radio de <Datum>800m</Datum> atraen estudiantes y jóvenes
+          profesionales; Parque Inés de Suárez a pasos suma calidad de vida.
+          El arriendo estimado de <Datum>$950.000</Datum> se posiciona en el{" "}
+          <Datum>percentil 58</Datum> del rango local (
+          <Datum>$640K–$1.347M</Datum>): compite sin castigar precio y
+          mantiene vacancia baja.
+        </p>
+      </motion.div>
+
+      {/* CARD 02 · LO QUE FRANCO INTERPRETÓ (entra después, superpuesta) */}
+      <motion.div
+        initial={false}
+        animate={showFront ? { opacity: 1, x: 0 } : { opacity: 0, x: 30 }}
+        transition={{ duration: 0.5, ease: EASE }}
+        aria-hidden={!showFront}
+        style={{
+          ...cardCommon,
+          top: 120,
+          right: 0,
+          left: "auto",
+          boxShadow: "-16px 0 36px -18px rgba(0,0,0,0.7)",
+          zIndex: 2,
+        }}
+      >
+        {/* Header · wordmark + label */}
+        <div
+          className="flex items-center justify-between"
+          style={{ marginBottom: 16 }}
+        >
+          <MockupWordmark />
+          <motion.span
+            initial={false}
+            animate={showHeader ? { opacity: 1 } : { opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE }}
+            aria-hidden={!showHeader}
+            className="font-mono font-bold uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.14em",
+              color: "#C8323C",
+            }}
+          >
+            ★ Lo que Franco interpretó
+          </motion.span>
+        </div>
+
+        {/* Hallazgo 1 */}
+        <Hallazgo
+          show={showH1}
+          title="Tu financiamiento está forzado."
+          body={
+            <>
+              Con pie de{" "}
+              <Datum>20%</Datum> a <Datum>20 años</Datum> el dividendo te deja en{" "}
+              <Datum>−$310K/mes</Datum>. Sube el pie a <Datum>30%</Datum> y
+              extiende a <Datum>25 años</Datum> al <Datum>4,2%</Datum>: el flujo
+              sube a <Datum>−$90K</Datum>.
+            </>
+          }
+        />
+
+        <Divider />
+
+        {/* Hallazgo 2 */}
+        <Hallazgo
+          show={showH2}
+          title="El arriendo que pusiste no es real."
+          body={
+            <>
+              Pediste <Datum>UF 22</Datum>, pero los <Datum>73 comparables</Datum>{" "}
+              de Ñuñoa transan en <Datum>UF 18</Datum>. Con eso bajas{" "}
+              <Datum>UF 4/mes</Datum>, pero deja de ser una proyección de
+              fantasía — ahora sí puedes confiar en el veredicto.
+            </>
+          }
+        />
+
+        <Divider />
+
+        {/* Hallazgo 3 */}
+        <Hallazgo
+          show={showH3}
+          title="La ubicación juega a tu favor."
+          body={
+            <>
+              Metro Irarrázaval a <Datum>282m</Datum>, Clínica UC Christus y la
+              U. de Chile a menos de <Datum>2km</Datum>. Demanda estable,
+              vacancia baja: si el precio cede a <Datum>UF 4.900</Datum>, el
+              negocio cierra.
+            </>
+          }
+        />
+
+        <Divider strong />
+
+        {/* Cita Franco · Sans italic */}
+        <motion.p
+          initial={false}
+          animate={showCita ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+          transition={{ duration: 0.4, ease: EASE }}
+          aria-hidden={!showCita}
+          className="font-body italic text-[var(--landing-text)]"
+          style={{
+            fontSize: 14,
+            lineHeight: 1.45,
+            margin: 0,
+          }}
+        >
+          &ldquo;Una calculadora habría corrido tus números. Yo te digo cuáles
+          arreglar primero.&rdquo;
+        </motion.p>
+      </motion.div>
+    </div>
+  );
+}
+
+/* Wordmark refranco.ai reutilizable (header de ambas cards). */
+function MockupWordmark() {
+  return (
+    <span className="inline-flex items-baseline" aria-label="refranco.ai">
+      <span
+        className="font-heading italic font-light"
         style={{
           fontSize: 11,
-          letterSpacing: "0.10em",
-          marginBottom: 16,
+          color: "var(--landing-wm-re)",
+          marginRight: "-0.08em",
         }}
       >
-        Siendo franco
+        re
+      </span>
+      <span
+        className="font-heading font-bold"
+        style={{ fontSize: 11, color: "var(--landing-wm-franco)" }}
+      >
+        franco
+      </span>
+      <span
+        className="font-body font-semibold text-[#C8323C]"
+        style={{ fontSize: 6, marginLeft: 1, letterSpacing: "0.1em" }}
+      >
+        .ai
+      </span>
+    </span>
+  );
+}
+
+/* Hallazgo individual · título Serif Bold + body Sans con datos Mono inline. */
+function Hallazgo({
+  show,
+  title,
+  body,
+}: {
+  show: boolean;
+  title: string;
+  body: ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
+      transition={{ duration: 0.4, ease: EASE }}
+      aria-hidden={!show}
+    >
+      <p
+        className="font-heading font-bold text-[var(--landing-text)]"
+        style={{
+          fontSize: 15,
+          lineHeight: 1.3,
+          margin: 0,
+          marginBottom: 6,
+        }}
+      >
+        {title}
       </p>
       <p
-        className="font-heading italic font-semibold leading-[1.4] text-[var(--landing-text)]"
+        className="font-body text-[var(--landing-text-secondary)]"
         style={{
-          fontSize: "clamp(22px, 2.4vw, 28px)",
-          marginBottom: 32,
+          fontSize: 12.5,
+          lineHeight: 1.5,
+          margin: 0,
         }}
       >
-        “Excelente ubicación al precio equivocado. Negocia hasta UF 4.900 y
-        opera en Airbnb. Así el flujo se sostiene.”
+        {body}
       </p>
-      <div
-        style={{
-          borderTop: "0.5px solid var(--landing-divider)",
-          marginBottom: 24,
-        }}
-      />
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{
-          fontSize: 10,
-          letterSpacing: "0.06em",
-          marginBottom: 16,
-        }}
-      >
-        Qué hace en este caso
-      </p>
-      <ul
-        className="font-body text-[var(--landing-text)]"
-        style={{
-          fontSize: 14,
-          lineHeight: 1.7,
-          listStyle: "none",
-          padding: 0,
-        }}
-      >
-        {[
-          "Renegociar UF 5.500 → UF 4.900",
-          "Evaluar modo Airbnb (+$148K/mes vs arriendo)",
-          "Recalcular con pie 30%",
-        ].map((action) => (
-          <li key={action} style={{ paddingLeft: 16, position: "relative" }}>
-            <span
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                left: 0,
-                color: "#C8323C",
-                fontWeight: 700,
-              }}
-            >
-              ·
-            </span>
-            {action}
-          </li>
-        ))}
-      </ul>
-    </div>
+    </motion.div>
+  );
+}
+
+/* Datum · valor cuantitativo inline Mono peso normal · color heredado
+ * del párrafo (sin destacado cromático — el cambio de familia ya
+ * diferencia el dato). */
+function Datum({ children }: { children: ReactNode }) {
+  return (
+    <span
+      className="font-mono font-normal"
+      style={{ letterSpacing: "-0.01em" }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* Divider entre hallazgos · 0.5px Ink translúcido. `strong` aumenta margin. */
+function Divider({ strong = false }: { strong?: boolean }) {
+  return (
+    <div
+      style={{
+        height: 1,
+        background: "var(--landing-card-border)",
+        margin: strong ? "18px 0" : "14px 0",
+      }}
+    />
   );
 }
