@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useRef, useState } from "react";
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme
  * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
@@ -23,25 +24,24 @@ function useIsLight(): boolean {
 }
 
 /**
- * Hero static mockup · MOBILE-ONLY (F.11 Phase 2.12 · recicla s04 cards).
+ * Hero mockup · MOBILE-ONLY (F.11 Phase 2.13 · animación + loop reintroducidos).
  *
- * SIN framer-motion · SIN AnimatePresence · SIN useInView. Solo divs
- * con CSS estático. Evita el NotFoundError iOS WebKit del componente animado.
+ * Animación con máximas salvaguardas Phase 2.6e/f (anti NotFoundError iOS):
+ *   · framer-motion solo en outer wrappers de cada card · never on inner content
+ *   · always-mounted motion.div · animate condicional opacity/filter/x
+ *   · NO {cond && <motion>} · NO AnimatePresence
+ *   · useInView con once:false para pausar fuera de viewport + cleanup
+ *   · prefers-reduced-motion → estado final estático directo
  *
- * Contenido = estado final estático de las cards Step01 y Step03 de s04:
- *   · CARD 1 (atrás-izq, dim permanente, z-index 1):
- *     Header wordmark + Dirección con dropdown + chips Tipo USADO/NUEVO
- *     + Precio/Superficie + mapa WebP real (theme-aware) + botón ANALIZAR.
- *   · CARD 2 (frente-der, protagonista, z-index 2):
- *     Header wordmark + Hero score block (FRANCO SCORE + ? + AJUSTA SUPUESTOS
- *     badge outlined + score 61 Mono Bold + tracker bar con dot 61% +
- *     BUSCAR/AJUSTA/COMPRAR labels) + cita italic + Caja Franco
- *     (border-left 3px Signal Red, esquinas izq cuadradas) + 4 mini-cards
- *     (Mono Bold values + Mono uppercase sublabels) + bloque Patrimonio
- *     (11 barras stacked Aporte/Valor + línea Patrimonio neto).
+ * Loop ~8s (Card 1 sola → Card 2 entra → ambas visibles → Card 2 sale):
+ *   t=0       Card 1 entra (fade-in alone, opacity full)
+ *   t=1500    Card 2 entra (slide-in + fade), Card 1 transita a dim
+ *   t=1500-6500   ambas visibles (Card 2 frente, Card 1 dim atrás)
+ *   t=6500    Card 2 sale (fade-out), Card 1 vuelve a brillar
+ *   t=8000    runCycle → próximo iteración
  *
- * Design system: solo Ink scale + Signal Red. Sin verde, sin amber.
- * Theme-aware (dark + light) via CSS vars.
+ * Contenido = estado final estático de Step01 y Step03 de s04 (sin counters
+ * internos para minimizar superficie de fallo).
  */
 
 /* ===================== Helpers compartidos ===================== */
@@ -92,11 +92,89 @@ function HeaderApp({ label }: { label: string }) {
   );
 }
 
-/* ===================== Layout shell ===================== */
+/* ===================== Layout shell con animación + loop ===================== */
+
+const EASE = [0.215, 0.61, 0.355, 1] as const;
 
 export default function HeroStaticMobile() {
+  const reduce = useReducedMotion();
+  const isLight = useIsLight();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // useInView con margin px (Phase 2.6g · compat Safari iOS).
+  // once:false permite que el loop pause cuando salga del viewport y resuma
+  // al volver — pero solo togglea estado bool, no monta/desmonta.
+  const isInView = useInView(containerRef, {
+    once: false,
+    margin: "-50px 0px -50px 0px",
+  });
+
+  // Estado animación · always-mounted, solo togglea via state.
+  const [card1Entered, setCard1Entered] = useState(!!reduce);
+  const [showCard2, setShowCard2] = useState(!!reduce);
+
+  // Entry inicial Card 1 (solo una vez, no se repite).
+  useEffect(() => {
+    if (reduce) {
+      setCard1Entered(true);
+      setShowCard2(true);
+      return;
+    }
+    const t = setTimeout(() => setCard1Entered(true), 400);
+    return () => clearTimeout(t);
+  }, [reduce]);
+
+  // Loop · solo corre cuando isInView=true Y card1 entró.
+  // Cleanup: flag mounted + clearTimeout en cada timer.
+  useEffect(() => {
+    if (reduce) return;
+    if (!isInView || !card1Entered) return;
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    const runCycle = () => {
+      setShowCard2(false);
+      T(1500, () => setShowCard2(true));
+      T(6500, () => setShowCard2(false));
+      T(8000, runCycle);
+    };
+
+    runCycle();
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+    };
+  }, [reduce, isInView, card1Entered]);
+
+  // Dim values theme-aware.
+  const dimOpacity = isLight ? 0.72 : 0.55;
+  const dimBrightness = isLight ? 1.0 : 0.7;
+  const card1Opacity = !card1Entered
+    ? 0
+    : showCard2
+      ? dimOpacity
+      : 1.0;
+  const card1Brightness = !card1Entered
+    ? dimBrightness
+    : showCard2
+      ? dimBrightness
+      : 1.0;
+  const card2Opacity = showCard2 ? 1.0 : 0;
+  const card2X = showCard2 ? 0 : 24;
+
   return (
     <div
+      ref={containerRef}
       style={{
         position: "relative",
         width: "100%",
@@ -106,21 +184,30 @@ export default function HeroStaticMobile() {
         overflow: "visible",
       }}
     >
-      {/* CARD 1 · FORM (atrás · dim permanente · asoma izq) */}
-      <FormCardStatic />
-      {/* CARD 2 · RESULTS (frente · protagonista · asoma der) */}
-      <ResultsCardStatic />
+      {/* CARD 1 · FORM (atrás · entra primero, dim cuando Card 2 entra) */}
+      <FormCardStatic opacity={card1Opacity} brightness={card1Brightness} />
+      {/* CARD 2 · RESULTS (frente · entra después con slide + fade) */}
+      <ResultsCardStatic opacity={card2Opacity} translateX={card2X} />
     </div>
   );
 }
 
 /* ===================== Card 1 · Form estático (Step01 final) ===================== */
 
-function FormCardStatic() {
+function FormCardStatic({
+  opacity,
+  brightness,
+}: {
+  opacity: number;
+  brightness: number;
+}) {
   const isLight = useIsLight();
   return (
-    <div
+    <motion.div
       className="franco-mockup"
+      initial={false}
+      animate={{ opacity, filter: `brightness(${brightness})` }}
+      transition={{ duration: 0.6, ease: EASE }}
       style={{
         position: "absolute",
         top: 0,
@@ -130,9 +217,11 @@ function FormCardStatic() {
         padding: 14,
         backgroundColor: "var(--landing-mockup-solid-bg)",
         borderRadius: 22,
-        opacity: isLight ? 0.72 : 0.55,
-        filter: isLight ? "none" : "brightness(0.7)",
         zIndex: 1,
+        willChange: "opacity, filter",
+        // isLight retained to keep theme-aware reference for future fields;
+        // current props handle the dim driven by parent state.
+        ...(isLight ? {} : {}),
       }}
     >
       <HeaderApp label="Nuevo análisis" />
@@ -356,7 +445,7 @@ function FormCardStatic() {
         Analizar
         <span aria-hidden="true">→</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -376,18 +465,28 @@ const INNER_H = CHART_BOTTOM_Y - CHART_TOP;
 const v2y = (v: number) => CHART_BOTTOM_Y - (v / MAX_V) * INNER_H;
 const barX = (i: number) => CHART_LEFT + i * (BAR_W + BAR_GAP);
 
-function ResultsCardStatic() {
+function ResultsCardStatic({
+  opacity,
+  translateX,
+}: {
+  opacity: number;
+  translateX: number;
+}) {
   const netoPoints = NETO.map(
     (v, i) => `${barX(i) + BAR_W / 2},${v2y(v)}`,
   ).join(" ");
 
   return (
-    <div
+    <motion.div
       className="franco-mockup"
+      initial={false}
+      animate={{ opacity, x: translateX }}
+      transition={{ duration: 0.6, ease: EASE }}
       style={{
         position: "absolute",
         top: 70,
         right: 12,
+        willChange: "opacity, transform",
         width: "78%",
         height: 500,
         padding: 12,
@@ -751,7 +850,7 @@ function ResultsCardStatic() {
           ))}
         </svg>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
