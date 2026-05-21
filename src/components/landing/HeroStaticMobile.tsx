@@ -24,27 +24,442 @@ function useIsLight(): boolean {
 }
 
 /**
- * Hero mockup · MOBILE-ONLY (F.11 Phase 2.13 · animación + loop reintroducidos).
+ * Hero mockup · MOBILE-ONLY (F.11 Phase 2.14 · animaciones internas portadas de Desktop).
  *
- * Animación con máximas salvaguardas Phase 2.6e/f (anti NotFoundError iOS):
- *   · framer-motion solo en outer wrappers de cada card · never on inner content
- *   · always-mounted motion.div · animate condicional opacity/filter/x
- *   · NO {cond && <motion>} · NO AnimatePresence
- *   · useInView con once:false para pausar fuera de viewport + cleanup
- *   · prefers-reduced-motion → estado final estático directo
+ * Misma máquina de estados + loop que HeroAnimatedDesktop, sizing mobile.
  *
- * Loop ~8s (Card 1 sola → Card 2 entra → ambas visibles → Card 2 sale):
- *   t=0       Card 1 entra (fade-in alone, opacity full)
- *   t=1500    Card 2 entra (slide-in + fade), Card 1 transita a dim
- *   t=1500-6500   ambas visibles (Card 2 frente, Card 1 dim atrás)
- *   t=6500    Card 2 sale (fade-out), Card 1 vuelve a brillar
- *   t=8000    runCycle → próximo iteración
+ * Salvaguardas Phase 2.6e/f intactas (anti NotFoundError iOS Safari):
+ *   · useInView con margin en px (no %), once:false
+ *   · TODOS los motion.* always-mounted con animate condicional
+ *   · NO {cond && <motion>} NUNCA · NO AnimatePresence
+ *   · Cursor del input always-mounted (animate condicional opacity)
+ *   · Dropdown always-mounted (animate condicional opacity/y)
+ *   · Counters via requestAnimationFrame + flag mounted en cleanup
+ *   · SVG rects always-mounted (animate height/y)
+ *   · polyline path always-mounted, strokeDashoffset CSS (no SMIL)
+ *   · IntersectionObserver via useInView + try/catch implícito
+ *   · prefers-reduced-motion → estado final estático directo, bypass loop
+ *   · onTouchStart/End/Cancel para pause-on-touch
  *
- * Contenido = estado final estático de Step01 y Step03 de s04 (sin counters
- * internos para minimizar superficie de fallo).
+ * Loop ~10s (idéntico a Desktop):
+ *   t=0-3000     form-active: Card 1 brillante, sola
+ *   t=3000-3500  transition: Card 2 entra
+ *   t=3500-9000  results-active: Card 2 construye contenido animado
+ *   t=9000-9500  stable
+ *   t=9500-10000 exit: Card 2 sale, Card 1 vuelve a brillar
+ *   t=10000      reset → próximo ciclo
  */
 
-/* ===================== Helpers compartidos ===================== */
+const EASE = [0.215, 0.61, 0.355, 1] as const;
+const TYPING_SPEED_MS = 50;
+const DIRECCION = "Av. Manuel Montt 1234, Providencia";
+
+type LoopPhase =
+  | "idle"
+  | "form-active"
+  | "transition"
+  | "results-active"
+  | "stable";
+
+const SUGGESTIONS = [
+  "Av. Manuel Montt 1234, Providencia, Chile",
+  "Av. Manuel Montt 1250, Providencia, Chile",
+];
+
+/* ===== Patrimonio chart constants (mismo modelo que Desktop / s04 Step03) ===== */
+const APORTE = [60, 78, 96, 115, 135, 156, 178, 200, 220, 235, 250];
+const VALOR = [250, 270, 290, 305, 315, 325, 340, 350, 360, 370, 380];
+const NETO = [80, 120, 165, 215, 270, 330, 395, 465, 540, 625, 720];
+const GRID_VALUES = [0, 400, 800];
+const BAR_W = 22;
+const BAR_GAP = 25;
+const CHART_LEFT = 54;
+const CHART_TOP = 8;
+const CHART_BOTTOM_Y = 98;
+const MAX_V = 800;
+const INNER_H = CHART_BOTTOM_Y - CHART_TOP;
+const v2y = (v: number) => CHART_BOTTOM_Y - (v / MAX_V) * INNER_H;
+const barX = (i: number) => CHART_LEFT + i * (BAR_W + BAR_GAP);
+
+export default function HeroStaticMobile() {
+  const reduce = useReducedMotion();
+  const isLight = useIsLight();
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // useInView con margin px (Phase 2.6g · compat Safari iOS).
+  const isInView = useInView(containerRef, {
+    once: false,
+    margin: "-50px 0px -50px 0px",
+  });
+
+  const [isHovered, setIsHovered] = useState(false);
+
+  const [card1Entered, setCard1Entered] = useState(!!reduce);
+  const [showCard2, setShowCard2] = useState(!!reduce);
+
+  const [phase, setPhase] = useState<LoopPhase>(reduce ? "stable" : "idle");
+
+  // ─── Form sub-state ─────────────────────────────
+  const [typedText, setTypedText] = useState(reduce ? DIRECCION : "");
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
+  const [showChips, setShowChips] = useState(!!reduce);
+  const [precioCount, setPrecioCount] = useState(reduce ? 5500 : 0);
+  const [superficieCount, setSuperficieCount] = useState(reduce ? 60 : 0);
+  const [showMap, setShowMap] = useState(!!reduce);
+
+  // ─── Results sub-state ──────────────────────────
+  // Initial = FINAL state (Card 2 protagonista, igual que Desktop).
+  const [scoreCount, setScoreCount] = useState(61);
+  const [barPct, setBarPct] = useState(61);
+  const [showBadge, setShowBadge] = useState(true);
+  const [showLine, setShowLine] = useState(true);
+  const [showCaja, setShowCaja] = useState(true);
+  const [showCard02, setShowCard02] = useState(true);
+  const [showCard03, setShowCard03] = useState(true);
+  const [showCard04, setShowCard04] = useState(true);
+  const [showCard05, setShowCard05] = useState(true);
+  const [costoCount, setCostoCount] = useState(310);
+  const [negociCount, setNegociCount] = useState(4900);
+  const [largoCount, setLargoCount] = useState(1450);
+  const [showPatri, setShowPatri] = useState(true);
+  const [barIdx, setBarIdx] = useState(11);
+  const [linePct, setLinePct] = useState(100);
+
+  const showFinalStatic = !!reduce;
+  const shouldLoop =
+    !showFinalStatic && isInView && !isHovered && card1Entered;
+
+  // Entrada inicial · solo Card 1. Card 2 entra en el primer ciclo.
+  useEffect(() => {
+    if (showFinalStatic) {
+      setCard1Entered(true);
+      setShowCard2(true);
+      return;
+    }
+    const t1 = setTimeout(() => setCard1Entered(true), 1200);
+    return () => {
+      clearTimeout(t1);
+    };
+  }, [showFinalStatic]);
+
+  // Estado estático final (prefers-reduced-motion).
+  useEffect(() => {
+    if (!showFinalStatic) return;
+    setPhase("stable");
+    setTypedText(DIRECCION);
+    setDropdownVisible(false);
+    setAutocompleteHighlight(false);
+    setShowChips(true);
+    setPrecioCount(5500);
+    setSuperficieCount(60);
+    setShowMap(true);
+    setScoreCount(61);
+    setBarPct(61);
+    setShowBadge(true);
+    setShowLine(true);
+    setShowCaja(true);
+    setShowCard02(true);
+    setShowCard03(true);
+    setShowCard04(true);
+    setShowCard05(true);
+    setCostoCount(310);
+    setNegociCount(4900);
+    setLargoCount(1450);
+    setShowPatri(true);
+    setBarIdx(11);
+    setLinePct(100);
+  }, [showFinalStatic]);
+
+  // ─── Loop principal ──────────────────────────────
+  useEffect(() => {
+    if (!shouldLoop) return;
+
+    let mounted = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    const rafIds: number[] = [];
+
+    const animateCounter = (
+      setter: (n: number) => void,
+      from: number,
+      to: number,
+      duration: number,
+      round = true,
+    ) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (!mounted) return;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = from + (to - from) * eased;
+        setter(round ? Math.round(val) : val);
+        if (t < 1) rafIds.push(requestAnimationFrame(tick));
+      };
+      rafIds.push(requestAnimationFrame(tick));
+    };
+
+    const T = (offset: number, fn: () => void) => {
+      timers.push(
+        setTimeout(() => {
+          if (mounted) fn();
+        }, offset),
+      );
+    };
+
+    const runCycle = () => {
+      // ===== FORM ACTIVE (0-3000ms) · Card 1 SOLA =====
+      setPhase("form-active");
+      setShowCard2(false);
+      setTypedText("");
+      setDropdownVisible(false);
+      setAutocompleteHighlight(false);
+      setShowChips(false);
+      setPrecioCount(0);
+      setSuperficieCount(0);
+      setShowMap(false);
+
+      // Reset Card 2 sub-state.
+      setScoreCount(0);
+      setBarPct(0);
+      setShowBadge(false);
+      setShowLine(false);
+      setShowCaja(false);
+      setShowCard02(false);
+      setShowCard03(false);
+      setShowCard04(false);
+      setShowCard05(false);
+      setCostoCount(0);
+      setNegociCount(0);
+      setLargoCount(0);
+      setShowPatri(false);
+      setBarIdx(0);
+      setLinePct(0);
+
+      // t=400 typing arranca
+      T(400, () => {
+        let i = 0;
+        typingInterval = setInterval(() => {
+          if (!mounted) return;
+          i++;
+          setTypedText(DIRECCION.slice(0, i));
+          if (i >= DIRECCION.length && typingInterval) {
+            clearInterval(typingInterval);
+            typingInterval = null;
+          }
+        }, TYPING_SPEED_MS);
+      });
+
+      // t=1000 dropdown · t=1200 highlight · t=1500 cierra
+      T(1000, () => setDropdownVisible(true));
+      T(1200, () => setAutocompleteHighlight(true));
+      T(1500, () => {
+        if (typingInterval) {
+          clearInterval(typingInterval);
+          typingInterval = null;
+        }
+        setTypedText(DIRECCION);
+        setDropdownVisible(false);
+        setAutocompleteHighlight(false);
+      });
+
+      // t=1700 chips + counters
+      T(1700, () => {
+        setShowChips(true);
+        animateCounter(setPrecioCount, 0, 5500, 700);
+        animateCounter(setSuperficieCount, 0, 60, 700);
+      });
+
+      // t=2200 mapa fade-in
+      T(2200, () => setShowMap(true));
+
+      // ===== TRANSITION (3000-3500ms) · Card 2 entra =====
+      T(3000, () => {
+        setPhase("transition");
+        setShowCard2(true);
+      });
+
+      // ===== RESULTS ACTIVE (3500-9000ms) =====
+      T(3500, () => {
+        setPhase("results-active");
+        animateCounter(setScoreCount, 0, 61, 1200);
+        animateCounter(setBarPct, 0, 61, 1200, false);
+      });
+      T(4700, () => setShowBadge(true));
+      T(4900, () => setShowLine(true));
+      T(5300, () => setShowCaja(true));
+      T(5900, () => {
+        setShowCard02(true);
+        animateCounter(setCostoCount, 0, 310, 700);
+      });
+      T(6100, () => {
+        setShowCard03(true);
+        animateCounter(setNegociCount, 0, 4900, 700);
+      });
+      T(6300, () => {
+        setShowCard04(true);
+        animateCounter(setLargoCount, 0, 1450, 700);
+      });
+      T(6500, () => setShowCard05(true));
+      T(6900, () => setShowPatri(true));
+      for (let i = 0; i < 11; i++) {
+        T(7100 + i * 80, () =>
+          setBarIdx((prev) => (prev > i ? prev : i + 1)),
+        );
+      }
+      T(8000, () => animateCounter(setLinePct, 0, 100, 1000, false));
+
+      // ===== STABLE (9000-9500ms) =====
+      T(9000, () => setPhase("stable"));
+
+      // ===== EXIT (9500-10000ms) =====
+      T(9500, () => setShowCard2(false));
+
+      // ===== RESET =====
+      T(10000, runCycle);
+    };
+
+    runCycle();
+
+    return () => {
+      mounted = false;
+      timers.forEach(clearTimeout);
+      if (typingInterval) clearInterval(typingInterval);
+      rafIds.forEach(cancelAnimationFrame);
+    };
+  }, [shouldLoop]);
+
+  // ─── Render derived values ──────────────────────
+  const dimOpacity = isLight ? 0.72 : 0.55;
+  const dimBrightness = isLight ? 1.0 : 0.7;
+  const card1Opacity = !card1Entered
+    ? 0
+    : showCard2
+      ? dimOpacity
+      : 1.0;
+  const card1Brightness = !card1Entered
+    ? dimBrightness
+    : showCard2
+      ? dimBrightness
+      : 1.0;
+  const card2Opacity = showCard2 ? 1.0 : 0;
+  // Card 1 entry: centrada → slide a su pos cuando Card 2 entra.
+  const card1X = !card1Entered ? 60 : showCard2 ? 0 : 50;
+  const card1Anim = { x: card1X, y: 0 };
+  const card2Anim = showCard2 ? { x: 0, y: 0 } : { x: 24, y: 0 };
+
+  const cursorVisible =
+    phase === "form-active" && typedText.length < DIRECCION.length;
+
+  const solidBg = "var(--landing-mockup-solid-bg)";
+
+  // Sizing mobile preservado.
+  const card1Style: React.CSSProperties = {
+    position: "absolute",
+    top: 0,
+    left: 12,
+    width: "72%",
+    height: 420,
+    padding: 14,
+    backgroundColor: solidBg,
+    borderRadius: 22,
+    zIndex: 1,
+    willChange: "opacity, filter, transform",
+    overflow: "hidden",
+  };
+  const card2Style: React.CSSProperties = {
+    position: "absolute",
+    top: 70,
+    right: 12,
+    width: "78%",
+    height: 500,
+    padding: 12,
+    backgroundColor: solidBg,
+    borderRadius: 22,
+    boxShadow:
+      "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 36px -18px rgba(0, 0, 0, 0.7)",
+    zIndex: 2,
+    willChange: "opacity, transform",
+    overflow: "hidden",
+    display: "flex",
+    flexDirection: "column",
+  };
+
+  const wrapperStyle: React.CSSProperties = {
+    position: "relative",
+    width: "100%",
+    height: 570,
+    marginTop: 16,
+    marginBottom: 64,
+    overflow: "visible",
+  };
+
+  return (
+    <div
+      ref={containerRef}
+      style={wrapperStyle}
+      onTouchStart={() => setIsHovered(true)}
+      onTouchEnd={() => setIsHovered(false)}
+      onTouchCancel={() => setIsHovered(false)}
+    >
+      {/* CARD 1 · FORM (atrás · entra primero centrada, dim cuando Card 2 entra) */}
+      <motion.div
+        className="franco-mockup"
+        initial={false}
+        animate={{
+          opacity: card1Opacity,
+          filter: `brightness(${card1Brightness})`,
+          ...card1Anim,
+        }}
+        transition={{ duration: 0.6, ease: EASE }}
+        style={card1Style}
+        aria-label="Mockup formulario"
+      >
+        <FormCardMobile
+          typedText={typedText}
+          cursorVisible={cursorVisible}
+          dropdownVisible={dropdownVisible}
+          autocompleteHighlight={autocompleteHighlight}
+          showChips={showChips}
+          precioCount={precioCount}
+          superficieCount={superficieCount}
+          showMap={showMap}
+          isLight={isLight}
+        />
+      </motion.div>
+
+      {/* CARD 2 · RESULTS (frente · entra después con slide + fade) */}
+      <motion.div
+        className="franco-mockup"
+        initial={false}
+        animate={{ opacity: card2Opacity, ...card2Anim }}
+        transition={{ duration: 0.6, ease: EASE }}
+        style={card2Style}
+        aria-label="Mockup resultados"
+      >
+        <ResultsCardMobile
+          scoreCount={scoreCount}
+          barPct={barPct}
+          showBadge={showBadge}
+          showLine={showLine}
+          showCaja={showCaja}
+          showCard02={showCard02}
+          showCard03={showCard03}
+          showCard04={showCard04}
+          showCard05={showCard05}
+          costoCount={costoCount}
+          negociCount={negociCount}
+          largoCount={largoCount}
+          showPatri={showPatri}
+          barIdx={barIdx}
+          linePct={linePct}
+        />
+      </motion.div>
+    </div>
+  );
+}
+
+/* ===================== Shared sub-components ===================== */
 
 function MockupWordmark() {
   return (
@@ -92,153 +507,34 @@ function HeaderApp({ label }: { label: string }) {
   );
 }
 
-/* ===================== Layout shell con animación + loop ===================== */
+/* ===================== Card 1 · Form (animado · mobile) ===================== */
 
-const EASE = [0.215, 0.61, 0.355, 1] as const;
-
-export default function HeroStaticMobile() {
-  const reduce = useReducedMotion();
-  const isLight = useIsLight();
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // useInView con margin px (Phase 2.6g · compat Safari iOS).
-  // once:false permite que el loop pause cuando salga del viewport y resuma
-  // al volver — pero solo togglea estado bool, no monta/desmonta.
-  const isInView = useInView(containerRef, {
-    once: false,
-    margin: "-50px 0px -50px 0px",
-  });
-
-  // Estado animación · always-mounted, solo togglea via state.
-  const [card1Entered, setCard1Entered] = useState(!!reduce);
-  const [showCard2, setShowCard2] = useState(!!reduce);
-
-  // Entry inicial Card 1 (solo una vez, no se repite).
-  useEffect(() => {
-    if (reduce) {
-      setCard1Entered(true);
-      setShowCard2(true);
-      return;
-    }
-    const t = setTimeout(() => setCard1Entered(true), 400);
-    return () => clearTimeout(t);
-  }, [reduce]);
-
-  // Loop · solo corre cuando isInView=true Y card1 entró.
-  // Cleanup: flag mounted + clearTimeout en cada timer.
-  useEffect(() => {
-    if (reduce) return;
-    if (!isInView || !card1Entered) return;
-
-    let mounted = true;
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    const T = (offset: number, fn: () => void) => {
-      timers.push(
-        setTimeout(() => {
-          if (mounted) fn();
-        }, offset),
-      );
-    };
-
-    const runCycle = () => {
-      setShowCard2(false);
-      // Card 1 sola 2500ms (más tiempo para apreciar el centrado + slide).
-      T(2500, () => setShowCard2(true));
-      T(7000, () => setShowCard2(false));
-      T(8500, runCycle);
-    };
-
-    runCycle();
-
-    return () => {
-      mounted = false;
-      timers.forEach(clearTimeout);
-    };
-  }, [reduce, isInView, card1Entered]);
-
-  // Dim values theme-aware.
-  const dimOpacity = isLight ? 0.72 : 0.55;
-  const dimBrightness = isLight ? 1.0 : 0.7;
-  const card1Opacity = !card1Entered
-    ? 0
-    : showCard2
-      ? dimOpacity
-      : 1.0;
-  const card1Brightness = !card1Entered
-    ? dimBrightness
-    : showCard2
-      ? dimBrightness
-      : 1.0;
-  // Phase 2.13 · Card 1 parte centrada → mueve a su pos cuando Card 2 entra.
-  // translateX más generoso (50px) para que el slide sea claramente visible
-  // en mobile narrow. Entry desde x:60 (slide-in derecha) → x:50 (centrada)
-  // → x:0 (final cuando Card 2 entra).
-  const card1X = !card1Entered ? 60 : showCard2 ? 0 : 50;
-  const card2Opacity = showCard2 ? 1.0 : 0;
-  const card2X = showCard2 ? 0 : 24;
-
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "relative",
-        width: "100%",
-        height: 570,
-        marginTop: 16,
-        marginBottom: 64,
-        overflow: "visible",
-      }}
-    >
-      {/* CARD 1 · FORM (atrás · entra primero centrada, dim cuando Card 2 entra) */}
-      <FormCardStatic
-        opacity={card1Opacity}
-        brightness={card1Brightness}
-        translateX={card1X}
-      />
-      {/* CARD 2 · RESULTS (frente · entra después con slide + fade) */}
-      <ResultsCardStatic opacity={card2Opacity} translateX={card2X} />
-    </div>
-  );
-}
-
-/* ===================== Card 1 · Form estático (Step01 final) ===================== */
-
-function FormCardStatic({
-  opacity,
-  brightness,
-  translateX,
+function FormCardMobile({
+  typedText,
+  cursorVisible,
+  dropdownVisible,
+  autocompleteHighlight,
+  showChips,
+  precioCount,
+  superficieCount,
+  showMap,
+  isLight,
 }: {
-  opacity: number;
-  brightness: number;
-  translateX: number;
+  typedText: string;
+  cursorVisible: boolean;
+  dropdownVisible: boolean;
+  autocompleteHighlight: boolean;
+  showChips: boolean;
+  precioCount: number;
+  superficieCount: number;
+  showMap: boolean;
+  isLight: boolean;
 }) {
-  const isLight = useIsLight();
   return (
-    <motion.div
-      className="franco-mockup"
-      initial={false}
-      animate={{ opacity, filter: `brightness(${brightness})`, x: translateX }}
-      transition={{ duration: 0.8, ease: EASE }}
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 12,
-        width: "72%",
-        height: 420,
-        padding: 14,
-        backgroundColor: "var(--landing-mockup-solid-bg)",
-        borderRadius: 22,
-        zIndex: 1,
-        willChange: "opacity, filter, transform",
-        // isLight retained to keep theme-aware reference for future fields;
-        // current props handle the dim driven by parent state.
-        ...(isLight ? {} : {}),
-      }}
-    >
+    <div>
       <HeaderApp label="Nuevo análisis" />
 
-      {/* Dirección · con dropdown autocomplete in-flow seleccionado */}
+      {/* Dirección · typing + dropdown autocomplete */}
       <div style={{ marginBottom: 10 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
@@ -250,16 +546,57 @@ function FormCardStatic({
           style={{
             borderBottom: "0.5px solid var(--landing-divider)",
             paddingBottom: 4,
+            minHeight: 20,
           }}
         >
           <span
             className="font-body text-[var(--landing-text)]"
             style={{ fontSize: 12 }}
           >
-            Av. Manuel Montt 1234, Providencia
+            {typedText ? (
+              typedText
+            ) : (
+              <span style={{ color: "var(--landing-text-muted)" }}>
+                Buscar dirección…
+              </span>
+            )}
+            {/* Cursor always-mounted · animate condicional (Phase 2.6e). */}
+            <motion.span
+              animate={
+                cursorVisible ? { opacity: [1, 1, 0, 0] } : { opacity: 0 }
+              }
+              transition={
+                cursorVisible
+                  ? {
+                      duration: 0.9,
+                      repeat: Infinity,
+                      times: [0, 0.5, 0.5, 1],
+                    }
+                  : { duration: 0 }
+              }
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 1,
+                height: 12,
+                background: "var(--landing-text)",
+                marginLeft: 2,
+                verticalAlign: "text-bottom",
+                pointerEvents: "none",
+              }}
+            />
           </span>
         </div>
-        <div
+        {/* Dropdown always-mounted · animate condicional (Phase 2.6f). */}
+        <motion.div
+          initial={false}
+          animate={
+            dropdownVisible
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: -4 }
+          }
+          transition={{ duration: 0.18, ease: EASE }}
+          aria-hidden={!dropdownVisible}
           style={{
             marginTop: 4,
             background: "var(--landing-card-bg)",
@@ -267,30 +604,41 @@ function FormCardStatic({
             borderRadius: 5,
             padding: 3,
             boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+            pointerEvents: dropdownVisible ? "auto" : "none",
           }}
         >
-          <div
-            className="font-body text-[var(--landing-text)]"
-            style={{
-              fontSize: 11,
-              padding: "4px 6px",
-              borderRadius: 3,
-              background: "rgba(200,50,60,0.10)",
-            }}
-          >
-            Av. Manuel Montt 1234, Providencia, Chile
-          </div>
-          <div
-            className="font-body text-[var(--landing-text-secondary)]"
-            style={{ fontSize: 11, padding: "4px 6px", borderRadius: 3 }}
-          >
-            Av. Manuel Montt 1250, Providencia, Chile
-          </div>
-        </div>
+          {SUGGESTIONS.map((s, i) => (
+            <div
+              key={s}
+              className="font-body text-[var(--landing-text)]"
+              style={{
+                fontSize: 11,
+                padding: "4px 6px",
+                borderRadius: 3,
+                background:
+                  i === 0 && autocompleteHighlight
+                    ? "rgba(200,50,60,0.10)"
+                    : "transparent",
+                color:
+                  i === 0 && autocompleteHighlight
+                    ? "var(--landing-text)"
+                    : "var(--landing-text-secondary)",
+                transition: "background 0.18s ease",
+              }}
+            >
+              {s}
+            </div>
+          ))}
+        </motion.div>
       </div>
 
-      {/* Tipo · chips USADO (outline Signal Red) / NUEVO (inactivo Ink) */}
-      <div style={{ marginBottom: 10 }}>
+      {/* Tipo · chips · always-mounted, opacity controlled */}
+      <motion.div
+        initial={false}
+        animate={showChips ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.25, ease: EASE }}
+        style={{ marginBottom: 10 }}
+      >
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
@@ -326,13 +674,10 @@ function FormCardStatic({
             Nuevo
           </span>
         </div>
-      </div>
+      </motion.div>
 
-      {/* Grid Precio (con UF/CLP toggle) + Superficie */}
-      <div
-        className="grid grid-cols-2"
-        style={{ gap: 12, marginBottom: 12 }}
-      >
+      {/* Grid Precio (UF/CLP toggle) + Superficie · counters animados */}
+      <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
         <div>
           <div
             className="flex items-center justify-between"
@@ -386,7 +731,7 @@ function FormCardStatic({
               className="font-mono font-medium text-[var(--landing-text)]"
               style={{ fontSize: 12 }}
             >
-              UF 5.500
+              UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
             </span>
           </div>
         </div>
@@ -407,14 +752,17 @@ function FormCardStatic({
               className="font-mono font-medium text-[var(--landing-text)]"
               style={{ fontSize: 12 }}
             >
-              60 m²
+              {superficieCount > 0 ? `${superficieCount} m²` : "—"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Mapa real WebP · theme-aware */}
-      <div
+      {/* Mapa real WebP · theme-aware · fade-in via opacity */}
+      <motion.div
+        initial={false}
+        animate={{ opacity: showMap ? 1 : 0 }}
+        transition={{ duration: 0.4, ease: EASE }}
         className="relative w-full overflow-hidden"
         style={{
           aspectRatio: "340 / 120",
@@ -434,7 +782,7 @@ function FormCardStatic({
           loading="lazy"
           aria-hidden="true"
         />
-      </div>
+      </motion.div>
 
       {/* Botón ANALIZAR */}
       <div
@@ -457,64 +805,54 @@ function FormCardStatic({
         Analizar
         <span aria-hidden="true">→</span>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-/* ===================== Card 2 · Results estático (Step03 final) ===================== */
+/* ===================== Card 2 · Results (animado · mobile) ===================== */
 
-const APORTE = [60, 78, 96, 115, 135, 156, 178, 200, 220, 235, 250];
-const VALOR = [250, 270, 290, 305, 315, 325, 340, 350, 360, 370, 380];
-const NETO = [80, 120, 165, 215, 270, 330, 395, 465, 540, 625, 720];
-const GRID_VALUES = [0, 400, 800];
-const BAR_W = 22;
-const BAR_GAP = 25;
-const CHART_LEFT = 54;
-const CHART_TOP = 8;
-const CHART_BOTTOM_Y = 98;
-const MAX_V = 800;
-const INNER_H = CHART_BOTTOM_Y - CHART_TOP;
-const v2y = (v: number) => CHART_BOTTOM_Y - (v / MAX_V) * INNER_H;
-const barX = (i: number) => CHART_LEFT + i * (BAR_W + BAR_GAP);
-
-function ResultsCardStatic({
-  opacity,
-  translateX,
+function ResultsCardMobile({
+  scoreCount,
+  barPct,
+  showBadge,
+  showLine,
+  showCaja,
+  showCard02,
+  showCard03,
+  showCard04,
+  showCard05,
+  costoCount,
+  negociCount,
+  largoCount,
+  showPatri,
+  barIdx,
+  linePct,
 }: {
-  opacity: number;
-  translateX: number;
+  scoreCount: number;
+  barPct: number;
+  showBadge: boolean;
+  showLine: boolean;
+  showCaja: boolean;
+  showCard02: boolean;
+  showCard03: boolean;
+  showCard04: boolean;
+  showCard05: boolean;
+  costoCount: number;
+  negociCount: number;
+  largoCount: number;
+  showPatri: boolean;
+  barIdx: number;
+  linePct: number;
 }) {
   const netoPoints = NETO.map(
     (v, i) => `${barX(i) + BAR_W / 2},${v2y(v)}`,
   ).join(" ");
 
   return (
-    <motion.div
-      className="franco-mockup"
-      initial={false}
-      animate={{ opacity, x: translateX }}
-      transition={{ duration: 0.8, ease: EASE }}
-      style={{
-        position: "absolute",
-        top: 70,
-        right: 12,
-        willChange: "opacity, transform",
-        width: "78%",
-        height: 500,
-        padding: 12,
-        backgroundColor: "var(--landing-mockup-solid-bg)",
-        borderRadius: 22,
-        boxShadow:
-          "inset 0 1px 0 0 rgba(255, 255, 255, 0.04), -16px 0 32px -16px rgba(0, 0, 0, 0.6)",
-        zIndex: 2,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <HeaderApp label="Completado" />
 
-      {/* Hero veredicto */}
+      {/* Hero veredicto · score counter + tracker + badge outlined */}
       <div
         style={{
           background: "var(--landing-mockup-solid-bg)",
@@ -525,10 +863,7 @@ function ResultsCardStatic({
         }}
       >
         {/* Eyebrow row */}
-        <div
-          className="flex items-center"
-          style={{ gap: 5, marginBottom: 6 }}
-        >
+        <div className="flex items-center" style={{ gap: 5, marginBottom: 6 }}>
           <span
             className="font-mono uppercase text-[var(--landing-text-muted)]"
             style={{ fontSize: 9, letterSpacing: "0.12em" }}
@@ -552,7 +887,15 @@ function ResultsCardStatic({
           >
             ?
           </span>
-          <span
+          <motion.span
+            initial={false}
+            animate={
+              showBadge
+                ? { opacity: 1, scale: 1 }
+                : { opacity: 0, scale: 0.92 }
+            }
+            transition={{ duration: 0.25, ease: EASE }}
+            aria-hidden={!showBadge}
             className="font-mono uppercase"
             style={{
               marginLeft: "auto",
@@ -568,10 +911,10 @@ function ResultsCardStatic({
             }}
           >
             Ajusta supuestos
-          </span>
+          </motion.span>
         </div>
 
-        {/* Score + tracker row */}
+        {/* Score row · número Mono Bold animado + tracker bar fill */}
         <div className="flex items-center" style={{ gap: 10 }}>
           <span
             className="font-mono font-bold text-[var(--landing-text)]"
@@ -582,21 +925,22 @@ function ResultsCardStatic({
               flexShrink: 0,
             }}
           >
-            61
+            {scoreCount}
           </span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{
                 position: "relative",
                 height: 3,
-                background: "linear-gradient(to right, #C8323C 0%, #B4B2A9 100%)",
+                background:
+                  "linear-gradient(to right, #C8323C 0%, #B4B2A9 100%)",
                 borderRadius: 1.5,
               }}
             >
               <div
                 style={{
                   position: "absolute",
-                  left: "61%",
+                  left: `${barPct}%`,
                   top: "50%",
                   width: 10,
                   height: 10,
@@ -608,13 +952,7 @@ function ResultsCardStatic({
                 aria-hidden="true"
               />
             </div>
-            <div
-              style={{
-                position: "relative",
-                height: 10,
-                marginTop: 3,
-              }}
-            >
+            <div style={{ position: "relative", height: 10, marginTop: 3 }}>
               <span
                 className="font-mono uppercase text-[var(--landing-text-muted)]"
                 style={{
@@ -660,8 +998,12 @@ function ResultsCardStatic({
         </div>
       </div>
 
-      {/* Cita italic Sans */}
-      <p
+      {/* Cita italic Sans · fade-in */}
+      <motion.p
+        initial={false}
+        animate={showLine ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.35, ease: EASE }}
+        aria-hidden={!showLine}
         className="font-body italic text-[var(--landing-text)]"
         style={{
           fontSize: 12,
@@ -672,10 +1014,14 @@ function ResultsCardStatic({
         }}
       >
         Buena propiedad. Precio incómodo.
-      </p>
+      </motion.p>
 
-      {/* Caja Franco · border-left 3px Signal Red, esquinas izq cuadradas */}
-      <div
+      {/* Caja Franco · border-left 3px Signal Red · fade + slide y */}
+      <motion.div
+        initial={false}
+        animate={showCaja ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+        transition={{ duration: 0.35, ease: EASE }}
+        aria-hidden={!showCaja}
         style={{
           background: "var(--landing-card-bg-soft)",
           border: "0.5px solid var(--landing-card-border)",
@@ -710,9 +1056,9 @@ function ResultsCardStatic({
           </span>{" "}
           pero requiere gestión.
         </p>
-      </div>
+      </motion.div>
 
-      {/* Grid 2x2 mini-cards */}
+      {/* Grid 2x2 mini-cards · stagger + counters animados */}
       <div
         style={{
           display: "grid",
@@ -722,24 +1068,28 @@ function ResultsCardStatic({
         }}
       >
         <MiniCard
+          show={showCard02}
           eyebrow="02 · Costo mensual"
-          value="−$310K"
+          value={`−$${costoCount}K`}
           valueColor="#C8323C"
           sublabel="Flujo de bolsillo"
         />
         <MiniCard
+          show={showCard03}
           eyebrow="03 · Negociación"
-          value="UF 4.900"
+          value={`UF ${negociCount.toLocaleString("es-CL")}`}
           valueColor="var(--landing-text)"
           sublabel="Precio sugerido"
         />
         <MiniCard
+          show={showCard04}
           eyebrow="04 · Largo plazo"
-          value="+UF 1.450"
+          value={`+UF ${largoCount.toLocaleString("es-CL")}`}
           valueColor="var(--landing-text)"
           sublabel="Plusvalía 10 años"
         />
         <MiniCard
+          show={showCard05}
           eyebrow="05 · Riesgos"
           value="3 medios"
           valueColor="var(--landing-text)"
@@ -747,8 +1097,12 @@ function ResultsCardStatic({
         />
       </div>
 
-      {/* Bloque Patrimonio */}
-      <div
+      {/* Bloque Patrimonio · barras stagger + línea draw */}
+      <motion.div
+        initial={false}
+        animate={showPatri ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+        transition={{ duration: 0.4, ease: EASE }}
+        aria-hidden={!showPatri}
         style={{
           background: "var(--landing-card-bg-soft)",
           border: "0.5px solid var(--landing-card-border)",
@@ -810,6 +1164,7 @@ function ResultsCardStatic({
 
           {APORTE.map((ap, i) => {
             const val = VALOR[i];
+            const visible = i < barIdx;
             const aporteY = v2y(ap);
             const aporteH = CHART_BOTTOM_Y - aporteY;
             const valorY = v2y(ap + val);
@@ -817,12 +1172,26 @@ function ResultsCardStatic({
             const x = barX(i);
             return (
               <g key={`bar-${i}`}>
-                <rect x={x} y={aporteY} width={BAR_W} height={aporteH} fill="#C8323C" />
-                <rect
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? aporteY : CHART_BOTTOM_Y,
+                    height: visible ? aporteH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: EASE }}
                   x={x}
-                  y={valorY}
                   width={BAR_W}
-                  height={valorH}
+                  fill="#C8323C"
+                />
+                <motion.rect
+                  initial={false}
+                  animate={{
+                    y: visible ? valorY : aporteY,
+                    height: visible ? valorH : 0,
+                  }}
+                  transition={{ duration: 0.4, ease: EASE }}
+                  x={x}
+                  width={BAR_W}
                   fill="var(--landing-text)"
                   fillOpacity={0.5}
                 />
@@ -837,16 +1206,29 @@ function ResultsCardStatic({
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeLinejoin="round"
+            pathLength={100}
+            style={{
+              strokeDasharray: 100,
+              strokeDashoffset: 100 - linePct,
+            }}
           />
-          {NETO.map((v, i) => (
-            <circle
-              key={`dot-${i}`}
-              cx={barX(i) + BAR_W / 2}
-              cy={v2y(v)}
-              r={2}
-              fill="var(--landing-text)"
-            />
-          ))}
+          {NETO.map((v, i) => {
+            const dotPct = (i / 10) * 100;
+            const dotVisible = linePct >= dotPct - 0.5;
+            return (
+              <circle
+                key={`dot-${i}`}
+                cx={barX(i) + BAR_W / 2}
+                cy={v2y(v)}
+                r={2}
+                fill="var(--landing-text)"
+                style={{
+                  opacity: dotVisible ? 1 : 0,
+                  transition: "opacity 200ms linear",
+                }}
+              />
+            );
+          })}
 
           {NETO.map((_, i) => (
             <text
@@ -861,24 +1243,30 @@ function ResultsCardStatic({
             </text>
           ))}
         </svg>
-      </div>
-    </motion.div>
+      </motion.div>
+    </div>
   );
 }
 
 function MiniCard({
+  show,
   eyebrow,
   value,
   valueColor,
   sublabel,
 }: {
+  show: boolean;
   eyebrow: string;
   value: string;
   valueColor: string;
   sublabel: string;
 }) {
   return (
-    <div
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      aria-hidden={!show}
       style={{
         background: "var(--landing-card-bg-soft)",
         border: "0.5px solid var(--landing-card-border)",
@@ -928,6 +1316,6 @@ function MiniCard({
       >
         {sublabel}
       </p>
-    </div>
+    </motion.div>
   );
 }
