@@ -99,9 +99,10 @@ export default function SectionHero() {
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       {isMobile ? (
-        /* === Mobile · stack vertical estático · px-3 (12px) da el ancho
-             que necesita el H1 12vw para caber en 2 líneas. pt-16 = ~64px. === */
-        <div className="mx-auto w-full max-w-6xl px-2 pt-16 pb-12">
+        /* === Mobile · stack vertical · pt-8 + flex column con cards al
+             final · H1 visualmente más equilibrado entre header y cards
+             (antes pt-16 dejaba el copy muy arriba del fold). === */
+        <div className="mx-auto w-full max-w-6xl px-2 pt-8 pb-12">
           <HeroCopy reduce mobile />
           <HeroStaticMobile />
         </div>

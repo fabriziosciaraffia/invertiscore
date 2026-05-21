@@ -51,7 +51,7 @@ function useIsLight(): boolean {
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
-const TYPING_SPEED_MS = 50;
+const TYPING_SPEED_MS = 75;
 const DIRECCION = "Av. Manuel Montt 1234, Providencia";
 
 type LoopPhase =
@@ -236,8 +236,8 @@ export default function HeroStaticMobile() {
       setBarIdx(0);
       setLinePct(0);
 
-      // t=400 typing arranca
-      T(400, () => {
+      // t=600 typing arranca
+      T(600, () => {
         let i = 0;
         typingInterval = setInterval(() => {
           if (!mounted) return;
@@ -250,10 +250,10 @@ export default function HeroStaticMobile() {
         }, TYPING_SPEED_MS);
       });
 
-      // t=1000 dropdown · t=1200 highlight · t=1500 cierra
-      T(1000, () => setDropdownVisible(true));
-      T(1200, () => setAutocompleteHighlight(true));
-      T(1500, () => {
+      // t=1500 dropdown · t=1800 highlight · t=2250 cierra
+      T(1500, () => setDropdownVisible(true));
+      T(1800, () => setAutocompleteHighlight(true));
+      T(2250, () => {
         if (typingInterval) {
           clearInterval(typingInterval);
           typingInterval = null;
@@ -263,60 +263,60 @@ export default function HeroStaticMobile() {
         setAutocompleteHighlight(false);
       });
 
-      // t=1700 chips + counters
-      T(1700, () => {
+      // t=2550 chips + Tipología + counters
+      T(2550, () => {
         setShowChips(true);
-        animateCounter(setPrecioCount, 0, 5500, 700);
-        animateCounter(setSuperficieCount, 0, 60, 700);
+        animateCounter(setPrecioCount, 0, 5500, 1050);
+        animateCounter(setSuperficieCount, 0, 60, 1050);
       });
 
-      // t=2200 mapa fade-in
-      T(2200, () => setShowMap(true));
+      // t=3300 mapa fade-in
+      T(3300, () => setShowMap(true));
 
-      // ===== TRANSITION (3000-3500ms) · Card 2 entra =====
-      T(3000, () => {
+      // ===== TRANSITION (4500-5250ms) · Card 2 entra =====
+      T(4500, () => {
         setPhase("transition");
         setShowCard2(true);
       });
 
-      // ===== RESULTS ACTIVE (3500-9000ms) =====
-      T(3500, () => {
+      // ===== RESULTS ACTIVE (5250-13500ms) =====
+      T(5250, () => {
         setPhase("results-active");
-        animateCounter(setScoreCount, 0, 61, 1200);
-        animateCounter(setBarPct, 0, 61, 1200, false);
+        animateCounter(setScoreCount, 0, 61, 1800);
+        animateCounter(setBarPct, 0, 61, 1800, false);
       });
-      T(4700, () => setShowBadge(true));
-      T(4900, () => setShowLine(true));
-      T(5300, () => setShowCaja(true));
-      T(5900, () => {
+      T(7050, () => setShowBadge(true));
+      T(7350, () => setShowLine(true));
+      T(7950, () => setShowCaja(true));
+      T(8850, () => {
         setShowCard02(true);
-        animateCounter(setCostoCount, 0, 310, 700);
+        animateCounter(setCostoCount, 0, 310, 1050);
       });
-      T(6100, () => {
+      T(9150, () => {
         setShowCard03(true);
-        animateCounter(setNegociCount, 0, 4900, 700);
+        animateCounter(setNegociCount, 0, 4900, 1050);
       });
-      T(6300, () => {
+      T(9450, () => {
         setShowCard04(true);
-        animateCounter(setLargoCount, 0, 1450, 700);
+        animateCounter(setLargoCount, 0, 1450, 1050);
       });
-      T(6500, () => setShowCard05(true));
-      T(6900, () => setShowPatri(true));
+      T(9750, () => setShowCard05(true));
+      T(10350, () => setShowPatri(true));
       for (let i = 0; i < 11; i++) {
-        T(7100 + i * 80, () =>
+        T(10650 + i * 150, () =>
           setBarIdx((prev) => (prev > i ? prev : i + 1)),
         );
       }
-      T(8000, () => animateCounter(setLinePct, 0, 100, 1000, false));
+      T(12000, () => animateCounter(setLinePct, 0, 100, 1500, false));
 
-      // ===== STABLE (9000-9500ms) =====
-      T(9000, () => setPhase("stable"));
+      // ===== STABLE (13500-14250ms) =====
+      T(13500, () => setPhase("stable"));
 
-      // ===== EXIT (9500-10000ms) =====
-      T(9500, () => setShowCard2(false));
+      // ===== EXIT (14250-15000ms) =====
+      T(14250, () => setShowCard2(false));
 
       // ===== RESET =====
-      T(10000, runCycle);
+      T(15000, runCycle);
     };
 
     runCycle();
@@ -344,7 +344,8 @@ export default function HeroStaticMobile() {
       : 1.0;
   const card2Opacity = showCard2 ? 1.0 : 0;
   // Card 1 entry: centrada → slide a su pos cuando Card 2 entra.
-  const card1X = !card1Entered ? 60 : showCard2 ? 0 : 50;
+  // Container ~358px - card 78% ≈ 279 → centered left = 40 → translateX 40-12 = 28.
+  const card1X = !card1Entered ? 60 : showCard2 ? 0 : 28;
   const card1Anim = { x: card1X, y: 0 };
   const card2Anim = showCard2 ? { x: 0, y: 0 } : { x: 24, y: 0 };
 
@@ -353,13 +354,14 @@ export default function HeroStaticMobile() {
 
   const solidBg = "var(--landing-mockup-solid-bg)";
 
-  // Sizing mobile preservado.
+  // Sizing mobile · Card 1 y Card 2 mismas dimensiones (78% × 500), con
+  // offset top:80 en Card 2 para mantener superpuestas visibles.
   const card1Style: React.CSSProperties = {
     position: "absolute",
     top: 0,
     left: 12,
-    width: "72%",
-    height: 420,
+    width: "78%",
+    height: 500,
     padding: 14,
     backgroundColor: solidBg,
     borderRadius: 22,
@@ -369,7 +371,7 @@ export default function HeroStaticMobile() {
   };
   const card2Style: React.CSSProperties = {
     position: "absolute",
-    top: 70,
+    top: 80,
     right: 12,
     width: "78%",
     height: 500,
@@ -388,8 +390,8 @@ export default function HeroStaticMobile() {
   const wrapperStyle: React.CSSProperties = {
     position: "relative",
     width: "100%",
-    height: 570,
-    marginTop: 16,
+    height: 580,
+    marginTop: 40,
     marginBottom: 64,
     overflow: "visible",
   };
@@ -411,7 +413,7 @@ export default function HeroStaticMobile() {
           filter: `brightness(${card1Brightness})`,
           ...card1Anim,
         }}
-        transition={{ duration: 0.6, ease: EASE }}
+        transition={{ duration: 1.4, ease: EASE }}
         style={card1Style}
         aria-label="Mockup formulario"
       >
@@ -433,7 +435,7 @@ export default function HeroStaticMobile() {
         className="franco-mockup"
         initial={false}
         animate={{ opacity: card2Opacity, ...card2Anim }}
-        transition={{ duration: 0.6, ease: EASE }}
+        transition={{ duration: 1.4, ease: EASE }}
         style={card2Style}
         aria-label="Mockup resultados"
       >
@@ -632,47 +634,71 @@ function FormCardMobile({
         </motion.div>
       </div>
 
-      {/* Tipo · chips · always-mounted, opacity controlled */}
+      {/* Grid Estado (chips) + Tipología · always-mounted, opacity controlled */}
       <motion.div
         initial={false}
         animate={showChips ? { opacity: 1 } : { opacity: 0 }}
         transition={{ duration: 0.25, ease: EASE }}
-        style={{ marginBottom: 10 }}
+        className="grid grid-cols-2"
+        style={{ gap: 12, marginBottom: 10 }}
       >
-        <p
-          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
-        >
-          Tipo
-        </p>
-        <div className="flex" style={{ gap: 6 }}>
-          <span
-            className="font-mono font-bold uppercase"
+        <div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
+          >
+            Estado
+          </p>
+          <div className="flex" style={{ gap: 6 }}>
+            <span
+              className="font-mono font-bold uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                padding: "3px 10px",
+                borderRadius: 4,
+                border: "0.5px solid #C8323C",
+                color: "#C8323C",
+                background: "transparent",
+              }}
+            >
+              Usado
+            </span>
+            <span
+              className="font-mono font-medium uppercase"
+              style={{
+                fontSize: 10,
+                letterSpacing: "0.08em",
+                padding: "3px 10px",
+                borderRadius: 4,
+                border: "0.5px solid var(--landing-divider)",
+                color: "var(--landing-text-muted)",
+              }}
+            >
+              Nuevo
+            </span>
+          </div>
+        </div>
+        <div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+          >
+            Tipología
+          </p>
+          <div
             style={{
-              fontSize: 10,
-              letterSpacing: "0.08em",
-              padding: "3px 10px",
-              borderRadius: 4,
-              border: "0.5px solid #C8323C",
-              color: "#C8323C",
-              background: "transparent",
+              borderBottom: "0.5px solid var(--landing-divider)",
+              paddingBottom: 4,
             }}
           >
-            Usado
-          </span>
-          <span
-            className="font-mono font-medium uppercase"
-            style={{
-              fontSize: 10,
-              letterSpacing: "0.08em",
-              padding: "3px 10px",
-              borderRadius: 4,
-              border: "0.5px solid var(--landing-divider)",
-              color: "var(--landing-text-muted)",
-            }}
-          >
-            Nuevo
-          </span>
+            <span
+              className="font-mono font-medium text-[var(--landing-text)]"
+              style={{ fontSize: 12 }}
+            >
+              2D · 1B · 1 EST
+            </span>
+          </div>
         </div>
       </motion.div>
 
