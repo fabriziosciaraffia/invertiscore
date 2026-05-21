@@ -61,8 +61,8 @@ export default function SectionProblem() {
       <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <ProblemHeader />
 
-        {/* Grid stats */}
-        <div className="mt-16 grid grid-cols-1 gap-6 md:mt-24 md:grid-cols-3">
+        {/* Grid stats · gap mínimo en mobile · sección compacta */}
+        <div className="mt-8 grid grid-cols-1 gap-2 md:mt-24 md:gap-6 md:grid-cols-3">
           {STATS.map((s, i) => (
             <RevealOnScroll key={s.id} delay={i * 0.1}>
               <StatCard data={s} />
@@ -90,7 +90,7 @@ export default function SectionProblem() {
               className="font-heading font-bold leading-[1.1] tracking-[-0.02em] text-[var(--landing-text)]"
               style={{ fontSize: "clamp(32px, 5.4vw, 56px)" }}
             >
-              Hoy, hay que <span className="text-[#C8323C]">analizar.</span>
+              Hoy, hay que <span className="text-[#C8323C]">analizar francamente.</span>
             </p>
           </RevealOnScroll>
         </div>
@@ -190,52 +190,52 @@ function ProblemHeader() {
 
 function StatCard({ data }: { data: Stat }) {
   return (
-    <div className="franco-card h-full">
-      <p
-        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 11, letterSpacing: "0.18em" }}
-      >
-        {data.id}
-      </p>
-      <p
-        className="font-heading font-bold leading-[0.9] tracking-[-0.04em]"
-        style={{
-          fontSize: "clamp(52px, 5.6vw, 64px)",
-          marginTop: 16,
-          color: data.signalRed ? "#C8323C" : "var(--landing-text)",
-        }}
-      >
-        {data.big}
-      </p>
-      <p
-        className="font-body font-semibold text-[var(--landing-text)]"
-        style={{
-          fontSize: 18,
-          lineHeight: 1.3,
-          marginTop: 24,
-          marginBottom: data.kickerSub ? 4 : 16,
-        }}
-      >
-        {data.kicker}
-      </p>
-      {data.kickerSub && (
-        <p
-          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.12em",
-            marginBottom: 16,
-          }}
-        >
-          {data.kickerSub}
-        </p>
-      )}
-      <p
-        className="font-body text-[var(--landing-text-muted)]"
-        style={{ fontSize: 14, lineHeight: 1.5 }}
-      >
-        {data.description}
-      </p>
+    // !p-3 mobile / !p-8 desktop · bang override del padding 32px hardcoded en .franco-card (globals.css).
+    // min-h-[120px] mobile uniforma las 3 cards aunque varíe el contenido interno
+    // (card 02 trae kickerSub, las otras no).
+    <div className="franco-card h-full !p-3 md:!p-8 min-h-[120px] md:min-h-0">
+      {/* Mobile · layout horizontal compacto: id+big a la izq, kicker+desc a la der */}
+      <div className="flex gap-4 md:block">
+        <div className="md:contents flex flex-col items-start shrink-0">
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 10, letterSpacing: "0.18em" }}
+          >
+            {data.id}
+          </p>
+          <p
+            className="font-heading font-bold leading-[0.9] tracking-[-0.04em] mt-1 md:mt-3"
+            style={{
+              fontSize: "clamp(30px, 8vw, 64px)",
+              color: data.signalRed ? "#C8323C" : "var(--landing-text)",
+            }}
+          >
+            {data.big}
+          </p>
+        </div>
+        <div className="flex-1 min-w-0 md:contents">
+          <p
+            className="font-body font-semibold text-[var(--landing-text)] text-[14px] md:text-[18px] mt-0 md:mt-6"
+            style={{ lineHeight: 1.25 }}
+          >
+            {data.kicker}
+          </p>
+          {data.kickerSub && (
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)] mt-1 md:mt-1"
+              style={{ fontSize: 9, letterSpacing: "0.12em" }}
+            >
+              {data.kickerSub}
+            </p>
+          )}
+          <p
+            className="font-body text-[var(--landing-text-muted)] text-[12px] md:text-[14px] mt-1.5 md:mt-3"
+            style={{ lineHeight: 1.4 }}
+          >
+            {data.description}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
