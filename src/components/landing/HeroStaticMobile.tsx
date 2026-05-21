@@ -143,9 +143,10 @@ export default function HeroStaticMobile() {
 
     const runCycle = () => {
       setShowCard2(false);
-      T(1500, () => setShowCard2(true));
-      T(6500, () => setShowCard2(false));
-      T(8000, runCycle);
+      // Card 1 sola 2500ms (más tiempo para apreciar el centrado + slide).
+      T(2500, () => setShowCard2(true));
+      T(7000, () => setShowCard2(false));
+      T(8500, runCycle);
     };
 
     runCycle();
@@ -170,9 +171,10 @@ export default function HeroStaticMobile() {
       ? dimBrightness
       : 1.0;
   // Phase 2.13 · Card 1 parte centrada → mueve a su pos cuando Card 2 entra.
-  // Container ~350px, Card 1 width 72% ≈ 252, current left:12 → centered
-  // left = (350-252)/2 ≈ 49 → translateX +37px desde su left:12 final.
-  const card1X = !card1Entered ? 0 : showCard2 ? 0 : 32;
+  // translateX más generoso (50px) para que el slide sea claramente visible
+  // en mobile narrow. Entry desde x:60 (slide-in derecha) → x:50 (centrada)
+  // → x:0 (final cuando Card 2 entra).
+  const card1X = !card1Entered ? 60 : showCard2 ? 0 : 50;
   const card2Opacity = showCard2 ? 1.0 : 0;
   const card2X = showCard2 ? 0 : 24;
 
@@ -217,7 +219,7 @@ function FormCardStatic({
       className="franco-mockup"
       initial={false}
       animate={{ opacity, filter: `brightness(${brightness})`, x: translateX }}
-      transition={{ duration: 0.6, ease: EASE }}
+      transition={{ duration: 0.8, ease: EASE }}
       style={{
         position: "absolute",
         top: 0,
@@ -491,7 +493,7 @@ function ResultsCardStatic({
       className="franco-mockup"
       initial={false}
       animate={{ opacity, x: translateX }}
-      transition={{ duration: 0.6, ease: EASE }}
+      transition={{ duration: 0.8, ease: EASE }}
       style={{
         position: "absolute",
         top: 70,
