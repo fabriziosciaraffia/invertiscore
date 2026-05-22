@@ -3,6 +3,7 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
+import SectionGhostNumber from "./SectionGhostNumber";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
@@ -122,10 +123,11 @@ export default function SectionWhatFrancoIs() {
   return (
     <section
       id="que-es-franco"
-      className="relative"
+      className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
+      <SectionGhostNumber number="03" side="right" top="clamp(110px, 14vh, 200px)" />
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <SectionHeader
           eyebrow="03 · Qué es Franco"
           title={"No es una calculadora.\nEs un asesor con IA."}

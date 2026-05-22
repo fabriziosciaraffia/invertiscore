@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SectionHeader from "./SectionHeader";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 08 · CTA secundario — bg base + botón outline (F.11 Phase 2.5).
@@ -10,10 +11,11 @@ import SectionHeader from "./SectionHeader";
 export default function SectionCTASecondary() {
   return (
     <section
-      className="flex min-h-screen items-center"
+      className="relative flex min-h-screen items-center overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
+      <SectionGhostNumber number="08" side="right" top="calc(50% - 30px)" />
+      <div className="relative mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
         <SectionHeader
           eyebrow="08 · Ya lo sabes todo"
           title={"30 segundos y decides\ncon fundamentos."}

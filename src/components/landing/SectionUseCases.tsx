@@ -9,6 +9,7 @@ import {
   type Variants,
 } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 05 · Para quién — carrusel de 3 perfiles (F.11 Phase 2.14 v2).
@@ -123,14 +124,15 @@ const PROFILES: ReadonlyArray<Profile> = [
 export default function SectionUseCases() {
   return (
     <section
-      className="relative"
+      className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <div className="mx-auto w-full max-w-[1280px] px-6 pt-[14vh] md:pt-[16vh]">
+      <SectionGhostNumber number="05" side="right" top="clamp(140px, 18vh, 240px)" />
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-[14vh] md:pt-[16vh]">
         <UseCasesHeader />
       </div>
 
-      <div className="mx-auto w-full max-w-[1280px] px-6 pb-[14vh] md:pb-[16vh]">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 pb-[14vh] md:pb-[16vh]">
         <ProfileCarousel />
       </div>
     </section>

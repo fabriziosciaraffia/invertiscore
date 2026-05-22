@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Reveal, { RevealItem } from "./Reveal";
 import SectionHeader from "./SectionHeader";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 08 · Pricing — fondo Ink 100, 3 cards (la del medio dark + destacada).
@@ -11,10 +12,11 @@ export default function SectionPricing() {
   return (
     <section
       id="pricing"
-      className="relative flex min-h-screen items-center"
+      className="relative flex min-h-screen items-center overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
+      <SectionGhostNumber number="09" side="left" top="calc(50% - 140px)" />
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
         {/* Header */}
         <SectionHeader
           eyebrow="09 · Precios"

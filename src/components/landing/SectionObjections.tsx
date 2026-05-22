@@ -8,6 +8,7 @@ import {
   type Variants,
 } from "framer-motion";
 import LandingModal from "./LandingModal";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 07 · Lo que vas a pensar — grid de 4 cards con modal al click.
@@ -68,10 +69,11 @@ export default function SectionObjections() {
 
   return (
     <section
-      className="relative"
+      className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
+      <SectionGhostNumber number="07" side="left" top="clamp(140px, 18vh, 240px)" />
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
         <ObjectionsHeader />
         <Cards onSelect={setActive} />
       </div>

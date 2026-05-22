@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 02 · Problema (F.11 reset estilo Linear).
@@ -55,10 +56,11 @@ const STATS: ReadonlyArray<Stat> = [
 export default function SectionProblem() {
   return (
     <section
-      className="relative"
+      className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
+      <SectionGhostNumber number="02" side="right" top="clamp(130px, 18vh, 230px)" />
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <ProblemHeader />
 
         {/* Grid stats · gap mínimo en mobile · sección compacta */}

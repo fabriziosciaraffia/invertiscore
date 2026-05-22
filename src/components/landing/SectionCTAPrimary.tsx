@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import SectionHeader from "./SectionHeader";
+import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 06 · CTA primario — invertido en Signal Red (F.11 Phase 2.5).
@@ -11,10 +12,16 @@ import SectionHeader from "./SectionHeader";
 export default function SectionCTAPrimary() {
   return (
     <section
-      className="relative flex min-h-screen items-center"
+      className="relative flex min-h-screen items-center overflow-hidden"
       style={{ background: "#C8323C" }}
     >
-      <div className="mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
+      <SectionGhostNumber
+        number="06"
+        side="right"
+        tone="invertido"
+        top="calc(50% - 30px)"
+      />
+      <div className="relative mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
         <SectionHeader
           eyebrow="06 · Tu turno"
           title={"Antes de firmar,\nve si los números cierran."}
