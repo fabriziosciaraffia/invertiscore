@@ -39,7 +39,7 @@ function useIsLight(): boolean {
  *   · polyline path always-mounted, strokeDashoffset CSS (no SMIL)
  *   · IntersectionObserver via useInView + try/catch implícito
  *   · prefers-reduced-motion → estado final estático directo, bypass loop
- *   · onTouchStart/End/Cancel para pause-on-touch
+ *   · Phase 2.18c · loop sin pause-on-touch (causaba race NotFoundError iOS)
  *
  * Loop ~10s (idéntico a Desktop):
  *   t=0-3000     form-active: Card 1 brillante, sola
@@ -92,8 +92,6 @@ export default function HeroStaticMobile() {
     margin: "-50px 0px -50px 0px",
   });
 
-  const [isHovered, setIsHovered] = useState(false);
-
   const [card1Entered, setCard1Entered] = useState(!!reduce);
   const [showCard2, setShowCard2] = useState(!!reduce);
 
@@ -127,8 +125,11 @@ export default function HeroStaticMobile() {
   const [linePct, setLinePct] = useState(100);
 
   const showFinalStatic = !!reduce;
-  const shouldLoop =
-    !showFinalStatic && isInView && !isHovered && card1Entered;
+  // Phase 2.18c · isHovered eliminado del ciclo de vida del loop.
+  // El touch ya NO pausa/reinicia el loop — eso causaba race removeChild en
+  // WebKit (touchend → cascada de ~37 motion.* updates colisionando con
+  // transitions en vuelo). El loop corre continuo; solo isInView lo gobierna.
+  const shouldLoop = !showFinalStatic && isInView && card1Entered;
 
   // Entrada inicial · solo Card 1. Card 2 entra en el primer ciclo.
   useEffect(() => {
@@ -397,13 +398,7 @@ export default function HeroStaticMobile() {
   };
 
   return (
-    <div
-      ref={containerRef}
-      style={wrapperStyle}
-      onTouchStart={() => setIsHovered(true)}
-      onTouchEnd={() => setIsHovered(false)}
-      onTouchCancel={() => setIsHovered(false)}
-    >
+    <div ref={containerRef} style={wrapperStyle}>
       {/* CARD 1 · FORM (atrás · entra primero centrada, dim cuando Card 2 entra) */}
       <motion.div
         className="franco-mockup"
