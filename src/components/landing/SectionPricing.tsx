@@ -177,12 +177,13 @@ function PricingCard({
 
       <Link
         href={ctaHref}
+        style={{ color: ctaVariant === "solid" ? "#FFFFFF" : text }}
         className={`group inline-flex w-full items-center justify-center gap-2 rounded-md px-5 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] transition-[transform,filter,background] duration-150 hover:scale-[1.02] ${
           ctaVariant === "solid"
-            ? "bg-[#C8323C] text-white shadow-[0_2px_0_rgba(0,0,0,0.18)] hover:brightness-95"
+            ? "bg-[#C8323C] shadow-[0_2px_0_rgba(0,0,0,0.18)] hover:brightness-95"
             : dark
-              ? "border border-[rgba(250,250,248,0.18)] text-[var(--landing-text)] hover:bg-[rgba(250,250,248,0.05)]"
-              : "border border-[rgba(15,15,15,0.18)] text-[var(--landing-text)] hover:bg-[rgba(15,15,15,0.04)]"
+              ? "border border-[rgba(250,250,248,0.18)] hover:bg-[rgba(250,250,248,0.05)]"
+              : "border border-[rgba(15,15,15,0.18)] hover:bg-[rgba(15,15,15,0.04)]"
         }`}
       >
         {ctaText}

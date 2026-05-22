@@ -99,10 +99,9 @@ export default function SectionHero() {
       style={{ minHeight: "100vh", background: "var(--franco-bg-base)" }}
     >
       {isMobile ? (
-        /* === Mobile · stack vertical · pt-8 + flex column con cards al
-             final · H1 visualmente más equilibrado entre header y cards
-             (antes pt-16 dejaba el copy muy arriba del fold). === */
-        <div className="mx-auto w-full max-w-6xl px-2 pt-8 pb-12">
+        /* === Mobile · stack vertical · px-5 (16→20px lateral) para que el
+             H1 no quede pegado al borde · 3 líneas explícitas en HeroCopy. === */
+        <div className="mx-auto w-full max-w-6xl px-5 pt-8 pb-12">
           <HeroCopy reduce mobile />
           <HeroStaticMobile />
         </div>
@@ -156,9 +155,19 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
             className="block text-[#C8323C]"
             initial={reduce ? false : { y: "105%" }}
             animate={{ y: "0%" }}
-            transition={{ duration: 0.75, ease: EASE, delay: delay(0.3) }}
+            transition={{ duration: 0.7, ease: EASE, delay: delay(0.25) }}
           >
-            no se paga solo?
+            no se paga
+          </motion.span>
+        </span>
+        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
+          <motion.span
+            className="block text-[#C8323C]"
+            initial={reduce ? false : { y: "105%" }}
+            animate={{ y: "0%" }}
+            transition={{ duration: 0.75, ease: EASE, delay: delay(0.45) }}
+          >
+            solo?
           </motion.span>
         </span>
       </h1>
