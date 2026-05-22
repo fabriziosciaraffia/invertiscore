@@ -403,6 +403,78 @@ input[type="number"] {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+ * F.11 Phase 2.18d · Hero mobile chart animations · CSS puro
+ *
+ * El SVG del Hero mobile (HeroStaticMobile.tsx) usa animaciones CSS
+ * 100% — sin motion.* dentro del SVG, sin estado JS controlando
+ * geometría. Esto elimina el race removeChild NotFoundError en iOS
+ * WebKit (Sentry 7486219348) que ocurría cuando framer-motion
+ * mutaba muchos motion.rect en cascada dentro del reconciler React.
+ *
+ * Sincronización con runCycle (15s) — la animación arranca cuando
+ * el container recibe la clase .hero-mobile-chart--active (JS la
+ * setea cuando shouldLoop = true). Ambos clocks (JS runCycle y CSS
+ * @keyframes) empiezan desde t=0 simultáneamente.
+ * ───────────────────────────────────────────────────────────────── */
+
+@keyframes hero-mobile-bar-grow {
+  0%, 70.99% { transform: scaleY(0); }
+  73.67%, 100% { transform: scaleY(1); }
+}
+
+@keyframes hero-mobile-line-draw {
+  0%, 79.99% { stroke-dashoffset: 100; }
+  90%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes hero-mobile-dot-fade {
+  0%, 79.99% { opacity: 0; }
+  81.49%, 100% { opacity: 1; }
+}
+
+.hero-mobile-chart-bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+}
+
+.hero-mobile-chart-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.hero-mobile-chart-dot {
+  opacity: 0;
+}
+
+.hero-mobile-chart--active .hero-mobile-chart-bar {
+  animation: hero-mobile-bar-grow 15s linear infinite;
+}
+
+.hero-mobile-chart--active .hero-mobile-chart-line {
+  animation: hero-mobile-line-draw 15s linear infinite;
+}
+
+.hero-mobile-chart--active .hero-mobile-chart-dot {
+  animation: hero-mobile-dot-fade 15s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-mobile-chart-bar {
+    transform: scaleY(1);
+    animation: none;
+  }
+  .hero-mobile-chart-line {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .hero-mobile-chart-dot {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
  * F.11 · Utility classes: cards y mockups premium polish.
  * Stack de sombras + gradient sutil + borde top-highlight (interior
  * de la card) que da sensación de "lit from above" estilo Linear.

@@ -121,8 +121,8 @@ export default function HeroStaticMobile() {
   const [negociCount, setNegociCount] = useState(4900);
   const [largoCount, setLargoCount] = useState(1450);
   const [showPatri, setShowPatri] = useState(true);
-  const [barIdx, setBarIdx] = useState(11);
-  const [linePct, setLinePct] = useState(100);
+  // Phase 2.18d · barIdx y linePct removidos · el SVG ahora corre con CSS
+  // @keyframes puro (sin estado JS, sin motion.* dentro del SVG).
 
   const showFinalStatic = !!reduce;
   // Phase 2.18c · isHovered eliminado del ciclo de vida del loop.
@@ -168,8 +168,6 @@ export default function HeroStaticMobile() {
     setNegociCount(4900);
     setLargoCount(1450);
     setShowPatri(true);
-    setBarIdx(11);
-    setLinePct(100);
   }, [showFinalStatic]);
 
   // ─── Loop principal ──────────────────────────────
@@ -234,8 +232,6 @@ export default function HeroStaticMobile() {
       setNegociCount(0);
       setLargoCount(0);
       setShowPatri(false);
-      setBarIdx(0);
-      setLinePct(0);
 
       // t=600 typing arranca
       T(600, () => {
@@ -303,12 +299,8 @@ export default function HeroStaticMobile() {
       });
       T(9750, () => setShowCard05(true));
       T(10350, () => setShowPatri(true));
-      for (let i = 0; i < 11; i++) {
-        T(10650 + i * 150, () =>
-          setBarIdx((prev) => (prev > i ? prev : i + 1)),
-        );
-      }
-      T(12000, () => animateCounter(setLinePct, 0, 100, 1500, false));
+      // Phase 2.18d · bar stagger + line draw ahora son CSS @keyframes
+      // (sincronizados con el inicio del runCycle vía className).
 
       // ===== STABLE (13500-14250ms) =====
       T(13500, () => setPhase("stable"));
@@ -448,8 +440,7 @@ export default function HeroStaticMobile() {
           negociCount={negociCount}
           largoCount={largoCount}
           showPatri={showPatri}
-          barIdx={barIdx}
-          linePct={linePct}
+          chartActive={shouldLoop}
         />
       </motion.div>
     </div>
@@ -548,15 +539,40 @@ function FormCardMobile({
         >
           <span
             className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12 }}
+            style={{
+              fontSize: 12,
+              position: "relative",
+              display: "inline-block",
+            }}
           >
-            {typedText ? (
-              typedText
-            ) : (
-              <span style={{ color: "var(--landing-text-muted)" }}>
-                Buscar dirección…
-              </span>
-            )}
+            {/* Placeholder always-mounted (Phase 2.18d · sin mount/unmount).
+                Antes: ternario {typedText ? ... : <span>...</span>} causaba
+                race removeChild en iOS WebKit cuando React desmontaba el
+                <span> mientras framer-motion ajustaba el cursor hermano.
+                Ahora: placeholder absoluto, opacity controla visibilidad. */}
+            <span
+              aria-hidden={!!typedText}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                color: "var(--landing-text-muted)",
+                opacity: typedText ? 0 : 1,
+                transition: "opacity 120ms linear",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Buscar dirección…
+            </span>
+            {/* Texto tecleado · reserva espacio cuando vacío vía
+                visibility:hidden para que el cursor se posicione correctamente.
+                Solo mutación de text content (sin mount/unmount de elementos). */}
+            <span
+              style={{ visibility: typedText ? "visible" : "hidden" }}
+            >
+              {typedText || "Buscar dirección…"}
+            </span>
             {/* Cursor always-mounted · animate condicional (Phase 2.6e). */}
             <motion.span
               animate={
@@ -846,8 +862,7 @@ function ResultsCardMobile({
   negociCount,
   largoCount,
   showPatri,
-  barIdx,
-  linePct,
+  chartActive,
 }: {
   scoreCount: number;
   barPct: number;
@@ -862,8 +877,7 @@ function ResultsCardMobile({
   negociCount: number;
   largoCount: number;
   showPatri: boolean;
-  barIdx: number;
-  linePct: number;
+  chartActive: boolean;
 }) {
   const netoPoints = NETO.map(
     (v, i) => `${barX(i) + BAR_W / 2},${v2y(v)}`,
@@ -1155,6 +1169,11 @@ function ResultsCardMobile({
           viewBox="0 0 560 130"
           preserveAspectRatio="xMidYMid meet"
           style={{ width: "100%", height: "auto", display: "block" }}
+          className={
+            chartActive
+              ? "hero-mobile-chart hero-mobile-chart--active"
+              : "hero-mobile-chart"
+          }
           aria-hidden="true"
         >
           {GRID_VALUES.map((v) => {
@@ -1185,34 +1204,33 @@ function ResultsCardMobile({
 
           {APORTE.map((ap, i) => {
             const val = VALOR[i];
-            const visible = i < barIdx;
             const aporteY = v2y(ap);
             const aporteH = CHART_BOTTOM_Y - aporteY;
             const valorY = v2y(ap + val);
             const valorH = aporteY - valorY;
             const x = barX(i);
+            // Phase 2.18d · native <rect> con className · animación 100% CSS.
+            // transform-origin: bottom + scaleY 0→1 emula y/height crece.
+            // animation-delay = i * 0.15s para stagger.
+            const delay = `${i * 0.15}s` as const;
             return (
               <g key={`bar-${i}`}>
-                <motion.rect
-                  initial={false}
-                  animate={{
-                    y: visible ? aporteY : CHART_BOTTOM_Y,
-                    height: visible ? aporteH : 0,
-                  }}
-                  transition={{ duration: 0.4, ease: EASE }}
+                <rect
+                  className="hero-mobile-chart-bar"
+                  style={{ animationDelay: delay }}
                   x={x}
+                  y={aporteY}
                   width={BAR_W}
+                  height={aporteH}
                   fill="#C8323C"
                 />
-                <motion.rect
-                  initial={false}
-                  animate={{
-                    y: visible ? valorY : aporteY,
-                    height: visible ? valorH : 0,
-                  }}
-                  transition={{ duration: 0.4, ease: EASE }}
+                <rect
+                  className="hero-mobile-chart-bar"
+                  style={{ animationDelay: delay }}
                   x={x}
+                  y={valorY}
                   width={BAR_W}
+                  height={valorH}
                   fill="var(--landing-text)"
                   fillOpacity={0.5}
                 />
@@ -1221,6 +1239,7 @@ function ResultsCardMobile({
           })}
 
           <polyline
+            className="hero-mobile-chart-line"
             points={netoPoints}
             fill="none"
             stroke="var(--landing-text)"
@@ -1228,28 +1247,18 @@ function ResultsCardMobile({
             strokeLinecap="round"
             strokeLinejoin="round"
             pathLength={100}
-            style={{
-              strokeDasharray: 100,
-              strokeDashoffset: 100 - linePct,
-            }}
           />
-          {NETO.map((v, i) => {
-            const dotPct = (i / 10) * 100;
-            const dotVisible = linePct >= dotPct - 0.5;
-            return (
-              <circle
-                key={`dot-${i}`}
-                cx={barX(i) + BAR_W / 2}
-                cy={v2y(v)}
-                r={2}
-                fill="var(--landing-text)"
-                style={{
-                  opacity: dotVisible ? 1 : 0,
-                  transition: "opacity 200ms linear",
-                }}
-              />
-            );
-          })}
+          {NETO.map((v, i) => (
+            <circle
+              key={`dot-${i}`}
+              className="hero-mobile-chart-dot"
+              style={{ animationDelay: `${i * 0.15}s` }}
+              cx={barX(i) + BAR_W / 2}
+              cy={v2y(v)}
+              r={2}
+              fill="var(--landing-text)"
+            />
+          ))}
 
           {NETO.map((_, i) => (
             <text
