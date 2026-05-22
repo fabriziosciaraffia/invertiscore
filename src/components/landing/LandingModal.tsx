@@ -52,7 +52,7 @@ export default function LandingModal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4 py-8 md:px-6 md:py-12"
+          className="fixed inset-0 z-[100] flex items-center justify-center md:px-6 md:py-12"
           initial={reduce ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -71,7 +71,7 @@ export default function LandingModal({
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            className="relative z-10 max-h-[88vh] w-full max-w-[760px] overflow-y-auto rounded-2xl outline-none"
+            className="relative z-10 w-full overflow-y-auto outline-none h-screen md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-2xl"
             style={{
               background: "var(--landing-card-bg)",
               border: "0.5px solid var(--landing-card-border)",

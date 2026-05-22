@@ -41,8 +41,8 @@ const BLOCKS: ReadonlyArray<Block> = [
     n: "02",
     label: "02 · Facilidad",
     quote: "No tengo todos los datos a mano.",
-    title: "Pon precio y comuna. Franco completa el resto.",
-    body: "Si no sabes el arriendo esperado, los gastos comunes o las contribuciones, Franco usa la mediana real de la zona. Tú confirmas o ajustas si tienes el dato. 5 minutos, veredicto en 30 segundos.",
+    title: "Pones dos datos. Lo lees sin saber de finanzas.",
+    body: "No necesitas saber de finanzas ni tener todos los números. Franco completa con datos reales de la zona y te explica el resultado en palabras simples.",
     visualKey: "form",
   },
   {
@@ -262,17 +262,17 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
 
 function BlockDetail({ block }: { block: Block }) {
   return (
-    <div className="px-7 py-9 md:px-10 md:py-12">
+    <div className="px-7 py-9 md:px-8 md:py-8">
       <span
         className="font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C]"
-        style={{ fontSize: "clamp(64px, 7vw, 88px)" }}
+        style={{ fontSize: "clamp(44px, 4.5vw, 56px)" }}
         aria-hidden="true"
       >
         {block.n}
       </span>
 
       <p
-        className="mt-4 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        className="mt-3 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
         style={{ fontSize: 10, letterSpacing: "0.16em" }}
       >
         {block.label}
@@ -280,26 +280,26 @@ function BlockDetail({ block }: { block: Block }) {
 
       <p
         className="mt-3 font-body italic leading-[1.35] text-[var(--landing-text-muted)]"
-        style={{ fontSize: "clamp(18px, 2.2vw, 22px)" }}
+        style={{ fontSize: "clamp(16px, 1.9vw, 19px)" }}
       >
         &ldquo;{block.quote}&rdquo;
       </p>
 
       <h3
-        className="mt-4 font-heading font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(24px, 3.2vw, 32px)" }}
+        className="mt-3 font-heading font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
+        style={{ fontSize: "clamp(20px, 2.6vw, 26px)" }}
       >
         {block.title}
       </h3>
 
       <p
-        className="mt-5 max-w-[640px] font-body leading-[1.6] text-[var(--landing-text-secondary)]"
-        style={{ fontSize: 16 }}
+        className="mt-4 max-w-[560px] font-body leading-[1.5] text-[var(--landing-text-secondary)]"
+        style={{ fontSize: 14 }}
       >
         {block.body}
       </p>
 
-      <div className="mt-8">
+      <div className="mt-6">
         <VisualSlot which={block.visualKey} />
       </div>
     </div>
@@ -323,11 +323,11 @@ function DataCardsGrid() {
     { label: "Atractores", big: "195+", sub: "metros · POIs · clínicas" },
   ];
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-2 gap-2.5">
       {items.map((it) => (
         <div
           key={it.label}
-          className="rounded-md px-4 py-5"
+          className="rounded-md px-3 py-3.5"
           style={{
             background: "var(--landing-card-bg-soft)",
             border: "0.5px solid var(--landing-card-border)",
@@ -340,14 +340,14 @@ function DataCardsGrid() {
             {it.label}
           </p>
           <p
-            className="mt-2 font-mono font-semibold text-[var(--landing-text)]"
-            style={{ fontSize: 20 }}
+            className="mt-1.5 font-mono font-semibold text-[var(--landing-text)]"
+            style={{ fontSize: 18 }}
           >
             {it.big}
           </p>
           <p
             className="mt-1 font-body leading-[1.4] text-[var(--landing-text-muted)]"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 11 }}
           >
             {it.sub}
           </p>
@@ -357,81 +357,189 @@ function DataCardsGrid() {
   );
 }
 
+/* Visual Card 02 "Facilidad" · grid 2-col "TÚ PONES" / "FRANCO COMPLETA"
+ * + remate Sans italic con cita. Reemplaza al viejo form mock 5-filas
+ * (más alto que el resto). Versión horizontal compacta: 2 inputs del
+ * usuario + 4 cosas que rellena Franco, cerrando con la promesa de
+ * lenguaje claro (sin jerga financiera). */
 function SmartFormMock() {
-  const rows: Array<{ label: string; value: string; tag: "tú" | "Franco" }> = [
-    { label: "Precio", value: "UF 5.500", tag: "tú" },
-    { label: "Comuna", value: "Providencia", tag: "tú" },
-    { label: "Arriendo esperado", value: "$950.000", tag: "Franco" },
-    { label: "Gastos comunes", value: "$110.000", tag: "Franco" },
-    { label: "Contribuciones", value: "$80.000", tag: "Franco" },
+  const tuPones = ["Precio del depto", "Comuna"];
+  const francoCompleta = [
+    "Arriendo de la zona",
+    "Gastos comunes",
+    "Contribuciones SII",
+    "Datos Airbnb",
   ];
+
   return (
-    <div
-      className="overflow-hidden rounded-xl"
-      style={{
-        background: "var(--landing-card-bg-soft)",
-        border: "0.5px solid var(--landing-card-border)",
-      }}
-    >
-      <div
-        className="px-5 py-3"
-        style={{ borderBottom: "0.5px solid var(--landing-card-border)" }}
-      >
-        <p
-          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-          style={{ fontSize: 9, letterSpacing: "0.14em" }}
+    <div>
+      {/* Grid 2-col · TÚ PONES / FRANCO COMPLETA */}
+      <div className="grid grid-cols-2 gap-3">
+        {/* Columna izq · TÚ PONES */}
+        <div
+          style={{
+            background: "var(--landing-card-bg-soft)",
+            border: "0.5px solid var(--landing-card-border)",
+            borderRadius: 10,
+            padding: 16,
+          }}
         >
-          Nuevo análisis · paso 1 de 3
-        </p>
-      </div>
-      <div className="p-5">
-        <ul className="space-y-3">
-          {rows.map((r) => {
-            const isFranco = r.tag === "Franco";
-            return (
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.12em", marginBottom: 12 }}
+          >
+            Tú pones
+          </p>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
+            {tuPones.map((it) => (
               <li
-                key={r.label}
-                className="flex items-center gap-3 rounded-md px-4 py-3"
-                style={{
-                  borderColor: isFranco
-                    ? "rgba(200,50,60,0.25)"
-                    : "var(--landing-card-border)",
-                  borderWidth: "0.5px",
-                  borderStyle: "solid",
-                  background: isFranco
-                    ? "rgba(200,50,60,0.06)"
-                    : "var(--landing-card-bg)",
-                }}
+                key={it}
+                className="flex items-start"
+                style={{ gap: 8, marginBottom: 8 }}
               >
-                <div className="min-w-0 flex-1">
-                  <p
-                    className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-                    style={{ fontSize: 9, letterSpacing: "0.14em" }}
-                  >
-                    {r.label}
-                  </p>
-                  <p
-                    className="mt-1 font-mono font-semibold text-[var(--landing-text)]"
-                    style={{ fontSize: 14 }}
-                  >
-                    {r.value}
-                  </p>
-                </div>
                 <span
-                  className="shrink-0 rounded-sm px-2 py-1 font-mono font-semibold uppercase"
-                  style={{
-                    fontSize: 8,
-                    letterSpacing: "0.1em",
-                    background: isFranco ? "#C8323C" : "var(--landing-card-bg)",
-                    color: isFranco ? "#FFFFFF" : "var(--landing-text-muted)",
-                  }}
+                  aria-hidden="true"
+                  style={{ color: "#C8323C", fontSize: 11, lineHeight: 1.4 }}
                 >
-                  {r.tag}
+                  ✓
+                </span>
+                <span
+                  className="font-body text-[var(--landing-text)]"
+                  style={{ fontSize: 13, lineHeight: 1.4 }}
+                >
+                  {it}
                 </span>
               </li>
-            );
-          })}
-        </ul>
+            ))}
+          </ul>
+          <div
+            style={{
+              borderTop: "0.5px solid var(--landing-card-border)",
+              marginTop: 10,
+              paddingTop: 10,
+            }}
+          >
+            <p
+              className="font-mono uppercase text-[var(--landing-text-muted)] m-0"
+              style={{ fontSize: 10, letterSpacing: "0.08em" }}
+            >
+              2 datos · 30 segundos
+            </p>
+          </div>
+        </div>
+
+        {/* Columna der · FRANCO COMPLETA · border-left 3px Signal Red */}
+        <div
+          style={{
+            background: "var(--landing-card-bg-soft)",
+            border: "0.5px solid var(--landing-card-border)",
+            borderLeft: "3px solid #C8323C",
+            borderRadius: "0 10px 10px 0",
+            padding: 16,
+          }}
+        >
+          <p
+            className="font-mono font-bold uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.12em",
+              color: "#C8323C",
+              marginBottom: 12,
+            }}
+          >
+            Franco completa
+          </p>
+          <ul
+            style={{
+              margin: 0,
+              padding: 0,
+              listStyle: "none",
+              display: "flex",
+              flexDirection: "column",
+              gap: 7,
+            }}
+          >
+            {francoCompleta.map((it) => (
+              <li
+                key={it}
+                className="font-body text-[var(--landing-text)]"
+                style={{ fontSize: 12.5, lineHeight: 1.35 }}
+              >
+                {it}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Remate · "MISMO DATO, SIN LA JERGA" con ✓ versión clara vs ✕ versión
+       * en jerga financiera (line-through) · enfatiza el contraste de
+       * lenguaje · refuerza la promesa de Card 02 "lo lees sin saber de
+       * finanzas". */}
+      <div
+        style={{
+          background: "rgba(200,50,60,0.05)",
+          border: "0.5px solid rgba(200,50,60,0.15)",
+          borderRadius: 8,
+          padding: "14px 16px",
+          marginTop: 14,
+        }}
+      >
+        <p
+          className="font-mono font-bold uppercase"
+          style={{
+            fontSize: 8,
+            letterSpacing: "0.14em",
+            color: "#C8323C",
+            margin: "0 0 8px 0",
+          }}
+        >
+          Mismo dato, sin la jerga
+        </p>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+          }}
+        >
+          {/* ✓ versión clara */}
+          <div className="flex items-start" style={{ gap: 8 }}>
+            <span
+              aria-hidden="true"
+              style={{ color: "#C8323C", fontSize: 11, lineHeight: 1.4, flexShrink: 0 }}
+            >
+              ✓
+            </span>
+            <span
+              className="font-body text-[var(--landing-text)]"
+              style={{ fontSize: 13.5, lineHeight: 1.4 }}
+            >
+              &ldquo;Pones{" "}
+              <span className="font-mono">$310.000</span> de tu bolsillo cada mes&rdquo;
+            </span>
+          </div>
+          {/* ✕ versión jerga tachada */}
+          <div className="flex items-start" style={{ gap: 8 }}>
+            <span
+              aria-hidden="true"
+              style={{ color: "#666", fontSize: 11, lineHeight: 1.4, flexShrink: 0 }}
+            >
+              ✕
+            </span>
+            <span
+              className="font-body text-[var(--landing-text-muted)]"
+              style={{
+                fontSize: 13,
+                lineHeight: 1.4,
+                textDecoration: "line-through",
+                textDecorationColor: "rgba(255,255,255,0.2)",
+              }}
+            >
+              &ldquo;Cap rate 4,2% con NOI mensual negativo&rdquo;
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -440,7 +548,7 @@ function SmartFormMock() {
 function CostHero() {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-xl px-6 py-12"
+      className="flex flex-col items-center justify-center rounded-xl px-6 py-9"
       style={{
         background: "var(--landing-card-bg-soft)",
         border: "0.5px solid var(--landing-card-border)",
@@ -448,18 +556,18 @@ function CostHero() {
     >
       <p
         className="font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C]"
-        style={{ fontSize: "clamp(80px, 12vw, 120px)" }}
+        style={{ fontSize: "clamp(56px, 8vw, 84px)" }}
       >
         $0
       </p>
       <p
-        className="mt-5 font-mono font-semibold uppercase text-[var(--landing-text)]"
+        className="mt-4 font-mono font-semibold uppercase text-[var(--landing-text)]"
         style={{ fontSize: 11, letterSpacing: "0.16em" }}
       >
         Primer análisis
       </p>
       <p
-        className="mt-2 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        className="mt-1.5 font-mono font-medium uppercase text-[var(--landing-text-muted)]"
         style={{ fontSize: 10, letterSpacing: "0.14em" }}
       >
         Sin tarjeta · sin compromiso
@@ -476,19 +584,19 @@ function AIRecommendations() {
     { verb: "Vigila", body: "3 riesgos detectados: vacancia mayor a la zona, gasto común alto, tope de aporte." },
   ];
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {items.map((it) => (
         <div
           key={it.verb}
-          className="rounded-r-md py-3 pl-4 pr-4"
+          className="rounded-r-md py-2.5 pl-3 pr-3"
           style={{
             borderLeft: "2px solid #C8323C",
             background: "var(--landing-card-bg-soft)",
           }}
         >
           <p
-            className="font-body leading-[1.55] text-[var(--landing-text-secondary)]"
-            style={{ fontSize: 14 }}
+            className="font-body leading-[1.45] text-[var(--landing-text-secondary)]"
+            style={{ fontSize: 13.5 }}
           >
             <span
               className="font-mono font-semibold uppercase text-[#C8323C]"
