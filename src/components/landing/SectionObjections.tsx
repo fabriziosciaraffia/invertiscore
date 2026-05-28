@@ -42,8 +42,8 @@ const BLOCKS: ReadonlyArray<Block> = [
     n: "02",
     label: "02 · Facilidad",
     quote: "No tengo todos los datos a mano.",
-    title: "Pones dos datos. Lo lees sin saber de finanzas.",
-    body: "No necesitas saber de finanzas ni tener todos los números. Franco completa con datos reales de la zona y te explica el resultado en palabras simples.",
+    title: "Habla claro, no en jerga financiera.",
+    body: "Cualquiera puede leer el informe — sin saber de finanzas, sin glosario, sin tener que traducir nada. Las decisiones quedan claras.",
     visualKey: "form",
   },
   {
@@ -524,189 +524,168 @@ function KpiTile({
   );
 }
 
-/* Visual Card 02 "Facilidad" · grid 2-col "TÚ PONES" / "FRANCO COMPLETA"
- * + remate Sans italic con cita. Reemplaza al viejo form mock 5-filas
- * (más alto que el resto). Versión horizontal compacta: 2 inputs del
- * usuario + 4 cosas que rellena Franco, cerrando con la promesa de
- * lenguaje claro (sin jerga financiera). */
+/* Visual Card 02 "Facilidad" · Phase 2.25 · comparación 2-columnas
+ *   ✕ "Una calculadora dice"  vs  ✓ "Franco te dice"
+ * que enfatiza el contraste de lenguaje (jerga financiera vs frase directa).
+ * Las dos columnas viven en un grid unificado con border 0.5px externo, 1px
+ * gap interno (el background del padre, theme-aware, se ve como divider).
+ * Mobile: el grid colapsa a 1-col, queda calculadora arriba (jerga) y Franco
+ * abajo (frase clara) — el orden de lectura mantiene el contraste.
+ *
+ * Bloque secundario "ADEMÁS" cierra explicando qué datos completa Franco
+ * automáticamente a partir de precio + comuna.
+ *
+ * Reglas de capa cromática/tipográfica:
+ *  · Paleta Ink + Signal Red strict (no hex inventados); colores via var()
+ *    para theme-aware dark+light.
+ *  · Frases en Sans regular. Datums ($310.000, UF 2, UF 4.900) en Mono Bold
+ *    inline. "precio y comuna" en Sans 600 (override usuario explícito al
+ *    cap del skill).
+ *  · El ✓ Signal Red en el eyebrow de Franco es uso de marca permitido
+ *    (indicador de polaridad positiva del costado correcto).
+ */
 function SmartFormMock() {
-  const tuPones = ["Precio del depto", "Comuna"];
-  const francoCompleta = [
-    "Arriendo de la zona",
-    "Gastos comunes",
-    "Contribuciones SII",
-    "Datos Airbnb",
+  const jerga = [
+    "Cap rate 4,2% con NOI mensual negativo de −$310K",
+    "Renta efectiva 11% bajo el percentil 50 del rango local",
+    "Reduce LTV a 78% para alcanzar breakeven operacional",
   ];
+
+  // Cada Franco-frase tiene el datum como atom mono bold, separado del resto
+  // para poder darle peso/familia distintos sin ensuciar el JSX inline.
+  const claro: Array<{ pre: string; datum: string; post: string }> = [
+    { pre: "Pones ", datum: "$310.000", post: " de tu bolsillo cada mes." },
+    { pre: "Tu arriendo está ", datum: "UF 2", post: " bajo lo que paga la zona." },
+    { pre: "Si negocias a ", datum: "UF 4.900", post: ", el flujo cuadra." },
+  ];
+
+  // Divider entre frases dentro de cada columna · 0.5px sutil, theme-aware.
+  const phraseDivider: React.CSSProperties = {
+    height: 1,
+    background: "color-mix(in srgb, var(--landing-text) 6%, transparent)",
+    margin: "10px 0",
+  };
 
   return (
     <div>
-      {/* Grid 2-col · TÚ PONES / FRANCO COMPLETA */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Columna izq · TÚ PONES */}
+      {/* Grid 2-col unificado · gap 1px revela el bg del padre como separator
+          theme-aware. En mobile colapsa a 1-col (stack vertical) — el orden
+          de lectura mantiene jerga arriba / Franco abajo. */}
+      <div
+        className="grid grid-cols-1 md:grid-cols-2"
+        style={{
+          gap: 1,
+          background: "var(--landing-card-border)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        {/* Columna IZQ · "Una calculadora dice" (jerga financiera muted) */}
         <div
           style={{
-            background: "var(--landing-card-bg-soft)",
-            border: "0.5px solid var(--landing-card-border)",
-            borderRadius: 10,
-            padding: 16,
+            background:
+              "color-mix(in srgb, var(--landing-card-bg-soft) 92%, var(--landing-text) 8%)",
+            padding: "14px 14px 16px",
           }}
         >
           <p
-            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 9, letterSpacing: "0.12em", marginBottom: 12 }}
-          >
-            Tú pones
-          </p>
-          <ul style={{ margin: 0, padding: 0, listStyle: "none" }}>
-            {tuPones.map((it) => (
-              <li
-                key={it}
-                className="flex items-start"
-                style={{ gap: 8, marginBottom: 8 }}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{ color: "#C8323C", fontSize: 11, lineHeight: 1.4 }}
-                >
-                  ✓
-                </span>
-                <span
-                  className="font-body text-[var(--landing-text)]"
-                  style={{ fontSize: 13, lineHeight: 1.4 }}
-                >
-                  {it}
-                </span>
-              </li>
-            ))}
-          </ul>
-          <div
-            style={{
-              borderTop: "0.5px solid var(--landing-card-border)",
-              marginTop: 10,
-              paddingTop: 10,
-            }}
-          >
-            <p
-              className="font-mono uppercase text-[var(--landing-text-muted)] m-0"
-              style={{ fontSize: 10, letterSpacing: "0.08em" }}
-            >
-              2 datos · 30 segundos
-            </p>
-          </div>
-        </div>
-
-        {/* Columna der · FRANCO COMPLETA · border-left 3px Signal Red */}
-        <div
-          style={{
-            background: "var(--landing-card-bg-soft)",
-            border: "0.5px solid var(--landing-card-border)",
-            borderLeft: "3px solid #C8323C",
-            borderRadius: "0 10px 10px 0",
-            padding: 16,
-          }}
-        >
-          <p
-            className="font-mono font-bold uppercase"
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)] m-0"
             style={{
               fontSize: 9,
-              letterSpacing: "0.12em",
+              letterSpacing: "0.14em",
+              marginBottom: 12,
+            }}
+          >
+            ✕ Una calculadora dice
+          </p>
+          {jerga.map((it, i) => (
+            <div key={it}>
+              {i > 0 && <div aria-hidden="true" style={phraseDivider} />}
+              <p
+                className="font-body text-[var(--landing-text-muted)] m-0"
+                style={{ fontSize: 12, lineHeight: 1.4 }}
+              >
+                {it}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        {/* Columna DER · "Franco te dice" (frase clara con datum Mono Bold) */}
+        <div
+          style={{
+            background: "var(--landing-card-bg-soft)",
+            borderLeft: "3px solid #C8323C",
+            padding: "14px 14px 16px",
+          }}
+        >
+          <p
+            className="font-mono font-bold uppercase m-0"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.14em",
               color: "#C8323C",
               marginBottom: 12,
             }}
           >
-            Franco completa
+            ✓ Franco te dice
           </p>
-          <ul
-            style={{
-              margin: 0,
-              padding: 0,
-              listStyle: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: 7,
-            }}
-          >
-            {francoCompleta.map((it) => (
-              <li
-                key={it}
-                className="font-body text-[var(--landing-text)]"
-                style={{ fontSize: 12.5, lineHeight: 1.35 }}
+          {claro.map((it, i) => (
+            <div key={it.datum}>
+              {i > 0 && <div aria-hidden="true" style={phraseDivider} />}
+              <p
+                className="font-body text-[var(--landing-text)] m-0"
+                style={{ fontSize: 13.5, lineHeight: 1.4 }}
               >
-                {it}
-              </li>
-            ))}
-          </ul>
+                {it.pre}
+                <span className="font-mono font-bold">{it.datum}</span>
+                {it.post}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Remate · "MISMO DATO, SIN LA JERGA" con ✓ versión clara vs ✕ versión
-       * en jerga financiera (line-through) · enfatiza el contraste de
-       * lenguaje · refuerza la promesa de Card 02 "lo lees sin saber de
-       * finanzas". */}
+      {/* Bloque "ADEMÁS" · qué datos completa Franco automáticamente. */}
       <div
         style={{
-          background: "rgba(200,50,60,0.05)",
-          border: "0.5px solid rgba(200,50,60,0.15)",
-          borderRadius: 8,
-          padding: "14px 16px",
-          marginTop: 14,
+          marginTop: 18,
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 10,
+          padding: "16px 18px",
         }}
       >
-        <p
-          className="font-mono font-bold uppercase"
-          style={{
-            fontSize: 8,
-            letterSpacing: "0.14em",
-            color: "#C8323C",
-            margin: "0 0 8px 0",
-          }}
-        >
-          Mismo dato, sin la jerga
-        </p>
         <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 6,
-          }}
+          className="flex items-center"
+          style={{ gap: 12, marginBottom: 8 }}
         >
-          {/* ✓ versión clara */}
-          <div className="flex items-start" style={{ gap: 8 }}>
-            <span
-              aria-hidden="true"
-              style={{ color: "#C8323C", fontSize: 11, lineHeight: 1.4, flexShrink: 0 }}
-            >
-              ✓
-            </span>
-            <span
-              className="font-body text-[var(--landing-text)]"
-              style={{ fontSize: 13.5, lineHeight: 1.4 }}
-            >
-              &ldquo;Pones{" "}
-              <span className="font-mono">$310.000</span> de tu bolsillo cada mes&rdquo;
-            </span>
-          </div>
-          {/* ✕ versión jerga tachada */}
-          <div className="flex items-start" style={{ gap: 8 }}>
-            <span
-              aria-hidden="true"
-              style={{ color: "#666", fontSize: 11, lineHeight: 1.4, flexShrink: 0 }}
-            >
-              ✕
-            </span>
-            <span
-              className="font-body text-[var(--landing-text-muted)]"
-              style={{
-                fontSize: 13,
-                lineHeight: 1.4,
-                textDecoration: "line-through",
-                textDecorationColor: "rgba(255,255,255,0.2)",
-              }}
-            >
-              &ldquo;Cap rate 4,2% con NOI mensual negativo&rdquo;
-            </span>
-          </div>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)] m-0"
+            style={{ fontSize: 9, letterSpacing: "0.12em" }}
+          >
+            Además
+          </p>
+          <div
+            aria-hidden="true"
+            style={{
+              flex: 1,
+              height: 1,
+              background:
+                "color-mix(in srgb, var(--landing-text) 8%, transparent)",
+            }}
+          />
         </div>
+        <p
+          className="font-body text-[var(--landing-text)] m-0"
+          style={{ fontSize: 13.5, lineHeight: 1.5 }}
+        >
+          Con solo{" "}
+          <span style={{ fontWeight: 600 }}>precio y comuna</span> Franco completa
+          el resto: arriendo de zona, gastos comunes, contribuciones SII y datos
+          de Airbnb.
+        </p>
       </div>
     </div>
   );
