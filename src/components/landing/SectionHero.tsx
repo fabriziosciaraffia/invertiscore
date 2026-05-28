@@ -102,7 +102,10 @@ export default function SectionHero() {
         /* === Mobile · stack vertical · px-5 (16→20px lateral) para que el
              H1 no quede pegado al borde · 3 líneas explícitas en HeroCopy. === */
         <div className="mx-auto w-full max-w-6xl px-5 pt-8 pb-12">
-          <HeroCopy reduce mobile />
+          {/* Phase 2.21 · rotación LTR↔STR corre en mobile (bug NotFoundError
+              resuelto en 2.18d). reduce viene de useReducedMotion real, no
+              forzado a true en mobile. */}
+          <HeroCopy reduce={!!reduce} mobile />
           <HeroStaticMobile />
         </div>
       ) : (
@@ -132,71 +135,36 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
 
   return (
     <>
-      <h1
-        className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
-        style={{
-          fontSize: mobile
-            ? "clamp(42px, 12vw, 58px)"
-            : "clamp(48px, 8.5vw, 88px)",
+      {/* Bloque rotativo (eyebrow + H1 + subhead + dots indicator).
+          Always-mounted en grid stack · pausa-on-hover/long-press · 8s loop. */}
+      <HeroRotatingCopy reduce={reduce} mobile={mobile} />
+
+      {/* Microcopy "HOY DISPONIBLE…" · estable (no rota con el copy).
+          initial constante (mismo server/client) · transition.duration=0
+          bajo reduce evita hydration mismatch + snap instantáneo. */}
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: reduce ? 0 : 0.4,
+          ease: EASE,
+          delay: delay(0.9),
         }}
-      >
-        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
-          <motion.span
-            className="block"
-            initial={reduce ? false : { y: "105%" }}
-            animate={{ y: "0%" }}
-            transition={{ duration: 0.7, ease: EASE, delay: delay(0) }}
-          >
-            ¿Y si el depto
-          </motion.span>
-        </span>
-        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
-          <motion.span
-            className="block text-[#C8323C]"
-            initial={reduce ? false : { y: "105%" }}
-            animate={{ y: "0%" }}
-            transition={{ duration: 0.7, ease: EASE, delay: delay(0.25) }}
-          >
-            no se paga
-          </motion.span>
-        </span>
-        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
-          <motion.span
-            className="block text-[#C8323C]"
-            initial={reduce ? false : { y: "105%" }}
-            animate={{ y: "0%" }}
-            transition={{ duration: 0.75, ease: EASE, delay: delay(0.45) }}
-          >
-            solo?
-          </motion.span>
-        </span>
-      </h1>
-
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: delay(0.7) }}
-        className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
-        style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
-      >
-        Antes de invertir, ve si dan los números para no terminar poniendo
-        plata de tu bolsillo cada mes.
-      </motion.p>
-
-      <motion.p
-        initial={reduce ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: delay(0.9) }}
         className={`${mobile ? "mt-4" : "mt-6"} font-mono uppercase text-[var(--landing-text-muted)]`}
         style={{ fontSize: 10, letterSpacing: "0.08em" }}
       >
         Hoy disponible para Gran Santiago
       </motion.p>
 
+      {/* CTA · estable */}
       <motion.div
-        initial={reduce ? false : { opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: EASE, delay: delay(1.1) }}
+        transition={{
+          duration: reduce ? 0 : 0.4,
+          ease: EASE,
+          delay: delay(1.1),
+        }}
         className={`${mobile ? "mt-5" : "mt-7"} flex items-start`}
       >
         <Link
@@ -212,6 +180,330 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
           </span>
         </Link>
       </motion.div>
+    </>
+  );
+}
+
+/* ============================ HeroRotatingCopy (Phase 2.21) ============================
+ *
+ * Rotación LTR↔STR del bloque (eyebrow + H1 + subhead) cada 8s. Doctrina
+ * post-2.18d:
+ *   · AMBAS versiones SIEMPRE montadas en un grid stack (mismo grid-area).
+ *     NO {activeIndex===0 && <Copy>} · NO AnimatePresence.
+ *   · motion.div always-mounted con animate condicional (opacity + y 8px).
+ *   · pausedRef es REF (no state). El touch NO entra en las deps del effect.
+ *   · setInterval 100ms tick · acumula elapsedRef · avanza activeIndex al
+ *     cruzar 8000ms · pause-aware (poll antes de incrementar).
+ *   · Cleanup completo del interval y holdTimerRef.
+ *   · prefers-reduced-motion → solo LTR estático, sin rotación ni dots.
+ *
+ * Pausa-on-hold:
+ *   · Desktop (mouse): onMouseEnter pausa · onMouseLeave reanuda.
+ *   · Mobile (touch): onPointerDown con threshold 200ms · onPointerUp/Cancel
+ *     reanuda (cancela threshold si llega antes de 200ms = tap corto).
+ *   · El wrapper recibe className "is-paused" vía ref + classList — pausa
+ *     simultánea de la animación CSS del dot (animation-play-state: paused).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+const ROTATE_INTERVAL_MS = 8000;
+const TICK_MS = 100;
+const HOLD_THRESHOLD_MS = 200;
+
+function HeroRotatingCopy({
+  reduce,
+  mobile,
+}: {
+  reduce: boolean;
+  mobile: boolean;
+}) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const pausedRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const elapsedRef = useRef(0);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const pause = () => {
+    pausedRef.current = true;
+    wrapperRef.current?.classList.add("is-paused");
+  };
+  const resume = () => {
+    pausedRef.current = false;
+    wrapperRef.current?.classList.remove("is-paused");
+  };
+
+  // Mouse · desktop · pausa directa sin threshold (hover es intencional).
+  const handleMouseEnter = () => pause();
+  const handleMouseLeave = () => resume();
+
+  // Touch · mobile · threshold 200ms para distinguir tap corto de hold.
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = setTimeout(() => pause(), HOLD_THRESHOLD_MS);
+  };
+  const handlePointerEnd = (e: React.PointerEvent) => {
+    if (e.pointerType !== "touch") return;
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    resume();
+  };
+
+  // Cleanup holdTimer en unmount (independiente del effect del interval).
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    };
+  }, []);
+
+  // Loop interval · deps SOLO [reduce] (sin activeIndex ni paused).
+  useEffect(() => {
+    if (reduce) return;
+    let mounted = true;
+    const id = setInterval(() => {
+      if (!mounted) return;
+      if (pausedRef.current) return;
+      elapsedRef.current += TICK_MS;
+      if (elapsedRef.current >= ROTATE_INTERVAL_MS) {
+        elapsedRef.current = 0;
+        setActiveIndex((i) => (i === 0 ? 1 : 0));
+      }
+    }, TICK_MS);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [reduce]);
+
+  // Click en dot · cambia activeIndex y resetea el timer del ciclo (sin
+  // teardown del effect · solo se resetea el contador local).
+  const handleDotClick = (i: number) => {
+    elapsedRef.current = 0;
+    setActiveIndex(i);
+  };
+
+  return (
+    <div
+      ref={wrapperRef}
+      className="s01-hero-copy"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      style={{ touchAction: "pan-y" }}
+    >
+      {/* Grid stack · ambas versiones overlap en la misma cell.
+          La cell se sizea al hijo más alto · cero saltos de layout. */}
+      <div style={{ display: "grid" }}>
+        <motion.div
+          style={{
+            gridArea: "1 / 1",
+            pointerEvents: activeIndex === 0 ? "auto" : "none",
+          }}
+          initial={false}
+          animate={
+            activeIndex === 0
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: -8 }
+          }
+          transition={{ duration: reduce ? 0 : 0.5, ease: EASE }}
+          aria-hidden={activeIndex !== 0}
+        >
+          <CopyLTR reduce={reduce} mobile={mobile} />
+        </motion.div>
+        <motion.div
+          style={{
+            gridArea: "1 / 1",
+            pointerEvents: activeIndex === 1 ? "auto" : "none",
+          }}
+          initial={{ opacity: 0, y: 8 }}
+          animate={
+            activeIndex === 1
+              ? { opacity: 1, y: 0 }
+              : { opacity: 0, y: -8 }
+          }
+          transition={{ duration: reduce ? 0 : 0.5, ease: EASE }}
+          aria-hidden={activeIndex !== 1}
+        >
+          <CopySTR mobile={mobile} />
+        </motion.div>
+      </div>
+
+      {/* Dots indicator · siempre montados (SSR-safe).
+          Bajo prefers-reduced-motion el dot activo se renderiza estático
+          (CSS media query: transform scaleX(1), animation:none).
+          Static <button> sin motion · key estática (índice del array constante). */}
+      <div
+        className={`${mobile ? "mt-4" : "mt-5"} flex items-center`}
+        style={{ gap: 0 }}
+        aria-label="Selector de versión del copy"
+      >
+        {[0, 1].map((i) => (
+          <button
+            key={i}
+            type="button"
+            aria-label={
+              i === 0
+                ? "Mostrar análisis arriendo largo"
+                : "Mostrar análisis Airbnb"
+            }
+            aria-pressed={activeIndex === i}
+            onClick={() => handleDotClick(i)}
+            style={{
+              padding: 3,
+              background: "transparent",
+              border: 0,
+              cursor: "pointer",
+              lineHeight: 0,
+            }}
+          >
+            <span
+              className={`s01-hero-dot${activeIndex === i ? " s01-hero-dot--active" : ""}`}
+            >
+              <span className="s01-hero-dot-fill" />
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ====== Copy LTR (versión 1) · "¿Y si el depto no se paga solo?" ===========
+ *
+ * Preserva la animación slide-up línea-por-línea del Hero original (corre
+ * UNA vez en el mount inicial). Crossfade subsecuente lo maneja el wrapper
+ * motion.div de HeroRotatingCopy.
+ * ──────────────────────────────────────────────────────────────────────── */
+function CopyLTR({
+  reduce,
+  mobile,
+}: {
+  reduce: boolean;
+  mobile: boolean;
+}) {
+  const delay = (sec: number) => (reduce ? 0 : sec);
+  return (
+    <>
+      <p
+        className="font-mono font-bold uppercase"
+        style={{
+          fontSize: 10,
+          color: "#C8323C",
+          letterSpacing: "0.14em",
+          marginBottom: 12,
+        }}
+      >
+        Análisis arriendo largo
+      </p>
+      <h1
+        className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
+        style={{
+          fontSize: mobile
+            ? "clamp(42px, 12vw, 58px)"
+            : "clamp(48px, 8.5vw, 88px)",
+        }}
+      >
+        {/* initial constante SSR-safe · transition.duration=0 bajo reduce
+            evita hydration mismatch (la animación snap-ea instantáneo). */}
+        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
+          <motion.span
+            className="block"
+            initial={{ y: "105%" }}
+            animate={{ y: "0%" }}
+            transition={{
+              duration: reduce ? 0 : 0.7,
+              ease: EASE,
+              delay: delay(0),
+            }}
+          >
+            ¿Y si el depto
+          </motion.span>
+        </span>
+        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
+          <motion.span
+            className="block text-[#C8323C]"
+            initial={{ y: "105%" }}
+            animate={{ y: "0%" }}
+            transition={{
+              duration: reduce ? 0 : 0.7,
+              ease: EASE,
+              delay: delay(0.25),
+            }}
+          >
+            no se paga
+          </motion.span>
+        </span>
+        <span className="block overflow-hidden" style={{ lineHeight: 1.02 }}>
+          <motion.span
+            className="block text-[#C8323C]"
+            initial={{ y: "105%" }}
+            animate={{ y: "0%" }}
+            transition={{
+              duration: reduce ? 0 : 0.75,
+              ease: EASE,
+              delay: delay(0.45),
+            }}
+          >
+            solo?
+          </motion.span>
+        </span>
+      </h1>
+      <motion.p
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          duration: reduce ? 0 : 0.4,
+          ease: EASE,
+          delay: delay(0.7),
+        }}
+        className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
+        style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
+      >
+        Antes de invertir, ve si los números cierran o vas a poner plata todos los meses.
+      </motion.p>
+    </>
+  );
+}
+
+/* ====== Copy STR (versión 2) · "¿Conviene Airbnb o arriendo tradicional?" ===
+ *
+ * Sin slide-up línea-por-línea (la versión queda hidden en mount inicial
+ * vía wrapper opacity:0). Aparece via crossfade del wrapper en cada
+ * activación. "Airbnb" en Signal Red.
+ * ──────────────────────────────────────────────────────────────────────── */
+function CopySTR({ mobile }: { mobile: boolean }) {
+  return (
+    <>
+      <p
+        className="font-mono font-bold uppercase"
+        style={{
+          fontSize: 10,
+          color: "#C8323C",
+          letterSpacing: "0.14em",
+          marginBottom: 12,
+        }}
+      >
+        Análisis Airbnb
+      </p>
+      <h1
+        className="font-heading font-bold leading-[1.02] tracking-[-0.02em] text-[var(--landing-text)]"
+        style={{
+          fontSize: mobile
+            ? "clamp(42px, 12vw, 58px)"
+            : "clamp(48px, 8.5vw, 88px)",
+        }}
+      >
+        ¿Conviene <span className="text-[#C8323C]">Airbnb</span> o arriendo tradicional?
+      </h1>
+      <p
+        className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
+        style={{ fontSize: mobile ? 14 : 18, lineHeight: 1.5 }}
+      >
+        Compara las dos modalidades con datos reales de tu zona y decide con números, no con intuición.
+      </p>
     </>
   );
 }

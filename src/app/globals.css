@@ -550,6 +550,59 @@ input[type="number"] {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+ * F.11 Phase 2.21 · Hero rotating copy · indicador de dots
+ *
+ * Fill 0→100% width vía scaleX en 8s (CSS @keyframes · sin JS rAF).
+ * React aplica .s01-hero-dot--active al dot activo según activeIndex.
+ * Pausa: el wrapper .s01-hero-copy.is-paused (ref + classList, sin
+ * state) pausa la animación sin teardown del effect ni recompose React.
+ * Doctrina post-2.18d: animación sobre DIV, sin SVG aquí.
+ * ───────────────────────────────────────────────────────────────── */
+
+@keyframes s01-hero-dot-fill {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+.s01-hero-dot {
+  position: relative;
+  display: inline-block;
+  width: 8px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+[data-franco-theme="light"] .s01-hero-dot {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.s01-hero-dot-fill {
+  position: absolute;
+  inset: 0;
+  background: #C8323C;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  pointer-events: none;
+}
+
+.s01-hero-dot--active .s01-hero-dot-fill {
+  animation: s01-hero-dot-fill 8s linear forwards;
+}
+
+.s01-hero-copy.is-paused .s01-hero-dot--active .s01-hero-dot-fill {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s01-hero-dot--active .s01-hero-dot-fill {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
  * F.11 · Utility classes: cards y mockups premium polish.
  * Stack de sombras + gradient sutil + borde top-highlight (interior
  * de la card) que da sensación de "lit from above" estilo Linear.
