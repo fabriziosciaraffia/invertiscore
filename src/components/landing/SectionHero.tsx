@@ -295,7 +295,9 @@ function HeroRotatingCopy({
       style={{ touchAction: "pan-y" }}
     >
       {/* Grid stack · ambas versiones overlap en la misma cell.
-          La cell se sizea al hijo más alto · cero saltos de layout. */}
+          Phase 2.23 · STR reescrito a "¿Airbnb o arriendo tradicional?"
+          para igualar el n° de líneas del H1 LTR · el grid hace
+          max(content_LTR, content_STR) naturalmente, sin minHeight. */}
       <div style={{ display: "grid" }}>
         <motion.div
           style={{
@@ -496,7 +498,7 @@ function CopySTR({ mobile }: { mobile: boolean }) {
             : "clamp(48px, 8.5vw, 88px)",
         }}
       >
-        ¿Conviene <span className="text-[#C8323C]">Airbnb</span> o arriendo tradicional?
+        ¿<span className="text-[#C8323C]">Airbnb</span> o arriendo tradicional?
       </h1>
       <p
         className={`${mobile ? "mt-5" : "mt-8"} max-w-[540px] font-body text-[var(--landing-text-secondary)]`}
