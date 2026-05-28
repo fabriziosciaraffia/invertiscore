@@ -250,6 +250,296 @@ function BulletItem({ data, last }: { data: Bullet; last: boolean }) {
   );
 }
 
+/* ============================ Typewriter del Insight de zona (Phase 2.21) ============================
+ *
+ * Reemplaza el fade-stagger de 3 segmentos por typewriter word-by-word.
+ * Doctrina post-2.18d:
+ *   · TODAS las palabras de los 3 segmentos siempre montadas como <span>.
+ *     Visibilidad por opacity controlada con índice (NO conditional render).
+ *   · Keys estáticas (segId + i). NO key dinámica.
+ *   · setInterval único · 80ms tick · pausedRef consultado antes de incrementar.
+ *     Si paused → return temprano (palabra actual queda visible, no avanza).
+ *     NO destruir interval por pausa.
+ *   · Pausa 600ms (= 8 ticks) entre segmentos · countdown en ticks dentro del
+ *     mismo interval, también pause-aware.
+ *   · Cleanup completo en useEffect return.
+ *   · reduce-motion → todas las palabras visibles desde el inicio, sin interval.
+ *
+ * Tokens: cada token = una palabra. Cuando un dato lleva mono/numérico
+ * (e.g. "245m,", "$950.000", "percentil 58"), datum:true → render con <Datum>.
+ * Puntuación adyacente al dato se atornilla al token del dato (atómico). */
+
+type SegToken = { text: string; datum?: boolean };
+
+const SEG1_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "Triple" },
+  { text: "conectividad" },
+  { text: "de" },
+  { text: "metro" },
+  { text: "(Manuel" },
+  { text: "Montt" },
+  { text: "245m,", datum: true },
+  { text: "Pedro" },
+  { text: "de" },
+  { text: "Valdivia" },
+  { text: "396m,", datum: true },
+  { text: "Salvador" },
+  { text: "1km)", datum: true },
+  { text: "genera" },
+  { text: "demanda" },
+  { text: "sostenida." },
+];
+
+const SEG2_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "INACAP" },
+  { text: "y" },
+  { text: "DuocUC" },
+  { text: "en" },
+  { text: "un" },
+  { text: "radio" },
+  { text: "de" },
+  { text: "800m", datum: true },
+  { text: "atraen" },
+  { text: "estudiantes" },
+  { text: "y" },
+  { text: "jóvenes" },
+  { text: "profesionales;" },
+  { text: "Parque" },
+  { text: "Inés" },
+  { text: "de" },
+  { text: "Suárez" },
+  { text: "a" },
+  { text: "pasos" },
+  { text: "suma" },
+  { text: "calidad" },
+  { text: "de" },
+  { text: "vida." },
+];
+
+const SEG3_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "El" },
+  { text: "arriendo" },
+  { text: "estimado" },
+  { text: "de" },
+  { text: "$950.000", datum: true },
+  { text: "se" },
+  { text: "posiciona" },
+  { text: "en" },
+  { text: "el" },
+  { text: "percentil 58", datum: true },
+  { text: "del" },
+  { text: "rango" },
+  { text: "local" },
+  { text: "($640K–$1.347M):", datum: true },
+  { text: "compite" },
+  { text: "sin" },
+  { text: "castigar" },
+  { text: "precio" },
+  { text: "y" },
+  { text: "mantiene" },
+  { text: "vacancia" },
+  { text: "baja." },
+];
+
+const SEG_TOKEN_GROUPS = [SEG1_TOKENS, SEG2_TOKENS, SEG3_TOKENS] as const;
+
+/* ===== Tokens de Card 02 (Phase 2.22) ============================
+ * Cada hallazgo body + la cita también se escriben word-by-word con el mismo
+ * patrón always-mounted/opacity-por-índice. El título de cada hallazgo y el
+ * "★ Lo que Franco interpretó" siguen siendo fade (no son cuerpo narrativo).
+ */
+const H1_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "Con" },
+  { text: "pie" },
+  { text: "de" },
+  { text: "20%", datum: true },
+  { text: "a" },
+  { text: "20 años", datum: true },
+  { text: "el" },
+  { text: "dividendo" },
+  { text: "te" },
+  { text: "deja" },
+  { text: "en" },
+  { text: "−$310K/mes.", datum: true },
+  { text: "Sube" },
+  { text: "el" },
+  { text: "pie" },
+  { text: "a" },
+  { text: "30%", datum: true },
+  { text: "y" },
+  { text: "extiende" },
+  { text: "a" },
+  { text: "25 años", datum: true },
+  { text: "al" },
+  { text: "4,2%:", datum: true },
+  { text: "el" },
+  { text: "flujo" },
+  { text: "sube" },
+  { text: "a" },
+  { text: "−$90K.", datum: true },
+];
+
+const H2_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "Pediste" },
+  { text: "UF 22,", datum: true },
+  { text: "pero" },
+  { text: "los" },
+  { text: "73 comparables", datum: true },
+  { text: "de" },
+  { text: "Ñuñoa" },
+  { text: "transan" },
+  { text: "en" },
+  { text: "UF 18.", datum: true },
+  { text: "Con" },
+  { text: "eso" },
+  { text: "bajas" },
+  { text: "UF 4/mes,", datum: true },
+  { text: "pero" },
+  { text: "deja" },
+  { text: "de" },
+  { text: "ser" },
+  { text: "una" },
+  { text: "proyección" },
+  { text: "de" },
+  { text: "fantasía" },
+  { text: "—" },
+  { text: "ahora" },
+  { text: "sí" },
+  { text: "puedes" },
+  { text: "confiar" },
+  { text: "en" },
+  { text: "el" },
+  { text: "veredicto." },
+];
+
+const H3_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "Metro" },
+  { text: "Irarrázaval" },
+  { text: "a" },
+  { text: "282m,", datum: true },
+  { text: "Clínica" },
+  { text: "UC" },
+  { text: "Christus" },
+  { text: "y" },
+  { text: "la" },
+  { text: "U." },
+  { text: "de" },
+  { text: "Chile" },
+  { text: "a" },
+  { text: "menos" },
+  { text: "de" },
+  { text: "2km.", datum: true },
+  { text: "Demanda" },
+  { text: "estable," },
+  { text: "vacancia" },
+  { text: "baja:" },
+  { text: "si" },
+  { text: "el" },
+  { text: "precio" },
+  { text: "cede" },
+  { text: "a" },
+  { text: "UF 4.900,", datum: true },
+  { text: "el" },
+  { text: "negocio" },
+  { text: "cierra." },
+];
+
+const CITA_TOKENS: ReadonlyArray<SegToken> = [
+  { text: "“Una" },
+  { text: "calculadora" },
+  { text: "habría" },
+  { text: "corrido" },
+  { text: "tus" },
+  { text: "números." },
+  { text: "Yo" },
+  { text: "te" },
+  { text: "digo" },
+  { text: "cuáles" },
+  { text: "arreglar" },
+  { text: "primero.”" },
+];
+
+const CARD02_TOKEN_GROUPS = [H1_TOKENS, H2_TOKENS, H3_TOKENS, CITA_TOKENS] as const;
+
+/* Timing del ciclo · auto-derivado del conteo real de palabras.
+ *
+ * Phase 2.23 · ticks separados para Card 01 y Card 02:
+ *   · Card 01 más lento (110ms) — la narrativa del insight es densa, conviene
+ *     dar tiempo para leer y absorber. El cap rate de "está pensando ahora"
+ *     se siente mejor con ritmo más calmo.
+ *   · Card 02 mantiene 80ms — los hallazgos son cortos y queremos cadencia ágil.
+ *
+ * Pausas: 600ms entre segs de Card 01 (sin cambio), 600ms entre hallazgos de
+ * Card 02 (era 2000, demasiado lento), 600ms SETTLE entre Card 01 y Card 02
+ * (era 0, sin respiro). Cada pausa convertida a ticks usando el tick propio
+ * del card. */
+const CARD01_WORD_TICK_MS = 110;
+const CARD02_WORD_TICK_MS = 80;
+const PAUSE_BETWEEN_SEGS_MS = 600;
+const PAUSE_BETWEEN_SEGS_TICKS = Math.round(PAUSE_BETWEEN_SEGS_MS / CARD01_WORD_TICK_MS);
+const SETTLE_AFTER_TYPING_MS = 600;
+const HEADER_DELAY_MS = 500;
+const PAUSE_BETWEEN_HALLAZGOS_MS = 600;
+const PAUSE_BETWEEN_HALLAZGOS_TICKS = Math.round(PAUSE_BETWEEN_HALLAZGOS_MS / CARD02_WORD_TICK_MS);
+const CYCLE_DURATION_MS = 26000;
+
+const SEG1_START_MS = 900;
+const SEG1_END_MS = SEG1_START_MS + SEG1_TOKENS.length * CARD01_WORD_TICK_MS;
+const SEG2_END_MS = SEG1_END_MS + PAUSE_BETWEEN_SEGS_MS + SEG2_TOKENS.length * CARD01_WORD_TICK_MS;
+const SEG3_END_MS = SEG2_END_MS + PAUSE_BETWEEN_SEGS_MS + SEG3_TOKENS.length * CARD01_WORD_TICK_MS;
+const SHOW_FRONT_AT_MS = SEG3_END_MS + SETTLE_AFTER_TYPING_MS;
+const SHOW_HEADER_AT_MS = SHOW_FRONT_AT_MS + HEADER_DELAY_MS;
+const SHOW_H1_AT_MS = SHOW_HEADER_AT_MS + HEADER_DELAY_MS;
+
+type VisibleWords = { seg1: number; seg2: number; seg3: number };
+const ZERO_VISIBLE: VisibleWords = { seg1: 0, seg2: 0, seg3: 0 };
+const ALL_VISIBLE: VisibleWords = {
+  seg1: SEG1_TOKENS.length,
+  seg2: SEG2_TOKENS.length,
+  seg3: SEG3_TOKENS.length,
+};
+
+type VisibleCard02 = { h1: number; h2: number; h3: number; cita: number };
+const ZERO_CARD02: VisibleCard02 = { h1: 0, h2: 0, h3: 0, cita: 0 };
+const ALL_CARD02: VisibleCard02 = {
+  h1: H1_TOKENS.length,
+  h2: H2_TOKENS.length,
+  h3: H3_TOKENS.length,
+  cita: CITA_TOKENS.length,
+};
+
+/* Renderiza un segmento como secuencia de spans always-mounted; opacity
+ * controlada por índice. Keys estáticas: `${segId}-${i}`. */
+function TypeSegment({
+  tokens,
+  visible,
+  segId,
+}: {
+  tokens: ReadonlyArray<SegToken>;
+  visible: number;
+  segId: string;
+}) {
+  return (
+    <>
+      {tokens.map((tok, i) => {
+        const shown = i < visible;
+        return (
+          <span
+            key={`${segId}-${i}`}
+            style={{
+              opacity: shown ? 1 : 0,
+              transition: "opacity 120ms linear",
+            }}
+          >
+            {tok.datum ? <Datum>{tok.text}</Datum> : tok.text}
+            {i < tokens.length - 1 ? " " : ""}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
 /* ============================ Insight Cards (2 superpuestas) ============================ */
 
 function FrancoInsightCards() {
@@ -296,11 +586,16 @@ function FrancoInsightCards() {
 
   const [showBack, setShowBack] = useState(false);
   const [dimBack, setDimBack] = useState(false);
-  // 3 segmentos del insight de zona (fade stagger simulando typewriter
-  // sentence-by-sentence · más lento que un fade único, da tiempo a leer).
-  const [showSeg1, setShowSeg1] = useState(false);
-  const [showSeg2, setShowSeg2] = useState(false);
-  const [showSeg3, setShowSeg3] = useState(false);
+  // Phase 2.21 · visibleWords reemplaza showSeg1/2/3. Cada slot guarda cuántas
+  // palabras del segmento están visibles (opacity 1). Los spans están todos
+  // montados; el índice controla qué se ve. Ver TypeSegment + runTypewriter.
+  const [visibleWords, setVisibleWords] = useState<VisibleWords>(ZERO_VISIBLE);
+  // Phase 2.22 · mismo patrón para los 3 hallazgos + cita de Card 02.
+  // Los show{H1,H2,H3,Cita} siguen controlando el fade del contenedor (título
+  // del hallazgo, o motion.p de la cita); el word-count controla la aparición
+  // de las palabras del body. El startCard02Typewriter levanta los show
+  // cuando le toca a cada bloque, sincronizado con el ritmo del typing.
+  const [visibleCard02, setVisibleCard02] = useState<VisibleCard02>(ZERO_CARD02);
   const [showFront, setShowFront] = useState(false);
   const [showHeader, setShowHeader] = useState(false);
   const [showH1, setShowH1] = useState(false);
@@ -308,15 +603,25 @@ function FrancoInsightCards() {
   const [showH3, setShowH3] = useState(false);
   const [showCita, setShowCita] = useState(false);
 
+  // Refs del estado del typewriter (live entre ticks del setInterval, sin
+  // re-renders adicionales). segIdxRef: 0/1/2 segmento activo, 3 = done.
+  // pauseTicksRef: ticks restantes de la pausa inter-segmento.
+  const segIdxRef = useRef(0);
+  const pauseTicksRef = useRef(0);
+  const typewriterIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Refs análogos para el typewriter de Card 02 · 0..3 = H1/H2/H3/cita, 4 = done.
+  const card02IdxRef = useRef(0);
+  const card02PauseTicksRef = useRef(0);
+  const card02IntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
     if (!isInView) return;
 
     if (reduce) {
       setShowBack(true);
       setDimBack(true);
-      setShowSeg1(true);
-      setShowSeg2(true);
-      setShowSeg3(true);
+      setVisibleWords(ALL_VISIBLE);
+      setVisibleCard02(ALL_CARD02);
       setShowFront(true);
       setShowHeader(true);
       setShowH1(true);
@@ -345,41 +650,162 @@ function FrancoInsightCards() {
       timers.push(id);
     };
 
-    // Loop continuo · ciclo 26s. Card 01 sola con 3 segmentos sentence-by-
-    // sentence (tiempo de lectura cómodo); después Card 02 entra dimmeando
-    // Card 01 y construye los 3 hallazgos + cita.
+    // Typewriter Card 01 · setInterval cada CARD01_WORD_TICK_MS, pause-aware
+    // (consulta pausedRef antes de incrementar). Cuando termina seg N, inicia
+    // countdown de pausa (también pause-aware). Cuando los 3 segmentos
+    // terminan, clearInterval.
+    const startTypewriter = () => {
+      // Limpieza defensiva por si quedó un interval del ciclo previo
+      // (no debería con timing actual; defensive cleanup).
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+        typewriterIntervalRef.current = null;
+      }
+      segIdxRef.current = 0;
+      pauseTicksRef.current = 0;
+
+      typewriterIntervalRef.current = setInterval(() => {
+        if (!mounted) return;
+        // Hold sostenido · no avanza el typewriter ni la pausa. Interval vive.
+        if (pausedRef.current) return;
+
+        // Todos los segmentos terminaron · clearInterval y done.
+        if (segIdxRef.current >= SEG_TOKEN_GROUPS.length) {
+          if (typewriterIntervalRef.current) {
+            clearInterval(typewriterIntervalRef.current);
+            typewriterIntervalRef.current = null;
+          }
+          return;
+        }
+
+        // Estamos en pausa inter-segmento · decrementa ticks y skip incremento.
+        if (pauseTicksRef.current > 0) {
+          pauseTicksRef.current -= 1;
+          return;
+        }
+
+        const idx = segIdxRef.current;
+        const total = SEG_TOKEN_GROUPS[idx].length;
+        const segKey = (["seg1", "seg2", "seg3"] as const)[idx];
+
+        setVisibleWords((prev) => {
+          const next = prev[segKey] + 1;
+          if (next >= total) {
+            // Justo completamos este segmento · arma la pausa para el próximo.
+            segIdxRef.current = idx + 1;
+            pauseTicksRef.current = PAUSE_BETWEEN_SEGS_TICKS;
+          }
+          return { ...prev, [segKey]: next };
+        });
+      }, CARD01_WORD_TICK_MS);
+    };
+
+    // Typewriter Card 02 · misma anatomía que startTypewriter pero con tick
+    // propio (CARD02_WORD_TICK_MS) y 4 sub-segmentos (H1/H2/H3 bodies + cita)
+    // con pausa breve (PAUSE_BETWEEN_HALLAZGOS_MS) entre cada uno. Cuando
+    // cada sub-segmento termina, levanta el `show` del siguiente bloque (el
+    // título de H2/H3 o el contenedor de la cita), sincronizado con el final
+    // de la pausa — fuera del state-updater para no caer en doble ejecución
+    // de side-effects en StrictMode.
+    const startCard02Typewriter = () => {
+      if (card02IntervalRef.current) {
+        clearInterval(card02IntervalRef.current);
+        card02IntervalRef.current = null;
+      }
+      card02IdxRef.current = 0;
+      card02PauseTicksRef.current = 0;
+
+      card02IntervalRef.current = setInterval(() => {
+        if (!mounted) return;
+        if (pausedRef.current) return;
+
+        if (card02IdxRef.current >= CARD02_TOKEN_GROUPS.length) {
+          if (card02IntervalRef.current) {
+            clearInterval(card02IntervalRef.current);
+            card02IntervalRef.current = null;
+          }
+          return;
+        }
+
+        if (card02PauseTicksRef.current > 0) {
+          card02PauseTicksRef.current -= 1;
+          // Al terminar la pausa, el siguiente bloque inicia · levanta el
+          // show del título/cita antes de que empiece a tipearse.
+          if (card02PauseTicksRef.current === 0) {
+            const nextIdx = card02IdxRef.current;
+            if (nextIdx === 1) setShowH2(true);
+            else if (nextIdx === 2) setShowH3(true);
+            else if (nextIdx === 3) setShowCita(true);
+          }
+          return;
+        }
+
+        const idx = card02IdxRef.current;
+        const total = CARD02_TOKEN_GROUPS[idx].length;
+        const key = (["h1", "h2", "h3", "cita"] as const)[idx];
+
+        setVisibleCard02((prev) => {
+          const next = prev[key] + 1;
+          if (next >= total) {
+            // Body N done · advance + arma pausa (la pausa termina mostrando
+            // el título del siguiente bloque, ver branch de arriba).
+            card02IdxRef.current = idx + 1;
+            card02PauseTicksRef.current = PAUSE_BETWEEN_HALLAZGOS_TICKS;
+          }
+          return { ...prev, [key]: next };
+        });
+      }, CARD02_WORD_TICK_MS);
+    };
+
+    // Loop continuo · ciclo 26s. Card 01 con typewriter word-by-word; al
+    // terminar (SETTLE=0) Card 02 entra inmediatamente, dimmeando Card 01,
+    // y un segundo typewriter arma los 3 hallazgos + la cita.
     const runCycle = () => {
-      // Reset todos los estados al inicio del ciclo.
+      // Reset estados al inicio del ciclo · incluye cualquier interval residual.
       setShowBack(false);
       setDimBack(false);
-      setShowSeg1(false);
-      setShowSeg2(false);
-      setShowSeg3(false);
+      setVisibleWords(ZERO_VISIBLE);
+      setVisibleCard02(ZERO_CARD02);
       setShowFront(false);
       setShowHeader(false);
       setShowH1(false);
       setShowH2(false);
       setShowH3(false);
       setShowCita(false);
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+        typewriterIntervalRef.current = null;
+      }
+      if (card02IntervalRef.current) {
+        clearInterval(card02IntervalRef.current);
+        card02IntervalRef.current = null;
+      }
+      segIdxRef.current = 0;
+      pauseTicksRef.current = 0;
+      card02IdxRef.current = 0;
+      card02PauseTicksRef.current = 0;
 
-      // Card 01 aparece y los 3 segmentos del insight fade-in escalonado.
+      // Card 01 aparece, luego arranca el typewriter de los 3 segmentos.
       T(200, () => setShowBack(true));
-      T(900, () => setShowSeg1(true));
-      T(3500, () => setShowSeg2(true));
-      T(6500, () => setShowSeg3(true));
-      // Card 02 entra superpuesta · Card 01 transita a dim (en mobile
-      // también se desplaza con x/scale, manejado en animate values).
-      T(11000, () => {
+      T(SEG1_START_MS, startTypewriter);
+
+      // Card 02 entra superpuesta · Card 01 transita a dim (en mobile también
+      // se desplaza con x/scale, manejado en animate values). SETTLE=0:
+      // transición inmediata al terminar el typewriter de Card 01.
+      T(SHOW_FRONT_AT_MS, () => {
         setDimBack(true);
         setShowFront(true);
       });
-      T(11500, () => setShowHeader(true));
-      T(12000, () => setShowH1(true));
-      T(15500, () => setShowH2(true));
-      T(19000, () => setShowH3(true));
-      T(22000, () => setShowCita(true));
-      // Loop reset al final del ciclo (26s · últimos 4s en estado final).
-      T(26000, runCycle);
+      T(SHOW_HEADER_AT_MS, () => setShowHeader(true));
+      // H1 title aparece + arranca el typewriter de Card 02. Los títulos de
+      // H2/H3 y el contenedor de la cita los levanta el propio interval al
+      // pasar de un bloque al siguiente.
+      T(SHOW_H1_AT_MS, () => {
+        setShowH1(true);
+        startCard02Typewriter();
+      });
+      // Loop reset al final del ciclo.
+      T(CYCLE_DURATION_MS, runCycle);
     };
 
     runCycle();
@@ -387,6 +813,14 @@ function FrancoInsightCards() {
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+        typewriterIntervalRef.current = null;
+      }
+      if (card02IntervalRef.current) {
+        clearInterval(card02IntervalRef.current);
+        card02IntervalRef.current = null;
+      }
     };
   }, [isInView, reduce]);
 
@@ -501,44 +935,19 @@ function FrancoInsightCards() {
         >
           ★ Insight de zona
         </p>
-        {/* Body en 3 segmentos · fade stagger (efecto typewriter sentence-by-
-            sentence). Each segment is a motion.span always-mounted with
-            animate condicional opacity (Phase 2.6e/f safe). */}
+        {/* Body en 3 segmentos · typewriter word-by-word (Phase 2.21).
+            TODAS las palabras siempre montadas como spans con keys estáticas;
+            opacity controlada por índice (visibleWords[segN]). El interval del
+            useEffect avanza la cuenta cada 80ms (pause-aware vía pausedRef). */}
         <p
           className="font-body italic text-[var(--landing-text-secondary)]"
           style={{ fontSize: 12.5, lineHeight: 1.55, margin: 0 }}
         >
-          <motion.span
-            initial={false}
-            animate={showSeg1 ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.5, ease: EASE }}
-            aria-hidden={!showSeg1}
-          >
-            Triple conectividad de metro (Manuel Montt{" "}
-            <Datum>245m</Datum>, Pedro de Valdivia <Datum>396m</Datum>,
-            Salvador <Datum>1km</Datum>) genera demanda sostenida.
-          </motion.span>{" "}
-          <motion.span
-            initial={false}
-            animate={showSeg2 ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.5, ease: EASE }}
-            aria-hidden={!showSeg2}
-          >
-            INACAP y DuocUC en un radio de <Datum>800m</Datum> atraen
-            estudiantes y jóvenes profesionales; Parque Inés de Suárez a
-            pasos suma calidad de vida.
-          </motion.span>{" "}
-          <motion.span
-            initial={false}
-            animate={showSeg3 ? { opacity: 1 } : { opacity: 0 }}
-            transition={{ duration: 0.5, ease: EASE }}
-            aria-hidden={!showSeg3}
-          >
-            El arriendo estimado de <Datum>$950.000</Datum> se posiciona en
-            el <Datum>percentil 58</Datum> del rango local (
-            <Datum>$640K–$1.347M</Datum>): compite sin castigar precio y
-            mantiene vacancia baja.
-          </motion.span>
+          <TypeSegment tokens={SEG1_TOKENS} visible={visibleWords.seg1} segId="s1" />
+          {" "}
+          <TypeSegment tokens={SEG2_TOKENS} visible={visibleWords.seg2} segId="s2" />
+          {" "}
+          <TypeSegment tokens={SEG3_TOKENS} visible={visibleWords.seg3} segId="s3" />
         </p>
       </motion.div>
 
@@ -583,15 +992,9 @@ function FrancoInsightCards() {
         <Hallazgo
           show={showH1}
           title="Tu financiamiento está forzado."
-          body={
-            <>
-              Con pie de{" "}
-              <Datum>20%</Datum> a <Datum>20 años</Datum> el dividendo te deja en{" "}
-              <Datum>−$310K/mes</Datum>. Sube el pie a <Datum>30%</Datum> y
-              extiende a <Datum>25 años</Datum> al <Datum>4,2%</Datum>: el flujo
-              sube a <Datum>−$90K</Datum>.
-            </>
-          }
+          tokens={H1_TOKENS}
+          visible={visibleCard02.h1}
+          segId="h1"
         />
 
         <Divider />
@@ -600,14 +1003,9 @@ function FrancoInsightCards() {
         <Hallazgo
           show={showH2}
           title="El arriendo que pusiste no es real."
-          body={
-            <>
-              Pediste <Datum>UF 22</Datum>, pero los <Datum>73 comparables</Datum>{" "}
-              de Ñuñoa transan en <Datum>UF 18</Datum>. Con eso bajas{" "}
-              <Datum>UF 4/mes</Datum>, pero deja de ser una proyección de
-              fantasía — ahora sí puedes confiar en el veredicto.
-            </>
-          }
+          tokens={H2_TOKENS}
+          visible={visibleCard02.h2}
+          segId="h2"
         />
 
         <Divider />
@@ -616,19 +1014,16 @@ function FrancoInsightCards() {
         <Hallazgo
           show={showH3}
           title="La ubicación juega a tu favor."
-          body={
-            <>
-              Metro Irarrázaval a <Datum>282m</Datum>, Clínica UC Christus y la
-              U. de Chile a menos de <Datum>2km</Datum>. Demanda estable,
-              vacancia baja: si el precio cede a <Datum>UF 4.900</Datum>, el
-              negocio cierra.
-            </>
-          }
+          tokens={H3_TOKENS}
+          visible={visibleCard02.h3}
+          segId="h3"
         />
 
         <Divider strong />
 
-        {/* Cita Franco · Sans italic */}
+        {/* Cita Franco · Sans italic + typewriter (Phase 2.22). El contenedor
+            fadea con showCita; las palabras aparecen word-by-word según
+            visibleCard02.cita. */}
         <motion.p
           initial={false}
           animate={showCita ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
@@ -641,8 +1036,7 @@ function FrancoInsightCards() {
             margin: 0,
           }}
         >
-          &ldquo;Una calculadora habría corrido tus números. Yo te digo cuáles
-          arreglar primero.&rdquo;
+          <TypeSegment tokens={CITA_TOKENS} visible={visibleCard02.cita} segId="cita" />
         </motion.p>
       </motion.div>
     </div>
@@ -679,15 +1073,21 @@ function MockupWordmark() {
   );
 }
 
-/* Hallazgo individual · título Serif Bold + body Sans con datos Mono inline. */
+/* Hallazgo individual · título Serif Bold (fade) + body Sans con typewriter
+ * word-by-word (Phase 2.22). El body's <TypeSegment> tiene todos los spans
+ * always-mounted; el `visible` count avanza por el setInterval de Card 02. */
 function Hallazgo({
   show,
   title,
-  body,
+  tokens,
+  visible,
+  segId,
 }: {
   show: boolean;
   title: string;
-  body: ReactNode;
+  tokens: ReadonlyArray<SegToken>;
+  visible: number;
+  segId: string;
 }) {
   return (
     <motion.div
@@ -715,7 +1115,7 @@ function Hallazgo({
           margin: 0,
         }}
       >
-        {body}
+        <TypeSegment tokens={tokens} visible={visible} segId={segId} />
       </p>
     </motion.div>
   );
