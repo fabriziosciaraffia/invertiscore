@@ -236,8 +236,9 @@ function MockupWordmark() {
 
 function MockupStep01() {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Phase 2.19 · once:false → loop continuo in-view (espejo del patrón Hero).
   const isInView = useInView(containerRef, {
-    once: true,
+    once: false,
     margin: "-50px 0px -50px 0px",
   });
   const reduce = useReducedMotion();
@@ -246,15 +247,19 @@ function MockupStep01() {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [showMap, setShowMap] = useState(false);
 
-  useEffect(() => {
-    if (!isInView) return;
+  // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
+  const shouldLoop = !reduce && isInView;
 
-    // Reduce motion: estado final inmediato.
-    if (reduce) {
-      setDropdownVisible(true);
-      setShowMap(true);
-      return;
-    }
+  // prefers-reduced-motion → estado final inmediato (sin loop).
+  useEffect(() => {
+    if (!reduce) return;
+    setDropdownVisible(true);
+    setShowMap(true);
+  }, [reduce]);
+
+  // Loop continuo (~6s) mientras esté in-view · runCycle auto-reiniciable.
+  useEffect(() => {
+    if (!shouldLoop) return;
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -267,14 +272,25 @@ function MockupStep01() {
       );
     };
 
-    T(600, () => setDropdownVisible(true));
-    T(900, () => setShowMap(true));
+    const runCycle = () => {
+      // Reset al estado inicial del ciclo (dropdown + mapa fade-out).
+      setDropdownVisible(false);
+      setShowMap(false);
+
+      T(600, () => setDropdownVisible(true));
+      T(900, () => setShowMap(true));
+
+      // Reset → próximo ciclo (~6s).
+      T(6000, runCycle);
+    };
+
+    runCycle();
 
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
     };
-  }, [isInView, reduce]);
+  }, [shouldLoop]);
 
   return (
     <div
@@ -566,8 +582,9 @@ function MockupStep01() {
 
 function MockupStep02() {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Phase 2.19 · once:false → loop continuo in-view (espejo del patrón Hero).
   const isInView = useInView(containerRef, {
-    once: true,
+    once: false,
     margin: "-50px 0px -50px 0px",
   });
   const reduce = useReducedMotion();
@@ -589,26 +606,31 @@ function MockupStep02() {
   const [esteCount, setEsteCount] = useState(0);
   const [gastosCount, setGastosCount] = useState(0);
 
-  useEffect(() => {
-    if (!isInView) return;
+  // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
+  const shouldLoop = !reduce && isInView;
 
-    if (reduce) {
-      setStepIdx(4);
-      setProgress(80);
-      setShowLine1(true);
-      setShowLine2(true);
-      setShowLine3(true);
-      setShowLine4(true);
-      setShowLine5(true);
-      setShowFooter(true);
-      setChipsCount(3);
-      setContribCount(78400);
-      setCompsCount(145);
-      setMedianaCount(89);
-      setEsteCount(92);
-      setGastosCount(120000);
-      return;
-    }
+  // prefers-reduced-motion → estado final estático directo (sin loop).
+  useEffect(() => {
+    if (!reduce) return;
+    setStepIdx(4);
+    setProgress(80);
+    setShowLine1(true);
+    setShowLine2(true);
+    setShowLine3(true);
+    setShowLine4(true);
+    setShowLine5(true);
+    setShowFooter(true);
+    setChipsCount(3);
+    setContribCount(78400);
+    setCompsCount(145);
+    setMedianaCount(89);
+    setEsteCount(92);
+    setGastosCount(120000);
+  }, [reduce]);
+
+  // Loop continuo (~8s) mientras esté in-view · runCycle auto-reiniciable.
+  useEffect(() => {
+    if (!shouldLoop) return;
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -641,51 +663,77 @@ function MockupStep02() {
       rafIds.push(requestAnimationFrame(tick));
     };
 
-    // Línea 1 · SII conectado
-    setShowLine1(true);
-    animateValue(setContribCount, 0, 78400, 600);
-    animateValue(setProgress, 0, 20, 600, false);
+    const runCycle = () => {
+      // Reset al estado inicial del ciclo · el checklist se limpia y
+      // reconstruye (gap de 400ms antes de la línea 1).
+      setStepIdx(1);
+      setProgress(0);
+      setShowLine1(false);
+      setShowLine2(false);
+      setShowLine3(false);
+      setShowLine4(false);
+      setShowLine5(false);
+      setShowFooter(false);
+      setChipsCount(0);
+      setContribCount(0);
+      setCompsCount(0);
+      setMedianaCount(0);
+      setEsteCount(0);
+      setGastosCount(0);
 
-    // Línea 2 · Comparables
-    T(600, () => {
-      setStepIdx(2);
-      setShowLine2(true);
-      animateValue(setCompsCount, 0, 145, 600);
-      animateValue(setMedianaCount, 0, 89, 600);
-      animateValue(setEsteCount, 0, 92, 600);
-      animateValue(setProgress, 20, 40, 600, false);
-    });
+      // Línea 1 · SII conectado
+      T(400, () => {
+        setShowLine1(true);
+        animateValue(setContribCount, 0, 78400, 600);
+        animateValue(setProgress, 0, 20, 600, false);
+      });
 
-    // Línea 3 · Modalidad con chips
-    T(1200, () => {
-      setStepIdx(3);
-      setShowLine3(true);
-      animateValue(setProgress, 40, 60, 600, false);
-    });
-    T(1300, () => setChipsCount(1));
-    T(1400, () => setChipsCount(2));
-    T(1500, () => setChipsCount(3));
+      // Línea 2 · Comparables
+      T(1000, () => {
+        setStepIdx(2);
+        setShowLine2(true);
+        animateValue(setCompsCount, 0, 145, 600);
+        animateValue(setMedianaCount, 0, 89, 600);
+        animateValue(setEsteCount, 0, 92, 600);
+        animateValue(setProgress, 20, 40, 600, false);
+      });
 
-    // Línea 4 · Gastos
-    T(1800, () => {
-      setStepIdx(4);
-      setShowLine4(true);
-      animateValue(setGastosCount, 0, 120000, 600);
-      animateValue(setProgress, 60, 80, 600, false);
-    });
+      // Línea 3 · Modalidad con chips
+      T(1600, () => {
+        setStepIdx(3);
+        setShowLine3(true);
+        animateValue(setProgress, 40, 60, 600, false);
+      });
+      T(1700, () => setChipsCount(1));
+      T(1800, () => setChipsCount(2));
+      T(1900, () => setChipsCount(3));
 
-    // Línea 5 · Calculando (loop infinito en el dot, no avanza stepIdx)
-    T(2400, () => setShowLine5(true));
+      // Línea 4 · Gastos
+      T(2200, () => {
+        setStepIdx(4);
+        setShowLine4(true);
+        animateValue(setGastosCount, 0, 120000, 600);
+        animateValue(setProgress, 60, 80, 600, false);
+      });
 
-    // Footer
-    T(3000, () => setShowFooter(true));
+      // Línea 5 · Calculando (dot con pulse infinito propio, no avanza stepIdx)
+      T(2800, () => setShowLine5(true));
+
+      // Footer
+      T(3400, () => setShowFooter(true));
+
+      // Reset → próximo ciclo (~8s).
+      T(8000, runCycle);
+    };
+
+    runCycle();
 
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
       rafIds.forEach(cancelAnimationFrame);
     };
-  }, [isInView, reduce]);
+  }, [shouldLoop]);
 
   return (
     <div
@@ -1025,8 +1073,11 @@ const S03_GRID_VALUES = [0, 400, 800];
 
 function MockupStep03() {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Phase 2.19 · once:false para permitir loop continuo in-view. El loop
+  // visual del chart lo maneja CSS (.s04-chart--active); el JS runCycle se
+  // re-ejecuta al entrar al viewport (espejo del patrón Hero).
   const isInView = useInView(containerRef, {
-    once: true,
+    once: false,
     margin: "-50px 0px -50px 0px",
   });
   const reduce = useReducedMotion();
@@ -1047,33 +1098,37 @@ function MockupStep03() {
   const [costoCount, setCostoCount] = useState(0);
   const [negociCount, setNegociCount] = useState(0);
   const [largoCount, setLargoCount] = useState(0);
-  // Patrimonio
+  // Patrimonio · Phase 2.19 · barIdx/linePct removidos · el SVG corre con
+  // CSS @keyframes puro (s04-chart-*), sin estado JS de geometría.
   const [showPatri, setShowPatri] = useState(false);
-  const [barIdx, setBarIdx] = useState(0);
-  const [linePct, setLinePct] = useState(0);
 
+  // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
+  const shouldLoop = !reduce && isInView;
+  // chartActive activa los @keyframes CSS del SVG (sincronizado con runCycle).
+  const chartActive = shouldLoop;
+
+  // prefers-reduced-motion → estado final estático directo (sin loop).
   useEffect(() => {
-    if (!isInView) return;
+    if (!reduce) return;
+    setShowHero(true);
+    setScoreCount(61);
+    setBarPct(61);
+    setShowBadge(true);
+    setShowVerdictLine(true);
+    setShowCaja(true);
+    setShowCard02(true);
+    setShowCard03(true);
+    setShowCard04(true);
+    setShowCard05(true);
+    setCostoCount(310);
+    setNegociCount(4900);
+    setLargoCount(1450);
+    setShowPatri(true);
+  }, [reduce]);
 
-    if (reduce) {
-      setShowHero(true);
-      setScoreCount(61);
-      setBarPct(61);
-      setShowBadge(true);
-      setShowVerdictLine(true);
-      setShowCaja(true);
-      setShowCard02(true);
-      setShowCard03(true);
-      setShowCard04(true);
-      setShowCard05(true);
-      setCostoCount(310);
-      setNegociCount(4900);
-      setLargoCount(1450);
-      setShowPatri(true);
-      setBarIdx(11);
-      setLinePct(100);
-      return;
-    }
+  // Loop continuo (~12s) mientras esté in-view · runCycle auto-reiniciable.
+  useEffect(() => {
+    if (!shouldLoop) return;
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -1106,41 +1161,61 @@ function MockupStep03() {
       rafIds.push(requestAnimationFrame(tick));
     };
 
-    T(400, () => {
-      setShowHero(true);
-      animateValue(setScoreCount, 0, 61, 1200);
-      animateValue(setBarPct, 0, 61, 1200, false);
-    });
-    T(1600, () => setShowBadge(true));
-    T(1800, () => setShowVerdictLine(true));
-    T(2200, () => setShowCaja(true));
-    T(2800, () => {
-      setShowCard02(true);
-      animateValue(setCostoCount, 0, 310, 700);
-    });
-    T(3000, () => {
-      setShowCard03(true);
-      animateValue(setNegociCount, 0, 4900, 700);
-    });
-    T(3200, () => {
-      setShowCard04(true);
-      animateValue(setLargoCount, 0, 1450, 700);
-    });
-    T(3400, () => setShowCard05(true));
-    T(3800, () => setShowPatri(true));
-    for (let i = 0; i < 11; i++) {
-      T(4000 + i * 80, () =>
-        setBarIdx((prev) => (prev > i ? prev : i + 1)),
-      );
-    }
-    T(4880, () => animateValue(setLinePct, 0, 100, 1500, false));
+    const runCycle = () => {
+      // Reset al estado inicial del ciclo. El SVG (CSS) hace wrap a 0
+      // simultáneamente — enmascarado por el fade-out de showPatri.
+      setShowHero(false);
+      setScoreCount(0);
+      setBarPct(0);
+      setShowBadge(false);
+      setShowVerdictLine(false);
+      setShowCaja(false);
+      setShowCard02(false);
+      setShowCard03(false);
+      setShowCard04(false);
+      setShowCard05(false);
+      setCostoCount(0);
+      setNegociCount(0);
+      setLargoCount(0);
+      setShowPatri(false);
+
+      T(400, () => {
+        setShowHero(true);
+        animateValue(setScoreCount, 0, 61, 1200);
+        animateValue(setBarPct, 0, 61, 1200, false);
+      });
+      T(1600, () => setShowBadge(true));
+      T(1800, () => setShowVerdictLine(true));
+      T(2200, () => setShowCaja(true));
+      T(2800, () => {
+        setShowCard02(true);
+        animateValue(setCostoCount, 0, 310, 700);
+      });
+      T(3000, () => {
+        setShowCard03(true);
+        animateValue(setNegociCount, 0, 4900, 700);
+      });
+      T(3200, () => {
+        setShowCard04(true);
+        animateValue(setLargoCount, 0, 1450, 700);
+      });
+      T(3400, () => setShowCard05(true));
+      T(3800, () => setShowPatri(true));
+      // Barras (4000ms) · línea (4880ms) · dots: ahora CSS @keyframes,
+      // sincronizados al inicio del ciclo vía clase .s04-chart--active.
+
+      // Reset → próximo ciclo (12s · igual período que el CSS del chart).
+      T(12000, runCycle);
+    };
+
+    runCycle();
 
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
       rafIds.forEach(cancelAnimationFrame);
     };
-  }, [isInView, reduce]);
+  }, [shouldLoop]);
 
   const netoPoints = S03_NETO.map(
     (v, i) => `${S03_barX(i) + S03_BAR_W / 2},${S03_v2y(v)}`,
@@ -1464,6 +1539,7 @@ function MockupStep03() {
           viewBox="0 0 560 130"
           preserveAspectRatio="xMidYMid meet"
           style={{ width: "100%", height: "auto", display: "block" }}
+          className={chartActive ? "s04-chart s04-chart--active" : "s04-chart"}
           aria-hidden="true"
         >
           {/* Gridlines + Y labels */}
@@ -1496,39 +1572,38 @@ function MockupStep03() {
             );
           })}
 
-          {/* Barras stack: aporte (red) abajo + valor (gris) arriba */}
+          {/* Barras stack: aporte (red) abajo + valor (gris) arriba.
+              Phase 2.19 · <rect> nativos con geometría final · animación
+              100% CSS (scaleY 0→1 desde la base) vía clase s04-chart-bar.
+              Stagger via animation-delay i*0.08s (calca el stagger JS 80ms). */}
           {S03_APORTE.map((aporte, i) => {
             const valor = S03_VALOR[i];
-            const visible = i < barIdx;
             const aporteY = S03_v2y(aporte);
             const aporteH = S03_CHART_BOTTOM_Y - aporteY;
             const valorY = S03_v2y(aporte + valor);
             const valorH = aporteY - valorY;
             const x = S03_barX(i);
+            const delay = `${i * 0.08}s`;
             return (
               <g key={`bar-${i}`}>
                 {/* Aporte acumulado · Signal Red */}
-                <motion.rect
-                  initial={false}
-                  animate={{
-                    y: visible ? aporteY : S03_CHART_BOTTOM_Y,
-                    height: visible ? aporteH : 0,
-                  }}
-                  transition={{ duration: 0.4, ease: S01_EASE }}
+                <rect
+                  className="s04-chart-bar"
+                  style={{ animationDelay: delay }}
                   x={x}
+                  y={aporteY}
                   width={S03_BAR_W}
+                  height={aporteH}
                   fill="#C8323C"
                 />
                 {/* Valor depto · Ink 100 con opacity 50% (skill Patrón 7.B.3) */}
-                <motion.rect
-                  initial={false}
-                  animate={{
-                    y: visible ? valorY : aporteY,
-                    height: visible ? valorH : 0,
-                  }}
-                  transition={{ duration: 0.4, ease: S01_EASE }}
+                <rect
+                  className="s04-chart-bar"
+                  style={{ animationDelay: delay }}
                   x={x}
+                  y={valorY}
                   width={S03_BAR_W}
+                  height={valorH}
                   fill="var(--landing-text)"
                   fillOpacity={0.5}
                 />
@@ -1536,8 +1611,9 @@ function MockupStep03() {
             );
           })}
 
-          {/* Línea Patrimonio neto · path con dashoffset animado */}
+          {/* Línea Patrimonio neto · draw via stroke-dashoffset (CSS). */}
           <polyline
+            className="s04-chart-line"
             points={netoPoints}
             fill="none"
             stroke="var(--landing-text)"
@@ -1545,29 +1621,20 @@ function MockupStep03() {
             strokeLinecap="round"
             strokeLinejoin="round"
             pathLength={100}
-            style={{
-              strokeDasharray: 100,
-              strokeDashoffset: 100 - linePct,
-            }}
           />
-          {/* Puntos sobre cada año (visibles solo si la línea ya pasó). */}
-          {S03_NETO.map((v, i) => {
-            const dotPct = (i / 10) * 100;
-            const dotVisible = linePct >= dotPct - 0.5;
-            return (
-              <circle
-                key={`dot-${i}`}
-                cx={S03_barX(i) + S03_BAR_W / 2}
-                cy={S03_v2y(v)}
-                r={2}
-                fill="var(--landing-text)"
-                style={{
-                  opacity: dotVisible ? 1 : 0,
-                  transition: "opacity 200ms linear",
-                }}
-              />
-            );
-          })}
+          {/* Puntos sobre cada año · fade-in con la línea (CSS · stagger
+              animation-delay i*0.15s · calca el avance de linePct original). */}
+          {S03_NETO.map((v, i) => (
+            <circle
+              key={`dot-${i}`}
+              className="s04-chart-dot"
+              style={{ animationDelay: `${i * 0.15}s` }}
+              cx={S03_barX(i) + S03_BAR_W / 2}
+              cy={S03_v2y(v)}
+              r={2}
+              fill="var(--landing-text)"
+            />
+          ))}
 
           {/* X-axis labels */}
           {S03_NETO.map((_, i) => (

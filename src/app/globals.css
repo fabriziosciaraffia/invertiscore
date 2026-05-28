@@ -475,6 +475,81 @@ input[type="number"] {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+ * F.11 · s04 (SectionWhatFrancoDoes · MockupStep03) chart · CSS puro
+ *
+ * Mismo patrón anti NotFoundError que hero-mobile-chart-* : el SVG del
+ * paso 03 corre con @keyframes CSS 100% — sin motion.* dentro del SVG,
+ * sin estado JS controlando geometría de barras/línea/dots.
+ *
+ * Sincronización con el runCycle JS del mockup (12s): la animación
+ * arranca cuando el <svg> recibe la clase .s04-chart--active (JS la
+ * setea cuando shouldLoop = true, mismo commit que el inicio de
+ * runCycle). Ambos clocks (JS 12s y CSS 12s) parten juntos.
+ *
+ * Timings (% de 12s) calcados de la coreografía JS original:
+ *   · barras: crecen a 4000ms (33.33%) · stagger via animation-delay i*0.08s
+ *   · línea : dibuja 4880ms→6380ms (40.67%→53.17%)
+ *   · dots  : aparecen con la línea · stagger via animation-delay i*0.15s
+ * ───────────────────────────────────────────────────────────────── */
+
+@keyframes s04-chart-bar-grow {
+  0%, 33.33% { transform: scaleY(0); }
+  36.66%, 100% { transform: scaleY(1); }
+}
+
+@keyframes s04-chart-line-draw {
+  0%, 40.67% { stroke-dashoffset: 100; }
+  53.17%, 100% { stroke-dashoffset: 0; }
+}
+
+@keyframes s04-chart-dot-fade {
+  0%, 40.66% { opacity: 0; }
+  42.16%, 100% { opacity: 1; }
+}
+
+.s04-chart-bar {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+}
+
+.s04-chart-line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+.s04-chart-dot {
+  opacity: 0;
+}
+
+.s04-chart--active .s04-chart-bar {
+  animation: s04-chart-bar-grow 12s linear infinite;
+}
+
+.s04-chart--active .s04-chart-line {
+  animation: s04-chart-line-draw 12s linear infinite;
+}
+
+.s04-chart--active .s04-chart-dot {
+  animation: s04-chart-dot-fade 12s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s04-chart-bar {
+    transform: scaleY(1);
+    animation: none;
+  }
+  .s04-chart-line {
+    stroke-dashoffset: 0;
+    animation: none;
+  }
+  .s04-chart-dot {
+    opacity: 1;
+    animation: none;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────
  * F.11 · Utility classes: cards y mockups premium polish.
  * Stack de sombras + gradient sutil + borde top-highlight (interior
  * de la card) que da sensación de "lit from above" estilo Linear.
