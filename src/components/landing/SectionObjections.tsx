@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   motion,
   useInView,
@@ -35,7 +35,7 @@ const BLOCKS: ReadonlyArray<Block> = [
     label: "01 · Datos",
     quote: "¿De dónde sacan los números?",
     title: "Del mercado real, no de promedios.",
-    body: "Cruzamos tu caso con propiedades en venta, arriendo largo, datos de Airbnb (ADR y ocupación por zona), estaciones de metro, clínicas, universidades y comercio. 24 comunas del Gran Santiago, actualizado semanal.",
+    body: "Comparamos tu departamento con información real de propiedades en venta, arriendos de largo plazo y datos en línea de Airbnb. Además, interpretamos atractores de demanda como cercanía a estaciones de metro, clínicas, universidades y comercio. 24 comunas del Gran Santiago, actualizado semanalmente.",
     visualKey: "data",
   },
   {
@@ -316,44 +316,210 @@ function VisualSlot({ which }: { which: Block["visualKey"] }) {
   return <AIRecommendations />;
 }
 
+type Kpi = { label: string; big: string; sub: string; tip: string };
+
+/* Detecta si el dispositivo soporta hover real (mouse fino). En touch
+ * devuelve false → el tooltip se controla por tap en lugar de hover. */
+function useCanHover(): boolean {
+  const [canHover, setCanHover] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const apply = () => setCanHover(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return canHover;
+}
+
+const KPIS: ReadonlyArray<Kpi> = [
+  {
+    label: "Venta",
+    big: "12.944",
+    sub: "departamentos comparables en venta",
+    tip: "Base de propiedades publicadas en venta que cruzamos para estimar precio justo de mercado por zona y características.",
+  },
+  {
+    label: "Renta larga (arriendo tradicional)",
+    big: "6.506",
+    sub: "arriendos activos en zona",
+    tip: "Departamentos efectivamente arrendados o publicados en arriendo de largo plazo, usados para calcular el arriendo de mercado realista por zona.",
+  },
+  {
+    label: "Renta corta (Airbnb)",
+    big: "ADR + Ocupación",
+    sub: "tarifa diaria y ocupación por zona",
+    tip: "ADR (Average Daily Rate) es la tarifa promedio por noche; ocupación es el % de días arrendados al mes. Datos en línea segmentados por zona y tipo de propiedad.",
+  },
+  {
+    label: "Entorno",
+    big: "195+",
+    sub: "metros, clínicas, universidades, comercio",
+    tip: "Lugares cercanos que generan demanda estable: estaciones de metro, clínicas, universidades, malls, instituciones. Cada uno aporta al perfil de demanda de la zona.",
+  },
+];
+
 function DataCardsGrid() {
-  const items: Array<{ label: string; big: string; sub: string }> = [
-    { label: "Venta", big: "12.944", sub: "deptos comparables" },
-    { label: "Arriendo largo", big: "6.506", sub: "arriendos vivos" },
-    { label: "Airbnb", big: "ADR + Occ", sub: "por zona y banda" },
-    { label: "Atractores", big: "195+", sub: "metros · POIs · clínicas" },
-  ];
+  const canHover = useCanHover();
   return (
     <div className="grid grid-cols-2 gap-2.5">
-      {items.map((it) => (
-        <div
+      {KPIS.map((it, i) => (
+        <KpiTile
           key={it.label}
-          className="rounded-md px-3 py-3.5"
+          item={it}
+          rowTop={i < 2}
+          colLeft={i % 2 === 0}
+          canHover={canHover}
+        />
+      ))}
+    </div>
+  );
+}
+
+/* Tile KPI con tooltip de ayuda. Patrón SAFE: tooltip always-mounted con
+ * animate condicional opacity + pointerEvents (no {cond && <Tooltip>} ni
+ * AnimatePresence). Hover en desktop, tap-toggle en touch (tap fuera cierra).
+ * Auto-flip por fila (top row → abajo, bottom row → arriba) y por columna
+ * (izq → left:0, der → right:0) para no salirse del modal. */
+function KpiTile({
+  item,
+  rowTop,
+  colLeft,
+  canHover,
+}: {
+  item: Kpi;
+  rowTop: boolean;
+  colLeft: boolean;
+  canHover: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const tileRef = useRef<HTMLDivElement>(null);
+
+  // Tap fuera cierra (relevante en touch).
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (tileRef.current && !tileRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const hoverHandlers = canHover
+    ? {
+        onMouseEnter: () => setOpen(true),
+        onMouseLeave: () => setOpen(false),
+        onFocus: () => setOpen(true),
+        onBlur: () => setOpen(false),
+      }
+    : {};
+
+  return (
+    <div
+      ref={tileRef}
+      className="relative rounded-md px-3 py-3.5"
+      style={{
+        background: "var(--landing-card-bg-soft)",
+        border: "0.5px solid var(--landing-card-border)",
+        // Eleva el tile abierto sobre sus hermanos para que el tooltip no
+        // quede tapado por la fila siguiente.
+        zIndex: open ? 30 : "auto",
+      }}
+    >
+      <div className="flex items-center" style={{ gap: 6 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em" }}
+        >
+          {item.label}
+        </p>
+        <button
+          type="button"
+          aria-label={`Qué significa ${item.label}`}
+          aria-expanded={open}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
+          {...hoverHandlers}
+          // Área clickeable 24×24 (padding 4 + círculo 16) sin desplazar el
+          // layout (margin negativo compensa el padding).
+          className="inline-flex shrink-0 items-center justify-center"
           style={{
-            background: "var(--landing-card-bg-soft)",
-            border: "0.5px solid var(--landing-card-border)",
+            padding: 4,
+            margin: -4,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            lineHeight: 0,
           }}
         >
-          <p
-            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 9, letterSpacing: "0.14em" }}
+          <span
+            aria-hidden="true"
+            className="inline-flex items-center justify-center font-mono transition-colors duration-150"
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: 999,
+              border: `0.5px solid ${
+                open ? "#C8323C" : "var(--landing-card-border)"
+              }`,
+              color: open ? "#C8323C" : "var(--landing-text-muted)",
+              fontSize: 9,
+              lineHeight: 1,
+            }}
           >
-            {it.label}
-          </p>
-          <p
-            className="mt-1.5 font-mono font-semibold text-[var(--landing-text)]"
-            style={{ fontSize: 18 }}
-          >
-            {it.big}
-          </p>
-          <p
-            className="mt-1 font-body leading-[1.4] text-[var(--landing-text-muted)]"
-            style={{ fontSize: 11 }}
-          >
-            {it.sub}
-          </p>
-        </div>
-      ))}
+            ?
+          </span>
+        </button>
+      </div>
+
+      <p
+        className="mt-1.5 font-mono font-semibold leading-[1.1] text-[var(--landing-text)]"
+        style={{ fontSize: 18 }}
+      >
+        {item.big}
+      </p>
+      <p
+        className="mt-1 font-body leading-[1.4] text-[var(--landing-text-muted)]"
+        style={{ fontSize: 11 }}
+      >
+        {item.sub}
+      </p>
+
+      {/* Tooltip · always-mounted */}
+      <motion.div
+        role="tooltip"
+        aria-hidden={!open}
+        initial={false}
+        animate={{ opacity: open ? 1 : 0, y: open ? 0 : rowTop ? -4 : 4 }}
+        transition={{ duration: 0.15, ease: EASE }}
+        style={{
+          position: "absolute",
+          ...(rowTop
+            ? { top: "calc(100% + 8px)" }
+            : { bottom: "calc(100% + 8px)" }),
+          ...(colLeft ? { left: 0 } : { right: 0 }),
+          width: "max-content",
+          maxWidth: 240,
+          background: "var(--landing-card-bg-soft)",
+          border: "0.5px solid var(--landing-card-border)",
+          borderRadius: 8,
+          padding: "10px 12px",
+          boxShadow: "0 8px 24px -12px rgba(0,0,0,0.45)",
+          zIndex: 60,
+          pointerEvents: open ? "auto" : "none",
+        }}
+      >
+        <span
+          className="font-body text-[var(--landing-text-muted)]"
+          style={{ fontSize: 12, lineHeight: 1.45, display: "block" }}
+        >
+          {item.tip}
+        </span>
+      </motion.div>
     </div>
   );
 }
