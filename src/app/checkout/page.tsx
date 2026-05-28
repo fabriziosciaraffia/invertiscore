@@ -177,6 +177,21 @@ function CheckoutContent() {
             <p className="font-body text-sm text-[#C8323C] mb-4">{error}</p>
           )}
 
+          {/* Banner defensivo de cobertura. La mayoría llega acá tras pasar por
+              el wizard (ya sabe que su zona está cubierta), pero algunos compran
+              créditos primero — recordatorio antes de pagar. */}
+          <div
+            className="mb-4 rounded-lg px-3 py-2.5"
+            style={{
+              border: "0.5px solid var(--franco-border)",
+              background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            }}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-[0.06em] leading-[1.5] text-[var(--franco-text-muted)] m-0">
+              Análisis solo disponible para Gran Santiago. Verifica que tu propiedad está en zona cubierta antes de comprar.
+            </p>
+          </div>
+
           <button
             type="button"
             onClick={handlePay}

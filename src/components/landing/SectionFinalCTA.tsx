@@ -40,7 +40,7 @@ export default function SectionFinalCTA() {
             href="/register"
             className="group inline-flex items-center gap-2 rounded-md bg-white px-7 py-4 font-mono text-[14px] font-semibold uppercase tracking-[0.06em] text-[#C8323C] shadow-[0_4px_24px_rgba(0,0,0,0.15)] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
           >
-            Analizar mi departamento
+            Analizar departamento
             <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
               →
             </span>

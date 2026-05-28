@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
+import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { MapaThumbnail, type Comparable } from "./MapaThumbnail";
 import { ModalDetallesDepto } from "./ModalDetallesDepto";
+import { ModalZonaNoDisponible } from "./ModalZonaNoDisponible";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import {
   previewDetalles,
@@ -16,16 +18,24 @@ export function Paso1Propiedad({
   setState,
   comparablesCount,
   comparables,
+  userEmail,
 }: {
   state: WizardV3State;
   setState: (patch: Partial<WizardV3State>) => void;
   comparablesCount: number;
   comparables?: Comparable[];
+  /** Email del usuario logueado, para prefill del modal de zona no cubierta. */
+  userEmail?: string | null;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [zonaModalOpen, setZonaModalOpen] = useState(false);
   const direccionRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const autocompleteRef = useRef<any>(null);
+
+  // ¿La comuna seleccionada está fuera de cobertura (no Gran Santiago)?
+  // state.comuna se llena solo al elegir una opción del autocomplete.
+  const fueraDeZona = !!state.comuna && !isComunaDisponible(state.comuna);
 
   // Google Places autocomplete
   useEffect(() => {
@@ -52,13 +62,19 @@ export function Paso1Propiedad({
           || comps.find((c) => c.types.includes("locality"))?.long_name
           || "";
         const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comuna.toLowerCase());
+        const comunaFinal = match?.comuna || comuna;
         setState({
           direccion: addr,
           lat,
           lng,
-          comuna: match?.comuna || comuna,
+          comuna: comunaFinal,
           ciudad: match?.ciudad || "Santiago",
         });
+        // Gate de cobertura: si la comuna no es Gran Santiago, abrimos el
+        // warning bloqueante. El paso 1 no avanza mientras siga fuera de zona.
+        if (comunaFinal && !isComunaDisponible(comunaFinal)) {
+          setZonaModalOpen(true);
+        }
       });
       autocompleteRef.current = ac;
     }).catch(() => { /* ignore */ });
@@ -84,9 +100,22 @@ export function Paso1Propiedad({
           onChange={(e) => setState({ direccion: e.target.value })}
         />
         {state.comuna ? (
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1">
-            {state.comuna}{state.ciudad ? ` · ${state.ciudad}` : ""}
-          </p>
+          fueraDeZona ? (
+            <p className="font-body text-[11px] mt-1 text-[#C8323C]">
+              {state.comuna} está fuera del Gran Santiago — por ahora no disponible.{" "}
+              <button
+                type="button"
+                onClick={() => setZonaModalOpen(true)}
+                className="underline underline-offset-2 font-medium"
+              >
+                Ver detalle
+              </button>
+            </p>
+          ) : (
+            <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1">
+              {state.comuna}{state.ciudad ? ` · ${state.ciudad}` : ""}
+            </p>
+          )
         ) : (
           <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1">
             Escribe y selecciona una opción del dropdown para ubicar en el mapa.
@@ -210,6 +239,13 @@ export function Paso1Propiedad({
         onClose={() => setModalOpen(false)}
         state={state}
         onSave={setState}
+      />
+
+      <ModalZonaNoDisponible
+        open={zonaModalOpen}
+        onClose={() => setZonaModalOpen(false)}
+        comuna={state.comuna}
+        defaultEmail={userEmail}
       />
     </div>
   );

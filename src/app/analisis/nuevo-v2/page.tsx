@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { AppNav } from "@/components/chrome/AppNav";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { WizardStepper } from "@/components/formulario-v3/WizardStepper";
 import { Paso1Propiedad } from "@/components/formulario-v3/Paso1Propiedad";
@@ -281,8 +282,12 @@ export default function NuevoAnalisisV3Page() {
   }, [state.comuna, state.superficieUtil, state.dormitorios, state.lat, state.lng, state.precio, state.tipoPropiedad, ufCLP]);
 
   // ─── Step validation ──
+  // Gate de cobertura: el paso 1 no avanza si la comuna está fuera del Gran
+  // Santiago (warning bloqueante en Paso1Propiedad). Fuente de verdad única:
+  // isComunaDisponible.
   const canAdvanceFromStep1 = !!(state.direccion && state.comuna && state.tipoPropiedad
-    && parseDecimalLocale(state.superficieUtil) > 0);
+    && parseDecimalLocale(state.superficieUtil) > 0
+    && isComunaDisponible(state.comuna));
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
   function goNext() {
@@ -673,6 +678,7 @@ export default function NuevoAnalisisV3Page() {
                 setState={patch}
                 comparablesCount={suggestions.totalInRadius}
                 comparables={suggestions.nearbyProperties}
+                userEmail={tierInfo?.email}
               />
             )}
             {step === 2 && (

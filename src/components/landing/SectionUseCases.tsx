@@ -83,7 +83,7 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Precio que cierra", value: "$199M" },
       { label: "Ventaja apalancado", value: "+$15M" },
     ],
-    ctaText: "Analizar mi depto →",
+    ctaText: "Analizar departamento →",
     ctaHref: "/register",
   },
   {
@@ -100,7 +100,7 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Arriendo vs mercado", value: "−UF 2/mes", red: true },
       { label: "Potencial Airbnb", value: "+$148K/mes" },
     ],
-    ctaText: "Evaluar mi inversión →",
+    ctaText: "Evaluar inversión →",
     ctaHref: "/register",
   },
   {

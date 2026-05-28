@@ -28,7 +28,7 @@ export default function SectionCTASecondary() {
             href="/register"
             className="group inline-flex items-center gap-2 rounded-md border border-[#C8323C] bg-transparent px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C8323C] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[rgba(200,50,60,0.06)]"
           >
-            Analizar mi departamento ahora
+            Analizar departamento ahora
             <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
               →
             </span>

@@ -91,6 +91,14 @@ export default function SectionPricing() {
             Plan ilimitado →
           </Link>
         </p>
+
+        {/* Nota cobertura geográfica · beta solo Gran Santiago */}
+        <p
+          className="mt-4 text-center font-mono uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 10, letterSpacing: "0.08em" }}
+        >
+          Análisis disponible para Gran Santiago. Más zonas próximamente.
+        </p>
       </div>
     </section>
   );

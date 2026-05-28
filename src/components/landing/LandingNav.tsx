@@ -84,6 +84,19 @@ export default function LandingNav() {
         </nav>
 
         <div className="flex items-center gap-3">
+          {/* Mini-badge cobertura · solo lg+ para no apretar el cluster en tablet */}
+          <span
+            className="hidden lg:inline-flex items-center rounded-full border px-2.5 py-1 font-mono uppercase"
+            style={{
+              fontSize: 9,
+              letterSpacing: "0.12em",
+              color: "var(--landing-text-muted)",
+              borderColor: "var(--landing-card-border)",
+            }}
+          >
+            Beta · Santiago
+          </span>
+
           {/* Toggle tema */}
           <button
             type="button"
@@ -99,7 +112,7 @@ export default function LandingNav() {
             href="/register"
             className="inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
           >
-            Analizar mi depto
+            Analizar departamento
             <span aria-hidden="true">→</span>
           </Link>
         </div>

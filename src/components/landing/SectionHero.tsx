@@ -183,17 +183,27 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
         plata de tu bolsillo cada mes.
       </motion.p>
 
+      <motion.p
+        initial={reduce ? false : { opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: EASE, delay: delay(0.9) }}
+        className={`${mobile ? "mt-4" : "mt-6"} font-mono uppercase text-[var(--landing-text-muted)]`}
+        style={{ fontSize: 10, letterSpacing: "0.08em" }}
+      >
+        Hoy disponible para Gran Santiago
+      </motion.p>
+
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: EASE, delay: delay(1.1) }}
-        className={`${mobile ? "mt-6" : "mt-10"} flex items-start`}
+        className={`${mobile ? "mt-5" : "mt-7"} flex items-start`}
       >
         <Link
           href="/register"
           className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
         >
-          Analizar mi departamento
+          Analizar departamento
           <span
             aria-hidden="true"
             className="transition-transform duration-200 group-hover:translate-x-0.5"

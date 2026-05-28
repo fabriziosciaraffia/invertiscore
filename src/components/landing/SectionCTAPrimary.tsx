@@ -36,7 +36,7 @@ export default function SectionCTAPrimary() {
             href="/register"
             className="group inline-flex items-center gap-2 rounded-md bg-white px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C8323C] shadow-[0_2px_0_rgba(0,0,0,0.12)] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
           >
-            Analizar mi departamento
+            Analizar departamento
             <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
               →
             </span>
