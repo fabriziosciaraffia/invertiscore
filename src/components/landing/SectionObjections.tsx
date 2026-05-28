@@ -82,6 +82,7 @@ export default function SectionObjections() {
         open={!!active}
         onClose={() => setActive(null)}
         ariaLabel={active ? active.label : "Detalle de objeción"}
+        headerLabel={active?.label}
       >
         {active && <BlockDetail block={active} />}
       </LandingModal>
@@ -262,11 +263,14 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
 /* ============================ Modal content ============================ */
 
 function BlockDetail({ block }: { block: Block }) {
+  // Phase 2.26 · sin padding wrapper externo · LandingModal maneja el padding
+  // del body (px-5 pt-6 pb-8 mobile, p-8 desktop). Aquí solo controlamos las
+  // proporciones internas + ajustes mobile específicos (número fijo, sin
+  // max-w-560 forzando wrap raro).
   return (
-    <div className="px-7 py-9 md:px-8 md:py-8">
+    <div className="w-full max-w-full">
       <span
-        className="font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C]"
-        style={{ fontSize: "clamp(44px, 4.5vw, 56px)" }}
+        className="block font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C] text-[48px] md:text-[clamp(44px,4.5vw,56px)]"
         aria-hidden="true"
       >
         {block.n}
@@ -280,21 +284,19 @@ function BlockDetail({ block }: { block: Block }) {
       </p>
 
       <p
-        className="mt-3 font-body italic leading-[1.35] text-[var(--landing-text-muted)]"
-        style={{ fontSize: "clamp(16px, 1.9vw, 19px)" }}
+        className="mt-3 font-body italic leading-[1.4] text-[var(--landing-text-muted)] text-[16px] md:text-[clamp(16px,1.9vw,19px)]"
       >
         &ldquo;{block.quote}&rdquo;
       </p>
 
       <h3
-        className="mt-3 font-heading font-bold leading-[1.18] tracking-[-0.01em] text-[var(--landing-text)]"
-        style={{ fontSize: "clamp(20px, 2.6vw, 26px)" }}
+        className="mt-3 font-heading font-bold leading-[1.2] tracking-[-0.01em] text-[var(--landing-text)] text-[20px] md:text-[clamp(20px,2.6vw,26px)]"
       >
         {block.title}
       </h3>
 
       <p
-        className="mt-4 max-w-[560px] font-body leading-[1.5] text-[var(--landing-text-secondary)]"
+        className="mt-4 font-body leading-[1.5] text-[var(--landing-text-secondary)] md:max-w-[560px]"
         style={{ fontSize: 14 }}
       >
         {block.body}
@@ -700,9 +702,10 @@ function CostHero() {
         border: "0.5px solid var(--landing-card-border)",
       }}
     >
+      {/* Phase 2.26 · mobile cap 64px (era clamp lower 56 que ya era OK pero
+          extendemos un toque · desktop clamp 56→84 sigue intacto). */}
       <p
-        className="font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C]"
-        style={{ fontSize: "clamp(56px, 8vw, 84px)" }}
+        className="font-heading font-bold leading-none tracking-[-0.04em] text-[#C8323C] text-[64px] md:text-[clamp(56px,8vw,84px)]"
       >
         $0
       </p>
