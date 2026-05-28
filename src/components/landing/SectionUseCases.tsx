@@ -2,32 +2,27 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  motion,
-  useInView,
-  useReducedMotion,
-  type Variants,
-} from "framer-motion";
+import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
 import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
- * Sección 05 · Para quién — carrusel de 3 perfiles (F.11 Phase 2.14 v2).
+ * Sección 05 · Para quién — carrusel de 3 perfiles (F.11 Phase 2.22).
  *
- * Cambios clave vs v1:
- *  - TABS arriba (auto-selección) en lugar de contador + dots arriba.
+ * Cambios clave:
+ *  - TABS arriba (selección manual) con affordance clara de click: hover
+ *    eleva + border Signal Red, ícono "→" en tabs inactivos.
  *  - FLECHAS afuera de la card (layout flex con card flex-grow).
  *  - Card grande con IDENTIDAD protagonista arriba (eyebrow + identidad
  *    Source Serif), border-bottom separador, después grid TU DUDA / FRANCO
  *    RESPONDE.
- *  - DOTS abajo de la card · activo con keyframe fill 0→100% (timer visual).
- *  - Auto-rotación solo desktop (mobile manual-only por safety iOS).
+ *  - DOTS abajo de la card · navegación manual sin animación de fill.
+ *  - SIN auto-rotación · navegación 100% manual (tabs + dots + flechas + swipe).
  *  - Patrón SAFE Phase 2.6: 3 perfiles siempre montados, no AnimatePresence,
  *    pointerEvents/aria-hidden condicionales, cleanup completo.
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
-const ROTATE_MS = 6000;
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme.
  * Replicado de SectionWhatFrancoIs.tsx para mantener consistencia. */
@@ -226,37 +221,15 @@ function UseCasesHeader() {
 function ProfileCarousel() {
   const reduce = useReducedMotion();
   const isLight = useLandingIsLight();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isInView = useInView(containerRef, {
-    once: false,
-    margin: "-80px 0px -80px 0px",
-  });
 
   const [activeIndex, setActiveIndex] = useState(0);
   // direction: +1 = next, -1 = prev · controla signo del slide en transición.
   const [direction, setDirection] = useState(1);
-  const [isDesktop, setIsDesktop] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  // tick incrementa cada vez que se resetea el timer (manual o auto) — fuerza
-  // a la barra de progreso a reiniciar su animación CSS de width.
-  const [tick, setTick] = useState(0);
 
-  /* matchMedia desktop · auto-rotación solo desktop por safety iOS (mismo
-   * criterio que Phase 2.6, evita cualquier riesgo de loop infinito en
-   * mobile + tab background + low power mode). */
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
-    const apply = () => setIsDesktop(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-
-  /* Helpers de navegación · resetean tick + setean direction. */
+  /* Helpers de navegación · setean direction + índice. */
   const goTo = (next: number, dir: 1 | -1) => {
     setDirection(dir);
     setActiveIndex(((next % PROFILES.length) + PROFILES.length) % PROFILES.length);
-    setTick((t) => t + 1);
   };
 
   const goNext = () => goTo(activeIndex + 1, 1);
@@ -266,31 +239,12 @@ function ProfileCarousel() {
     goTo(i, i > activeIndex ? 1 : -1);
   };
 
-  /* Auto-rotación · solo desktop, no reduce, no pausado, in-view. */
-  useEffect(() => {
-    if (!isDesktop || reduce || isPaused || !isInView) return;
-
-    let mounted = true;
-    const timer = setTimeout(() => {
-      if (!mounted) return;
-      setDirection(1);
-      setActiveIndex((prev) => (prev + 1) % PROFILES.length);
-      setTick((t) => t + 1);
-    }, ROTATE_MS);
-
-    return () => {
-      mounted = false;
-      clearTimeout(timer);
-    };
-  }, [activeIndex, isDesktop, reduce, isPaused, isInView, tick]);
-
   /* Touch swipe · mobile · delta X > 50px = swipe. */
   const touchStartX = useRef<number | null>(null);
   const touchDeltaX = useRef(0);
   const onTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0]?.clientX ?? null;
     touchDeltaX.current = 0;
-    setIsPaused(true);
   };
   const onTouchMove = (e: React.TouchEvent) => {
     if (touchStartX.current == null) return;
@@ -301,7 +255,6 @@ function ProfileCarousel() {
     const dx = touchDeltaX.current;
     touchStartX.current = null;
     touchDeltaX.current = 0;
-    setIsPaused(false);
     if (Math.abs(dx) > 50) {
       if (dx < 0) goNext();
       else goPrev();
@@ -311,16 +264,16 @@ function ProfileCarousel() {
   const dotInactive = isLight
     ? "rgba(0,0,0,0.15)"
     : "rgba(255,255,255,0.15)";
-
-  const autoActive = isDesktop && !reduce && !isPaused && isInView;
+  const dotInactiveHover = isLight
+    ? "rgba(0,0,0,0.3)"
+    : "rgba(255,255,255,0.3)";
 
   return (
     <div
-      ref={containerRef}
       className="mx-auto"
       style={{ maxWidth: 960, width: "100%" }}
     >
-      {/* ========== TABS · auto-selección arriba ========== */}
+      {/* ========== TABS · selección manual con affordance de click ========== */}
       <div className="flex" style={{ gap: 8, marginBottom: 20 }}>
         {PROFILES.map((p, i) => {
           const active = i === activeIndex;
@@ -331,8 +284,12 @@ function ProfileCarousel() {
               onClick={() => goIndex(i)}
               aria-pressed={active}
               aria-label={`Ver perfil ${p.id}: ${p.tabLabel}`}
-              className="flex-1 font-body transition-colors"
+              className="flex-1 font-body"
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
                 padding: "12px 14px",
                 borderRadius: 10,
                 border: active
@@ -348,9 +305,35 @@ function ProfileCarousel() {
                 fontWeight: active ? 600 : 500,
                 textAlign: "center",
                 cursor: "pointer",
+                transition:
+                  "background 200ms ease, border-color 200ms ease, color 200ms ease, transform 200ms ease",
+              }}
+              onMouseEnter={(e) => {
+                if (active) return;
+                e.currentTarget.style.borderColor = "rgba(200, 50, 60, 0.4)";
+                e.currentTarget.style.background = "var(--landing-card-bg-soft)";
+                e.currentTarget.style.color = "var(--landing-text)";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                if (active) return;
+                e.currentTarget.style.borderColor = "var(--landing-card-border)";
+                e.currentTarget.style.background = "var(--landing-mockup-solid-bg)";
+                e.currentTarget.style.color = "var(--landing-text-muted)";
+                e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              {p.tabLabel}
+              <span>{p.tabLabel}</span>
+              {/* Ícono "→" · sugiere click · solo en tabs inactivos */}
+              {!active && (
+                <span
+                  aria-hidden="true"
+                  className="font-mono"
+                  style={{ fontSize: 11, opacity: 0.7, lineHeight: 1 }}
+                >
+                  →
+                </span>
+              )}
             </button>
           );
         })}
@@ -393,8 +376,6 @@ function ProfileCarousel() {
 
         {/* CARD GRANDE · flex-grow · 3 perfiles always-mounted */}
         <div
-          onMouseEnter={() => isDesktop && setIsPaused(true)}
-          onMouseLeave={() => isDesktop && setIsPaused(false)}
           onTouchStart={onTouchStart}
           onTouchMove={onTouchMove}
           onTouchEnd={onTouchEnd}
@@ -477,7 +458,7 @@ function ProfileCarousel() {
         </button>
       </div>
 
-      {/* ========== DOTS abajo (timer visual) ========== */}
+      {/* ========== DOTS abajo · navegación manual ========== */}
       <div
         className="flex items-center justify-center"
         style={{ gap: 8, marginTop: 24 }}
@@ -492,54 +473,40 @@ function ProfileCarousel() {
               aria-label={`Ver perfil ${p.id}`}
               aria-current={active ? "true" : "false"}
               style={{
-                position: "relative",
                 width: 28,
                 height: 3,
                 borderRadius: 2,
-                background: dotInactive,
+                background: active ? "#C8323C" : dotInactive,
                 border: "none",
                 padding: 0,
                 cursor: "pointer",
-                overflow: "hidden",
+                transition: "background 200ms ease",
               }}
-            >
-              {/* Fill animation · solo en dot activo · CSS keyframe.
-               * key={tick} fuerza re-mount al resetear timer (no re-renders
-               * por frame · CSS-driven · performance-safe). */}
-              {active && (
-                <span
-                  key={tick}
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    height: "100%",
-                    background: "#C8323C",
-                    borderRadius: 2,
-                    width: autoActive ? 0 : "100%",
-                    animation: autoActive
-                      ? `franco-dot-fill ${ROTATE_MS}ms linear forwards`
-                      : "none",
-                  }}
-                />
-              )}
-            </button>
+              onMouseEnter={(e) => {
+                if (active) return;
+                e.currentTarget.style.background = dotInactiveHover;
+              }}
+              onMouseLeave={(e) => {
+                if (active) return;
+                e.currentTarget.style.background = dotInactive;
+              }}
+            />
           );
         })}
       </div>
 
-      {/* Keyframes inline · animación de fill del dot activo */}
-      <style jsx>{`
-        @keyframes franco-dot-fill {
-          from {
-            width: 0;
-          }
-          to {
-            width: 100%;
-          }
-        }
-      `}</style>
+      {/* ========== Hint sutil · sugiere selección de perfil ========== */}
+      <p
+        className="font-mono text-center text-[var(--landing-text-muted)]"
+        style={{
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          marginTop: 14,
+          opacity: 0.7,
+        }}
+      >
+        Elige tu perfil →
+      </p>
     </div>
   );
 }
