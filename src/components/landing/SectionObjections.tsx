@@ -11,7 +11,7 @@ import LandingModal from "./LandingModal";
 import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
- * Sección 07 · Lo que vas a pensar — grid de 4 cards con modal al click.
+ * Sección 07 · Garantías — grid de 4 cards con modal al click.
  *
  * - Header gigante 56-72px scroll-driven (mismo patrón que s02).
  * - 4 cards en grid 2x2 (1 col mobile).
@@ -135,7 +135,7 @@ function ObjectionsHeader() {
         className="font-mono font-medium uppercase text-[#C8323C]"
         style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 24 }}
       >
-        07 · Lo que vas a pensar
+        07 · Garantías
       </motion.p>
 
       <h2
@@ -167,8 +167,7 @@ function ObjectionsHeader() {
         className="max-w-[680px] font-body text-[var(--landing-text-secondary)]"
         style={{ fontSize: 17, lineHeight: 1.55 }}
       >
-        Lo que probablemente estás pensando — y la respuesta franca. Click
-        para ver el detalle de cada una.
+        Lo que probablemente estás pensando — y la respuesta franca.
       </motion.p>
     </motion.div>
   );
