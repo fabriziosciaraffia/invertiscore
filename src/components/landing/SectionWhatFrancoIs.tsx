@@ -20,9 +20,13 @@ import { RevealOnScroll } from "./RevealOnScroll";
  *  │ VIGILA           │                          │
  *  └──────────────────┴──────────────────────────┘
  *
- * Mobile: grid colapsa a 1 col, cards debajo de bullets.
- * Animación bullets: RevealOnScroll stagger 100ms.
- * Animación cards: single-pass useInView once (back→front→header→3 hallazgos→cita).
+ * Mobile (lg-): grid colapsa a 1 col. Card 01 entra centrada y al aparecer
+ * Card 02 se desplaza (x + scale dim, patrón Hero mobile).
+ * Animación bullets: RevealOnScroll stagger 100ms (once:true).
+ * Animación cards: loop continuo 26s (back → 3 segmentos sentence-by-
+ * sentence → front entra dim back → header → 3 hallazgos staggered → cita).
+ * Pausa-on-hold: hold ≥200ms pausa el avance del ciclo (pausedRef · sin
+ * state · sin acople a deps del useEffect · doctrina post-2.18d).
  */
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
@@ -44,6 +48,22 @@ function useLandingIsLight(): boolean {
     return () => obs.disconnect();
   }, []);
   return isLight;
+}
+
+/* Hook · detecta layout mobile (single-col, debajo del breakpoint lg de
+ * Tailwind: 1024px). Inicial false en SSR · se actualiza al mount via
+ * matchMedia + listener (sin hydration mismatch). */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 1023.98px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+  return isMobile;
 }
 
 type Bullet = {
@@ -242,6 +262,37 @@ function FrancoInsightCards() {
   });
   const reduce = useReducedMotion();
   const isLight = useLandingIsLight();
+  const isMobile = useIsMobile();
+
+  // Phase 2.20 · pausa-on-hold · pausedRef es REF (no state). Doctrina
+  // post-2.18d: el touch NO entra en las deps del useEffect del runCycle.
+  // El T() helper interno hace poll-retry mientras pausedRef.current=true,
+  // sin destruir/recrear timers existentes. Hold-threshold 200ms distingue
+  // tap corto de press sostenido.
+  const pausedRef = useRef(false);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePointerDown = () => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    holdTimerRef.current = setTimeout(() => {
+      pausedRef.current = true;
+    }, 200);
+  };
+
+  const releaseHold = () => {
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    pausedRef.current = false;
+  };
+
+  useEffect(() => {
+    // Cleanup del threshold timer si el componente se desmonta mid-hold.
+    return () => {
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+    };
+  }, []);
 
   const [showBack, setShowBack] = useState(false);
   const [dimBack, setDimBack] = useState(false);
@@ -277,16 +328,26 @@ function FrancoInsightCards() {
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
+
+    // T() con poll-retry pattern · cuando el timer dispara, si pausedRef
+    // está activo re-agenda la misma tick fn en +100ms (no ejecuta el fn
+    // ni recrea nada). Cleanup en return cancela cualquier tick pendiente.
     const T = (offset: number, fn: () => void) => {
-      timers.push(
-        setTimeout(() => {
-          if (mounted) fn();
-        }, offset),
-      );
+      const id = setTimeout(function tick() {
+        if (!mounted) return;
+        if (pausedRef.current) {
+          const rid = setTimeout(tick, 100);
+          timers.push(rid);
+          return;
+        }
+        fn();
+      }, offset);
+      timers.push(id);
     };
 
-    // Loop continuo: cada ciclo ~22s. Card 01 sola con texto sentence-by-
-    // sentence, después Card 02 entra y construye los 3 hallazgos.
+    // Loop continuo · ciclo 26s. Card 01 sola con 3 segmentos sentence-by-
+    // sentence (tiempo de lectura cómodo); después Card 02 entra dimmeando
+    // Card 01 y construye los 3 hallazgos + cita.
     const runCycle = () => {
       // Reset todos los estados al inicio del ciclo.
       setShowBack(false);
@@ -301,24 +362,24 @@ function FrancoInsightCards() {
       setShowH3(false);
       setShowCita(false);
 
-      // Card 01 aparece y el texto se construye en cascada continua y rápida
-      // (segmentos solapados con stagger 700ms · feel typewriter continuo).
+      // Card 01 aparece y los 3 segmentos del insight fade-in escalonado.
       T(200, () => setShowBack(true));
-      T(500, () => setShowSeg1(true));
-      T(1200, () => setShowSeg2(true));
-      T(1900, () => setShowSeg3(true));
-      // Card 02 entra superpuesta · Card 01 transita a dim.
-      T(5000, () => {
+      T(900, () => setShowSeg1(true));
+      T(3500, () => setShowSeg2(true));
+      T(6500, () => setShowSeg3(true));
+      // Card 02 entra superpuesta · Card 01 transita a dim (en mobile
+      // también se desplaza con x/scale, manejado en animate values).
+      T(11000, () => {
         setDimBack(true);
         setShowFront(true);
       });
-      T(5500, () => setShowHeader(true));
-      T(5900, () => setShowH1(true));
-      T(7500, () => setShowH2(true));
-      T(9100, () => setShowH3(true));
-      T(10800, () => setShowCita(true));
-      // Loop reset al final del ciclo (14s).
-      T(14000, runCycle);
+      T(11500, () => setShowHeader(true));
+      T(12000, () => setShowH1(true));
+      T(15500, () => setShowH2(true));
+      T(19000, () => setShowH3(true));
+      T(22000, () => setShowCita(true));
+      // Loop reset al final del ciclo (26s · últimos 4s en estado final).
+      T(26000, runCycle);
     };
 
     runCycle();
@@ -347,26 +408,47 @@ function FrancoInsightCards() {
   return (
     <div
       ref={containerRef}
-      className="min-h-[680px] lg:min-h-[600px]"
+      className="min-h-[680px] lg:min-h-[600px] s03-cards-hold"
+      onPointerDown={handlePointerDown}
+      onPointerUp={releaseHold}
+      onPointerCancel={releaseHold}
+      onPointerLeave={releaseHold}
       style={{
         position: "relative",
         width: "100%",
+        cursor: "grab",
+        // touch-action: pan-y permite scroll vertical normal — el hold
+        // sostenido sin movimiento dispara el threshold de pausa.
+        touchAction: "pan-y",
       }}
     >
-      {/* CARD 01 · ATRACTORES DE ZONA (aparece sola primero, después dim) */}
+      {/* CARD 01 · ATRACTORES DE ZONA (aparece sola primero, después dim).
+          Mobile: entra centrada (left:8% · width 84%) y al entrar Card 02
+          se desplaza x:-16 + scale 0.95 (patrón Hero mobile · always-mounted).
+          Desktop (≥lg): comportamiento original (left:0, sin shift). */}
       <motion.div
         initial={false}
         animate={
           showBack
-            ? { opacity: backOpacity, scale: 1, filter: `brightness(${backBrightness})` }
-            : { opacity: 0, scale: 0.96, filter: `brightness(${backBrightness})` }
+            ? {
+                opacity: backOpacity,
+                scale: isMobile && dimBack ? 0.95 : 1,
+                x: isMobile && dimBack ? -16 : 0,
+                filter: `brightness(${backBrightness})`,
+              }
+            : {
+                opacity: 0,
+                scale: 0.96,
+                x: 0,
+                filter: `brightness(${backBrightness})`,
+              }
         }
         transition={{ duration: 0.5, ease: EASE }}
         aria-hidden={!showBack}
         style={{
           ...cardCommon,
           top: 0,
-          left: 0,
+          left: isMobile ? "8%" : 0,
           zIndex: 1,
         }}
       >
