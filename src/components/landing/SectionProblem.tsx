@@ -21,6 +21,8 @@ const EASE = [0.215, 0.61, 0.355, 1] as const;
 type Stat = {
   id: "01" | "02" | "03";
   big: string;
+  /** Sublabel mono opcional debajo del numeral (ej: "del arriendo"). */
+  bigSub?: string;
   kicker: string;
   kickerSub?: string;
   description: string;
@@ -46,9 +48,10 @@ const STATS: ReadonlyArray<Stat> = [
   {
     id: "03",
     big: "31,7%",
-    kicker: "Un tercio desaparece.",
+    bigSub: "del arriendo",
+    kicker: "Un tercio nunca llega a tu bolsillo.",
     description:
-      "Contribuciones, gastos comunes, vacancia, comisiones. Salen de tu flujo antes de llegar a tu bolsillo.",
+      "De cada $1M que cobras, ~$317K se van en contribuciones, gastos comunes, vacancia y comisiones antes de pagar el dividendo.",
     signalRed: true,
   },
 ];
@@ -214,6 +217,14 @@ function StatCard({ data }: { data: Stat }) {
           >
             {data.big}
           </p>
+          {data.bigSub && (
+            <p
+              className="font-mono uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 10, letterSpacing: "0.08em", marginTop: 2 }}
+            >
+              {data.bigSub}
+            </p>
+          )}
         </div>
         <div className="flex-1 min-w-0 md:contents">
           <p
