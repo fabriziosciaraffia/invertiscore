@@ -185,28 +185,23 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
   return (
     <div ref={ref} className="grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6">
       {BLOCKS.map((b, i) => {
-        // Alternar entrada lateral: índices pares (0,2) entran desde la
-        // izquierda con rotate -3°; impares (1,3) desde la derecha con +3°.
-        const fromLeft = i % 2 === 0;
-        const initialX = fromLeft ? -120 : 120;
-        const initialRot = fromLeft ? -3 : 3;
+        // Phase 2.29 · entrada sobria fade-up vertical, alineada con el patrón
+        // de s02/s03 (RevealOnScroll): sin slide lateral, sin rotación.
         return (
           <motion.button
             key={b.n}
             type="button"
             onClick={() => onSelect(b)}
-            initial={
-              reduce ? false : { opacity: 0, x: initialX, rotate: initialRot }
-            }
+            initial={reduce ? false : { opacity: 0, y: 24 }}
             animate={
               inView || reduce
-                ? { opacity: 1, x: 0, rotate: 0 }
-                : { opacity: 0, x: initialX, rotate: initialRot }
+                ? { opacity: 1, y: 0 }
+                : { opacity: 0, y: 24 }
             }
             transition={{
-              duration: 0.8,
-              ease: EASE,
-              delay: reduce ? 0 : 0.1 + i * 0.15,
+              duration: 0.6,
+              ease: [0.22, 1, 0.36, 1],
+              delay: reduce ? 0 : i * 0.1,
             }}
           className="group relative flex flex-col gap-5 rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:flex-row md:items-start md:gap-7 md:p-9"
           style={{

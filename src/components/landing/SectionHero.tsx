@@ -36,6 +36,9 @@ import HeroStaticMobile from "./HeroStaticMobile";
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+// Aceleración de salida para el crossfade del copy rotativo (el entrante usa
+// EASE — decel suave — y el saliente EASE_IN — accel — para un swap escalonado).
+const EASE_IN = [0.4, 0, 1, 1] as const;
 
 export default function SectionHero() {
   const reduce = useReducedMotion();
@@ -283,6 +286,16 @@ function HeroRotatingCopy({
     setActiveIndex(i);
   };
 
+  // Transiciones del crossfade · entrante (decel + delay) vs saliente (accel).
+  // El delay del entrante deja que el saliente casi termine antes de aparecer,
+  // por eso no hay momento con ambos títulos a media opacidad.
+  const fadeIn = reduce
+    ? { duration: 0 }
+    : { duration: 0.6, ease: EASE, delay: 0.18 };
+  const fadeOut = reduce
+    ? { duration: 0 }
+    : { duration: 0.32, ease: EASE_IN };
+
   return (
     <div
       ref={wrapperRef}
@@ -297,7 +310,14 @@ function HeroRotatingCopy({
       {/* Grid stack · ambas versiones overlap en la misma cell.
           Phase 2.23 · STR reescrito a "¿Airbnb o arriendo tradicional?"
           para igualar el n° de líneas del H1 LTR · el grid hace
-          max(content_LTR, content_STR) naturalmente, sin minHeight. */}
+          max(content_LTR, content_STR) naturalmente, sin minHeight.
+
+          Crossfade suave (Phase 2.29): solo opacity, sin desplazamiento
+          vertical. Antes el saliente subía (y:-8) y el entrante bajaba
+          (y:8→0) — direcciones opuestas cruzándose con ambos a media
+          opacidad, lo que se sentía "saltón". Ahora el swap es escalonado:
+          el saliente se va rápido (fadeOut, accel) y el entrante aparece con
+          un pequeño delay (fadeIn, decel), evitando el doble-texto. */}
       <div style={{ display: "grid" }}>
         <motion.div
           style={{
@@ -305,12 +325,8 @@ function HeroRotatingCopy({
             pointerEvents: activeIndex === 0 ? "auto" : "none",
           }}
           initial={false}
-          animate={
-            activeIndex === 0
-              ? { opacity: 1, y: 0 }
-              : { opacity: 0, y: -8 }
-          }
-          transition={{ duration: reduce ? 0 : 0.5, ease: EASE }}
+          animate={{ opacity: activeIndex === 0 ? 1 : 0 }}
+          transition={activeIndex === 0 ? fadeIn : fadeOut}
           aria-hidden={activeIndex !== 0}
         >
           <CopyLTR reduce={reduce} mobile={mobile} />
@@ -320,13 +336,9 @@ function HeroRotatingCopy({
             gridArea: "1 / 1",
             pointerEvents: activeIndex === 1 ? "auto" : "none",
           }}
-          initial={{ opacity: 0, y: 8 }}
-          animate={
-            activeIndex === 1
-              ? { opacity: 1, y: 0 }
-              : { opacity: 0, y: -8 }
-          }
-          transition={{ duration: reduce ? 0 : 0.5, ease: EASE }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: activeIndex === 1 ? 1 : 0 }}
+          transition={activeIndex === 1 ? fadeIn : fadeOut}
           aria-hidden={activeIndex !== 1}
         >
           <CopySTR mobile={mobile} />
