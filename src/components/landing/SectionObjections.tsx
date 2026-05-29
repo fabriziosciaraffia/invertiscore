@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
   motion,
   useInView,
   useReducedMotion,
   type Variants,
 } from "framer-motion";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import LandingModal from "./LandingModal";
 import SectionGhostNumber from "./SectionGhostNumber";
 
@@ -26,7 +27,7 @@ type Block = {
   quote: string;
   title: string;
   body: string;
-  visualKey: "data" | "form" | "cost" | "ai";
+  visualKey: "data" | "form" | "cost" | "honestidad";
 };
 
 const BLOCKS: ReadonlyArray<Block> = [
@@ -56,11 +57,11 @@ const BLOCKS: ReadonlyArray<Block> = [
   },
   {
     n: "04",
-    label: "04 · IA",
-    quote: "Y si no conviene, ¿qué hago?",
-    title: "Franco interpreta con IA, no solo calcula.",
-    body: "No es una calculadora — es un asesor. La IA identifica el problema real y propone alternativas concretas: hasta dónde negociar, cómo reestructurar el financiamiento, qué modalidad de arriendo optimiza el flujo, qué riesgos vigilar.",
-    visualKey: "ai",
+    label: "04 · Honestidad",
+    quote: "¿Y si me dice lo que quiero escuchar?",
+    title: "Franco prefiere decirte que no antes que quedar bien contigo.",
+    body: "El veredicto puede ser COMPRAR, AJUSTAR o BUSCAR OTRA — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.",
+    visualKey: "honestidad",
   },
 ];
 
@@ -315,24 +316,10 @@ function VisualSlot({ which }: { which: Block["visualKey"] }) {
   if (which === "data") return <DataCardsGrid />;
   if (which === "form") return <SmartFormMock />;
   if (which === "cost") return <CostHero />;
-  return <AIRecommendations />;
+  return <VerdictHonesty />;
 }
 
 type Kpi = { label: string; big: string; sub: string; tip: string };
-
-/* Detecta si el dispositivo soporta hover real (mouse fino). En touch
- * devuelve false → el tooltip se controla por tap en lugar de hover. */
-function useCanHover(): boolean {
-  const [canHover, setCanHover] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: hover) and (pointer: fine)");
-    const apply = () => setCanHover(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-  return canHover;
-}
 
 const KPIS: ReadonlyArray<Kpi> = [
   {
@@ -362,72 +349,26 @@ const KPIS: ReadonlyArray<Kpi> = [
 ];
 
 function DataCardsGrid() {
-  const canHover = useCanHover();
   return (
     <div className="grid grid-cols-2 gap-2.5">
-      {KPIS.map((it, i) => (
-        <KpiTile
-          key={it.label}
-          item={it}
-          rowTop={i < 2}
-          colLeft={i % 2 === 0}
-          canHover={canHover}
-        />
+      {KPIS.map((it) => (
+        <KpiTile key={it.label} item={it} />
       ))}
     </div>
   );
 }
 
-/* Tile KPI con tooltip de ayuda. Patrón SAFE: tooltip always-mounted con
- * animate condicional opacity + pointerEvents (no {cond && <Tooltip>} ni
- * AnimatePresence). Hover en desktop, tap-toggle en touch (tap fuera cierra).
- * Auto-flip por fila (top row → abajo, bottom row → arriba) y por columna
- * (izq → left:0, der → right:0) para no salirse del modal. */
-function KpiTile({
-  item,
-  rowTop,
-  colLeft,
-  canHover,
-}: {
-  item: Kpi;
-  rowTop: boolean;
-  colLeft: boolean;
-  canHover: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const tileRef = useRef<HTMLDivElement>(null);
-
-  // Tap fuera cierra (relevante en touch).
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      if (tileRef.current && !tileRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", onDown);
-    return () => document.removeEventListener("pointerdown", onDown);
-  }, [open]);
-
-  const hoverHandlers = canHover
-    ? {
-        onMouseEnter: () => setOpen(true),
-        onMouseLeave: () => setOpen(false),
-        onFocus: () => setOpen(true),
-        onBlur: () => setOpen(false),
-      }
-    : {};
-
+/* Tile KPI · usa InfoTooltip (mismo componente que la página de resultados):
+ * trigger "?" + bubble sólido con arrow + auto-flip + singleton + portal +
+ * accesibilidad. tokenSet="landing" mapea los tokens cromáticos a --landing-*
+ * y portaliza dentro de [data-franco-root] para seguir el tema de la landing. */
+function KpiTile({ item }: { item: Kpi }) {
   return (
     <div
-      ref={tileRef}
-      className="relative rounded-md px-3 py-3.5"
+      className="rounded-md px-3 py-3.5"
       style={{
         background: "var(--landing-card-bg-soft)",
         border: "0.5px solid var(--landing-card-border)",
-        // Eleva el tile abierto sobre sus hermanos para que el tooltip no
-        // quede tapado por la fila siguiente.
-        zIndex: open ? 30 : "auto",
       }}
     >
       <div className="flex items-center" style={{ gap: 6 }}>
@@ -437,45 +378,7 @@ function KpiTile({
         >
           {item.label}
         </p>
-        <button
-          type="button"
-          aria-label={`Qué significa ${item.label}`}
-          aria-expanded={open}
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen((o) => !o);
-          }}
-          {...hoverHandlers}
-          // Área clickeable 24×24 (padding 4 + círculo 16) sin desplazar el
-          // layout (margin negativo compensa el padding).
-          className="inline-flex shrink-0 items-center justify-center"
-          style={{
-            padding: 4,
-            margin: -4,
-            border: "none",
-            background: "transparent",
-            cursor: "pointer",
-            lineHeight: 0,
-          }}
-        >
-          <span
-            aria-hidden="true"
-            className="inline-flex items-center justify-center font-mono transition-colors duration-150"
-            style={{
-              width: 16,
-              height: 16,
-              borderRadius: 999,
-              border: `0.5px solid ${
-                open ? "#C8323C" : "var(--landing-card-border)"
-              }`,
-              color: open ? "#C8323C" : "var(--landing-text-muted)",
-              fontSize: 9,
-              lineHeight: 1,
-            }}
-          >
-            ?
-          </span>
-        </button>
+        <InfoTooltip content={item.tip} tokenSet="landing" />
       </div>
 
       <p
@@ -490,38 +393,6 @@ function KpiTile({
       >
         {item.sub}
       </p>
-
-      {/* Tooltip · always-mounted */}
-      <motion.div
-        role="tooltip"
-        aria-hidden={!open}
-        initial={false}
-        animate={{ opacity: open ? 1 : 0, y: open ? 0 : rowTop ? -4 : 4 }}
-        transition={{ duration: 0.15, ease: EASE }}
-        style={{
-          position: "absolute",
-          ...(rowTop
-            ? { top: "calc(100% + 8px)" }
-            : { bottom: "calc(100% + 8px)" }),
-          ...(colLeft ? { left: 0 } : { right: 0 }),
-          width: "max-content",
-          maxWidth: 240,
-          background: "var(--landing-card-bg-soft)",
-          border: "0.5px solid var(--landing-card-border)",
-          borderRadius: 8,
-          padding: "10px 12px",
-          boxShadow: "0 8px 24px -12px rgba(0,0,0,0.45)",
-          zIndex: 60,
-          pointerEvents: open ? "auto" : "none",
-        }}
-      >
-        <span
-          className="font-body text-[var(--landing-text-muted)]"
-          style={{ fontSize: 12, lineHeight: 1.45, display: "block" }}
-        >
-          {item.tip}
-        </span>
-      </motion.div>
     </div>
   );
 }
@@ -725,38 +596,106 @@ function CostHero() {
   );
 }
 
-function AIRecommendations() {
-  const items = [
-    { verb: "Negocia", body: "Hasta UF 4.900. Argumento: el precio/m² está 11% sobre la mediana de zona." },
-    { verb: "Reestructura", body: "Sube pie a 30% o extiende plazo a 30 años. Los números empiezan a cuadrar." },
-    { verb: "Opera", body: "En Airbnb. Rinde $148K/mes más que arriendo tradicional en esta zona." },
-    { verb: "Vigila", body: "3 riesgos detectados: vacancia mayor a la zona, gasto común alto, tope de aporte." },
+/* Visual Card 04 "Honestidad" · Phase 2.28 · los 3 veredictos lado a lado con
+ * la frase franca que Franco da en cada caso. Replica los badges de veredicto
+ * de la página de resultados LTR (Hero Verdict Block) con la lógica cromática
+ * 3-case del skill Patrón 1:
+ *   · COMPRAR → Ink invertido sólido (bg = texto, texto = fondo página) ·
+ *     theme-aware automático vía var(--landing-text) / --landing-mockup-solid-bg.
+ *   · AJUSTA SUPUESTOS → outline (transparente + texto/borde Signal Red,
+ *     invariante entre temas).
+ *   · BUSCAR OTRA → Signal Red sólido + texto blanco (invariante).
+ * Hex literal #C8323C consistente con el resto del archivo (sistema --landing-*).
+ */
+function VerdictHonesty() {
+  const rows: Array<{
+    label: string;
+    cita: string;
+    badgeStyle: React.CSSProperties;
+  }> = [
+    {
+      label: "Comprar",
+      cita: "Los números cierran. Adelante.",
+      badgeStyle: {
+        background: "var(--landing-text)",
+        color: "var(--landing-mockup-solid-bg)",
+      },
+    },
+    {
+      label: "Ajusta supuestos",
+      cita: "Negocia primero. Acá está el rango.",
+      badgeStyle: {
+        background: "transparent",
+        color: "#C8323C",
+        border: "0.5px solid #C8323C",
+      },
+    },
+    {
+      label: "Buscar otra",
+      cita: "No te conviene. Esto es por qué.",
+      badgeStyle: {
+        background: "#C8323C",
+        color: "#FFFFFF",
+      },
+    },
   ];
+
   return (
-    <div className="space-y-2">
-      {items.map((it) => (
-        <div
-          key={it.verb}
-          className="rounded-r-md py-2.5 pl-3 pr-3"
-          style={{
-            borderLeft: "2px solid #C8323C",
-            background: "var(--landing-card-bg-soft)",
-          }}
-        >
-          <p
-            className="font-body leading-[1.45] text-[var(--landing-text-secondary)]"
-            style={{ fontSize: 13.5 }}
+    <div>
+      <div className="space-y-2.5">
+        {rows.map((r) => (
+          <div
+            key={r.label}
+            className="flex items-center"
+            style={{
+              gap: 14,
+              background: "var(--landing-card-bg-soft)",
+              border: "0.5px solid var(--landing-card-border)",
+              borderRadius: 10,
+              padding: "14px 16px",
+            }}
           >
             <span
-              className="font-mono font-semibold uppercase text-[#C8323C]"
-              style={{ fontSize: 10, letterSpacing: "0.14em" }}
+              className="font-mono font-bold uppercase"
+              style={{
+                minWidth: 130,
+                textAlign: "center",
+                flexShrink: 0,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                padding: "6px 10px",
+                borderRadius: 4,
+                ...r.badgeStyle,
+              }}
             >
-              {it.verb}
+              {r.label}
             </span>
-            <span className="ml-2 font-body italic">{it.body}</span>
-          </p>
-        </div>
-      ))}
+            <p
+              className="font-body italic text-[var(--landing-text-secondary)] m-0"
+              style={{ fontSize: 13, lineHeight: 1.4 }}
+            >
+              &ldquo;{r.cita}&rdquo;
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: "0.5px solid var(--landing-card-border)",
+        }}
+      >
+        <p
+          className="font-body text-[var(--landing-text-muted)] m-0"
+          style={{ fontSize: 12, lineHeight: 1.45, textAlign: "center" }}
+        >
+          Los tres veredictos pasan seguido. Franco no tiene incentivo para
+          empujarte hacia uno.
+        </p>
+      </div>
     </div>
   );
 }

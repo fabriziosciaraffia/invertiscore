@@ -67,8 +67,8 @@ function useIsMobile(): boolean {
 }
 
 type Bullet = {
-  id: "01" | "02" | "03" | "04";
-  verb: "INTERPRETA" | "IDENTIFICA" | "PROPONE" | "VIGILA";
+  id: "01" | "02" | "03" | "04" | "05";
+  verb: "INTERPRETA" | "IDENTIFICA" | "PROPONE" | "VIGILA" | "OPTIMIZA";
   title: string;
   example: ReactNode;
 };
@@ -115,6 +115,17 @@ const BULLETS: ReadonlyArray<Bullet> = [
       <>
         <ArrowRed /> Tasa al alza · plusvalía zona <Hi>+34%</Hi> · vacancia
         estacional
+      </>
+    ),
+  },
+  {
+    id: "05",
+    verb: "OPTIMIZA",
+    title: "Te dice qué modalidad rinde más.",
+    example: (
+      <>
+        <ArrowRed /> &ldquo;Airbnb te da <Hi>+$148K/mes</Hi> vs arriendo
+        tradicional en esta zona&rdquo;
       </>
     ),
   },
