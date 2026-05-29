@@ -9,13 +9,28 @@ import { createPortal } from "react-dom";
 const FRANCO_TOOLTIP_OPEN_EVENT = "franco:tooltip-open";
 interface TooltipOpenDetail { exceptId: string; }
 
+type TokenSet = "app" | "landing";
+
 interface TooltipBubbleProps {
   content: string;
   triggerRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
+  /**
+   * "app" (default) usa los tokens --franco-* (definidos en :root /
+   * [data-theme]). "landing" usa --landing-* y portaliza dentro de
+   * [data-franco-root] — donde esos tokens existen y siguen el toggle de tema
+   * de la landing. La landing NO setea data-theme, así que un portal a body con
+   * --franco-* quedaría en dark permanente en modo claro.
+   */
+  tokenSet?: TokenSet;
 }
 
-function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
+function TooltipBubble({
+  content,
+  triggerRef,
+  onClose,
+  tokenSet = "app",
+}: TooltipBubbleProps) {
   const bubbleRef = useRef<HTMLDivElement>(null);
   // Inicializar fuera de flujo evita que el primer paint ponga el bubble en
   // body flow (block, ~60px alto) y dispare scrollbar flicker / layout shift
@@ -139,16 +154,31 @@ function TooltipBubble({ content, triggerRef, onClose }: TooltipBubbleProps) {
     };
   }, [onClose, triggerRef]);
 
+  const isLanding = tokenSet === "landing";
+  const bubbleColors = isLanding
+    ? "bg-[var(--landing-card-bg)] text-[var(--landing-text)] border-[var(--landing-card-border)]"
+    : "bg-[var(--franco-card)] text-[var(--franco-text)] border-[var(--franco-border)]";
+  const arrowColor = isLanding
+    ? "bg-[var(--landing-card-bg)]"
+    : "bg-[var(--franco-card)]";
+
+  // Landing: portalizar dentro de [data-franco-root] (no es contenedor con
+  // clipping ni transform → position:fixed sigue siendo relativo al viewport)
+  // para que --landing-* resuelvan y sigan el tema. App: a body como siempre.
+  const target =
+    (isLanding && document.querySelector<HTMLElement>("[data-franco-root]")) ||
+    document.body;
+
   return createPortal(
     <div
       ref={bubbleRef}
       style={style}
-      className="z-[9999] bg-[var(--franco-card)] text-[var(--franco-text)] border border-[var(--franco-border)] font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto"
+      className={`z-[9999] border font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto ${bubbleColors}`}
     >
       {content}
-      <div className="w-2 h-2 bg-[var(--franco-card)]" style={arrowStyle} />
+      <div className={`w-2 h-2 ${arrowColor}`} style={arrowStyle} />
     </div>,
-    document.body,
+    target,
   );
 }
 
@@ -163,9 +193,15 @@ interface InfoTooltipProps {
    *   parpadeo en iOS porque mouseenter sintetizado dispara antes que click).
    */
   trigger?: "auto" | "hover" | "click";
+  /** Set de tokens cromáticos: "app" (--franco-*) o "landing" (--landing-*). */
+  tokenSet?: TokenSet;
 }
 
-export function InfoTooltip({ content, trigger = "auto" }: InfoTooltipProps) {
+export function InfoTooltip({
+  content,
+  trigger = "auto",
+  tokenSet = "app",
+}: InfoTooltipProps) {
   const [open, setOpen] = useState(false);
   const [hoverCapable, setHoverCapable] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -224,6 +260,13 @@ export function InfoTooltip({ content, trigger = "auto" }: InfoTooltipProps) {
       }
     : {};
 
+  // El trigger se renderiza inline (dentro del subtree temático), así que
+  // --landing-* sí resuelven aquí sin necesidad de portal.
+  const triggerColors =
+    tokenSet === "landing"
+      ? "bg-[var(--landing-text-secondary)] text-[var(--landing-card-bg)] hover:bg-[var(--landing-text)] hover:text-[var(--landing-card-bg)] focus:ring-[var(--landing-text-secondary)] focus:ring-offset-[var(--landing-bg)]"
+      : "bg-[var(--franco-text-tertiary)] text-[var(--franco-text)] hover:bg-[var(--franco-text-secondary)] hover:text-[var(--franco-card)] focus:ring-[var(--franco-text-secondary)] focus:ring-offset-[var(--franco-bg)]";
+
   return (
     <span className="inline-flex">
       <button
@@ -231,7 +274,7 @@ export function InfoTooltip({ content, trigger = "auto" }: InfoTooltipProps) {
         type="button"
         aria-label="Más información"
         aria-expanded={open}
-        className="inline-flex items-center justify-center w-[14px] h-[14px] rounded-full bg-[var(--franco-text-tertiary)] font-mono text-[9px] text-[var(--franco-text)] cursor-help shrink-0 hover:bg-[var(--franco-text-secondary)] hover:text-[var(--franco-card)] focus:outline-none focus:ring-2 focus:ring-[var(--franco-text-secondary)] focus:ring-offset-1 focus:ring-offset-[var(--franco-bg)] transition-colors"
+        className={`inline-flex items-center justify-center w-[14px] h-[14px] rounded-full font-mono text-[9px] cursor-help shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors ${triggerColors}`}
         onClick={handleToggle}
         {...hoverHandlers}
       >
@@ -242,6 +285,7 @@ export function InfoTooltip({ content, trigger = "auto" }: InfoTooltipProps) {
           content={content}
           triggerRef={triggerRef}
           onClose={() => setOpen(false)}
+          tokenSet={tokenSet}
         />
       )}
     </span>
