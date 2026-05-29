@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis } from "@/lib/types";
+import { ensureWelcomeEmail } from "@/lib/welcome";
 import { DashboardClient } from "./dashboard-client";
 import { OnboardingClient } from "./onboarding-client";
 
@@ -14,6 +15,14 @@ export default async function DashboardPage() {
   if (!user) {
     redirect("/login");
   }
+
+  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  const firstName = fullName.split(' ')[0] || '';
+
+  // Welcome email server-side e idempotente: se dispara tanto si el user ve
+  // onboarding como si ve el dashboard, antes del branch needsOnboarding.
+  // ensureWelcomeEmail nunca tira (fire-and-forget seguro).
+  await ensureWelcomeEmail(user.id, user.email, fullName);
 
   // Check if user needs onboarding. Backlog #3 + UX fix #1: si el user ya
   // tiene ≥1 análisis está onboardeado de facto, aunque la flag onboarding_completed
@@ -43,9 +52,6 @@ export default async function DashboardPage() {
     .order("created_at", { ascending: false });
 
   const analisis = (analisisList || []) as Analisis[];
-
-  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
-  const firstName = fullName.split(' ')[0] || '';
 
   return <DashboardClient analisis={analisis} firstName={firstName} />;
 }
