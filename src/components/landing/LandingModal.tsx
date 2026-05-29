@@ -1,29 +1,53 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 /**
  * Modal reutilizable para la landing.
  *
- * Phase 2.26 · estructura flex-column con header sticky en mobile.
- *   · Mobile (<768px): ocupa 100dvh (no 100vh — iOS Safari address bar) y
- *     monta un header sticky 56px con el `headerLabel` mono uppercase a la
- *     izquierda + botón × táctil 44×44 a la derecha. El body crece con
- *     flex:1 y maneja su propio overflow-y; el header queda fuera del scroll
- *     y SIEMPRE accesible aunque el contenido sea largo.
- *   · Desktop (≥md=768px): max-w 760px / max-h 90vh, esquinas redondeadas,
- *     el botón × flota absoluto top-right (igual que antes), header mobile
- *     se oculta vía md:hidden.
+ * Phase 2.26b · bottom-sheet pattern en mobile, replicando el feel del
+ * AnalysisDrawer (LTR results) con mejoras:
+ *
+ *   Mobile (<768px):
+ *     · Anchored bottom · h-[85dvh] (dvh > vh para iOS Safari address bar)
+ *     · 15dvh de backdrop visible arriba (margen translúcido) + 50% black +
+ *       backdrop-blur-sm — replica el patrón del AnalysisDrawer.
+ *     · rounded-t-2xl (16px), esquinas inferiores rectas.
+ *     · Slide-up entrance (translateY 100% → 0) + fade backdrop · 250ms.
+ *     · Header STICKY 56px con label mono uppercase a la izq + botón × táctil
+ *       44×44 a la der. Mejora vs AnalysisDrawer: ese header scrollea con el
+ *       body y el × se pierde de vista; el nuestro queda fijo arriba siempre.
+ *     · Body scrollable interno (flex:1 overflow-y-auto), padding 20/20/32.
+ *
+ *   Desktop (≥md=768px):
+ *     · Centrado · max-w 760px / max-h 90vh · rounded-2xl completo.
+ *     · × flotante absolute top-right (igual que antes).
+ *     · Animación scale + small y · sin regresión vs Phase 2.26.
  *
  * Comportamiento conservado:
  *   · ESC cierra · click en backdrop cierra · scroll lock del body (+ Lenis
  *     pausado si existe) · focus al abrir · prefers-reduced-motion respetado.
- *   · AnimatePresence sigue para la animación de cierre fade+scale (220ms);
- *     no agregamos conditional renders nuevos en el path animado.
+ *   · AnimatePresence sigue envolviendo el path animado — no se introducen
+ *     conditional renders nuevos.
  */
 
 const EASE = [0.22, 1, 0.36, 1] as const;
+
+/** matchMedia (max-width: 767.98px) · post-mount para evitar hydration
+ * mismatch (SSR asume desktop hasta que el cliente confirme viewport). */
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767.98px)");
+    setIsMobile(mq.matches);
+    const apply = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return isMobile;
+}
 
 export default function LandingModal({
   open,
@@ -41,6 +65,7 @@ export default function LandingModal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const reduce = useReducedMotion();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!open) return;
@@ -60,11 +85,31 @@ export default function LandingModal({
     };
   }, [open, onClose]);
 
+  // Variantes de animación del dialog · mobile slide-up vs desktop scale+y.
+  // reduce-motion gana sobre todo (sin transform, solo opacity instantánea).
+  const dialogInitial = reduce
+    ? { opacity: 1, scale: 1, y: 0 }
+    : isMobile
+      ? { opacity: 0, y: "100%" as const, scale: 1 }
+      : { opacity: 0, scale: 0.96, y: 12 };
+  const dialogAnimate = { opacity: 1, scale: 1, y: 0 };
+  const dialogExit = reduce
+    ? { opacity: 0 }
+    : isMobile
+      ? { opacity: 0, y: "100%" as const }
+      : { opacity: 0, scale: 0.98, y: 8 };
+  const dialogTransition = isMobile
+    ? { duration: 0.25, ease: EASE }
+    : { duration: 0.22, ease: EASE };
+
   return (
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center md:px-6 md:py-12"
+          // items-end mobile → drawer anclado abajo, deja 15dvh translúcido
+          // arriba. md:items-center desktop → centrado normal. md:px/py solo
+          // en desktop para el respiro alrededor del modal centrado.
+          className="fixed inset-0 z-[100] flex items-end justify-center md:items-center md:px-6 md:py-12"
           initial={reduce ? { opacity: 1 } : { opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -73,33 +118,35 @@ export default function LandingModal({
           role="dialog"
           aria-label={ariaLabel}
         >
+          {/* Backdrop · 50% black + blur-sm · click cierra. Mismo token de
+              opacity que AnalysisDrawer (0.5, no 0.65) para que el contenido
+              detrás se siga adivinando sin perder contraste del modal. */}
           <button
             type="button"
             aria-label="Cerrar modal"
-            className="absolute inset-0 cursor-default bg-[rgba(0,0,0,0.65)] backdrop-blur-sm"
+            className="absolute inset-0 cursor-default bg-[rgba(0,0,0,0.5)] backdrop-blur-sm"
             onClick={onClose}
           />
 
           <motion.div
             ref={dialogRef}
             tabIndex={-1}
-            // h-[100dvh] mobile (dynamic viewport · iOS Safari address bar
-            // safe); md:h-auto + md:max-h-[90vh] desktop · clases arbitrarias
-            // de Tailwind generan las reglas con el orden correcto (no usar
-            // inline style: la mobile-first cascade no aplicaría).
-            className="relative z-10 flex w-full flex-col overflow-hidden outline-none h-[100dvh] md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-2xl"
+            // Mobile: bottom-sheet w-full h-[85dvh] rounded top corners only.
+            // Desktop: centrado max-w 760 / max-h 90vh, rounded completo.
+            // overflow-hidden mantiene el body scroll interno (no del dialog).
+            className="relative z-10 flex w-full flex-col overflow-hidden outline-none h-[85dvh] rounded-t-2xl md:h-auto md:max-h-[90vh] md:max-w-[760px] md:rounded-2xl"
             style={{
               background: "var(--landing-card-bg)",
-              border: "0.5px solid var(--landing-card-border)",
+              borderTop: "0.5px solid var(--landing-card-border)",
+              // Desktop usa borde completo · mobile solo top (las laterales
+              // y bottom-of-screen quedan ocultas por el viewport).
               boxShadow:
                 "0 60px 120px -20px rgba(0,0,0,0.55), 0 24px 48px rgba(0,0,0,0.35)",
             }}
-            initial={
-              reduce ? { opacity: 1, scale: 1, y: 0 } : { opacity: 0, scale: 0.96, y: 12 }
-            }
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.98, y: 8 }}
-            transition={{ duration: 0.22, ease: EASE }}
+            initial={dialogInitial}
+            animate={dialogAnimate}
+            exit={dialogExit}
+            transition={dialogTransition}
           >
             {/* Mobile header sticky · 56px · label izq + × der · ocultar en md+ */}
             <div
@@ -131,8 +178,8 @@ export default function LandingModal({
                   height: 44,
                   fontSize: 22,
                   lineHeight: 1,
-                  // -mr-2 visual: alinea el centro del × con el borde derecho
-                  // útil (16px effective inset), preservando 44×44 táctil.
+                  // marginRight -8 alinea el centro del × con el inset
+                  // efectivo 16px, preservando 44×44 táctil.
                   marginRight: -8,
                 }}
               >
@@ -150,8 +197,8 @@ export default function LandingModal({
               ×
             </button>
 
-            {/* Body scrollable · padding mobile 24/20/32 · desktop md:p-8 */}
-            <div className="flex-1 overflow-y-auto px-5 pt-6 pb-8 md:p-8">
+            {/* Body scrollable · padding mobile 20/20/32 · desktop md:p-8 */}
+            <div className="flex-1 overflow-y-auto px-5 pt-5 pb-8 md:p-8">
               {children}
             </div>
           </motion.div>
