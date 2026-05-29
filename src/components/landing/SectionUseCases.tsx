@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
-import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 05 · Para quién — carrusel de 3 perfiles (F.11 Phase 2.22).
@@ -122,7 +121,6 @@ export default function SectionUseCases() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <SectionGhostNumber number="05" side="right" top="clamp(140px, 18vh, 240px)" />
       <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-[14vh] md:pt-[16vh]">
         <UseCasesHeader />
       </div>
@@ -180,7 +178,7 @@ function UseCasesHeader() {
         className="font-mono font-medium uppercase text-[#C8323C]"
         style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 24 }}
       >
-        05 · Para quién
+        Para quién
       </motion.p>
 
       <h2

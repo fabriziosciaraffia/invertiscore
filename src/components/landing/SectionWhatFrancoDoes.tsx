@@ -3,7 +3,6 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
-import SectionGhostNumber from "./SectionGhostNumber";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
@@ -65,10 +64,9 @@ export default function SectionWhatFrancoDoes() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <SectionGhostNumber number="04" side="left" top="clamp(130px, 18vh, 230px)" />
       <div className="relative mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <SectionHeader
-          eyebrow="04 · Cómo funciona"
+          eyebrow="Cómo funciona"
           title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
           subhead="Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Todo procesado por IA en 30 segundos."
         />
@@ -107,16 +105,6 @@ function StepBlock({ data }: { data: Step }) {
 function StepText({ data }: { data: Step }) {
   return (
     <div className="max-w-[520px]">
-      <p
-        className="font-mono font-medium uppercase text-[#C8323C]"
-        style={{
-          fontSize: 14,
-          letterSpacing: "0.06em",
-          marginBottom: 16,
-        }}
-      >
-        {data.numeral}
-      </p>
       <p
         className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
         style={{
@@ -177,6 +165,12 @@ function StepText({ data }: { data: Step }) {
  */
 
 const S01_EASE = [0.215, 0.61, 0.355, 1] as const;
+// Card 01 · espejo exacto de la animación de la card 01 del hero
+// (HeroAnimatedDesktop · FormCard): typing de la dirección, dropdown
+// autocomplete que aparece mientras se escribe y se cierra al elegir,
+// chips + counters Precio/Superficie y mapa fade-in. Loop continuo in-view.
+const S01_DIRECCION = "Av. Manuel Montt 1234, Providencia";
+const S01_TYPING_SPEED_MS = 75;
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme
  * en el elemento [data-franco-root]. Mismo patrón que HeroAnimatedDesktop /
@@ -244,25 +238,58 @@ function MockupStep01() {
   const reduce = useReducedMotion();
   const isLight = useLandingIsLight();
 
+  // Sub-state · mismo conjunto que la card 01 del hero (FormCard).
+  const [typedText, setTypedText] = useState("");
   const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
+  const [showChips, setShowChips] = useState(false);
+  const [precioCount, setPrecioCount] = useState(0);
+  const [superficieCount, setSuperficieCount] = useState(0);
   const [showMap, setShowMap] = useState(false);
 
   // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
   const shouldLoop = !reduce && isInView;
 
-  // prefers-reduced-motion → estado final inmediato (sin loop).
+  // prefers-reduced-motion → estado final estático (sin loop).
   useEffect(() => {
     if (!reduce) return;
-    setDropdownVisible(true);
+    setTypedText(S01_DIRECCION);
+    setDropdownVisible(false);
+    setAutocompleteHighlight(false);
+    setShowChips(true);
+    setPrecioCount(5500);
+    setSuperficieCount(60);
     setShowMap(true);
   }, [reduce]);
 
-  // Loop continuo (~6s) mientras esté in-view · runCycle auto-reiniciable.
+  // Loop continuo mientras esté in-view · mismo guion que la fase form-active
+  // de la card 01 del hero (HeroAnimatedDesktop · runCycle).
   useEffect(() => {
     if (!shouldLoop) return;
 
     let mounted = true;
     const timers: ReturnType<typeof setTimeout>[] = [];
+    let typingInterval: ReturnType<typeof setInterval> | null = null;
+    const rafIds: number[] = [];
+
+    const animateCounter = (
+      setter: (n: number) => void,
+      from: number,
+      to: number,
+      duration: number,
+      round = true,
+    ) => {
+      const start = performance.now();
+      const tick = (now: number) => {
+        if (!mounted) return;
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        const val = from + (to - from) * eased;
+        setter(round ? Math.round(val) : val);
+        if (t < 1) rafIds.push(requestAnimationFrame(tick));
+      };
+      rafIds.push(requestAnimationFrame(tick));
+    };
 
     const T = (offset: number, fn: () => void) => {
       timers.push(
@@ -273,15 +300,54 @@ function MockupStep01() {
     };
 
     const runCycle = () => {
-      // Reset al estado inicial del ciclo (dropdown + mapa fade-out).
+      // Reset al estado inicial del ciclo.
+      setTypedText("");
       setDropdownVisible(false);
+      setAutocompleteHighlight(false);
+      setShowChips(false);
+      setPrecioCount(0);
+      setSuperficieCount(0);
       setShowMap(false);
 
-      T(600, () => setDropdownVisible(true));
-      T(900, () => setShowMap(true));
+      // t=600 · arranca el typing de la dirección.
+      T(600, () => {
+        let i = 0;
+        typingInterval = setInterval(() => {
+          if (!mounted) return;
+          i++;
+          setTypedText(S01_DIRECCION.slice(0, i));
+          if (i >= S01_DIRECCION.length && typingInterval) {
+            clearInterval(typingInterval);
+            typingInterval = null;
+          }
+        }, S01_TYPING_SPEED_MS);
+      });
 
-      // Reset → próximo ciclo (~6s).
-      T(6000, runCycle);
+      // t=1500 dropdown aparece · t=1800 highlight · t=2250 elige y cierra.
+      T(1500, () => setDropdownVisible(true));
+      T(1800, () => setAutocompleteHighlight(true));
+      T(2250, () => {
+        if (typingInterval) {
+          clearInterval(typingInterval);
+          typingInterval = null;
+        }
+        setTypedText(S01_DIRECCION);
+        setDropdownVisible(false);
+        setAutocompleteHighlight(false);
+      });
+
+      // t=2550 chips + counters Precio/Superficie.
+      T(2550, () => {
+        setShowChips(true);
+        animateCounter(setPrecioCount, 0, 5500, 1050);
+        animateCounter(setSuperficieCount, 0, 60, 1050);
+      });
+
+      // t=3300 mapa fade-in.
+      T(3300, () => setShowMap(true));
+
+      // Reset → próximo ciclo.
+      T(6500, runCycle);
     };
 
     runCycle();
@@ -289,14 +355,18 @@ function MockupStep01() {
     return () => {
       mounted = false;
       timers.forEach(clearTimeout);
+      if (typingInterval) clearInterval(typingInterval);
+      rafIds.forEach(cancelAnimationFrame);
     };
   }, [shouldLoop]);
+
+  const cursorVisible = typedText.length < S01_DIRECCION.length;
 
   return (
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 20 }}
+      style={{ padding: 20, minHeight: 610 }}
     >
       {/* Header · wordmark refranco.ai + label "Nuevo análisis" */}
       <div
@@ -331,7 +401,38 @@ function MockupStep01() {
             className="font-body text-[var(--landing-text)]"
             style={{ fontSize: 12, fontWeight: 400 }}
           >
-            Av. Manuel Montt 1234, Providencia
+            {typedText ? (
+              typedText
+            ) : (
+              <span style={{ color: "var(--landing-text-muted)" }}>
+                Buscar dirección…
+              </span>
+            )}
+            {/* Cursor always-mounted · animate condicional (Phase 2.6e). */}
+            <motion.span
+              animate={
+                cursorVisible ? { opacity: [1, 1, 0, 0] } : { opacity: 0 }
+              }
+              transition={
+                cursorVisible
+                  ? {
+                      duration: 0.9,
+                      repeat: Infinity,
+                      times: [0, 0.5, 0.5, 1],
+                    }
+                  : { duration: 0 }
+              }
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 1,
+                height: 12,
+                background: "var(--landing-text)",
+                marginLeft: 2,
+                verticalAlign: "text-bottom",
+                pointerEvents: "none",
+              }}
+            />
           </span>
         </div>
         {/* Dropdown autocomplete · always-mounted in-flow (Phase 2.6f patrón).
@@ -357,12 +458,18 @@ function MockupStep01() {
           }}
         >
           <div
-            className="font-body text-[var(--landing-text)]"
+            className="font-body"
             style={{
               fontSize: 11,
               padding: "4px 6px",
               borderRadius: 3,
-              background: "rgba(200,50,60,0.10)",
+              background: autocompleteHighlight
+                ? "rgba(200,50,60,0.10)"
+                : "transparent",
+              color: autocompleteHighlight
+                ? "var(--landing-text)"
+                : "var(--landing-text-secondary)",
+              transition: "background 0.18s ease",
             }}
           >
             Av. Manuel Montt 1234, Providencia, Chile
@@ -380,8 +487,13 @@ function MockupStep01() {
         </motion.div>
       </div>
 
-      {/* Tipo · chips Usado / Nuevo */}
-      <div style={{ marginBottom: 10 }}>
+      {/* Tipo · chips Usado / Nuevo · fade-in con showChips (espejo hero). */}
+      <motion.div
+        initial={false}
+        animate={showChips ? { opacity: 1 } : { opacity: 0 }}
+        transition={{ duration: 0.25, ease: S01_EASE }}
+        style={{ marginBottom: 10 }}
+      >
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
@@ -417,7 +529,7 @@ function MockupStep01() {
             Nuevo
           </span>
         </div>
-      </div>
+      </motion.div>
 
       {/* Grid Precio / Superficie */}
       <div
@@ -477,7 +589,7 @@ function MockupStep01() {
               className="font-mono font-medium text-[var(--landing-text)]"
               style={{ fontSize: 12 }}
             >
-              UF 5.500
+              UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
             </span>
           </div>
         </div>
@@ -498,7 +610,7 @@ function MockupStep01() {
               className="font-mono font-medium text-[var(--landing-text)]"
               style={{ fontSize: 12 }}
             >
-              60 m²
+              {superficieCount > 0 ? `${superficieCount} m²` : "—"}
             </span>
           </div>
         </div>
@@ -741,6 +853,7 @@ function MockupStep02() {
       className="franco-mockup"
       style={{
         padding: 20,
+        minHeight: 610,
         display: "flex",
         flexDirection: "column",
       }}
@@ -1225,7 +1338,7 @@ function MockupStep03() {
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 18, display: "flex", flexDirection: "column" }}
+      style={{ padding: 18, minHeight: 610, display: "flex", flexDirection: "column" }}
     >
       {/* Header · wordmark refranco.ai + label "Completado" */}
       <div

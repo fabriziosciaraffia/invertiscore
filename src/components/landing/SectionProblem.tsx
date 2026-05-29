@@ -2,7 +2,6 @@
 
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import { RevealOnScroll } from "./RevealOnScroll";
-import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 02 · Problema (F.11 reset estilo Linear).
@@ -62,7 +61,6 @@ export default function SectionProblem() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <SectionGhostNumber number="02" side="right" top="clamp(130px, 18vh, 230px)" />
       <div className="relative mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
         <ProblemHeader />
 
@@ -153,7 +151,7 @@ function ProblemHeader() {
         className="font-mono font-medium uppercase text-[#C8323C]"
         style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 20 }}
       >
-        02 · El problema
+        El problema
       </motion.p>
 
       <h2
@@ -203,13 +201,7 @@ function StatCard({ data }: { data: Stat }) {
       <div className="flex gap-4 md:block">
         <div className="md:contents flex flex-col items-start shrink-0">
           <p
-            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 10, letterSpacing: "0.18em" }}
-          >
-            {data.id}
-          </p>
-          <p
-            className="font-heading font-bold leading-[0.9] tracking-[-0.04em] mt-1 md:mt-3"
+            className="font-heading font-bold leading-[0.9] tracking-[-0.04em]"
             style={{
               fontSize: "clamp(30px, 8vw, 64px)",
               color: data.signalRed ? "#C8323C" : "var(--landing-text)",

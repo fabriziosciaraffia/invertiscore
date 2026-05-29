@@ -2,15 +2,10 @@
 
 import Link from "next/link";
 import SectionHeader from "./SectionHeader";
-import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 10 · CTA final — invertido en Signal Red (F.11 Phase 2.5).
  * Bg #C8323C, texto blanco, botón invertido (bg blanco + texto Signal Red).
- *
- * F.11 Phase 2.18 · Numeral fantasma migrado a SectionGhostNumber reusable
- * y anclado al título (top ~calc(50% - 30px)) en lugar del centro vertical,
- * para consistencia con s02-s09. Tono invertido por bg Signal Red.
  */
 export default function SectionFinalCTA() {
   return (
@@ -18,16 +13,9 @@ export default function SectionFinalCTA() {
       className="relative flex min-h-screen items-center overflow-hidden"
       style={{ background: "#C8323C" }}
     >
-      <SectionGhostNumber
-        number="10"
-        side="right"
-        tone="invertido"
-        top="calc(50% - 30px)"
-      />
-
       <div className="relative mx-auto w-full max-w-[820px] px-6 py-16 md:py-[88px]">
         <SectionHeader
-          eyebrow="10 · Tu turno"
+          eyebrow="Tu turno"
           title={"¿Y si el depto\nno se paga solo?"}
           subhead="30 segundos y decides con fundamentos. Antes de firmar 25 años."
           align="center"

@@ -3,7 +3,6 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
-import SectionGhostNumber from "./SectionGhostNumber";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
@@ -157,10 +156,9 @@ export default function SectionWhatFrancoIs() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <SectionGhostNumber number="03" side="right" top="clamp(110px, 14vh, 200px)" />
       <div className="relative mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <SectionHeader
-          eyebrow="03 · Qué es Franco"
+          eyebrow="Qué es Franco"
           title={"No es una calculadora.\nEs un asesor con IA."}
           subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
         />
@@ -197,23 +195,6 @@ function BulletItem({ data, last }: { data: Bullet; last: boolean }) {
           : "0.5px solid var(--landing-card-border)",
       }}
     >
-      {/* Número grande Source Serif Bold · 18% opacity del color de texto
-          (theme-aware via color-mix). */}
-      <span
-        className="font-heading font-bold"
-        style={{
-          width: 42,
-          flexShrink: 0,
-          fontSize: 30,
-          lineHeight: 1,
-          color:
-            "color-mix(in srgb, var(--landing-text) 18%, transparent)",
-        }}
-        aria-hidden="true"
-      >
-        {data.id}
-      </span>
-
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Verbo · Mono Bold Signal Red uppercase */}
         <p

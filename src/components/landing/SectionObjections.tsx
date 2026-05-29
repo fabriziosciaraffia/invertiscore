@@ -9,7 +9,6 @@ import {
 } from "framer-motion";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import LandingModal from "./LandingModal";
-import SectionGhostNumber from "./SectionGhostNumber";
 
 /**
  * Sección 07 · Garantías — grid de 4 cards con modal al click.
@@ -33,7 +32,7 @@ type Block = {
 const BLOCKS: ReadonlyArray<Block> = [
   {
     n: "01",
-    label: "01 · Datos",
+    label: "Datos",
     quote: "¿De dónde sacan los números?",
     title: "Del mercado real, no de promedios.",
     body: "Comparamos tu departamento con información real de propiedades en venta, arriendos de largo plazo y datos en línea de Airbnb. Además, interpretamos atractores de demanda como cercanía a estaciones de metro, clínicas, universidades y comercio. 24 comunas del Gran Santiago, actualizado semanalmente.",
@@ -41,7 +40,7 @@ const BLOCKS: ReadonlyArray<Block> = [
   },
   {
     n: "02",
-    label: "02 · Facilidad",
+    label: "Facilidad",
     quote: "No tengo todos los datos a mano.",
     title: "Habla claro, no en jerga financiera.",
     body: "Cualquiera puede leer el informe — sin saber de finanzas, sin glosario, sin tener que traducir nada. Las decisiones quedan claras.",
@@ -49,7 +48,7 @@ const BLOCKS: ReadonlyArray<Block> = [
   },
   {
     n: "03",
-    label: "03 · Costo",
+    label: "Costo",
     quote: "¿Cuánto cuesta?",
     title: "Lo que cuestan dos cafés.",
     body: "Y el primero es gratis, sin tarjeta. Antes de firmar 25 años de hipoteca, el costo se paga solo. Ahorrarte un error de compra equivale a miles de análisis.",
@@ -57,7 +56,7 @@ const BLOCKS: ReadonlyArray<Block> = [
   },
   {
     n: "04",
-    label: "04 · Honestidad",
+    label: "Honestidad",
     quote: "¿Y si me dice lo que quiero escuchar?",
     title: "Franco prefiere decirte que no antes que quedar bien contigo.",
     body: "El veredicto puede ser COMPRAR, AJUSTAR o BUSCAR OTRA — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.",
@@ -73,7 +72,6 @@ export default function SectionObjections() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <SectionGhostNumber number="07" side="left" top="clamp(140px, 18vh, 240px)" />
       <div className="relative mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
         <ObjectionsHeader />
         <Cards onSelect={setActive} />
@@ -137,7 +135,7 @@ function ObjectionsHeader() {
         className="font-mono font-medium uppercase text-[#C8323C]"
         style={{ fontSize: 11, letterSpacing: "0.06em", marginBottom: 24 }}
       >
-        07 · Garantías
+        Garantías
       </motion.p>
 
       <h2
@@ -211,14 +209,6 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
               "0 1px 0 rgba(0,0,0,0.04), 0 12px 24px -16px rgba(0,0,0,0.18)",
           }}
         >
-          <span
-            className="font-heading font-bold leading-[0.85] tracking-[-0.04em] text-[#C8323C]"
-            style={{ fontSize: "clamp(56px, 6vw, 80px)", flexShrink: 0 }}
-            aria-hidden="true"
-          >
-            {b.n}
-          </span>
-
           <div className="flex flex-1 flex-col">
             <p
               className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
