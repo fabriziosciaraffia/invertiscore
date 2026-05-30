@@ -163,7 +163,7 @@ export default function SectionWhatFrancoIs() {
           subhead="Franco interpreta tu caso, identifica el problema real y propone alternativas concretas. No te entrega solo números — te dice qué hacer con ellos."
         />
 
-        <div className="mt-10 grid grid-cols-1 gap-10 md:mt-14 lg:grid-cols-2 lg:gap-16 lg:items-center">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-2 lg:gap-16 lg:items-center">
           {/* Columna izquierda · 4 bullets */}
           <div>
             {BULLETS.map((b, i) => (
@@ -834,7 +834,7 @@ function FrancoInsightCards() {
   return (
     <div
       ref={containerRef}
-      className="min-h-[680px] lg:min-h-[600px] s03-cards-hold"
+      className="min-h-[640px] lg:min-h-[520px] s03-cards-hold"
       onPointerDown={handlePointerDown}
       onPointerUp={releaseHold}
       onPointerCancel={releaseHold}
