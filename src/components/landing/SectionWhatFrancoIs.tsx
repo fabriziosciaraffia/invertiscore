@@ -834,7 +834,7 @@ function FrancoInsightCards() {
   return (
     <div
       ref={containerRef}
-      className="min-h-[640px] lg:min-h-[520px] s03-cards-hold"
+      className="min-h-[715px] lg:min-h-[580px] s03-cards-hold"
       onPointerDown={handlePointerDown}
       onPointerUp={releaseHold}
       onPointerCancel={releaseHold}
