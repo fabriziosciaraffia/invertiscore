@@ -40,7 +40,7 @@ export default function LandingFooter() {
                   color: "var(--landing-text-secondary)",
                 }}
               >
-                Re franco con tu inversión
+                Real estate en su estado más franco
               </span>
             </div>
             <p className="mt-5 max-w-[360px] font-body text-[14px] leading-[1.6] text-[var(--landing-text-muted)]">

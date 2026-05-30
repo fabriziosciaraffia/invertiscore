@@ -9,6 +9,40 @@ function createAdminClient() {
 }
 
 /**
+ * Resuelve el nombre a saludar desde el user de Supabase, con fallback en
+ * cadena según el proveedor de auth:
+ *   - Google OAuth → user_metadata.full_name / name
+ *   - email+password → user_metadata.nombre (lo setea el signUp en /register)
+ *   - sin nombre en metadata → se deriva del email (parte antes del @,
+ *     normalizada: separadores → espacios, capitalizada)
+ *   - si todo falla → "" (el saludo cae a "Hola," sin nombre)
+ * sendWelcomeEmail aplica el split del primer nombre al resultado.
+ */
+export function resolveDisplayName(
+  metadata: Record<string, unknown> | null | undefined,
+  email: string | null | undefined,
+): string {
+  const m = metadata ?? {};
+  const fromMeta =
+    (m.full_name as string) || (m.name as string) || (m.nombre as string) || "";
+  if (fromMeta.trim()) return fromMeta.trim();
+
+  // Derivar del email: "juan.perez@gmail.com" → "Juan Perez".
+  const local = (email ?? "").split("@")[0] ?? "";
+  if (!local) return "";
+  const cleaned = local
+    .replace(/[._\-+]+/g, " ")
+    .replace(/\d+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (!cleaned) return "";
+  return cleaned
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
+
+/**
  * Envía el welcome email una sola vez por usuario, de forma idempotente,
  * desacoplada del cliente y SEGURA ante concurrencia (race condition).
  *

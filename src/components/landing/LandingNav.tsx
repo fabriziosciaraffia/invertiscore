@@ -54,7 +54,7 @@ export default function LandingNav() {
               color: "var(--landing-text-secondary)",
             }}
           >
-            Re franco con tu inversión
+            Real estate en su estado más franco
           </span>
         </Link>
 

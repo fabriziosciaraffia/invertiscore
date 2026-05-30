@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis } from "@/lib/types";
-import { ensureWelcomeEmail } from "@/lib/welcome";
+import { ensureWelcomeEmail, resolveDisplayName } from "@/lib/welcome";
 import { DashboardClient } from "./dashboard-client";
 import { OnboardingClient } from "./onboarding-client";
 
@@ -16,7 +16,11 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const fullName = user.user_metadata?.full_name || user.user_metadata?.name || '';
+  // Fallback en cadena según proveedor (Google full_name/name · email+password
+  // nombre · derivado del email). Antes solo miraba full_name/name → los
+  // usuarios de email+password (que guardan el nombre en user_metadata.nombre)
+  // recibían el welcome con "Hola," sin nombre.
+  const fullName = resolveDisplayName(user.user_metadata, user.email);
   const firstName = fullName.split(' ')[0] || '';
 
   // Welcome email server-side e idempotente: se dispara tanto si el user ve

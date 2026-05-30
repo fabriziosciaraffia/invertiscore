@@ -17,7 +17,7 @@ const WORDMARK = `<div style="margin-bottom: 32px;">
     <span style="font-family: Georgia, 'Times New Roman', serif; opacity: 0.28; font-style: italic;">re</span><span style="font-family: Georgia, 'Times New Roman', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-family: Arial, sans-serif; font-size: 14px; font-weight: 600;">.ai</span>
   </div>
   <div style="margin-top: 8px; font-family: 'Courier New', Courier, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: #71717A;">
-    Re franco con tu inversión
+    Real estate en su estado más franco
   </div>
 </div>`;
 
@@ -85,7 +85,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
             <td style="padding: 8px 4px 20px 4px;">
               <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">${greeting}</h1>
               <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
-                Así se ve un análisis de Franco. Ingresas un depto y recibes un veredicto claro — comprar, ajustar o buscar otra — con los números que tu cotización no muestra.
+                Así se ve un análisis de Franco. Ingresas un depto y recibes un veredicto claro — COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA — con los números que tu cotización no muestra.
               </p>
             </td>
           </tr>
@@ -120,8 +120,8 @@ export async function sendWelcomeEmail(to: string, name: string) {
                 <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 2px; color: #888780; text-transform: uppercase; margin: 0 0 16px 0;">Cómo funciona</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${welcomeStep('01', 'Ingresas los datos del depto: dirección, precio, superficie.')}
-                  ${welcomeStep('02', 'Franco cruza tu depto con 20.000+ propiedades reales y la plusvalía histórica de la zona.')}
-                  ${welcomeStep('03', 'Recibes un veredicto: comprar, ajustar el precio o buscar otra. Con el porqué.')}
+                  ${welcomeStep('02', 'Franco cruza tu depto con +20.000 propiedades reales + datos Airbnb en línea.')}
+                  ${welcomeStep('03', 'Recibes un veredicto —comprar, ajustar el precio o buscar otra— con su explicación.')}
                 </table>
               </div>
             </td>
