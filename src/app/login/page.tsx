@@ -161,6 +161,15 @@ export default function LoginPage() {
                 >
                   {loading ? "Ingresando..." : "Iniciar sesión"}
                 </button>
+
+                <div className="text-center">
+                  <Link
+                    href="/recuperar"
+                    className="font-body text-[13px] text-[var(--franco-text-secondary)] underline-offset-2 hover:text-[var(--franco-text)] hover:underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                </div>
               </form>
 
               <p className="text-center font-body text-sm text-[var(--franco-text-secondary)]">
