@@ -64,14 +64,14 @@ export default function SectionWhatFrancoDoes() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="relative mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <SectionHeader
           eyebrow="Cómo funciona"
           title={"Le hacemos a tu depto las preguntas\nque tu cotización no responde."}
           subhead="Datos reales del mercado, contribuciones del SII, gastos operativos, comparables de tu zona. Todo procesado por IA en 30 segundos."
         />
 
-        <div className="mt-16 space-y-24 md:mt-24 md:space-y-32">
+        <div className="mt-12 space-y-16 md:mt-16 md:space-y-20">
           {STEPS.map((step) => (
             <RevealOnScroll key={step.numeral}>
               <StepBlock data={step} />
@@ -398,12 +398,12 @@ function MockupStep01() {
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 20, minHeight: 602 }}
+      style={{ padding: 16, minHeight: 500 }}
     >
       {/* Header · wordmark refranco.ai + label "Nuevo análisis" */}
       <div
         className="flex items-center justify-between"
-        style={{ marginBottom: 14 }}
+        style={{ marginBottom: 10 }}
       >
         <MockupWordmark />
         <span
@@ -418,7 +418,7 @@ function MockupStep01() {
           Dropdown OVERLAY (position absolute) → no reserva alto, así el mapa
           ocupa más espacio. No tapa nada porque los demás ítems aún no se han
           revelado cuando el dropdown está abierto. */}
-      <div style={{ position: "relative", marginBottom: 12, zIndex: 5 }}>
+      <div style={{ position: "relative", marginBottom: 10, zIndex: 5 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
@@ -542,7 +542,7 @@ function MockupStep01() {
       </div>
 
       {/* Tipo · chips Usado / Nuevo · reveal 1 */}
-      <RevealItem show={reveal >= 1} style={{ marginBottom: 12 }}>
+      <RevealItem show={reveal >= 1} style={{ marginBottom: 10 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
@@ -583,7 +583,7 @@ function MockupStep01() {
       {/* Grid Precio / Superficie · cada celda revela en secuencia (2, 3) */}
       <div
         className="grid grid-cols-2"
-        style={{ gap: 12, marginBottom: 12 }}
+        style={{ gap: 12, marginBottom: 10 }}
       >
         <RevealItem show={reveal >= 2}>
           <div
@@ -671,9 +671,9 @@ function MockupStep01() {
         show={reveal >= 4}
         className="relative w-full overflow-hidden rounded-md"
         style={{
-          height: 145,
+          height: 108,
           border: "0.5px solid var(--landing-card-border)",
-          marginBottom: 12,
+          marginBottom: 10,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -692,7 +692,7 @@ function MockupStep01() {
       {/* Características · campos reales del Paso 1 (dormitorios, baños,
           estacionamiento, bodega, huéspedes). Cada uno revela en secuencia
           (reveal 5..9). */}
-      <div className="grid grid-cols-2" style={{ gap: "12px 12px" }}>
+      <div className="grid grid-cols-2" style={{ gap: "9px 12px" }}>
         {(
           [
             ["Dormitorios", "2"],
@@ -727,7 +727,7 @@ function MockupStep01() {
       </div>
 
       {/* Botón Analizar · reveal 10 · CTA primario Signal Red (uso #1) */}
-      <RevealItem show={reveal >= 10} style={{ marginTop: 14 }}>
+      <RevealItem show={reveal >= 10} style={{ marginTop: 10 }}>
         <div
           style={{
             padding: "8px 14px",
@@ -890,8 +890,8 @@ function MockupStep02() {
       ref={containerRef}
       className="franco-mockup"
       style={{
-        padding: 20,
-        minHeight: 602,
+        padding: 15,
+        minHeight: 500,
         display: "flex",
         flexDirection: "column",
       }}
@@ -899,7 +899,7 @@ function MockupStep02() {
       {/* Header · wordmark + paso del wizard */}
       <div
         className="flex items-center justify-between"
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 10 }}
       >
         <MockupWordmark />
         <span
@@ -913,13 +913,13 @@ function MockupStep02() {
       {/* Modalidad · Arriendo largo / Airbnb / Ambas (AMBAS activa = Ink invertido) */}
       <p
         className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 7 }}
+        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 6 }}
       >
         Modalidad
       </p>
       <div
         className="flex"
-        style={{ gap: 6, flexWrap: "wrap", marginBottom: 18 }}
+        style={{ gap: 6, flexWrap: "wrap", marginBottom: 11 }}
       >
         <Chip show={modChips >= 1}>Arriendo largo</Chip>
         <Chip show={modChips >= 2}>Airbnb</Chip>
@@ -940,7 +940,7 @@ function MockupStep02() {
       </RevealItem>
       <div
         className="grid grid-cols-2"
-        style={{ gap: "12px 12px", marginBottom: 18 }}
+        style={{ gap: "9px 12px", marginBottom: 11 }}
       >
         {(
           [
@@ -1004,7 +1004,7 @@ function MockupStep02() {
       </RevealItem>
       <div
         className="grid grid-cols-2"
-        style={{ gap: "12px 12px", marginBottom: 9 }}
+        style={{ gap: "9px 12px", marginBottom: 8 }}
       >
         {(
           [
@@ -1042,7 +1042,7 @@ function MockupStep02() {
       <RevealItem
         show={reveal >= 11}
         className="flex items-center"
-        style={{ gap: 8, marginBottom: 18 }}
+        style={{ gap: 8, marginBottom: 11 }}
       >
         <CheckCircle />
         <span
@@ -1372,12 +1372,12 @@ function MockupStep03() {
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 18, minHeight: 602, display: "flex", flexDirection: "column" }}
+      style={{ padding: 14, minHeight: 500, display: "flex", flexDirection: "column" }}
     >
       {/* Header · wordmark refranco.ai + label "Completado" */}
       <div
         className="flex items-center justify-between"
-        style={{ marginBottom: 12 }}
+        style={{ marginBottom: 10 }}
       >
         <MockupWordmark />
         <p
@@ -1398,8 +1398,8 @@ function MockupStep03() {
           background: "var(--landing-mockup-solid-bg)",
           border: "0.5px solid var(--landing-card-border)",
           borderRadius: 10,
-          padding: 14,
-          marginBottom: 8,
+          padding: 11,
+          marginBottom: 6,
         }}
       >
         {/* Eyebrow row · FRANCO SCORE + ? + badge */}
@@ -1577,8 +1577,8 @@ function MockupStep03() {
           border: "0.5px solid var(--landing-card-border)",
           borderLeft: "3px solid #C8323C",
           borderRadius: "0 6px 6px 0",
-          padding: "11px 12px",
-          marginBottom: 8,
+          padding: "9px 12px",
+          marginBottom: 6,
         }}
       >
         <p
@@ -1618,7 +1618,7 @@ function MockupStep03() {
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
           gap: 6,
-          marginBottom: 8,
+          marginBottom: 6,
         }}
       >
         <S03MiniCard
@@ -1661,7 +1661,7 @@ function MockupStep03() {
           background: "var(--landing-card-bg-soft)",
           border: "0.5px solid var(--landing-card-border)",
           borderRadius: 8,
-          padding: 11,
+          padding: 9,
         }}
       >
         <div
