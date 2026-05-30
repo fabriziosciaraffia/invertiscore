@@ -1158,7 +1158,7 @@ export default function NuevoAnalisisPage() {
         <div className="mb-5">
           <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)]">Nuevo Análisis</h1>
           <p className="font-body text-[13px] text-[var(--franco-text-muted)] mt-1">
-            Los números que tu corredor no te va a mostrar. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
+            Los números que tu cotización no muestra. <span className="font-mono">UF hoy: {fmtCLP(UF_CLP)}</span>
           </p>
         </div>
 

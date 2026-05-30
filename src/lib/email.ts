@@ -17,7 +17,7 @@ const WORDMARK = `<div style="margin-bottom: 32px;">
     <span style="font-family: Georgia, 'Times New Roman', serif; opacity: 0.28; font-style: italic;">re</span><span style="font-family: Georgia, 'Times New Roman', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-family: Arial, sans-serif; font-size: 14px; font-weight: 600;">.ai</span>
   </div>
   <div style="margin-top: 8px; font-family: 'Courier New', Courier, monospace; font-size: 9px; text-transform: uppercase; letter-spacing: 0.2em; color: #71717A;">
-    Real estate en su estado más franco
+    Re franco con tu inversión
   </div>
 </div>`;
 

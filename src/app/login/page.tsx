@@ -186,7 +186,7 @@ export default function LoginPage() {
 
           {/* Franco tagline */}
           <div className="mt-6 text-center font-body text-[11px] text-[var(--franco-text-secondary)]">
-            Tu corredor gana si compras. Franco gana si decides bien.
+            Re franco con tu inversión.
           </div>
         </div>
       </div>

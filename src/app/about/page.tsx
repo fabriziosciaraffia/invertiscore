@@ -15,7 +15,7 @@ export default function AboutPage() {
 
         <div className="mt-8 space-y-6 font-body text-[15px] text-[var(--franco-text)] leading-relaxed">
           <p>
-            Franco nació de una frustración: los números que te muestra tu corredor no cuentan la historia completa.
+            Franco nació de una frustración: los números de una cotización no cuentan la historia completa.
           </p>
           <p>
             Somos una herramienta independiente de análisis de inversión inmobiliaria en Chile. Nuestro modelo es simple: ganamos cuando tú decides bien, no cuando compras.

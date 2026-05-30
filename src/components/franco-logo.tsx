@@ -60,7 +60,7 @@ export default function FrancoLogo({
             lineHeight: 1,
           }}
         >
-          Real estate en su estado más franco
+          Re franco con tu inversión
         </span>
       )}
     </span>

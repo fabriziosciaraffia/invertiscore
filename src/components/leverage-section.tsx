@@ -397,7 +397,7 @@ export default function LeverageSection() {
                   {fmtMonto(flujoNetoAbs)}/mes
                 </strong>{" "}
                 de tu bolsillo. En un año son {fmtMonto(bolsillo12)}.{" "}
-                <strong>Eso es lo que tu corredor no te dice.</strong> Pero no es
+                <strong>Eso es lo que una cotización no te dice.</strong> Pero no es
                 toda la historia.
               </p>
             </div>

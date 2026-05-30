@@ -542,7 +542,7 @@ function DrawerContent({
           <DataRow
             label="Rentabilidad bruta"
             value={fmtPct(base.rentabilidadBruta * 100, 2)}
-            tooltip="Ingresos brutos anuales divididos por precio de compra, sin descontar nada. Útil sólo como referencia rápida — el corredor te muestra esto."
+            tooltip="Ingresos brutos anuales divididos por precio de compra, sin descontar nada. Útil sólo como referencia rápida — es el número de portada."
           />
         </DrawerSection>
         {/* Commit 3a · 2026-05-12: renombrado de "Conservador (p25) / Base (p50)

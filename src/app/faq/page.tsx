@@ -62,7 +62,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       },
       {
         q: "¿Franco reemplaza a un corredor?",
-        a: "No. Franco complementa tu proceso de decisión. Un corredor te muestra propiedades y gestiona la transacción. Franco te dice si esa propiedad es buen negocio como inversión. La diferencia: tu corredor gana si compras, Franco gana si decides bien.",
+        a: "No. Franco complementa tu proceso de decisión. Un corredor te muestra propiedades y gestiona la transacción; Franco te dice si esa propiedad es buen negocio como inversión, con datos.",
       },
     ],
   },
