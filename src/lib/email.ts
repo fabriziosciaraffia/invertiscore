@@ -54,40 +54,110 @@ function ctaButton(text: string, url: string): string {
 </div>`;
 }
 
+const WELCOME_HERO_URL = 'https://refranco.ai/email/welcome-hero-compra.png';
+
+// Un paso del bloque "Cómo funciona". Numeral mono en Signal Red + texto.
+function welcomeStep(num: string, text: string): string {
+  return `<tr>
+    <td valign="top" width="40" style="padding: 0 0 14px 0; font-family: 'Courier New', Courier, monospace; font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #C8323C;">${num}</td>
+    <td valign="top" style="padding: 0 0 14px 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">${text}</td>
+  </tr>`;
+}
+
 export async function sendWelcomeEmail(to: string, name: string) {
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+
+  // Estructura email-safe: tablas + estilos inline, ancho 600, fondo #0F0F0F.
+  // El hero va como PNG (renderizado del Hero Verdict Block, fuentes reales);
+  // el CTA es HTML real (no imagen) para mantener accesibilidad y trackeo.
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: #0F0F0F;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #0F0F0F;">
+    <tr>
+      <td align="center" style="padding: 24px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 600px; max-width: 600px;">
+
+          <!-- Saludo + intro -->
+          <tr>
+            <td style="padding: 8px 4px 20px 4px;">
+              <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">${greeting}</h1>
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
+                Así se ve un análisis de Franco. Ingresas un depto y recibes un veredicto claro — comprar, ajustar o buscar otra — con los números que tu cotización no muestra.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Hero PNG (ejemplo de veredicto COMPRAR) -->
+          <tr>
+            <td style="padding: 0 0 8px 0;">
+              <img src="${WELCOME_HERO_URL}" width="600" alt="refranco.ai — ejemplo de veredicto COMPRAR" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0; border-radius: 12px;" />
+            </td>
+          </tr>
+
+          <!-- CTA (HTML real, no imagen) + microcopy -->
+          <tr>
+            <td align="center" style="padding: 28px 4px 6px 4px;">
+              <a href="https://refranco.ai/analisis/nuevo-v2" style="display: inline-block; background: #C8323C; color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                Analizar mi primer depto &rarr;
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 4px 28px 4px;">
+              <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1px; color: #71717A; margin: 0; text-transform: uppercase;">
+                Gratis. Resultado en 30 segundos.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Cómo funciona -->
+          <tr>
+            <td style="padding: 4px 4px 8px 4px;">
+              <div style="border-top: 1px solid #222; padding-top: 24px;">
+                <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 2px; color: #888780; text-transform: uppercase; margin: 0 0 16px 0;">Cómo funciona</p>
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                  ${welcomeStep('01', 'Ingresas los datos del depto: dirección, precio, superficie.')}
+                  ${welcomeStep('02', 'Franco cruza tu depto con 20.000+ propiedades reales y la plusvalía histórica de la zona.')}
+                  ${welcomeStep('03', 'Recibes un veredicto: comprar, ajustar el precio o buscar otra. Con el porqué.')}
+                </table>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 4px 8px 4px;">
+              <div style="border-top: 1px solid #222; padding-top: 20px;">
+                <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0 0 12px 0;">
+                  Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.
+                </p>
+                <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #52525B; margin: 0;">
+                  <a href="https://refranco.ai/cuenta" style="color: #71717A; text-decoration: underline;">Preferencias de correo</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://refranco.ai/cuenta" style="color: #71717A; text-decoration: underline;">Cancelar suscripción</a>
+                  &nbsp;·&nbsp;
+                  <a href="https://refranco.ai" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+                </p>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
   try {
     await getResend()?.emails.send({
       from: FROM_EMAIL,
       to,
       subject: 'Bienvenido a Franco — tu primer análisis es gratis',
-      html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 16px 0;">${greeting}</h1>
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Analiza cualquier depto en Santiago. En 30 segundos sabes si la inversión vale la pena.
-        </p>
-
-        <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
-          <div style="padding: 8px 0; color: #FAFAF8; font-size: 14px; line-height: 1.6;">
-            <div style="margin-bottom: 12px;">
-              <span style="color: #C8323C; margin-right: 8px;">&#10022;</span>
-              <span style="color: #A1A1AA;">Franco Score de 1 a 100 con veredicto claro</span>
-            </div>
-            <div style="margin-bottom: 12px;">
-              <span style="color: #C8323C; margin-right: 8px;">&#10022;</span>
-              <span style="color: #A1A1AA;">Comparación con el mercado de tu zona</span>
-            </div>
-            <div>
-              <span style="color: #C8323C; margin-right: 8px;">&#10022;</span>
-              <span style="color: #A1A1AA;">Análisis con IA que te dice la verdad</span>
-            </div>
-          </div>
-        </div>
-
-        ${ctaButton('Analizar mi primer departamento →', 'https://refranco.ai/analisis/nuevo-v2')}
-      `),
+      html,
     });
   } catch (error) {
     console.error('Error sending welcome email:', error);

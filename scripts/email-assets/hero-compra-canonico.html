@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hero COMPRAR — render a PNG</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#0F0F0F; }
+  .hero { width:600px; background:#1A1A1A; border:1px solid #2C2C2A; border-radius:12px; padding:32px 36px 28px; }
+  .wm { font-family:'Source Serif 4',serif; font-size:26px; }
+  .wm .re { font-style:italic; font-weight:400; color:#888780; }
+  .wm .fr { font-weight:700; color:#FAFAF8; }
+  .wm .ai { font-weight:700; color:#C8323C; }
+  .tagline { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:#5F5E5A; text-transform:uppercase; margin-top:6px; }
+  .card { background:#0F0F0F; border:1px solid #2C2C2A; border-radius:10px; padding:22px 24px; margin-top:24px; }
+  .prop { font-family:'Source Serif 4',serif; font-weight:700; font-size:18px; color:#FAFAF8; }
+  .meta { font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:1px; color:#888780; margin-top:5px; }
+  .scorerow { display:flex; justify-content:space-between; align-items:center; margin-top:20px; }
+  .scorelabel { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:#888780; text-transform:uppercase; }
+  .badge { background:#FAFAF8; border-radius:5px; padding:7px 18px; font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:3px; color:#0F0F0F; font-weight:700; }
+  .scoreval { display:flex; align-items:center; margin-top:10px; }
+  .num { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:44px; color:#FAFAF8; line-height:1; width:70px; }
+  .track { flex:1; height:4px; background:#2C2C2A; border-radius:2px; position:relative; margin-left:8px; }
+  .fill { position:absolute; left:0; top:0; height:4px; width:78%; background:#B4B2A9; border-radius:2px; }
+  .marker { position:absolute; left:78%; top:-4px; width:12px; height:12px; border-radius:50%; background:#FAFAF8; transform:translateX(-50%); }
+  .barlabels { display:flex; justify-content:space-between; margin:10px 0 0 78px; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; }
+  .barlabels .b { color:#5F5E5A; } .barlabels .c { color:#FAFAF8; }
+  .verdict { font-family:'Source Serif 4',serif; font-style:italic; font-weight:400; font-size:21px; line-height:1.35; color:#FAFAF8; margin-top:22px; }
+  .actionbox { display:flex; margin-top:16px; }
+  .actionbar { width:3px; background:#C8323C; border-radius:2px; }
+  .actioncontent { padding-left:16px; }
+  .actionlabel { font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:2px; color:#C8323C; text-transform:uppercase; margin-bottom:6px; }
+  .actiontext { font-family:'Source Serif 4',serif; font-style:italic; font-size:15px; line-height:1.55; color:#B4B2A9; }
+  .actiontext b { color:#FAFAF8; font-weight:700; font-style:normal; }
+  .grid { display:flex; gap:12px; margin-top:24px; }
+  .kpi { flex:1; background:#0F0F0F; border:1px solid #2C2C2A; border-radius:8px; padding:16px 18px; }
+  .kpilabel { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; color:#888780; margin-bottom:10px; }
+  .kpival { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:24px; margin-bottom:4px; }
+  .kpival.neg { color:#C8323C; } .kpival.pos { color:#FAFAF8; }
+  .kpisub { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:1px; color:#5F5E5A; }
+</style>
+</head>
+<body>
+<div class="hero" id="hero">
+  <div class="wm"><span class="re">re</span><span class="fr">franco</span><span class="ai">.ai</span></div>
+  <div class="tagline">Re franco con tu inversión</div>
+  <div class="card">
+    <div class="prop">Depto 2D2B Ñuñoa</div>
+    <div class="meta">62 M² · UF 4.180 · PIE 20%</div>
+    <div class="scorerow">
+      <span class="scorelabel">Franco Score</span>
+      <span class="badge">COMPRAR</span>
+    </div>
+    <div class="scoreval">
+      <span class="num">78</span>
+      <span class="track"><span class="fill"></span><span class="marker"></span></span>
+    </div>
+    <div class="barlabels"><span class="b">BUSCAR</span><span class="b">AJUSTA</span><span class="c">COMPRAR</span></div>
+  </div>
+  <div class="verdict">Los números cierran. La ventaja de precio compensa el flujo negativo.</div>
+  <div class="actionbox">
+    <div class="actionbar"></div>
+    <div class="actioncontent">
+      <div class="actionlabel">Lo que verías</div>
+      <div class="actiontext">Compraste <b>UF 410 bajo mercado</b>. La plusvalía y el equity dan vuelta el balance pese al flujo mensual.</div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="kpi">
+      <div class="kpilabel">02 · COSTO MENSUAL</div>
+      <div class="kpival neg">−$95K</div>
+      <div class="kpisub">FLUJO DE BOLSILLO</div>
+    </div>
+    <div class="kpi">
+      <div class="kpilabel">04 · LARGO PLAZO</div>
+      <div class="kpival pos">2.9x</div>
+      <div class="kpisub">RETORNO 10 AÑOS</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
