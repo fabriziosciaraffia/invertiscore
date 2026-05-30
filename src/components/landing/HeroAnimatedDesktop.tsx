@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /* Hook · detecta si el tema actual es light leyendo data-franco-theme
  * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
@@ -123,10 +123,11 @@ export default function HeroAnimatedDesktop({
   const [typedText, setTypedText] = useState("");
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
-  const [showChips, setShowChips] = useState(false);
+  // formReveal · 0..10 · cada ítem del formulario aparece en secuencia
+  // (mismo patrón que la card 01 de s04 SectionWhatFrancoDoes).
+  const [formReveal, setFormReveal] = useState(0);
   const [precioCount, setPrecioCount] = useState(0);
   const [superficieCount, setSuperficieCount] = useState(0);
-  const [showMap, setShowMap] = useState(false);
 
   // ─── Results sub-state ──────────────────────────
   // Initial values = FINAL state. Card 2 es protagonista permanente:
@@ -196,10 +197,9 @@ export default function HeroAnimatedDesktop({
     setTypedText(DIRECCION);
     setDropdownVisible(false);
     setAutocompleteHighlight(false);
-    setShowChips(true);
+    setFormReveal(10);
     setPrecioCount(5500);
     setSuperficieCount(60);
-    setShowMap(true);
     setScoreCount(61);
     setBarPct(61);
     setShowBadge(true);
@@ -261,10 +261,9 @@ export default function HeroAnimatedDesktop({
       setTypedText("");
       setDropdownVisible(false);
       setAutocompleteHighlight(false);
-      setShowChips(false);
+      setFormReveal(0);
       setPrecioCount(0);
       setSuperficieCount(0);
-      setShowMap(false);
 
       // Reset Card 2 sub-state ahora · cuando showCard2 pase a true en
       // t=3000, Card 2 hace fade-in VACÍA y va construyéndose progresivo
@@ -312,15 +311,24 @@ export default function HeroAnimatedDesktop({
         setAutocompleteHighlight(false);
       });
 
-      // t=2550 chips ESTADO + Tipología + counters Precio/Superficie
-      T(2550, () => {
-        setShowChips(true);
-        animateCounter(setPrecioCount, 0, 5500, 1050);
-        animateCounter(setSuperficieCount, 0, 60, 1050);
+      // Reveal secuencial del formulario · un ítem a la vez (cascada ~200ms,
+      // mismo ritmo que s04). Termina antes de que entre Card 2 (t=4500).
+      T(2550, () => setFormReveal(1)); // Tipo
+      T(2750, () => {
+        setFormReveal(2); // Precio
+        animateCounter(setPrecioCount, 0, 5500, 700);
       });
-
-      // t=3300 mapa fade-in
-      T(3300, () => setShowMap(true));
+      T(2950, () => {
+        setFormReveal(3); // Superficie
+        animateCounter(setSuperficieCount, 0, 60, 700);
+      });
+      T(3150, () => setFormReveal(4)); // Mapa
+      T(3350, () => setFormReveal(5)); // Dormitorios
+      T(3500, () => setFormReveal(6)); // Baños
+      T(3650, () => setFormReveal(7)); // Estacionamiento
+      T(3800, () => setFormReveal(8)); // Bodega
+      T(3950, () => setFormReveal(9)); // Huéspedes
+      T(4150, () => setFormReveal(10)); // Analizar
 
       // ===== TRANSITION (4500-5250ms) · Card 2 entra =====
       T(4500, () => {
@@ -506,10 +514,9 @@ export default function HeroAnimatedDesktop({
           cursorVisible={cursorVisible}
           dropdownVisible={dropdownVisible}
           autocompleteHighlight={autocompleteHighlight}
-          showChips={showChips}
+          formReveal={formReveal}
           precioCount={precioCount}
           superficieCount={superficieCount}
-          showMap={showMap}
           isLight={isLight}
         />
       </motion.div>
@@ -565,6 +572,33 @@ function HeaderApp({ label }: { label: string }) {
   );
 }
 
+/* Item revelable · fade + slide-up corto. Reveal secuencial item-por-item
+ * (mismo patrón que la card 01 de s04). */
+function RevealItem({
+  show,
+  children,
+  className,
+  style,
+}: {
+  show: boolean;
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      aria-hidden={!show}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 /* ===================== Card 1 · Form (animado) ===================== */
 
 function FormCard({
@@ -572,28 +606,26 @@ function FormCard({
   cursorVisible,
   dropdownVisible,
   autocompleteHighlight,
-  showChips,
+  formReveal,
   precioCount,
   superficieCount,
-  showMap,
   isLight,
 }: {
   typedText: string;
   cursorVisible: boolean;
   dropdownVisible: boolean;
   autocompleteHighlight: boolean;
-  showChips: boolean;
+  formReveal: number;
   precioCount: number;
   superficieCount: number;
-  showMap: boolean;
   isLight: boolean;
 }) {
   return (
     <div>
       <HeaderApp label="Nuevo análisis" />
 
-      {/* Dirección · con typing + dropdown autocomplete */}
-      <div style={{ marginBottom: 10 }}>
+      {/* Dirección · typing + dropdown autocomplete OVERLAY (no reserva alto). */}
+      <div style={{ position: "relative", marginBottom: 12, zIndex: 5 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
@@ -645,7 +677,8 @@ function FormCard({
             />
           </span>
         </div>
-        {/* Dropdown always-mounted in-flow · animate condicional (Phase 2.6f). */}
+        {/* Dropdown always-mounted, OVERLAY absoluto (no reserva alto en el
+            flujo · Phase 2.6f patrón: no se desmonta, solo opacity). */}
         <motion.div
           initial={false}
           animate={
@@ -656,7 +689,12 @@ function FormCard({
           transition={{ duration: 0.18, ease: EASE }}
           aria-hidden={!dropdownVisible}
           style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
             marginTop: 4,
+            zIndex: 10,
             background: "var(--landing-card-bg)",
             border: "0.5px solid var(--landing-card-border)",
             borderRadius: 5,
@@ -690,77 +728,48 @@ function FormCard({
         </motion.div>
       </div>
 
-      {/* Grid Estado (chips) + Tipología · always-mounted, opacity controlled */}
-      <motion.div
-        initial={false}
-        animate={showChips ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.25, ease: EASE }}
-        className="grid grid-cols-2"
-        style={{ gap: 12, marginBottom: 10 }}
-      >
-        <div>
-          <p
-            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
-          >
-            Estado
-          </p>
-          <div className="flex" style={{ gap: 6 }}>
-            <span
-              className="font-mono font-bold uppercase"
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.08em",
-                padding: "3px 10px",
-                borderRadius: 4,
-                border: "0.5px solid #C8323C",
-                color: "#C8323C",
-                background: "transparent",
-              }}
-            >
-              Usado
-            </span>
-            <span
-              className="font-mono font-medium uppercase"
-              style={{
-                fontSize: 10,
-                letterSpacing: "0.08em",
-                padding: "3px 10px",
-                borderRadius: 4,
-                border: "0.5px solid var(--landing-divider)",
-                color: "var(--landing-text-muted)",
-              }}
-            >
-              Nuevo
-            </span>
-          </div>
-        </div>
-        <div>
-          <p
-            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
-            style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
-          >
-            Tipología
-          </p>
-          <div
+      {/* Tipo · chips Usado / Nuevo · reveal 1 */}
+      <RevealItem show={formReveal >= 1} style={{ marginBottom: 12 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
+        >
+          Tipo
+        </p>
+        <div className="flex" style={{ gap: 6 }}>
+          <span
+            className="font-mono font-bold uppercase"
             style={{
-              borderBottom: "0.5px solid var(--landing-divider)",
-              paddingBottom: 4,
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid #C8323C",
+              color: "#C8323C",
+              background: "transparent",
             }}
           >
-            <span
-              className="font-mono font-medium text-[var(--landing-text)]"
-              style={{ fontSize: 12 }}
-            >
-              2D · 1B · 1 EST
-            </span>
-          </div>
+            Usado
+          </span>
+          <span
+            className="font-mono font-medium uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.08em",
+              padding: "3px 10px",
+              borderRadius: 4,
+              border: "0.5px solid var(--landing-divider)",
+              color: "var(--landing-text-muted)",
+            }}
+          >
+            Nuevo
+          </span>
         </div>
-      </motion.div>
+      </RevealItem>
 
-      {/* Grid Precio (UF/CLP toggle) + Superficie */}
+      {/* Grid Precio (UF/CLP toggle) + Superficie · cada celda en secuencia (2, 3) */}
       <div className="grid grid-cols-2" style={{ gap: 12, marginBottom: 12 }}>
-        <div>
+        <RevealItem show={formReveal >= 2}>
           <div
             className="flex items-center justify-between"
             style={{ marginBottom: 3 }}
@@ -816,8 +825,8 @@ function FormCard({
               UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
             </span>
           </div>
-        </div>
-        <div>
+        </RevealItem>
+        <RevealItem show={formReveal >= 3}>
           <p
             className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
             style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
@@ -837,19 +846,19 @@ function FormCard({
               {superficieCount > 0 ? `${superficieCount} m²` : "—"}
             </span>
           </div>
-        </div>
+        </RevealItem>
       </div>
 
-      {/* Mapa real WebP · theme-aware · fade-in via opacity */}
-      <motion.div
-        initial={false}
-        animate={{ opacity: showMap ? 1 : 0 }}
-        transition={{ duration: 0.4, ease: EASE }}
+      {/* Mapa real WebP · theme-aware · reveal 4 · alto fijo (card de 540 con
+          overflow:hidden — el contenido debe caber sin desbordar). */}
+      <RevealItem
+        show={formReveal >= 4}
         className="relative w-full overflow-hidden"
         style={{
-          aspectRatio: "340 / 120",
+          height: 86,
           border: "0.5px solid var(--landing-card-border)",
           borderRadius: 6,
+          marginBottom: 12,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -864,29 +873,67 @@ function FormCard({
           loading="lazy"
           aria-hidden="true"
         />
-      </motion.div>
+      </RevealItem>
 
-      {/* Botón ANALIZAR */}
-      <div
-        style={{
-          marginTop: 12,
-          padding: "7px 12px",
-          background: "#C8323C",
-          color: "#FAFAF8",
-          borderRadius: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 10,
-          fontWeight: 500,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          fontFamily: "var(--font-mono, monospace)",
-        }}
-      >
-        Analizar
-        <span aria-hidden="true">→</span>
+      {/* Características · campos reales del Paso 1 (dormitorios, baños,
+          estacionamiento, bodega, huéspedes). Cada uno en secuencia (5..9). */}
+      <div className="grid grid-cols-2" style={{ gap: "6px 12px" }}>
+        {(
+          [
+            ["Dormitorios", "2"],
+            ["Baños", "1"],
+            ["Estacionamiento", "1"],
+            ["Bodega", "1"],
+            ["Huéspedes", "4"],
+          ] as ReadonlyArray<readonly [string, string]>
+        ).map(([label, value], i) => (
+          <RevealItem key={label} show={formReveal >= 5 + i}>
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+            >
+              {label}
+            </p>
+            <div
+              style={{
+                borderBottom: "0.5px solid var(--landing-divider)",
+                paddingBottom: 4,
+              }}
+            >
+              <span
+                className="font-mono font-medium text-[var(--landing-text)]"
+                style={{ fontSize: 12 }}
+              >
+                {value}
+              </span>
+            </div>
+          </RevealItem>
+        ))}
       </div>
+      {/* (características grid: gap compacto para caber en card de 540) */}
+
+      {/* Botón ANALIZAR · reveal 10 */}
+      <RevealItem show={formReveal >= 10} style={{ marginTop: 12 }}>
+        <div
+          style={{
+            padding: "7px 12px",
+            background: "#C8323C",
+            color: "#FAFAF8",
+            borderRadius: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 10,
+            fontWeight: 500,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontFamily: "var(--font-mono, monospace)",
+          }}
+        >
+          Analizar
+          <span aria-hidden="true">→</span>
+        </div>
+      </RevealItem>
     </div>
   );
 }
