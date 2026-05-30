@@ -121,11 +121,11 @@ export default function SectionUseCases() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-base)" }}
     >
-      <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-[14vh] md:pt-[16vh]">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 pt-[10vh] md:pt-[10vh]">
         <UseCasesHeader />
       </div>
 
-      <div className="relative mx-auto w-full max-w-[1280px] px-6 pb-[14vh] md:pb-[16vh]">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 pb-[10vh] md:pb-[10vh]">
         <ProfileCarousel />
       </div>
     </section>
@@ -155,7 +155,7 @@ function UseCasesHeader() {
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, margin: "-100px 0px -100px 0px" }}
-      className="mb-[8vh]"
+      className="mb-12 md:mb-16"
     >
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 12 }}
@@ -383,7 +383,7 @@ function ProfileCarousel() {
             background: "var(--landing-mockup-solid-bg)",
             border: "0.5px solid var(--landing-card-border)",
             borderRadius: 18,
-            padding: "32px 36px",
+            padding: "24px 36px",
             minHeight: 300,
             overflow: "hidden",
           }}
@@ -415,7 +415,7 @@ function ProfileCarousel() {
                 style={{
                   position: "absolute",
                   inset: 0,
-                  padding: "32px 36px",
+                  padding: "24px 36px",
                   pointerEvents: isActive ? "auto" : "none",
                 }}
               >
@@ -493,18 +493,6 @@ function ProfileCarousel() {
         })}
       </div>
 
-      {/* ========== Hint sutil · sugiere selección de perfil ========== */}
-      <p
-        className="font-mono text-center text-[var(--landing-text-muted)]"
-        style={{
-          fontSize: 10,
-          letterSpacing: "0.08em",
-          marginTop: 14,
-          opacity: 0.7,
-        }}
-      >
-        Elige tu perfil →
-      </p>
     </div>
   );
 }
@@ -545,8 +533,8 @@ function IdentityBlock({ profile }: { profile: Profile }) {
     <div
       style={{
         borderBottom: "0.5px solid var(--landing-card-border)",
-        paddingBottom: 18,
-        marginBottom: 24,
+        paddingBottom: 14,
+        marginBottom: 20,
       }}
     >
       <p
