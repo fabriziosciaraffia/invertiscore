@@ -645,15 +645,31 @@ function FormCard({
         >
           <span
             className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12 }}
+            style={{ fontSize: 12, position: "relative", display: "inline-block" }}
           >
-            {typedText ? (
-              typedText
-            ) : (
-              <span style={{ color: "var(--landing-text-muted)" }}>
-                Buscar dirección…
-              </span>
-            )}
+            {/* Placeholder always-mounted · opacity (NO mount/unmount). El
+                render condicional montaba/desmontaba un <span> en cada
+                typing/reset → race removeChild en WebKit. */}
+            <span
+              aria-hidden={!!typedText}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                color: "var(--landing-text-muted)",
+                opacity: typedText ? 0 : 1,
+                transition: "opacity 120ms linear",
+                pointerEvents: "none",
+                whiteSpace: "nowrap",
+              }}
+            >
+              Buscar dirección…
+            </span>
+            {/* Texto tecleado always-mounted · visibility reserva ancho y
+                posiciona el cursor; solo muta el text content. */}
+            <span style={{ visibility: typedText ? "visible" : "hidden" }}>
+              {typedText || "Buscar dirección…"}
+            </span>
             {/* Cursor always-mounted · animate condicional (Phase 2.6e). */}
             <motion.span
               animate={
