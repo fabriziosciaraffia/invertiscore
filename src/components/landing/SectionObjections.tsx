@@ -59,7 +59,7 @@ const BLOCKS: ReadonlyArray<Block> = [
     label: "Honestidad",
     quote: "¿Y si me dice lo que quiero escuchar?",
     title: "Franco prefiere decirte que no antes que quedar bien contigo.",
-    body: "El veredicto puede ser COMPRAR, AJUSTAR o BUSCAR OTRA — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.",
+    body: "El veredicto puede ser COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA — los tres aparecen según el análisis. Cuando los números no dan, Franco lo dice claro y te ahorra millones.",
     visualKey: "honestidad",
   },
 ];
