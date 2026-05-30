@@ -228,6 +228,33 @@ function MockupWordmark() {
   );
 }
 
+/* Item revelable · fade + slide-up corto. Wrapper genérico para el reveal
+ * secuencial item-por-item de las cards 01/02 (mismo ritmo que la card 03). */
+function RevealItem({
+  show,
+  children,
+  className,
+  style,
+}: {
+  show: boolean;
+  children: ReactNode;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+      transition={{ duration: 0.3, ease: S01_EASE }}
+      aria-hidden={!show}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
 function MockupStep01() {
   const containerRef = useRef<HTMLDivElement>(null);
   // Phase 2.19 · once:false → loop continuo in-view (espejo del patrón Hero).
@@ -238,14 +265,14 @@ function MockupStep01() {
   const reduce = useReducedMotion();
   const isLight = useLandingIsLight();
 
-  // Sub-state · mismo conjunto que la card 01 del hero (FormCard).
+  // Sub-state · typing de la dirección + reveal secuencial item-por-item
+  // (mismo ritmo de cascada que la card 03, no aparición en bloque).
   const [typedText, setTypedText] = useState("");
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [autocompleteHighlight, setAutocompleteHighlight] = useState(false);
-  const [showChips, setShowChips] = useState(false);
+  const [reveal, setReveal] = useState(0); // 0..10 · ítems ya revelados
   const [precioCount, setPrecioCount] = useState(0);
   const [superficieCount, setSuperficieCount] = useState(0);
-  const [showMap, setShowMap] = useState(false);
 
   // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
   const shouldLoop = !reduce && isInView;
@@ -256,14 +283,13 @@ function MockupStep01() {
     setTypedText(S01_DIRECCION);
     setDropdownVisible(false);
     setAutocompleteHighlight(false);
-    setShowChips(true);
+    setReveal(10);
     setPrecioCount(5500);
     setSuperficieCount(60);
-    setShowMap(true);
   }, [reduce]);
 
-  // Loop continuo mientras esté in-view · mismo guion que la fase form-active
-  // de la card 01 del hero (HeroAnimatedDesktop · runCycle).
+  // Loop continuo mientras esté in-view · typing de la dirección y luego cada
+  // ítem del formulario aparece en secuencia (cascada ~250ms, ritmo card 03).
   useEffect(() => {
     if (!shouldLoop) return;
 
@@ -277,15 +303,13 @@ function MockupStep01() {
       from: number,
       to: number,
       duration: number,
-      round = true,
     ) => {
       const start = performance.now();
       const tick = (now: number) => {
         if (!mounted) return;
         const t = Math.min(1, (now - start) / duration);
         const eased = 1 - Math.pow(1 - t, 3);
-        const val = from + (to - from) * eased;
-        setter(round ? Math.round(val) : val);
+        setter(Math.round(from + (to - from) * eased));
         if (t < 1) rafIds.push(requestAnimationFrame(tick));
       };
       rafIds.push(requestAnimationFrame(tick));
@@ -300,16 +324,14 @@ function MockupStep01() {
     };
 
     const runCycle = () => {
-      // Reset al estado inicial del ciclo.
       setTypedText("");
       setDropdownVisible(false);
       setAutocompleteHighlight(false);
-      setShowChips(false);
+      setReveal(0);
       setPrecioCount(0);
       setSuperficieCount(0);
-      setShowMap(false);
 
-      // t=600 · arranca el typing de la dirección.
+      // Dirección · typing + dropdown autocomplete (overlay, no reserva alto).
       T(600, () => {
         let i = 0;
         typingInterval = setInterval(() => {
@@ -322,8 +344,6 @@ function MockupStep01() {
           }
         }, S01_TYPING_SPEED_MS);
       });
-
-      // t=1500 dropdown aparece · t=1800 highlight · t=2250 elige y cierra.
       T(1500, () => setDropdownVisible(true));
       T(1800, () => setAutocompleteHighlight(true));
       T(2250, () => {
@@ -336,18 +356,26 @@ function MockupStep01() {
         setAutocompleteHighlight(false);
       });
 
-      // t=2550 chips + counters Precio/Superficie.
-      T(2550, () => {
-        setShowChips(true);
-        animateCounter(setPrecioCount, 0, 5500, 1050);
-        animateCounter(setSuperficieCount, 0, 60, 1050);
+      // Reveal secuencial · un ítem a la vez (cascada ~250ms).
+      T(2550, () => setReveal(1)); // Tipo
+      T(2800, () => {
+        setReveal(2); // Precio
+        animateCounter(setPrecioCount, 0, 5500, 700);
       });
-
-      // t=3300 mapa fade-in.
-      T(3300, () => setShowMap(true));
+      T(3050, () => {
+        setReveal(3); // Superficie
+        animateCounter(setSuperficieCount, 0, 60, 700);
+      });
+      T(3350, () => setReveal(4)); // Mapa
+      T(3650, () => setReveal(5)); // Dormitorios
+      T(3850, () => setReveal(6)); // Baños
+      T(4050, () => setReveal(7)); // Estacionamiento
+      T(4250, () => setReveal(8)); // Bodega
+      T(4450, () => setReveal(9)); // Huéspedes
+      T(4700, () => setReveal(10)); // Analizar
 
       // Reset → próximo ciclo.
-      T(6500, runCycle);
+      T(7500, runCycle);
     };
 
     runCycle();
@@ -366,7 +394,7 @@ function MockupStep01() {
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 20, minHeight: 610 }}
+      style={{ padding: 20, minHeight: 602 }}
     >
       {/* Header · wordmark refranco.ai + label "Nuevo análisis" */}
       <div
@@ -383,8 +411,10 @@ function MockupStep01() {
       </div>
 
       {/* Campo Dirección · estilo Google Places autocomplete.
-          Dropdown in-flow (no absolute) para que NO tape los chips TIPO. */}
-      <div style={{ marginBottom: 10 }}>
+          Dropdown OVERLAY (position absolute) → no reserva alto, así el mapa
+          ocupa más espacio. No tapa nada porque los demás ítems aún no se han
+          revelado cuando el dropdown está abierto. */}
+      <div style={{ position: "relative", marginBottom: 12, zIndex: 5 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
@@ -435,9 +465,8 @@ function MockupStep01() {
             />
           </span>
         </div>
-        {/* Dropdown autocomplete · always-mounted in-flow (Phase 2.6f patrón).
-            Ocupa ~40px de altura desde t=0 (hidden con opacity:0) para evitar
-            CLS · fade-in a t=400ms del trigger isInView. */}
+        {/* Dropdown autocomplete · always-mounted, OVERLAY absoluto (Phase 2.6f
+            patrón: no se desmonta, solo opacity). No reserva alto en el flujo. */}
         <motion.div
           initial={false}
           animate={
@@ -448,7 +477,12 @@ function MockupStep01() {
           transition={{ duration: 0.18, ease: S01_EASE }}
           aria-hidden={!dropdownVisible}
           style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            right: 0,
             marginTop: 4,
+            zIndex: 10,
             background: "var(--landing-card-bg)",
             border: "0.5px solid var(--landing-card-border)",
             borderRadius: 5,
@@ -487,13 +521,8 @@ function MockupStep01() {
         </motion.div>
       </div>
 
-      {/* Tipo · chips Usado / Nuevo · fade-in con showChips (espejo hero). */}
-      <motion.div
-        initial={false}
-        animate={showChips ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.25, ease: S01_EASE }}
-        style={{ marginBottom: 10 }}
-      >
+      {/* Tipo · chips Usado / Nuevo · reveal 1 */}
+      <RevealItem show={reveal >= 1} style={{ marginBottom: 12 }}>
         <p
           className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
           style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 5 }}
@@ -529,14 +558,14 @@ function MockupStep01() {
             Nuevo
           </span>
         </div>
-      </motion.div>
+      </RevealItem>
 
-      {/* Grid Precio / Superficie */}
+      {/* Grid Precio / Superficie · cada celda revela en secuencia (2, 3) */}
       <div
         className="grid grid-cols-2"
         style={{ gap: 12, marginBottom: 12 }}
       >
-        <div>
+        <RevealItem show={reveal >= 2}>
           <div
             className="flex items-center justify-between"
             style={{ marginBottom: 3 }}
@@ -592,8 +621,8 @@ function MockupStep01() {
               UF {precioCount > 0 ? precioCount.toLocaleString("es-CL") : "—"}
             </span>
           </div>
-        </div>
-        <div>
+        </RevealItem>
+        <RevealItem show={reveal >= 3}>
           <p
             className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
             style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
@@ -613,20 +642,18 @@ function MockupStep01() {
               {superficieCount > 0 ? `${superficieCount} m²` : "—"}
             </span>
           </div>
-        </div>
+        </RevealItem>
       </div>
 
-      {/* Mapa comparables · screenshot del producto real (incluye pins +
-          label "145 comparables cerca" baked-in en la imagen). Fade-in
-          cuando isInView dispara showMap a t=800ms. */}
-      <motion.div
-        initial={false}
-        animate={{ opacity: showMap ? 1 : 0 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
+      {/* Mapa comparables · reveal 4 · más grande (el dropdown ya no le roba
+          alto al ser overlay). */}
+      <RevealItem
+        show={reveal >= 4}
         className="relative w-full overflow-hidden rounded-md"
         style={{
-          aspectRatio: "340 / 120",
+          height: 145,
           border: "0.5px solid var(--landing-card-border)",
+          marginBottom: 12,
         }}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -640,30 +667,67 @@ function MockupStep01() {
           className="w-full h-full object-cover"
           loading="lazy"
         />
-      </motion.div>
+      </RevealItem>
 
-
-      {/* Botón Analizar · CTA primario Signal Red (uso #1) · Mono Medium 500 */}
-      <div
-        style={{
-          marginTop: 14,
-          padding: "8px 14px",
-          background: "#C8323C",
-          color: "#FAFAF8",
-          borderRadius: 6,
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 11,
-          fontWeight: 500,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          fontFamily: "var(--font-mono, monospace)",
-        }}
-      >
-        Analizar
-        <span aria-hidden="true">→</span>
+      {/* Características · campos reales del Paso 1 (dormitorios, baños,
+          estacionamiento, bodega, huéspedes). Cada uno revela en secuencia
+          (reveal 5..9). */}
+      <div className="grid grid-cols-2" style={{ gap: "12px 12px" }}>
+        {(
+          [
+            ["Dormitorios", "2"],
+            ["Baños", "1"],
+            ["Estacionamiento", "1"],
+            ["Bodega", "1"],
+            ["Huéspedes", "4"],
+          ] as ReadonlyArray<readonly [string, string]>
+        ).map(([label, value], i) => (
+          <RevealItem key={label} show={reveal >= 5 + i}>
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+            >
+              {label}
+            </p>
+            <div
+              style={{
+                borderBottom: "0.5px solid var(--landing-divider)",
+                paddingBottom: 4,
+              }}
+            >
+              <span
+                className="font-mono font-medium text-[var(--landing-text)]"
+                style={{ fontSize: 12 }}
+              >
+                {value}
+              </span>
+            </div>
+          </RevealItem>
+        ))}
       </div>
+
+      {/* Botón Analizar · reveal 10 · CTA primario Signal Red (uso #1) */}
+      <RevealItem show={reveal >= 10} style={{ marginTop: 14 }}>
+        <div
+          style={{
+            padding: "8px 14px",
+            background: "#C8323C",
+            color: "#FAFAF8",
+            borderRadius: 6,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 11,
+            fontWeight: 500,
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            fontFamily: "var(--font-mono, monospace)",
+          }}
+        >
+          Analizar
+          <span aria-hidden="true">→</span>
+        </div>
+      </RevealItem>
     </div>
   );
 }
@@ -671,25 +735,26 @@ function MockupStep01() {
 
 
 
-/* ============================ Mockup · 02 Análisis ============================
+/* ============================ Mockup · 02 · Resto del formulario ============================
  *
- * F.11 Phase 2.10 · "Franco preparando análisis" · 5 líneas checklist con
- * checks verdes + 1 línea calculando con dot pulsante infinito. Single-pass
- * animation con useInView once.
+ * F.11 Phase 2.31 · Replica las etapas 2-3 del wizard real (nuevo-v2), no una
+ * pantalla de "analizando" inventada:
+ *   · Modalidad — Arriendo largo / Airbnb / Ambas (Patrón 5 Form Step: toggle
+ *     activo en Ink invertido).
+ *   · Financiamiento — Precio + Pie los ingresa el usuario; Tasa + Plazo los
+ *     asigna Franco (subtítulo real del Paso 2: "Tasa y plazo los asignamos
+ *     nosotros").
+ *   · Franco completa con datos de mercado — arriendo de zona, gastos comunes,
+ *     contribuciones SII. Calza con el copy del paso: "Calcula contribuciones,
+ *     flujos y comparables. Franco autocompleta el resto."
  *
- * Animación entrada:
- *   t=0     header · contador "1 de 5" · línea 1 fade-in + counter contrib + barra 0→20%
- *   t=600   contador "2 de 5" · línea 2 + counters comps/mediana/este + barra 20→40%
- *   t=1200  contador "3 de 5" · línea 3 fade-in + chips stagger 100ms + barra 40→60%
- *   t=1800  contador "4 de 5" · línea 4 + counter gastos + barra 60→80%
- *   t=2400  línea 5 fade-in con dot pulsante infinito (queda "4 de 5", barra 80%)
- *   t=3000  footer fade-in
+ * Reveal escalonado in-view (loop continuo, espejo del patrón Hero):
+ *   t=400-700  chips modalidad (stagger) · t=1100 selecciona AMBAS
+ *   t=1500     financiamiento
+ *   t=2300     Franco completa (counter contribuciones)
  *
- * Safe vs NotFoundError (Phase 2.6e/f):
- *   · 5 líneas always-mounted con motion.div animate condicional opacity
- *   · 3 chips always-mounted, animate condicional con stagger
- *   · Dot pulsante línea 5: always-mounted con animate=[1,0.3,1] repeat Infinity
- *   · Counters via rAF con cleanup
+ * Safe vs NotFoundError (Phase 2.6e/f): todo always-mounted con opacity/scale
+ * condicional; counter vía rAF con cleanup.
  */
 
 function MockupStep02() {
@@ -701,22 +766,10 @@ function MockupStep02() {
   });
   const reduce = useReducedMotion();
 
-  const [stepIdx, setStepIdx] = useState(1);
-  const [progress, setProgress] = useState(0);
-  const [showLine1, setShowLine1] = useState(false);
-  const [showLine2, setShowLine2] = useState(false);
-  const [showLine3, setShowLine3] = useState(false);
-  const [showLine4, setShowLine4] = useState(false);
-  const [showLine5, setShowLine5] = useState(false);
-  const [showFooter, setShowFooter] = useState(false);
-  // chipsCount: cuántos chips de la línea 3 están visibles (0..3) · stagger
-  const [chipsCount, setChipsCount] = useState(0);
-
+  const [modChips, setModChips] = useState(0); // 0..3 chips de modalidad (stagger)
+  const [modActive, setModActive] = useState(false); // AMBAS seleccionada
+  const [reveal, setReveal] = useState(0); // 1..14 · ítems del form en secuencia
   const [contribCount, setContribCount] = useState(0);
-  const [compsCount, setCompsCount] = useState(0);
-  const [medianaCount, setMedianaCount] = useState(0);
-  const [esteCount, setEsteCount] = useState(0);
-  const [gastosCount, setGastosCount] = useState(0);
 
   // Phase 2.18c/d · loop NO acoplado a touch · solo isInView lo gobierna.
   const shouldLoop = !reduce && isInView;
@@ -724,23 +777,14 @@ function MockupStep02() {
   // prefers-reduced-motion → estado final estático directo (sin loop).
   useEffect(() => {
     if (!reduce) return;
-    setStepIdx(4);
-    setProgress(80);
-    setShowLine1(true);
-    setShowLine2(true);
-    setShowLine3(true);
-    setShowLine4(true);
-    setShowLine5(true);
-    setShowFooter(true);
-    setChipsCount(3);
+    setModChips(3);
+    setModActive(true);
+    setReveal(14);
     setContribCount(78400);
-    setCompsCount(145);
-    setMedianaCount(89);
-    setEsteCount(92);
-    setGastosCount(120000);
   }, [reduce]);
 
-  // Loop continuo (~8s) mientras esté in-view · runCycle auto-reiniciable.
+  // Loop continuo mientras esté in-view · cada ítem del formulario aparece en
+  // secuencia (cascada ~180ms, mismo ritmo que la card 03).
   useEffect(() => {
     if (!shouldLoop) return;
 
@@ -761,81 +805,55 @@ function MockupStep02() {
       from: number,
       to: number,
       duration: number,
-      round = true,
     ) => {
       const start = performance.now();
       const tick = (now: number) => {
         if (!mounted) return;
         const t = Math.min(1, (now - start) / duration);
         const eased = 1 - Math.pow(1 - t, 3);
-        const val = from + (to - from) * eased;
-        setter(round ? Math.round(val) : val);
+        setter(Math.round(from + (to - from) * eased));
         if (t < 1) rafIds.push(requestAnimationFrame(tick));
       };
       rafIds.push(requestAnimationFrame(tick));
     };
 
     const runCycle = () => {
-      // Reset al estado inicial del ciclo · el checklist se limpia y
-      // reconstruye (gap de 400ms antes de la línea 1).
-      setStepIdx(1);
-      setProgress(0);
-      setShowLine1(false);
-      setShowLine2(false);
-      setShowLine3(false);
-      setShowLine4(false);
-      setShowLine5(false);
-      setShowFooter(false);
-      setChipsCount(0);
+      setModChips(0);
+      setModActive(false);
+      setReveal(0);
       setContribCount(0);
-      setCompsCount(0);
-      setMedianaCount(0);
-      setEsteCount(0);
-      setGastosCount(0);
 
-      // Línea 1 · SII conectado
-      T(400, () => {
-        setShowLine1(true);
-        animateValue(setContribCount, 0, 78400, 600);
-        animateValue(setProgress, 0, 20, 600, false);
+      // Modalidad · chips stagger → selecciona AMBAS
+      T(400, () => setModChips(1));
+      T(550, () => setModChips(2));
+      T(700, () => setModChips(3));
+      T(1100, () => setModActive(true));
+
+      // Financiamiento (1-4)
+      T(1400, () => setReveal(1)); // Precio
+      T(1580, () => setReveal(2)); // Pie
+      T(1760, () => setReveal(3)); // Tasa
+      T(1940, () => setReveal(4)); // Plazo
+
+      // Operación (5-11)
+      T(2200, () => setReveal(5)); // Gestión
+      T(2380, () => setReveal(6)); // Comisión
+      T(2560, () => setReveal(7)); // Electricidad
+      T(2740, () => setReveal(8)); // Agua
+      T(2920, () => setReveal(9)); // Wifi
+      T(3100, () => setReveal(10)); // Insumos
+      T(3350, () => setReveal(11)); // permiso edificio
+
+      // Franco completó (12-14)
+      T(3650, () => setReveal(12)); // Arriendo de zona
+      T(3830, () => setReveal(13)); // Gastos comunes
+      T(4010, () => {
+        setReveal(14); // Contribuciones
+        animateValue(setContribCount, 0, 78400, 800);
       });
 
-      // Línea 2 · Comparables
-      T(1000, () => {
-        setStepIdx(2);
-        setShowLine2(true);
-        animateValue(setCompsCount, 0, 145, 600);
-        animateValue(setMedianaCount, 0, 89, 600);
-        animateValue(setEsteCount, 0, 92, 600);
-        animateValue(setProgress, 20, 40, 600, false);
-      });
-
-      // Línea 3 · Modalidad con chips
-      T(1600, () => {
-        setStepIdx(3);
-        setShowLine3(true);
-        animateValue(setProgress, 40, 60, 600, false);
-      });
-      T(1700, () => setChipsCount(1));
-      T(1800, () => setChipsCount(2));
-      T(1900, () => setChipsCount(3));
-
-      // Línea 4 · Gastos
-      T(2200, () => {
-        setStepIdx(4);
-        setShowLine4(true);
-        animateValue(setGastosCount, 0, 120000, 600);
-        animateValue(setProgress, 60, 80, 600, false);
-      });
-
-      // Línea 5 · Calculando (dot con pulse infinito propio, no avanza stepIdx)
-      T(2800, () => setShowLine5(true));
-
-      // Footer
-      T(3400, () => setShowFooter(true));
-
-      // Reset → próximo ciclo (~8s).
-      T(8000, runCycle);
+      // Reset → próximo ciclo.
+      T(7500, runCycle);
     };
 
     runCycle();
@@ -853,192 +871,218 @@ function MockupStep02() {
       className="franco-mockup"
       style={{
         padding: 20,
-        minHeight: 610,
+        minHeight: 602,
         display: "flex",
         flexDirection: "column",
       }}
     >
-      {/* Header · wordmark refranco.ai + contador "X de 5" */}
+      {/* Header · wordmark + paso del wizard */}
       <div
         className="flex items-center justify-between"
-        style={{ marginBottom: 10 }}
+        style={{ marginBottom: 16 }}
       >
         <MockupWordmark />
         <span
-          className="font-mono font-medium uppercase"
-          style={{
-            fontSize: 10,
-            letterSpacing: "0.12em",
-            color: "#C8323C",
-          }}
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em" }}
         >
-          • {stepIdx} de 5
+          Paso 2 de 4
         </span>
       </div>
 
-      {/* Barra progreso */}
-      <div
-        style={{
-          width: "100%",
-          height: 3,
-          background: "var(--landing-divider)",
-          borderRadius: 2,
-          overflow: "hidden",
-          marginBottom: 18,
-        }}
+      {/* Modalidad · Arriendo largo / Airbnb / Ambas (AMBAS activa = Ink invertido) */}
+      <p
+        className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+        style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 7 }}
       >
-        <div
-          style={{
-            height: "100%",
-            width: `${progress}%`,
-            background: "#C8323C",
-            borderRadius: 2,
-          }}
-        />
+        Modalidad
+      </p>
+      <div
+        className="flex"
+        style={{ gap: 6, flexWrap: "wrap", marginBottom: 18 }}
+      >
+        <Chip show={modChips >= 1}>Arriendo largo</Chip>
+        <Chip show={modChips >= 2}>Airbnb</Chip>
+        <Chip show={modChips >= 3} active={modActive}>
+          Ambas
+        </Chip>
       </div>
 
-      {/* Línea 1 · SII */}
-      <S02Line show={showLine1} marginBottom={12}>
-        <CheckCircle />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
-          >
-            Conectado con SII
-          </p>
-          <p
-            className="font-body text-[var(--landing-text-muted)]"
-            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
-          >
-            Contribuciones:{" "}
-            <span className="font-mono text-[var(--landing-text)]">
-              ${contribCount.toLocaleString("es-CL")}
-            </span>{" "}
-            / mes
-          </p>
-        </div>
-      </S02Line>
-
-      {/* Línea 2 · Comparables */}
-      <S02Line show={showLine2} marginBottom={12}>
-        <CheckCircle />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
-          >
-            <span className="font-mono">{compsCount}</span> comparables en zona
-          </p>
-          <p
-            className="font-body text-[var(--landing-text-muted)]"
-            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
-          >
-            Mediana:{" "}
-            <span className="font-mono">UF {medianaCount}/m²</span> · este:{" "}
-            <span className="font-mono">UF {esteCount}/m²</span>
-          </p>
-        </div>
-      </S02Line>
-
-      {/* Línea 3 · Modalidad con chips */}
-      <S02Line show={showLine3} marginBottom={12}>
-        <CheckCircle />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
-          >
-            Modalidad sugerida
-          </p>
-          <div
-            className="flex"
-            style={{ gap: 6, marginTop: 6, flexWrap: "wrap" }}
-          >
-            <Chip show={chipsCount >= 1}>ARRIENDO UF 18</Chip>
-            <Chip show={chipsCount >= 2}>AIRBNB $145K/d</Chip>
-            <Chip show={chipsCount >= 3} active>
-              AMBAS
-            </Chip>
-          </div>
-        </div>
-      </S02Line>
-
-      {/* Línea 4 · Gastos */}
-      <S02Line show={showLine4} marginBottom={12}>
-        <CheckCircle />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
-          >
-            Gastos operativos estimados
-          </p>
-          <p
-            className="font-body text-[var(--landing-text-muted)]"
-            style={{ fontSize: 11, lineHeight: 1.4, marginTop: 2 }}
-          >
-            Comunes + admin:{" "}
-            <span className="font-mono text-[var(--landing-text)]">
-              ${gastosCount.toLocaleString("es-CL")}
-            </span>{" "}
-            / mes
-          </p>
-        </div>
-      </S02Line>
-
-      {/* Línea 5 · Calculando (loading) */}
-      <S02Line show={showLine5} marginBottom={14}>
-        <LoadingCircle />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p
-            className="font-body text-[var(--landing-text)]"
-            style={{ fontSize: 12, fontWeight: 500, lineHeight: 1.3 }}
-          >
-            Calculando flujo y veredicto…
-          </p>
-        </div>
-      </S02Line>
-
-      {/* Footer · fuente */}
-      <motion.p
-        initial={false}
-        animate={showFooter ? { opacity: 1 } : { opacity: 0 }}
-        transition={{ duration: 0.3, ease: S01_EASE }}
-        className="font-mono uppercase text-[var(--landing-text-muted)]"
-        style={{
-          fontSize: 9,
-          letterSpacing: "0.08em",
-          marginTop: "auto",
-        }}
+      {/* Financiamiento · label (reveal 1) + cada campo en secuencia (1-4).
+          Precio/Pie los ingresa el user; Tasa/Plazo los pone Franco. */}
+      <RevealItem show={reveal >= 1} style={{ marginBottom: 8 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em" }}
+        >
+          Financiamiento
+        </p>
+      </RevealItem>
+      <div
+        className="grid grid-cols-2"
+        style={{ gap: "12px 12px", marginBottom: 18 }}
       >
-        Fuente · 34.000+ propiedades · Airbnb en tiempo real
-      </motion.p>
-    </div>
-  );
-}
+        {(
+          [
+            ["Precio", "UF 5.500", false],
+            ["Pie", "20%", false],
+            ["Tasa", "4,72%", true],
+            ["Plazo", "25 años", true],
+          ] as ReadonlyArray<readonly [string, string, boolean]>
+        ).map(([label, value, auto], i) => (
+          <RevealItem key={label} show={reveal >= 1 + i}>
+            <div
+              className="flex items-center"
+              style={{ gap: 6, marginBottom: 3 }}
+            >
+              <p
+                className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+                style={{ fontSize: 9, letterSpacing: "0.14em" }}
+              >
+                {label}
+              </p>
+              {auto && (
+                <span
+                  className="font-mono uppercase text-[var(--landing-text-muted)]"
+                  style={{
+                    fontSize: 7.5,
+                    letterSpacing: "0.1em",
+                    border: "0.5px solid var(--landing-card-border)",
+                    borderRadius: 3,
+                    padding: "0px 4px",
+                  }}
+                >
+                  Franco
+                </span>
+              )}
+            </div>
+            <div
+              style={{
+                borderBottom: "0.5px solid var(--landing-divider)",
+                paddingBottom: 4,
+              }}
+            >
+              <span
+                className="font-mono font-medium text-[var(--landing-text)]"
+                style={{ fontSize: 12 }}
+              >
+                {value}
+              </span>
+            </div>
+          </RevealItem>
+        ))}
+      </div>
 
-/* Línea genérica del checklist · always-mounted con animate condicional opacity. */
-function S02Line({
-  show,
-  marginBottom,
-  children,
-}: {
-  show: boolean;
-  marginBottom?: number;
-  children: ReactNode;
-}) {
-  return (
-    <motion.div
-      initial={false}
-      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 4 }}
-      transition={{ duration: 0.3, ease: S01_EASE }}
-      aria-hidden={!show}
-      className="flex items-start"
-      style={{ gap: 10, marginBottom }}
-    >
-      {children}
-    </motion.div>
+      {/* Operación · label (reveal 5) + campos en secuencia (5-10) + permiso (11). */}
+      <RevealItem show={reveal >= 5} style={{ marginBottom: 8 }}>
+        <p
+          className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+          style={{ fontSize: 9, letterSpacing: "0.14em" }}
+        >
+          Operación · Airbnb
+        </p>
+      </RevealItem>
+      <div
+        className="grid grid-cols-2"
+        style={{ gap: "12px 12px", marginBottom: 9 }}
+      >
+        {(
+          [
+            ["Gestión", "Co-host"],
+            ["Comisión", "18%"],
+            ["Electricidad", "$25.000"],
+            ["Agua", "$18.000"],
+            ["Wifi", "$20.000"],
+            ["Insumos", "$15.000"],
+          ] as ReadonlyArray<readonly [string, string]>
+        ).map(([label, value], i) => (
+          <RevealItem key={label} show={reveal >= 5 + i}>
+            <p
+              className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+              style={{ fontSize: 9, letterSpacing: "0.14em", marginBottom: 3 }}
+            >
+              {label}
+            </p>
+            <div
+              style={{
+                borderBottom: "0.5px solid var(--landing-divider)",
+                paddingBottom: 4,
+              }}
+            >
+              <span
+                className="font-mono font-medium text-[var(--landing-text)]"
+                style={{ fontSize: 12 }}
+              >
+                {value}
+              </span>
+            </div>
+          </RevealItem>
+        ))}
+      </div>
+      <RevealItem
+        show={reveal >= 11}
+        className="flex items-center"
+        style={{ gap: 8, marginBottom: 18 }}
+      >
+        <CheckCircle />
+        <span
+          className="font-body text-[var(--landing-text-muted)]"
+          style={{ fontSize: 11.5 }}
+        >
+          El edificio permite arriendo corto
+        </span>
+      </RevealItem>
+
+      {/* Franco completó con datos de mercado · anclado al fondo, cada fila en
+          secuencia (12-14). Calza con el copy del paso ("Calcula
+          contribuciones… Franco autocompleta el resto"). */}
+      <div style={{ marginTop: "auto" }}>
+        <RevealItem show={reveal >= 12} style={{ marginBottom: 9 }}>
+          <p
+            className="font-mono font-medium uppercase text-[var(--landing-text-muted)]"
+            style={{ fontSize: 9, letterSpacing: "0.14em" }}
+          >
+            Franco completó con datos de mercado
+          </p>
+        </RevealItem>
+        {(
+          [
+            ["Arriendo de zona", "UF 18 / mes"],
+            ["Gastos comunes", "$120.000 / mes"],
+            [
+              "Contribuciones · SII",
+              `$${contribCount.toLocaleString("es-CL")} / mes`,
+            ],
+          ] as ReadonlyArray<readonly [string, string]>
+        ).map(([label, value], i) => (
+          <RevealItem
+            key={label}
+            show={reveal >= 12 + i}
+            className="flex items-center"
+            style={{ gap: 10, marginBottom: i < 2 ? 10 : 0 }}
+          >
+            <CheckCircle />
+            <div
+              className="flex flex-1 items-baseline justify-between"
+              style={{ minWidth: 0, gap: 8 }}
+            >
+              <span
+                className="font-body text-[var(--landing-text-muted)]"
+                style={{ fontSize: 11.5 }}
+              >
+                {label}
+              </span>
+              <span
+                className="font-mono font-medium text-[var(--landing-text)]"
+                style={{ fontSize: 11.5, whiteSpace: "nowrap" }}
+              >
+                {value}
+              </span>
+            </div>
+          </RevealItem>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1066,36 +1110,6 @@ function CheckCircle() {
           strokeLinejoin="round"
         />
       </svg>
-    </div>
-  );
-}
-
-/* Loading circle · border Signal Red + dot interior con pulse infinito.
-   Always-mounted motion.div (Phase 2.6e/f). */
-function LoadingCircle() {
-  return (
-    <div
-      className="flex items-center justify-center flex-shrink-0"
-      style={{
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        border: "1.5px solid #C8323C",
-        background: "transparent",
-        marginTop: 1,
-      }}
-      aria-hidden="true"
-    >
-      <motion.div
-        animate={{ opacity: [1, 0.3, 1] }}
-        transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: 3,
-          background: "#C8323C",
-        }}
-      />
     </div>
   );
 }
@@ -1338,7 +1352,7 @@ function MockupStep03() {
     <div
       ref={containerRef}
       className="franco-mockup"
-      style={{ padding: 18, minHeight: 610, display: "flex", flexDirection: "column" }}
+      style={{ padding: 18, minHeight: 602, display: "flex", flexDirection: "column" }}
     >
       {/* Header · wordmark refranco.ai + label "Completado" */}
       <div
