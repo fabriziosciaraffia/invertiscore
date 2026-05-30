@@ -1,44 +1,73 @@
 "use client";
 
 import Link from "next/link";
-import SectionHeader from "./SectionHeader";
 
 /**
- * Sección 06 · CTA primario — invertido en Signal Red (F.11 Phase 2.5).
- * Bg #C8323C, texto blanco, eyebrow + microcopy rosa claro, botón invertido
- * (bg blanco + texto Signal Red).
+ * Sección 06 · CTA primario — franja horizontal compacta en Signal Red
+ * (F.11 Phase 2.36). Antes era min-h-screen; ahora es una franja: título a la
+ * izquierda + CTA a la derecha (stack vertical en mobile). Header inline
+ * (sin SectionHeader, sin subhead).
  */
 export default function SectionCTAPrimary() {
   return (
     <section
-      className="relative flex min-h-screen items-center overflow-hidden"
+      className="relative overflow-hidden"
       style={{ background: "#C8323C" }}
     >
-      <div className="relative mx-auto w-full max-w-[820px] px-6 py-14 md:py-[72px]">
-        <SectionHeader
-          eyebrow="Tu turno"
-          title={"Antes de firmar,\nve si los números cierran."}
-          subhead="Ingresas precio, comuna y arriendo esperado. Franco te entrega veredicto en 30 segundos."
-          align="center"
-          tone="invertido"
-          hideHairline
-        />
+      <div className="mx-auto flex w-full max-w-[1100px] flex-col items-start gap-6 px-6 py-12 md:flex-row md:items-center md:justify-between md:gap-8 md:py-14">
+        {/* IZQ · título */}
+        <div>
+          <p
+            className="font-mono font-bold uppercase"
+            style={{
+              fontSize: 10,
+              letterSpacing: "0.14em",
+              color: "#FFD9DC",
+              margin: "0 0 8px 0",
+            }}
+          >
+            Tu turno
+          </p>
+          <h2
+            className="font-heading font-bold"
+            style={{
+              fontSize: "clamp(28px, 5vw, 36px)",
+              lineHeight: 1.1,
+              letterSpacing: "-0.02em",
+              color: "#FFFFFF",
+              margin: 0,
+              maxWidth: 560,
+            }}
+          >
+            Antes de firmar, ve si los números cierran.
+          </h2>
+        </div>
 
-        <div className="flex flex-col items-center gap-4">
+        {/* DER · CTA */}
+        <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
           <Link
             href="/register"
-            className="group inline-flex items-center gap-2 rounded-md bg-white px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-[#C8323C] shadow-[0_2px_0_rgba(0,0,0,0.12)] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
+            className="group inline-flex items-center gap-2 font-mono font-bold uppercase transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
+            style={{
+              background: "#FFFFFF",
+              color: "#C8323C",
+              fontSize: 13,
+              letterSpacing: "0.04em",
+              padding: "14px 24px",
+              borderRadius: 6,
+              boxShadow: "0 2px 0 rgba(0,0,0,0.1)",
+            }}
           >
             Analizar departamento
-            <span aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-0.5">
+            <span
+              aria-hidden="true"
+              className="transition-transform duration-200 group-hover:translate-x-0.5"
+            >
               →
             </span>
           </Link>
-          <p
-            className="font-mono text-[10px] font-medium uppercase tracking-[0.16em]"
-            style={{ color: "#FFD9DC" }}
-          >
-            Sin tarjeta&nbsp;&nbsp;·&nbsp;&nbsp;1 análisis gratis&nbsp;&nbsp;·&nbsp;&nbsp;veredicto en 30s
+          <p className="font-body" style={{ fontSize: 11, color: "#FFD9DC" }}>
+            Sin tarjeta · 1 análisis gratis · 30s
           </p>
         </div>
       </div>
