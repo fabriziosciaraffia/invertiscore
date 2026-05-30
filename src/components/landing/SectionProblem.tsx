@@ -61,11 +61,11 @@ export default function SectionProblem() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="relative mx-auto w-full max-w-6xl px-5 py-[12vh] md:px-8 md:py-[16vh]">
+      <div className="relative mx-auto w-full max-w-6xl px-5 py-[10vh] md:px-8 md:py-[10vh]">
         <ProblemHeader />
 
         {/* Grid stats · gap mínimo en mobile · sección compacta */}
-        <div className="mt-8 grid grid-cols-1 gap-2 md:mt-24 md:gap-6 md:grid-cols-3">
+        <div className="mt-12 grid grid-cols-1 gap-2 md:mt-16 md:gap-6 md:grid-cols-3">
           {STATS.map((s, i) => (
             <RevealOnScroll key={s.id} delay={i * 0.1}>
               <StatCard data={s} />
@@ -79,7 +79,7 @@ export default function SectionProblem() {
         </RevealOnScroll>
 
         {/* Cierre */}
-        <div className="mt-16 md:mt-24">
+        <div className="mt-12 md:mt-16">
           <RevealOnScroll>
             <p
               className="font-heading font-bold leading-[1.1] tracking-[-0.02em] text-[var(--landing-text)]"
@@ -249,7 +249,7 @@ function StatCard({ data }: { data: Stat }) {
 
 function ResultBlock() {
   return (
-    <div className="franco-glow-signal mt-16 md:mt-24">
+    <div className="franco-glow-signal mt-12 md:mt-16">
       <div className="mx-auto max-w-4xl text-center">
         <p
           className="font-mono font-semibold uppercase text-[#C8323C]"
@@ -260,7 +260,7 @@ function ResultBlock() {
         <p
           className="font-heading font-bold leading-[0.9] tracking-[-0.045em] text-[#C8323C]"
           style={{
-            fontSize: "clamp(96px, 12vw, 160px)",
+            fontSize: "clamp(80px, 10vw, 120px)",
             marginTop: 16,
           }}
         >
