@@ -72,7 +72,7 @@ export default function SectionObjections() {
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-[14vh] md:py-[16vh]">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-[10vh] md:py-[10vh]">
         <ObjectionsHeader />
         <Cards onSelect={setActive} />
       </div>
@@ -112,7 +112,7 @@ function ObjectionsHeader() {
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, margin: "-100px 0px -100px 0px" }}
-      className="mb-[8vh]"
+      className="mb-12 md:mb-16"
     >
       <motion.div
         initial={reduce ? false : { opacity: 0, y: 12 }}
@@ -201,7 +201,7 @@ function Cards({ onSelect }: { onSelect: (b: Block) => void }) {
               ease: [0.22, 1, 0.36, 1],
               delay: reduce ? 0 : i * 0.1,
             }}
-          className="group relative flex flex-col gap-5 rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:flex-row md:items-start md:gap-7 md:p-9"
+          className="group relative flex flex-col gap-5 rounded-2xl p-7 text-left transition-[transform,box-shadow,border-color] duration-300 hover:-translate-y-1 md:flex-row md:items-start md:gap-7 md:p-8"
           style={{
             background: "var(--landing-card-bg)",
             border: "0.5px solid var(--landing-card-border)",
