@@ -11,10 +11,10 @@ export default function SectionPricing() {
   return (
     <section
       id="pricing"
-      className="relative flex min-h-screen items-center overflow-hidden"
+      className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
-      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-14 md:py-[72px]">
+      <div className="relative mx-auto w-full max-w-[1280px] px-6 py-[10vh]">
         {/* Header */}
         <SectionHeader
           eyebrow="Precios"
