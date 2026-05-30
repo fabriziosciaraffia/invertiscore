@@ -503,7 +503,11 @@ function HeaderApp({ label }: { label: string }) {
 
 /* ===================== Card 1 · Form (animado · mobile) ===================== */
 
-/* Item revelable · fade + slide-up corto (reveal secuencial item-por-item). */
+/* Item revelable · reveal secuencial item-por-item.
+ * SAFE iOS WebKit (Phase 2.6e/f): NO usa framer motion.* — es un <div> plano
+ * always-mounted con transición CSS de opacidad. Animar ~10 motion.* en
+ * simultáneo en cada reset del loop gatillaba el race removeChild
+ * (NotFoundError) que tira el sitio. CSS opacity no toca el reconciler. */
 function RevealItem({
   show,
   children,
@@ -516,16 +520,17 @@ function RevealItem({
   style?: React.CSSProperties;
 }) {
   return (
-    <motion.div
-      initial={false}
-      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-      transition={{ duration: 0.3, ease: EASE }}
+    <div
       aria-hidden={!show}
       className={className}
-      style={style}
+      style={{
+        ...style,
+        opacity: show ? 1 : 0,
+        transition: "opacity 0.3s ease",
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 

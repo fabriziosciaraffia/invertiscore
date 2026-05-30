@@ -228,8 +228,11 @@ function MockupWordmark() {
   );
 }
 
-/* Item revelable · fade + slide-up corto. Wrapper genérico para el reveal
- * secuencial item-por-item de las cards 01/02 (mismo ritmo que la card 03). */
+/* Item revelable · reveal secuencial item-por-item de las cards 01/02.
+ * SAFE Safari/WebKit (Phase 2.6e/f): NO usa framer motion.* — es un <div>
+ * plano always-mounted con transición CSS de opacidad. Animar muchos motion.*
+ * en simultáneo en cada reset del loop gatilla el race removeChild
+ * (NotFoundError) en WebKit. CSS opacity no toca el reconciler. */
 function RevealItem({
   show,
   children,
@@ -242,16 +245,17 @@ function RevealItem({
   style?: React.CSSProperties;
 }) {
   return (
-    <motion.div
-      initial={false}
-      animate={show ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-      transition={{ duration: 0.3, ease: S01_EASE }}
+    <div
       aria-hidden={!show}
       className={className}
-      style={style}
+      style={{
+        ...style,
+        opacity: show ? 1 : 0,
+        transition: "opacity 0.3s ease",
+      }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
