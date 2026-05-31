@@ -7,6 +7,7 @@ function getResend(): Resend | null {
   return _resend;
 }
 const FROM_EMAIL = 'Franco <hola@refranco.ai>';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://refranco.ai';
 
 // Shared email components.
 // Tagline en mono websafe (Courier New) ya que JetBrains Mono no carga
@@ -228,33 +229,88 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
 
 export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
   const firstName = name.split(' ')[0] || '';
-  const verdictColor = veredicto === 'COMPRAR' ? '#B4B2A9' : veredicto === 'BUSCAR OTRA' ? '#C8323C' : '#888780';
-  const verdictBg = veredicto === 'COMPRAR' ? 'rgba(180,178,169,0.12)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.12)' : 'rgba(136,135,128,0.12)';
-  const verdictBorder = veredicto === 'COMPRAR' ? 'rgba(180,178,169,0.3)' : veredicto === 'BUSCAR OTRA' ? 'rgba(200,50,60,0.3)' : 'rgba(136,135,128,0.3)';
+  const greeting = firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo';
+  const analysisUrl = `${SITE_URL}/analisis/${analysisId}`;
+  // Hero dinámico: imagen generada por @vercel/og con el veredicto REAL del
+  // análisis (no un caso fijo). Lee de DB por analisisId. Cache-friendly.
+  const heroUrl = `${SITE_URL}/api/og/veredicto?analisisId=${encodeURIComponent(analysisId)}`;
+  const heroAlt = `${analysisTitle} — Franco Score ${score}, veredicto ${veredicto}`;
+
+  // Estructura email-safe (tablas + inline, 600px, fondo #0F0F0F). El hero
+  // va como PNG dinámico (Hero Verdict Block real); el CTA es HTML real.
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin: 0; padding: 0; background: #0F0F0F;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background: #0F0F0F;">
+    <tr>
+      <td align="center" style="padding: 24px 16px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width: 600px; max-width: 600px;">
+
+          <!-- Saludo + intro -->
+          <tr>
+            <td style="padding: 8px 4px 20px 4px;">
+              <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">${greeting}</h1>
+              <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
+                Franco cruzó tu depto con datos reales de mercado. Acá está el veredicto. El análisis completo —con IA, proyección de patrimonio y escenarios de salida— te espera en tu cuenta.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Hero dinámico (veredicto real del análisis) -->
+          <tr>
+            <td style="padding: 0 0 8px 0;">
+              <img src="${heroUrl}" width="600" alt="${heroAlt}" style="display: block; width: 100%; max-width: 600px; height: auto; border: 0; border-radius: 12px;" />
+            </td>
+          </tr>
+
+          <!-- CTA (HTML real, no imagen) -->
+          <tr>
+            <td align="center" style="padding: 28px 4px 6px 4px;">
+              <a href="${analysisUrl}" style="display: inline-block; background: #C8323C; color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+                Ver análisis completo &rarr;
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 4px 28px 4px;">
+              <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1px; color: #71717A; margin: 0; text-transform: uppercase;">
+                Análisis IA · Proyección 20 años · Escenarios de salida
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 24px 4px 8px 4px;">
+              <div style="border-top: 1px solid #222; padding-top: 20px;">
+                <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0 0 12px 0;">
+                  Franco analiza datos de mercado. No es asesoría financiera ni recomendación de inversión.
+                </p>
+                <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #52525B; margin: 0;">
+                  <a href="${SITE_URL}/cuenta" style="color: #71717A; text-decoration: underline;">Preferencias de correo</a>
+                  &nbsp;·&nbsp;
+                  <a href="${SITE_URL}/cuenta" style="color: #71717A; text-decoration: underline;">Cancelar suscripción</a>
+                  &nbsp;·&nbsp;
+                  <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+                </p>
+              </div>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
   try {
     await getResend()?.emails.send({
       from: FROM_EMAIL,
       to,
       subject: `Tu análisis está listo — ${analysisTitle} (Score: ${score})`,
-      html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">${firstName ? `${firstName}, tu` : 'Tu'} análisis está listo</h1>
-
-        <div style="background: #1A1A1A; border-radius: 12px; padding: 32px 24px; margin: 0 0 24px 0; text-align: center;">
-          <div style="color: #71717A; font-size: 10px; text-transform: uppercase; letter-spacing: 3px; margin-bottom: 8px; font-family: 'Courier New', monospace;">Franco Score</div>
-          <div style="font-size: 52px; font-weight: 700; color: #FAFAF8; font-family: 'Courier New', monospace; line-height: 1;">${score}</div>
-          <div style="display: inline-block; padding: 8px 24px; border-radius: 6px; margin-top: 16px; font-family: 'Courier New', monospace; font-weight: 700; letter-spacing: 2px; font-size: 13px; color: ${verdictColor}; background: ${verdictBg}; border: 1px solid ${verdictBorder};">
-            ${veredicto}
-          </div>
-          <div style="color: #71717A; font-size: 14px; margin-top: 16px;">${analysisTitle}</div>
-        </div>
-
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          Score, veredicto y métricas listos. El análisis completo con IA, proyecciones a 20 años y escenarios de salida está disponible en tu cuenta.
-        </p>
-
-        ${ctaButton('Ver análisis completo →', `https://refranco.ai/analisis/${analysisId}`)}
-      `),
+      html,
     });
   } catch (error) {
     console.error('Error sending analysis ready email:', error);
