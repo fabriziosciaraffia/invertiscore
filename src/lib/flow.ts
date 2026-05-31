@@ -1,6 +1,9 @@
 import crypto from "crypto";
 
-const FLOW_API_URL = "https://www.flow.cl/api";
+const FLOW_ENV = process.env.FLOW_ENV ?? "production"; // 'sandbox' | 'production'
+const FLOW_API_URL = FLOW_ENV === "sandbox"
+  ? "https://sandbox.flow.cl/api"
+  : "https://www.flow.cl/api";
 const FLOW_API_KEY = process.env.FLOW_API_KEY!;
 const FLOW_SECRET_KEY = process.env.FLOW_SECRET_KEY!;
 
