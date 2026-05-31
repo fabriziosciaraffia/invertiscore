@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import PricingPlans from "@/components/landing/PricingPlans";
 import SavingsCalculator from "@/components/landing/SavingsCalculator";
@@ -74,23 +74,7 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <AppNav
-        variant="marketing"
-        ctaSlot={
-          user ? (
-            <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-              Dashboard
-            </Link>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link href="/login" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-                Iniciar sesión
-              </Link>
-              <NavPrimaryCTA href="/register" label="Registrarse" />
-            </div>
-          )
-        }
-      />
+      <UnifiedNav variant="marketing" />
 
       {/* Hero */}
       <section className="px-6 pt-16 pb-10 md:pt-20">

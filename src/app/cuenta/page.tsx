@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { AppNav } from "@/components/chrome/AppNav";
-import { LogoutButton } from "@/components/logout-button";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { CancelSubscriptionButton } from "./cancel-dialog";
 import { DeleteAccountButton } from "./delete-account-button";
 
@@ -52,20 +51,7 @@ export default async function CuentaPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
       {/* Navbar */}
-      <AppNav
-        variant="app"
-        ctaSlot={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="font-body text-sm text-[var(--franco-text)] hover:bg-[var(--franco-card)] px-3 py-1.5 rounded-md transition-colors"
-            >
-              ← Dashboard
-            </Link>
-            <LogoutButton />
-          </div>
-        }
-      />
+      <UnifiedNav variant="app" />
 
       <div className="mx-auto max-w-2xl px-4 py-8">
         {/* Header */}

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 export const revalidate = 86400; // ISR: 24 hours
@@ -32,20 +32,7 @@ export default async function ComunasIndexPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <AppNav
-        variant="marketing"
-        linksSlot={
-          <>
-            <Link href="/comunas" className="font-body text-sm font-medium text-[var(--franco-text)]">Comunas</Link>
-            <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
-          </>
-        }
-        ctaSlot={<NavPrimaryCTA href="/analisis/nuevo-v2" />}
-        mobileMenuItems={[
-          { label: "Comunas", href: "/comunas" },
-          { label: "Precios", href: "/pricing" },
-        ]}
-      />
+      <UnifiedNav variant="marketing" />
 
       <main className="mx-auto max-w-[1100px] px-6 py-16">
         {/* Hero */}

@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import LeverageSection from "@/components/leverage-section";
 
 export default function AprendePage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <AppNav variant="marketing" ctaSlot={<NavPrimaryCTA href="/register" />} />
+      <UnifiedNav variant="marketing" />
 
       {/* Page title */}
       <div className="max-w-[640px] mx-auto px-6 pt-16 md:pt-24 pb-10">

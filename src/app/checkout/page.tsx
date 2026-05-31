@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 
 const PRODUCTS = {
   pro: {
@@ -135,7 +135,7 @@ function CheckoutContent() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav */}
-      <AppNav variant="marketing" />
+      <UnifiedNav variant="marketing" />
 
       <div className="max-w-[480px] mx-auto px-4 py-12 md:py-20">
         {/* Back link */}

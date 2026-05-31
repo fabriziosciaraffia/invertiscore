@@ -4,7 +4,7 @@
  * Results client (Renta Corta).
  *
  * Render del módulo STR usando los patrones del design-system-franco:
- *   • Patrón 0   AppNav variant="app"
+ *   • Patrón 0   UnifiedNav variant="app"
  *   • Patrón 1   HeroVerdictBlockSTR (veredicto + score + KPIs hero)
  *   • Patrón 2   SubjectCardGridSTR (4 dimensiones: rentabilidad / sostenibilidad
  *                / ventaja vs LTR / factibilidad)
@@ -20,7 +20,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -157,7 +157,7 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <AppNav variant="app" />
+      <UnifiedNav variant="app" />
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
         {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
