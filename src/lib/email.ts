@@ -165,21 +165,61 @@ export async function sendWelcomeEmail(to: string, name: string) {
   }
 }
 
+// Copy por plan comprado. `product` llega de la tabla payments
+// ("pro" | "pack3" | "subscription"). Define el nombre legible y QUÉ DESBLOQUEA.
+function paymentPlanCopy(product: string, analysisId?: string): {
+  productName: string;
+  unlocks: string; // qué tiene disponible ahora (frase corta, va en el intro)
+} {
+  if (product === 'pack3') {
+    return {
+      productName: 'Franco Pack 3×',
+      unlocks: 'tienes 3 análisis Pro disponibles para usar cuando quieras.',
+    };
+  }
+  if (product === 'subscription') {
+    return {
+      productName: 'Franco Suscripción',
+      unlocks: 'tu suscripción quedó activa: análisis Pro ilimitados mientras esté vigente.',
+    };
+  }
+  // "pro" (compra de un análisis). Si viene atado a un análisis, ya quedó Pro.
+  return {
+    productName: 'Franco Pro',
+    unlocks: analysisId
+      ? 'tu análisis Pro está listo, con el reporte completo desbloqueado.'
+      : 'tienes 1 análisis Pro disponible para usar cuando quieras.',
+  };
+}
+
 export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string) {
-  const productName = product === 'pro' ? 'Franco Pro' : product === 'pack3' ? 'Franco Pack 3×' : 'Franco Suscripción';
+  const { productName, unlocks } = paymentPlanCopy(product, analysisId);
   const amountFormatted = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(amount);
   const now = new Date();
   const dateFormatted = now.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  const ctaUrl = analysisId
-    ? `https://refranco.ai/analisis/${analysisId}`
-    : 'https://refranco.ai/analisis/nuevo-v2';
-  const ctaText = analysisId ? 'Ver mi análisis →' : 'Analizar un depto →';
-  const bodyCopy = analysisId
-    ? 'Tu análisis Pro está listo.'
-    : 'Tus créditos están disponibles. Úsalos cuando quieras analizar un depto.';
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+
+  // CTA: si el pago desbloqueó un análisis puntual (pro + analysisId), lo
+  // llevamos directo a ese análisis; si compró créditos/suscripción, al form.
+  const ctaUrl = analysisId
+    ? `${SITE_URL}/analisis/${analysisId}`
+    : `${SITE_URL}/analisis/nuevo-v2`;
+  const ctaText = analysisId ? 'Ver mi análisis →' : 'Empezar a analizar →';
+
+  // Footer transaccional: disclaimer de pago (Flow) + preferencias de correo.
+  // Sin unsubscribe (correo transaccional, no marketing).
+  const footer = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0 0 10px 0;">
+    Pago procesado de forma segura por Flow.cl. Este es un comprobante de tu compra.
+  </p>
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #52525B; margin: 0;">
+    <a href="${SITE_URL}/cuenta" style="color: #71717A; text-decoration: underline;">Preferencias de correo</a>
+    &nbsp;·&nbsp;
+    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+  </p>
+</div>`;
 
   try {
     await getResend()?.emails.send({
@@ -187,9 +227,13 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
       to,
       subject: `Pago confirmado — ${productName}`,
       html: emailWrapper(`
-        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">
           Pago confirmado <span style="color: #B4B2A9;">&#10003;</span>
         </h1>
+
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
+          ${greeting} ${unlocks}
+        </p>
 
         <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
           <div style="color: #71717A; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'Courier New', monospace;">Detalle de compra</div>
@@ -208,19 +252,27 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
           </div>
         </div>
 
-        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
-          ${greeting} ${bodyCopy}${analysisId ? ' Incluye análisis IA personalizado, proyecciones a 20 años y escenarios de salida.' : ''}
+        <!-- Qué incluye Pro -->
+        <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 12px 0;">
+          Qué incluye
         </p>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 8px 0;">
+          <tr>
+            <td valign="top" width="20" style="padding: 0 0 10px 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
+            <td valign="top" style="padding: 0 0 10px 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Análisis IA personalizado de tu inversión</td>
+          </tr>
+          <tr>
+            <td valign="top" width="20" style="padding: 0 0 10px 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
+            <td valign="top" style="padding: 0 0 10px 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Proyección de patrimonio a 20 años</td>
+          </tr>
+          <tr>
+            <td valign="top" width="20" style="padding: 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
+            <td valign="top" style="padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Escenarios de salida (venta y refinanciamiento)</td>
+          </tr>
+        </table>
 
         ${ctaButton(ctaText, ctaUrl)}
-      `, `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
-  <p style="color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">
-    Pagos procesados de forma segura por Flow.cl
-  </p>
-  <p style="color: #3F3F46; font-size: 11px; margin-top: 8px;">
-    <a href="https://refranco.ai" style="color: #52525B; text-decoration: none;">refranco.ai</a>
-  </p>
-</div>`),
+      `, footer),
     });
   } catch (error) {
     console.error('Error sending payment confirmation email:', error);

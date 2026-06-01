@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { resolveDisplayName } from "@/lib/welcome";
 
 function createAdminClient() {
   return createClient(
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
             const amount = flowData.amount || 0;
             await sendPaymentConfirmationEmail(
               userData.user.email,
-              userData.user.user_metadata?.nombre || userData.user.user_metadata?.full_name || '',
+              resolveDisplayName(userData.user.user_metadata, userData.user.email),
               product,
               amount,
               analysisId || undefined
