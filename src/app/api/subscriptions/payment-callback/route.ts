@@ -37,8 +37,10 @@ export async function POST(request: Request) {
       userId = data?.user_id || null;
     }
 
-    if (flowData.status === 1 && userId) {
-      // Payment successful — keep subscription active
+    // Enum Flow: 1=pendiente, 2=pagada, 3=rechazada, 4=anulada.
+    // (Alineado con payments/confirm, que usa 2=pagado como referencia.)
+    if (flowData.status === 2 && userId) {
+      // Cargo recurrente OK → mantener suscripción activa
       await supabase
         .from("user_credits")
         .update({ subscription_status: "active", updated_at: new Date().toISOString() })
@@ -55,13 +57,14 @@ export async function POST(request: Request) {
         flow_status: flowData.status,
         payment_data: flowData,
       });
-    } else if (flowData.status === 2 && userId) {
-      // Payment rejected
+    } else if ((flowData.status === 3 || flowData.status === 4) && userId) {
+      // Cargo rechazado (3) o anulado (4) → suscripción en mora
       await supabase
         .from("user_credits")
         .update({ subscription_status: "past_due", updated_at: new Date().toISOString() })
         .eq("user_id", userId);
     }
+    // status 1 = pendiente → no cambia subscription_status
 
     return NextResponse.json({ status: "ok" });
   } catch (err) {
