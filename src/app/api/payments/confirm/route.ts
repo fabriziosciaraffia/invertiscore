@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { grantCredits } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
     if (flowData.status === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("user_id, product, analysis_id")
+        .select("id, user_id, product, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -68,9 +69,14 @@ export async function POST(request: Request) {
         return NextResponse.json({ status: "ok" });
       }
 
-      const { user_id: userId, product, analysis_id: analysisId } = payment;
+      const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
 
-      if (userId && product) {
+      if (userId && product === "single") {
+        // Modelo nuevo: 1 crédito al ledger (expira en 1 año). El consumo y el
+        // is_premium del análisis los maneja el flujo de creación (access.ts).
+        await grantCredits(userId, "single", 1, { paymentId });
+      } else if (userId && product) {
+        // Legacy pro/pack3 → contador user_credits.credits.
         const creditsToAdd = product === "pack3" ? 3 : 1;
 
         // Upsert user_credits

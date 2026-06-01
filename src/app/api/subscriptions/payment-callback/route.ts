@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
+import { applyPlanCredits, recurringProductByAmount } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -46,17 +47,39 @@ export async function POST(request: Request) {
         .update({ subscription_status: "active", updated_at: new Date().toISOString() })
         .eq("user_id", userId);
 
-      // Record payment
-      await supabase.from("payments").insert({
-        user_id: userId,
-        commerce_order: `franco-sub-pay-${flowData.flowOrder || Date.now()}`,
-        product: "subscription",
-        amount: flowData.amount || 19990,
-        status: "paid",
-        flow_order: flowData.flowOrder,
-        flow_status: flowData.status,
-        payment_data: flowData,
-      });
+      // Identificar el plan suscrito. payment/getStatus NO devuelve planId; el
+      // único campo que identifica unívocamente el plan recurrente es `amount`
+      // (los 6 montos de FLOW_PRODUCTS son distintos). Mapeo = amount → producto.
+      const match = recurringProductByAmount(flowData.amount);
+      const productKey = match?.key ?? "subscription";
+
+      // Record payment (capturamos id para el FK del grant).
+      const { data: paymentRow } = await supabase
+        .from("payments")
+        .insert({
+          user_id: userId,
+          commerce_order: `franco-sub-pay-${flowData.flowOrder || Date.now()}`,
+          product: productKey,
+          amount: flowData.amount || 19990,
+          status: "paid",
+          flow_order: flowData.flowOrder,
+          flow_status: flowData.status,
+          payment_data: flowData,
+        })
+        .select("id")
+        .single();
+
+      // Otorgar créditos del ciclo según el plan (o is_unlimited). Si no se pudo
+      // identificar el plan por monto, NO otorgamos (evita grants erróneos) — la
+      // suscripción queda activa pero el caso queda logueado para revisión.
+      if (match) {
+        await applyPlanCredits(userId, match.product, { paymentId: paymentRow?.id ?? null });
+      } else {
+        console.error(
+          "[subscriptions/payment-callback] amount sin plan en FLOW_PRODUCTS:",
+          flowData.amount
+        );
+      }
     } else if ((flowData.status === 3 || flowData.status === 4) && userId) {
       // Cargo rechazado (3) o anulado (4) → suscripción en mora
       await supabase

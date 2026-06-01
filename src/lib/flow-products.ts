@@ -37,28 +37,28 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   },
   plan10_mensual: {
     kind: "recurring", amount: 39990, subject: "Franco Plan 10 — mensual",
-    planId: null, interval: 3, plan: "plan10", billing: "monthly", capacity: 10,
+    planId: "franco_plan10_mensual", interval: 3, plan: "plan10", billing: "monthly", capacity: 10,
   },
   plan10_annual: {
     kind: "recurring", amount: 395880, subject: "Franco Plan 10 — anual",
-    planId: null, interval: 4, plan: "plan10", billing: "annual", capacity: 10,
+    planId: "franco_plan10_anual", interval: 4, plan: "plan10", billing: "annual", capacity: 10,
   },
   plan50_mensual: {
     kind: "recurring", amount: 149990, subject: "Franco Plan 50 — mensual",
-    planId: null, interval: 3, plan: "plan50", billing: "monthly", capacity: 50,
+    planId: "franco_plan50_mensual", interval: 3, plan: "plan50", billing: "monthly", capacity: 50,
   },
   plan50_annual: {
     kind: "recurring", amount: 1499880, subject: "Franco Plan 50 — anual",
-    planId: null, interval: 4, plan: "plan50", billing: "annual", capacity: 50,
+    planId: "franco_plan50_anual", interval: 4, plan: "plan50", billing: "annual", capacity: 50,
   },
   unlimited_mensual: {
     kind: "recurring", amount: 399990, subject: "Franco Ilimitado — mensual",
-    planId: null, interval: 3, plan: "unlimited", billing: "monthly",
+    planId: "franco_unlimited_mensual", interval: 3, plan: "unlimited", billing: "monthly",
     capacity: null, isUnlimited: true,
   },
   unlimited_annual: {
     kind: "recurring", amount: 3959880, subject: "Franco Ilimitado — anual",
-    planId: null, interval: 4, plan: "unlimited", billing: "annual",
+    planId: "franco_unlimited_anual", interval: 4, plan: "unlimited", billing: "annual",
     capacity: null, isUnlimited: true,
   },
 };
