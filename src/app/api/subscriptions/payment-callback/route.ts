@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
-import { applyPlanCredits, recurringProductByAmount } from "@/lib/credits-grant";
+import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -47,10 +47,20 @@ export async function POST(request: Request) {
         .update({ subscription_status: "active", updated_at: new Date().toISOString() })
         .eq("user_id", userId);
 
-      // Identificar el plan suscrito. payment/getStatus NO devuelve planId; el
-      // único campo que identifica unívocamente el plan recurrente es `amount`
-      // (los 6 montos de FLOW_PRODUCTS son distintos). Mapeo = amount → producto.
-      const match = recurringProductByAmount(flowData.amount);
+      // Identificar el plan suscrito. Preferimos el plan persistido en
+      // user_credits (active_plan/billing_period, seteado en subscriptions/create)
+      // que es fuente de verdad exacta. Fallback al mapeo por monto solo si no
+      // hubiera plan persistido (payment/getStatus NO devuelve planId; los 6
+      // montos de FLOW_PRODUCTS son únicos, así que el monto sirve de respaldo).
+      const { data: uc } = await supabase
+        .from("user_credits")
+        .select("active_plan, billing_period")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      const match =
+        recurringProductByPlan(uc?.active_plan, uc?.billing_period) ??
+        recurringProductByAmount(flowData.amount);
       const productKey = match?.key ?? "subscription";
 
       // Record payment (capturamos id para el FK del grant).

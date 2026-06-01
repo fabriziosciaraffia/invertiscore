@@ -2,11 +2,15 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
+import { FLOW_PRODUCTS } from "@/lib/flow-products";
 import { randomUUID } from "crypto";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 const PRODUCTS: Record<string, { amount: number; subject: string }> = {
+  // Modelo nuevo: pago único de 1 análisis (lee del catálogo único).
+  single: { amount: FLOW_PRODUCTS.single.amount, subject: FLOW_PRODUCTS.single.subject },
+  // Legacy (deprecados, se conservan por compatibilidad de órdenes en vuelo).
   pro: { amount: 4990, subject: "Franco Pro — Análisis Premium" },
   pack3: { amount: 9990, subject: "Franco Pack 3× — 3 Análisis Premium" },
 };

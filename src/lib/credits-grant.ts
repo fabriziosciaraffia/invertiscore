@@ -170,3 +170,28 @@ export function recurringProductByAmount(
   }
   return null;
 }
+
+/**
+ * Resuelve el producto recurrente desde el plan persistido en user_credits
+ * (active_plan = 'plan10'|'plan50'|'unlimited' + billing_period = 'monthly'|'annual').
+ * Fuente de verdad preferida sobre el monto: se setea al iniciar la suscripción.
+ */
+export function recurringProductByPlan(
+  activePlan: string | null | undefined,
+  billing: string | null | undefined
+): { key: FlowProductKey; product: FlowProduct } | null {
+  if (!activePlan || !billing) return null;
+  for (const [key, product] of Object.entries(FLOW_PRODUCTS) as [
+    FlowProductKey,
+    FlowProduct
+  ][]) {
+    if (
+      product.kind === "recurring" &&
+      product.plan === activePlan &&
+      product.billing === billing
+    ) {
+      return { key, product };
+    }
+  }
+  return null;
+}

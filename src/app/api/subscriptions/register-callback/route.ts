@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
+import { recurringProductByPlan } from "@/lib/credits-grant";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -30,9 +31,30 @@ export async function POST(request: Request) {
     const customerId = registerStatus.customerId;
     const supabase = createAdminClient();
 
-    // Create subscription
+    // Buscar al user + el plan persistido por subscriptions/create (fuente de
+    // verdad, ya no el hardcode "FrancoMensual" del flujo viejo $19.990).
+    const { data: userCredit } = await supabase
+      .from("user_credits")
+      .select("user_id, active_plan, billing_period")
+      .eq("flow_customer_id", customerId)
+      .single();
+
+    const match = recurringProductByPlan(
+      userCredit?.active_plan,
+      userCredit?.billing_period
+    );
+
+    if (!userCredit || !match?.product.planId) {
+      console.error(
+        "[register-callback] sin plan persistido o planId nulo para customer:",
+        customerId
+      );
+      return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
+    }
+
+    // Create subscription con el planId real del producto elegido
     const subData = await flowPost("subscription/create", {
-      planId: "FrancoMensual",
+      planId: match.product.planId,
       customerId,
     });
 
@@ -41,34 +63,25 @@ export async function POST(request: Request) {
       return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));
     }
 
-    // Find user by customerId
-    const { data: userCredit } = await supabase
+    await supabase
       .from("user_credits")
-      .select("user_id")
-      .eq("flow_customer_id", customerId)
-      .single();
+      .update({
+        subscription_status: "active",
+        subscription_id: subData.subscriptionId,
+        subscription_start: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userCredit.user_id);
 
-    if (userCredit) {
-      await supabase
-        .from("user_credits")
-        .update({
-          subscription_status: "active",
-          subscription_id: subData.subscriptionId,
-          subscription_start: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userCredit.user_id);
-
-      // Record as payment
-      await supabase.from("payments").insert({
-        user_id: userCredit.user_id,
-        commerce_order: `franco-sub-${subData.subscriptionId}`,
-        product: "subscription",
-        amount: 19990,
-        status: "paid",
-        payment_data: subData,
-      });
-    }
+    // Record as payment (monto y producto reales del plan elegido)
+    await supabase.from("payments").insert({
+      user_id: userCredit.user_id,
+      commerce_order: `franco-sub-${subData.subscriptionId}`,
+      product: match.key,
+      amount: match.product.amount,
+      status: "paid",
+      payment_data: subData,
+    });
 
     return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
   } catch (err) {

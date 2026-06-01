@@ -2,15 +2,25 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdmin } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
+import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+  }
+
+  // Product key recurrente (plan10_mensual ... unlimited_anual) desde el body.
+  const body = await request.json().catch(() => ({}));
+  const product = (body as { product?: string }).product as FlowProductKey | undefined;
+  const chosen = product ? FLOW_PRODUCTS[product] : undefined;
+
+  if (!product || !chosen || chosen.kind !== "recurring") {
+    return NextResponse.json({ error: "Plan inválido" }, { status: 400 });
   }
 
   const admin = createAdmin(
@@ -70,6 +80,19 @@ export async function POST() {
         });
       }
     }
+
+    // Persistir el plan elegido DESDE EL ORIGEN (sin créditos aún; los grants
+    // llegan en el callback de pago). Esto deja active_plan/billing_period como
+    // fuente de verdad para register-callback y payment-callback (mata el mapeo
+    // por monto). La fila user_credits ya existe en todos los caminos previos.
+    await admin
+      .from("user_credits")
+      .update({
+        active_plan: chosen.plan ?? null,
+        billing_period: chosen.billing ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", user.id);
 
     // Send customer to register their card
     // Register card

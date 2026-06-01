@@ -4,6 +4,7 @@ import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { grantCredits } from "@/lib/credits-grant";
+import { consumeCredit } from "@/lib/access";
 
 function createAdminClient() {
   return createClient(
@@ -72,9 +73,16 @@ export async function POST(request: Request) {
       const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
 
       if (userId && product === "single") {
-        // Modelo nuevo: 1 crédito al ledger (expira en 1 año). El consumo y el
-        // is_premium del análisis los maneja el flujo de creación (access.ts).
+        // Modelo nuevo: 1 crédito al ledger (expira en 1 año).
         await grantCredits(userId, "single", 1, { paymentId });
+
+        // Si la compra vino atada a un análisis, desbloquearlo en el acto
+        // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
+        // de access.consumeCredit: consume el crédito recién otorgado y marca
+        // is_premium=true sobre ese análisis.
+        if (analysisId) {
+          await consumeCredit(userId, analysisId);
+        }
       } else if (userId && product) {
         // Legacy pro/pack3 → contador user_credits.credits.
         const creditsToAdd = product === "pack3" ? 3 : 1;
