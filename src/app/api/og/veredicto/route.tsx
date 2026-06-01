@@ -8,30 +8,55 @@ import type {
   Veredicto,
 } from "@/lib/types";
 
-// Edge runtime: misma elección que /api/og (existente). Las fuentes se
-// embeben vía import.meta.url (Next traza los .ttf co-localizados al build),
-// así no dependemos de fetch a Google ni del origin en runtime.
+// Edge runtime: misma elección que /api/og (existente).
 export const runtime = "edge";
 
 // ── Fuentes del sistema (Capa 2) ─────────────────────────────────────────
 // Solo Source Serif 4 (narrativa/wordmark) + JetBrains Mono (datos/labels).
 // El hero no usa IBM Plex Sans: todo es serif o mono (igual que el PNG del
-// welcome). Italic del serif para frases editoriales (veredicto, "lo que verías").
-const serifRegular = fetch(
-  new URL("./fonts/SourceSerif4-Regular.ttf", import.meta.url),
-).then((r) => r.arrayBuffer());
-const serifBold = fetch(
-  new URL("./fonts/SourceSerif4-Bold.ttf", import.meta.url),
-).then((r) => r.arrayBuffer());
-const serifItalic = fetch(
-  new URL("./fonts/SourceSerif4-It.ttf", import.meta.url),
-).then((r) => r.arrayBuffer());
-const monoRegular = fetch(
-  new URL("./fonts/JetBrainsMono-Regular.ttf", import.meta.url),
-).then((r) => r.arrayBuffer());
-const monoBold = fetch(
-  new URL("./fonts/JetBrainsMono-Bold.ttf", import.meta.url),
-).then((r) => r.arrayBuffer());
+// welcome).
+//
+// Las fuentes se sirven estáticamente desde /public/fonts y se bajan en
+// RUNTIME (fetch), NO se embeben en el bundle vía import.meta.url. Embeberlas
+// metía ~1.3MB de TTF dentro de la Edge Function y rompía el deploy en plan
+// Hobby (límite 1MB por función). Fuera del bundle, la función queda liviana.
+//
+// Variantes reducidas a las 4 que el render realmente usa (se omitió Serif
+// Regular 400 normal: todo el serif es Bold 700 o Italic 400):
+//   - Source Serif 4 Bold   → wordmark "franco"/".ai", título de propiedad
+//   - Source Serif 4 Italic → wordmark "re", frase veredicto, caja "lo que verías"
+//   - JetBrains Mono Regular → tagline, labels, meta, axis, KPI labels/sub
+//   - JetBrains Mono Bold    → Franco Score, badge veredicto, valor KPI
+const FONT_FILES = {
+  serifBold: "/fonts/SourceSerif4-Bold.ttf",
+  serifItalic: "/fonts/SourceSerif4-It.ttf",
+  monoRegular: "/fonts/JetBrainsMono-Regular.ttf",
+  monoBold: "/fonts/JetBrainsMono-Bold.ttf",
+} as const;
+
+type FontKey = keyof typeof FONT_FILES;
+
+// Cache a nivel de módulo: en instancias edge "calientes" se reutiliza el
+// fetch de fuentes entre invocaciones (origin estable por deployment).
+let fontsCache: Promise<Record<FontKey, ArrayBuffer>> | null = null;
+
+function loadFonts(origin: string): Promise<Record<FontKey, ArrayBuffer>> {
+  if (!fontsCache) {
+    fontsCache = (async () => {
+      const entries = await Promise.all(
+        (Object.keys(FONT_FILES) as FontKey[]).map(async (key) => {
+          const res = await fetch(new URL(FONT_FILES[key], origin));
+          if (!res.ok) {
+            throw new Error(`Font fetch failed: ${FONT_FILES[key]} (${res.status})`);
+          }
+          return [key, await res.arrayBuffer()] as const;
+        }),
+      );
+      return Object.fromEntries(entries) as Record<FontKey, ArrayBuffer>;
+    })();
+  }
+  return fontsCache;
+}
 
 // ── Paleta (solo Ink + Signal Red) ───────────────────────────────────────
 const INK_900 = "#0F0F0F"; // fondo página
@@ -92,7 +117,8 @@ interface Kpi {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+  const reqUrl = new URL(request.url);
+  const { searchParams } = reqUrl;
   const id = searchParams.get("analisisId") || searchParams.get("id");
 
   if (!id) {
@@ -104,29 +130,21 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  const { data } = await supabase
-    .from("analisis")
-    .select("nombre, comuna, score, superficie, precio, input_data, results, ai_analysis")
-    .eq("id", id)
-    .single();
+  // Fuentes (runtime) + datos del análisis en paralelo. Las fuentes se bajan
+  // desde el mismo origin que sirve esta función (prod o localhost), así están
+  // disponibles tanto en deploy como en dev sin hardcodear el dominio.
+  const [fonts, { data }] = await Promise.all([
+    loadFonts(reqUrl.origin),
+    supabase
+      .from("analisis")
+      .select("nombre, comuna, score, superficie, precio, input_data, results, ai_analysis")
+      .eq("id", id)
+      .single(),
+  ]);
 
   if (!data) {
     return new Response("Not found", { status: 404 });
   }
-
-  const [
-    serifRegularData,
-    serifBoldData,
-    serifItalicData,
-    monoRegularData,
-    monoBoldData,
-  ] = await Promise.all([
-    serifRegular,
-    serifBold,
-    serifItalic,
-    monoRegular,
-    monoBold,
-  ]);
 
   const results = (data.results as FullAnalysisResult | null) ?? null;
   const input = (data.input_data as AnalisisInput | null) ?? null;
@@ -535,11 +553,10 @@ export async function GET(request: Request) {
       width: 600,
       height: 790,
       fonts: [
-        { name: "Source Serif 4", data: serifRegularData, weight: 400, style: "normal" },
-        { name: "Source Serif 4", data: serifBoldData, weight: 700, style: "normal" },
-        { name: "Source Serif 4", data: serifItalicData, weight: 400, style: "italic" },
-        { name: "JetBrains Mono", data: monoRegularData, weight: 400, style: "normal" },
-        { name: "JetBrains Mono", data: monoBoldData, weight: 700, style: "normal" },
+        { name: "Source Serif 4", data: fonts.serifBold, weight: 700, style: "normal" },
+        { name: "Source Serif 4", data: fonts.serifItalic, weight: 400, style: "italic" },
+        { name: "JetBrains Mono", data: fonts.monoRegular, weight: 400, style: "normal" },
+        { name: "JetBrains Mono", data: fonts.monoBold, weight: 700, style: "normal" },
       ],
     },
   );
