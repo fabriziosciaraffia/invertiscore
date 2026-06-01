@@ -43,10 +43,24 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Redirect authenticated users away from auth pages
+  // Redirect authenticated users away from auth pages. Si traen intención de
+  // compra (?plan= desde los CTAs de pricing, o ?next=), respetarla en vez de
+  // mandar siempre al dashboard.
   if (user && (pathname === "/login" || pathname === "/register")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    const plan = request.nextUrl.searchParams.get("plan");
+    const next = request.nextUrl.searchParams.get("next");
+    if (plan) {
+      url.pathname = "/checkout";
+      url.search = `product=${encodeURIComponent(plan)}`;
+    } else if (next && next.startsWith("/")) {
+      const target = new URL(next, request.url);
+      url.pathname = target.pathname;
+      url.search = target.search;
+    } else {
+      url.pathname = "/dashboard";
+      url.search = "";
+    }
     return NextResponse.redirect(url);
   }
 

@@ -60,15 +60,21 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
+    // Destino tras login: ?next= (intención de compra, ej /checkout?product=X) o dashboard.
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(next || "/dashboard");
     router.refresh();
   };
 
   const handleGoogle = async () => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    const callbackUrl = next
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${window.location.origin}/auth/callback`;
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl },
     });
   };
 

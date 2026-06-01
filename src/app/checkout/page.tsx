@@ -7,58 +7,36 @@ import Link from "next/link";
 import { Check, ArrowLeft, Shield } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AppNav } from "@/components/chrome/AppNav";
+import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
 
-const PRODUCTS = {
-  pro: {
-    title: "Franco Pro",
-    subtitle: "Análisis Premium",
-    price: "$4.990",
-    period: "Pago único",
-    features: [
-      "Análisis IA personalizado",
-      "Proyecciones a 20 años",
-      "Escenario de salida",
-      "Veredicto con precio sugerido",
-      "Ajusta el financiamiento",
-    ],
-    endpoint: "/api/payments/create",
-    body: { product: "pro" },
-  },
-  pack3: {
-    title: "Franco Pack 3×",
-    subtitle: "Ahorra 33%",
-    price: "$9.990",
-    period: "Pago único — 3 análisis premium",
-    features: [
-      "3 análisis con IA incluidos",
-      "Usa cuando quieras, no expiran",
-      "Proyecciones a 20 años",
-      "Escenario de salida",
-      "Veredicto con precio sugerido",
-    ],
-    endpoint: "/api/payments/create",
-    body: { product: "pack3" },
-  },
-  subscription: {
-    title: "Franco Suscripción",
-    subtitle: "Acceso ilimitado",
-    price: "$19.990",
-    period: "/mes — cancela cuando quieras",
-    features: [
-      "Análisis con IA ilimitados",
-      "Ajusta TODAS las variables",
-      "Historial completo de análisis",
-      "Compara deptos lado a lado",
-      "Alertas de nuevas propiedades",
-      "Monitoreo de mercado",
-      "Exportar informes en PDF",
-    ],
-    endpoint: "/api/subscriptions/create",
-    body: {},
-  },
-} as const;
+/** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
+function resolveProduct(key: string) {
+  const p = (FLOW_PRODUCTS as Record<string, (typeof FLOW_PRODUCTS)[FlowProductKey]>)[key];
+  if (!p) return null;
 
-type ProductKey = keyof typeof PRODUCTS;
+  const oneTime = p.kind === "one_time";
+  const period = oneTime
+    ? "Pago único — créditos sin caducidad"
+    : p.billing === "annual"
+      ? "Facturación anual · renueva automáticamente"
+      : "Facturación mensual · cancela cuando quieras";
+  const subtitle = p.isUnlimited
+    ? "Análisis ilimitados cada mes"
+    : p.capacity === 1
+      ? "1 análisis"
+      : `${p.capacity} análisis al mes`;
+
+  return {
+    title: p.subject,
+    subtitle,
+    price: fmtCLP(p.amount),
+    period,
+    features: BASE_FEATURES,
+    endpoint: oneTime ? "/api/payments/create" : "/api/subscriptions/create",
+    oneTime,
+  };
+}
 
 export default function CheckoutPage() {
   return (
@@ -75,10 +53,10 @@ export default function CheckoutPage() {
 function CheckoutContent() {
   const searchParams = useSearchParams();
   const posthog = usePostHog();
-  const productKey = (searchParams.get("product") || "pro") as ProductKey;
+  const productKey = searchParams.get("product") || "single";
   const analysisId = searchParams.get("analysisId");
 
-  const product = PRODUCTS[productKey] || PRODUCTS.pro;
+  const product = resolveProduct(productKey);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,11 +75,13 @@ function CheckoutContent() {
   }, [productKey, analysisId]);
 
   async function handlePay() {
+    if (!product) return;
     setLoading(true);
     setError(null);
     try {
-      const body = { ...product.body } as Record<string, string>;
-      if (analysisId && productKey !== "subscription") {
+      const body: Record<string, string> = { product: productKey };
+      // analysisId solo aplica al pago único (single): desbloquea ese análisis.
+      if (analysisId && product.oneTime) {
         body.analysisId = analysisId;
       }
 
@@ -122,6 +102,30 @@ function CheckoutContent() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Product key inválido (link viejo/corrupto) → estado claro, sin romper.
+  if (!product) {
+    return (
+      <div className="min-h-screen bg-[var(--franco-bg)]">
+        <AppNav variant="marketing" />
+        <div className="max-w-[480px] mx-auto px-4 py-20 text-center">
+          <h1 className="font-heading font-bold text-2xl text-[var(--franco-text)] mb-3">
+            Plan no encontrado
+          </h1>
+          <p className="font-body text-sm text-[var(--franco-text-secondary)] mb-8">
+            El plan que buscas no existe o ya no está disponible.
+          </p>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-[#C8323C]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Ver planes disponibles
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (authenticated === null) {

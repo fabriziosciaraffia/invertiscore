@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import {
   PRICING_PLANS,
   fmtCLP,
+  productKeyFor,
   type Billing,
   type PricingPlan,
 } from "@/lib/pricing";
@@ -41,6 +43,15 @@ export default function PricingPlans({
 }) {
   const [billing, setBilling] = useState<Billing>("monthly");
   const annual = billing === "annual";
+
+  // Sesión: mismo mecanismo que checkout — supabase client getUser(). null
+  // mientras resuelve; el href cae al flujo de registro hasta confirmar sesión
+  // (el middleware redirige al logueado de /register?plan=X a /checkout).
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+  }, []);
 
   return (
     <div className={className}>
@@ -133,7 +144,7 @@ export default function PricingPlans({
       {/* ===== Grid 4 planes ===== */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {PRICING_PLANS.map((p) => (
-          <PlanCard key={p.id} plan={p} annual={annual} emphasis={emphasis} />
+          <PlanCard key={p.id} plan={p} annual={annual} emphasis={emphasis} authed={authed} />
         ))}
       </div>
     </div>
@@ -146,12 +157,24 @@ function PlanCard({
   plan,
   annual,
   emphasis,
+  authed,
 }: {
   plan: PricingPlan;
   annual: boolean;
   emphasis: "subtle" | "strong";
+  authed: boolean | null;
 }) {
   const dark = !!plan.highlight;
+
+  // CTA → checkout con la product key real del plan + facturación vigente.
+  // Logueado: directo a /checkout. No logueado (o aún resolviendo): a /register
+  // arrastrando ?plan= y ?next= para retomar la compra tras autenticarse.
+  const productKey = productKeyFor(plan.id, annual ? "annual" : "monthly");
+  const checkoutPath = `/checkout?product=${productKey}`;
+  const ctaHref =
+    authed === true
+      ? checkoutPath
+      : `/register?plan=${productKey}&next=${encodeURIComponent(checkoutPath)}`;
   const text = dark ? "#FAFAF8" : "#0F0F0F";
   const muted = dark ? "rgba(250,250,248,0.55)" : "rgba(15,15,15,0.55)";
   const checkBg = dark ? "rgba(250,250,248,0.10)" : "rgba(15,15,15,0.06)";
@@ -324,7 +347,7 @@ function PlanCard({
       <div className="mt-6 flex-1" />
 
       <Link
-        href={plan.ctaHref}
+        href={ctaHref}
         style={{ color: ctaSolid ? "#FFFFFF" : text }}
         className={`group inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] transition-[transform,filter,background] duration-150 hover:scale-[1.02] ${
           ctaSolid
