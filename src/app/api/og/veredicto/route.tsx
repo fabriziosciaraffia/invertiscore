@@ -82,13 +82,35 @@ function fmtFlujo(n: number): string {
   return `${sign}$${dots(abs)}`;
 }
 
+// Trunca por LÍMITE DE ORACIÓN, no a N caracteres exactos:
+//  1. Si entra completo, se devuelve tal cual.
+//  2. Si no, se corta en el último cierre de oración (. ! ?) que quepa dentro
+//     del máximo — SIN puntos suspensivos (la oración queda completa).
+//     Solo cuenta como cierre la puntuación SEGUIDA DE ESPACIO, para no cortar
+//     dentro de cifras ("UF 4.180", "$420.000") ni abreviaturas pegadas.
+//  3. Si no hay cierre de oración antes del límite, se corta en la última
+//     palabra completa + "…" (nunca a media palabra).
+const MIN_KEEP = 30; // evita fragmentos diminutos sin rechazar oraciones cortas
 function clamp(s: string | undefined | null, max: number): string {
   if (!s) return "";
   const t = s.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
+  // Ventana hasta max+1 para captar un "." cuyo espacio cae justo en el límite.
+  const window = t.slice(0, max + 1);
+  let lastSentenceEnd = -1;
+  for (let i = 0; i < window.length - 1; i++) {
+    const c = window[i];
+    if ((c === "." || c === "!" || c === "?") && window[i + 1] === " ") {
+      lastSentenceEnd = i; // índice de la puntuación de cierre
+    }
+  }
+  if (lastSentenceEnd >= MIN_KEEP) {
+    return t.slice(0, lastSentenceEnd + 1).trim();
+  }
+  // Sin cierre de oración: última palabra completa + elipsis.
   const cut = t.slice(0, max);
   const lastSpace = cut.lastIndexOf(" ");
-  return cut.slice(0, lastSpace > 40 ? lastSpace : max).trim() + "…";
+  return cut.slice(0, lastSpace > MIN_KEEP ? lastSpace : max).trim() + "…";
 }
 
 function defaultFrase(v: Veredicto): string {
@@ -172,7 +194,7 @@ export async function GET(request: Request) {
       conviene?.veredictoFrase_clp ||
       results?.resumenEjecutivo ||
       defaultFrase(veredicto),
-    130,
+    150,
   );
   const boxText = clamp(
     conviene?.reencuadre_uf ||
@@ -180,7 +202,7 @@ export async function GET(request: Request) {
       conviene?.cajaAccionable_uf ||
       conviene?.cajaAccionable_clp ||
       "",
-    150,
+    190,
   );
 
   // KPI cards (igual lenguaje que el PNG welcome). Se toman las 4 primeras
@@ -232,7 +254,7 @@ export async function GET(request: Request) {
           display: "flex",
           flexDirection: "column",
           width: "600px",
-          height: "790px",
+          height: "840px",
           backgroundColor: INK_900,
           padding: "34px 36px",
           fontFamily: "Source Serif 4",
@@ -551,7 +573,7 @@ export async function GET(request: Request) {
     ),
     {
       width: 600,
-      height: 790,
+      height: 840,
       fonts: [
         { name: "Source Serif 4", data: fonts.serifBold, weight: 700, style: "normal" },
         { name: "Source Serif 4", data: fonts.serifItalic, weight: 400, style: "italic" },
