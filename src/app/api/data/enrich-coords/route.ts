@@ -100,3 +100,7 @@ export async function POST(request: Request) {
     errors: errors.slice(0, 10),
   });
 }
+
+// Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer
+// CRON_SECRET) para no duplicar lógica ni perder la auth.
+export const GET = POST;

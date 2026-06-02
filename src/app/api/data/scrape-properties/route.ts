@@ -137,3 +137,7 @@ function propertyToRow(prop: ScrapedProperty) {
     geocode_attempted: false,
   };
 }
+
+// Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer
+// CRON_SECRET) para no duplicar lógica ni perder la auth.
+export const GET = POST;
