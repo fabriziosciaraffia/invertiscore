@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import FrancoLogo from "@/components/franco-logo";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -50,12 +50,10 @@ function PaymentReturnContent() {
   }, [type, statusParam]);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[var(--franco-bg)] px-4">
+    <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
+      <UnifiedNav variant="marketing" />
+      <div className="flex flex-1 items-center justify-center px-4 py-8">
 <div className="w-full max-w-md text-center">
-        <div className="mx-auto mb-6">
-          <FrancoLogo size="xl" href="/" inverted />
-        </div>
-
         {paymentStatus === "loading" && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
@@ -124,6 +122,7 @@ function PaymentReturnContent() {
         <p className="mt-6 font-body text-[11px] text-[var(--franco-text-muted)]">
           Pagos procesados de forma segura por Flow.cl
         </p>
+        </div>
       </div>
     </div>
   );

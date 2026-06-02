@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import {
   ResumenConfirmacion,
   REVISAR_SS_KEY,
@@ -60,7 +60,7 @@ export default function RevisarAnalisisPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Nav (same shell pattern as /analisis/nuevo) */}
-      <AppNav variant="app" />
+      <UnifiedNav variant="app" />
 
       {!ready || !payload || !tierInfo ? (
         <div className="flex items-center justify-center py-32 text-[var(--franco-text-secondary)]">

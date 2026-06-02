@@ -4,6 +4,8 @@ import { Resend } from "resend";
 import { flowGet } from "@/lib/flow";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { resolveDisplayName } from "@/lib/welcome";
+import { grantCredits } from "@/lib/credits-grant";
+import { consumeCredit } from "@/lib/access";
 
 function createAdminClient() {
   return createClient(
@@ -40,6 +42,11 @@ export async function POST(request: Request) {
     };
     const newStatus = statusMap[flowData.status] || "pending";
 
+    // Flow devuelve `status` como STRING → comparar con Number() (no === directo).
+    // statusMap arriba sí tolera string (keys de objeto se coercen); flow_status
+    // se persiste crudo más abajo.
+    const flowStatus = Number(flowData.status);
+
     // Update payment record
     const { error: updateError } = await supabase
       .from("payments")
@@ -57,10 +64,10 @@ export async function POST(request: Request) {
     }
 
     // If paid (Flow status 2), process credits
-    if (flowData.status === 2) {
+    if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("user_id, product, analysis_id")
+        .select("id, user_id, product, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -69,9 +76,21 @@ export async function POST(request: Request) {
         return NextResponse.json({ status: "ok" });
       }
 
-      const { user_id: userId, product, analysis_id: analysisId } = payment;
+      const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
 
-      if (userId && product) {
+      if (userId && product === "single") {
+        // Modelo nuevo: 1 crédito al ledger (expira en 1 año).
+        await grantCredits(userId, "single", 1, { paymentId });
+
+        // Si la compra vino atada a un análisis, desbloquearlo en el acto
+        // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
+        // de access.consumeCredit: consume el crédito recién otorgado y marca
+        // is_premium=true sobre ese análisis.
+        if (analysisId) {
+          await consumeCredit(userId, analysisId);
+        }
+      } else if (userId && product) {
+        // Legacy pro/pack3 → contador user_credits.credits.
         const creditsToAdd = product === "pack3" ? 3 : 1;
 
         // Upsert user_credits
@@ -202,7 +221,7 @@ export async function POST(request: Request) {
     }
 
     // Handle rejected/failed payments — admin alert
-    if (flowData.status === 3 || flowData.status === 4) {
+    if (flowStatus === 3 || flowStatus === 4) {
       try {
         const { data: payment } = await supabase
           .from("payments")
@@ -210,7 +229,7 @@ export async function POST(request: Request) {
           .eq("commerce_order", flowData.commerceOrder)
           .single();
 
-        const statusLabel = flowData.status === 3 ? "Rechazado" : "Anulado";
+        const statusLabel = flowStatus === 3 ? "Rechazado" : "Anulado";
         const product = payment?.product || "desconocido";
         const productLabel = product === "pro" ? "Análisis Pro" : product === "pack3" ? "Pack x3" : product === "subscription" ? "Suscripción Mensual" : product;
         const amount = flowData.amount || 0;

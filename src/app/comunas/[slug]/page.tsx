@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getComunaStats, getAllComunasStats, fmtCLP, fmtUF, UF_CLP } from "@/lib/data/comunas-seo";
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 export const revalidate = 86400;
@@ -102,20 +102,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
 <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
 
       {/* Navbar */}
-      <AppNav
-        variant="marketing"
-        linksSlot={
-          <>
-            <Link href="/comunas" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Comunas</Link>
-            <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">Precios</Link>
-          </>
-        }
-        ctaSlot={<NavPrimaryCTA href="/analisis/nuevo-v2" />}
-        mobileMenuItems={[
-          { label: "Comunas", href: "/comunas" },
-          { label: "Precios", href: "/pricing" },
-        ]}
-      />
+      <UnifiedNav variant="marketing" />
 
       <main className="mx-auto max-w-[1100px] px-6 py-12">
         {/* Breadcrumb */}

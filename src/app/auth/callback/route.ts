@@ -45,5 +45,10 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(new URL("/dashboard", request.url));
+  // Honrar ?next= (intención de compra, ej /checkout?product=X). Solo paths
+  // relativos (empiezan con "/") para evitar open redirect a dominios externos.
+  const next = requestUrl.searchParams.get("next");
+  const dest = next && next.startsWith("/") ? next : "/dashboard";
+
+  return NextResponse.redirect(new URL(dest, request.url));
 }

@@ -6,12 +6,10 @@ import { useRouter } from "next/navigation";
 import { Trash2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { AppNav } from "@/components/chrome/AppNav";
-import { LogoutButton } from "@/components/logout-button";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { normalizeLegacyVerdict } from "@/lib/types";
-import { User } from "lucide-react";
 
 // Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11). Análisis legacy
 // con strings antiguos (VIABLE / AJUSTA ESTRATEGIA / NO RECOMENDADO / AJUSTA
@@ -350,22 +348,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <AppNav
-        variant="app"
-        ctaSlot={
-          <div className="flex items-center gap-3">
-            <Link href="/pricing">
-              <span className="rounded-md bg-signal-red px-3 py-1.5 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90">Premium</span>
-            </Link>
-            <Link href="/cuenta">
-              <Button variant="ghost" size="sm" className="gap-1.5 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]">
-                <User className="h-4 w-4" /> <span className="hidden sm:inline">Mi Cuenta</span>
-              </Button>
-            </Link>
-            <LogoutButton />
-          </div>
-        }
-      />
+      <UnifiedNav variant="app" />
 
       <div className="mx-auto max-w-[820px] px-5 py-7">
         {analisis.length === 0 ? (

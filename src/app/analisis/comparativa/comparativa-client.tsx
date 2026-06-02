@@ -2,11 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
-import { Button } from "@/components/ui/button";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import {
   HeroComparativa,
@@ -204,17 +202,6 @@ export function ComparativaClient(p: Props) {
   const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
 
   // Chrome
-  const ctaSlot = (
-    <Link href="/dashboard">
-      <Button
-        variant="ghost"
-        size="sm"
-        className="gap-2 text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]"
-      >
-        <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Dashboard</span>
-      </Button>
-    </Link>
-  );
   const footerLinks = (
     <div className="flex items-center gap-4">
       <Link href="/terms" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
@@ -231,7 +218,7 @@ export function ComparativaClient(p: Props) {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] flex flex-col">
-      <AppNav variant="app" ctaSlot={ctaSlot} />
+      <UnifiedNav variant="app" />
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[900px] px-4 py-8">

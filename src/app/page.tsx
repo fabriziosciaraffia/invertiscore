@@ -1,4 +1,4 @@
-import LandingNav from "@/components/landing/LandingNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import SmoothScroll from "@/components/landing/SmoothScroll";
 import { LandingThemeProvider } from "@/components/landing/LandingTheme";
 import SectionHero from "@/components/landing/SectionHero";
@@ -29,7 +29,7 @@ export default function LandingPage() {
         style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
       >
         <SmoothScroll />
-        <LandingNav />
+        <UnifiedNav variant="landing" />
         <main>
           <SectionHero />
           <SectionProblem />

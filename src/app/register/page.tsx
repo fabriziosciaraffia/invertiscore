@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import FrancoLogo from "@/components/franco-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 export default function RegisterPage() {
@@ -38,13 +38,20 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // Intención de compra: ?next= (destino tras autenticar, ej /checkout?product=X).
+    // Se lee de window.location para evitar useSearchParams (que exigiría Suspense).
+    const next = new URLSearchParams(window.location.search).get("next");
+    const callbackUrl = next
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${window.location.origin}/auth/callback`;
+
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { nombre: name },
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: callbackUrl,
       },
     });
 
@@ -66,24 +73,26 @@ export default function RegisterPage() {
     }
 
     // Caso con confirmación desactivada (o usuario ya confirmado): sesión
-    // directa al dashboard.
-    router.push("/dashboard");
+    // directa al destino solicitado (intención de compra) o al dashboard.
+    router.push(next || "/dashboard");
     router.refresh();
   };
 
   const handleGoogle = async () => {
+    const next = new URLSearchParams(window.location.search).get("next");
+    const callbackUrl = next
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      : `${window.location.origin}/auth/callback`;
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: callbackUrl },
     });
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--franco-bg)]">
-      <div className="fixed top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
+      <UnifiedNav variant="marketing" minimal />
       <div className="flex flex-1 items-center justify-center px-4 py-8">
         <div className="w-full max-w-md">
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm">

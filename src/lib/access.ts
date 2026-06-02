@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { consumeCredit as consumeLedgerCredit } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -63,7 +64,7 @@ export async function chargeAnalysisCredit(
 
   const { data: row } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, welcome_credit_used")
+    .select("credits, subscription_status, welcome_credit_used, is_unlimited")
     .eq("user_id", userId)
     .single();
 
@@ -76,8 +77,8 @@ export async function chargeAnalysisCredit(
     };
   }
 
-  // Subscriber activo → free pass. NO descuenta credits ni toca welcome.
-  if (row.subscription_status === "active") {
+  // Subscriber activo o plan ilimitado → free pass. NO descuenta credits ni toca welcome.
+  if (row.subscription_status === "active" || row.is_unlimited) {
     return { ok: true, mode: "subscription" };
   }
 
@@ -104,7 +105,12 @@ export async function chargeAnalysisCredit(
     // Race perdida: otra request consumió el welcome. Caer a paid.
   }
 
-  // Crédito comprado.
+  // Crédito comprado — primero el ledger (credit_grants), FIFO por expiración.
+  if (await consumeLedgerCredit(userId)) {
+    return { ok: true, mode: "paid" };
+  }
+
+  // Legacy: contador user_credits.credits (compras pro/pack3 previas a la migración).
   if (row.credits > 0) {
     const { data: paid } = await supabase
       .from("user_credits")
@@ -162,19 +168,25 @@ export async function consumeCredit(
   // Check subscription
   const { data: credits } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status")
+    .select("credits, subscription_status, is_unlimited")
     .eq("user_id", userId)
     .single();
 
   if (!credits) return false;
 
-  // Subscribers don't consume credits
-  if (credits.subscription_status === "active") {
+  // Subscribers / ilimitado don't consume credits
+  if (credits.subscription_status === "active" || credits.is_unlimited) {
     await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
     return true;
   }
 
-  // Consume a credit
+  // Ledger primero (credit_grants), FIFO por expiración.
+  if (await consumeLedgerCredit(userId)) {
+    await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
+    return true;
+  }
+
+  // Legacy: contador user_credits.credits.
   if (credits.credits > 0) {
     const { error: creditError } = await supabase
       .from("user_credits")

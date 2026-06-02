@@ -1,10 +1,10 @@
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <AppNav variant="marketing" ctaSlot={<NavPrimaryCTA href="/register" />} />
+      <UnifiedNav variant="marketing" />
 
       <main className="max-w-[640px] mx-auto px-6 py-16 md:py-24">
         <h1 className="font-heading font-bold text-3xl md:text-4xl text-[var(--franco-text)]">

@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   PRICING_PLANS,
   fmtCLP,
+  productKeyFor,
   type Billing,
   type PricingPlan,
 } from "@/lib/pricing";
@@ -152,6 +153,13 @@ function PlanCard({
   emphasis: "subtle" | "strong";
 }) {
   const dark = !!plan.highlight;
+
+  // CTA → SIEMPRE a /checkout con la product key real del plan + facturación
+  // vigente. El gate de sesión vive en /checkout (auth-gate único): si no hay
+  // sesión, checkout redirige a /register?next=/checkout?product=<key>. Así el
+  // CTA no depende de un getUser() client-side que puede no resolver a tiempo.
+  const productKey = productKeyFor(plan.id, annual ? "annual" : "monthly");
+  const ctaHref = `/checkout?product=${productKey}`;
   const text = dark ? "#FAFAF8" : "#0F0F0F";
   const muted = dark ? "rgba(250,250,248,0.55)" : "rgba(15,15,15,0.55)";
   const checkBg = dark ? "rgba(250,250,248,0.10)" : "rgba(15,15,15,0.06)";
@@ -324,7 +332,7 @@ function PlanCard({
       <div className="mt-6 flex-1" />
 
       <Link
-        href={plan.ctaHref}
+        href={ctaHref}
         style={{ color: ctaSolid ? "#FFFFFF" : text }}
         className={`group inline-flex w-full items-center justify-center gap-2 rounded-md px-4 py-3 font-mono text-[12px] font-semibold uppercase tracking-[0.06em] transition-[transform,filter,background] duration-150 hover:scale-[1.02] ${
           ctaSolid

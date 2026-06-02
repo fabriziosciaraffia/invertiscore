@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { Loader2, ChevronDown, CheckCircle2, AlertCircle } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import GoogleMapRadius from "@/components/GoogleMapRadius";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
@@ -1117,14 +1117,7 @@ export default function NuevoAnalisisPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Nav */}
-      <AppNav
-        variant="app"
-        ctaSlot={
-          <Link href="/dashboard" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-            ← Dashboard
-          </Link>
-        }
-      />
+      <UnifiedNav variant="app" />
 
       <div className="mx-auto max-w-[620px] px-4 pb-12 pt-6 overflow-x-hidden">
         {/* Guest blocked — already used their free analysis */}

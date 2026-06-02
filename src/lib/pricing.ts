@@ -53,7 +53,7 @@ export type PricingPlan = {
   ctaHref: string;
 };
 
-const BASE_FEATURES = [
+export const BASE_FEATURES = [
   "Veredicto de inversión: claro y sin rodeos",
   "Arriendo largo, Airbnb o ambos en cada análisis",
   "Análisis con IA + atractores de zona",
@@ -61,6 +61,19 @@ const BASE_FEATURES = [
   "Comparativa entre análisis",
   "24 comunas del Gran Santiago",
 ];
+
+/**
+ * Mapea el id de plan UI (single|plan10|plan50|unlimited) + el toggle de
+ * facturación a la product key real de FLOW_PRODUCTS / backend.
+ *   single → "single" (pago único, ignora billing)
+ *   resto  → `${id}_mensual` | `${id}_annual`  (mensual ES, annual EN — así está el catálogo)
+ */
+export function productKeyFor(planId: string, billing: Billing): string {
+  if (planId === "single") return "single";
+  // OJO: las keys de FLOW_PRODUCTS son mixtas — mensual en español (`_mensual`)
+  // pero anual en inglés (`_annual`). Debe coincidir EXACTO con esas keys.
+  return `${planId}_${billing === "annual" ? "annual" : "mensual"}`;
+}
 
 export const PRICING_PLANS: ReadonlyArray<PricingPlan> = [
   {
