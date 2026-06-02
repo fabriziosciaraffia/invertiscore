@@ -3,7 +3,7 @@ import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
-import { resolveDisplayName } from "@/lib/welcome";
+import { resolveDisplayName, ensureWelcomeEmail } from "@/lib/welcome";
 import { generateAiAnalysis } from "@/lib/ai-generation";
 import { readVeredicto } from "@/lib/results-helpers";
 import {
@@ -94,6 +94,18 @@ export async function POST(request: Request) {
     // al cliente se devuelve inmediato.
     if (data?.id) {
       (async () => {
+        // Welcome email idempotente: garantiza que un usuario que llega directo
+        // a /analisis/nuevo-v2 (vía deep-link o el héroe del onboarding) sin
+        // pasar por /dashboard igual lo reciba. ensureWelcomeEmail usa el claim
+        // atómico de welcome_email_sent, así que es seguro dispararlo también
+        // acá: envía a lo sumo una vez por usuario (no duplica con /dashboard).
+        if (user.email) {
+          await ensureWelcomeEmail(
+            user.id,
+            user.email,
+            resolveDisplayName(user.user_metadata, user.email),
+          );
+        }
         try {
           await generateAiAnalysis(data.id, dbClient);
         } catch (e) {

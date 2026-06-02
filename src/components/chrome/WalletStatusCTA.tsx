@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
+import { SINGLE_PRICE, fmtCLP } from "@/lib/pricing";
 
 export interface WalletStatusCTAProps {
   welcomeAvailable: boolean;
@@ -24,6 +25,9 @@ interface CTAVariant {
   href: string;
   /** Tratamiento visual: 'neutral' (Ink) | 'avoid' (Signal Red wash). Capa 1 v1.1. */
   tone: "neutral" | "avoid";
+  /** Acción secundaria discreta (ej. "ver todos los planes"). Opcional. */
+  secondaryLabel?: string;
+  secondaryHref?: string;
 }
 
 /**
@@ -119,15 +123,26 @@ export function WalletStatusCTA({
         </div>
       </div>
 
-      <Link
-        href={variant.href}
-        onClick={handleClickCTA}
-        className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
-        style={{ color: isAvoid ? "var(--signal-red)" : "var(--franco-text)" }}
-      >
-        {variant.ctaLabel}
-        <ArrowRight size={12} />
-      </Link>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link
+          href={variant.href}
+          onClick={handleClickCTA}
+          className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
+          style={{ color: isAvoid ? "var(--signal-red)" : "var(--franco-text)" }}
+        >
+          {variant.ctaLabel}
+          <ArrowRight size={12} />
+        </Link>
+        {variant.secondaryHref && variant.secondaryLabel && (
+          <Link
+            href={variant.secondaryHref}
+            onClick={handleClickCTA}
+            className="inline-flex items-center self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors"
+          >
+            {variant.secondaryLabel}
+          </Link>
+        )}
+      </div>
     </section>
   );
 }
@@ -169,15 +184,19 @@ function resolveVariant(args: {
 
   // Sin créditos: solo activar cuando el welcome ya fue consumido. Si todavía
   // está disponible, el siguiente análisis es gratis y no hay nada que vender.
+  // Este es el momento de conversión post-welcome (F4): CTA principal compra 1
+  // análisis directo ($9.990); link secundario a planes para quien quiere volumen.
   if (!args.welcomeAvailable && args.credits === 0) {
     return {
       state: "no_credits",
       message:
-        "Tu próximo análisis necesita un crédito. Compra uno o suscríbete.",
+        "Usaste tu análisis gratis. El próximo necesita un crédito.",
       plan: "SIN CRÉDITOS",
-      ctaLabel: "Ver planes",
-      href: "/pricing",
+      ctaLabel: `Comprar 1 análisis · ${fmtCLP(SINGLE_PRICE)}`,
+      href: "/checkout?product=single",
       tone: "avoid",
+      secondaryLabel: "Ver todos los planes",
+      secondaryHref: "/pricing",
     };
   }
 

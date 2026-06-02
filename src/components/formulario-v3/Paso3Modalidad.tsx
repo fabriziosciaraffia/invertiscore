@@ -626,14 +626,25 @@ function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
             </p>
           </div>
         </div>
-        <Link
-          href="/pricing"
-          className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
-          style={{ color: "var(--signal-red)" }}
-        >
-          Ver planes
-          <ArrowRight size={12} />
-        </Link>
+        {/* Deep-link de compra: paga $9.990 y desbloquea su próximo análisis
+            directo, conservando la intención de compra (vs /pricing genérico).
+            Link secundario a planes para quien quiere volumen. */}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <Link
+            href="/checkout?product=single"
+            className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
+            style={{ color: "var(--signal-red)" }}
+          >
+            Comprar 1 análisis
+            <ArrowRight size={12} />
+          </Link>
+          <Link
+            href="/pricing"
+            className="inline-flex items-center self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors"
+          >
+            Ver todos los planes
+          </Link>
+        </div>
       </div>
     );
   }

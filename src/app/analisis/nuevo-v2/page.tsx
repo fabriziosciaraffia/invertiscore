@@ -321,8 +321,10 @@ export default function NuevoAnalisisV3Page() {
   }
 
   // ─── Submit (bifurcación LTR / STR / AMBAS — Ronda 2a) ──
-  // Modalidad LTR: POST /api/analisis (gratis, no consume créditos).
-  // Modalidad STR: POST /api/analisis/short-term (consume 1 crédito).
+  // Ambas modalidades cobran 1 crédito en el backend (chargeAnalysisCredit):
+  // el primer análisis del registrado usa el welcome credit (gratis, una vez);
+  // del 2º en adelante se exige crédito/suscripción (si no, paywall en Paso 3 +
+  // 403 del endpoint). LTR: POST /api/analisis. STR: POST /api/analisis/short-term.
   // Modalidad AMBAS: Promise.allSettled de ambos. No atómico — si STR falla
   //   por falta de crédito, LTR sí se crea y user va a results LTR con flag
   //   de partial en sessionStorage para que el destino muestre toast.
