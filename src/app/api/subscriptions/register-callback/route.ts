@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
-import { recurringProductByPlan, applyPlanCredits } from "@/lib/credits-grant";
+import { recurringProductByPlan, applyPlanCredits, addOneMonth } from "@/lib/credits-grant";
 import { resolvePlanId } from "@/lib/flow-products";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
@@ -102,13 +102,23 @@ export async function POST(request: Request) {
     });
 
     // Activar la suscripción (campos que applyPlanCredits no maneja).
+    // next_monthly_grant_at: solo para ANUAL finito (no unlimited). El mes 1 lo
+    // otorgó applyPlanCredits; esto marca cuándo toca el mes 2 = subscription_start
+    // + 1 mes. Mensual recobra por cargo recurrente real (payment-callback) y
+    // unlimited es free pass → en ambos queda null (el cron los ignora).
+    const now = new Date();
+    const isAnnualFinite =
+      match.product.billing === "annual" && match.product.isUnlimited !== true;
+    const nextMonthlyGrantAt = isAnnualFinite ? addOneMonth(now).toISOString() : null;
+
     await supabase
       .from("user_credits")
       .update({
         subscription_status: "active",
         subscription_id: subData.subscriptionId,
-        subscription_start: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        subscription_start: now.toISOString(),
+        next_monthly_grant_at: nextMonthlyGrantAt,
+        updated_at: now.toISOString(),
       })
       .eq("user_id", userCredit.user_id);
 

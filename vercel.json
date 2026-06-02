@@ -15,6 +15,10 @@
     {
       "path": "/api/scraping/update-market-data",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/monthly-grants",
+      "schedule": "0 9 * * *"
     }
   ]
 }
