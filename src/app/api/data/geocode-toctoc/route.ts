@@ -172,3 +172,7 @@ function findCoordinates(obj: any, depth = 0): { lat: number; lng: number } | nu
 
   return null;
 }
+
+// Vercel Cron dispara GET. Reusamos el handler POST (con su validación Bearer
+// CRON_SECRET) para no duplicar lógica ni perder la auth.
+export const GET = POST;
