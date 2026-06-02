@@ -66,11 +66,13 @@ export const BASE_FEATURES = [
  * Mapea el id de plan UI (single|plan10|plan50|unlimited) + el toggle de
  * facturación a la product key real de FLOW_PRODUCTS / backend.
  *   single → "single" (pago único, ignora billing)
- *   resto  → `${id}_mensual` | `${id}_anual`
+ *   resto  → `${id}_mensual` | `${id}_annual`  (mensual ES, annual EN — así está el catálogo)
  */
 export function productKeyFor(planId: string, billing: Billing): string {
   if (planId === "single") return "single";
-  return `${planId}_${billing === "annual" ? "anual" : "mensual"}`;
+  // OJO: las keys de FLOW_PRODUCTS son mixtas — mensual en español (`_mensual`)
+  // pero anual en inglés (`_annual`). Debe coincidir EXACTO con esas keys.
+  return `${planId}_${billing === "annual" ? "annual" : "mensual"}`;
 }
 
 export const PRICING_PLANS: ReadonlyArray<PricingPlan> = [
