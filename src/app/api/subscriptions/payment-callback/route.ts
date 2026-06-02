@@ -39,8 +39,9 @@ export async function POST(request: Request) {
     }
 
     // Enum Flow: 1=pendiente, 2=pagada, 3=rechazada, 4=anulada.
-    // (Alineado con payments/confirm, que usa 2=pagado como referencia.)
-    if (flowData.status === 2 && userId) {
+    // Flow devuelve `status` como STRING → comparar con Number() (no === directo).
+    const flowStatus = Number(flowData.status);
+    if (flowStatus === 2 && userId) {
       // Cargo recurrente OK → mantener suscripción activa
       await supabase
         .from("user_credits")
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
           flowData.amount
         );
       }
-    } else if ((flowData.status === 3 || flowData.status === 4) && userId) {
+    } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
       // Cargo rechazado (3) o anulado (4) → suscripción en mora
       await supabase
         .from("user_credits")

@@ -62,3 +62,19 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
     capacity: null, isUnlimited: true,
   },
 };
+
+/**
+ * Resuelve el planId real a usar contra Flow según el entorno. Flow QUEMA el
+ * planId para siempre (error 501 "planId already used": no se puede borrar y
+ * recrear con el mismo string), así que QA y prod necesitan strings distintos.
+ *
+ * planId final = base + FLOW_PLAN_SUFFIX.
+ *   prod → FLOW_PLAN_SUFFIX vacío → usa el base tal cual (franco_plan10_mensual)
+ *   QA   → FLOW_PLAN_SUFFIX="_qa1" → franco_plan10_mensual_qa1
+ *
+ * El sufijo debe ser el MISMO al crear el plan (script) y al suscribir, o Flow
+ * no encontrará el plan. El base SIN sufijo es el que vive en FLOW_PRODUCTS.
+ */
+export function resolvePlanId(basePlanId: string): string {
+  return `${basePlanId}${process.env.FLOW_PLAN_SUFFIX ?? ""}`;
+}

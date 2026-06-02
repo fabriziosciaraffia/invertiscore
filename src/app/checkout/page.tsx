@@ -66,8 +66,10 @@ function CheckoutContent() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
       if (!data.user) {
+        // Auth-gate único: sin sesión → a registro, preservando el product key
+        // (y analysisId si vino) en ?next= para retomar la compra al volver.
         const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}`;
-        window.location.href = `/login?next=${encodeURIComponent(returnUrl)}`;
+        window.location.href = `/register?next=${encodeURIComponent(returnUrl)}`;
       } else {
         setAuthenticated(true);
       }

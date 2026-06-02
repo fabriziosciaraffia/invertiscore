@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useState } from "react";
 import {
   PRICING_PLANS,
   fmtCLP,
@@ -43,15 +42,6 @@ export default function PricingPlans({
 }) {
   const [billing, setBilling] = useState<Billing>("monthly");
   const annual = billing === "annual";
-
-  // Sesión: mismo mecanismo que checkout — supabase client getUser(). null
-  // mientras resuelve; el href cae al flujo de registro hasta confirmar sesión
-  // (el middleware redirige al logueado de /register?plan=X a /checkout).
-  const [authed, setAuthed] = useState<boolean | null>(null);
-  useEffect(() => {
-    const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
-  }, []);
 
   return (
     <div className={className}>
@@ -144,7 +134,7 @@ export default function PricingPlans({
       {/* ===== Grid 4 planes ===== */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
         {PRICING_PLANS.map((p) => (
-          <PlanCard key={p.id} plan={p} annual={annual} emphasis={emphasis} authed={authed} />
+          <PlanCard key={p.id} plan={p} annual={annual} emphasis={emphasis} />
         ))}
       </div>
     </div>
@@ -157,24 +147,19 @@ function PlanCard({
   plan,
   annual,
   emphasis,
-  authed,
 }: {
   plan: PricingPlan;
   annual: boolean;
   emphasis: "subtle" | "strong";
-  authed: boolean | null;
 }) {
   const dark = !!plan.highlight;
 
-  // CTA → checkout con la product key real del plan + facturación vigente.
-  // Logueado: directo a /checkout. No logueado (o aún resolviendo): a /register
-  // arrastrando ?plan= y ?next= para retomar la compra tras autenticarse.
+  // CTA → SIEMPRE a /checkout con la product key real del plan + facturación
+  // vigente. El gate de sesión vive en /checkout (auth-gate único): si no hay
+  // sesión, checkout redirige a /register?next=/checkout?product=<key>. Así el
+  // CTA no depende de un getUser() client-side que puede no resolver a tiempo.
   const productKey = productKeyFor(plan.id, annual ? "annual" : "monthly");
-  const checkoutPath = `/checkout?product=${productKey}`;
-  const ctaHref =
-    authed === true
-      ? checkoutPath
-      : `/register?plan=${productKey}&next=${encodeURIComponent(checkoutPath)}`;
+  const ctaHref = `/checkout?product=${productKey}`;
   const text = dark ? "#FAFAF8" : "#0F0F0F";
   const muted = dark ? "rgba(250,250,248,0.55)" : "rgba(15,15,15,0.55)";
   const checkBg = dark ? "rgba(250,250,248,0.10)" : "rgba(15,15,15,0.06)";
