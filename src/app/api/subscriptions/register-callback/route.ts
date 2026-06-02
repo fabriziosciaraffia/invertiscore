@@ -97,7 +97,7 @@ export async function POST(request: Request) {
     // unlimited, setear is_unlimited sin grant. applyPlanCredits también setea
     // active_plan/billing_period/subscription_ends_at, pero NO toca
     // subscription_status ni subscription_id (esos van en el UPDATE de abajo).
-    await applyPlanCredits(userCredit.user_id, match.product, {
+    await applyPlanCredits(userCredit.user_id, match.product, match.key, {
       paymentId: paymentRow?.id ?? null,
     });
 

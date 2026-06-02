@@ -70,10 +70,15 @@ export async function grantCredits(
  *  - unlimited → NO inserta grant; setea is_unlimited=true.
  *  - finito    → grantCredits(capacity).
  * En ambos casos setea active_plan / billing_period / subscription_ends_at.
+ *
+ * `key` es la product key completa del catálogo (plan10_mensual, plan10_annual,
+ * …). Se usa como `source` del grant para auditoría (distingue mensual de anual
+ * en el ledger). product.plan es solo la base ("plan10"), insuficiente.
  */
 export async function applyPlanCredits(
   userId: string,
   product: FlowProduct,
+  key: FlowProductKey,
   opts: GrantOpts = {}
 ): Promise<boolean> {
   if (!userId) return false;
@@ -87,7 +92,8 @@ export async function applyPlanCredits(
 
   if (!product.isUnlimited) {
     // Plan con capacidad finita → grant del ciclo (expira en 1 año).
-    ok = await grantCredits(userId, product.plan ?? "plan", product.capacity ?? 0, opts);
+    // source = key completa del catálogo (mensual/anual), no la base product.plan.
+    ok = await grantCredits(userId, key, product.capacity ?? 0, opts);
   }
 
   const { error } = await supabase
