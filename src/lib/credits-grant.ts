@@ -23,6 +23,20 @@ function createAdminClient() {
 const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
+/**
+ * Suma 1 mes calendario con clamp de fin de mes: si el día se desborda (31 ene
+ * + 1 mes caería en mar), retrocede al último día del mes destino (28/29 feb).
+ * Evita el rollover silencioso de Date.setMonth. Compartido por register-callback
+ * (mes 1 → fecha del mes 2) y el cron de renovación mensual (meses 2-12).
+ */
+export function addOneMonth(d: Date): Date {
+  const r = new Date(d);
+  const day = r.getDate();
+  r.setMonth(r.getMonth() + 1);
+  if (r.getDate() < day) r.setDate(0);
+  return r;
+}
+
 export type GrantOpts = {
   /** payments.id que originó el grant (FK). null para grants no transaccionales. */
   paymentId?: string | null;
@@ -70,10 +84,15 @@ export async function grantCredits(
  *  - unlimited → NO inserta grant; setea is_unlimited=true.
  *  - finito    → grantCredits(capacity).
  * En ambos casos setea active_plan / billing_period / subscription_ends_at.
+ *
+ * `key` es la product key completa del catálogo (plan10_mensual, plan10_annual,
+ * …). Se usa como `source` del grant para auditoría (distingue mensual de anual
+ * en el ledger). product.plan es solo la base ("plan10"), insuficiente.
  */
 export async function applyPlanCredits(
   userId: string,
   product: FlowProduct,
+  key: FlowProductKey,
   opts: GrantOpts = {}
 ): Promise<boolean> {
   if (!userId) return false;
@@ -87,7 +106,8 @@ export async function applyPlanCredits(
 
   if (!product.isUnlimited) {
     // Plan con capacidad finita → grant del ciclo (expira en 1 año).
-    ok = await grantCredits(userId, product.plan ?? "plan", product.capacity ?? 0, opts);
+    // source = key completa del catálogo (mensual/anual), no la base product.plan.
+    ok = await grantCredits(userId, key, product.capacity ?? 0, opts);
   }
 
   const { error } = await supabase

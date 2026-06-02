@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       // identificar el plan por monto, NO otorgamos (evita grants erróneos) — la
       // suscripción queda activa pero el caso queda logueado para revisión.
       if (match) {
-        await applyPlanCredits(userId, match.product, { paymentId: paymentRow?.id ?? null });
+        await applyPlanCredits(userId, match.product, match.key, { paymentId: paymentRow?.id ?? null });
       } else {
         console.error(
           "[subscriptions/payment-callback] amount sin plan en FLOW_PRODUCTS:",
