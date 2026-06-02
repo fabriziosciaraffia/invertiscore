@@ -368,3 +368,107 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
     console.error('Error sending analysis ready email:', error);
   }
 }
+
+// ── Eliminación de cuenta ──────────────────────────────────────────────────
+// Dos correos disparados desde api/account/request-deletion: (1) interno a
+// hola@ con los datos para procesar la baja, (2) confirmación al usuario.
+// Ambos reusan emailWrapper (wordmark + tagline + card) — sin markup propio.
+// A diferencia de los demás envíos de este módulo, NO tragan el error: lo
+// propagan para que el route devuelva 500 si falla (la solicitud de baja es
+// crítica y no debe perderse en silencio).
+
+// Fila de la card de datos (label izq + valor der). `mono` para ids/números.
+function deletionRow(label: string, value: string, mono = false, last = false): string {
+  const border = last ? '' : 'border-bottom: 1px solid #2A2A2A;';
+  const monoStyle = mono ? "font-family: 'Courier New', monospace;" : '';
+  return `<div style="padding: 8px 0; ${border}">
+            <span style="color: #71717A; font-size: 13px;">${label}</span>
+            <span style="color: #FAFAF8; font-size: 14px; float: right; ${monoStyle}">${value}</span>
+          </div>`;
+}
+
+export async function sendAccountDeletionInternalEmail(params: {
+  email: string;
+  userId: string;
+  requestedAt: string;
+  analysisCount: number;
+  credits: number;
+  reason?: string;
+}): Promise<void> {
+  const { email, userId, requestedAt, analysisCount, credits, reason } = params;
+
+  const internalFooter = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">
+    Correo interno de Franco. Procesar la baja y la eliminación de datos según la política de retención.
+  </p>
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #3F3F46; margin-top: 8px;">
+    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+  </p>
+</div>`;
+
+  await getResend()?.emails.send({
+    from: FROM_EMAIL,
+    to: 'hola@refranco.ai',
+    subject: 'Solicitud de eliminación de cuenta',
+    html: emailWrapper(`
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #C8323C; margin: 0 0 16px 0;">
+          Solicitud de eliminación de cuenta
+        </h1>
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
+          Un usuario solicitó eliminar su cuenta. Procesa la baja y la eliminación de sus datos.
+        </p>
+
+        <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0;">
+          <div style="color: #71717A; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'Courier New', monospace;">Datos del usuario</div>
+          ${deletionRow('Email', email)}
+          ${deletionRow('User ID', userId, true)}
+          ${deletionRow('Fecha solicitud', requestedAt)}
+          ${deletionRow('Motivo', reason && reason.trim() ? reason.trim() : 'No especificado')}
+          ${deletionRow('Análisis creados', String(analysisCount), true)}
+          ${deletionRow('Créditos restantes', String(credits), true, true)}
+        </div>
+      `, internalFooter),
+  });
+}
+
+export async function sendAccountDeletionUserEmail(to: string, name: string): Promise<void> {
+  const firstName = name.split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+
+  const userFooter = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0;">
+    Este es un correo sobre la seguridad de tu cuenta en Franco.
+  </p>
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #3F3F46; margin-top: 8px;">
+    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+  </p>
+</div>`;
+
+  await getResend()?.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject: 'Recibimos tu solicitud de eliminación de cuenta',
+    html: emailWrapper(`
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 16px 0;">
+          ${greeting}
+        </h1>
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
+          Recibimos tu solicitud para eliminar tu cuenta de Franco. Queremos que sepas exactamente qué va a pasar.
+        </p>
+
+        <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 10px 0;">
+          Qué pasa ahora
+        </p>
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
+          Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: análisis, créditos e información de perfil. Te confirmaremos a este mismo correo cuando el proceso esté completo.
+        </p>
+
+        <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 10px 0;">
+          ¿Fue un error?
+        </p>
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
+          Si no hiciste esta solicitud o cambiaste de opinión, escríbenos a <a href="mailto:hola@refranco.ai" style="color: #C8323C; text-decoration: none;">hola@refranco.ai</a> lo antes posible. Una vez eliminada, la información no se puede recuperar.
+        </p>
+      `, userFooter),
+  });
+}
