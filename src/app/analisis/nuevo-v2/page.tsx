@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { Loader2 } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
@@ -649,7 +649,7 @@ export default function NuevoAnalisisV3Page() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <AppNav variant="app" />
+      <UnifiedNav variant="app" />
 
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
         {/* Header + stepper */}

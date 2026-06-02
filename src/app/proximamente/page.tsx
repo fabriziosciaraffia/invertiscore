@@ -1,6 +1,6 @@
 import { getAllComunasStats, fmtCLP } from "@/lib/data/comunas-seo";
 import FrancoLogo from "@/components/franco-logo";
-import { AppNav } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import WaitlistForm from "@/components/waitlist-form";
 
@@ -20,7 +20,7 @@ export default async function ProximamentePage() {
 {/* Top accent line decorativa — landing-only, fuera del chrome */}
       <div className="h-[2px] bg-[#C8323C]" />
 
-      <AppNav variant="landing" />
+      <UnifiedNav variant="marketing" />
 
       <main className="mx-auto max-w-[700px] px-6">
         {/* Hero */}

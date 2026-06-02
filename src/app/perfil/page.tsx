@@ -8,9 +8,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { User, CreditCard, Clock, ArrowLeft, Sparkles } from "lucide-react";
-import { AppNav } from "@/components/chrome/AppNav";
-import { LogoutButton } from "@/components/logout-button";
+import { User, CreditCard, Clock, Sparkles } from "lucide-react";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { ChangePasswordForm } from "./change-password-form";
 import { isAdminUser } from "@/lib/admin";
 
@@ -122,23 +121,7 @@ export default async function PerfilPage() {
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <AppNav
-        variant="app"
-        ctaSlot={
-          <div className="flex items-center gap-2">
-            <Link href="/dashboard">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-2 text-[var(--franco-text-secondary)] font-body hover:text-[var(--franco-text)] hover:bg-[var(--franco-card)]"
-              >
-                <ArrowLeft className="h-4 w-4" /> Dashboard
-              </Button>
-            </Link>
-            <LogoutButton />
-          </div>
-        }
-      />
+      <UnifiedNav variant="app" />
 
       <div className="container mx-auto max-w-2xl px-4 py-8">
         <h1 className="mb-8 text-3xl font-bold text-[var(--franco-text)]">Mi Perfil</h1>

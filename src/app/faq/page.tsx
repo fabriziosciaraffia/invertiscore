@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { AppNav, NavPrimaryCTA } from "@/components/chrome/AppNav";
+import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 
 interface FAQItem {
@@ -117,16 +117,7 @@ export default function FAQPage() {
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
 {/* Navbar */}
-      <AppNav
-        variant="marketing"
-        linksSlot={
-          <Link href="/pricing" className="font-body text-sm text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-            Precios
-          </Link>
-        }
-        ctaSlot={<NavPrimaryCTA href="/analisis/nuevo-v2" label="Analizar →" />}
-        mobileMenuItems={[{ label: "Precios", href: "/pricing" }]}
-      />
+      <UnifiedNav variant="marketing" />
 
       {/* Header */}
       <section className="py-16 px-6">

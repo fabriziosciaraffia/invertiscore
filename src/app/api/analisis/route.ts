@@ -3,6 +3,7 @@ import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
+import { resolveDisplayName } from "@/lib/welcome";
 import { generateAiAnalysis } from "@/lib/ai-generation";
 import { readVeredicto } from "@/lib/results-helpers";
 import {
@@ -102,7 +103,7 @@ export async function POST(request: Request) {
           try {
             await sendAnalysisReadyEmail(
               user.email,
-              user.user_metadata?.nombre || user.user_metadata?.full_name || "",
+              resolveDisplayName(user.user_metadata, user.email),
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
               readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
