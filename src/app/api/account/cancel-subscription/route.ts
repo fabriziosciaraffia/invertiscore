@@ -41,14 +41,18 @@ export async function POST() {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Verify active subscription exists
+    // Verify a real subscription exists. 'active' y 'past_due' (cargo falló,
+    // en gracia) representan una suscripción que el usuario tiene y puede
+    // querer cancelar. Solo rechazamos si no hay suscripción real ('none',
+    // 'cancelled', o sin fila).
     const { data: credits } = await admin
       .from("user_credits")
       .select("subscription_status")
       .eq("user_id", user.id)
       .single();
 
-    if (!credits || credits.subscription_status !== "active") {
+    const status = credits?.subscription_status;
+    if (!credits || (status !== "active" && status !== "past_due")) {
       return NextResponse.json({ error: "No tienes suscripción activa" }, { status: 400 });
     }
 

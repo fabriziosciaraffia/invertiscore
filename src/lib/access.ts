@@ -8,6 +8,27 @@ function createAdminClient() {
   );
 }
 
+/**
+ * ¿La fila de user_credits da acceso por suscripción? true si está 'active', o
+ * si está 'past_due' con la gracia AÚN vigente (now < grace_ends_at). past_due
+ * vencido (o sin grace_ends_at) NO da acceso. No contempla is_unlimited — ese
+ * free pass se evalúa aparte en cada caller.
+ */
+export function hasSubscriptionAccess(row: {
+  subscription_status?: string | null;
+  grace_ends_at?: string | null;
+}): boolean {
+  if (row.subscription_status === "active") return true;
+  if (
+    row.subscription_status === "past_due" &&
+    row.grace_ends_at &&
+    new Date(row.grace_ends_at) > new Date()
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export type ChargeResult =
   | { ok: true; mode: "welcome" | "paid" | "subscription" }
   | { ok: false; reason: "no_credits" | "no_user"; message: string };
@@ -64,7 +85,7 @@ export async function chargeAnalysisCredit(
 
   const { data: row } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, welcome_credit_used, is_unlimited")
+    .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at")
     .eq("user_id", userId)
     .single();
 
@@ -77,8 +98,9 @@ export async function chargeAnalysisCredit(
     };
   }
 
-  // Subscriber activo o plan ilimitado → free pass. NO descuenta credits ni toca welcome.
-  if (row.subscription_status === "active" || row.is_unlimited) {
+  // Subscriber con acceso (active o past_due en gracia) o plan ilimitado → free
+  // pass. NO descuenta credits ni toca welcome.
+  if (hasSubscriptionAccess(row) || row.is_unlimited) {
     return { ok: true, mode: "subscription" };
   }
 
@@ -140,12 +162,12 @@ export async function getUserAccessLevel(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status")
+    .select("credits, subscription_status, grace_ends_at")
     .eq("user_id", userId)
     .single();
 
   if (!data) return "free";
-  if (data.subscription_status === "active") return "subscriber";
+  if (hasSubscriptionAccess(data)) return "subscriber";
   if (data.credits > 0) return "premium";
   return "free";
 }
@@ -168,14 +190,14 @@ export async function consumeCredit(
   // Check subscription
   const { data: credits } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, is_unlimited")
+    .select("credits, subscription_status, is_unlimited, grace_ends_at")
     .eq("user_id", userId)
     .single();
 
   if (!credits) return false;
 
-  // Subscribers / ilimitado don't consume credits
-  if (credits.subscription_status === "active" || credits.is_unlimited) {
+  // Subscribers con acceso (active o past_due en gracia) / ilimitado no consumen.
+  if (hasSubscriptionAccess(credits) || credits.is_unlimited) {
     await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
     return true;
   }

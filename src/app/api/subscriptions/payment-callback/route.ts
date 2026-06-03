@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan } from "@/lib/credits-grant";
+import { sendPaymentFailedEmail } from "@/lib/email";
 
 function createAdminClient() {
   return createClient(
@@ -42,10 +43,15 @@ export async function POST(request: Request) {
     // Flow devuelve `status` como STRING → comparar con Number() (no === directo).
     const flowStatus = Number(flowData.status);
     if (flowStatus === 2 && userId) {
-      // Cargo recurrente OK → mantener suscripción activa
+      // Cargo recurrente OK → mantener suscripción activa. Si venía de past_due
+      // (recuperación dentro de la gracia), limpiar grace_ends_at.
       await supabase
         .from("user_credits")
-        .update({ subscription_status: "active", updated_at: new Date().toISOString() })
+        .update({
+          subscription_status: "active",
+          grace_ends_at: null,
+          updated_at: new Date().toISOString(),
+        })
         .eq("user_id", userId);
 
       // Identificar el plan suscrito. Preferimos el plan persistido en
@@ -92,11 +98,33 @@ export async function POST(request: Request) {
         );
       }
     } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
-      // Cargo rechazado (3) o anulado (4) → suscripción en mora
+      // Cargo rechazado (3) o anulado (4) → suscripción en mora con 7 días de
+      // gracia (mantiene acceso hasta grace_ends_at; el cron expire-grace corta
+      // al vencer). Avisamos por email.
+      const graceEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       await supabase
         .from("user_credits")
-        .update({ subscription_status: "past_due", updated_at: new Date().toISOString() })
+        .update({
+          subscription_status: "past_due",
+          grace_ends_at: graceEndsAt.toISOString(),
+          updated_at: new Date().toISOString(),
+        })
         .eq("user_id", userId);
+
+      // Email de aviso. Un fallo de Resend NO debe romper el callback.
+      try {
+        const { data: userData } = await supabase.auth.admin.getUserById(userId);
+        const flowUser = userData?.user;
+        if (flowUser?.email) {
+          const nombre =
+            flowUser.user_metadata?.nombre ||
+            flowUser.user_metadata?.full_name ||
+            null;
+          await sendPaymentFailedEmail(flowUser.email, nombre, graceEndsAt);
+        }
+      } catch (e) {
+        console.error("[subscriptions/payment-callback] aviso past_due email error:", e);
+      }
     }
     // status 1 = pendiente → no cambia subscription_status
 
