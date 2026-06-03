@@ -11,6 +11,7 @@ import {
 } from "@/lib/constants/subsidio";
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
+import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 
 const anthropic = new Anthropic();
 
@@ -56,7 +57,9 @@ Activa los que sumen al caso. No son obligatorios todos en cada análisis. La re
 
 **Ángulo 1 — Intra-zona (precio/m² vs mediana de comuna):**
 OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.reencuadre\` o \`negociacion.contenido\`.
-Ejemplo: "Tu precio/m² (UF 83) está 22% sobre la mediana de Providencia (UF 68). Por ese precio en la misma zona consigues deptos de 75-80 m²."
+Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobreprecioPorM2 del caso): "Tu precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). Por ese precio en la misma zona consigues más metros."
+
+REGLA DURA — origen de las cifras de zona: los valores de precio/m² de zona, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
 
 **Ángulo 2 — Inter-zona (otras comunas):**
 OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones.
@@ -132,7 +135,7 @@ El input incluye un objeto \`financingHealth\` con clasificación de pie y tasa 
 NIVEL 1 — Validación silenciosa.
 Cuándo: \`overall\` ∈ {optimo, aceptable}.
 Forma: una sola frase integrada en \`conviene.reencuadre\` o en \`largoPlazo.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
-> "La estructura está bien calibrada: 22% de pie a 25 años con tasa 4,2% es coherente con lo que da el mercado hoy."
+> "La estructura está bien calibrada: [pie%] de pie a [plazo] años con tasa [tasa]% es coherente con lo que da el mercado hoy."
 
 NIVEL 2 — Observación táctica.
 Cuándo: \`overall\` === "mejorable".
@@ -212,9 +215,9 @@ Mal (genérica):
 > "Mantén un fondo de reserva, compará tasas, revisá el estado del edificio."
 
 Bien (posición sobria):
-> "Si confías en la trayectoria de Providencia y tu flujo permite los $181K mensuales sin presión, esta operación tiene sentido. La ventaja de compra ya hace parte del trabajo. El resto es disciplina y paciencia."
+> "Si confías en la trayectoria de tu comuna y tu flujo permite el aporte mensual sin presión, esta operación tiene sentido. La ventaja de compra ya hace parte del trabajo. El resto es disciplina y paciencia."
 
-Bien (posición incómoda):
+Bien (posición incómoda) — NO copies esta frase literal: es ilustrativa del TONO y la ESTRUCTURA, no una plantilla. Escribe tu propio cierre con los datos del caso.
 > "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros (te gustó, está cerca de tu trabajo), está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado."
 
 Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real (AJUSTA, BUSCAR OTRA, RECONSIDERA), el costo emocional o financiero de avanzar contra el análisis.
@@ -300,10 +303,13 @@ OBLIGATORIO cuando tieneDiferenciaValida=false:
 - Si sobreprecioPorM2 está entre ±5%: "precio/m² alineado con la zona" (no "precio alineado" — solo el ratio).
 - Si sobreprecioPorM2 < -5%: reconocer descuento por m².
 
+Caso \`sobreprecioPorM2\` = null o "sin dato" (no hay mediana de zona confiable para esta comuna):
+PROHIBIDO mencionar mediana de zona, sobreprecio por m², "X% sobre/bajo la zona" o "vale UF Y". Sin dato de zona no afirmes NADA sobre precio vs zona — el análisis se basa SOLO en flujo, TIR y plusvalía. No inventes una mediana ni la cites de memoria por nombre de comuna.
+
 Ejemplo concreto:
 - Input: precio UF 3.208, vmFranco UF 3.208 (fallback), tieneDiferenciaValida=false, sobreprecioPorM2 = +18,5% vs zona.
 - INCORRECTO: "El precio está alineado con el mercado."
-- CORRECTO: "El precio/m² (UF 71) está 18,5% sobre la mediana de Santiago centro (UF 60). El motor no tiene un valor de mercado total confiable para este depto, pero el ratio por m² indica sobreprecio sustantivo."
+- CORRECTO (NO uses estos placeholders literales — usa precioM2Zona y sobreprecioPorM2 del caso): "El precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). El motor no tiene un valor de mercado total confiable para este depto, pero el ratio por m² indica sobreprecio sustantivo."
 
 Cuando tieneDiferenciaValida=true: puedes usar libremente el monto absoluto. Verifica que el por m² y el absoluto sean consistentes antes de escribir.
 
@@ -416,7 +422,7 @@ EL CAVEAT APLICA EN AMBAS DIRECCIONES — no solo cuando la histórica es baja o
 - Histórica alta (Quilicura 5,3%, San Bernardo 4,9%, Lo Prado 4,3%): el caveat explicita que el rango carga boom 2014-2018 y la zona puede no replicar ese ritmo. Una histórica positiva alta NO es predictor limpio del futuro — buena parte vino del boom y no se sabe si se repite.
 
 Ejemplos válidos (cada uno menciona al menos 1 evento del rango):
-- "Providencia creció 3% anual entre 2014-2024 — el rango incluye estallido y pandemia, que afectan la lectura."
+- "[comuna] creció [X]% anual entre 2014-2024 — el rango incluye estallido y pandemia, que afectan la lectura." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
 - "Santiago centro perdió 10% en la década, aunque el dato carga estallido 2019 y vacío post-pandemia."
 - "Ñuñoa promedió 3.2% anual 2014-2024, mezclando boom 2014-2018 y caída posterior."
 - "Quilicura subió 5,3% anual histórico — buena parte del rango cae en el boom 2014-2018, no garantiza que ese ritmo se mantenga." (zona ganadora con caveat)
@@ -456,7 +462,7 @@ La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario c
 
 VÁLIDO:
 - "Santiago centro perdió 1% anual en 2014-2024 — la proyección a 4% del motor es una apuesta a recuperación que la zona aún no muestra."
-- "Providencia creció 3% anual histórico — la proyección a 4% queda ligeramente más optimista que la trayectoria observada."
+- "[comuna] creció [X]% anual histórico — la proyección a 4% queda ligeramente más optimista que la trayectoria observada." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
 - "Quilicura subió 5,3% anual histórico — la proyección a 4% es conservadora versus lo que la zona ya mostró."
 - "Sin data histórica suficiente para esta comuna — la proyección a 4% es supuesto puro, sin verificación local."
 
@@ -639,20 +645,18 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     let arriendoZona = input.arriendo;
     let yieldZona = m.rentabilidadBruta;
     let precioM2ZonaConfiable = false; // true cuando hay dato real de zona (no fallback al m² del depto)
-    try {
-      const { getMarketDataForComuna } = await import("@/lib/market-data");
-      const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
-      if (market) {
-        precioM2Zona = market.precio_m2_venta_promedio;
-        arriendoZona = market.arriendo_promedio;
-        yieldZona = Math.round((arriendoZona * 12 / (precioM2Zona * input.superficie * UF_CLP)) * 1000) / 10;
+
+    // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties
+    // (dato real, ≥20 ventas; misma fuente y umbral que el drawer zone-insight).
+    {
+      const medianaUF = await getComunaMedianaVentaUF(
+        supabase, input.comuna, input.superficie, input.dormitorios, UF_CLP);
+      if (typeof medianaUF === "number" && medianaUF > 0) {
+        precioM2Zona = medianaUF;
         precioM2ZonaConfiable = true;
       }
-    } catch {
-      // use defaults
     }
-    // Fallback secundario: si market_data no devolvió, usar zone_insight cacheado
-    // (que tiene precioM2.medianaComuna desde scraped_properties — fuente más rica).
+    // 2º (si !confiable): zone_insight cacheado (medianaComuna, misma fuente scraped).
     if (!precioM2ZonaConfiable) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const zi = (analysis as any).zone_insight as { stats?: { precioM2?: { medianaComuna?: number } } } | null | undefined;
@@ -661,6 +665,23 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         precioM2Zona = medianaComunaUF;
         precioM2ZonaConfiable = true;
       }
+    }
+    // 3º (último recurso): getMarketDataForComuna (market/seed). SIEMPRE alimenta
+    // arriendoZona y yieldZona (como hoy); su precio/m² SOLO pisa precioM2Zona si
+    // aún no hay dato confiable de scraped_properties / zone_insight.
+    try {
+      const { getMarketDataForComuna } = await import("@/lib/market-data");
+      const market = await getMarketDataForComuna(input.comuna, input.dormitorios);
+      if (market) {
+        arriendoZona = market.arriendo_promedio;
+        yieldZona = Math.round((arriendoZona * 12 / (market.precio_m2_venta_promedio * input.superficie * UF_CLP)) * 1000) / 10;
+        if (!precioM2ZonaConfiable) {
+          precioM2Zona = market.precio_m2_venta_promedio;
+          precioM2ZonaConfiable = true;
+        }
+      }
+    } catch {
+      // use defaults
     }
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
@@ -972,6 +993,12 @@ financingHealth:
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
 - tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}` : "";
 
+    // Sobreprecio por m² expresado en PORCENTAJE (sobreprecioPorM2UF es absoluto en UF, ver L823).
+    // Se usa solo para presentar el dato de zona agrupado en el bloque "COMPARACIÓN DE PRECIO POR M²".
+    const sobreprecioPctZona = (precioM2ZonaConfiable && precioM2Zona > 0 && m.precioM2 > 0)
+      ? Math.round(((m.precioM2 - precioM2Zona) / precioM2Zona) * 100)
+      : null;
+
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1045,8 +1072,10 @@ PROYECCIÓN Y ALTERNATIVAS
 - dividendoSiTasaSube1pp: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
 - dividendoSiTasaSube2pp: ${fmtCLP(dividendoSiTasaSube2)}
 
-DATOS DE MERCADO DE LA ZONA
-- precioM2Zona: ${fmtUF(precioM2Zona)}
+COMPARACIÓN DE PRECIO POR M² (datos verificados del motor — usa estos números, NO estimes de memoria)
+- Precio/m² de este depto: ${fmtUF(m.precioM2)}
+- Mediana de la comuna: ${precioM2ZonaConfiable ? fmtUF(precioM2Zona) : "sin dato confiable de zona"}
+- Sobreprecio por m²: ${sobreprecioPctZona !== null ? (sobreprecioPctZona >= 0 ? "+" : "") + sobreprecioPctZona + "% (USA ESTE NÚMERO EXACTO — no recalcules ni estimes la mediana de memoria)" : "sin dato — no afirmes nada sobre precio vs zona (ver REGLA 0)"}
 - arriendoZona: ${fmtCLP(arriendoZona)}
 - yieldZona: ${yieldZona.toFixed(1)}%
 
@@ -1096,6 +1125,33 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       };
       // precioSugerido = techo formateado, ignorar lo que diga la IA
       aiResult.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
+    }
+
+    // Blindaje: la cifra de sobreprecio/mediana la pone el motor, no el modelo (prior confabulable).
+    if (precioM2ZonaConfiable && sobreprecioPctZona !== null && Array.isArray(aiResult?.conviene?.datosClave)) {
+      const signo = sobreprecioPctZona >= 0 ? "+" : "";
+      const idx = aiResult.conviene.datosClave.findIndex(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (d: any) => typeof d?.label === "string" && /sobreprecio|precio por m|precio\/m/i.test(d.label)
+      );
+      if (idx >= 0) {
+        aiResult.conviene.datosClave[idx].valor_clp = `${signo}${sobreprecioPctZona}%`;
+        aiResult.conviene.datosClave[idx].valor_uf = `${signo}${sobreprecioPctZona}%`;
+        aiResult.conviene.datosClave[idx].subtexto = `${fmtUF(m.precioM2)}/m² vs ${fmtUF(precioM2Zona)}/m² mediana`;
+      }
+    }
+
+    // Validación de prosa (solo detección para QA — NO reescribe el texto en esta iteración).
+    if (precioM2ZonaConfiable && sobreprecioPctZona !== null) {
+      const medianaReal = Math.round(precioM2Zona);
+      const camposProsa = [
+        aiResult?.conviene?.respuestaDirecta_uf, aiResult?.conviene?.reencuadre_uf,
+      ].filter((s: unknown) => typeof s === "string").join(" ");
+      // Heurística simple: si la prosa menciona una mediana de zona distinta a la real ±2 UF
+      const matchUF = camposProsa.match(/zona\D{0,20}UF\s*(\d{2,4})/i) || camposProsa.match(/mediana\D{0,20}UF\s*(\d{2,4})/i);
+      if (matchUF && Math.abs(Number(matchUF[1]) - medianaReal) > 2) {
+        console.warn(`[ZONA-DRIFT] ${analysisId}: prosa dice UF ${matchUF[1]}, motor dice UF ${medianaReal}`);
+      }
     }
 
     await supabase
