@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
@@ -165,35 +166,96 @@ export async function sendWelcomeEmail(to: string, name: string) {
   }
 }
 
-// Copy por plan comprado. `product` llega de la tabla payments
-// ("pro" | "pack3" | "subscription"). Define el nombre legible y QUÉ DESBLOQUEA.
+// Lo que incluye CADA análisis (igual para todos los productos). El plan solo
+// cambia el volumen; el reporte por análisis es el mismo.
+const ANALYSIS_FEATURES = [
+  'Análisis IA personalizado de tu inversión',
+  'Proyección de patrimonio a 20 años',
+  'Escenarios de salida (venta y refinanciamiento)',
+];
+
+// Copy por plan comprado. `product` es la key real de FLOW_PRODUCTS
+// (single | plan10_mensual/annual | plan50_mensual/annual |
+// unlimited_mensual/annual). Deriva nombre, capacidad (créditos/ciclo) y ciclo
+// (mensual/anual) del catálogo, sin hardcodear. Tolera keys legacy
+// (pro/pack3/subscription) de registros viejos y cualquier key desconocida con
+// un fallback razonable que no rompe.
 function paymentPlanCopy(product: string, analysisId?: string): {
   productName: string;
-  unlocks: string; // qué tiene disponible ahora (frase corta, va en el intro)
+  unlocks: string;       // qué tiene disponible ahora (frase corta, va en el intro)
+  includes: string[];    // bullets de "Qué incluye", reflejan el producto real
 } {
+  const fp = FLOW_PRODUCTS[product as FlowProductKey];
+
+  if (fp) {
+    // Compra única → 1 análisis.
+    if (fp.kind === 'one_time') {
+      return {
+        productName: '1 análisis',
+        unlocks: analysisId
+          ? 'tu análisis está listo, con el reporte completo desbloqueado.'
+          : 'tienes 1 análisis disponible para usar cuando quieras.',
+        includes: ANALYSIS_FEATURES,
+      };
+    }
+
+    // Recurrente → plan10 / plan50 / ilimitado, mensual o anual.
+    const ciclo = fp.billing === 'annual' ? 'anual' : 'mensual';
+
+    if (fp.isUnlimited) {
+      return {
+        productName: `Ilimitado ${ciclo}`,
+        unlocks: `tu plan Ilimitado quedó activo: análisis sin límite mientras esté vigente (facturación ${ciclo}).`,
+        includes: ['Análisis sin límite cada mes', ...ANALYSIS_FEATURES],
+      };
+    }
+
+    const cap = fp.capacity ?? 0;
+    const planNum = fp.plan === 'plan50' ? '50' : '10';
+    return {
+      productName: `Plan ${planNum} ${ciclo}`,
+      unlocks: `tu Plan ${planNum} quedó activo: ${cap} análisis al mes (facturación ${ciclo}).`,
+      includes: [`${cap} análisis cada mes`, ...ANALYSIS_FEATURES],
+    };
+  }
+
+  // ── Legacy / desconocido (registros viejos) ──
   if (product === 'pack3') {
     return {
-      productName: 'Franco Pack 3×',
-      unlocks: 'tienes 3 análisis Pro disponibles para usar cuando quieras.',
+      productName: 'Pack 3×',
+      unlocks: 'tienes 3 análisis disponibles para usar cuando quieras.',
+      includes: ANALYSIS_FEATURES,
     };
   }
   if (product === 'subscription') {
     return {
-      productName: 'Franco Suscripción',
-      unlocks: 'tu suscripción quedó activa: análisis Pro ilimitados mientras esté vigente.',
+      productName: 'Suscripción',
+      unlocks: 'tu suscripción quedó activa: análisis ilimitados mientras esté vigente.',
+      includes: ANALYSIS_FEATURES,
     };
   }
-  // "pro" (compra de un análisis). Si viene atado a un análisis, ya quedó Pro.
+  // "pro" u otra key desconocida → 1 análisis (comportamiento histórico).
   return {
-    productName: 'Franco Pro',
+    productName: '1 análisis',
     unlocks: analysisId
-      ? 'tu análisis Pro está listo, con el reporte completo desbloqueado.'
-      : 'tienes 1 análisis Pro disponible para usar cuando quieras.',
+      ? 'tu análisis está listo, con el reporte completo desbloqueado.'
+      : 'tienes 1 análisis disponible para usar cuando quieras.',
+    includes: ANALYSIS_FEATURES,
   };
 }
 
 export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string) {
-  const { productName, unlocks } = paymentPlanCopy(product, analysisId);
+  const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
+
+  // Bullets de "Qué incluye" derivados del producto. Última fila sin padding
+  // inferior (mismo patrón que el markup original).
+  const includeRows = includes.map((item, i) => {
+    const pad = i === includes.length - 1 ? '0' : '0 0 10px 0';
+    return `<tr>
+            <td valign="top" width="20" style="padding: ${pad}; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
+            <td valign="top" style="padding: ${pad}; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">${item}</td>
+          </tr>`;
+  }).join('');
   const amountFormatted = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(amount);
   const now = new Date();
   const dateFormatted = now.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -252,23 +314,12 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
           </div>
         </div>
 
-        <!-- Qué incluye Pro -->
+        <!-- Qué incluye (bullets según producto real) -->
         <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 12px 0;">
           Qué incluye
         </p>
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 8px 0;">
-          <tr>
-            <td valign="top" width="20" style="padding: 0 0 10px 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
-            <td valign="top" style="padding: 0 0 10px 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Análisis IA personalizado de tu inversión</td>
-          </tr>
-          <tr>
-            <td valign="top" width="20" style="padding: 0 0 10px 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
-            <td valign="top" style="padding: 0 0 10px 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Proyección de patrimonio a 20 años</td>
-          </tr>
-          <tr>
-            <td valign="top" width="20" style="padding: 0; font-family: 'Courier New', monospace; font-size: 13px; color: #C8323C;">&#8226;</td>
-            <td valign="top" style="padding: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #A1A1AA;">Escenarios de salida (venta y refinanciamiento)</td>
-          </tr>
+          ${includeRows}
         </table>
 
         ${ctaButton(ctaText, ctaUrl)}

@@ -6,6 +6,23 @@ import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { resolveDisplayName } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
+import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+
+// Label legible para los correos internos (admin). Usa el subject del catálogo
+// real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
+// product crudo si llega una key desconocida.
+function adminProductLabel(product: string): string {
+  return (
+    FLOW_PRODUCTS[product as FlowProductKey]?.subject ??
+    (product === "pro"
+      ? "Análisis Pro"
+      : product === "pack3"
+        ? "Pack x3"
+        : product === "subscription"
+          ? "Suscripción Mensual"
+          : product)
+  );
+}
 
 function createAdminClient() {
   return createClient(
@@ -168,7 +185,7 @@ export async function POST(request: Request) {
         const { data: userData } = await supabase.auth.admin.getUserById(userId);
         const userEmail = userData?.user?.email || "desconocido";
         const amount = flowData.amount || 0;
-        const productLabel = product === "pro" ? "Análisis Pro" : product === "pack3" ? "Pack x3" : product === "subscription" ? "Suscripción Mensual" : product;
+        const productLabel = adminProductLabel(product);
         const amountFormatted = "$" + Math.round(amount).toLocaleString("es-CL");
         const now = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
         const analysisLink = analysisId ? `<div style="padding:8px 0;"><span style="color:#71717A;font-size:13px;">Análisis</span><a href="https://refranco.ai/analisis/${analysisId}" style="color:#C8323C;font-size:14px;float:right;text-decoration:none;">Ver análisis →</a></div>` : "";
@@ -231,7 +248,7 @@ export async function POST(request: Request) {
 
         const statusLabel = flowStatus === 3 ? "Rechazado" : "Anulado";
         const product = payment?.product || "desconocido";
-        const productLabel = product === "pro" ? "Análisis Pro" : product === "pack3" ? "Pack x3" : product === "subscription" ? "Suscripción Mensual" : product;
+        const productLabel = adminProductLabel(product);
         const amount = flowData.amount || 0;
         const amountFormatted = "$" + Math.round(amount).toLocaleString("es-CL");
         const now = new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });

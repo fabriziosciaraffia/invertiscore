@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
 import { recurringProductByPlan, applyPlanCredits, addOneMonth } from "@/lib/credits-grant";
 import { resolvePlanId } from "@/lib/flow-products";
+import { sendPaymentConfirmationEmail } from "@/lib/email";
+import { resolveDisplayName } from "@/lib/welcome";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
@@ -121,6 +123,25 @@ export async function POST(request: Request) {
         updated_at: now.toISOString(),
       })
       .eq("user_id", userCredit.user_id);
+
+    // Comprobante de alta de la suscripción. Solo en el alta — las renovaciones
+    // (payment-callback) NO mandan correo para no spamear: el usuario ya tiene
+    // el comprobante de Flow y este de bienvenida al plan. product/amount reales
+    // del plan elegido (match.key). Un fallo de Resend no debe romper el callback.
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(userCredit.user_id);
+      const flowUser = userData?.user;
+      if (flowUser?.email) {
+        await sendPaymentConfirmationEmail(
+          flowUser.email,
+          resolveDisplayName(flowUser.user_metadata, flowUser.email),
+          match.key,
+          match.product.amount,
+        );
+      }
+    } catch (e) {
+      console.error("[register-callback] email confirmación alta error:", e);
+    }
 
     return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
   } catch (err) {
