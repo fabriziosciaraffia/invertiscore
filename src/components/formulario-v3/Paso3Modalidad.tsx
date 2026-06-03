@@ -541,20 +541,25 @@ export function Paso3Modalidad({
         </div>
       ) : (
         <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 border-t border-[var(--franco-border)]">
-          <button
-            type="button"
-            onClick={onAnalizar}
-            disabled={submitting || !mod || !canAnalyze}
-            className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-4 py-2.5 rounded-lg border border-[var(--franco-border)] disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {submitting ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
-            ) : !canAnalyze ? (
-              <>Necesitas un crédito</>
-            ) : (
-              <>Saltar y analizar</>
-            )}
-          </button>
+          {/* "Saltar y analizar" solo cuando el user puede analizar. Sin
+              créditos NO mostramos un botón dead-end disabled "Necesitas un
+              crédito": la CostoCard de arriba es la única señal de paywall y
+              ofrece las salidas (comprar single / ver planes). "Continuar al
+              paso 4" queda como único CTA del pie. */}
+          {canAnalyze && (
+            <button
+              type="button"
+              onClick={onAnalizar}
+              disabled={submitting || !mod}
+              className="font-body text-[13px] font-medium text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-4 py-2.5 rounded-lg border border-[var(--franco-border)] disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {submitting ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Creando…</>
+              ) : (
+                <>Saltar y analizar</>
+              )}
+            </button>
+          )}
           <button
             type="button"
             onClick={onAvanzar4}
