@@ -13,7 +13,8 @@
 //   - Botón "Editar" mono uppercase por sección → setStep(N).
 //   - CTAs footer: "← Volver" Sans gris + "Analizar ahora →" Signal Red sólido.
 
-import { Loader2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Loader2 } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { canAnalyzeFromTier, CostoCard, type TierInfo } from "./Paso3Modalidad";
@@ -413,10 +414,11 @@ export function Paso4Resumen({
       )}
 
       {/* Footer CTAs siguiendo Patrón 5 — Form Step.
-          "Analizar ahora" solo se renderiza cuando canAnalyze. Sin créditos
-          NO mostramos el botón disabled "Necesitas un crédito" (dead-end):
-          la CostoCard de arriba comunica el bloqueo y ofrece la salida.
-          Mismo patrón aplicado en Paso 3 (commit 6ff8e52). */}
+          El Paso 4 es el cierre del wizard, así que el pie SIEMPRE tiene un
+          CTA primario. Con créditos: "Analizar ahora" (submit). Sin créditos:
+          el primario pasa a ser un botón de compra ACTIVO al checkout single
+          — nunca un disabled "Necesitas un crédito" (ese dead-end ya se
+          eliminó). La CostoCard de arriba refuerza el mensaje. */}
       <div className="flex items-center justify-between gap-3 pt-4 mt-2 border-t border-[var(--franco-border)]">
         <button
           type="button"
@@ -425,7 +427,7 @@ export function Paso4Resumen({
         >
           ← Volver al paso 3
         </button>
-        {canAnalyze && (
+        {canAnalyze ? (
           <button
             type="button"
             onClick={onAnalizar}
@@ -438,6 +440,13 @@ export function Paso4Resumen({
               <>Analizar ahora →</>
             )}
           </button>
+        ) : (
+          <Link
+            href="/checkout?product=single"
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+          >
+            Comprar 1 análisis · $9.990 <ArrowRight size={14} />
+          </Link>
         )}
       </div>
     </div>
