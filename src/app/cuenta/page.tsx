@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSubscriptionAccess } from "@/lib/access";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CancelSubscriptionButton } from "./cancel-dialog";
 import { DeleteAccountButton } from "./delete-account-button";
 
@@ -25,13 +27,14 @@ export default async function CuentaPage() {
   // Fetch credits + subscription
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, subscription_end")
+    .select("credits, subscription_status, subscription_end, grace_ends_at")
     .eq("user_id", user.id)
     .single();
 
   const credits: number = creditsRow?.credits ?? 0;
   const subStatus: string = creditsRow?.subscription_status ?? "none";
   const subEnd: string | null = (creditsRow?.subscription_end as string) ?? null;
+  const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
 
   // Fetch payment history
   const { data: paymentsData } = await supabase
@@ -42,11 +45,18 @@ export default async function CuentaPage() {
 
   const payments = paymentsData ?? [];
 
-  // Plan state
+  // Plan state. isPastDueGrace = cargo recurrente falló pero la gracia sigue vigente
+  // (mantiene acceso). Reusamos hasSubscriptionAccess como fuente de verdad de la
+  // comparación de gracia (now < grace_ends_at); el && subStatus==='past_due' separa
+  // este caso del 'active'. Seguro server-side: esta página es Server Component, así
+  // que importar access.ts no filtra el admin client al bundle de cliente.
   const isSubscriber = subStatus === "active";
   const isCancelled = subStatus === "cancelled";
-  const hasCredits = credits > 0 && !isSubscriber && !isCancelled;
-  const isFree = !isSubscriber && !isCancelled && credits === 0;
+  const isPastDueGrace =
+    subStatus === "past_due" &&
+    hasSubscriptionAccess({ subscription_status: subStatus, grace_ends_at: graceEndsAt });
+  const hasCredits = credits > 0 && !isSubscriber && !isCancelled && !isPastDueGrace;
+  const isFree = !isSubscriber && !isCancelled && !isPastDueGrace && credits === 0;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
@@ -66,9 +76,7 @@ export default async function CuentaPage() {
           <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
             {isSubscriber && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--ink-400)", borderColor: "var(--ink-400)" }}>
-                  SUSCRIPTOR
-                </span>
+                <StatusBadge label="SUSCRIPTOR" tone="ink-400" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis Pro ilimitados</p>
                 {subEnd && (
                   <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
@@ -83,9 +91,7 @@ export default async function CuentaPage() {
 
             {isCancelled && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--ink-500)", borderColor: "var(--ink-500)" }}>
-                  CANCELADA
-                </span>
+                <StatusBadge label="CANCELADA" tone="ink-500" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Tu suscripción fue cancelada</p>
                 {subEnd && (
                   <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
@@ -103,11 +109,26 @@ export default async function CuentaPage() {
               </>
             )}
 
+            {isPastDueGrace && (
+              <>
+                <StatusBadge label="PAGO PENDIENTE" tone="ink-700" />
+                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
+                  Tu último cobro no se procesó. Mantienes acceso hasta el {fmtDate(graceEndsAt)}.
+                </p>
+                <div className="mt-4">
+                  <Link
+                    href="/pricing"
+                    className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
+                  >
+                    Actualiza tu método de pago →
+                  </Link>
+                </div>
+              </>
+            )}
+
             {hasCredits && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--signal-red)", borderColor: "var(--signal-red)" }}>
-                  PRO
-                </span>
+                <StatusBadge label="PRO" tone="signal-red" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
                   Tienes <strong className="font-mono">{credits}</strong> {credits === 1 ? "crédito" : "créditos"} para análisis Pro
                 </p>
@@ -127,9 +148,7 @@ export default async function CuentaPage() {
 
             {isFree && (
               <>
-                <span className="inline-flex items-center rounded border px-2 py-0.5 font-mono text-xs uppercase" style={{ color: "var(--franco-text-muted)", borderColor: "var(--franco-text-muted)" }}>
-                  FREE
-                </span>
+                <StatusBadge label="FREE" tone="muted" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
                   No tienes créditos ni suscripción activa
                 </p>
