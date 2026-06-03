@@ -16,7 +16,7 @@
 import { Loader2 } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
 import { InfoTooltip } from "@/components/ui/tooltip";
-import { canAnalyzeFromTier, type TierInfo } from "./Paso3Modalidad";
+import { canAnalyzeFromTier, CostoCard, type TierInfo } from "./Paso3Modalidad";
 import {
   fmtCLP,
   fmtUF,
@@ -403,11 +403,20 @@ export function Paso4Resumen({
       <ResumenSection {...seccionOperacional} onEditar={() => onEditarStep(3)} />
       <ResumenSection {...seccionCostos} onEditar={() => onEditarStep(3)} />
 
+      {/* Costo tier-aware: mismo componente que Paso 3. Sin créditos rinde la
+          señal de paywall con sus salidas (comprar single / ver planes), de
+          modo que el free no quede en un dead-end al final del wizard. */}
+      {tierInfo && <CostoCard tierInfo={tierInfo} />}
+
       {submitError && (
         <StateBox variant="left-border" state="negative">{submitError}</StateBox>
       )}
 
-      {/* Footer CTAs siguiendo Patrón 5 — Form Step */}
+      {/* Footer CTAs siguiendo Patrón 5 — Form Step.
+          "Analizar ahora" solo se renderiza cuando canAnalyze. Sin créditos
+          NO mostramos el botón disabled "Necesitas un crédito" (dead-end):
+          la CostoCard de arriba comunica el bloqueo y ofrece la salida.
+          Mismo patrón aplicado en Paso 3 (commit 6ff8e52). */}
       <div className="flex items-center justify-between gap-3 pt-4 mt-2 border-t border-[var(--franco-border)]">
         <button
           type="button"
@@ -416,20 +425,20 @@ export function Paso4Resumen({
         >
           ← Volver al paso 3
         </button>
-        <button
-          type="button"
-          onClick={onAnalizar}
-          disabled={submitting || !canAnalyze}
-          className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {submitting ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
-          ) : !canAnalyze ? (
-            <>Necesitas un crédito</>
-          ) : (
-            <>Analizar ahora →</>
-          )}
-        </button>
+        {canAnalyze && (
+          <button
+            type="button"
+            onClick={onAnalizar}
+            disabled={submitting}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {submitting ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Creando análisis…</>
+            ) : (
+              <>Analizar ahora →</>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );

@@ -602,7 +602,7 @@ function CostInput({
   );
 }
 
-function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
+export function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
   const copy = tierCopy(tierInfo);
   if (!copy.canAnalyze) {
     return (
