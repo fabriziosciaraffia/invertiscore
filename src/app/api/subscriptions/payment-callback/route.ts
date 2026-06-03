@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
-import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan } from "@/lib/credits-grant";
+import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
 
 function createAdminClient() {
@@ -70,27 +70,76 @@ export async function POST(request: Request) {
         recurringProductByAmount(flowData.amount);
       const productKey = match?.key ?? "subscription";
 
-      // Record payment (capturamos id para el FK del grant).
-      const { data: paymentRow } = await supabase
+      // Clave de dedupe del cobro = flowOrder de Flow (único e idéntico ante un
+      // reenvío del MISMO cobro; distinto en el cobro del año siguiente). Sin él
+      // no podemos deduplicar, así que NO inventamos id (el `|| Date.now()` viejo
+      // rompía la idempotencia): logueamos y salimos. Status 2 sin flowOrder no es
+      // un caso reintenable útil → 200 para que Flow no insista.
+      const flowOrder = flowData.flowOrder;
+      if (!flowOrder) {
+        console.error(
+          "[payment-callback] flowOrder ausente; cobro no procesado (sin dedupe):",
+          flowData.commerceOrder
+        );
+        return NextResponse.json({ status: "ok" });
+      }
+
+      // Guarda de idempotencia INSERT-first: commerce_order es UNIQUE. Un reenvío
+      // del mismo cobro choca contra el constraint (Postgres 23505) → ya procesado,
+      // salir SIN otorgar ni re-armar. El INSERT es atómico, así que no hay ventana
+      // TOCTOU entre "chequear" y "otorgar".
+      const { data: paymentRow, error: insertErr } = await supabase
         .from("payments")
         .insert({
           user_id: userId,
-          commerce_order: `franco-sub-pay-${flowData.flowOrder || Date.now()}`,
+          commerce_order: `franco-sub-pay-${flowOrder}`,
           product: productKey,
           amount: flowData.amount || 19990,
           status: "paid",
-          flow_order: flowData.flowOrder,
+          flow_order: flowOrder,
           flow_status: flowData.status,
           payment_data: flowData,
         })
         .select("id")
         .single();
 
+      if (insertErr) {
+        // PostgrestError.code === '23505' = unique_violation → cobro ya registrado.
+        if (insertErr.code === "23505") {
+          console.error(`[payment-callback] duplicate webhook, flowOrder=${flowOrder} ignored`);
+          return NextResponse.json({ status: "ok" });
+        }
+        // Cualquier otro error de INSERT es real (no un duplicado): NO otorgamos y
+        // respondemos error para que Flow reintente. Distinguir esto del 23505
+        // evita (a) regalar un grant tratando un dup como éxito y (b) descartar un
+        // cobro válido por un fallo transitorio tratándolo como dup.
+        console.error("[payment-callback] payments insert error:", insertErr);
+        return NextResponse.json({ status: "error" }, { status: 200 });
+      }
+
       // Otorgar créditos del ciclo según el plan (o is_unlimited). Si no se pudo
       // identificar el plan por monto, NO otorgamos (evita grants erróneos) — la
       // suscripción queda activa pero el caso queda logueado para revisión.
       if (match) {
         await applyPlanCredits(userId, match.product, match.key, { paymentId: paymentRow?.id ?? null });
+
+        // Re-armar el lote mensual de planes ANUALES finitos. El cron monthly-grants
+        // dejó next_monthly_grant_at=null al cerrar el ciclo anterior; sin esto la
+        // renovación solo daría el mes 1 (el grant de applyPlanCredits) y perdería
+        // los meses 2-12. Mensual recobra por su propio webhook recurrente y
+        // unlimited es free pass → en ambos no se toca. Patrón de register-callback.
+        const isAnnualFinite =
+          match.product.billing === "annual" && match.product.isUnlimited !== true;
+        if (isAnnualFinite) {
+          const now = new Date();
+          await supabase
+            .from("user_credits")
+            .update({
+              next_monthly_grant_at: addOneMonth(now).toISOString(),
+              updated_at: now.toISOString(),
+            })
+            .eq("user_id", userId);
+        }
       } else {
         console.error(
           "[subscriptions/payment-callback] amount sin plan en FLOW_PRODUCTS:",

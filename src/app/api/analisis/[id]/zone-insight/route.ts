@@ -4,6 +4,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 
 const anthropic = new Anthropic();
 
@@ -71,13 +72,7 @@ interface ZoneInsightResponse {
 }
 
 // ─── Stats helpers ──────────────────────────────────
-function median(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-}
-
+// median() vive ahora en @/lib/comuna-stats (compartido con ai-generation).
 function percentile(values: number[], target: number): number {
   if (values.length === 0) return 50;
   const sorted = [...values].sort((a, b) => a - b);
@@ -153,43 +148,27 @@ async function fetchComunaStats(
   arriendoEstimadoCLP: number,
   ufValue: number
 ): Promise<{ precioM2: ZoneInsightStats["precioM2"]; ofertaComparable: ZoneInsightStats["ofertaComparable"] }> {
-  // Window for VENTA comparables (price/m²): ±20% surface.
+  // VENTA comparables (price/m²) use a ±20% surface window inside
+  // getComunaMedianaVentaUF (shared with ai-generation).
   // ARRIENDO uses a cascading strategy in fetchOfertaComparableCascade below.
-  const supMinV = superficie * 0.8;
-  const supMaxV = superficie * 1.2;
 
   // ── VENTA: median price/m² in UF ──
-  let ventaQ = supabase
-    .from("scraped_properties")
-    .select("precio, moneda, superficie_m2, dormitorios")
-    .eq("comuna", comuna)
-    .eq("type", "venta")
-    .eq("is_active", true)
-    .gte("superficie_m2", supMinV)
-    .lte("superficie_m2", supMaxV)
-    .limit(2000);
-  if (dormitorios !== null) ventaQ = ventaQ.eq("dormitorios", dormitorios);
-  const { data: ventas } = await ventaQ;
+  const medianaVentaUF = await getComunaMedianaVentaUF(
+    supabase,
+    comuna,
+    superficie,
+    dormitorios,
+    ufValue
+  );
 
-  let precioM2: ZoneInsightStats["precioM2"] = null;
-  if (Array.isArray(ventas) && ventas.length >= 20) {
-    const m2sUF: number[] = [];
-    for (const r of ventas) {
-      if (!r.superficie_m2 || r.superficie_m2 <= 0 || !r.precio || r.precio <= 0) continue;
-      const precioUF = r.moneda === "UF" ? r.precio : r.precio / (ufValue || 1);
-      m2sUF.push(precioUF / r.superficie_m2);
-    }
-    if (m2sUF.length >= 20) {
-      const med = median(m2sUF);
-      const tuDepto = arriendoEstimadoCLP > 0 ? 0 : 0; // unused — kept for symmetry, replaced below
-      void tuDepto;
-      precioM2 = {
-        tuDepto: 0, // filled by caller from results.metrics.precioM2
-        medianaComuna: Math.round(med * 100) / 100,
-        diffPct: 0, // filled by caller
-      };
-    }
-  }
+  const precioM2: ZoneInsightStats["precioM2"] =
+    typeof medianaVentaUF === "number"
+      ? {
+          tuDepto: 0, // filled by caller from results.metrics.precioM2
+          medianaComuna: medianaVentaUF,
+          diffPct: 0, // filled by caller
+        }
+      : null;
 
   // ── ARRIENDO: cascade query with progressively looser filters ──
   const ofertaComparable = await fetchOfertaComparableCascade(
