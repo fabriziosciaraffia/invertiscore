@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasSubscriptionAccess } from "@/lib/access";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -50,12 +51,20 @@ export default async function PerfilPage() {
   // Fetch user credits + subscription status
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status")
+    .select("credits, subscription_status, grace_ends_at")
     .eq("user_id", user.id)
     .single();
 
   const credits: number = creditsRow?.credits ?? 0;
-  const isSubscriber = creditsRow?.subscription_status === "active";
+  const subStatus: string = creditsRow?.subscription_status ?? "none";
+  const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
+  const isSubscriber = subStatus === "active";
+  // Cargo recurrente falló pero la gracia sigue vigente (mantiene acceso). Reusamos
+  // hasSubscriptionAccess como fuente de verdad de la comparación de gracia; seguro
+  // server-side (esta página es Server Component). Ver access.ts.
+  const isPastDueGrace =
+    subStatus === "past_due" &&
+    hasSubscriptionAccess({ subscription_status: subStatus, grace_ends_at: graceEndsAt });
 
   // Fetch payment history (filtered by user_id)
   const { data: paymentsData } = await supabase
@@ -94,6 +103,14 @@ export default async function PerfilPage() {
     planLabel = "Suscripción Mensual";
     planDescription = "Análisis ilimitados + todas las variables del panel de ajustes.";
     planCtaText = "Gestionar";
+    planCtaHref = "/pricing";
+  } else if (isPastDueGrace) {
+    const graceDate = graceEndsAt
+      ? new Date(graceEndsAt).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })
+      : "—";
+    planLabel = "Pago pendiente";
+    planDescription = `Tu último cobro no se procesó. Mantienes acceso hasta el ${graceDate}.`;
+    planCtaText = "Actualiza tu método de pago →";
     planCtaHref = "/pricing";
   } else if (credits > 0) {
     planLabel = "Créditos Pro";
