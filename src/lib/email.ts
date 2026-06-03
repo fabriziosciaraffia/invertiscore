@@ -227,6 +227,60 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
   }
 }
 
+/**
+ * Aviso de cargo recurrente fallido (política past_due). Tono Franco: honesto y
+ * directo, sin alarmismo ni features inventadas. Mantiene acceso hasta la fecha
+ * de gracia y lo invita a reactivar antes de esa fecha.
+ */
+export async function sendPaymentFailedEmail(
+  to: string,
+  name: string | null,
+  graceEndsAt: Date | string,
+) {
+  const firstName = (name ?? '').split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+  const graceDate = new Date(graceEndsAt).toLocaleDateString('es-CL', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  const ctaUrl = `${SITE_URL}/pricing`;
+
+  try {
+    await getResend()?.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: 'Tu pago no se procesó — tienes unos días para actualizarlo',
+      html: emailWrapper(`
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
+          Tu pago no se procesó
+        </h1>
+
+        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
+          ${greeting} no pudimos procesar el cobro de tu suscripción. Puede ser
+          algo simple: una tarjeta vencida, sin cupo o un rechazo del banco.
+        </p>
+
+        <div style="background: #1A1A1A; border-radius: 12px; padding: 16px 24px; margin: 0 0 24px 0; border-left: 3px solid #C8323C;">
+          <p style="color: #FAFAF8; line-height: 1.6; font-size: 15px; margin: 0;">
+            Mantienes tu acceso hasta el <span style="font-weight: 600;">${graceDate}</span>.
+            Reactiva tu suscripción antes de esa fecha para no perderlo.
+          </p>
+        </div>
+
+        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
+          Si no haces nada, tu cuenta vuelve al plan gratis y conservas los
+          créditos que te queden.
+        </p>
+
+        ${ctaButton('Reactivar mi suscripción →', ctaUrl)}
+      `),
+    });
+  } catch (error) {
+    console.error('Error sending payment failed email:', error);
+  }
+}
+
 export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo';
