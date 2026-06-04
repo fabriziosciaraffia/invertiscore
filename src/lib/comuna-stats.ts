@@ -1,7 +1,7 @@
 // ─── Comuna market stats from scraped_properties ──────────────────────────
 // Lógica de mediana de precio/m² de VENTA en UF, compartida entre el drawer
 // zone-insight y la generación de análisis IA. Misma fuente (scraped_properties),
-// misma query, mismo umbral (>= 20 ventas válidas).
+// misma query, mismo umbral (>= 15 ventas válidas).
 
 export function median(values: number[]): number {
   if (values.length === 0) return 0;
@@ -29,7 +29,7 @@ export function getFactorCierre(comuna: string): number {
 /**
  * Mediana de precio/m² de VENTA (en UF) para la comuna, calculada desde
  * scraped_properties. Ventana ±20% de superficie; filtro de dormitorios solo
- * si se entrega un valor. Requiere >= 20 ventas válidas (precio>0 y
+ * si se entrega un valor. Requiere >= 15 ventas válidas (precio>0 y
  * superficie_m2>0); de lo contrario devuelve null.
  */
 export async function getComunaMedianaVentaUF(
@@ -55,7 +55,7 @@ export async function getComunaMedianaVentaUF(
   if (dormitorios !== null) ventaQ = ventaQ.eq("dormitorios", dormitorios);
   const { data: ventas } = await ventaQ;
 
-  if (!Array.isArray(ventas) || ventas.length < 20) return null;
+  if (!Array.isArray(ventas) || ventas.length < 15) return null;
 
   const m2sUF: number[] = [];
   for (const r of ventas) {
@@ -67,6 +67,6 @@ export async function getComunaMedianaVentaUF(
     const precioUF = (r.moneda === "UF" ? precio : precio / (ufValue || 1)) * factor;
     m2sUF.push(precioUF / sup);
   }
-  if (m2sUF.length < 20) return null;
+  if (m2sUF.length < 15) return null;
   return Math.round(median(m2sUF) * 100) / 100;
 }
