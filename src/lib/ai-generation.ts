@@ -1154,11 +1154,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("analisis")
       .update({ ai_analysis: aiResult })
       .eq("id", analysisId);
-
+    if (updateError) {
+      console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError);
+      return null;
+    }
     return aiResult;
   } catch (error) {
     console.error("generateAiAnalysis error:", error);
