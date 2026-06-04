@@ -873,6 +873,9 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
  * Devuelve la banda base (sin overrides de gates); el `veredicto` final
  * persistido en `FullAnalysisResult` puede degradar o elevar respecto a
  * esta banda por señales estructurales (CoC severo, etc.).
+ *
+ * @deprecated post-E.2: clasificacion deriva de veredicto, no de score. Conservada
+ * por si algun script la referencia.
  */
 function getClasificacion(score: number): { clasificacion: string; color: string } {
   if (score >= 70) return { clasificacion: "COMPRAR", color: "positive" };
@@ -1115,7 +1118,6 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
   const sensitivity = calcSensitivity(input, score, metrics, ufClp);
   const breakEvenTasa = calcBreakEvenTasa(input, metrics, ufClp);
   const valorMaximoCompra = calcValorMaximoCompra(input, metrics, ufClp);
-  const { clasificacion, color: clasificacionColor } = getClasificacion(score);
   const pros = generatePros(input, metrics);
   const contras = generateContras(input, metrics);
 
@@ -1218,6 +1220,13 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
   ) {
     veredicto = "COMPRAR";
   }
+
+  // Commit E.2 · clasificacion/clasificacionColor (legacy) derivan del veredicto
+  // final (post-gates), no del score crudo. Evita divergencia que antes ensuciaba
+  // la BD (p.ej. veredicto="BUSCAR OTRA" pero clasificacion="AJUSTA SUPUESTOS").
+  const clasificacion: string = veredicto;
+  const clasificacionColor: string =
+    veredicto === "COMPRAR" ? "positive" : veredicto === "BUSCAR OTRA" ? "red" : "yellow";
 
   let resumenEjecutivo: string;
   if (metrics.flujoNetoMensual === 0) {
