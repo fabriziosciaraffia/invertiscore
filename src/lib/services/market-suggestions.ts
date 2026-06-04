@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
+import { getFactorCierre } from "@/lib/comuna-stats";
 
 function getSupabase() {
   return createClient(
@@ -94,7 +95,7 @@ export async function getSugerencias(
 
   // NIVEL 2: Estadísticas por comuna + dormitorios
   const dormForComuna = dormFilter || 2;
-  const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormForComuna, propType);
+  const comunaResult = await getSugerenciasPorComuna(comuna, superficie, dormForComuna, propType, condicion);
   if (comunaResult) return comunaResult;
 
   // NIVEL 3: Fallback a estimación hardcodeada
@@ -163,6 +164,11 @@ async function getSugerenciasPorRadio(
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
+  // Factor de corrección publicado->cierre: solo afecta el precioM2 de VENTA, y
+  // solo cuando NO es "nuevo" (usado o null → corregir; ~93% del inventario es usado).
+  const factorCierre = (propType === "venta" && condicion !== "nuevo" && comuna)
+    ? getFactorCierre(comuna) : 1;
+
   // Usar la función RPC de PostGIS
   const { data: arriendos } = await supabase.rpc("properties_within_radius", {
     center_lat: lat,
@@ -213,7 +219,7 @@ async function getSugerenciasPorRadio(
       source: "radio",
       sampleSize: cleanGeneral.length,
       radiusMeters,
-      precioM2: Math.round(medianaM2),
+      precioM2: Math.round(medianaM2 * factorCierre),
     };
   }
 
@@ -233,7 +239,7 @@ async function getSugerenciasPorRadio(
     source: "radio",
     sampleSize: clean.length,
     radiusMeters,
-    precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2)) : undefined,
+    precioM2: preciosM2.length > 0 ? Math.round(median(preciosM2) * factorCierre) : undefined,
   };
 }
 
@@ -241,9 +247,16 @@ async function getSugerenciasPorComuna(
   comuna: string,
   superficie: number,
   dormitorios: number,
-  propType: string = "arriendo"
+  propType: string = "arriendo",
+  condicion: string | null = null
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
+
+  // Factor de corrección publicado->cierre: solo afecta el precioM2 de VENTA, y
+  // solo cuando NO es "nuevo". market_stats es inventario mezclado (~93% usado),
+  // por eso null por defecto corrige.
+  const factorCierre = (propType === "venta" && condicion !== "nuevo" && comuna)
+    ? getFactorCierre(comuna) : 1;
 
   const { data: stats } = await supabase
     .from("market_stats")
@@ -260,7 +273,7 @@ async function getSugerenciasPorComuna(
       contribTrim: stats.precio_m2_mediana ? estimarContribuciones(Math.round(stats.precio_m2_mediana * superficie)) : estimarContribuciones(superficie * 2_000_000),
       source: "comuna",
       sampleSize: stats.count,
-      precioM2: stats.precio_m2_mediana ? Math.round(stats.precio_m2_mediana) : undefined,
+      precioM2: stats.precio_m2_mediana ? Math.round(stats.precio_m2_mediana * factorCierre) : undefined,
     };
   }
   return null;

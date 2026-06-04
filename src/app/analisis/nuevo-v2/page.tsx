@@ -189,6 +189,7 @@ export default function NuevoAnalisisV3Page() {
     // mostrar la sugerencia de precio en paso 2. Opcional — si falla se ignora.
     const paramsVenta = new URLSearchParams(params);
     paramsVenta.set("type", "venta");
+    paramsVenta.set("condicion", state.tipoPropiedad);
     const ventaPromise = fetch(`/api/data/suggestions?${paramsVenta}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
       .catch(() => null);
