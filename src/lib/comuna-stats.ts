@@ -10,6 +10,22 @@ export function median(values: number[]): number {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 }
 
+// Factor de correccion publicado->cierre para precios de VENTA de scraped_properties.
+// Los precios son PUBLICADOS (TocToc), inflados ~5-10% sobre el cierre real en USADOS.
+// Centro del rango chileno ~7% (factor 0.93); comunas premium de alta rotacion ~5% (0.95).
+// TEMPORAL: reemplazar por datos de cierre reales (CBR/SII F2890) cuando esten disponibles.
+// Los NUEVOS no llevan correccion (precio de proyecto es firme).
+export const FACTOR_CIERRE_DEFAULT = 0.93;
+export const FACTOR_CIERRE_POR_COMUNA: Record<string, number> = {
+  "Las Condes": 0.95,
+  "Providencia": 0.95,
+  "Vitacura": 0.95,
+  "Lo Barnechea": 0.95,
+};
+export function getFactorCierre(comuna: string): number {
+  return FACTOR_CIERRE_POR_COMUNA[comuna] ?? FACTOR_CIERRE_DEFAULT;
+}
+
 /**
  * Mediana de precio/m² de VENTA (en UF) para la comuna, calculada desde
  * scraped_properties. Ventana ±20% de superficie; filtro de dormitorios solo
@@ -29,7 +45,7 @@ export async function getComunaMedianaVentaUF(
 
   let ventaQ = supabase
     .from("scraped_properties")
-    .select("precio, moneda, superficie_m2, dormitorios")
+    .select("precio, moneda, superficie_m2, dormitorios, condicion")
     .eq("comuna", comuna)
     .eq("type", "venta")
     .eq("is_active", true)
@@ -46,7 +62,9 @@ export async function getComunaMedianaVentaUF(
     const sup = Number(r.superficie_m2);
     const precio = Number(r.precio);
     if (!sup || sup <= 0 || !precio || precio <= 0 || Number.isNaN(sup) || Number.isNaN(precio)) continue;
-    const precioUF = r.moneda === "UF" ? precio : precio / (ufValue || 1);
+    // Correccion publicado->cierre: usados llevan factor (<1); nuevos 1.
+    const factor = r.condicion === "usado" ? getFactorCierre(comuna) : 1;
+    const precioUF = (r.moneda === "UF" ? precio : precio / (ufValue || 1)) * factor;
     m2sUF.push(precioUF / sup);
   }
   if (m2sUF.length < 20) return null;
