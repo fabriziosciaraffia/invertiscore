@@ -1030,7 +1030,7 @@ OPERACIÓN MENSUAL
 - flujoMensualNeto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " — negativo" : ""}
 
 MÉTRICAS DEL MOTOR
-- francoScore: ${results.score}/100 (clasificación: ${results.clasificacion})
+- francoScore: ${results.score}/100
 - veredicto del motor (úsalo como dado, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
 - rentabilidadBruta: ${m.rentabilidadBruta.toFixed(1)}%
