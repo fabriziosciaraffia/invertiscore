@@ -864,25 +864,6 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
   return clamp(score, 0, 100);
 }
 
-/**
- * Mapea score 0-100 a las 3 bandas de veredicto canónicas (skill
- * analysis-voice-franco §1.7). Reemplaza la taxonomía de 5 buckets
- * (Excelente/Buena/Regular/Débil/Evitar) que generaba disonancia con
- * el veredicto del Hero. Commit E.1 revert visual · 2026-05-13.
- *
- * Devuelve la banda base (sin overrides de gates); el `veredicto` final
- * persistido en `FullAnalysisResult` puede degradar o elevar respecto a
- * esta banda por señales estructurales (CoC severo, etc.).
- *
- * @deprecated post-E.2: clasificacion deriva de veredicto, no de score. Conservada
- * por si algun script la referencia.
- */
-function getClasificacion(score: number): { clasificacion: string; color: string } {
-  if (score >= 70) return { clasificacion: "COMPRAR", color: "positive" };
-  if (score >= 45) return { clasificacion: "AJUSTA SUPUESTOS", color: "yellow" };
-  return { clasificacion: "BUSCAR OTRA", color: "red" };
-}
-
 // =========================================
 // Pros & Contras
 // =========================================
