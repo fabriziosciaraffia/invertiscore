@@ -3,6 +3,8 @@ import Link from "next/link";
 import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminUser } from "@/lib/admin";
+import { hasSubscriptionAccess } from "@/lib/access";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminActions } from "./admin-actions";
 
 export const dynamic = "force-dynamic";
@@ -137,11 +139,11 @@ export default async function AdminPage() {
 
   const recentUserIds = (recentUsers?.users ?? []).map((u) => u.id);
   const { data: creditsForUsers } = recentUserIds.length
-    ? await sb.from("user_credits").select("user_id, credits, subscription_status").in("user_id", recentUserIds)
+    ? await sb.from("user_credits").select("user_id, credits, subscription_status, grace_ends_at").in("user_id", recentUserIds)
     : { data: [] };
-  const creditsMap = new Map<string, { credits: number; subscription_status: string }>();
-  for (const c of (creditsForUsers ?? []) as Array<{ user_id: string; credits: number; subscription_status: string }>) {
-    creditsMap.set(c.user_id, { credits: c.credits, subscription_status: c.subscription_status });
+  const creditsMap = new Map<string, { credits: number; subscription_status: string; grace_ends_at: string | null }>();
+  for (const c of (creditsForUsers ?? []) as Array<{ user_id: string; credits: number; subscription_status: string; grace_ends_at: string | null }>) {
+    creditsMap.set(c.user_id, { credits: c.credits, subscription_status: c.subscription_status, grace_ends_at: c.grace_ends_at });
   }
 
   const { data: lastAnalisisPerUser } = recentUserIds.length
@@ -254,9 +256,9 @@ export default async function AdminPage() {
             {pills.map((p) => {
               const dotColor =
                 "status" in p && p.status === "warn"
-                  ? "#D97706"
+                  ? "var(--ink-600)"
                   : p.ok
-                  ? "#16A34A"
+                  ? "var(--ink-400)"
                   : "#C8323C";
               return (
                 <div
@@ -343,7 +345,7 @@ export default async function AdminPage() {
                   const statusLabel =
                     p.status === "paid" ? "Pagado" : p.status === "rejected" ? "Rechazado" : p.status === "pending" ? "Pendiente" : p.status;
                   const statusColor =
-                    p.status === "paid" ? "#16A34A" : p.status === "rejected" ? "#C8323C" : "#D97706";
+                    p.status === "paid" ? "var(--ink-400)" : p.status === "rejected" ? "#C8323C" : "var(--ink-600)";
                   return (
                     <tr key={p.id} className="border-b border-[var(--franco-border)] last:border-b-0">
                       <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
@@ -390,9 +392,13 @@ export default async function AdminPage() {
                 {(recentUsers?.users ?? []).map((u) => {
                   const c = creditsMap.get(u.id);
                   const credits = c?.credits ?? 0;
-                  const isSubscriber = c?.subscription_status === "active";
-                  const planLabel = isSubscriber ? "Suscriptor" : credits > 0 ? "Pro" : "Free";
-                  const planColor = isSubscriber ? "#16A34A" : credits > 0 ? "#C8323C" : "var(--franco-text-muted)";
+                  const subStatus = c?.subscription_status ?? "none";
+                  const isSubscriber = subStatus === "active";
+                  // past_due con gracia vigente (mantiene acceso). hasSubscriptionAccess
+                  // es la fuente de verdad de la comparación de gracia; server component.
+                  const isPastDueGrace =
+                    subStatus === "past_due" &&
+                    hasSubscriptionAccess({ subscription_status: subStatus, grace_ends_at: c?.grace_ends_at ?? null });
                   const lastAnalysis = lastAnalisisMap.get(u.id);
                   return (
                     <tr key={u.id} className="border-b border-[var(--franco-border)] last:border-b-0">
@@ -404,12 +410,15 @@ export default async function AdminPage() {
                       </td>
                       <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">{credits}</td>
                       <td className="py-2 pr-4">
-                        <span
-                          className="inline-block rounded border px-2 py-0.5 font-mono text-[10px] uppercase"
-                          style={{ color: planColor, borderColor: planColor }}
-                        >
-                          {planLabel}
-                        </span>
+                        {isSubscriber ? (
+                          <StatusBadge label="Suscriptor" tone="ink-400" className="text-[10px]" />
+                        ) : isPastDueGrace ? (
+                          <StatusBadge label="Pago pendiente" tone="ink-700" className="text-[10px]" />
+                        ) : credits > 0 ? (
+                          <StatusBadge label="Pro" tone="signal-red" className="text-[10px]" />
+                        ) : (
+                          <StatusBadge label="Free" tone="muted" className="text-[10px]" />
+                        )}
                       </td>
                       <td className="font-mono text-xs text-[var(--franco-text)] py-2">
                         {lastAnalysis ? fmtRelative(lastAnalysis) : "—"}
