@@ -42,24 +42,29 @@ export async function getComunaMedianaVentaUF(
 ): Promise<number | null> {
   const supMinV = superficie * 0.8;
   const supMaxV = superficie * 1.2;
-  // Ventana de frescura: descartar avisos no refrescados hace >90d (el scraper solo
+
+  // Ventana de frescura: descartar avisos no refrescados hace >N dias (el scraper solo
   // hace upsert, is_active queda true para siempre y sesga la mediana con precios añejos).
-  const hace90dias = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+  async function fetchVentas(dias: number) {
+    const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+    let q = supabase
+      .from("scraped_properties")
+      .select("precio, moneda, superficie_m2, dormitorios, condicion")
+      .eq("comuna", comuna)
+      .eq("type", "venta")
+      .eq("is_active", true)
+      .gte("scraped_at", desde)
+      .gte("superficie_m2", supMinV)
+      .lte("superficie_m2", supMaxV)
+      .limit(2000);
+    if (dormitorios !== null) q = q.eq("dormitorios", dormitorios);
+    const { data } = await q;
+    return Array.isArray(data) ? data : [];
+  }
 
-  let ventaQ = supabase
-    .from("scraped_properties")
-    .select("precio, moneda, superficie_m2, dormitorios, condicion")
-    .eq("comuna", comuna)
-    .eq("type", "venta")
-    .eq("is_active", true)
-    .gte("scraped_at", hace90dias)
-    .gte("superficie_m2", supMinV)
-    .lte("superficie_m2", supMaxV)
-    .limit(2000);
-  if (dormitorios !== null) ventaQ = ventaQ.eq("dormitorios", dormitorios);
-  const { data: ventas } = await ventaQ;
-
-  if (!Array.isArray(ventas) || ventas.length < 15) return null;
+  let ventas = await fetchVentas(90);
+  if (ventas.length < 15) ventas = await fetchVentas(180); // ventana adaptativa
+  if (ventas.length < 15) return null;
 
   const m2sUF: number[] = [];
   for (const r of ventas) {
