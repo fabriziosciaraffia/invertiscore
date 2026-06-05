@@ -2,15 +2,20 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Cron · Expiración del período de gracia de suscripciones en past_due.
+ * Cron · Expiración de accesos de suscripción vencidos. Dos barridos:
  *
- * Cuando un cargo recurrente falla, payment-callback marca subscription_status
- * 'past_due' + grace_ends_at = now + 7 días (el usuario mantiene acceso durante
- * la gracia, ver access.hasSubscriptionAccess). Si la gracia vence sin un cargo
- * exitoso, este cron corta el acceso: pasa a 'cancelled' y APAGA is_unlimited
- * (clave: si no se apaga, un ilimitado vencido seguiría con free pass).
+ * 1. past_due con gracia vencida. payment-callback marca 'past_due' + grace_ends_at
+ *    = now + 7 días (acceso durante la gracia, ver access.hasSubscriptionAccess).
+ *    Si la gracia vence sin cargo exitoso, pasa a 'cancelled' y APAGA is_unlimited.
  *
- * Idempotente: tras 'cancelled' la fila ya no matchea el filtro past_due.
+ * 2. cancelled con el ciclo pagado vencido que AÚN tiene is_unlimited=true.
+ *    cancel-subscription deja 'cancelled' + subscription_ends_at = fin de ciclo
+ *    (acceso hasta esa fecha). Para planes finitos el corte es pasivo por fecha en
+ *    hasSubscriptionAccess; pero is_unlimited se evalúa independiente de la fecha,
+ *    así que sin este barrido un ilimitado cancelado mantendría free pass para
+ *    siempre. Solo apaga el flag (el status ya es cancelled).
+ *
+ * Idempotente: tras el update las filas ya no matchean su filtro.
  *
  * Auth: Vercel Cron dispara GET con `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -37,23 +42,43 @@ export async function GET(request: Request) {
   const supabase = createAdminClient();
   const nowIso = new Date().toISOString();
 
-  // Subs en mora cuya gracia ya venció.
-  const { data: rows, error } = await supabase
+  // Dos queries separadas (no un OR): cada caso tiene filtro distinto Y update
+  // distinto (past_due → cancela; cancelled → solo apaga el flag). Separarlas
+  // es más legible y evita ramificar el payload por fila dentro de un loop mixto.
+
+  // ── 1 · past_due con gracia vencida ──
+  const { data: pastDueRows, error: pdError } = await supabase
     .from("user_credits")
     .select("user_id")
     .eq("subscription_status", "past_due")
     .not("grace_ends_at", "is", null)
     .lte("grace_ends_at", nowIso);
 
-  if (error) {
-    console.error("[cron/expire-grace] query error:", error);
+  if (pdError) {
+    console.error("[cron/expire-grace] past_due query error:", pdError);
+    return NextResponse.json({ error: "Query failed" }, { status: 500 });
+  }
+
+  // ── 2 · cancelled con ciclo vencido que aún tiene free pass (is_unlimited) ──
+  const { data: cancelledRows, error: cError } = await supabase
+    .from("user_credits")
+    .select("user_id")
+    .eq("subscription_status", "cancelled")
+    .eq("is_unlimited", true)
+    .not("subscription_ends_at", "is", null)
+    .lte("subscription_ends_at", nowIso);
+
+  if (cError) {
+    console.error("[cron/expire-grace] cancelled query error:", cError);
     return NextResponse.json({ error: "Query failed" }, { status: 500 });
   }
 
   let processed = 0;
   let cancelled = 0;
+  let unlimitedRevoked = 0;
 
-  for (const row of rows ?? []) {
+  // past_due vencido → cancelled + apaga is_unlimited + limpia grace.
+  for (const row of pastDueRows ?? []) {
     try {
       processed++;
       const { error: updErr } = await supabase
@@ -67,24 +92,51 @@ export async function GET(request: Request) {
         .eq("user_id", row.user_id);
 
       if (updErr) {
-        console.error(
-          "[cron/expire-grace] update falló para user:",
-          row.user_id,
-          updErr
-        );
+        console.error("[cron/expire-grace] past_due update falló para user:", row.user_id, updErr);
         continue;
       }
       cancelled++;
     } catch (e) {
       // Un error en una fila no aborta el resto.
       console.error(
-        "[cron/expire-grace] error procesando user:",
+        "[cron/expire-grace] error procesando past_due user:",
         row?.user_id,
         e instanceof Error ? e.message : String(e)
       );
     }
   }
 
-  console.error(`[cron/expire-grace] processed=${processed} cancelled=${cancelled}`);
-  return NextResponse.json({ processed, cancelled });
+  // cancelled vencido con free pass → apaga is_unlimited (status ya es cancelled)
+  // + limpia next_monthly_grant_at. El acceso normal ya cayó por fecha.
+  for (const row of cancelledRows ?? []) {
+    try {
+      processed++;
+      const { error: updErr } = await supabase
+        .from("user_credits")
+        .update({
+          is_unlimited: false,
+          next_monthly_grant_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", row.user_id);
+
+      if (updErr) {
+        console.error("[cron/expire-grace] cancelled update falló para user:", row.user_id, updErr);
+        continue;
+      }
+      unlimitedRevoked++;
+    } catch (e) {
+      // Un error en una fila no aborta el resto.
+      console.error(
+        "[cron/expire-grace] error procesando cancelled user:",
+        row?.user_id,
+        e instanceof Error ? e.message : String(e)
+      );
+    }
+  }
+
+  console.error(
+    `[cron/expire-grace] processed=${processed} cancelled=${cancelled} unlimitedRevoked=${unlimitedRevoked}`
+  );
+  return NextResponse.json({ processed, cancelled, unlimitedRevoked });
 }
