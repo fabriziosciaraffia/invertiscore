@@ -384,6 +384,61 @@ export async function sendPaymentFailedEmail(
   }
 }
 
+/**
+ * Recuperación de carrito abandonado (ruta A · compra única). Tono Franco:
+ * honesto y sin presión — nota que empezó la compra y no la terminó, le recuerda
+ * que el análisis lo espera y lo invita a retomar. SIN descuentos ni urgencia
+ * falsa. productLabel = subject legible del catálogo (ej. "Franco — 1 análisis").
+ *
+ * Devuelve true SOLO si el envío a Resend tuvo éxito; false si Resend no está
+ * configurado o si la llamada falló. El cron usa esto para marcar
+ * recovery_email_sent_at solo en éxito (y reintentar en la próxima corrida si no).
+ */
+export async function sendCheckoutRecoveryEmail(
+  to: string,
+  name: string | null,
+  productLabel: string,
+): Promise<boolean> {
+  const resend = getResend();
+  if (!resend) {
+    console.error('Checkout recovery email skipped: RESEND_API_KEY not set');
+    return false;
+  }
+
+  const firstName = (name ?? '').split(' ')[0] || '';
+  const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
+  const ctaUrl = `${SITE_URL}/pricing`;
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: '¿Quedó algo pendiente?',
+      html: emailWrapper(`
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 20px 0;">
+          ¿Quedó algo pendiente?
+        </h1>
+
+        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
+          ${greeting} empezaste a comprar <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
+          y no alcanzaste a terminar el pago. Sin apuro — tu análisis sigue ahí cuando quieras retomarlo.
+        </p>
+
+        <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
+          Si tuviste algún problema con el pago o quieres preguntarnos algo antes de decidir,
+          respóndenos este correo. Franco es directo: no hay letra chica.
+        </p>
+
+        ${ctaButton('Retomar mi compra →', ctaUrl)}
+      `),
+    });
+    return true;
+  } catch (error) {
+    console.error('Error sending checkout recovery email:', error);
+    return false;
+  }
+}
+
 export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo';

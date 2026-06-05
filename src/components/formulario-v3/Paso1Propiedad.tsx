@@ -65,6 +65,7 @@ export function Paso1Propiedad({
         const comunaFinal = match?.comuna || comuna;
         setState({
           direccion: addr,
+          direccionConfirmada: addr,
           lat,
           lng,
           comuna: comunaFinal,
@@ -94,12 +95,17 @@ export function Paso1Propiedad({
         <input
           ref={direccionRef}
           type="text"
+          autoComplete="off"
           placeholder="Ej: Av. Providencia 1234, Providencia"
           className={`${inputBase} ${inputOk} font-body`}
           defaultValue={state.direccion}
           onChange={(e) => setState({ direccion: e.target.value })}
         />
-        {state.comuna ? (
+        {state.direccion && state.direccion !== state.direccionConfirmada ? (
+          <p className="font-body text-[11px] mt-1 text-[#C8323C]">
+            Selecciona la dirección de la lista de sugerencias.
+          </p>
+        ) : state.comuna ? (
           fueraDeZona ? (
             <p className="font-body text-[11px] mt-1 text-[#C8323C]">
               {state.comuna} está fuera del Gran Santiago — por ahora no disponible.{" "}

@@ -1142,6 +1142,21 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       }
     }
 
+    // Salvaguarda de orden: en BUSCAR OTRA, un chip rojo debe liderar (no un accent/neutral).
+    // Stable-sort por color; conserva el orden relativo entre rojos y entre no-rojos.
+    if (readVeredicto(results) === "BUSCAR OTRA" && Array.isArray(aiResult?.conviene?.datosClave)) {
+      const esRojo = (c: unknown) => c === "red";
+      aiResult.conviene.datosClave = aiResult.conviene.datosClave
+        .map((d: unknown, i: number) => ({ d, i }))
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .sort((a: any, b: any) => {
+          const ra = esRojo(a.d?.color) ? 0 : 1;
+          const rb = esRojo(b.d?.color) ? 0 : 1;
+          return ra !== rb ? ra - rb : a.i - b.i; // estable: desempata por índice original
+        })
+        .map((x: { d: unknown }) => x.d);
+    }
+
     // Validación de prosa (solo detección para QA — NO reescribe el texto en esta iteración).
     if (precioM2ZonaConfiable && sobreprecioPctZona !== null) {
       const medianaReal = Math.round(precioM2Zona);
@@ -1174,11 +1189,14 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
     }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("analisis")
       .update({ ai_analysis: aiResult })
       .eq("id", analysisId);
-
+    if (updateError) {
+      console.error(`generateAiAnalysis: fallo al guardar ai_analysis (${analysisId}):`, updateError);
+      return null;
+    }
     return aiResult;
   } catch (error) {
     console.error("generateAiAnalysis error:", error);

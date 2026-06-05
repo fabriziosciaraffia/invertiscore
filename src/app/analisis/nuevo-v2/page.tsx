@@ -98,9 +98,16 @@ export default function NuevoAnalisisV3Page() {
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
-        const draft = JSON.parse(raw);
-        if (draft && typeof draft === "object") {
-          setState((prev) => ({ ...prev, ...draft }));
+        const parsed = JSON.parse(raw);
+        const SEIS_HORAS = 6 * 60 * 60 * 1000;
+        const esValido = parsed && typeof parsed === "object"
+          && typeof parsed.savedAt === "number"
+          && (Date.now() - parsed.savedAt) < SEIS_HORAS
+          && parsed.data && typeof parsed.data === "object";
+        if (esValido) {
+          setState((prev) => ({ ...prev, ...parsed.data }));
+        } else {
+          localStorage.removeItem(DRAFT_KEY); // viejo o formato plano previo -> descartar
         }
       }
     } catch { /* ignore */ }
@@ -138,7 +145,7 @@ export default function NuevoAnalisisV3Page() {
     if (!initialized.current) return;
     if (!state.direccion && !state.precio) return;
     const t = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: state, savedAt: Date.now() })); } catch { /* ignore */ }
     }, 500);
     return () => clearTimeout(t);
   }, [state]);
@@ -189,6 +196,7 @@ export default function NuevoAnalisisV3Page() {
     // mostrar la sugerencia de precio en paso 2. Opcional — si falla se ignora.
     const paramsVenta = new URLSearchParams(params);
     paramsVenta.set("type", "venta");
+    paramsVenta.set("condicion", state.tipoPropiedad);
     const ventaPromise = fetch(`/api/data/suggestions?${paramsVenta}`, { signal: ctrl.signal })
       .then((r) => r.ok ? r.json() : null)
       .catch(() => null);
@@ -287,7 +295,8 @@ export default function NuevoAnalisisV3Page() {
   // isComunaDisponible.
   const canAdvanceFromStep1 = !!(state.direccion && state.comuna && state.tipoPropiedad
     && parseDecimalLocale(state.superficieUtil) > 0
-    && isComunaDisponible(state.comuna));
+    && isComunaDisponible(state.comuna)
+    && state.direccion === state.direccionConfirmada);
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
   function goNext() {
