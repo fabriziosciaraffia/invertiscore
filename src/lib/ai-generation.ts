@@ -268,6 +268,8 @@ NO hacer:
 - A8. Bullet points como muletilla estructural. Listas con bullets para 3+ items concretos están bien. Listas con bullets de 2 items o de oraciones largas convierten prosa en formulario. Default: prosa con conectores ("además", "en cambio", "sin embargo").
 - A9. Sugerir consultar a un asesor externo, salvo en casos operativos específicos (abogado para escrituración, ingeniero estructural, contador para impuestos personales). Nunca "consulta a un asesor financiero antes de decidir" — eso lo haces ya.
 - A10. Inventar montos absolutos cuando el motor no tiene dato confiable. Ver §12 regla DIFERENCIA ABSOLUTA vs POR M².
+- A11. Engine-ism temporal — PROHIBIDO. Nunca escribas que el flujo "cruza a positivo", "se da vuelta", "no cruza", "cruza jamás", "se vuelve positivo", "se revierte" ni "flujo neutro" (en cualquier conjugación o negación). Es mecánica interna del modelo, no consecuencia para el usuario. SUSTITUTO obligatorio: describí qué pasa entre arriendo y cuota — "el arriendo no alcanza a cubrir la cuota durante toda la proyección" / "recién el año X el arriendo cubre la cuota". Regla dura, sin excepción, todos los tiers.
+- A12. No exponer la entidad "el motor" al usuario: "el motor sugiere/recomienda no comprar" → "no conviene comprar"; "proyección del motor" → "proyección de plusvalía a futuro". El veredicto es de Franco, no del motor.
 
 SÍ hacer:
 - P1. Cifra contextualizada en lenguaje del usuario. Mal: "aporte mensual $262.856 durante 360 meses". Bien: "aportar $262K cada mes durante 30 años suma $94M de tu bolsillo. Es el equivalente a un departamento adicional, dado en cuotas".
@@ -366,7 +368,7 @@ GLOSAS CON OBJETIVO DEL NIVEL (no descripción del número):
 
 \`glosaWalkAway\`: SOLO cuando \`walkAway !== null\`. Explica POR QUÉ ya no tiene sentido.
 - BIEN (precio_uf null, BUSCAR OTRA): "Aunque bajen el precio, los riesgos estructurales de la zona invalidan la inversión."
-- MAL: "El motor recomienda no comprar." (eso ya está en razon — no repitas el veredicto)
+- MAL: "No conviene comprar." (eso ya está en razon — no repitas el veredicto)
 - Si walkAway === null en las anclas, devuelve "" en glosaWalkAway_clp/uf.
 
 Si \`flujoCruzaEnHorizonte\` es false, NO prometas que el flujo mejorará en \`estrategiaSugerida\`.
@@ -935,7 +937,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       walkAwayAncla = {
         precio_uf: null,
         precio_clp: null,
-        razon: "El motor recomienda no comprar esta propiedad.",
+        razon: "No conviene comprar esta propiedad.",
       };
     } else if (veredictoMotor === "AJUSTA SUPUESTOS" && modoSugerido !== "cerrar_actual") {
       // Solo se incluye walkAway-precio cuando NO es cerrar_actual y NO es BUSCAR.
@@ -1030,7 +1032,7 @@ OPERACIÓN MENSUAL
 - flujoMensualNeto: ${fmtCLP(m.flujoNetoMensual)} (${fmtUF(m.flujoNetoMensual / UF_CLP)})${m.flujoNetoMensual < 0 ? " — negativo" : ""}
 
 MÉTRICAS DEL MOTOR
-- francoScore: ${results.score}/100 (clasificación: ${results.clasificacion})
+- francoScore: ${results.score}/100
 - veredicto del motor (úsalo como dado, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
 - rentabilidadBruta: ${m.rentabilidadBruta.toFixed(1)}%
@@ -1057,15 +1059,14 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - precioLimite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}
 - precioFlujoNeutro: ${precioFlujoNeutroUF > 0 ? fmtUF(precioFlujoNeutroUF) + ` (descuento ${descuentoParaNeutro.toFixed(1)}%)` : "no existe — arriendo no cubre gastos fijos con esta estructura"}
 - plusvaliaInmediataFranco: ${plusvaliaFrancoPct.toFixed(1)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
-- mesesDeFlujoNegativo: ${m.flujoNetoMensual >= 0 ? "0 — flujo ya positivo" : flujoCruzaEnHorizonte ? `${mesesDeFlujoNegativo} (≈${Math.round(mesesDeFlujoNegativo / 12)} años)` : `>${projYears.length * 12} — NO cruza en horizonte de ${projYears.length} años`}
-- flujoCruzaEnHorizonte: ${flujoCruzaEnHorizonte}
+- lecturaFlujo (usá EXACTAMENTE este enfoque, NO "cruza/se revierte/se da vuelta/se vuelve positivo/flujo neutro"): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - plazoCredito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
 - flujoNegativoAcumulado5anios: ${fmtCLP(flujoNegAcum5)}
 - flujoNegativoAcumulado10anios: ${fmtCLP(flujoNegAcum10)}
-- valorPropiedadProyectado5anios (plusvalía 4%): ${fmtCLP(valorProp5)}
-- valorPropiedadProyectado10anios (plusvalía 4%): ${fmtCLP(valorProp10)}
+- valorPropiedadProyectado5anios (proyección de plusvalía a futuro: 4%): ${fmtCLP(valorProp5)}
+- valorPropiedadProyectado10anios (proyección de plusvalía a futuro: 4%): ${fmtCLP(valorProp10)}
 - gananciaNetaAlVender10anios: ${fmtCLP(exit.gananciaNeta)}
 - depositoUFAl5pct10anios: ${fmtCLP(datoDP)}
 - fondoMutuoAl7pct10anios: ${fmtCLP(datoFM)}
@@ -1167,6 +1168,25 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       if (matchUF && Math.abs(Number(matchUF[1]) - medianaReal) > 2) {
         console.warn(`[ZONA-DRIFT] ${analysisId}: prosa dice UF ${matchUF[1]}, motor dice UF ${medianaReal}`);
       }
+    }
+
+    // ─── Monitor engine-isms (A11/A12) — solo detección con path de campo, no reescribe. ───
+    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|da vuelta|vuelve positivo)|flujo neutro|del motor|proyecci[óo]n\s+del\s+motor/i;
+    const engineIsmHits: string[] = [];
+    const scanStrings = (node: unknown, path: string): void => {
+      if (typeof node === "string") {
+        const m = node.match(ENGINE_ISM_RE);
+        if (m) engineIsmHits.push(`${path}="${m[0]}"`);
+        return;
+      }
+      if (Array.isArray(node)) { node.forEach((n, i) => scanStrings(n, `${path}[${i}]`)); return; }
+      if (node && typeof node === "object") {
+        Object.entries(node as Record<string, unknown>).forEach(([k, v]) => scanStrings(v, path ? `${path}.${k}` : k));
+      }
+    };
+    scanStrings(aiResult, "");
+    if (engineIsmHits.length > 0) {
+      console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
     }
 
     const { error: updateError } = await supabase
