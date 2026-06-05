@@ -66,7 +66,7 @@ export function getComunasBatch(batch: number): string[] {
 }
 
 const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml",
   "Accept-Language": "es-CL,es;q=0.9",
 };
@@ -391,9 +391,12 @@ export async function scrapeTocTocAPI(
         const response = await fetch(apiUrl, {
           headers: {
             "User-Agent": HEADERS["User-Agent"],
-            "Accept": "application/json",
-            "Accept-Language": "es-CL,es;q=0.9",
-            "Referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
+            "accept": "*/*",
+            "accept-language": "es-CL,es;q=0.9",
+            "referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
+            "sec-fetch-site": "same-origin",
+            "sec-fetch-mode": "cors",
+            "sec-fetch-dest": "empty",
             "Cookie": cookies,
           },
         });
