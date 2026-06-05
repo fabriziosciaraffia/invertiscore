@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
 
+// Vercel Hobby permite hasta 60s. Sin esto, el techo es 10s y una corrida real
+// (1 comuna x 5 páginas, ~11s) lo supera. Necesario antes de subir BATCH_SIZE/maxPages.
+export const maxDuration = 60;
+
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnySupabase = ReturnType<typeof createClient<any>>;
