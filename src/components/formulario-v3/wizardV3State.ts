@@ -6,6 +6,10 @@ export type Modalidad = "ltr" | "str" | "both" | null;
 export interface WizardV3State {
   // Paso 1 — visibles
   direccion: string;
+  /** Última dirección efectivamente elegida de Google Places. Se compara
+   * contra `direccion` para detectar texto editado a mano que dejó coords/comuna
+   * desincronizadas (el gate del paso 1 exige que coincidan). */
+  direccionConfirmada: string;
   lat: number | null;
   lng: number | null;
   comuna: string;
@@ -129,6 +133,7 @@ export interface WizardV3State {
 
 export const DEFAULT_STATE: WizardV3State = {
   direccion: "",
+  direccionConfirmada: "",
   lat: null,
   lng: null,
   comuna: "",

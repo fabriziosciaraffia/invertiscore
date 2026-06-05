@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+import { scrapeTocTocMap, scrapeTocTocAPI, scrapeTocToc, getComunasBatch, TOTAL_BATCHES, ScrapedProperty } from "@/lib/services/scraper/toctoc";
+
+// Vercel Hobby permite hasta 60s. Sin esto, el techo es 10s y una corrida real
+// (1 comuna x 5 páginas, ~11s) lo supera. Necesario antes de subir BATCH_SIZE/maxPages.
+export const maxDuration = 60;
 
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -48,19 +52,38 @@ export async function POST(request: Request) {
   // --- SCRAPING ---
   const maxPages = parseInt(url.searchParams.get("maxPages") || "5");
   const types: ("arriendo" | "venta")[] = typeParam === "arriendo" ? ["arriendo"] : typeParam === "venta" ? ["venta"] : ["arriendo", "venta"];
-  let method = "api-paginated";
+  let method = ""; // refleja el método que efectivamente trajo datos (primer type con >0)
 
   for (const type of types) {
-    // Intentar API paginada primero
-    let result = await scrapeTocTocAPI(type, comunas, maxPages);
+    // a. Map API (GetProps, hasta 510 props con coords) — primer intento
+    const mapResult = await scrapeTocTocMap(type, comunas);
+    allErrors.push(...mapResult.errors);
+    let result = mapResult;
+    let localMethod = "map-getprops";
+
+    // b. API paginada (gw-lista-seo) si Map no trajo nada
     if (result.properties.length === 0) {
-      // Fallback al método __NEXT_DATA__
-      result = await scrapeTocToc(type, comunas);
-      method = "listing-fallback";
+      const apiResult = await scrapeTocTocAPI(type, comunas, maxPages);
+      allErrors.push(...apiResult.errors); // preservar errores/DEBUG de la API
+      result = apiResult;
+      localMethod = "api-paginated";
     }
+
+    // c. Fallback __NEXT_DATA__ si los dos anteriores fallaron
+    if (result.properties.length === 0) {
+      result = await scrapeTocToc(type, comunas);
+      localMethod = "listing-fallback";
+      allErrors.push(...result.errors); // errores del fallback aparte
+    }
+
+    // d. Acumular; method = primer type que trajo datos
     allProperties.push(...result.properties);
-    allErrors.push(...result.errors);
+    if (!method && result.properties.length > 0) {
+      method = localMethod;
+    }
   }
+
+  if (!method) method = "none"; // ningún type trajo datos
 
   const t1 = Date.now();
 
@@ -69,7 +92,11 @@ export async function POST(request: Request) {
   const skipped = allProperties.length - validProps.length;
   let inserted = 0;
 
-  const rows = validProps.map(propertyToRow);
+  const allRows = validProps.map(propertyToRow);
+  // Dedup por source+source_id (un aviso puede repetirse entre paginas); ultima ocurrencia gana.
+  const rowsByKey = new Map<string, typeof allRows[number]>();
+  for (const r of allRows) rowsByKey.set(`${r.source}|${r.source_id}`, r);
+  const rows = Array.from(rowsByKey.values());
 
   if (rows.length > 0) {
     const { error } = await supabase

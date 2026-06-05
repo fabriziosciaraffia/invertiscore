@@ -346,11 +346,11 @@ percentilTuDepto (percentil del arriendo dentro del rango local):
   > P90 → "muy caro para la zona"
 
 plusvaliaAnual (histórica anualizada 2014-2024 de la comuna):
-  < 3% → "débil vs proyección motor 4% — la histórica observada de Gran Santiago promedia 3% anual"
-  3–5% → "alineada con la proyección motor 4%"
-  > 5% → "fuerte vs la proyección motor 4%"
+  < 3% → "débil vs la proyección de plusvalía a futuro de 4% — la histórica observada de Gran Santiago promedia 3% anual"
+  3–5% → "alineada con la proyección de plusvalía a futuro de 4%"
+  > 5% → "fuerte vs la proyección de plusvalía a futuro de 4%"
 
-CRÍTICO: el "4%" en estos umbrales es la PROYECCIÓN del motor (supuesto canónico para todos los cálculos), NO una observación histórica. El promedio histórico observado de Gran Santiago es 3% anual, distinto del 4% proyectado. Cuando el narrative cite "4%", debe quedar claro al usuario que es la proyección del motor, no un dato observado.
+CRÍTICO: el "4%" en estos umbrales es la PROYECCIÓN del motor (supuesto canónico para todos los cálculos), NO una observación histórica. El promedio histórico observado de Gran Santiago es 3% anual, distinto del 4% proyectado. Cuando el narrative cite "4%", debe quedar claro al usuario que es una proyección a futuro, no un dato observado.
 
 Prohibido recitar el número sin interpretarlo. Si el narrative menciona "+8.2%" o "P81", debe seguir con la lectura cualitativa. Si los datos contradicen un cierre optimista, escribe el cierre que dice la verdad — no el que vende.
 
@@ -416,7 +416,7 @@ PROHIBIDO:
 - Cualquier sugerencia de una proyección distinta al 4%.
 
 VÁLIDO:
-- "Santiago perdió 1% anual histórico — la proyección 4% del motor es apuesta a recuperación."
+- "Santiago perdió 1% anual histórico — la proyección a futuro de 4% es una apuesta a recuperación."
 - "Providencia subió 3% anual; proyección 4% queda ligeramente optimista vs trayectoria."
 - "Sin data histórica para esta comuna; proyección 4% es supuesto sin ancla local."
 

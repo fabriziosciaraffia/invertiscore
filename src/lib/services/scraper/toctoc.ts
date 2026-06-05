@@ -1,3 +1,8 @@
+import { ProxyAgent } from "undici";
+
+// Helper: dispatcher de proxy si PROXY_URL está seteada, sino undefined (fetch directo)
+const proxyDispatcher = process.env.PROXY_URL ? new ProxyAgent(process.env.PROXY_URL) : undefined;
+
 export interface ScrapedProperty {
   source: string;
   sourceId: string;
@@ -66,7 +71,7 @@ export function getComunasBatch(batch: number): string[] {
 }
 
 const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml",
   "Accept-Language": "es-CL,es;q=0.9",
 };
@@ -98,7 +103,7 @@ const COMUNA_VIEWPORTS: Record<string, string> = {
 async function getTocTocSession(): Promise<string> {
   const response = await fetch(
     "https://www.toctoc.com/resultados/mapa/arriendo/departamento/metropolitana/santiago/",
-    { headers: { ...HEADERS, Accept: "text/html" } }
+    { headers: { ...HEADERS, Accept: "text/html" }, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown }
   );
   const cookies = (response.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
   return cookies;
@@ -141,7 +146,8 @@ async function fetchMapProperties(
       "sec-fetch-site": "same-origin",
     },
     body: JSON.stringify(body),
-  });
+    dispatcher: proxyDispatcher,
+  } as RequestInit & { dispatcher?: unknown });
 
   if (!response.ok) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -257,7 +263,7 @@ export async function scrapeTocTocMap(
 
 export async function fetchCoordinates(url: string): Promise<{ lat: number; lng: number } | null> {
   try {
-    const response = await fetch(url, { headers: HEADERS });
+    const response = await fetch(url, { headers: HEADERS, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown });
     if (!response.ok) return null;
     const html = await response.text();
     const match = html.match(/"coordenadas":\[(-?\d+\.?\d+),(-?\d+\.?\d+)\]/);
@@ -353,7 +359,7 @@ export async function scrapeTocTocAPI(
   try {
     const sessionResponse = await fetch(
       "https://www.toctoc.com/arriendo/departamento/metropolitana/santiago",
-      { headers: HEADERS }
+      { headers: HEADERS, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown }
     );
     const setCookies = sessionResponse.headers.getSetCookie?.() || [];
     cookies = setCookies.map(c => c.split(";")[0]).join("; ");
@@ -388,22 +394,42 @@ export async function scrapeTocTocAPI(
       try {
         const apiUrl = `https://www.toctoc.com/gw-lista-seo/propiedades?filtros=${encodeURIComponent(filtros)}&order=1&page=${page}`;
 
-        const response = await fetch(apiUrl, {
-          headers: {
-            "User-Agent": HEADERS["User-Agent"],
-            "Accept": "application/json",
-            "Accept-Language": "es-CL,es;q=0.9",
-            "Referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
-            "Cookie": cookies,
-          },
-        });
+        const apiHeaders = {
+          "User-Agent": HEADERS["User-Agent"],
+          "accept": "*/*",
+          "accept-language": "es-CL,es;q=0.9",
+          "referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
+          "sec-fetch-site": "same-origin",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-dest": "empty",
+          "Cookie": cookies,
+        };
+
+        // Retry ante 202 (warming para IP datacenter) o body vacío: hasta 3 intentos.
+        let response!: Response;
+        let rawText = "";
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          response = await fetch(apiUrl, { headers: apiHeaders, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown });
+          rawText = await response.text();
+          const needsRetry = response.status === 202 || rawText.trim() === "";
+          if (!needsRetry) break;
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 800 : 1500));
+          }
+        }
+
+        // Tras 3 intentos sigue 202/vacío: rendirse para esta comuna.
+        if (response.status === 202 || rawText.trim() === "") {
+          errors.push(`API ${comunaSlug} p${page}: 202/empty tras 3 intentos`);
+          break;
+        }
 
         if (!response.ok) {
           errors.push(`API ${comunaSlug} p${page}: ${response.status}`);
           break;
         }
 
-        const data = await response.json() as { total: number; results: unknown[] };
+        const data = JSON.parse(rawText) as { total: number; results: unknown[] };
 
         if (!data.results || data.results.length === 0) break;
 
@@ -448,7 +474,7 @@ export async function scrapeTocToc(
       for (let page = 1; page <= 1; page++) {
         const url = `https://www.toctoc.com/${type}/departamento/metropolitana/${comuna}?pagina=${page}`;
 
-        const response = await fetch(url, { headers: HEADERS });
+        const response = await fetch(url, { headers: HEADERS, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown });
 
         if (!response.ok) {
           if (response.status === 404) break;
