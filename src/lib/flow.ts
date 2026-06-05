@@ -7,10 +7,39 @@ const FLOW_API_URL = FLOW_ENV === "sandbox"
 const FLOW_API_KEY = process.env.FLOW_API_KEY!;
 const FLOW_SECRET_KEY = process.env.FLOW_SECRET_KEY!;
 
+// Timeout duro para toda llamada a Flow. Por debajo del ceiling histórico de
+// Vercel (~10s en Hobby) → lanzamos un error capturable antes del corte abrupto
+// de la plataforma. Protege endpoints de usuario (cancel, checkout, alta) de un
+// cuelgue indefinido de Flow.
+const FLOW_TIMEOUT_MS = 8000;
+
 function signParams(params: Record<string, string | number>): string {
   const keys = Object.keys(params).sort();
   const toSign = keys.map((key) => `${key}${params[key]}`).join("");
   return crypto.createHmac("sha256", FLOW_SECRET_KEY).update(toSign).digest("hex");
+}
+
+// fetch con timeout vía AbortController. Al vencer ms, aborta y re-lanza como un
+// Error con mensaje legible que incluye el service (los catch de los callers ya
+// loguean error.message). Otros errores de red se propagan tal cual.
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  service: string,
+  ms = FLOW_TIMEOUT_MS
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if ((err as { name?: string })?.name === "AbortError") {
+      throw new Error(`Flow API timeout after ${ms}ms: ${service}`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function flowPost(service: string, params: Record<string, string | number>) {
@@ -23,11 +52,15 @@ export async function flowPost(service: string, params: Record<string, string | 
   });
   formData.append("s", signature);
 
-  const response = await fetch(`${FLOW_API_URL}/${service}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: formData.toString(),
-  });
+  const response = await fetchWithTimeout(
+    `${FLOW_API_URL}/${service}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData.toString(),
+    },
+    service
+  );
 
   if (!response.ok) {
     const text = await response.text();
@@ -47,9 +80,11 @@ export async function flowGet(service: string, params: Record<string, string | n
   });
   queryParams.append("s", signature);
 
-  const response = await fetch(`${FLOW_API_URL}/${service}?${queryParams.toString()}`, {
-    method: "GET",
-  });
+  const response = await fetchWithTimeout(
+    `${FLOW_API_URL}/${service}?${queryParams.toString()}`,
+    { method: "GET" },
+    service
+  );
 
   if (!response.ok) {
     const text = await response.text();
