@@ -56,14 +56,16 @@ export async function POST(request: Request) {
 
   for (const type of types) {
     // Intentar API paginada primero
-    let result = await scrapeTocTocAPI(type, comunas, maxPages);
+    const apiResult = await scrapeTocTocAPI(type, comunas, maxPages);
+    allErrors.push(...apiResult.errors); // preservar errores/DEBUG de la API aunque caiga a fallback
+    let result = apiResult;
     if (result.properties.length === 0) {
       // Fallback al método __NEXT_DATA__
       result = await scrapeTocToc(type, comunas);
       method = "listing-fallback";
+      allErrors.push(...result.errors); // errores del fallback aparte
     }
     allProperties.push(...result.properties);
-    allErrors.push(...result.errors);
   }
 
   const t1 = Date.now();
