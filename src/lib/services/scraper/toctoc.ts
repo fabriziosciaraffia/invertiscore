@@ -66,7 +66,7 @@ export function getComunasBatch(batch: number): string[] {
 }
 
 const HEADERS = {
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36",
   "Accept": "text/html,application/xhtml+xml",
   "Accept-Language": "es-CL,es;q=0.9",
 };
@@ -363,6 +363,7 @@ export async function scrapeTocTocAPI(
   }
 
   // Paso 2: Para cada comuna, paginar
+  let didDebug = false; // DEBUG TEMPORAL: loguear solo la primera comuna/page=1
   for (const comunaSlug of targetComunas) {
     const comunaInfo = COMUNA_IDS[comunaSlug];
     if (!comunaInfo) {
@@ -388,22 +389,55 @@ export async function scrapeTocTocAPI(
       try {
         const apiUrl = `https://www.toctoc.com/gw-lista-seo/propiedades?filtros=${encodeURIComponent(filtros)}&order=1&page=${page}`;
 
-        const response = await fetch(apiUrl, {
-          headers: {
-            "User-Agent": HEADERS["User-Agent"],
-            "Accept": "application/json",
-            "Accept-Language": "es-CL,es;q=0.9",
-            "Referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
-            "Cookie": cookies,
-          },
-        });
+        const apiHeaders = {
+          "User-Agent": HEADERS["User-Agent"],
+          "accept": "*/*",
+          "accept-language": "es-CL,es;q=0.9",
+          "referer": `https://www.toctoc.com/${type}/departamento/metropolitana/${comunaSlug}`,
+          "sec-fetch-site": "same-origin",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-dest": "empty",
+          "Cookie": cookies,
+        };
+
+        // Retry ante 202 (warming para IP datacenter) o body vacío: hasta 3 intentos.
+        let response!: Response;
+        let rawText = "";
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          response = await fetch(apiUrl, { headers: apiHeaders });
+          rawText = await response.text();
+          const needsRetry = response.status === 202 || rawText.trim() === "";
+          if (!needsRetry) break;
+          if (attempt < 3) {
+            await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 800 : 1500));
+          }
+        }
+
+        // DEBUG TEMPORAL: ver crudo de la primera comuna/page=1 desde la IP de Vercel
+        // (refleja el ÚLTIMO intento para ver si el retry cambió algo)
+        const isDebugRow = page === 1 && !didDebug;
+        if (isDebugRow) {
+          didDebug = true;
+          errors.push(`DEBUG ${comunaSlug}: status=${response.status} bodyHead=${rawText.slice(0, 300)}`);
+        }
+
+        // Tras 3 intentos sigue 202/vacío: rendirse para esta comuna.
+        if (response.status === 202 || rawText.trim() === "") {
+          errors.push(`API ${comunaSlug} p${page}: 202/empty tras 3 intentos`);
+          break;
+        }
 
         if (!response.ok) {
           errors.push(`API ${comunaSlug} p${page}: ${response.status}`);
           break;
         }
 
-        const data = await response.json() as { total: number; results: unknown[] };
+        const data = JSON.parse(rawText) as { total: number; results: unknown[] };
+
+        // DEBUG TEMPORAL: total y cantidad de resultados parseados
+        if (isDebugRow) {
+          errors.push(`DEBUG ${comunaSlug}: total=${data.total} results=${data.results?.length}`);
+        }
 
         if (!data.results || data.results.length === 0) break;
 
