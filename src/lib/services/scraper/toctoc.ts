@@ -37,6 +37,7 @@ const COMUNAS_SANTIAGO = [
   "vitacura", "lo-barnechea", "san-miguel", "macul", "penalolen",
   "la-reina", "estacion-central", "independencia", "recoleta",
   "maipu", "puente-alto", "san-joaquin", "quinta-normal", "conchali",
+  "la-cisterna", "huechuraba", "pudahuel", "cerrillos", "quilicura", "renca",
 ];
 
 // ─── Comuna IDs for gw-lista-seo API ───
@@ -60,6 +61,12 @@ const COMUNA_IDS: Record<string, { id: number; label: string }> = {
   "quinta-normal":    { id: 336, label: "Quinta Normal" },
   "conchali":         { id: 326, label: "Conchalí" },
   "puente-alto":      { id: 295, label: "Puente Alto" },
+  "la-cisterna":      { id: 330, label: "La Cisterna" },
+  "huechuraba":       { id: 327, label: "Huechuraba" },
+  "pudahuel":         { id: 317, label: "Pudahuel" },
+  "cerrillos":        { id: 321, label: "Cerrillos" },
+  "quilicura":        { id: 323, label: "Quilicura" },
+  "renca":            { id: 322, label: "Renca" },
 };
 
 export const BATCH_SIZE = 1; // Reducido para diagnóstico de timeout (era 2)
@@ -98,6 +105,12 @@ const COMUNA_VIEWPORTS: Record<string, string> = {
   "san-joaquin":        "-33.51,-70.65,-33.48,-70.62",
   "quinta-normal":      "-33.46,-70.71,-33.42,-70.67",
   "conchali":           "-33.41,-70.68,-33.37,-70.64",
+  "la-cisterna":        "-33.55,-70.68,-33.51,-70.64",
+  "huechuraba":         "-33.39,-70.66,-33.34,-70.60",
+  "pudahuel":           "-33.48,-70.78,-33.42,-70.72",
+  "cerrillos":          "-33.52,-70.73,-33.48,-70.69",
+  "quilicura":          "-33.39,-70.75,-33.34,-70.69",
+  "renca":              "-33.42,-70.74,-33.38,-70.68",
 };
 
 async function getTocTocSession(): Promise<string> {
