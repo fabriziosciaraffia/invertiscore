@@ -42,6 +42,9 @@ export async function getComunaMedianaVentaUF(
 ): Promise<number | null> {
   const supMinV = superficie * 0.8;
   const supMaxV = superficie * 1.2;
+  // Ventana de frescura: descartar avisos no refrescados hace >90d (el scraper solo
+  // hace upsert, is_active queda true para siempre y sesga la mediana con precios añejos).
+  const hace90dias = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
   let ventaQ = supabase
     .from("scraped_properties")
@@ -49,6 +52,7 @@ export async function getComunaMedianaVentaUF(
     .eq("comuna", comuna)
     .eq("type", "venta")
     .eq("is_active", true)
+    .gte("scraped_at", hace90dias)
     .gte("superficie_m2", supMinV)
     .lte("superficie_m2", supMaxV)
     .limit(2000);
