@@ -363,6 +363,7 @@ export async function scrapeTocTocAPI(
   }
 
   // Paso 2: Para cada comuna, paginar
+  let didDebug = false; // DEBUG TEMPORAL: loguear solo la primera comuna/page=1
   for (const comunaSlug of targetComunas) {
     const comunaInfo = COMUNA_IDS[comunaSlug];
     if (!comunaInfo) {
@@ -401,12 +402,26 @@ export async function scrapeTocTocAPI(
           },
         });
 
+        const rawText = await response.text();
+
+        // DEBUG TEMPORAL: ver crudo de la primera comuna/page=1 desde la IP de Vercel
+        const isDebugRow = page === 1 && !didDebug;
+        if (isDebugRow) {
+          didDebug = true;
+          errors.push(`DEBUG ${comunaSlug}: status=${response.status} bodyHead=${rawText.slice(0, 300)}`);
+        }
+
         if (!response.ok) {
           errors.push(`API ${comunaSlug} p${page}: ${response.status}`);
           break;
         }
 
-        const data = await response.json() as { total: number; results: unknown[] };
+        const data = JSON.parse(rawText) as { total: number; results: unknown[] };
+
+        // DEBUG TEMPORAL: total y cantidad de resultados parseados
+        if (isDebugRow) {
+          errors.push(`DEBUG ${comunaSlug}: total=${data.total} results=${data.results?.length}`);
+        }
 
         if (!data.results || data.results.length === 0) break;
 
