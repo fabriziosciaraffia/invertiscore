@@ -59,7 +59,7 @@ const COMUNA_IDS: Record<string, { id: number; label: string }> = {
   "san-joaquin":      { id: 341, label: "San Joaquín" },
   "quinta-normal":    { id: 336, label: "Quinta Normal" },
   "conchali":         { id: 326, label: "Conchalí" },
-  // puente-alto: ID no confirmado, se usa fallback __NEXT_DATA__
+  "puente-alto":      { id: 295, label: "Puente Alto" },
 };
 
 export const BATCH_SIZE = 1; // Reducido para diagnóstico de timeout (era 2)
