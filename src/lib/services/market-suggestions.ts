@@ -250,6 +250,9 @@ async function getSugerenciasPorComuna(
   propType: string = "arriendo",
   condicion: string | null = null
 ): Promise<Sugerencias | null> {
+  // `condicion` ya no se usa acá: el factor cierre lo aplica getComunaMedianaVentaUF
+  // por fila. Se mantiene en la firma porque los callers lo pasan posicionalmente.
+  void condicion;
   const supabase = getSupabase();
 
   // VENTA: el precioM2 sale del helper canónico getComunaMedianaVentaUF, que lee
