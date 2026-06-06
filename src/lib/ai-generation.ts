@@ -651,7 +651,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // 1º (prioritario): mediana de precio/m² de venta desde scraped_properties
     // (dato real, ≥20 ventas; misma fuente y umbral que el drawer zone-insight).
     {
-      const medianaUF = await getComunaMedianaVentaUF(
+      const { mediana: medianaUF } = await getComunaMedianaVentaUF(
         supabase, input.comuna, input.superficie, input.dormitorios, UF_CLP);
       if (typeof medianaUF === "number" && medianaUF > 0) {
         precioM2Zona = medianaUF;

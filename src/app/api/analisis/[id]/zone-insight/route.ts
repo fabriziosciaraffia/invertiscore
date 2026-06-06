@@ -153,7 +153,7 @@ async function fetchComunaStats(
   // ARRIENDO uses a cascading strategy in fetchOfertaComparableCascade below.
 
   // ── VENTA: median price/m² in UF ──
-  const medianaVentaUF = await getComunaMedianaVentaUF(
+  const { mediana: medianaVentaUF } = await getComunaMedianaVentaUF(
     supabase,
     comuna,
     superficie,

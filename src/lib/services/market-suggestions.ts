@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { getUFValue } from "../uf";
 import { estimarContribuciones } from "../contribuciones";
-import { getFactorCierre } from "@/lib/comuna-stats";
+import { getFactorCierre, getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 
 function getSupabase() {
   return createClient(
@@ -252,11 +252,35 @@ async function getSugerenciasPorComuna(
 ): Promise<Sugerencias | null> {
   const supabase = getSupabase();
 
-  // Factor de corrección publicado->cierre: solo afecta el precioM2 de VENTA, y
-  // solo cuando NO es "nuevo". market_stats es inventario mezclado (~93% usado),
-  // por eso null por defecto corrige.
-  const factorCierre = (propType === "venta" && condicion !== "nuevo" && comuna)
-    ? getFactorCierre(comuna) : 1;
+  // VENTA: el precioM2 sale del helper canónico getComunaMedianaVentaUF, que lee
+  // scraped_properties DIRECTO (misma fuente que el sobreprecio → coherencia garantizada)
+  // con ventana superficie ±20%, dormitorios, frescura 90d (+adaptativa 180) y factor
+  // cierre YA aplicado por fila. market_stats está desactualizado y no se usa para venta.
+  if (propType === "venta") {
+    const ufCLP = await getUFValue();
+    const { mediana: medianaUF, n } = await getComunaMedianaVentaUF(
+      supabase, comuna, superficie, dormitorios, ufCLP);
+    if (medianaUF && medianaUF > 0) {
+      // medianaUF es UF/m²; el consumidor espera CLP/m² (lo divide por UF). No re-aplicar
+      // factorCierre: el helper ya lo aplicó internamente.
+      const precioM2CLP = Math.round(medianaUF * ufCLP);
+      const precioTotalCLP = Math.round(precioM2CLP * superficie);
+      return {
+        // En venta, "arriendo" no lo lee el consumidor; lo dejamos como precio total implícito.
+        arriendo: Math.round(precioTotalCLP / 1000) * 1000,
+        ggcc: null,
+        contribTrim: estimarContribuciones(precioTotalCLP),
+        source: "comuna",
+        sampleSize: n,
+        precioM2: precioM2CLP,
+      };
+    }
+    return null; // sin ventas frescas suficientes → cae a NIVEL 3
+  }
+
+  // Bloque arriendo (venta ya retornó arriba): el arriendo no lleva corrección
+  // publicado->cierre, así que el factor es siempre 1.
+  const factorCierre = 1;
 
   const { data: stats } = await supabase
     .from("market_stats")

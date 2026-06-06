@@ -26,11 +26,22 @@ export function getFactorCierre(comuna: string): number {
   return FACTOR_CIERRE_POR_COMUNA[comuna] ?? FACTOR_CIERRE_DEFAULT;
 }
 
+// Alias de comuna (form/UI) -> forma canónica almacenada en scraped_properties.
+// El form usa "Santiago Centro" pero la tabla guarda "Santiago"; un mismatch en
+// .eq("comuna", ...) devuelve 0 filas. Extensible: agregar alias acá si aparecen.
+const COMUNA_ALIASES: Record<string, string> = {
+  "Santiago Centro": "Santiago",
+};
+export function normalizeComuna(comuna: string): string {
+  return COMUNA_ALIASES[comuna] ?? comuna;
+}
+
 /**
  * Mediana de precio/m² de VENTA (en UF) para la comuna, calculada desde
  * scraped_properties. Ventana ±20% de superficie; filtro de dormitorios solo
  * si se entrega un valor. Requiere >= 15 ventas válidas (precio>0 y
- * superficie_m2>0); de lo contrario devuelve null.
+ * superficie_m2>0). Devuelve { mediana, n } donde n es el número de ventas
+ * válidas usadas; mediana es null (y n el conteo parcial) si no alcanza el umbral.
  */
 export async function getComunaMedianaVentaUF(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -39,7 +50,8 @@ export async function getComunaMedianaVentaUF(
   superficie: number,
   dormitorios: number | null,
   ufValue: number
-): Promise<number | null> {
+): Promise<{ mediana: number | null; n: number }> {
+  const comunaNorm = normalizeComuna(comuna);
   const supMinV = superficie * 0.8;
   const supMaxV = superficie * 1.2;
 
@@ -50,7 +62,7 @@ export async function getComunaMedianaVentaUF(
     let q = supabase
       .from("scraped_properties")
       .select("precio, moneda, superficie_m2, dormitorios, condicion")
-      .eq("comuna", comuna)
+      .eq("comuna", comunaNorm)
       .eq("type", "venta")
       .eq("is_active", true)
       .gte("scraped_at", desde)
@@ -64,7 +76,7 @@ export async function getComunaMedianaVentaUF(
 
   let ventas = await fetchVentas(90);
   if (ventas.length < 15) ventas = await fetchVentas(180); // ventana adaptativa
-  if (ventas.length < 15) return null;
+  if (ventas.length < 15) return { mediana: null, n: ventas.length };
 
   const m2sUF: number[] = [];
   for (const r of ventas) {
@@ -72,10 +84,10 @@ export async function getComunaMedianaVentaUF(
     const precio = Number(r.precio);
     if (!sup || sup <= 0 || !precio || precio <= 0 || Number.isNaN(sup) || Number.isNaN(precio)) continue;
     // Correccion publicado->cierre: usados llevan factor (<1); nuevos 1.
-    const factor = r.condicion === "usado" ? getFactorCierre(comuna) : 1;
+    const factor = r.condicion === "usado" ? getFactorCierre(comunaNorm) : 1;
     const precioUF = (r.moneda === "UF" ? precio : precio / (ufValue || 1)) * factor;
     m2sUF.push(precioUF / sup);
   }
-  if (m2sUF.length < 15) return null;
-  return Math.round(median(m2sUF) * 100) / 100;
+  if (m2sUF.length < 15) return { mediana: null, n: m2sUF.length };
+  return { mediana: Math.round(median(m2sUF) * 100) / 100, n: m2sUF.length };
 }
