@@ -27,13 +27,13 @@ export default async function CuentaPage() {
   // Fetch credits + subscription
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, subscription_end, grace_ends_at")
+    .select("credits, subscription_status, subscription_ends_at, grace_ends_at")
     .eq("user_id", user.id)
     .single();
 
   const credits: number = creditsRow?.credits ?? 0;
   const subStatus: string = creditsRow?.subscription_status ?? "none";
-  const subEnd: string | null = (creditsRow?.subscription_end as string) ?? null;
+  const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
 
   // Fetch payment history
@@ -51,12 +51,17 @@ export default async function CuentaPage() {
   // este caso del 'active'. Seguro server-side: esta página es Server Component, así
   // que importar access.ts no filtra el admin client al bundle de cliente.
   const isSubscriber = subStatus === "active";
-  const isCancelled = subStatus === "cancelled";
+  // Cancelado pero con el ciclo pagado AÚN vigente: conserva acceso Pro hasta
+  // subscription_ends_at. hasSubscriptionAccess es la fuente de verdad (now <
+  // ends_at), igual que access.ts. El cancelado-vencido cae a free abajo.
+  const isCancelledActive =
+    subStatus === "cancelled" &&
+    hasSubscriptionAccess({ subscription_status: subStatus, subscription_ends_at: subEnd });
   const isPastDueGrace =
     subStatus === "past_due" &&
     hasSubscriptionAccess({ subscription_status: subStatus, grace_ends_at: graceEndsAt });
-  const hasCredits = credits > 0 && !isSubscriber && !isCancelled && !isPastDueGrace;
-  const isFree = !isSubscriber && !isCancelled && !isPastDueGrace && credits === 0;
+  const hasCredits = credits > 0 && !isSubscriber && !isCancelledActive && !isPastDueGrace;
+  const isFree = !isSubscriber && !isCancelledActive && !isPastDueGrace && credits === 0;
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)] text-[var(--franco-text)]">
@@ -89,13 +94,13 @@ export default async function CuentaPage() {
               </>
             )}
 
-            {isCancelled && (
+            {isCancelledActive && (
               <>
                 <StatusBadge label="CANCELADA" tone="ink-500" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Tu suscripción fue cancelada</p>
                 {subEnd && (
                   <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                    Acceso Pro hasta: {fmtDate(subEnd)}
+                    Acceso Pro hasta: <span className="font-mono">{fmtDate(subEnd)}</span>
                   </p>
                 )}
                 <div className="mt-4">
