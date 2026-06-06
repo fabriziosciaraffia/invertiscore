@@ -291,6 +291,13 @@ export interface ShortTermResult {
   // str-universo-santiago.ts. Recalibrar con data interna en V2.
   zonaSTR?: ZonaSTRScore;
   recomendacionModalidad?: RecomendacionModalidadSTR;
+
+  // Remediación 2026-06 — fuente de la ocupación del escenario BASE.
+  // 'observada'        = percentiles.occupancy.p50 (o estimated_occupancy) de AirROI.
+  // 'fallback_mercado' = no había occ observada; se usó la mediana pooled Santiago
+  //                      (OCC_FALLBACK_MERCADO). UI/IA deben mostrar caveat en este caso.
+  // Opcional para back-compat con análisis persistidos pre-remediación.
+  occFuente?: OccFuenteSTR;
 }
 
 export interface SensibilidadPrecioRow {
@@ -482,6 +489,40 @@ export function determinarBandaOcupacion(input: {
   return 'auto_gestion_residencial';
 }
 
+// Remediación 2026-06 — fuente de la ocupación que factura el escenario base.
+export type OccFuenteSTR = 'observada' | 'fallback_mercado';
+
+// Mediana pooled de ocupación STR Santiago (Lastarria/Providencia/Las Condes,
+// n=149). Ver docs/str-benchmarks-from-airroi-2026-05.md §1. Fallback honesto
+// cuando AirROI no entrega ocupación observada — nunca el occ_target.
+const OCC_FALLBACK_MERCADO = 0.45;
+
+/**
+ * Resuelve la ocupación OBSERVADA a usar en el escenario base, con fallback
+ * escalonado y clamp a [0.05, 0.95]:
+ *   a) percentiles.occupancy.p50 si > 0            → 'observada'
+ *   b) si no, estimated_occupancy si > 0           → 'observada'
+ *   c) si no, OCC_FALLBACK_MERCADO (0.45)          → 'fallback_mercado'
+ */
+function resolveOccObservada(airbnbData: AirbnbData): { occObs: number; occFuente: OccFuenteSTR } {
+  const p50 = airbnbData.percentiles?.occupancy?.p50;
+  const est = airbnbData.estimated_occupancy;
+  let occRaw: number;
+  let occFuente: OccFuenteSTR;
+  if (typeof p50 === 'number' && p50 > 0) {
+    occRaw = p50;
+    occFuente = 'observada';
+  } else if (typeof est === 'number' && est > 0) {
+    occRaw = est;
+    occFuente = 'observada';
+  } else {
+    occRaw = OCC_FALLBACK_MERCADO;
+    occFuente = 'fallback_mercado';
+  }
+  const occObs = Math.max(0.05, Math.min(0.95, occRaw));
+  return { occObs, occFuente };
+}
+
 /**
  * Aplica los 3 ejes operacionales al baseline de AirROI:
  *   - Eje 1 (edificio) y eje 3 (habilitación) → ADR factor.
@@ -523,8 +564,11 @@ export function aplicarEjesSTR(
     && input.occOverride > 0
     && input.occOverride <= 1;
 
+  // Remediación 2026-06: el base factura la ocupación OBSERVADA (occObs), no el
+  // occ_target. ocupacionTarget queda como referencia del escenario upside.
+  const { occObs } = resolveOccObservada(airbnbData);
   const adrFinal = adrOverrideValido ? Math.round(input.adrOverride as number) : adrAjustado;
-  const ocupacionFinal = occOverrideValido ? (input.occOverride as number) : ocupacionTarget;
+  const ocupacionFinal = occOverrideValido ? (input.occOverride as number) : occObs;
 
   return {
     tipoEdificio,
@@ -789,24 +833,29 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     occOverride: input.occOverride,
   });
 
-  // adrFinal / ocupacionFinal prevalecen sobre el derivado de ejes cuando
-  // hay override manual. Cuando no, son iguales a adrAjustado / ocupacionTarget.
+  // Remediación 2026-06 — el escenario BASE factura la ocupación OBSERVADA de
+  // AirROI (occObs, vía ejes.ocupacionFinal) o el override manual; ya NO el
+  // occ_target. El occ_target se mueve al escenario upside (`agresivo`). El ADR
+  // y sus uplifts no se tocan.
+  const { occFuente } = resolveOccObservada(airbnbData);
   const adrBase = ejes.adrFinal;
-  const occBase = ejes.ocupacionFinal;
+  const occBase = ejes.ocupacionFinal;  // override manual, o la ocupación OBSERVADA
   const revenueBase = Math.round(adrBase * occBase * 365);
 
-  // Shifts relativos de AirROI (fallback a 0.85/1.15 si los percentiles vienen colapsados)
+  // Conservador: anclado en la ocupación OBSERVADA absoluta (p25), no en
+  // occBase × shift. El ADR baja por el shift p25/p50 de AirROI (sin tocar uplifts).
   const adrShiftP25 = p.average_daily_rate.p50 > 0 ? p.average_daily_rate.p25 / p.average_daily_rate.p50 : 0.85;
-  const adrShiftP75 = p.average_daily_rate.p50 > 0 ? p.average_daily_rate.p75 / p.average_daily_rate.p50 : 1.15;
-  const occShiftP25 = p.occupancy.p50 > 0 ? p.occupancy.p25 / p.occupancy.p50 : 0.85;
-  const occShiftP75 = p.occupancy.p50 > 0 ? p.occupancy.p75 / p.occupancy.p50 : 1.15;
-
   const adrConservador = Math.round(adrBase * adrShiftP25);
-  const adrAgresivo = Math.round(adrBase * adrShiftP75);
-  const occConservador = Math.max(0.05, Math.min(0.95, occBase * occShiftP25));
-  const occAgresivo = Math.max(0.05, Math.min(0.95, occBase * occShiftP75));
+  const occConservador = Math.max(0.05, Math.min(0.95, p.occupancy.p25));
   const revenueConservador = Math.round(adrConservador * occConservador * 365);
-  const revenueAgresivo = Math.round(adrAgresivo * occAgresivo * 365);
+
+  // Agresivo repurposed → UPSIDE: "potencial con gestión profesional"
+  // (estabilizado mes 7+). occ = occ_target de la banda; ADR = adrBase (mismo
+  // ADR uplifted del p50 — el upside es puramente de ocupación). El label/copy
+  // se ajusta en la capa UI.
+  const occAgresivo = ejes.ocupacionTarget;
+  const adrAgresivo = adrBase;
+  const revenueAgresivo = Math.round(adrBase * occAgresivo * 365);
 
   const conservador = buildEscenario('Conservador', revenueConservador, adrConservador, occConservador);
   const base = buildEscenario('Base', revenueBase, adrBase, occBase);
@@ -1003,6 +1052,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     subsidioTasa,
     zonaSTR,
     recomendacionModalidad,
+    occFuente,
   };
 }
 

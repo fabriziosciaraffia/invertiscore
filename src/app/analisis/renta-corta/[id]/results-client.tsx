@@ -221,6 +221,7 @@ export function STRResultsClient({
               revenueMensualBase={results.escenarios.base.ingresoBrutoMensual}
               currency={currency}
               valorUF={ufValue}
+              occFuente={results.occFuente}
             />
             <div style={{ height: 24 }} />
           </>

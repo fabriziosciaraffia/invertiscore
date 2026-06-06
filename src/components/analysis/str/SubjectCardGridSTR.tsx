@@ -517,11 +517,23 @@ function DrawerContent({
     return (
       <>
         <NarrativeIA text={seccion?.contenido} />
-        <DrawerSection label="Escenario base (mediana del mercado · p50)">
+        <DrawerSection label="Escenario base (mediana observada de la zona · P50)">
+          {results.occFuente && (
+            <DataRow
+              label="Ocupación observada de la zona"
+              value={`${Math.round(base.ocupacionReferencia * 100)}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}% (+${Math.round((agresivo.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts)`}
+              tooltip="Ocupación mediana efectivamente observada en la zona — el caso central esperable. El potencial es el techo alcanzable con gestión profesional ya estabilizada; depende de la operación, no del mercado."
+            />
+          )}
+          {results.occFuente === "fallback_mercado" && (
+            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 mb-3 m-0 italic leading-[1.5]">
+              No hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). Tómalo como referencia, no como dato propio de la zona.
+            </p>
+          )}
           <DataRow
             label="Ingresos brutos anuales"
             value={fmtMoney(base.revenueAnual, currency, valorUF)}
-            tooltip="Total de ingresos del año asumiendo la mediana del mercado de la zona. Sin descontar costos."
+            tooltip="Total de ingresos del año asumiendo la mediana observada de la zona. Sin descontar costos."
           />
           <DataRow
             label="NOI mensual (ingreso neto operativo)"
@@ -559,12 +571,12 @@ function DrawerContent({
           <DataRow
             label="Base"
             value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="Escenario más probable: ADR y ocupación calibrados a la mediana de la zona, ajustados por los ejes operativos de tu propiedad (tipo de edificio + habilitación + gestión)."
+            tooltip="Escenario más probable: ocupación = mediana observada de la zona (no ajustada por los ejes ni por la gestión). Solo el ADR lleva uplift por tipo de edificio + habilitación."
           />
           <DataRow
             label="Optimista"
             value={fmtMoney(agresivo.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="NOI si superas al promedio del mercado. Requiere tarifas dinámicas por temporada, fotos profesionales y reseñas ≥4,7. Está calibrado sobre tu base — no es el percentil 75 del mercado sin ajustes."
+            tooltip="Potencial con gestión profesional, estabilizado: el techo de ocupación alcanzable con operación pro ya rodada. No es el percentil 75 del mercado — depende de la gestión, no del mercado."
           />
         </DrawerSection>
         <CostosBreakdown inputData={inputData} currency={currency} valorUF={valorUF} />

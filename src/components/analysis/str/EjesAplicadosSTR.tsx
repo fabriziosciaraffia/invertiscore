@@ -2,7 +2,7 @@
 // cómo se aplicaron los 3 ejes operacionales al baseline de AirROI.
 // Calibración v1 (mayo 2026) + override manual (iter 2026-05-10).
 
-import type { EjesAplicadosSTR as EjesType } from "@/lib/engines/short-term-engine";
+import type { EjesAplicadosSTR as EjesType, OccFuenteSTR } from "@/lib/engines/short-term-engine";
 
 interface Props {
   ejes: EjesType | undefined;
@@ -10,6 +10,10 @@ interface Props {
   revenueMensualBase: number;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** Fuente de la ocupación base (Remediación 2026-06). Si está presente, el
+   * análisis es del motor nuevo: la fila separa ocupación observada vs
+   * potencial. Si es undefined (v1), se mantiene la fila legacy. */
+  occFuente?: OccFuenteSTR;
 }
 
 const fmtCLP = (n: number): string => "$" + Math.round(n).toLocaleString("es-CL");
@@ -28,7 +32,7 @@ const LABEL_HABILITACION: Record<string, string> = {
   premium: "Premium",
 };
 
-export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }: Props) {
+export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, occFuente }: Props) {
   if (!ejes) return null;
 
   const occPct = (ejes.ocupacionTarget * 100).toFixed(0);
@@ -39,6 +43,9 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
   const adrFinal = ejes.adrFinal ?? ejes.adrAjustado;
   const ocupacionFinal = ejes.ocupacionFinal ?? ejes.ocupacionTarget;
   const occFinalPct = (ocupacionFinal * 100).toFixed(0);
+  // Remediación 2026-06 — gap observada → potencial (solo motor nuevo).
+  const occGap = Math.round((ejes.ocupacionTarget - ocupacionFinal) * 100);
+  const occGapTxt = `${occGap >= 0 ? "+" : ""}${occGap} pts`;
 
   return (
     <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 mt-3">
@@ -119,25 +126,58 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF }
             <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(adrFinal, currency, valorUF)}</span>
           )}
         </div>
-        <div className="flex justify-between font-mono text-[12px]">
-          <span className="text-[var(--franco-text-muted)]">Ocupación estabilizada (mes 7+)</span>
-          {occEsOverride ? (
-            <span className="flex items-center gap-2">
-              <span className="text-[var(--franco-text-muted)] line-through">{occPct}%</span>
-              <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
-              <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
-                Ajustado manualmente
+        {occFuente ? (
+          <>
+            {/* Motor nuevo (Remediación 2026-06): el base factura la ocupación
+                OBSERVADA; el target se muestra aparte como potencial. */}
+            <div className="flex justify-between font-mono text-[12px]">
+              <span className="text-[var(--franco-text-muted)]">Ocupación observada de la zona</span>
+              {occEsOverride ? (
+                <span className="flex items-center gap-2">
+                  <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                    Ajustado manualmente
+                  </span>
+                </span>
+              ) : (
+                <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+              )}
+            </div>
+            <div className="flex justify-between font-mono text-[12px]">
+              <span className="text-[var(--franco-text-muted)]">Potencial con gestión profesional</span>
+              <span className="text-[var(--franco-text-secondary)]">{occPct}% ({occGapTxt})</span>
+            </div>
+          </>
+        ) : (
+          /* Legacy v1 (sin occFuente): la fila original. */
+          <div className="flex justify-between font-mono text-[12px]">
+            <span className="text-[var(--franco-text-muted)]">Ocupación estabilizada (mes 7+)</span>
+            {occEsOverride ? (
+              <span className="flex items-center gap-2">
+                <span className="text-[var(--franco-text-muted)] line-through">{occPct}%</span>
+                <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+                <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+                  Ajustado manualmente
+                </span>
               </span>
-            </span>
-          ) : (
-            <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
-          )}
-        </div>
+            ) : (
+              <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
+            )}
+          </div>
+        )}
         <div className="flex justify-between font-mono text-[13px]">
           <span className="text-[var(--franco-text)]">Ingresos brutos mensuales estimados</span>
           <span className="text-[var(--franco-text)] font-semibold">{fmtMoney(revenueMensualBase, currency, valorUF)}</span>
         </div>
       </div>
+
+      {/* Caveat fallback_mercado (Remediación 2026-06): sin ocupación observada
+          para esta dirección, se usó la mediana de Santiago. */}
+      {occFuente === "fallback_mercado" && (
+        <p className="mt-3 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
+          No hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). El número base es referencial.
+        </p>
+      )}
 
       {/* Caveat */}
       <p className="mt-4 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
