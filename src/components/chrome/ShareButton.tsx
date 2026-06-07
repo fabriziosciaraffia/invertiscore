@@ -109,21 +109,34 @@ export function ShareButton({
   };
 
   const shareWhatsApp = () => {
-    const msg = `Analicé este depto con Franco y el Score es ${score}/100. Míralo acá → ${url}`;
+    // Sin score (AMBAS): usa `text`. Con score (LTR/STR): mensaje original.
+    const msg =
+      score === undefined
+        ? `${text} → ${url}`
+        : `Analicé este depto con Franco y el Score es ${score}/100. Míralo acá → ${url}`;
     window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
     setOpen(false);
   };
 
   const shareEmail = () => {
-    const subject = `Te comparto mi análisis Franco: ${nombre}`;
+    // Sin score (AMBAS): subject = `title`, body = `text`. Con score: original.
+    const subject =
+      score === undefined ? title : `Te comparto mi análisis Franco: ${nombre}`;
     const comunaText = comuna ? `\nComuna: ${comuna}` : "";
-    const body = `Hice un análisis de inversión con Franco para este depto.\n\nScore: ${score}/100${comunaText}\n\nVer análisis: ${url}`;
+    const body =
+      score === undefined
+        ? `${text}\n\nVer comparativa: ${url}`
+        : `Hice un análisis de inversión con Franco para este depto.\n\nScore: ${score}/100${comunaText}\n\nVer análisis: ${url}`;
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setOpen(false);
   };
 
   const shareX = () => {
-    const msg = `Analicé este depto con Franco: Score ${score}/100 🏠 ${url}`;
+    // Sin score (AMBAS): usa `text`. Con score (LTR/STR): mensaje original.
+    const msg =
+      score === undefined
+        ? `${text} ${url}`
+        : `Analicé este depto con Franco: Score ${score}/100 🏠 ${url}`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(msg)}`, "_blank");
     setOpen(false);
   };
