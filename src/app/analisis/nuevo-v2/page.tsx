@@ -145,7 +145,18 @@ export default function NuevoAnalisisV3Page() {
     if (!initialized.current) return;
     if (!state.direccion && !state.precio) return;
     const t = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: state, savedAt: Date.now() })); } catch { /* ignore */ }
+      // Persistir solo lo que el USUARIO decidió. Los campos inferibles (los que
+      // prefilleamos desde la sugerencia de mercado) solo se guardan si fueron
+      // editados a mano (están en editedFields); si no, los reseteamos a "" para
+      // que al reabrir el draft el prefill los recalcule fresco. Así un precio
+      // viejo no pisa la sugerencia y no genera un sobreprecio falso.
+      const edited = new Set(state.editedFields);
+      const dataToPersist: WizardV3State = { ...state };
+      if (!edited.has("precio")) dataToPersist.precio = "";
+      if (!edited.has("arriendo")) dataToPersist.arriendo = "";
+      if (!edited.has("gastos")) dataToPersist.gastos = "";
+      if (!edited.has("contribuciones")) dataToPersist.contribuciones = "";
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: dataToPersist, savedAt: Date.now() })); } catch { /* ignore */ }
     }, 500);
     return () => clearTimeout(t);
   }, [state]);
@@ -687,7 +698,7 @@ export default function NuevoAnalisisV3Page() {
               <Paso1Propiedad
                 state={state}
                 setState={patch}
-                comparablesCount={suggestions.totalInRadius}
+                comparablesCount={suggestions.precioM2SampleSize ?? suggestions.totalInRadius ?? 0}
                 comparables={suggestions.nearbyProperties}
                 userEmail={tierInfo?.email}
               />

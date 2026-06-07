@@ -58,8 +58,12 @@ export function Paso1Propiedad({
         // Extract comuna from address components
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const comps = (place.address_components || []) as any[];
-        const comuna = comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name
-          || comps.find((c) => c.types.includes("locality"))?.long_name
+        // En la RM chilena Google Places mapea la COMUNA a `locality` y la
+        // PROVINCIA a `administrative_area_level_3` (ej. Providencia: locality=
+        // Providencia, admin_level_3=Santiago). Priorizar locality; admin_level_3
+        // solo como fallback.
+        const comuna = comps.find((c) => c.types.includes("locality"))?.long_name
+          || comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name
           || "";
         const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comuna.toLowerCase());
         const comunaFinal = match?.comuna || comuna;
