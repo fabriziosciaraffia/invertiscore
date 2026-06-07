@@ -114,11 +114,6 @@ export default async function AnalisisDetallePage({
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
-  // Fase 1: Guest sin registro → siempre redirigir a /register (sin excepciones)
-  if (!user) {
-    redirect('/register');
-  }
-
   // Owner first name for personalization
   const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
   const ownerFirstName = isOwner ? (ownerFullName.split(' ')[0] || '') : '';
