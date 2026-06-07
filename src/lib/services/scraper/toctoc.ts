@@ -133,8 +133,7 @@ async function fetchMapProperties(
   operacion: number,
   viewport: string,
   cookies: string,
-  token: string,
-  debugSink?: string[] // DEBUG TEMPORAL: revertir junto al logging de abajo
+  token: string
 ): Promise<unknown[] | null> {
   const body = {
     region: "metropolitana", comuna: comunaSlug, barrio: "", poi: "",
@@ -171,24 +170,9 @@ async function fetchMapProperties(
     dispatcher: proxyDispatcher,
   } as RequestInit & { dispatcher?: unknown });
 
-  // DEBUG TEMPORAL: leer como texto antes de parsear para distinguir status no-ok
-  // vs shape de respuesta cambiado. Revertir (volver a response.json directo).
-  const rawText = await response.text();
-  if (debugSink) {
-    debugSink.push(`DEBUG GetProps ${comunaSlug}: status=${response.status} bodyHead=${rawText.slice(0, 400)}`);
-  }
   if (!response.ok) return null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any;
-  try {
-    data = JSON.parse(rawText);
-  } catch {
-    if (debugSink) debugSink.push(`DEBUG GetProps ${comunaSlug}: JSON.parse fallo`);
-    return null;
-  }
-  if (debugSink) {
-    debugSink.push(`DEBUG GetProps keys=${Object.keys(data).join(",")} resultadosKeys=${data.resultados ? Object.keys(data.resultados).join(",") : "NO_RESULTADOS"}`);
-  }
+  const data = await response.json() as any;
   return data?.resultados?.Propiedades || null;
 }
 
@@ -275,15 +259,12 @@ export async function scrapeTocTocMap(
   }
   if (!token) errors.push("Map: token vacio"); // diagnostico, seguimos igual
 
-  let debugDone = false; // DEBUG TEMPORAL: solo loggear la primera comuna
   for (const comunaSlug of targetComunas) {
     try {
       const viewport = COMUNA_VIEWPORTS[comunaSlug];
       if (!viewport) { errors.push(`No viewport for ${comunaSlug}`); continue; }
 
-      const debugSink = debugDone ? undefined : errors; // DEBUG TEMPORAL
-      debugDone = true;
-      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token, debugSink);
+      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token);
       if (!propArrays || propArrays.length === 0) {
         errors.push(`Map API: no data for ${comunaSlug}`);
         continue;
