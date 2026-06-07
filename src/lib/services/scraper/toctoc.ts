@@ -232,6 +232,9 @@ function parseMapProperty(
       dormitorios: dormitorios > 0 ? dormitorios : undefined,
       banos: banos > 0 ? banos : undefined,
       url,
+      // La URL distingue obra nueva: .../compranuevo/... -> "nuevo". Sin URL o sin
+      // ese marcador -> "usado" (la mayoria del inventario).
+      condicion: (url && url.includes("compranuevo")) ? "nuevo" : "usado",
     };
   } catch {
     return null;
