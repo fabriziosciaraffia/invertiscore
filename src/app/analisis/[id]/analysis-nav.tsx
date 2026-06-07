@@ -1,6 +1,6 @@
 "use client";
 
-import { ShareButton } from "./share-button";
+import { ShareButton } from "@/components/chrome/ShareButton";
 import { DeleteButton } from "./delete-button";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 
@@ -34,7 +34,16 @@ export function AnalysisNav({
   // Guest: sin acciones (UnifiedNav ya ofrece el CTA de registro).
   const actions = isGuest ? null : (
     <div className="flex items-center gap-2">
-      <ShareButton id={analysisId} score={score} nombre={nombre} comuna={comuna} />
+      <ShareButton
+        path={`/analisis/${analysisId}`}
+        analysisId={analysisId}
+        modalidad="LTR"
+        title={`Análisis Franco: ${nombre}`}
+        text={`Mira el análisis de este depto. Score: ${score}/100`}
+        score={score}
+        nombre={nombre}
+        comuna={comuna}
+      />
       {!isSharedView && <DeleteButton id={analysisId} />}
     </div>
   );

@@ -21,6 +21,7 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -157,7 +158,23 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="app" />
+      <UnifiedNav
+        variant="app"
+        actionsSlot={
+          accessLevel !== "guest" ? (
+            <ShareButton
+              path={`/analisis/renta-corta/${analysisId}`}
+              analysisId={analysisId}
+              modalidad="STR"
+              title={`Análisis Franco: ${propiedadTitle}`}
+              text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
+              score={score ?? undefined}
+              nombre={propiedadTitle}
+              comuna={comuna}
+            />
+          ) : undefined
+        }
+      />
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
         {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
