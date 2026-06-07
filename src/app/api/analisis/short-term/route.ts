@@ -243,7 +243,6 @@ export async function POST(request: Request) {
       lng,
       revenueP50,
       monthlyRevenue,
-      distanciaMetro: typeof body.distanciaMetro === "number" ? body.distanciaMetro : 2000,
     };
 
     const francoScore = calcFrancoScoreSTR(scoreInputs);

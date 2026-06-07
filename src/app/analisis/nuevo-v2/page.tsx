@@ -698,7 +698,7 @@ export default function NuevoAnalisisV3Page() {
               <Paso1Propiedad
                 state={state}
                 setState={patch}
-                comparablesCount={suggestions.totalInRadius}
+                comparablesCount={suggestions.precioM2SampleSize ?? suggestions.totalInRadius ?? 0}
                 comparables={suggestions.nearbyProperties}
                 userEmail={tierInfo?.email}
               />
