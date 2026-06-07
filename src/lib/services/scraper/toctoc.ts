@@ -113,13 +113,19 @@ const COMUNA_VIEWPORTS: Record<string, string> = {
   "renca":              "-33.42,-70.74,-33.38,-70.68",
 };
 
-async function getTocTocSession(): Promise<string> {
+async function getTocTocSession(): Promise<{ cookies: string; token: string }> {
   const response = await fetch(
-    "https://www.toctoc.com/resultados/mapa/arriendo/departamento/metropolitana/santiago/",
+    "https://www.toctoc.com/resultados/mapa/compra/departamento/metropolitana/las-condes/",
     { headers: { ...HEADERS, Accept: "text/html" }, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown }
   );
+  const html = await response.text();
+  // El endpoint GetProps exige x-access-token: un JWT embebido en el HTML del
+  // mapa que lleva la IP del cliente en su payload (por eso debe emitirse por el
+  // mismo proxy que hara el GetProps).
+  const tokenMatch = html.match(/eyJhbGci[A-Za-z0-9._-]+/);
+  const token = tokenMatch ? tokenMatch[0] : "";
   const cookies = (response.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
-  return cookies;
+  return { cookies, token };
 }
 
 async function fetchMapProperties(
@@ -127,6 +133,7 @@ async function fetchMapProperties(
   operacion: number,
   viewport: string,
   cookies: string,
+  token: string,
   debugSink?: string[] // DEBUG TEMPORAL: revertir junto al logging de abajo
 ): Promise<unknown[] | null> {
   const body = {
@@ -144,7 +151,7 @@ async function fetchMapProperties(
     limite: 510, cargaBanner: false, primeraCarga: false, santander: false,
   };
 
-  const typeSlug = operacion === 2 ? "arriendo" : "venta";
+  const typeSlug = operacion === 2 ? "arrienda" : "compra";
   const response = await fetch("https://www.toctoc.com/api/mapa/GetProps", {
     method: "POST",
     headers: {
@@ -155,6 +162,7 @@ async function fetchMapProperties(
       Referer: `https://www.toctoc.com/resultados/mapa/${typeSlug}/departamento/metropolitana/${comunaSlug}/`,
       Origin: "https://www.toctoc.com",
       Cookie: cookies,
+      "x-access-token": token,
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-origin",
@@ -256,12 +264,16 @@ export async function scrapeTocTocMap(
   const targetComunas = comunas || Object.keys(COMUNA_VIEWPORTS);
 
   let cookies = "";
+  let token = "";
   try {
-    cookies = await getTocTocSession();
+    const session = await getTocTocSession();
+    cookies = session.cookies;
+    token = session.token;
   } catch (e) {
     errors.push(`Map session error: ${e}`);
     return { source: "toctoc-map", properties, errors, scrapedAt: new Date() };
   }
+  if (!token) errors.push("Map: token vacio"); // diagnostico, seguimos igual
 
   let debugDone = false; // DEBUG TEMPORAL: solo loggear la primera comuna
   for (const comunaSlug of targetComunas) {
@@ -271,7 +283,7 @@ export async function scrapeTocTocMap(
 
       const debugSink = debugDone ? undefined : errors; // DEBUG TEMPORAL
       debugDone = true;
-      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, debugSink);
+      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token, debugSink);
       if (!propArrays || propArrays.length === 0) {
         errors.push(`Map API: no data for ${comunaSlug}`);
         continue;
