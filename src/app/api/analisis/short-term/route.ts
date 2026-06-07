@@ -154,6 +154,7 @@ export async function POST(request: Request) {
     try {
       airbnbResult = await getAirbnbEstimate(
         body.direccion,
+        body.comuna ?? "",
         body.dormitorios,
         body.banos,
         body.capacidadHuespedes || 2,

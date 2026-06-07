@@ -33,11 +33,17 @@ function getAdminClient(): SupabaseClient | null {
 
 function makeCacheKey(
   address: string,
+  comuna: string,
   bedrooms: number,
   baths: number,
   guests: number,
 ): string {
-  const raw = `${address.toLowerCase().trim()}|${bedrooms}|${baths}|${guests}`;
+  // F1 (2026-06): la comuna entra al key. Antes se omitía y addresses "pelados"
+  // (sin comuna en el string, ej. "alameda 107") podían colisionar con homónimos
+  // de otra comuna y compartir un estimate errado. AirROI es building-level, así
+  // que la unidad/depto NO va al key (compartir entre unidades del mismo edificio
+  // es correcto).
+  const raw = `${address.toLowerCase().trim()}|${(comuna ?? "").toLowerCase().trim()}|${bedrooms}|${baths}|${guests}`;
   return createHash("sha256").update(raw).digest("hex");
 }
 
@@ -64,6 +70,7 @@ interface DirectFieldRich {
  */
 export async function getAirbnbEstimate(
   address: string,
+  comuna: string,
   bedrooms: number,
   baths: number,
   guests: number,
@@ -101,7 +108,7 @@ export async function getAirbnbEstimate(
   }
 
   // ── Cache lookup ─────────────────────────────────
-  const cacheKey = makeCacheKey(address, bedrooms, baths, guests);
+  const cacheKey = makeCacheKey(address, comuna, bedrooms, baths, guests);
 
   const { data: cached } = await db
     .from("airbnb_estimates")
