@@ -22,6 +22,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { ShareButton } from "@/components/chrome/ShareButton";
+import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -177,6 +178,13 @@ export function STRResultsClient({
       />
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
+        {accessLevel === "guest" && (
+          <div className="mb-5">
+            <ConversionHook href="/register" />
+          </div>
+        )}
+
         {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
             Análisis STR generados antes del FrancoScoreSTR (Commit 2) no tienen
             score persistido. Antes mostrábamos "50" hardcoded; ahora "—" en el
@@ -300,6 +308,13 @@ export function STRResultsClient({
             <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
+
+        {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
+        {accessLevel === "guest" && (
+          <div className="mt-8 mb-4">
+            <ConversionCloser href="/register" />
+          </div>
+        )}
 
         {/* Disclaimer */}
         <p
