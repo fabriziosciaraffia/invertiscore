@@ -6,8 +6,8 @@ import { francoMapStaticStyleParams, type FrancoMapTheme } from "@/lib/map-style
 
 /**
  * Input "crudo" — lat/lng pueden venir null cuando el backend no geolocalizó
- * la propiedad (pasa en ~85% de las filas de market_stats). Se filtran adentro
- * del componente antes de construir la URL de Static Maps.
+ * la propiedad (una parte de las filas de market_stats puede venir sin coords).
+ * Se filtran adentro del componente antes de construir la URL de Static Maps.
  */
 export interface Comparable {
   lat: number | null;
@@ -184,6 +184,12 @@ export function MapaThumbnail({
 
   const showFallback = !url || imgFailed;
 
+  // El badge muestra la cantidad de pins reales (validComparables = los que se
+  // pintan en el mapa) para que el número coincida con lo visual. Solo cae al
+  // prop `comparablesCount` (el número del motor) cuando no hay coords y por
+  // ende no hay pins que mostrar.
+  const displayCount = validComparables.length > 0 ? validComparables.length : comparablesCount;
+
   return (
     <div
       className="relative w-full rounded-xl overflow-hidden border border-[var(--franco-border)] bg-[var(--franco-card)]"
@@ -204,13 +210,13 @@ export function MapaThumbnail({
         />
       )}
 
-      {comparablesCount > 0 && (
+      {displayCount > 0 && (
         <div
           className="absolute bottom-2 right-2 px-2 py-1 rounded-md"
           style={{ background: "rgba(15,15,15,0.72)" }}
         >
           <span className="font-mono text-[10px] tracking-wide text-white">
-            {comparablesCount} comparables cerca
+            {displayCount} comparables cerca
           </span>
         </div>
       )}
