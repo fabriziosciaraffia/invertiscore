@@ -226,17 +226,21 @@ export default function NuevoAnalisisV3Page() {
           : null;
         const sampleSize = d.filteredInRadius ?? d.sampleSize ?? 0;
         const radiusUsed = d.radiusUsed ?? d.radiusMeters ?? null;
-        const totalInRadius = d.totalInRadius ?? 0;
+        // El mapa del Paso 1 comunica densidad de VENTA (pool universal, 4-5x
+        // más avisos que arriendo). Pins y total salen del fetch de venta, con
+        // fallback al de arriendo cuando venta no trajo datos.
+        const totalInRadius = venta?.totalInRadius ?? d.totalInRadius ?? 0;
         // Pasar nearbyProperties crudo (con nulls). El filtro estricto vive en
         // MapaThumbnail para que pueda loggear cuántos se descartaron.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const nearbyProperties: Array<{ lat: number | null; lng: number | null }> = Array.isArray(d.nearbyProperties)
+        const npSource = (venta && Array.isArray(venta.nearbyProperties) && venta.nearbyProperties.length > 0)
+          ? venta.nearbyProperties
+          : (Array.isArray(d.nearbyProperties) ? d.nearbyProperties : []);
+        const nearbyProperties: Array<{ lat: number | null; lng: number | null }> =
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? d.nearbyProperties.map((p: any) => ({
-              lat: p?.lat ?? null,
-              lng: p?.lng ?? null,
-            }))
-          : [];
+          npSource.map((p: any) => ({
+            lat: p?.lat ?? null,
+            lng: p?.lng ?? null,
+          }));
         // venta.precioM2 viene en la misma unidad que el campo `precio` crudo de
         // scraped_properties con type=venta. Evidencia del form v2 legacy
         // (`ventaRef.precioM2 / UF_CLP`) confirma que está en CLP/m² en la
