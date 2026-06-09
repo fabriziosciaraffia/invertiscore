@@ -14,6 +14,7 @@ import { findNearestStation } from "@/lib/metro-stations";
 import type { MarketDataRow } from "@/lib/market-data";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
+import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 // Ronda 4a.1: leaf components extraídos a src/components/analysis/.
 import { normalizeMetrics, fmtCLP, fmtUF, fmtMoney, fmtAxisMoney } from "@/components/analysis/utils";
 // Ronda 4a.2: Advanced Section.
@@ -1284,6 +1285,12 @@ export function PremiumResults({
   return (
     <>
       <div className="min-w-0">
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
+        {accessLevel === "guest" && (
+          <div className="mb-5">
+            <ConversionHook href="/register" />
+          </div>
+        )}
         {bothPartial && (
           <div className="max-w-5xl mx-auto px-4 md:px-6 pt-4">
             <div className="flex items-start gap-3 rounded-r-lg p-4 relative"
@@ -1334,6 +1341,12 @@ export function PremiumResults({
         isSharedView={isSharedView}
         source="results"
       />
+      {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
+      {accessLevel === "guest" && (
+        <div className="mt-8 mb-4">
+          <ConversionCloser href="/register" />
+        </div>
+      )}
     </>
   );
 }
