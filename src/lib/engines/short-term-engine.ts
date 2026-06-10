@@ -388,16 +388,29 @@ export const STR_OCUPACION_TARGET: Record<BandaOcupacionSTR, number> = {
 };
 
 // ADR factors. Ejes 1 (edificio) y 3 (habilitación). Eje 2 (gestión) NO afecta ADR.
+//
+// NEUTRALIZADOS 2026-06 → todos 1.00. Los uplifts anteriores (hasta ×1.21 con
+// edificio dedicado × habilitación premium) no tenían respaldo en data dura:
+//   1. El p50 de AirROI ya ubica al inmueble dentro de la distribución observada
+//      del mercado — multiplicar encima era doble conteo de la misma señal.
+//   2. El único dato self-reportado de edificios dedicados NO muestra prima;
+//      observado ~0.81× (los dedicados compiten en precio, no cobran más caro).
+//   3. Un operador profesional (estilo Andes) tampoco proyecta prima de ADR: su
+//      valor agregado está en OCUPACIÓN estable, no en tarifa (ver
+//      STR_OCUPACION_TARGET, que sí se mantiene calibrado).
+// El spread de ADR entre edificios/habilitaciones es heterogeneidad del mercado,
+// no una palanca que la gestión controle. Estructura intacta para re-anclar con
+// data si aparece evidencia dura. NO toca la lógica de ocupación.
 export const STR_ADR_FACTOR = {
   edificio: {
     residencial_puro: 1.00,
-    mixto: 1.05,
-    dedicado: 1.10,    // conservador; experimento mostró direcciones contradictorias
+    mixto: 1.00,       // neutralizado (legacy union — ver back-compat arriba)
+    dedicado: 1.00,    // neutralizado — observado ~0.81×, sin prima
   },
   habilitacion: {
     basico: 1.00,
-    estandar: 1.05,
-    premium: 1.10,     // placeholder defendible — sin data dura aún
+    estandar: 1.00,    // neutralizado — sin data dura de prima por habilitación
+    premium: 1.00,     // neutralizado — sin data dura de prima por habilitación
   },
 } as const;
 

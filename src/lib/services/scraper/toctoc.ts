@@ -204,9 +204,11 @@ function parseMapProperty(
     }
     if (precio === 0) return null;
 
-    // Surface: search positions 27-28, 33-34
+    // Surface: search positions 27-28, 33-34 (superficie útil, la correcta cuando viene).
+    // [31]/[32] son superficie total/construida: se agregan AL FINAL como fallback para
+    // los avisos donde la útil viene en 0.0. El orden garantiza que la útil gane si existe.
     let superficieM2: number | undefined;
-    for (const pos of [27, 28, 33, 34]) {
+    for (const pos of [27, 28, 33, 34, 31, 32]) {
       const val = parseFloat(String(arr[pos]));
       if (val > 15 && val < 500) { superficieM2 = val; break; }
     }

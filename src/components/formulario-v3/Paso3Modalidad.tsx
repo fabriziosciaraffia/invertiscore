@@ -288,7 +288,7 @@ export function Paso3Modalidad({
         <div>
           <span className="flex items-center gap-1.5 mb-1.5">
             <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Habilitación / posicionamiento</span>
-            <InfoTooltip content="Define la calidad percibida por los huéspedes y por tanto el ADR. Premium implica decoración curada, blancos hoteleros, amenidades extra." />
+            <InfoTooltip content="Qué tan cuidado está el departamento: amoblamiento, fotos y amenidades. Premium implica decoración curada, blancos hoteleros y amenidades extra. Define el costo de habilitación, no la tarifa." />
           </span>
           <div className="grid grid-cols-3 gap-2">
             {([
@@ -314,9 +314,9 @@ export function Paso3Modalidad({
             })}
           </div>
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
-            {state.habilitacion === "basico" && "Funcional, fotos amateur. Sin uplift de tarifa."}
-            {state.habilitacion === "estandar" && "Decente, con fotos profesionales. Tarifa +5%."}
-            {state.habilitacion === "premium" && "Decoración curada y amenidades extra. Tarifa +10%."}
+            {state.habilitacion === "basico" && "Funcional, fotos amateur."}
+            {state.habilitacion === "estandar" && "Decente, con fotos profesionales."}
+            {state.habilitacion === "premium" && "Decoración curada y amenidades extra."}
           </p>
         </div>
       </div>
