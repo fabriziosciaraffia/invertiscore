@@ -7,6 +7,7 @@ import { resolveDisplayName } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { emitirBoletaDTE } from "@/lib/openfactura/client";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
     if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("id, user_id, product, analysis_id")
+        .select("id, user_id, product, amount, commerce_order, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -177,6 +178,37 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("Payment email error:", e);
+        }
+      }
+
+      // Emisión de boleta electrónica (DTE 39) — solo pagos `single` (NO legacy
+      // pro/pack3). El helper respeta el kill-switch OPENFACTURA_ENABLED (no-op
+      // si no está "true") y nunca lanza; aun así envolvemos en try/catch como
+      // cinturón de seguridad: una falla de boleta JAMÁS debe romper el 200 que
+      // Flow espera ni afectar créditos/emails ya procesados arriba.
+      if (userId && product === "single" && process.env.OPENFACTURA_ENABLED === "true") {
+        try {
+          const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
+          const userEmail = dteUser?.user?.email;
+          if (userEmail) {
+            const result = await emitirBoletaDTE({
+              payment: {
+                id: paymentId,
+                user_id: userId,
+                product,
+                amount: payment.amount,
+                commerce_order: payment.commerce_order,
+              },
+              userEmail,
+            });
+            if (!result.ok && !result.skipped) {
+              console.error("[payments/confirm] emisión boleta falló:", result.error);
+            }
+          } else {
+            console.error("[payments/confirm] sin email para emitir boleta, user:", userId);
+          }
+        } catch (e) {
+          console.error("[payments/confirm] emisión boleta excepción:", e);
         }
       }
 
