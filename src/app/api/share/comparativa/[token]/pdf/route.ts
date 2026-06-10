@@ -111,7 +111,7 @@ export async function GET(
     await page.evaluateOnNewDocument(() => {
       try {
         localStorage.setItem("franco-theme", "light");
-      } catch (e) {
+      } catch {
         // localStorage puede no estar disponible; el fallback es el default.
       }
     });
