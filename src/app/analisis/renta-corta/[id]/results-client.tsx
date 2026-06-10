@@ -21,6 +21,7 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -34,6 +35,15 @@ import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBann
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
+
+// Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
+// "7 de junio 2026". Usado en el header público de la vista guest.
+function formatFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 interface STRResultsProps {
   analysisId: string;
@@ -62,6 +72,7 @@ export function STRResultsClient({
   nombre,
   comuna,
   superficie,
+  createdAt,
   isSharedView,
   userCredits,
   welcomeAvailable = true,
@@ -159,10 +170,12 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav
-        variant="app"
-        actionsSlot={
-          accessLevel !== "guest" ? (
+      {accessLevel === "guest" ? (
+        <PublicShareHeader date={formatFechaCorta(createdAt)} />
+      ) : (
+        <UnifiedNav
+          variant="app"
+          actionsSlot={
             <ShareButton
               path={`/analisis/renta-corta/${analysisId}`}
               analysisId={analysisId}
@@ -173,9 +186,9 @@ export function STRResultsClient({
               nombre={propiedadTitle}
               comuna={comuna}
             />
-          ) : undefined
-        }
-      />
+          }
+        />
+      )}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
         {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
