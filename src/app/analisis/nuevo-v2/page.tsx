@@ -49,6 +49,11 @@ export default function NuevoAnalisisV3Page() {
   const initialized = useRef(false);
 
   const [state, setState] = useState<WizardV3State>(DEFAULT_STATE);
+  // Draft recuperable: en vez de rehidratar automático al montar (que hacía
+  // aparecer la dirección vieja "mágicamente" tras abandonar sin cancelar),
+  // guardamos el draft acá y ofrecemos al usuario retomar o empezar de cero
+  // vía banner. Mientras !== null, el form arranca limpio y NO se persiste.
+  const [draftPendiente, setDraftPendiente] = useState<WizardV3State | null>(null);
   const patch = useCallback((p: Partial<WizardV3State>) => {
     setState((prev) => ({ ...prev, ...p }));
   }, []);
@@ -104,10 +109,15 @@ export default function NuevoAnalisisV3Page() {
           && typeof parsed.savedAt === "number"
           && (Date.now() - parsed.savedAt) < SEIS_HORAS
           && parsed.data && typeof parsed.data === "object";
-        if (esValido) {
-          setState((prev) => ({ ...prev, ...parsed.data }));
+        if (esValido && parsed.data.direccion) {
+          // Draft válido y con contenido real (tiene dirección): NO rehidratar
+          // automático. Lo guardamos para ofrecer recuperación vía banner; el
+          // form arranca limpio (DEFAULT_STATE) hasta que el usuario decida.
+          setDraftPendiente(parsed.data as WizardV3State);
         } else {
-          localStorage.removeItem(DRAFT_KEY); // viejo o formato plano previo -> descartar
+          // Inválido (viejo / formato plano previo) o sin contenido real (sin
+          // dirección) -> descartar sin banner, form limpio.
+          localStorage.removeItem(DRAFT_KEY);
         }
       }
     } catch { /* ignore */ }
@@ -143,6 +153,10 @@ export default function NuevoAnalisisV3Page() {
   // ─── Persist draft (debounced) ──
   useEffect(() => {
     if (!initialized.current) return;
+    // Mientras hay un draft pendiente de decisión, el form está limpio
+    // esperando que el usuario elija "Retomar" o "Empezar de cero". Si
+    // persistiéramos ahora, pisaríamos el draft que queremos ofrecerle.
+    if (draftPendiente) return;
     if (!state.direccion && !state.precio) return;
     const t = setTimeout(() => {
       // Persistir solo lo que el USUARIO decidió. Los campos inferibles (los que
@@ -159,7 +173,7 @@ export default function NuevoAnalisisV3Page() {
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: dataToPersist, savedAt: Date.now() })); } catch { /* ignore */ }
     }, 500);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [state, draftPendiente]);
 
   // ─── Scale defaults con dormitorios + habilitación (iter 2026-05-10) ──
   // Cuando el user cambia dormitorios o habilitación, recalcula los defaults
@@ -690,6 +704,44 @@ export default function NuevoAnalisisV3Page() {
             </p>
           </div>
         </div>
+
+        {/* Banner de recuperación de draft. Solo cuando hay un análisis sin
+            terminar guardado. StateBox sobrio (Ink, sin Signal Red para no
+            competir con el CTA del paso). Dos salidas: retomar o empezar de
+            cero. Al decidir, draftPendiente vuelve a null y desaparece. */}
+        {draftPendiente && (
+          <div className="mb-6 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1.5">
+              Análisis sin terminar
+            </p>
+            <p className="font-body text-sm text-[var(--franco-text)] m-0">
+              Tienes un análisis a medias en{" "}
+              <span className="font-body font-medium">{draftPendiente.direccion}</span>. ¿Lo retomas donde lo dejaste?
+            </p>
+            <div className="mt-3 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, ...draftPendiente }));
+                  setDraftPendiente(null);
+                }}
+                className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-[var(--franco-bg)] bg-[var(--franco-text)] px-4 py-2 rounded-lg hover:opacity-90 transition-opacity min-h-[44px]"
+              >
+                Retomar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+                  setDraftPendiente(null);
+                }}
+                className="font-body font-medium text-[13px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-3 py-2 min-h-[44px]"
+              >
+                Empezar de cero
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Step content with slide transition */}
         <div className="overflow-hidden">
