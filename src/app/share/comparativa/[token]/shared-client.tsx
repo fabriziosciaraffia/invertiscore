@@ -148,7 +148,12 @@ export function SharedComparativaClient(p: Props) {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: p.printMode ? "white" : "var(--franco-bg)" }}
+      // En print mode renderizamos el subtree en TEMA CLARO: data-theme="light"
+      // resuelve los tokens --franco-* en su versión clara (bg, cards, texto)
+      // para todo el contenido del PDF. Sin esto el texto heredaba los tokens
+      // dark (#FAFAF8 ≈ blanco) sobre fondo blanco → ilegible.
+      data-theme={p.printMode ? "light" : undefined}
+      style={{ background: "var(--franco-bg)" }}
     >
       {/* Header público (solo en NO-print, ya que PDF agrega su propio header) */}
       {!p.printMode && <PublicShareHeader date={fechaCorta} />}
