@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import FrancoLogo from "@/components/franco-logo";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
@@ -150,24 +151,7 @@ export function SharedComparativaClient(p: Props) {
       style={{ background: p.printMode ? "white" : "var(--franco-bg)" }}
     >
       {/* Header público (solo en NO-print, ya que PDF agrega su propio header) */}
-      {!p.printMode && (
-        <header
-          className="border-b border-[var(--franco-border)] px-4 sm:px-6 py-4"
-          style={{ background: "var(--franco-bg)" }}
-        >
-          <div className="mx-auto max-w-[900px] flex items-center justify-between gap-4">
-            <FrancoLogo inverted size="sm" href="/" />
-            <div className="text-right">
-              <p className="font-mono text-[9px] uppercase tracking-[2px] text-[var(--franco-text-muted)] mb-0.5">
-                ANÁLISIS COMPARTIDO
-              </p>
-              <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
-                {fechaCorta}
-              </p>
-            </div>
-          </div>
-        </header>
-      )}
+      {!p.printMode && <PublicShareHeader date={fechaCorta} />}
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[900px] px-4 py-6">

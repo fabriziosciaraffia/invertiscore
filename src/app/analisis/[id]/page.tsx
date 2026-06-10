@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { AnalysisNav } from "./analysis-nav";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
@@ -10,6 +11,15 @@ import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+
+// Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
+// "7 de junio 2026". Usado en el header público de la vista guest.
+function formatFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -176,14 +186,18 @@ export default async function AnalisisDetallePage({
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar */}
-      <AnalysisNav
-        userId={user?.id ?? null}
-        analysisId={analisis.id}
-        score={analisis.score}
-        nombre={analisis.nombre}
-        comuna={analisis.comuna}
-        isSharedView={isSharedView}
-      />
+      {accessLevel === "guest" ? (
+        <PublicShareHeader date={formatFechaCorta(analisis.created_at)} />
+      ) : (
+        <AnalysisNav
+          userId={user?.id ?? null}
+          analysisId={analisis.id}
+          score={analisis.score}
+          nombre={analisis.nombre}
+          comuna={analisis.comuna}
+          isSharedView={isSharedView}
+        />
+      )}
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
         <PremiumResults
