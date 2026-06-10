@@ -102,6 +102,20 @@ export async function GET(
     const page = await browser.newPage();
     await page.setViewport({ width: 1024, height: 1400, deviceScaleFactor: 2 });
 
+    // Forzar tema CLARO en el documento headless. El script inline de
+    // layout.tsx (~L85) lee localStorage('franco-theme') y, si es 'light',
+    // setea data-theme="light" en <html> → el <body> hereda --franco-bg claro.
+    // Sin esto, <html>/<body> quedan en el default oscuro (#0F0F0F) y el
+    // sobrante de la última página del PDF se ve como una barra negra.
+    // (El div interno ya fuerza light, pero solo cubre su propio box.)
+    await page.evaluateOnNewDocument(() => {
+      try {
+        localStorage.setItem("franco-theme", "light");
+      } catch {
+        // localStorage puede no estar disponible; el fallback es el default.
+      }
+    });
+
     // Ir a la página print + esperar networkidle (asegura que IA + charts
     // hayan terminado de renderizar)
     await page.goto(targetUrl, {
