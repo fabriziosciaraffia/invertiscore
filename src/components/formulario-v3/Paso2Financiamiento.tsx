@@ -124,6 +124,24 @@ export function Paso2Financiamiento({
     setState({ precio: String(precioSugeridoUF) });
   }, [precioSugeridoUF, state.precio, state.editedFields, setState]);
 
+  // Hint de comparables del precio sugerido. Especifica QUÉ son los N
+  // comparables (condición + dormitorios de la tipología del usuario) para no
+  // confundirlos con la densidad bruta de venta del mapa del Paso 1 ("N
+  // comparables cerca"): allá es toda la zona, acá es solo su tipología.
+  const comparablesHint = (() => {
+    if (!precioM2SampleSize || precioM2SampleSize <= 0) return "";
+    const n = precioM2SampleSize;
+    const plural = n !== 1;
+    const sustantivo = plural ? "deptos" : "depto";
+    const condicion = state.tipoPropiedad === "nuevo"
+      ? (plural ? "nuevos" : "nuevo")
+      : (plural ? "usados" : "usado");
+    const dorms = Number(state.dormitorios) || 0;
+    const dormPart = dorms > 0 ? ` de ${dorms}D` : "";
+    const cierre = plural ? "similares" : "similar";
+    return ` · basado en ${n} ${sustantivo} ${condicion}${dormPart} ${cierre} en la zona`;
+  })();
+
   const mesesSugeridos = state.estadoVenta === "futura"
     ? mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio)
     : 0;
@@ -182,9 +200,7 @@ export function Paso2Financiamiento({
             {superficie > 0 && precioM2UF
               ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie.toLocaleString("es-CL")}m²)`
               : ""}
-            {precioM2SampleSize && precioM2SampleSize > 0
-              ? ` · basado en ${precioM2SampleSize} ${precioM2SampleSize === 1 ? "unidad comparable" : "unidades comparables"} en la zona`
-              : ""}
+            {comparablesHint}
           </p>
         )}
         {/* Validación suave: precio/m² del usuario vs promedio de zona.
