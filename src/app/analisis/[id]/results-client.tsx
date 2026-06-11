@@ -150,6 +150,7 @@ export function PremiumResults({
   ownerFirstName = "",
   analysesCount = 0,
   isLoggedIn = false,
+  printMode = false,
 }: {
   results?: FullAnalysisResult | null;
   accessLevel?: "guest" | "free" | "premium" | "subscriber";
@@ -179,6 +180,7 @@ export function PremiumResults({
   ownerFirstName?: string;
   analysesCount?: number;
   isLoggedIn?: boolean;
+  printMode?: boolean;
 }) {
   const posthog = usePostHog();
   const currentAccess = accessLevel;
@@ -1144,6 +1146,7 @@ export function PremiumResults({
                 inputData={inputData}
                 currency={currency}
                 valorUF={ufValue}
+                forceOpen={printMode}
               />
             )}
           </SimulationProvider>
@@ -1285,8 +1288,8 @@ export function PremiumResults({
   return (
     <>
       <div className="min-w-0">
-        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
-        {accessLevel === "guest" && (
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest, no en print */}
+        {accessLevel === "guest" && !printMode && (
           <div className="mb-5">
             <ConversionHook href="/register" />
           </div>
@@ -1341,8 +1344,8 @@ export function PremiumResults({
         isSharedView={isSharedView}
         source="results"
       />
-      {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
-      {accessLevel === "guest" && (
+      {/* CTA conversión — cierre (campo Signal Red) · solo guest, no en print */}
+      {accessLevel === "guest" && !printMode && (
         <div className="mt-8 mb-4">
           <ConversionCloser href="/register" />
         </div>
