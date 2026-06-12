@@ -4,6 +4,7 @@ import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminUser } from "@/lib/admin";
 import { hasSubscriptionAccess } from "@/lib/access";
+import { getLedgerBalances } from "@/lib/credits-grant";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { AdminActions } from "./admin-actions";
 
@@ -145,6 +146,12 @@ export default async function AdminPage() {
   for (const c of (creditsForUsers ?? []) as Array<{ user_id: string; credits: number; subscription_status: string; grace_ends_at: string | null }>) {
     creditsMap.set(c.user_id, { credits: c.credits, subscription_status: c.subscription_status, grace_ends_at: c.grace_ends_at });
   }
+
+  // Saldo del ledger por usuario en UNA sola query (evita N+1 al listar usuarios).
+  // El saldo a mostrar = ledger vivo (este map) + legacy user_credits.credits (creditsMap).
+  const ledgerMap = recentUserIds.length
+    ? await getLedgerBalances(recentUserIds, sb)
+    : new Map<string, number>();
 
   const { data: lastAnalisisPerUser } = recentUserIds.length
     ? await sb.from("analisis").select("user_id, created_at").in("user_id", recentUserIds).order("created_at", { ascending: false })
@@ -391,7 +398,8 @@ export default async function AdminPage() {
               <tbody>
                 {(recentUsers?.users ?? []).map((u) => {
                   const c = creditsMap.get(u.id);
-                  const credits = c?.credits ?? 0;
+                  // Saldo real = ledger vivo (batch) + contador legacy.
+                  const credits = (ledgerMap.get(u.id) ?? 0) + (c?.credits ?? 0);
                   const subStatus = c?.subscription_status ?? "none";
                   const isSubscriber = subStatus === "active";
                   // past_due con gracia vigente (mantiene acceso). hasSubscriptionAccess
