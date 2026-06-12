@@ -36,6 +36,7 @@ export function AnalysisNav({
     <div className="flex items-center gap-2">
       <ShareButton
         path={`/analisis/${analysisId}`}
+        pdfUrl={`/api/analisis/${analysisId}/pdf`}
         analysisId={analysisId}
         modalidad="LTR"
         title={`Análisis Franco: ${nombre}`}
