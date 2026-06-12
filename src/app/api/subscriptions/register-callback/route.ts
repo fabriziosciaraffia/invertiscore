@@ -143,6 +143,18 @@ export async function POST(request: Request) {
       console.error("[register-callback] email confirmación alta error:", e);
     }
 
+    // TODO(facturación): aquí sería el punto natural para emitir la boleta del
+    // alta (tenemos paymentRow.id + email), PERO la emisión NO está cableada a
+    // propósito. Razones:
+    //  - Esta fila de payments es el ALTA (franco-sub-<subId>) y trae
+    //    flow_order = null → señal de que el alta puede NO ser un cobro real,
+    //    sino el registro de la suscripción / tokenización de la tarjeta.
+    //  - payment-callback (el webhook del cobro recurrente real) NUNCA se ha
+    //    ejercitado en prod, así que no está confirmado si el primer cargo
+    //    materializa una segunda fila (franco-sub-pay-<flowOrder>).
+    //  - Emitir en el alta podría facturar dinero que aún no fue cobrado.
+    // Se resuelve tras entender el modelo de cobro de Flow y observar un cobro
+    // real con túnel. Decisión probable: emitir solo en payment-callback.
     return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
   } catch (err) {
     console.error("Register callback error:", err);
