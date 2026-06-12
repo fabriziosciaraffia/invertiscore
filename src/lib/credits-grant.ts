@@ -10,7 +10,7 @@
  *  - consumo: FIFO por expires_at sobre lotes vivos; is_unlimited = free pass.
  */
 
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { FLOW_PRODUCTS, type FlowProduct, type FlowProductKey } from "@/lib/flow-products";
 
 function createAdminClient() {
@@ -174,6 +174,95 @@ export async function consumeCredit(userId: string): Promise<boolean> {
     .maybeSingle();
 
   return !!updated;
+}
+
+/**
+ * Saldo disponible para MOSTRAR al usuario (solo-lectura, NO consume):
+ *   SUM(remaining) de lotes VIVOS del ledger + contador legacy user_credits.credits.
+ *
+ * El criterio de "lote vivo" es idéntico al de consumeCredit arriba (líneas 151-159):
+ *   remaining > 0  AND  (expires_at IS NULL OR expires_at > now())
+ * Así lo mostrado coincide exactamente con lo que el gating realmente puede cobrar.
+ * (consumeCredit toma de a uno por FIFO; aquí sumamos todos los lotes vivos.)
+ *
+ * Recibe el client por parámetro: la página ya tiene uno (anon server client en
+ * cuenta/perfil — la policy credit_grants_select_own permite leer los propios lotes;
+ * service-role en admin). No crea un admin client extra ni arriesga filtrarlo al
+ * bundle de cliente. Supabase JS no expone SUM sin RPC, así que sumamos en JS (el
+ * volumen de lotes por usuario es chico). Ante error de query loguea y suma lo que
+ * pudo (degradación suave: nunca rompe la página).
+ */
+export async function getAvailableCredits(
+  userId: string,
+  supabase: SupabaseClient
+): Promise<number> {
+  if (!userId) return 0;
+
+  const nowIso = new Date().toISOString();
+
+  // Ledger: lotes vivos (mismo filtro que consumeCredit).
+  const { data: grants, error: grantsErr } = await supabase
+    .from("credit_grants")
+    .select("remaining")
+    .eq("user_id", userId)
+    .gt("remaining", 0)
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+
+  if (grantsErr) {
+    console.error("[getAvailableCredits] credit_grants query error:", grantsErr);
+  }
+
+  const ledger = (grants ?? []).reduce(
+    (sum, g) => sum + ((g.remaining as number) ?? 0),
+    0
+  );
+
+  // Legacy: contador user_credits.credits (compras pro/pack3 pre-migración).
+  const { data: uc, error: ucErr } = await supabase
+    .from("user_credits")
+    .select("credits")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (ucErr) {
+    console.error("[getAvailableCredits] user_credits query error:", ucErr);
+  }
+
+  return ledger + (uc?.credits ?? 0);
+}
+
+/**
+ * Variante BATCH de getAvailableCredits para listados (admin) — evita el N+1 de
+ * llamar getAvailableCredits por usuario. UNA sola query al ledger para todos los
+ * userIds. Devuelve Map<userId, saldoLedger> (solo la parte del ledger); el caller
+ * suma su propio legacy user_credits.credits, que en admin ya viene en mano.
+ * Mismo criterio de lote vivo que consumeCredit/getAvailableCredits.
+ */
+export async function getLedgerBalances(
+  userIds: string[],
+  supabase: SupabaseClient
+): Promise<Map<string, number>> {
+  const balances = new Map<string, number>();
+  if (userIds.length === 0) return balances;
+
+  const nowIso = new Date().toISOString();
+  const { data: grants, error } = await supabase
+    .from("credit_grants")
+    .select("user_id, remaining")
+    .in("user_id", userIds)
+    .gt("remaining", 0)
+    .or(`expires_at.is.null,expires_at.gt.${nowIso}`);
+
+  if (error) {
+    console.error("[getLedgerBalances] credit_grants query error:", error);
+    return balances;
+  }
+
+  for (const g of grants ?? []) {
+    const uid = g.user_id as string;
+    balances.set(uid, (balances.get(uid) ?? 0) + ((g.remaining as number) ?? 0));
+  }
+  return balances;
 }
 
 /** Reverse-lookup: mapea el monto cobrado por Flow a un producto recurrente. */

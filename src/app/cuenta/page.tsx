@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { CancelSubscriptionButton } from "./cancel-dialog";
@@ -31,7 +32,11 @@ export default async function CuentaPage() {
     .eq("user_id", user.id)
     .single();
 
-  const credits: number = creditsRow?.credits ?? 0;
+  // Saldo real = ledger vivo (credit_grants) + contador legacy. Antes leía solo
+  // creditsRow.credits (=0 en el modelo ledger) y mostraba "FREE" a quien sí tenía
+  // crédito. RLS credit_grants_select_own permite leer los propios lotes con el
+  // anon server client.
+  const credits: number = await getAvailableCredits(user.id, supabase);
   const subStatus: string = creditsRow?.subscription_status ?? "none";
   const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
