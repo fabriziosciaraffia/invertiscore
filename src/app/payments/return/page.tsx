@@ -11,6 +11,7 @@ function PaymentReturnContent() {
   const posthog = usePostHog();
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
+  const order = searchParams.get("order");
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
 
@@ -23,7 +24,9 @@ function PaymentReturnContent() {
     // Check payment status
     const checkStatus = async () => {
       try {
-        const res = await fetch("/api/payments/status");
+        // Con order → identifica la compra exacta. Sin order (fallback legacy o
+        // compras viejas sin el param) → status cae al "último pago del user".
+        const res = await fetch(order ? `/api/payments/status?order=${encodeURIComponent(order)}` : "/api/payments/status");
         const data = await res.json();
         if (data.payment) {
           setAnalysisId(data.payment.analysis_id);
@@ -47,7 +50,7 @@ function PaymentReturnContent() {
     };
 
     checkStatus();
-  }, [type, statusParam]);
+  }, [type, statusParam, order]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
