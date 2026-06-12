@@ -1,19 +1,27 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const posthog = usePostHog();
   const type = searchParams.get("type");
   const statusParam = searchParams.get("status");
   const order = searchParams.get("order");
   const [paymentStatus, setPaymentStatus] = useState<"loading" | "paid" | "pending" | "error">("loading");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
+  // Estado puente: tras detectar paid de un single con análisis, mostramos
+  // "abriendo tu análisis…" mientras se hace el push (evita flash de la pantalla
+  // genérica antes de la navegación).
+  const [redirecting, setRedirecting] = useState(false);
+  // Guard para que el push al análisis ocurra UNA sola vez: el polling puede
+  // re-ejecutar checkStatus en re-renders y no queremos re-push ni loop.
+  const redirectedRef = useRef(false);
 
   useEffect(() => {
     if (type === "subscription") {
@@ -33,6 +41,20 @@ function PaymentReturnContent() {
           if (data.payment.status === "paid") {
             posthog?.capture('pro_purchased', { product: data.payment.product, amount: data.payment.amount });
             setPaymentStatus("paid");
+            // Single con análisis atado → llevar directo a la vista del análisis
+            // comprado (la ruta auto-redirige a renta-corta si es STR). El push
+            // va DENTRO de la rama paid: nunca antes de la confirmación, para no
+            // aterrizar en un análisis aún bloqueado. Otros productos (pack
+            // suelto, sin analysis_id) caen a la pantalla genérica con CTA.
+            if (
+              !redirectedRef.current &&
+              data.payment.product === "single" &&
+              data.payment.analysis_id
+            ) {
+              redirectedRef.current = true;
+              setRedirecting(true);
+              router.push(`/analisis/${data.payment.analysis_id}`);
+            }
           } else if (data.payment.status === "rejected" || data.payment.status === "cancelled") {
             setPaymentStatus("error");
           } else {
@@ -50,7 +72,7 @@ function PaymentReturnContent() {
     };
 
     checkStatus();
-  }, [type, statusParam, order]);
+  }, [type, statusParam, order, router]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">
@@ -73,7 +95,15 @@ function PaymentReturnContent() {
           </div>
         )}
 
-        {paymentStatus === "paid" && (
+        {redirecting && (
+          <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
+            <div className="mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-2 border-[var(--franco-text)]/20 border-t-[#C8323C]" />
+            <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">Pago confirmado</h2>
+            <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">Abriendo tu análisis…</p>
+          </div>
+        )}
+
+        {paymentStatus === "paid" && !redirecting && (
           <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-8">
             <div className="mx-auto mb-4 text-4xl">✓</div>
             <h2 className="font-heading text-lg font-bold text-[var(--franco-text)]">
