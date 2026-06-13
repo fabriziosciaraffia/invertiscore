@@ -16,6 +16,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { EMISOR } from "./emisor";
+import { sendBoletaEmail } from "@/lib/email";
 
 function createAdminClient() {
   return createClient(
@@ -45,6 +46,9 @@ export type PaymentForDTE = {
   product: string;
   amount: number;
   commerce_order: string;
+  /** Nro de orden de Flow (BIGINT). Se usa como documentReference.ID; null en
+   * pagos sin flowOrder → cae al hash determinístico del commerce_order. */
+  flow_order?: number | null;
 };
 
 export type EmitirResult = {
@@ -97,6 +101,19 @@ export function glosaForProduct(product: string): string {
   return "Servicio refranco.ai";
 }
 
+/**
+ * Entero determinístico y estable para documentReference.ID del autoservicio
+ * (el esquema exige un número, OF-16). Hash simple del commerce_order acotado a
+ * < 1e9 (entero seguro). No es reversible; solo único-y-estable por orden.
+ */
+function referenceNumber(commerceOrder: string): number {
+  let h = 0;
+  for (let i = 0; i < commerceOrder.length; i++) {
+    h = (h * 31 + commerceOrder.charCodeAt(i)) % 1_000_000_000;
+  }
+  return h || 1; // nunca 0
+}
+
 /** neto = round(total / 1.19); iva = total - neto (total = bruto IVA incluido). */
 export function calcularMontos(total: number): {
   neto: number;
@@ -109,15 +126,19 @@ export function calcularMontos(total: number): {
 }
 
 /**
- * Arma el body de POST /v2/dte/document para una boleta electrónica afecta (39).
- * Pura (sin I/O) → reutilizable y testeable. Los montos van IVA incluido: el
- * Detalle lleva el bruto (PrcItem/MontoItem = total) y Totales desglosa neto+IVA.
+ * Arma el body de POST /v2/dte/document en modo AUTOSERVICIO. OpenFactura emite
+ * la boleta, envía el correo al cliente (customer.email) y le permite convertir
+ * a factura (gatilla NC automática). Pura (sin I/O) → reutilizable y testeable.
+ * Los montos van IVA incluido: el Detalle lleva el bruto (PrcItem/MontoItem =
+ * total) y Totales desglosa neto+IVA.
  */
 export function buildDocumentoDTE(opts: {
   product: string;
   amount: number;
   userEmail: string;
   fecha: string; // YYYY-MM-DD
+  commerceOrder: string; // fallback para documentReference.ID si no hay flowOrder
+  flowOrder?: number | null; // documentReference.ID preferido (nro de orden Flow)
   medioPago?: number | string;
   /**
    * Override del bloque Emisor. Default = EMISOR (Yape, prod). Solo se inyecta
@@ -125,8 +146,6 @@ export function buildDocumentoDTE(opts: {
    * dueño de la apikey demo. En prod nunca se pasa → usa Yape.
    */
   emisor?: Record<string, string | number>;
-  /** Default true (prod envía la boleta al cliente). Las pruebas usan false. */
-  sendEmail?: boolean;
 }) {
   const { neto, iva, total } = calcularMontos(opts.amount);
   const idDoc: Record<string, number | string> = {
@@ -151,11 +170,14 @@ export function buildDocumentoDTE(opts: {
   };
 
   return {
-    response: ["FOLIO", "PDF", "XML"],
+    response: ["FOLIO", "PDF", "XML", "SELF_SERVICE"],
     dte: {
       Encabezado: {
         IdDoc: idDoc,
         Emisor: emisorBody,
+        // Consumidor final limpio (sin CorreoRecep): el correo de la boleta lo
+        // envía Franco vía Resend (sendBoletaEmail), no Haulmer. El email del
+        // comprador va en customer.email para el autoservicio.
         Receptor: { ...RECEPTOR_CONSUMIDOR_FINAL },
         // Boleta afecta: Totales = MntNeto + IVA + MntTotal (sin TasaIVA, que el
         // esquema de boleta rechaza — validado contra dev-api).
@@ -175,8 +197,30 @@ export function buildDocumentoDTE(opts: {
         },
       ],
     },
-    sendEmail: opts.sendEmail ?? true,
-    email: opts.userEmail,
+    // Cliente al que OpenFactura le envía el correo con el documento.
+    customer: {
+      // TODO(facturación): pasar el nombre real del comprador cuando esté disponible.
+      fullName: "Cliente refranco.ai",
+      email: opts.userEmail,
+    },
+    // Autoservicio: emite la boleta + permite al cliente convertirla a factura.
+    // documentReference es REQUERIDO (OF-17), es un ARRAY, y su ID debe ser
+    // NUMÉRICO (OF-16). Franco no tiene nro de orden numérico (commerce_order es
+    // `franco-<uuid>`), así que derivamos un entero determinístico y estable por
+    // orden (ver referenceNumber). TODO(facturación): reemplazar por un nro de
+    // orden real legible cuando exista.
+    selfService: {
+      issueBoleta: true,
+      allowFactura: true,
+      documentReference: [
+        {
+          type: "801",
+          // Preferimos el flowOrder real de Flow; si es null, hash determinístico.
+          ID: opts.flowOrder ?? referenceNumber(opts.commerceOrder),
+          date: opts.fecha,
+        },
+      ],
+    },
   };
 }
 
@@ -193,7 +237,6 @@ export async function emitirBoletaDTE({
   payment,
   userEmail,
   emisor,
-  sendEmail,
 }: {
   payment: PaymentForDTE;
   userEmail: string;
@@ -202,8 +245,6 @@ export async function emitirBoletaDTE({
    * en QA contra dev-api, donde el emisor debe ser el dueño de la apikey demo.
    */
   emisor?: Record<string, string | number>;
-  /** Default true (prod envía la boleta). QA usa false. */
-  sendEmail?: boolean;
 }): Promise<EmitirResult> {
   // Kill-switch: permite desplegar a prod con el código cableado pero SIN emitir
   // boletas hasta activar la flag. No-op total: no toca la DB ni llama a la API.
@@ -282,8 +323,9 @@ export async function emitirBoletaDTE({
       amount: payment.amount,
       userEmail,
       fecha,
+      commerceOrder: payment.commerce_order,
+      flowOrder: payment.flow_order ?? null,
       emisor,
-      sendEmail,
     });
 
     const res = await fetch(`${getBaseUrl()}/v2/dte/document`, {
@@ -309,8 +351,18 @@ export async function emitirBoletaDTE({
       TOKEN?: string;
       PDF?: string;
       XML?: string;
+      SELF_SERVICE?: { url?: string } | string;
       error?: { message?: string; code?: string };
     };
+
+    // SELF_SERVICE: enlace de autoservicio (ver/convertir a factura). Puede venir
+    // como objeto { url } o como string → normalizamos a la URL.
+    const autoservicioUrl =
+      data.SELF_SERVICE && typeof data.SELF_SERVICE === "object"
+        ? data.SELF_SERVICE.url ?? null
+        : typeof data.SELF_SERVICE === "string"
+        ? data.SELF_SERVICE
+        : null;
 
     // Persistencia liviana (V1): el PDF viene como base64 (~180KB) y NO se guarda.
     // Conservamos el resto (FOLIO, TOKEN, XML, WARNING, RESOLUCION, etc.) en el
@@ -350,10 +402,28 @@ export async function emitirBoletaDTE({
         token: data.TOKEN ?? null,
         pdf_url: null,
         xml_url: null,
+        autoservicio_url: autoservicioUrl,
         openfactura_response: stripPdf(parsed),
         updated_at: new Date().toISOString(),
       })
       .eq("id", documentoId);
+
+    // Correo de la boleta con PDF + XML adjuntos, vía Resend. data.PDF/data.XML
+    // siguen intactos acá (stripPdf solo afecta lo persistido). try/catch propio:
+    // un fallo de correo NO debe romper la emisión ya exitosa.
+    try {
+      await sendBoletaEmail({
+        to: userEmail,
+        folio,
+        monto: total,
+        fechaEmision: fecha,
+        autoservicioUrl: autoservicioUrl ?? "",
+        pdfBase64: data.PDF ?? null,
+        xmlBase64: data.XML ?? null,
+      });
+    } catch (e) {
+      console.error("[emitirBoletaDTE] envío correo boleta falló:", e);
+    }
 
     return { ok: true, folio, documentoId };
   } catch (err) {

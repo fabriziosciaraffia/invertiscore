@@ -48,9 +48,15 @@ function emailWrapper(content: string, customFooter?: string): string {
 </html>`;
 }
 
-function ctaButton(text: string, url: string): string {
+// widthPx opcional: fija el ancho del botón (botones apilados parejos). Sin él,
+// el comportamiento por defecto es el de siempre (ancho según el texto) — no
+// rompe a los demás correos que llaman ctaButton sin ancho.
+function ctaButton(text: string, url: string, widthPx?: number): string {
+  const widthStyle = widthPx
+    ? `width: ${widthPx}px; box-sizing: border-box; text-align: center;`
+    : '';
   return `<div style="margin: 32px 0; text-align: center;">
-  <a href="${url}" style="display: inline-block; background: #C8323C; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; font-family: Arial, sans-serif;">
+  <a href="${url}" style="display: inline-block; background: #C8323C; color: #ffffff; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 15px; font-family: Arial, sans-serif; ${widthStyle}">
     ${text}
   </a>
 </div>`;
@@ -327,6 +333,130 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
     });
   } catch (error) {
     console.error('Error sending payment confirmation email:', error);
+  }
+}
+
+// Fila label/valor de la card de documento (label izq + valor der, mono opcional).
+function docRow(label: string, value: string, mono = false, last = false): string {
+  const border = last ? '' : 'border-bottom: 1px solid #2A2A2A;';
+  const monoStyle = mono ? "font-family: 'Courier New', monospace;" : '';
+  return `<div style="padding: 8px 0; ${border}">
+            <span style="color: #71717A; font-size: 13px;">${label}</span>
+            <span style="color: #FAFAF8; font-size: 14px; font-weight: 600; float: right; ${monoStyle}">${value}</span>
+          </div>`;
+}
+
+// Ancho fijo de los CTAs de la boleta → los dos botones quedan parejos.
+const BOLETA_CTA_WIDTH = 280;
+
+/**
+ * Construye el HTML del correo de boleta (sin adjuntos). Exportado para poder
+ * medir su tamaño en pruebas sin enviar (Gmail recorta el cuerpo sobre ~102KB).
+ */
+export function buildBoletaHtml(p: {
+  to: string;
+  folio: number | string;
+  monto: number;
+  fechaEmision: string; // YYYY-MM-DD
+  autoservicioUrl: string;
+}): string {
+  const montoFormatted = new Intl.NumberFormat('es-CL', {
+    style: 'currency', currency: 'CLP', maximumFractionDigits: 0,
+  }).format(p.monto);
+  // fechaEmision viene como YYYY-MM-DD → fecha legible es-CL (sin desfase de TZ).
+  const [y, m, d] = p.fechaEmision.split('-').map(Number);
+  const fechaLegible = !Number.isNaN(y)
+    ? new Date(y, (m ?? 1) - 1, d ?? 1).toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })
+    : p.fechaEmision;
+
+  const url = p.autoservicioUrl || `${SITE_URL}`;
+
+  const footer = `<div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #222;">
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #52525B; font-size: 12px; line-height: 1.6; margin: 0 0 10px 0;">
+    Documento tributario electrónico emitido ante el SII. Adjuntamos el PDF y el XML de tu boleta.
+  </p>
+  <p style="font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 11px; color: #52525B; margin: 0;">
+    <a href="${SITE_URL}" style="color: #52525B; text-decoration: none;">refranco.ai</a>
+  </p>
+</div>`;
+
+  // EXCEPCIÓN DE PRODUCTO (aprobada): los dos CTAs van IGUALES en Signal Red, no
+  // uno primario + uno secundario. Rompe a propósito la regla "Signal Red = CTA
+  // único" del design-system (Capa 1) para REPLICAR la UX de OpenFactura, que
+  // presenta "ver boleta" y "convertir a factura" con el mismo peso. Ambos con el
+  // mismo ancho fijo (BOLETA_CTA_WIDTH). NO revertir a un botón secundario.
+  const botones = `${ctaButton('Ver boleta →', url, BOLETA_CTA_WIDTH)}${ctaButton('Convertir a factura →', url, BOLETA_CTA_WIDTH)}`;
+
+  return emailWrapper(`
+        <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">
+          Tu boleta electrónica
+        </h1>
+
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
+          Acá está tu boleta por tu análisis en Franco. La tienes adjunta en PDF y XML, y también puedes verla en línea.
+        </p>
+
+        <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #FAFAF8; font-weight: 600; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
+          ¿Necesitas factura? Puedes ingresar tus datos de facturación y generarla en línea — eso deja sin efecto esta boleta.
+        </p>
+
+        <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
+          <div style="color: #71717A; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'Courier New', monospace;">Información del documento</div>
+          ${docRow('Documento', `Boleta electrónica N° ${p.folio}`)}
+          ${docRow('Emitida', fechaLegible)}
+          ${docRow('Para', p.to)}
+          ${docRow('Total', montoFormatted, true, true)}
+        </div>
+
+        ${botones}
+      `, footer);
+}
+
+/**
+ * Correo de boleta electrónica (DTE 39) con el PDF y el XML adjuntos. Tono sobrio,
+ * transaccional. Dos acciones al autoservicio (ver boleta / convertir a factura),
+ * ambas en Signal Red por decisión de producto. Traga el error como el resto de
+ * envíos (un fallo de correo no debe romper nada).
+ */
+export async function sendBoletaEmail(params: {
+  to: string;
+  folio: number | string;
+  monto: number;
+  fechaEmision: string; // YYYY-MM-DD
+  autoservicioUrl: string;
+  pdfBase64?: string | null;
+  xmlBase64?: string | null;
+}): Promise<void> {
+  const { to, folio, monto, fechaEmision, autoservicioUrl, pdfBase64, xmlBase64 } = params;
+
+  // Adjuntos: el PDF/XML vienen en base64 desde OpenFactura → Buffer para Resend.
+  const attachments: Array<{ filename: string; content: Buffer }> = [];
+  if (pdfBase64) attachments.push({ filename: `boleta-39-folio-${folio}.pdf`, content: Buffer.from(pdfBase64, 'base64') });
+  if (xmlBase64) attachments.push({ filename: `boleta-39-folio-${folio}.xml`, content: Buffer.from(xmlBase64, 'base64') });
+
+  const html = buildBoletaHtml({ to, folio, monto, fechaEmision, autoservicioUrl });
+
+  const resend = getResend();
+  if (!resend) {
+    console.error('Boleta email skipped: RESEND_API_KEY not set');
+    return;
+  }
+  try {
+    // Resend devuelve { data, error } — un error de API NO se lanza, viene in-band.
+    const { data: sent, error: sendError } = await resend.emails.send({
+      from: FROM_EMAIL,
+      to,
+      subject: 'Tu boleta electrónica — refranco.ai',
+      attachments: attachments.length ? attachments : undefined,
+      html,
+    });
+    if (sendError) {
+      console.error('Error sending boleta email (Resend):', sendError);
+    } else {
+      console.log('Boleta email enviado · Resend id:', sent?.id);
+    }
+  } catch (error) {
+    console.error('Error sending boleta email:', error);
   }
 }
 
