@@ -44,6 +44,11 @@ export default function NuevoAnalisisV3Page() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Estado del flujo de compra pre-pago (logueado + LTR + sin crédito). Separado
+  // de `submitting` para NO disparar el overlay LoadingEditorial (ese es para
+  // "calculando análisis"); acá solo creamos la fila bloqueada y redirigimos a
+  // checkout, con feedback inline en el botón.
+  const [comprando, setComprando] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const initialized = useRef(false);
@@ -362,6 +367,119 @@ export default function NuevoAnalisisV3Page() {
     }
   }
 
+  // ─── Build payload LTR (reusable) ──
+  // Extraído para que el submit con crédito (handleAnalizar) y la compra
+  // pre-pago (onComprarLtr → /api/analisis/locked) usen EXACTAMENTE los mismos
+  // datos: el análisis bloqueado que se paga debe ser idéntico al configurado.
+  function buildLtrPayload() {
+    const parseIntSafe = (v: string, fallback: number): number => {
+      if (v === "" || v == null) return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    };
+    const supUtil = parseDecimalLocale(state.superficieUtil);
+    const precioUF = parseNum(state.precio);
+    const nEstac = parseIntSafe(state.estacionamientos, 0);
+    const nBodega = parseIntSafe(state.bodegas, 0);
+    const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
+    const cuotasPie = state.tipoPropiedad === "nuevo" && state.estadoVenta === "futura"
+      ? (Number(state.cuotasPie) || mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio))
+      : state.tipoPropiedad === "nuevo" && state.pieModoPago === "cuotas"
+        ? Number(state.cuotasPie) || 1
+        : state.tipoPropiedad === "nuevo" ? 1 : 0;
+    const pieUF = precioUF * (Number(state.piePct) / 100);
+    const nombre = `Depto ${state.dormitorios || "2"}D${state.banos || "1"}B ${state.comuna}`;
+    const arriendo = Number(state.arriendo) || 0;
+    const gastos = Number(state.gastos) || 0;
+    const contribuciones = Number(state.contribuciones) || 0;
+
+    return {
+      nombre,
+      comuna: state.comuna,
+      ciudad: state.ciudad || "Santiago",
+      direccion: state.direccion || undefined,
+      tipo: "Departamento",
+      dormitorios: parseIntSafe(state.dormitorios, 2),
+      esStudio: state.esStudio === true,
+      banos: parseIntSafe(state.banos, 1),
+      superficie: supUtil,
+      superficieTotal: supUtil,
+      antiguedad: antigNum,
+      enConstruccion: state.estadoVenta !== "inmediata",
+      piso: 0,
+      estacionamiento: nEstac > 0 ? "si" : "no",
+      cantidadEstacionamientos: nEstac,
+      precioEstacionamiento: 0,
+      bodega: nBodega > 0,
+      cantidadBodegas: nBodega,
+      estadoVenta: state.estadoVenta === "futura" ? "futura" : "inmediata",
+      fechaEntrega: state.estadoVenta === "futura"
+        ? `${state.fechaEntregaAnio}-${state.fechaEntregaMes}`
+        : undefined,
+      cuotasPie,
+      montoCuota: cuotasPie > 0 ? Math.round((pieUF / cuotasPie) * ufCLP) : 0,
+      precio: precioUF,
+      // Valor de mercado de referencia — crítico para que el motor no caiga
+      // al fallback `input.precio`. Sin este campo, vmFrancoUF === precioUF,
+      // plusvaliaInmediataFranco === 0, y la narrativa IA se confunde entre
+      // el indicador por m² y el absoluto.
+      valorMercadoFranco: suggestions.precioM2UF && supUtil > 0
+        ? Math.round(suggestions.precioM2UF * supUtil)
+        : undefined,
+      valorMercadoUsuario: undefined, // no se pregunta en v3
+      piePct: Number(state.piePct),
+      plazoCredito: Number(state.plazoCredito),
+      tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
+      gastos,
+      contribuciones,
+      provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),
+      tipoRenta: "larga",
+      arriendo,
+      arriendoEstacionamiento: Number(state.arriendoEstac) || 0,
+      arriendoBodega: Number(state.arriendoBodega) || 0,
+      vacanciaMeses: Number(state.vacanciaPct) * 12 / 100,
+      usaAdministrador: Number(state.adminPct) > 0,
+      comisionAdministrador: Number(state.adminPct) > 0 ? Number(state.adminPct) : undefined,
+      zonaRadio: {
+        precioM2VentaCLP: null,
+        arriendoPromedio: suggestions.arriendo,
+        arriendoPrecioM2: null,
+        sampleSizeArriendo: suggestions.sampleSize,
+        sampleSizeVenta: 0,
+        radioMetros: suggestions.radiusUsed ?? 500,
+        lat: state.lat,
+        lng: state.lng,
+      },
+    };
+  }
+
+  // ─── Compra pre-pago LTR (logueado + LTR + sin crédito) ──
+  // Crea la fila del análisis YA computada pero BLOQUEADA (sin cobrar crédito)
+  // vía /api/analisis/locked, y manda a checkout con su analysisId. Tras pagar,
+  // confirm desbloquea + dispara la IA, y el redirect post-pago lleva al análisis.
+  async function onComprarLtr() {
+    setSubmitError("");
+    setComprando(true);
+    try {
+      const res = await fetch("/api/analisis/locked", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildLtrPayload()),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "No se pudo crear el análisis. Intenta de nuevo.");
+      }
+      const { id } = (await res.json()) as { id: string };
+      posthog?.capture("locked_analysis_created", { comuna: state.comuna });
+      router.push(`/checkout?product=single&analysisId=${id}`);
+      // No reseteamos comprando: estamos navegando, el spinner se mantiene.
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Error inesperado");
+      setComprando(false);
+    }
+  }
+
   // ─── Submit (bifurcación LTR / STR / AMBAS — Ronda 2a) ──
   // Ambas modalidades cobran 1 crédito en el backend (chargeAnalysisCredit):
   // el primer análisis del registrado usa el welcome credit (gratis, una vez);
@@ -402,82 +520,13 @@ export default function NuevoAnalisisV3Page() {
       const supUtil = parseDecimalLocale(state.superficieUtil);
       const precioUF = parseNum(state.precio);
       const precioCompraCLP = Math.round(precioUF * ufCLP);
-      const nEstac = parseIntSafe(state.estacionamientos, 0);
-      const nBodega = parseIntSafe(state.bodegas, 0);
-      const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
-      // En Nuevo+Futura: respetar state.cuotasPie si el usuario lo editó; sino
-      // usar la sugerencia basada en meses hasta entrega.
-      const cuotasPie = state.tipoPropiedad === "nuevo" && state.estadoVenta === "futura"
-        ? (Number(state.cuotasPie) || mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio))
-        : state.tipoPropiedad === "nuevo" && state.pieModoPago === "cuotas"
-          ? Number(state.cuotasPie) || 1
-          : state.tipoPropiedad === "nuevo" ? 1 : 0;
-      const pieUF = precioUF * (Number(state.piePct) / 100);
-      const nombre = `Depto ${state.dormitorios || "2"}D${state.banos || "1"}B ${state.comuna}`;
 
       const arriendo = Number(state.arriendo) || 0;
       const gastos = Number(state.gastos) || 0;
       const contribuciones = Number(state.contribuciones) || 0;
 
-      // ─── Payload LTR (idéntico a v3 pre-bifurcación) ──
-      const ltrPayload = {
-        nombre,
-        comuna: state.comuna,
-        ciudad: state.ciudad || "Santiago",
-        direccion: state.direccion || undefined,
-        tipo: "Departamento",
-        dormitorios: parseIntSafe(state.dormitorios, 2),
-        esStudio: state.esStudio === true,
-        banos: parseIntSafe(state.banos, 1),
-        superficie: supUtil,
-        superficieTotal: supUtil,
-        antiguedad: antigNum,
-        enConstruccion: state.estadoVenta !== "inmediata",
-        piso: 0,
-        estacionamiento: nEstac > 0 ? "si" : "no",
-        cantidadEstacionamientos: nEstac,
-        precioEstacionamiento: 0,
-        bodega: nBodega > 0,
-        cantidadBodegas: nBodega,
-        estadoVenta: state.estadoVenta === "futura" ? "futura" : "inmediata",
-        fechaEntrega: state.estadoVenta === "futura"
-          ? `${state.fechaEntregaAnio}-${state.fechaEntregaMes}`
-          : undefined,
-        cuotasPie,
-        montoCuota: cuotasPie > 0 ? Math.round((pieUF / cuotasPie) * ufCLP) : 0,
-        precio: precioUF,
-        // Valor de mercado de referencia — crítico para que el motor no caiga
-        // al fallback `input.precio`. Sin este campo, vmFrancoUF === precioUF,
-        // plusvaliaInmediataFranco === 0, y la narrativa IA se confunde entre
-        // el indicador por m² y el absoluto.
-        valorMercadoFranco: suggestions.precioM2UF && supUtil > 0
-          ? Math.round(suggestions.precioM2UF * supUtil)
-          : undefined,
-        valorMercadoUsuario: undefined, // no se pregunta en v3
-        piePct: Number(state.piePct),
-        plazoCredito: Number(state.plazoCredito),
-        tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
-        gastos,
-        contribuciones,
-        provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),
-        tipoRenta: "larga",
-        arriendo,
-        arriendoEstacionamiento: Number(state.arriendoEstac) || 0,
-        arriendoBodega: Number(state.arriendoBodega) || 0,
-        vacanciaMeses: Number(state.vacanciaPct) * 12 / 100,
-        usaAdministrador: Number(state.adminPct) > 0,
-        comisionAdministrador: Number(state.adminPct) > 0 ? Number(state.adminPct) : undefined,
-        zonaRadio: {
-          precioM2VentaCLP: null,
-          arriendoPromedio: suggestions.arriendo,
-          arriendoPrecioM2: null,
-          sampleSizeArriendo: suggestions.sampleSize,
-          sampleSizeVenta: 0,
-          radioMetros: suggestions.radiusUsed ?? 500,
-          lat: state.lat,
-          lng: state.lng,
-        },
-      };
+      // ─── Payload LTR (extraído a buildLtrPayload, compartido con onComprarLtr) ──
+      const ltrPayload = buildLtrPayload();
 
       // ─── Payload STR (Ronda 2a — usa defaults del state cuando UI no
       // expone aún el input. Inputs específicos STR llegan en Ronda 2b.) ──
@@ -814,6 +863,9 @@ export default function NuevoAnalisisV3Page() {
                 }}
                 onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
+                isLoggedIn={isLoggedIn === true}
+                onComprarLtr={onComprarLtr}
+                comprando={comprando}
                 submitting={submitting}
                 submitError={submitError}
               />

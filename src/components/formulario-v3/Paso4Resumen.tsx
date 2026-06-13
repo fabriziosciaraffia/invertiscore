@@ -140,6 +140,9 @@ export function Paso4Resumen({
   onEditarStep,
   onVolver,
   onAnalizar,
+  isLoggedIn,
+  onComprarLtr,
+  comprando,
   submitting,
   submitError,
 }: {
@@ -152,6 +155,12 @@ export function Paso4Resumen({
   onVolver: () => void;
   /** "Analizar ahora →" — submit final. */
   onAnalizar: () => void;
+  /** Sesión activa. Habilita el flujo de compra pre-pago (solo logueado + LTR). */
+  isLoggedIn: boolean;
+  /** Crea el análisis LTR bloqueado y va a checkout con su id. */
+  onComprarLtr: () => void;
+  /** True mientras se crea la fila bloqueada + redirige a checkout. */
+  comprando: boolean;
   submitting: boolean;
   submitError: string;
 }) {
@@ -398,6 +407,15 @@ export function Paso4Resumen({
         <StateBox variant="left-border" state="negative">{submitError}</StateBox>
       )}
 
+      {/* Ancla pre-pago: deja claro que se paga por ESTE análisis ya configurado,
+          no por un crédito abstracto. Solo logueado + LTR (el caso del botón de
+          compra nuevo). Sans regular, sin color (sistema de 2 colores). */}
+      {!canAnalyze && isLoggedIn && mod === "ltr" && (
+        <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0">
+          Pagas por el análisis que ya configuraste{state.comuna ? ` en ${state.comuna}` : ""}, no por un crédito suelto.
+        </p>
+      )}
+
       {/* Footer CTAs siguiendo Patrón 5 — Form Step.
           El Paso 4 es el cierre del wizard, así que el pie SIEMPRE tiene un
           CTA primario. Con créditos: "Analizar ahora" (submit). Sin créditos:
@@ -425,7 +443,23 @@ export function Paso4Resumen({
               <>Analizar ahora →</>
             )}
           </button>
+        ) : isLoggedIn && mod === "ltr" ? (
+          // Logueado + LTR: crear análisis bloqueado y pagar por ÉL. El copy
+          // ancla al análisis concreto ("este análisis"), no a un crédito.
+          <button
+            type="button"
+            onClick={onComprarLtr}
+            disabled={comprando}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {comprando ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Creando tu análisis…</>
+            ) : (
+              <>Desbloquear este análisis · $9.990</>
+            )}
+          </button>
         ) : (
+          // Guest o STR/Ambas: flujo viejo intacto (checkout pelado).
           <Link
             href="/checkout?product=single"
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"
