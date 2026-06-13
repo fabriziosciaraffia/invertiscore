@@ -83,6 +83,10 @@ export default function NuevoAnalisisV3Page() {
   const airRoi = useAirRoiSuggestion({
     enabled: state.modalidad === "str" || state.modalidad === "both",
     direccion: state.direccion,
+    // Misma comuna que usa la creación (short-term/route.ts → body.comuna) para
+    // unificar la cache key del prefetch con la de la creación. Ya validada por
+    // canAdvanceFromStep1 (el paso 1 exige comuna antes de llegar al paso 3).
+    comuna: state.comuna,
     dormitorios: Number(state.dormitorios) || 2,
     banos: Number(state.banos) || 1,
     capacidadHuespedes: Number(state.capacidadHuespedes) || 2,

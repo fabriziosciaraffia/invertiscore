@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  // Flow.cl redirige via POST después del pago → convertir a GET
+  // Flow.cl redirige via POST después del pago → convertir a GET.
+  // Preservamos el query string (?order=commerceOrder que pone create) para que
+  // /payments/return identifique la compra exacta vía /api/payments/status?order=.
   if (request.nextUrl.pathname === "/payments/return" && request.method === "POST") {
-    const url = new URL("/payments/return", request.url);
+    const url = new URL("/payments/return" + request.nextUrl.search, request.url);
     return NextResponse.redirect(url, 303);
   }
 

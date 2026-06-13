@@ -44,12 +44,13 @@ const EMPTY: AirRoiSuggestion = {
 export function useAirRoiSuggestion(params: {
   enabled: boolean;
   direccion: string;
+  comuna: string;
   dormitorios: number;
   banos: number;
   capacidadHuespedes: number;
   ufClp: number;
 }): AirRoiSuggestion {
-  const { enabled, direccion, dormitorios, banos, capacidadHuespedes, ufClp } = params;
+  const { enabled, direccion, comuna, dormitorios, banos, capacidadHuespedes, ufClp } = params;
 
   const [state, setState] = useState<AirRoiSuggestion>(EMPTY);
 
@@ -76,6 +77,11 @@ export function useAirRoiSuggestion(params: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         address: direccion.trim(),
+        // La comuna entra a NUESTRA cache key (desambiguación F1 de homónimos),
+        // NO se envía a AirROI. Mandarla aquí alinea la key del prefetch con la
+        // de la creación (short-term/route.ts manda body.comuna) → mismo hash →
+        // la creación es cache HIT y no se paga AirROI dos veces por el análisis.
+        comuna: comuna.trim(),
         bedrooms: dormitorios,
         baths: banos,
         guests: capacidadHuespedes,
@@ -136,7 +142,7 @@ export function useAirRoiSuggestion(params: {
 
     return () => ctrl.abort();
     // ufClp incluido: si cambia mid-flight, recomponer con la nueva tasa
-  }, [enabled, direccion, dormitorios, banos, capacidadHuespedes, ufClp]);
+  }, [enabled, direccion, comuna, dormitorios, banos, capacidadHuespedes, ufClp]);
 
   return state;
 }

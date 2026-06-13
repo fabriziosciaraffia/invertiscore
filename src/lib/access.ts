@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { consumeCredit as consumeLedgerCredit } from "@/lib/credits-grant";
+import { consumeCredit as consumeLedgerCredit, getAvailableCredits } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -179,7 +179,11 @@ export async function getUserAccessLevel(
 
   if (!data) return "free";
   if (hasSubscriptionAccess(data)) return "subscriber";
-  if (data.credits > 0) return "premium";
+  // Saldo real = ledger vivo + legacy. Antes leía solo data.credits (contador
+  // legacy = 0 en el modelo ledger) y devolvía "free" a quien sí tenía saldo en
+  // credit_grants. getAvailableCredits incluye el contador legacy, así que cubre
+  // ambos modelos.
+  if ((await getAvailableCredits(userId, supabase)) > 0) return "premium";
   return "free";
 }
 

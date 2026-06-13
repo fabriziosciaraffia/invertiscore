@@ -61,9 +61,16 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function AnalisisDetallePage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { print?: string };
 }) {
+  // Modo print (PDF headless): renderiza el cuerpo del análisis sin chrome de
+  // navegación ni CTAs de conversión, con AdvancedSection abierta, para que
+  // Puppeteer lo capture completo. Ver api/.../pdf (2b).
+  const printMode = searchParams?.print === "true";
+
   const supabase = createClient();
 
   const [{ data: { user } }, ufValue] = await Promise.all([
@@ -185,8 +192,8 @@ export default async function AnalisisDetallePage({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Navbar */}
-      {accessLevel === "guest" ? (
+      {/* Navbar — oculto en print mode (el PDF agrega su propio header) */}
+      {!printMode && (accessLevel === "guest" ? (
         <PublicShareHeader date={formatFechaCorta(analisis.created_at)} />
       ) : (
         <AnalysisNav
@@ -197,7 +204,7 @@ export default async function AnalisisDetallePage({
           comuna={analisis.comuna}
           isSharedView={isSharedView}
         />
-      )}
+      ))}
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
         <PremiumResults
@@ -227,6 +234,7 @@ export default async function AnalisisDetallePage({
           ownerFirstName={ownerFirstName}
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
+          printMode={printMode}
         />
 
         {/* Fallback for old analyses without full results */}

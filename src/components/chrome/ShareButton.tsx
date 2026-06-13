@@ -90,6 +90,13 @@ export function ShareButton({
 
   const handleClick = async () => {
     posthog?.capture('analysis_shared', { analysis_id: analysisId, comuna, score, modalidad });
+    // Si hay PDF para descargar, abrimos el menú propio: el share nativo del SO solo
+    // comparte la URL y no puede exponer "Descargar PDF". Con pdfUrl presente preferimos
+    // el menú (que igual trae WhatsApp / Copiar link / Email / X + Descargar PDF).
+    if (pdfUrl) {
+      setOpen(!open);
+      return;
+    }
     // Mobile: use native share
     if (typeof navigator !== "undefined" && navigator.share) {
       try {

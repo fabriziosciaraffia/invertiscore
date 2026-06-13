@@ -73,7 +73,10 @@ export async function POST(request: Request) {
       email: user.email!,
       paymentMethod: 9,
       urlConfirmation: `${SITE_URL}/api/payments/confirm`,
-      urlReturn: `${SITE_URL}/payments/return`,
+      // Propagamos el commerceOrder al return para que /payments/return
+      // identifique ESTA compra (no el "último pago del user"). El middleware
+      // preserva el query string al convertir el POST de Flow en GET.
+      urlReturn: `${SITE_URL}/payments/return?order=${commerceOrder}`,
     });
 
     if (!flowResponse.url || !flowResponse.token) {

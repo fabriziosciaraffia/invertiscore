@@ -22,14 +22,17 @@ export function AdvancedSection({
   inputData,
   currency,
   valorUF,
+  forceOpen = false,
 }: {
   projections: YearProjection[];
   metrics: AnalysisMetrics;
   inputData: AnalisisInput;
   currency: "CLP" | "UF";
   valorUF: number;
+  // forceOpen: arranca expandida (modo print/PDF) — override del colapso default.
+  forceOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen);
 
   const sectionHeader = (num: string, label: string, title: string) => (
     <div style={{ marginBottom: 14 }}>
