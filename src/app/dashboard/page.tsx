@@ -40,7 +40,10 @@ export default async function DashboardPage() {
     supabase
       .from("analisis")
       .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id),
+      .eq("user_id", user.id)
+      // Excluir filas bloqueadas pre-pago: no cuentan como análisis del usuario
+      // hasta que el pago las desbloquee (pending_payment=false).
+      .eq("pending_payment", false),
   ]);
 
   const needsOnboarding = !creditsRow?.onboarding_completed && (analisisCount ?? 0) === 0;
@@ -53,6 +56,8 @@ export default async function DashboardPage() {
     .from("analisis")
     .select("*")
     .eq("user_id", user.id)
+    // Ocultar filas bloqueadas pre-pago de "Mis análisis" hasta el desbloqueo.
+    .eq("pending_payment", false)
     .order("created_at", { ascending: false });
 
   const analisis = (analisisList || []) as Analisis[];
