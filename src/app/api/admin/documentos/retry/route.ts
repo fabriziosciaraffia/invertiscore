@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     // 2) Pago asociado
     const { data: payment, error: payErr } = await admin
       .from("payments")
-      .select("id, user_id, product, amount, commerce_order")
+      .select("id, user_id, product, amount, commerce_order, flow_order")
       .eq("id", doc.payment_id)
       .single();
 
@@ -94,6 +94,7 @@ export async function POST(request: Request) {
         product: payment.product,
         amount: payment.amount,
         commerce_order: payment.commerce_order,
+        flow_order: payment.flow_order,
       },
       userEmail,
     });

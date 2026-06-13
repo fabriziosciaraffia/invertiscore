@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("id, user_id, product, amount, commerce_order, analysis_id")
+        .select("id, user_id, product, amount, commerce_order, flow_order, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -198,6 +198,7 @@ export async function POST(request: Request) {
                 product,
                 amount: payment.amount,
                 commerce_order: payment.commerce_order,
+                flow_order: payment.flow_order,
               },
               userEmail,
             });
