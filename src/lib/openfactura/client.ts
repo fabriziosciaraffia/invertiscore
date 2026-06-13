@@ -16,6 +16,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { EMISOR } from "./emisor";
+import { sendBoletaEmail } from "@/lib/email";
 
 function createAdminClient() {
   return createClient(
@@ -406,6 +407,23 @@ export async function emitirBoletaDTE({
         updated_at: new Date().toISOString(),
       })
       .eq("id", documentoId);
+
+    // Correo de la boleta con PDF + XML adjuntos, vía Resend. data.PDF/data.XML
+    // siguen intactos acá (stripPdf solo afecta lo persistido). try/catch propio:
+    // un fallo de correo NO debe romper la emisión ya exitosa.
+    try {
+      await sendBoletaEmail({
+        to: userEmail,
+        folio,
+        monto: total,
+        fechaEmision: fecha,
+        autoservicioUrl: autoservicioUrl ?? "",
+        pdfBase64: data.PDF ?? null,
+        xmlBase64: data.XML ?? null,
+      });
+    } catch (e) {
+      console.error("[emitirBoletaDTE] envío correo boleta falló:", e);
+    }
 
     return { ok: true, folio, documentoId };
   } catch (err) {
