@@ -182,15 +182,16 @@ function resolveVariant(args: {
     };
   }
 
-  // Sin créditos: solo activar cuando el welcome ya fue consumido. Si todavía
-  // está disponible, el siguiente análisis es gratis y no hay nada que vender.
-  // Este es el momento de conversión post-welcome (F4): CTA principal compra 1
-  // análisis directo ($9.990); link secundario a planes para quien quiere volumen.
+  // Sin saldo: welcome ya consumido Y ledger en 0. `credits` es ledger-aware
+  // (getAvailableCredits), así que un usuario con saldo comprado cae en la rama
+  // `credits > 0` de arriba y nunca llega acá. Copy NEUTRO: no afirma "usaste tu
+  // gratis" porque acá también cae quien pagó y agotó su saldo. CTA: compra 1
+  // análisis ($9.990); link secundario a planes para quien quiere volumen.
   if (!args.welcomeAvailable && args.credits === 0) {
     return {
       state: "no_credits",
       message:
-        "Usaste tu análisis gratis. El próximo necesita un crédito.",
+        "Necesitas un crédito para tu próximo análisis.",
       plan: "SIN CRÉDITOS",
       ctaLabel: `Comprar 1 análisis · ${fmtCLP(SINGLE_PRICE)}`,
       href: "/checkout?product=single",
