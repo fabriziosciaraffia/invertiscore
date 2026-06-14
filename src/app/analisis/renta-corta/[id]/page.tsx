@@ -43,9 +43,16 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function STRResultPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { print?: string };
 }) {
+  // Modo print (PDF headless): renderiza el cuerpo del análisis sin chrome de
+  // navegación ni CTAs, con AdvancedSectionSTR abierta, para que Puppeteer lo
+  // capture completo. Espejo del modo print de LTR.
+  const printMode = searchParams?.print === "true";
+
   const supabase = createClient();
 
   const [{ data: { user } }, ufValue] = await Promise.all([
@@ -130,6 +137,7 @@ export default async function STRResultPage({
     userCredits,
     welcomeAvailable,
     aiAnalysisInitial: data.ai_analysis ?? null,
+    printMode,
   };
 
   return <STRResultsClient {...sharedProps} />;
