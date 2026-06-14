@@ -23,11 +23,17 @@ import {
 // product=single&analysisId=<id> → Flow → confirm desbloquea + dispara IA.
 export async function POST(request: Request) {
   try {
+    // ─── INSTRUMENTACIÓN TEMPORAL (quitar tras medir el bottleneck) ───
+    // Mide cada paso para distinguir cold start / getUFValue / runAnalysis /
+    // insert. Mirar logs con prefix [LOCKED-TIMING].
+    const t0 = Date.now();
+
     const supabase = createSupabaseServer();
 
     const auth = await requireAuthenticatedUser(supabase);
     if (!auth.ok) return auth.response;
     const { user } = auth;
+    console.log(`[LOCKED-TIMING] auth (createClient + getUser): ${Date.now() - t0}ms`);
 
     const body: AnalisisInput = await request.json();
 
@@ -42,8 +48,15 @@ export async function POST(request: Request) {
     }
 
     // Mismo motor y misma UF explícita que /api/analisis (LTR cobrado).
+    const tUf = Date.now();
     const ufValue = await getUFValue();
+    console.log(`[LOCKED-TIMING] getUFValue: ${Date.now() - tUf}ms`);
+
+    const tRun = Date.now();
     const result = runAnalysis(body, ufValue);
+    console.log(`[LOCKED-TIMING] runAnalysis: ${Date.now() - tRun}ms`);
+
+    const tIns = Date.now();
 
     // Mismo insert que /api/analisis (route.ts), con dos diferencias:
     //   - is_premium queda en su default false (NO se llama markPremium).
@@ -77,6 +90,7 @@ export async function POST(request: Request) {
       })
       .select("id")
       .single();
+    console.log(`[LOCKED-TIMING] insert: ${Date.now() - tIns}ms`);
 
     if (error) {
       console.error("[analisis/locked] Supabase insert error:", error);
@@ -86,6 +100,7 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log(`[LOCKED-TIMING] TOTAL handler: ${Date.now() - t0}ms`);
     return NextResponse.json({ id: data.id });
   } catch (error) {
     console.error("[analisis/locked] API error:", error);
