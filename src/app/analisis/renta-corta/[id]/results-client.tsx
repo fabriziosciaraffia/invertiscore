@@ -61,6 +61,7 @@ interface STRResultsProps {
   userCredits: number;
   welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
+  printMode?: boolean;
 }
 
 export function STRResultsClient({
@@ -77,6 +78,7 @@ export function STRResultsClient({
   userCredits,
   welcomeAvailable = true,
   aiAnalysisInitial,
+  printMode = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
 
@@ -170,7 +172,8 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {accessLevel === "guest" ? (
+      {/* Chrome de nav/header — oculto en print mode (el PDF agrega su header) */}
+      {!printMode && (accessLevel === "guest" ? (
         <PublicShareHeader date={formatFechaCorta(createdAt)} />
       ) : (
         <UnifiedNav
@@ -188,11 +191,11 @@ export function STRResultsClient({
             />
           }
         />
-      )}
+      ))}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
-        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
-        {accessLevel === "guest" && (
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest, no en print */}
+        {accessLevel === "guest" && !printMode && (
           <div className="mb-5">
             <ConversionHook href="/register" />
           </div>
@@ -287,43 +290,51 @@ export function STRResultsClient({
           results={results}
           currency={currency}
           valorUF={ufValue}
+          forceOpen={printMode}
         />
 
-        {/* CTA banner (free) */}
-        <div style={{ height: 24 }} />
-        <ProCTABanner
-          analysesCount={1}
-          isLoggedIn={accessLevel !== "guest"}
-          accessLevel={accessLevel}
-          welcomeAvailable={welcomeAvailable}
-          isSharedView={isSharedView}
-          source="str_v2"
-        />
+        {/* CTAs de dueño/wallet — ocultos en print mode */}
+        {!printMode && (
+          <>
+            {/* CTA banner (free) */}
+            <div style={{ height: 24 }} />
+            <ProCTABanner
+              analysesCount={1}
+              isLoggedIn={accessLevel !== "guest"}
+              accessLevel={accessLevel}
+              welcomeAvailable={welcomeAvailable}
+              isSharedView={isSharedView}
+              source="str_v2"
+            />
 
-        {/* Wallet status */}
-        <div style={{ height: 16 }} />
-        <WalletStatusCTA
-          welcomeAvailable={welcomeAvailable}
-          credits={userCredits}
-          isSubscriber={isSubscriber}
-          isAdmin={isAdmin}
-          isSharedView={isSharedView}
-          source="str"
-        />
+            {/* Wallet status */}
+            <div style={{ height: 16 }} />
+            <WalletStatusCTA
+              welcomeAvailable={welcomeAvailable}
+              credits={userCredits}
+              isSubscriber={isSubscriber}
+              isAdmin={isAdmin}
+              isSharedView={isSharedView}
+              source="str"
+            />
+          </>
+        )}
 
-        {/* Link analizar otra propiedad */}
-        <div className="mt-6 mb-4 flex items-center justify-center">
-          <Link
-            href="/analisis/renta-corta"
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-          >
-            Analizar otra propiedad
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        {/* Link analizar otra propiedad — oculto en print mode (es navegación) */}
+        {!printMode && (
+          <div className="mt-6 mb-4 flex items-center justify-center">
+            <Link
+              href="/analisis/renta-corta"
+              className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+            >
+              Analizar otra propiedad
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
 
-        {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
-        {accessLevel === "guest" && (
+        {/* CTA conversión — cierre (campo Signal Red) · solo guest, no en print */}
+        {accessLevel === "guest" && !printMode && (
           <div className="mt-8 mb-4">
             <ConversionCloser href="/register" />
           </div>
@@ -342,7 +353,8 @@ export function STRResultsClient({
         </p>
       </main>
 
-      <AppFooter variant="minimal" />
+      {/* Footer del sitio — oculto en print mode (chrome, no cuerpo del análisis) */}
+      {!printMode && <AppFooter variant="minimal" />}
     </div>
   );
 }
