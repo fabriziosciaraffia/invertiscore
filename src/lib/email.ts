@@ -446,7 +446,7 @@ export async function sendBoletaEmail(params: {
     const { data: sent, error: sendError } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: 'Tu boleta electrónica — refranco.ai',
+      subject: `Tu boleta electrónica N° ${folio} — refranco.ai`,
       attachments: attachments.length ? attachments : undefined,
       html,
     });
