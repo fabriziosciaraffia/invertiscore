@@ -61,6 +61,27 @@ function CheckoutContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
+  // Comuna del análisis atado (compra single con analysisId) para personalizar
+  // el título del checkout. Read-only, no toca el path de pago. Fallback: null
+  // → se muestra el título genérico del catálogo.
+  const [analysisComuna, setAnalysisComuna] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!analysisId) return;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("analisis")
+          .select("comuna")
+          .eq("id", analysisId)
+          .single();
+        if (data?.comuna) setAnalysisComuna(data.comuna as string);
+      } catch {
+        /* fallback al título genérico */
+      }
+    })();
+  }, [analysisId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -158,7 +179,9 @@ function CheckoutContent() {
         {/* Product card */}
         <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
           <div className="mb-6">
-            <p className="font-body text-sm font-semibold text-[var(--franco-text)]">{product.title}</p>
+            <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
+              {product.oneTime && analysisComuna ? `Análisis en ${analysisComuna}` : product.title}
+            </p>
             <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">{product.subtitle}</p>
           </div>
 

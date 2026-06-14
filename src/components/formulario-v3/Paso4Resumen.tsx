@@ -412,7 +412,7 @@ export function Paso4Resumen({
           compra nuevo). Sans regular, sin color (sistema de 2 colores). */}
       {!canAnalyze && isLoggedIn && mod === "ltr" && (
         <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0">
-          Pagas por el análisis que ya configuraste{state.comuna ? ` en ${state.comuna}` : ""}, no por un crédito suelto.
+          Estás comprando este análisis{state.comuna ? ` de ${state.comuna}` : ""}. Pagas y se desbloquea al instante.
         </p>
       )}
 
@@ -453,7 +453,7 @@ export function Paso4Resumen({
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {comprando ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Creando tu análisis…</>
+              <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</>
             ) : (
               <>Desbloquear este análisis · $9.990</>
             )}

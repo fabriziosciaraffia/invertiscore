@@ -8,6 +8,7 @@ import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
@@ -142,13 +143,18 @@ export default async function AnalisisDetallePage({
   let userCredits = 0;
   let welcomeAvailable = true;
   if (user) {
-    const { data: credits } = await supabase
+    // welcome_credit_used sale del contador; el SALDO real sale del ledger
+    // (credit_grants + legacy) vía getAvailableCredits. Leer user_credits.credits
+    // crudo era el bug: =0 en el modelo ledger → el wallet decía "sin créditos" a
+    // quien sí tenía saldo comprado. RLS credit_grants_select_own permite leerlo
+    // con el server client. Mismo fix que /cuenta y /perfil.
+    const { data: creditsRow } = await supabase
       .from("user_credits")
-      .select("credits, welcome_credit_used")
+      .select("welcome_credit_used")
       .eq("user_id", user.id)
       .single();
-    userCredits = credits?.credits ?? 0;
-    welcomeAvailable = !(credits?.welcome_credit_used ?? false);
+    welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    userCredits = await getAvailableCredits(user.id, supabase);
   }
 
   // Pro CTA banner: total de analisis del user para threshold check.
