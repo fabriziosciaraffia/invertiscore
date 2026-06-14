@@ -37,21 +37,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
   }
 
-  // Ownership check: if payment is for an analysis, verify the user owns it
+  // Ownership check (+ comuna para personalizar el subject de Flow): si el pago
+  // es por un análisis, verificar que el user lo posee.
+  let analysisComuna: string | null = null;
   if (analysisId) {
     const admin = createAdminClient();
     const { data: analysis } = await admin
       .from("analisis")
-      .select("user_id")
+      .select("user_id, comuna")
       .eq("id", analysisId)
       .single();
 
     if (analysis && analysis.user_id && analysis.user_id !== user.id) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
+    analysisComuna = (analysis?.comuna as string) ?? null;
   }
 
-  const { amount, subject } = PRODUCTS[product];
+  const { amount, subject: catalogSubject } = PRODUCTS[product];
+  // subject = SOLO el texto que muestra Flow. Para un single atado a análisis lo
+  // personalizamos con la comuna ("Franco — Análisis Providencia"); el monto NO
+  // cambia (sale del catálogo). Sin comuna/analysisId → subject genérico.
+  const subject = product === "single" && analysisComuna
+    ? `Franco — Análisis ${analysisComuna}`
+    : catalogSubject;
   const commerceOrder = `franco-${randomUUID()}`;
 
   try {
