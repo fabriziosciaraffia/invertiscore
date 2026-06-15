@@ -489,22 +489,22 @@ function DrawerNegociacion({
   let mostrarKPI = true;
   if (esPasada) {
     veredictoLabel = "Ventaja de compra";
-    veredictoTooltip = "Compras bajo el valor de mercado de la zona. Diferencia favorable entre precio y valor de mercado.";
+    veredictoTooltip = "Compras bajo el valor estimado de mercado de la zona. Diferencia favorable entre precio y valor estimado de mercado.";
     veredictoDesc = `Estás pagando ${fmtPrecio(precioCLP)} por algo que vale ${fmtPrecio(vmFrancoCLP)}`;
     veredictoMonto = "+" + fmtFull(diferenciaCLP);
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
     veredictoColor = "var(--ink-400)";
   } else if (esSobreprecio) {
     veredictoLabel = "Sobreprecio";
-    veredictoTooltip = "Pagas más que el valor de mercado de la zona.";
+    veredictoTooltip = "Pagas más que el valor estimado de mercado de la zona.";
     veredictoDesc = `Estás pagando ${fmtPrecio(precioCLP)} por algo que vale ${fmtPrecio(vmFrancoCLP)}`;
     veredictoMonto = "−" + fmtFull(Math.abs(diferenciaCLP));
     veredictoSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
     veredictoColor = "var(--signal-red)";
   } else {
     veredictoLabel = "Precio alineado";
-    veredictoTooltip = "Tu precio coincide con el valor de mercado (±2% diferencia).";
-    veredictoDesc = `El precio está cerca del valor real de mercado`;
+    veredictoTooltip = "Tu precio coincide con el valor estimado de mercado (±2% diferencia).";
+    veredictoDesc = `El precio está cerca del valor estimado de mercado`;
     veredictoMonto = ""; // unused — mostrarKPI=false
     veredictoSub = "";
     veredictoColor = "color-mix(in srgb, var(--franco-text) 75%, transparent)";
@@ -536,7 +536,7 @@ function DrawerNegociacion({
     },
     {
       key: "vm",
-      nombre: "Valor de mercado",
+      nombre: "Valor estimado de mercado",
       sub: "estimado según comparables de zona",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
@@ -639,7 +639,7 @@ function DrawerNegociacion({
 
       {/* Mensaje educativo dot Fase 4.8 — explica la lógica de comparación. */}
       <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● Franco compara contra el valor real de mercado de la zona, no contra el precio publicado. Por eso la &ldquo;ventaja&rdquo; o &ldquo;sobreprecio&rdquo; refleja realidad, no marketing.
+        ● Franco compara contra un valor estimado de mercado (mediana de avisos ajustada a precio de cierre estimado), no contra el precio publicado. La &ldquo;ventaja&rdquo; o &ldquo;sobreprecio&rdquo; es una estimación, no una tasación.
       </p>
 
       {/* BLOQUE B · TABLA COMPARATIVA */}
@@ -1113,7 +1113,7 @@ function DrawerLargoPlazo({
     b3Rows.push({
       key: "plusvalia",
       label: `+ Plusvalía ${aniosPlazo} años`,
-      sub: "+4% anual sobre valor real",
+      sub: "+4% anual sobre valor estimado",
       value: plusvaliaCalc,
       fmtValue: "+" + fmtPrecio(plusvaliaCalc),
       fillLeft: pctB3(vmFrancoCLP),
@@ -1123,8 +1123,8 @@ function DrawerLargoPlazo({
       valueColor: "var(--franco-text)",
       isNeg: false,
       tooltip: entregaFutura
-        ? "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna. En depto en construcción, la plusvalía cuenta solo desde la entrega."
-        : "Franco asume 4% anual sobre el valor de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
+        ? "Franco asume 4% anual sobre el valor estimado de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna. En depto en construcción, la plusvalía cuenta solo desde la entrega."
+        : "Franco asume 4% anual sobre el valor estimado de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
     });
   }
 
@@ -1440,7 +1440,7 @@ function DrawerLargoPlazo({
 
       {/* Mensaje educativo dot Fase 4.8 — supuesto plusvalía */}
       <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● Franco proyecta plusvalía conservadora de 4% anual sobre el valor de mercado de la zona. Verifica si la comuna ha rendido históricamente más o menos para ajustar tus expectativas.
+        ● Franco proyecta plusvalía conservadora de 4% anual sobre el valor estimado de mercado de la zona. Verifica si la comuna ha rendido históricamente más o menos para ajustar tus expectativas.
       </p>
 
       {/* ─── BLOQUE 2 · TU ESFUERZO TOTAL ─────────────── */}
