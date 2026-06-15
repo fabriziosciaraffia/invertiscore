@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("id, user_id, product, amount, commerce_order, flow_order, analysis_id")
+        .select("id, user_id, product, amount, commerce_order, flow_order, quantity, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -98,8 +98,11 @@ export async function POST(request: Request) {
       const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
 
       if (userId && product === "single") {
-        // Modelo nuevo: 1 crédito al ledger (expira en 1 año).
-        await grantCredits(userId, "single", 1, { paymentId });
+        // Modelo nuevo: N créditos al ledger en UN grant (amount=quantity,
+        // remaining=quantity); expira en 1 año (regla heredada de grantCredits).
+        // quantity = 1 por default (compra de 1 crédito o filas legacy).
+        const creditQty = payment.quantity ?? 1;
+        await grantCredits(userId, "single", creditQty, { paymentId });
 
         // Si la compra vino atada a un análisis, desbloquearlo en el acto
         // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
@@ -236,6 +239,7 @@ export async function POST(request: Request) {
                 amount: payment.amount,
                 commerce_order: payment.commerce_order,
                 flow_order: payment.flow_order,
+                quantity: payment.quantity ?? 1,
               },
               userEmail,
             });

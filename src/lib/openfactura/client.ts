@@ -49,6 +49,8 @@ export type PaymentForDTE = {
   /** Nro de orden de Flow (BIGINT). Se usa como documentReference.ID; null en
    * pagos sin flowOrder → cae al hash determinístico del commerce_order. */
   flow_order?: number | null;
+  /** Cantidad de créditos comprados (single con cantidad). Default 1. */
+  quantity?: number | null;
 };
 
 export type EmitirResult = {
@@ -139,6 +141,9 @@ export function buildDocumentoDTE(opts: {
   fecha: string; // YYYY-MM-DD
   commerceOrder: string; // fallback para documentReference.ID si no hay flowOrder
   flowOrder?: number | null; // documentReference.ID preferido (nro de orden Flow)
+  /** Cantidad de unidades (créditos). Default 1. El precio unitario se deriva
+   * como amount/quantity; el total (MontoItem/MntTotal) = amount. */
+  quantity?: number;
   medioPago?: number | string;
   /**
    * Override del bloque Emisor. Default = EMISOR (Yape, prod). Solo se inyecta
@@ -148,6 +153,11 @@ export function buildDocumentoDTE(opts: {
   emisor?: Record<string, string | number>;
 }) {
   const { neto, iva, total } = calcularMontos(opts.amount);
+  // Cantidad de unidades en la línea (créditos). Default 1; nunca < 1.
+  const qty =
+    Number.isInteger(opts.quantity) && (opts.quantity as number) > 0
+      ? (opts.quantity as number)
+      : 1;
   const idDoc: Record<string, number | string> = {
     TipoDTE: TIPO_DTE_BOLETA_AFECTA,
     FchEmis: opts.fecha,
@@ -191,8 +201,10 @@ export function buildDocumentoDTE(opts: {
         {
           NroLinDet: 1,
           NmbItem: glosaForProduct(opts.product).slice(0, 80),
-          QtyItem: 1,
-          PrcItem: total,
+          // QtyItem = cantidad; PrcItem = precio unitario (total/cantidad);
+          // MontoItem = total. Default cantidad 1 → "1 × total" como antes.
+          QtyItem: qty,
+          PrcItem: Math.round(total / qty),
           MontoItem: total,
         },
       ],
@@ -325,6 +337,7 @@ export async function emitirBoletaDTE({
       fecha,
       commerceOrder: payment.commerce_order,
       flowOrder: payment.flow_order ?? null,
+      quantity: payment.quantity ?? 1,
       emisor,
     });
 

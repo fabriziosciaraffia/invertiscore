@@ -31,10 +31,29 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId } = body as { product: string; analysisId?: string };
+  const { product, analysisId, quantity: rawQuantity } = body as {
+    product: string;
+    analysisId?: string;
+    quantity?: number | string;
+  };
 
   if (!product || !PRODUCTS[product]) {
     return NextResponse.json({ error: "Producto inválido" }, { status: 400 });
+  }
+
+  // Cantidad: default 1. Si viene, debe ser entero entre 1 y 20. Solo aplica a la
+  // compra de crédito single SIN análisis atado — el paso 4 (analysisId) y los
+  // legacy compran siempre 1.
+  let quantity = 1;
+  if (rawQuantity !== undefined) {
+    const n = Number(rawQuantity);
+    if (!Number.isInteger(n) || n < 1 || n > 20) {
+      return NextResponse.json({ error: "Cantidad inválida (1-20)" }, { status: 400 });
+    }
+    quantity = n;
+  }
+  if (analysisId || product !== "single") {
+    quantity = 1;
   }
 
   // Ownership check (+ comuna para personalizar el subject de Flow): si el pago
@@ -54,13 +73,20 @@ export async function POST(request: Request) {
     analysisComuna = (analysis?.comuna as string) ?? null;
   }
 
-  const { amount, subject: catalogSubject } = PRODUCTS[product];
-  // subject = SOLO el texto que muestra Flow. Para un single atado a análisis lo
-  // personalizamos con la comuna ("Franco — Análisis Providencia"); el monto NO
-  // cambia (sale del catálogo). Sin comuna/analysisId → subject genérico.
-  const subject = product === "single" && analysisComuna
-    ? `Franco — Análisis ${analysisComuna}`
-    : catalogSubject;
+  const { amount: unitAmount, subject: catalogSubject } = PRODUCTS[product];
+  // Cobro = unitario × cantidad (cantidad ya forzada a 1 fuera de single-crédito).
+  const amount = unitAmount * quantity;
+  // subject = SOLO el texto que muestra Flow. Single atado a análisis → comuna
+  // ("Franco — Análisis Providencia"); crédito con cantidad → "Franco — N créditos";
+  // resto → subject del catálogo. El monto sale del cálculo de arriba.
+  let subject = catalogSubject;
+  if (product === "single") {
+    if (analysisComuna) {
+      subject = `Franco — Análisis ${analysisComuna}`;
+    } else if (quantity > 1) {
+      subject = `Franco — ${quantity} créditos`;
+    }
+  }
   const commerceOrder = `franco-${randomUUID()}`;
 
   try {
@@ -104,6 +130,7 @@ export async function POST(request: Request) {
       flow_order: flowResponse.flowOrder || null,
       product,
       amount,
+      quantity,
       status: "pending",
       analysis_id: analysisId || null,
     });
