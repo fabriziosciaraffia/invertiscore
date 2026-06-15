@@ -205,6 +205,23 @@ export function parseDecimalLocale(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** Construye el patch de `setState` para un campo editable que, al ser tocado
+ * por el usuario, debe quedar marcado en `editedFields` — así el prefill
+ * (suggestions de mercado / escalado de costos) deja de sobrescribirlo en
+ * silencio. Centraliza el patrón "setState + append-if-absent" usado en el
+ * Paso 2 y el Paso 3 del wizard. Helper puro: no muta, devuelve el patch. */
+export function markFieldEdited(
+  editedFields: string[],
+  key: keyof WizardV3State,
+  value: string,
+): Partial<WizardV3State> {
+  const patch = { [key]: value } as Partial<WizardV3State>;
+  if (!editedFields.includes(key as string)) {
+    patch.editedFields = [...editedFields, key as string];
+  }
+  return patch;
+}
+
 export function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
