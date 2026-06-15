@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
 import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
+import { emitirBoletaDTE } from "@/lib/openfactura/client";
 
 function createAdminClient() {
   return createClient(
@@ -147,17 +148,49 @@ export async function POST(request: Request) {
         );
       }
 
-      // TODO(facturación): este es el punto con la idempotencia más fuerte
-      // (INSERT-first + commerce_order UNIQUE + flowOrder) y el candidato natural
-      // para emitir la boleta de cada cobro recurrente. NO está cableado todavía:
-      //  - Este webhook NUNCA se ha ejercitado en prod (0 filas franco-sub-pay-*
-      //    en la DB), así que no hay un cobro real observado que validar.
-      //  - No está confirmado el modelo de cobro de Flow: si el PRIMER cargo de
-      //    la suscripción dispara este callback además del alta (register-callback),
-      //    emitir en ambos lados duplicaría la boleta del primer ciclo.
-      // Se cablea tras observar un cobro real con túnel y confirmar que cada
-      // cargo recurrente mapea a exactamente una fila paid aquí (sin solape con
-      // el alta). Falta además resolver el email (este camino no lo carga hoy).
+      // Emisión de boleta electrónica (DTE 39) del cobro recurrente — primer ciclo
+      // y renovaciones pasan por acá (el cobro real de Flow, no el alta). Mismo
+      // patrón que el enganche single de payments/confirm: detrás del kill-switch
+      // (el helper igual lo re-chequea), email resuelto vía getUserById (este
+      // camino no lo cargaba), y try/catch que JAMÁS rompe el 200 que Flow espera.
+      // La glosa sale del product key (plan10_mensual → "Plan 10 … suscripción
+      // mensual") vía glosaForProduct del helper. payment_id = la fila recién
+      // insertada (franco-sub-pay-<flowOrder>), 1:1 con esta boleta.
+      const dtePaymentId = paymentRow?.id;
+      // Monto REAL del cobro. Sin fallback inventado: si Flow no devolvió un monto
+      // válido (>0), NO emitimos una boleta con un número falso — saltamos con log,
+      // igual que el skip del kill-switch.
+      const montoCobro = Number(flowData.amount);
+      if (dtePaymentId && process.env.OPENFACTURA_ENABLED === "true") {
+        if (!Number.isFinite(montoCobro) || montoCobro <= 0) {
+          console.error("[boleta-sub] monto inválido, skip:", flowData.amount);
+        } else {
+          try {
+            const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
+            const userEmail = dteUser?.user?.email;
+            if (userEmail) {
+              const result = await emitirBoletaDTE({
+                payment: {
+                  id: dtePaymentId,
+                  user_id: userId,
+                  product: productKey,
+                  amount: montoCobro,
+                  commerce_order: `franco-sub-pay-${flowOrder}`,
+                  flow_order: Number(flowOrder),
+                },
+                userEmail,
+              });
+              if (!result.ok && !result.skipped) {
+                console.error("[payment-callback] emisión boleta falló:", result.error);
+              }
+            } else {
+              console.error("[payment-callback] sin email para emitir boleta, user:", userId);
+            }
+          } catch (e) {
+            console.error("[payment-callback] emisión boleta excepción:", e);
+          }
+        }
+      }
     } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
       // Cargo rechazado (3) o anulado (4) → suscripción en mora con 7 días de
       // gracia (mantiene acceso hasta grace_ends_at; el cron expire-grace corta
