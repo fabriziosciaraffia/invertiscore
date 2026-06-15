@@ -92,7 +92,11 @@ export async function POST(request: Request) {
   const skipped = allProperties.length - validProps.length;
   let inserted = 0;
 
-  const rows = validProps.map(propertyToRow);
+  const allRows = validProps.map(propertyToRow);
+  // Dedup por source+source_id (un aviso puede repetirse entre paginas); ultima ocurrencia gana.
+  const rowsByKey = new Map<string, typeof allRows[number]>();
+  for (const r of allRows) rowsByKey.set(`${r.source}|${r.source_id}`, r);
+  const rows = Array.from(rowsByKey.values());
 
   if (rows.length > 0) {
     const { error } = await supabase

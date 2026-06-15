@@ -146,6 +146,18 @@ export async function POST(request: Request) {
           flowData.amount
         );
       }
+
+      // TODO(facturación): este es el punto con la idempotencia más fuerte
+      // (INSERT-first + commerce_order UNIQUE + flowOrder) y el candidato natural
+      // para emitir la boleta de cada cobro recurrente. NO está cableado todavía:
+      //  - Este webhook NUNCA se ha ejercitado en prod (0 filas franco-sub-pay-*
+      //    en la DB), así que no hay un cobro real observado que validar.
+      //  - No está confirmado el modelo de cobro de Flow: si el PRIMER cargo de
+      //    la suscripción dispara este callback además del alta (register-callback),
+      //    emitir en ambos lados duplicaría la boleta del primer ciclo.
+      // Se cablea tras observar un cobro real con túnel y confirmar que cada
+      // cargo recurrente mapea a exactamente una fila paid aquí (sin solape con
+      // el alta). Falta además resolver el email (este camino no lo carga hoy).
     } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
       // Cargo rechazado (3) o anulado (4) → suscripción en mora con 7 días de
       // gracia (mantiene acceso hasta grace_ends_at; el cron expire-grace corta

@@ -6,7 +6,9 @@ import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { resolveDisplayName } from "@/lib/welcome";
 import { grantCredits } from "@/lib/credits-grant";
 import { consumeCredit } from "@/lib/access";
+import { generateAiAnalysis } from "@/lib/ai-generation";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
+import { emitirBoletaDTE } from "@/lib/openfactura/client";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -84,7 +86,7 @@ export async function POST(request: Request) {
     if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("id, user_id, product, analysis_id")
+        .select("id, user_id, product, amount, commerce_order, flow_order, analysis_id")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -102,9 +104,45 @@ export async function POST(request: Request) {
         // Si la compra vino atada a un análisis, desbloquearlo en el acto
         // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
         // de access.consumeCredit: consume el crédito recién otorgado y marca
-        // is_premium=true sobre ese análisis.
+        // is_premium=true sobre ese análisis. consumeCredit es idempotente
+        // (corta si ya está is_premium), así que un reenvío de webhook no
+        // doble-consume el crédito.
         if (analysisId) {
           await consumeCredit(userId, analysisId);
+
+          // Flujo LTR bloqueado pre-pago: la fila se creó con pending_payment=
+          // true y SIN IA (ver /api/analisis/locked). Aquí la desbloqueamos y
+          // disparamos la narrativa diferida.
+          //
+          // El flip CONDICIONAL (.eq pending_payment, true) es la guarda de
+          // idempotencia: si Flow reenvía el webhook, la 2ª pasada ve
+          // pending_payment=false → `unlocked` es null → NO regeneramos IA (no
+          // gastamos Anthropic dos veces). Las filas del flujo viejo nacen con
+          // pending_payment=false (default), incluido STR y los single sobre
+          // análisis ya creados → caen fuera del gate y quedan intactas.
+          const { data: unlocked } = await supabase
+            .from("analisis")
+            .update({ pending_payment: false })
+            .eq("id", analysisId)
+            .eq("pending_payment", true)
+            .select("tipo_analisis")
+            .maybeSingle();
+
+          // Solo LTR: generateAiAnalysis asume el shape del motor long-term
+          // (results.metrics/desglose). STR usa otro endpoint de IA on-demand,
+          // así que no se toca aquí.
+          //
+          // await (no IIFE fire-and-forget): en serverless un promise sin await
+          // puede morir cuando se envía el response. try/catch para no romper el
+          // 200 que Flow espera. Si falla o Flow corta por latencia, la vista
+          // recupera la IA on-demand vía polling /ai-status — no es critical path.
+          if (unlocked && unlocked.tipo_analisis === "long-term") {
+            try {
+              await generateAiAnalysis(analysisId, supabase);
+            } catch (e) {
+              console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
+            }
+          }
         }
       } else if (userId && product) {
         // Legacy pro/pack3 → contador user_credits.credits.
@@ -177,6 +215,38 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("Payment email error:", e);
+        }
+      }
+
+      // Emisión de boleta electrónica (DTE 39) — solo pagos `single` (NO legacy
+      // pro/pack3). El helper respeta el kill-switch OPENFACTURA_ENABLED (no-op
+      // si no está "true") y nunca lanza; aun así envolvemos en try/catch como
+      // cinturón de seguridad: una falla de boleta JAMÁS debe romper el 200 que
+      // Flow espera ni afectar créditos/emails ya procesados arriba.
+      if (userId && product === "single" && process.env.OPENFACTURA_ENABLED === "true") {
+        try {
+          const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
+          const userEmail = dteUser?.user?.email;
+          if (userEmail) {
+            const result = await emitirBoletaDTE({
+              payment: {
+                id: paymentId,
+                user_id: userId,
+                product,
+                amount: payment.amount,
+                commerce_order: payment.commerce_order,
+                flow_order: payment.flow_order,
+              },
+              userEmail,
+            });
+            if (!result.ok && !result.skipped) {
+              console.error("[payments/confirm] emisión boleta falló:", result.error);
+            }
+          } else {
+            console.error("[payments/confirm] sin email para emitir boleta, user:", userId);
+          }
+        } catch (e) {
+          console.error("[payments/confirm] emisión boleta excepción:", e);
         }
       }
 

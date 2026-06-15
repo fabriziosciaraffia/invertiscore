@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { hasSubscriptionAccess } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -51,14 +52,23 @@ export default async function PerfilPage() {
   // Fetch user credits + subscription status
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, grace_ends_at")
+    .select("credits, subscription_status, subscription_ends_at, grace_ends_at")
     .eq("user_id", user.id)
     .single();
 
-  const credits: number = creditsRow?.credits ?? 0;
+  // Saldo real = ledger vivo (credit_grants) + contador legacy. Antes leía solo
+  // creditsRow.credits (=0 en el modelo ledger) → "Gratuito" a quien sí tenía
+  // crédito. RLS credit_grants_select_own permite leer los propios lotes.
+  const credits: number = await getAvailableCredits(user.id, supabase);
   const subStatus: string = creditsRow?.subscription_status ?? "none";
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
+  const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const isSubscriber = subStatus === "active";
+  // Cancelado con el ciclo pagado aún vigente: conserva acceso Pro hasta subEnd.
+  // hasSubscriptionAccess es la fuente de verdad (now < ends_at), igual que access.ts.
+  const isCancelledActive =
+    subStatus === "cancelled" &&
+    hasSubscriptionAccess({ subscription_status: subStatus, subscription_ends_at: subEnd });
   // Cargo recurrente falló pero la gracia sigue vigente (mantiene acceso). Reusamos
   // hasSubscriptionAccess como fuente de verdad de la comparación de gracia; seguro
   // server-side (esta página es Server Component). Ver access.ts.
@@ -111,6 +121,14 @@ export default async function PerfilPage() {
     planLabel = "Pago pendiente";
     planDescription = `Tu último cobro no se procesó. Mantienes acceso hasta el ${graceDate}.`;
     planCtaText = "Actualiza tu método de pago →";
+    planCtaHref = "/pricing";
+  } else if (isCancelledActive) {
+    const endDate = subEnd
+      ? new Date(subEnd).toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" })
+      : "—";
+    planLabel = "Suscripción cancelada";
+    planDescription = `Acceso Pro hasta el ${endDate}.`;
+    planCtaText = "Reactivar suscripción →";
     planCtaHref = "/pricing";
   } else if (credits > 0) {
     planLabel = "Créditos Pro";

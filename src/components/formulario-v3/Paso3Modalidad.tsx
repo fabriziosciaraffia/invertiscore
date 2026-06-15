@@ -21,6 +21,7 @@ import { BloqueOperacionSTR } from "./BloqueOperacionSTR";
 import {
   fmtCLP,
   fmtUF,
+  markFieldEdited,
   parseDecimalLocale,
   type Modalidad,
   type WizardV3State,
@@ -108,6 +109,14 @@ export function Paso3Modalidad({
 
   function selectModalidad(key: "ltr" | "str" | "both") {
     setState({ modalidad: key });
+  }
+
+  // setState + marcado en editedFields para los campos PRELLENADOS (arriendo,
+  // gastos, contribuciones, costos op STR, amoblamiento). Sin esto, el prefill
+  // de mercado/escalado los sobrescribía en silencio tras una edición manual.
+  // Mismo mecanismo que el Paso 2 (markFieldEdited en wizardV3State).
+  function trackEdit(key: keyof WizardV3State, value: string) {
+    setState(markFieldEdited(state.editedFields, key, value));
   }
 
   const modLabel = OPCIONES.find((o) => o.key === mod);
@@ -275,7 +284,7 @@ export function Paso3Modalidad({
               <MoneyInput
                 className={inputBase}
                 value={state.costoAmoblamiento}
-                onChange={(raw) => setState({ costoAmoblamiento: raw })}
+                onChange={(raw) => trackEdit("costoAmoblamiento", raw)}
               />
               <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
                 Default escalado por dormitorios × habilitación.
@@ -288,7 +297,7 @@ export function Paso3Modalidad({
         <div>
           <span className="flex items-center gap-1.5 mb-1.5">
             <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Habilitación / posicionamiento</span>
-            <InfoTooltip content="Define la calidad percibida por los huéspedes y por tanto el ADR. Premium implica decoración curada, blancos hoteleros, amenidades extra." />
+            <InfoTooltip content="Qué tan cuidado está el departamento: amoblamiento, fotos y amenidades. Premium implica decoración curada, blancos hoteleros y amenidades extra. Define el costo de habilitación, no la tarifa." />
           </span>
           <div className="grid grid-cols-3 gap-2">
             {([
@@ -314,9 +323,9 @@ export function Paso3Modalidad({
             })}
           </div>
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
-            {state.habilitacion === "basico" && "Funcional, fotos amateur. Sin uplift de tarifa."}
-            {state.habilitacion === "estandar" && "Decente, con fotos profesionales. Tarifa +5%."}
-            {state.habilitacion === "premium" && "Decoración curada y amenidades extra. Tarifa +10%."}
+            {state.habilitacion === "basico" && "Funcional, fotos amateur."}
+            {state.habilitacion === "estandar" && "Decente, con fotos profesionales."}
+            {state.habilitacion === "premium" && "Decoración curada y amenidades extra."}
           </p>
         </div>
       </div>
@@ -346,7 +355,7 @@ export function Paso3Modalidad({
             <MoneyInput
               className={inputBase}
               value={state.arriendo}
-              onChange={(raw) => setState({ arriendo: raw })}
+              onChange={(raw) => trackEdit("arriendo", raw)}
             />
             {suggestions.arriendo && (
               <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
@@ -431,7 +440,7 @@ export function Paso3Modalidad({
           <MoneyInput
             className={inputBase}
             value={state.gastos}
-            onChange={(raw) => setState({ gastos: raw })}
+            onChange={(raw) => trackEdit("gastos", raw)}
           />
           {suggestions.gastos && (
             <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
@@ -450,7 +459,7 @@ export function Paso3Modalidad({
           <MoneyInput
             className={inputBase}
             value={state.contribuciones}
-            onChange={(raw) => setState({ contribuciones: raw })}
+            onChange={(raw) => trackEdit("contribuciones", raw)}
           />
           {suggestions.contribuciones && (
             <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
@@ -480,31 +489,31 @@ export function Paso3Modalidad({
                 <CostInput
                   label="Electricidad"
                   value={state.costoElectricidad}
-                  onChange={(v) => setState({ costoElectricidad: v })}
+                  onChange={(v) => trackEdit("costoElectricidad", v)}
                   tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
                 />
                 <CostInput
                   label="Agua"
                   value={state.costoAgua}
-                  onChange={(v) => setState({ costoAgua: v })}
+                  onChange={(v) => trackEdit("costoAgua", v)}
                   tooltip="Cuenta de agua mensual promedio. La paga el dueño."
                 />
                 <CostInput
                   label="Internet"
                   value={state.costoWifi}
-                  onChange={(v) => setState({ costoWifi: v })}
+                  onChange={(v) => trackEdit("costoWifi", v)}
                   tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
                 />
                 <CostInput
                   label="Insumos"
                   value={state.costoInsumos}
-                  onChange={(v) => setState({ costoInsumos: v })}
+                  onChange={(v) => trackEdit("costoInsumos", v)}
                   tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
                 />
                 <CostInput
                   label="Mantención"
                   value={state.mantencionMensual}
-                  onChange={(v) => setState({ mantencionMensual: v })}
+                  onChange={(v) => trackEdit("mantencionMensual", v)}
                   tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
                 />
               </div>

@@ -44,11 +44,21 @@ export default function NuevoAnalisisV3Page() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [tierInfo, setTierInfo] = useState<TierInfo | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Estado del flujo de compra pre-pago (logueado + LTR + sin crédito). Separado
+  // de `submitting` para NO disparar el overlay LoadingEditorial (ese es para
+  // "calculando análisis"); acá solo creamos la fila bloqueada y redirigimos a
+  // checkout, con feedback inline en el botón.
+  const [comprando, setComprando] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [slideDir, setSlideDir] = useState<"left" | "right">("left");
   const initialized = useRef(false);
 
   const [state, setState] = useState<WizardV3State>(DEFAULT_STATE);
+  // Draft recuperable: en vez de rehidratar automático al montar (que hacía
+  // aparecer la dirección vieja "mágicamente" tras abandonar sin cancelar),
+  // guardamos el draft acá y ofrecemos al usuario retomar o empezar de cero
+  // vía banner. Mientras !== null, el form arranca limpio y NO se persiste.
+  const [draftPendiente, setDraftPendiente] = useState<WizardV3State | null>(null);
   const patch = useCallback((p: Partial<WizardV3State>) => {
     setState((prev) => ({ ...prev, ...p }));
   }, []);
@@ -78,6 +88,10 @@ export default function NuevoAnalisisV3Page() {
   const airRoi = useAirRoiSuggestion({
     enabled: state.modalidad === "str" || state.modalidad === "both",
     direccion: state.direccion,
+    // Misma comuna que usa la creación (short-term/route.ts → body.comuna) para
+    // unificar la cache key del prefetch con la de la creación. Ya validada por
+    // canAdvanceFromStep1 (el paso 1 exige comuna antes de llegar al paso 3).
+    comuna: state.comuna,
     dormitorios: Number(state.dormitorios) || 2,
     banos: Number(state.banos) || 1,
     capacidadHuespedes: Number(state.capacidadHuespedes) || 2,
@@ -104,10 +118,15 @@ export default function NuevoAnalisisV3Page() {
           && typeof parsed.savedAt === "number"
           && (Date.now() - parsed.savedAt) < SEIS_HORAS
           && parsed.data && typeof parsed.data === "object";
-        if (esValido) {
-          setState((prev) => ({ ...prev, ...parsed.data }));
+        if (esValido && parsed.data.direccion) {
+          // Draft válido y con contenido real (tiene dirección): NO rehidratar
+          // automático. Lo guardamos para ofrecer recuperación vía banner; el
+          // form arranca limpio (DEFAULT_STATE) hasta que el usuario decida.
+          setDraftPendiente(parsed.data as WizardV3State);
         } else {
-          localStorage.removeItem(DRAFT_KEY); // viejo o formato plano previo -> descartar
+          // Inválido (viejo / formato plano previo) o sin contenido real (sin
+          // dirección) -> descartar sin banner, form limpio.
+          localStorage.removeItem(DRAFT_KEY);
         }
       }
     } catch { /* ignore */ }
@@ -143,12 +162,27 @@ export default function NuevoAnalisisV3Page() {
   // ─── Persist draft (debounced) ──
   useEffect(() => {
     if (!initialized.current) return;
+    // Mientras hay un draft pendiente de decisión, el form está limpio
+    // esperando que el usuario elija "Retomar" o "Empezar de cero". Si
+    // persistiéramos ahora, pisaríamos el draft que queremos ofrecerle.
+    if (draftPendiente) return;
     if (!state.direccion && !state.precio) return;
     const t = setTimeout(() => {
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: state, savedAt: Date.now() })); } catch { /* ignore */ }
+      // Persistir solo lo que el USUARIO decidió. Los campos inferibles (los que
+      // prefilleamos desde la sugerencia de mercado) solo se guardan si fueron
+      // editados a mano (están en editedFields); si no, los reseteamos a "" para
+      // que al reabrir el draft el prefill los recalcule fresco. Así un precio
+      // viejo no pisa la sugerencia y no genera un sobreprecio falso.
+      const edited = new Set(state.editedFields);
+      const dataToPersist: WizardV3State = { ...state };
+      if (!edited.has("precio")) dataToPersist.precio = "";
+      if (!edited.has("arriendo")) dataToPersist.arriendo = "";
+      if (!edited.has("gastos")) dataToPersist.gastos = "";
+      if (!edited.has("contribuciones")) dataToPersist.contribuciones = "";
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ data: dataToPersist, savedAt: Date.now() })); } catch { /* ignore */ }
     }, 500);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [state, draftPendiente]);
 
   // ─── Scale defaults con dormitorios + habilitación (iter 2026-05-10) ──
   // Cuando el user cambia dormitorios o habilitación, recalcula los defaults
@@ -215,17 +249,21 @@ export default function NuevoAnalisisV3Page() {
           : null;
         const sampleSize = d.filteredInRadius ?? d.sampleSize ?? 0;
         const radiusUsed = d.radiusUsed ?? d.radiusMeters ?? null;
-        const totalInRadius = d.totalInRadius ?? 0;
+        // El mapa del Paso 1 comunica densidad de VENTA (pool universal, 4-5x
+        // más avisos que arriendo). Pins y total salen del fetch de venta, con
+        // fallback al de arriendo cuando venta no trajo datos.
+        const totalInRadius = venta?.totalInRadius ?? d.totalInRadius ?? 0;
         // Pasar nearbyProperties crudo (con nulls). El filtro estricto vive en
         // MapaThumbnail para que pueda loggear cuántos se descartaron.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const nearbyProperties: Array<{ lat: number | null; lng: number | null }> = Array.isArray(d.nearbyProperties)
+        const npSource = (venta && Array.isArray(venta.nearbyProperties) && venta.nearbyProperties.length > 0)
+          ? venta.nearbyProperties
+          : (Array.isArray(d.nearbyProperties) ? d.nearbyProperties : []);
+        const nearbyProperties: Array<{ lat: number | null; lng: number | null }> =
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          ? d.nearbyProperties.map((p: any) => ({
-              lat: p?.lat ?? null,
-              lng: p?.lng ?? null,
-            }))
-          : [];
+          npSource.map((p: any) => ({
+            lat: p?.lat ?? null,
+            lng: p?.lng ?? null,
+          }));
         // venta.precioM2 viene en la misma unidad que el campo `precio` crudo de
         // scraped_properties con type=venta. Evidencia del form v2 legacy
         // (`ventaRef.precioM2 / UF_CLP`) confirma que está en CLP/m² en la
@@ -329,6 +367,119 @@ export default function NuevoAnalisisV3Page() {
     }
   }
 
+  // ─── Build payload LTR (reusable) ──
+  // Extraído para que el submit con crédito (handleAnalizar) y la compra
+  // pre-pago (onComprarLtr → /api/analisis/locked) usen EXACTAMENTE los mismos
+  // datos: el análisis bloqueado que se paga debe ser idéntico al configurado.
+  function buildLtrPayload() {
+    const parseIntSafe = (v: string, fallback: number): number => {
+      if (v === "" || v == null) return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    };
+    const supUtil = parseDecimalLocale(state.superficieUtil);
+    const precioUF = parseNum(state.precio);
+    const nEstac = parseIntSafe(state.estacionamientos, 0);
+    const nBodega = parseIntSafe(state.bodegas, 0);
+    const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
+    const cuotasPie = state.tipoPropiedad === "nuevo" && state.estadoVenta === "futura"
+      ? (Number(state.cuotasPie) || mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio))
+      : state.tipoPropiedad === "nuevo" && state.pieModoPago === "cuotas"
+        ? Number(state.cuotasPie) || 1
+        : state.tipoPropiedad === "nuevo" ? 1 : 0;
+    const pieUF = precioUF * (Number(state.piePct) / 100);
+    const nombre = `Depto ${state.dormitorios || "2"}D${state.banos || "1"}B ${state.comuna}`;
+    const arriendo = Number(state.arriendo) || 0;
+    const gastos = Number(state.gastos) || 0;
+    const contribuciones = Number(state.contribuciones) || 0;
+
+    return {
+      nombre,
+      comuna: state.comuna,
+      ciudad: state.ciudad || "Santiago",
+      direccion: state.direccion || undefined,
+      tipo: "Departamento",
+      dormitorios: parseIntSafe(state.dormitorios, 2),
+      esStudio: state.esStudio === true,
+      banos: parseIntSafe(state.banos, 1),
+      superficie: supUtil,
+      superficieTotal: supUtil,
+      antiguedad: antigNum,
+      enConstruccion: state.estadoVenta !== "inmediata",
+      piso: 0,
+      estacionamiento: nEstac > 0 ? "si" : "no",
+      cantidadEstacionamientos: nEstac,
+      precioEstacionamiento: 0,
+      bodega: nBodega > 0,
+      cantidadBodegas: nBodega,
+      estadoVenta: state.estadoVenta === "futura" ? "futura" : "inmediata",
+      fechaEntrega: state.estadoVenta === "futura"
+        ? `${state.fechaEntregaAnio}-${state.fechaEntregaMes}`
+        : undefined,
+      cuotasPie,
+      montoCuota: cuotasPie > 0 ? Math.round((pieUF / cuotasPie) * ufCLP) : 0,
+      precio: precioUF,
+      // Valor de mercado de referencia — crítico para que el motor no caiga
+      // al fallback `input.precio`. Sin este campo, vmFrancoUF === precioUF,
+      // plusvaliaInmediataFranco === 0, y la narrativa IA se confunde entre
+      // el indicador por m² y el absoluto.
+      valorMercadoFranco: suggestions.precioM2UF && supUtil > 0
+        ? Math.round(suggestions.precioM2UF * supUtil)
+        : undefined,
+      valorMercadoUsuario: undefined, // no se pregunta en v3
+      piePct: Number(state.piePct),
+      plazoCredito: Number(state.plazoCredito),
+      tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
+      gastos,
+      contribuciones,
+      provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),
+      tipoRenta: "larga",
+      arriendo,
+      arriendoEstacionamiento: Number(state.arriendoEstac) || 0,
+      arriendoBodega: Number(state.arriendoBodega) || 0,
+      vacanciaMeses: Number(state.vacanciaPct) * 12 / 100,
+      usaAdministrador: Number(state.adminPct) > 0,
+      comisionAdministrador: Number(state.adminPct) > 0 ? Number(state.adminPct) : undefined,
+      zonaRadio: {
+        precioM2VentaCLP: null,
+        arriendoPromedio: suggestions.arriendo,
+        arriendoPrecioM2: null,
+        sampleSizeArriendo: suggestions.sampleSize,
+        sampleSizeVenta: 0,
+        radioMetros: suggestions.radiusUsed ?? 500,
+        lat: state.lat,
+        lng: state.lng,
+      },
+    };
+  }
+
+  // ─── Compra pre-pago LTR (logueado + LTR + sin crédito) ──
+  // Crea la fila del análisis YA computada pero BLOQUEADA (sin cobrar crédito)
+  // vía /api/analisis/locked, y manda a checkout con su analysisId. Tras pagar,
+  // confirm desbloquea + dispara la IA, y el redirect post-pago lleva al análisis.
+  async function onComprarLtr() {
+    setSubmitError("");
+    setComprando(true);
+    try {
+      const res = await fetch("/api/analisis/locked", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildLtrPayload()),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "No se pudo crear el análisis. Intenta de nuevo.");
+      }
+      const { id } = (await res.json()) as { id: string };
+      posthog?.capture("locked_analysis_created", { comuna: state.comuna });
+      router.push(`/checkout?product=single&analysisId=${id}`);
+      // No reseteamos comprando: estamos navegando, el spinner se mantiene.
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Error inesperado");
+      setComprando(false);
+    }
+  }
+
   // ─── Submit (bifurcación LTR / STR / AMBAS — Ronda 2a) ──
   // Ambas modalidades cobran 1 crédito en el backend (chargeAnalysisCredit):
   // el primer análisis del registrado usa el welcome credit (gratis, una vez);
@@ -369,82 +520,13 @@ export default function NuevoAnalisisV3Page() {
       const supUtil = parseDecimalLocale(state.superficieUtil);
       const precioUF = parseNum(state.precio);
       const precioCompraCLP = Math.round(precioUF * ufCLP);
-      const nEstac = parseIntSafe(state.estacionamientos, 0);
-      const nBodega = parseIntSafe(state.bodegas, 0);
-      const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
-      // En Nuevo+Futura: respetar state.cuotasPie si el usuario lo editó; sino
-      // usar la sugerencia basada en meses hasta entrega.
-      const cuotasPie = state.tipoPropiedad === "nuevo" && state.estadoVenta === "futura"
-        ? (Number(state.cuotasPie) || mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio))
-        : state.tipoPropiedad === "nuevo" && state.pieModoPago === "cuotas"
-          ? Number(state.cuotasPie) || 1
-          : state.tipoPropiedad === "nuevo" ? 1 : 0;
-      const pieUF = precioUF * (Number(state.piePct) / 100);
-      const nombre = `Depto ${state.dormitorios || "2"}D${state.banos || "1"}B ${state.comuna}`;
 
       const arriendo = Number(state.arriendo) || 0;
       const gastos = Number(state.gastos) || 0;
       const contribuciones = Number(state.contribuciones) || 0;
 
-      // ─── Payload LTR (idéntico a v3 pre-bifurcación) ──
-      const ltrPayload = {
-        nombre,
-        comuna: state.comuna,
-        ciudad: state.ciudad || "Santiago",
-        direccion: state.direccion || undefined,
-        tipo: "Departamento",
-        dormitorios: parseIntSafe(state.dormitorios, 2),
-        esStudio: state.esStudio === true,
-        banos: parseIntSafe(state.banos, 1),
-        superficie: supUtil,
-        superficieTotal: supUtil,
-        antiguedad: antigNum,
-        enConstruccion: state.estadoVenta !== "inmediata",
-        piso: 0,
-        estacionamiento: nEstac > 0 ? "si" : "no",
-        cantidadEstacionamientos: nEstac,
-        precioEstacionamiento: 0,
-        bodega: nBodega > 0,
-        cantidadBodegas: nBodega,
-        estadoVenta: state.estadoVenta === "futura" ? "futura" : "inmediata",
-        fechaEntrega: state.estadoVenta === "futura"
-          ? `${state.fechaEntregaAnio}-${state.fechaEntregaMes}`
-          : undefined,
-        cuotasPie,
-        montoCuota: cuotasPie > 0 ? Math.round((pieUF / cuotasPie) * ufCLP) : 0,
-        precio: precioUF,
-        // Valor de mercado de referencia — crítico para que el motor no caiga
-        // al fallback `input.precio`. Sin este campo, vmFrancoUF === precioUF,
-        // plusvaliaInmediataFranco === 0, y la narrativa IA se confunde entre
-        // el indicador por m² y el absoluto.
-        valorMercadoFranco: suggestions.precioM2UF && supUtil > 0
-          ? Math.round(suggestions.precioM2UF * supUtil)
-          : undefined,
-        valorMercadoUsuario: undefined, // no se pregunta en v3
-        piePct: Number(state.piePct),
-        plazoCredito: Number(state.plazoCredito),
-        tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
-        gastos,
-        contribuciones,
-        provisionMantencion: Math.round((precioUF * ufCLP * getMantencionRate(antigNum)) / 12),
-        tipoRenta: "larga",
-        arriendo,
-        arriendoEstacionamiento: Number(state.arriendoEstac) || 0,
-        arriendoBodega: Number(state.arriendoBodega) || 0,
-        vacanciaMeses: Number(state.vacanciaPct) * 12 / 100,
-        usaAdministrador: Number(state.adminPct) > 0,
-        comisionAdministrador: Number(state.adminPct) > 0 ? Number(state.adminPct) : undefined,
-        zonaRadio: {
-          precioM2VentaCLP: null,
-          arriendoPromedio: suggestions.arriendo,
-          arriendoPrecioM2: null,
-          sampleSizeArriendo: suggestions.sampleSize,
-          sampleSizeVenta: 0,
-          radioMetros: suggestions.radiusUsed ?? 500,
-          lat: state.lat,
-          lng: state.lng,
-        },
-      };
+      // ─── Payload LTR (extraído a buildLtrPayload, compartido con onComprarLtr) ──
+      const ltrPayload = buildLtrPayload();
 
       // ─── Payload STR (Ronda 2a — usa defaults del state cuando UI no
       // expone aún el input. Inputs específicos STR llegan en Ronda 2b.) ──
@@ -676,6 +758,44 @@ export default function NuevoAnalisisV3Page() {
           </div>
         </div>
 
+        {/* Banner de recuperación de draft. Solo cuando hay un análisis sin
+            terminar guardado. StateBox sobrio (Ink, sin Signal Red para no
+            competir con el CTA del paso). Dos salidas: retomar o empezar de
+            cero. Al decidir, draftPendiente vuelve a null y desaparece. */}
+        {draftPendiente && (
+          <div className="mb-6 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-4">
+            <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] m-0 mb-1.5">
+              Análisis sin terminar
+            </p>
+            <p className="font-body text-sm text-[var(--franco-text)] m-0">
+              Tienes un análisis a medias en{" "}
+              <span className="font-body font-medium">{draftPendiente.direccion}</span>. ¿Lo retomas donde lo dejaste?
+            </p>
+            <div className="mt-3 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setState((prev) => ({ ...prev, ...draftPendiente }));
+                  setDraftPendiente(null);
+                }}
+                className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-[var(--franco-bg)] bg-[var(--franco-text)] px-4 py-2 rounded-lg hover:opacity-90 transition-opacity min-h-[44px]"
+              >
+                Retomar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+                  setDraftPendiente(null);
+                }}
+                className="font-body font-medium text-[13px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-3 py-2 min-h-[44px]"
+              >
+                Empezar de cero
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Step content with slide transition */}
         <div className="overflow-hidden">
           <div
@@ -687,7 +807,7 @@ export default function NuevoAnalisisV3Page() {
               <Paso1Propiedad
                 state={state}
                 setState={patch}
-                comparablesCount={suggestions.totalInRadius}
+                comparablesCount={suggestions.precioM2SampleSize ?? suggestions.totalInRadius ?? 0}
                 comparables={suggestions.nearbyProperties}
                 userEmail={tierInfo?.email}
               />
@@ -743,6 +863,9 @@ export default function NuevoAnalisisV3Page() {
                 }}
                 onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
+                isLoggedIn={isLoggedIn === true}
+                onComprarLtr={onComprarLtr}
+                comprando={comprando}
                 submitting={submitting}
                 submitError={submitError}
               />

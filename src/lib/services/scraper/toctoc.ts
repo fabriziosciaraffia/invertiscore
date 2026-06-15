@@ -37,6 +37,7 @@ const COMUNAS_SANTIAGO = [
   "vitacura", "lo-barnechea", "san-miguel", "macul", "penalolen",
   "la-reina", "estacion-central", "independencia", "recoleta",
   "maipu", "puente-alto", "san-joaquin", "quinta-normal", "conchali",
+  "la-cisterna", "huechuraba", "pudahuel", "cerrillos", "quilicura", "renca",
 ];
 
 // ─── Comuna IDs for gw-lista-seo API ───
@@ -59,7 +60,13 @@ const COMUNA_IDS: Record<string, { id: number; label: string }> = {
   "san-joaquin":      { id: 341, label: "San Joaquín" },
   "quinta-normal":    { id: 336, label: "Quinta Normal" },
   "conchali":         { id: 326, label: "Conchalí" },
-  // puente-alto: ID no confirmado, se usa fallback __NEXT_DATA__
+  "puente-alto":      { id: 295, label: "Puente Alto" },
+  "la-cisterna":      { id: 330, label: "La Cisterna" },
+  "huechuraba":       { id: 327, label: "Huechuraba" },
+  "pudahuel":         { id: 317, label: "Pudahuel" },
+  "cerrillos":        { id: 321, label: "Cerrillos" },
+  "quilicura":        { id: 323, label: "Quilicura" },
+  "renca":            { id: 322, label: "Renca" },
 };
 
 export const BATCH_SIZE = 1; // Reducido para diagnóstico de timeout (era 2)
@@ -98,22 +105,35 @@ const COMUNA_VIEWPORTS: Record<string, string> = {
   "san-joaquin":        "-33.51,-70.65,-33.48,-70.62",
   "quinta-normal":      "-33.46,-70.71,-33.42,-70.67",
   "conchali":           "-33.41,-70.68,-33.37,-70.64",
+  "la-cisterna":        "-33.55,-70.68,-33.51,-70.64",
+  "huechuraba":         "-33.39,-70.66,-33.34,-70.60",
+  "pudahuel":           "-33.48,-70.78,-33.42,-70.72",
+  "cerrillos":          "-33.52,-70.73,-33.48,-70.69",
+  "quilicura":          "-33.39,-70.75,-33.34,-70.69",
+  "renca":              "-33.42,-70.74,-33.38,-70.68",
 };
 
-async function getTocTocSession(): Promise<string> {
+async function getTocTocSession(): Promise<{ cookies: string; token: string }> {
   const response = await fetch(
-    "https://www.toctoc.com/resultados/mapa/arriendo/departamento/metropolitana/santiago/",
+    "https://www.toctoc.com/resultados/mapa/compra/departamento/metropolitana/las-condes/",
     { headers: { ...HEADERS, Accept: "text/html" }, dispatcher: proxyDispatcher } as RequestInit & { dispatcher?: unknown }
   );
+  const html = await response.text();
+  // El endpoint GetProps exige x-access-token: un JWT embebido en el HTML del
+  // mapa que lleva la IP del cliente en su payload (por eso debe emitirse por el
+  // mismo proxy que hara el GetProps).
+  const tokenMatch = html.match(/eyJhbGci[A-Za-z0-9._-]+/);
+  const token = tokenMatch ? tokenMatch[0] : "";
   const cookies = (response.headers.getSetCookie?.() || []).map(c => c.split(";")[0]).join("; ");
-  return cookies;
+  return { cookies, token };
 }
 
 async function fetchMapProperties(
   comunaSlug: string,
   operacion: number,
   viewport: string,
-  cookies: string
+  cookies: string,
+  token: string
 ): Promise<unknown[] | null> {
   const body = {
     region: "metropolitana", comuna: comunaSlug, barrio: "", poi: "",
@@ -130,7 +150,7 @@ async function fetchMapProperties(
     limite: 510, cargaBanner: false, primeraCarga: false, santander: false,
   };
 
-  const typeSlug = operacion === 2 ? "arriendo" : "venta";
+  const typeSlug = operacion === 2 ? "arrienda" : "compra";
   const response = await fetch("https://www.toctoc.com/api/mapa/GetProps", {
     method: "POST",
     headers: {
@@ -141,6 +161,7 @@ async function fetchMapProperties(
       Referer: `https://www.toctoc.com/resultados/mapa/${typeSlug}/departamento/metropolitana/${comunaSlug}/`,
       Origin: "https://www.toctoc.com",
       Cookie: cookies,
+      "x-access-token": token,
       "sec-fetch-dest": "empty",
       "sec-fetch-mode": "cors",
       "sec-fetch-site": "same-origin",
@@ -183,9 +204,11 @@ function parseMapProperty(
     }
     if (precio === 0) return null;
 
-    // Surface: search positions 27-28, 33-34
+    // Surface: search positions 27-28, 33-34 (superficie útil, la correcta cuando viene).
+    // [31]/[32] son superficie total/construida: se agregan AL FINAL como fallback para
+    // los avisos donde la útil viene en 0.0. El orden garantiza que la útil gane si existe.
     let superficieM2: number | undefined;
-    for (const pos of [27, 28, 33, 34]) {
+    for (const pos of [27, 28, 33, 34, 31, 32]) {
       const val = parseFloat(String(arr[pos]));
       if (val > 15 && val < 500) { superficieM2 = val; break; }
     }
@@ -211,6 +234,9 @@ function parseMapProperty(
       dormitorios: dormitorios > 0 ? dormitorios : undefined,
       banos: banos > 0 ? banos : undefined,
       url,
+      // La URL distingue obra nueva: .../compranuevo/... -> "nuevo". Sin URL o sin
+      // ese marcador -> "usado" (la mayoria del inventario).
+      condicion: (url && url.includes("compranuevo")) ? "nuevo" : "usado",
     };
   } catch {
     return null;
@@ -227,19 +253,23 @@ export async function scrapeTocTocMap(
   const targetComunas = comunas || Object.keys(COMUNA_VIEWPORTS);
 
   let cookies = "";
+  let token = "";
   try {
-    cookies = await getTocTocSession();
+    const session = await getTocTocSession();
+    cookies = session.cookies;
+    token = session.token;
   } catch (e) {
     errors.push(`Map session error: ${e}`);
     return { source: "toctoc-map", properties, errors, scrapedAt: new Date() };
   }
+  if (!token) errors.push("Map: token vacio"); // diagnostico, seguimos igual
 
   for (const comunaSlug of targetComunas) {
     try {
       const viewport = COMUNA_VIEWPORTS[comunaSlug];
       if (!viewport) { errors.push(`No viewport for ${comunaSlug}`); continue; }
 
-      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies);
+      const propArrays = await fetchMapProperties(comunaSlug, operacion, viewport, cookies, token);
       if (!propArrays || propArrays.length === 0) {
         errors.push(`Map API: no data for ${comunaSlug}`);
         continue;

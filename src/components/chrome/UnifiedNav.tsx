@@ -218,12 +218,17 @@ export function UnifiedNav({
         background: "var(--landing-nav-bg)",
         borderBottom: "0.5px solid var(--landing-nav-border)",
       }
-    : { borderBottom: "0.5px solid var(--franco-border)" };
+    : variant === "app"
+      ? {
+          background: "var(--franco-nav-bg)",
+          borderBottom: "0.5px solid var(--franco-border)",
+        }
+      : { borderBottom: "0.5px solid var(--franco-border)" };
   const bgClass = isLanding
     ? "backdrop-blur-md"
     : variant === "marketing"
       ? "bg-[color-mix(in_srgb,var(--franco-bg)_95%,transparent)] backdrop-blur-md"
-      : "bg-[var(--franco-bg)]";
+      : "backdrop-blur-md";
   const containerMax = isLanding ? "max-w-[1280px]" : "max-w-[1100px]";
 
   const handleSignOut = async () => {

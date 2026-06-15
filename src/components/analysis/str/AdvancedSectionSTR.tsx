@@ -24,12 +24,15 @@ export function AdvancedSectionSTR({
   results,
   currency,
   valorUF,
+  forceOpen = false,
 }: {
   results: ShortTermResult;
   currency: "CLP" | "UF";
   valorUF: number;
+  // forceOpen: arranca expandida (modo print/PDF) — override del colapso default.
+  forceOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(forceOpen);
 
   const sectionHeader = (num: string, label: string, title: string) => (
     <div style={{ marginBottom: 14 }}>
@@ -132,12 +135,12 @@ export function AdvancedSectionSTR({
       <div className="px-5 md:px-7 py-6">
         {sectionHeader("07", "ESCENARIOS", "Cómo varía con la ocupación del mercado")}
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-4 leading-[1.6]">
-          Los escenarios usan los percentiles de ingresos brutos del mercado de la zona. La base es la mediana del mercado (percentil 50), la operación esperable; conservador es la cuarta parte más baja (p25) y agresivo es la cuarta parte más alta (p75) — los extremos plausibles.
+          La base es la mediana de ocupación observada de la zona (percentil 50), la operación esperable; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <EscenarioCard escenario={results.escenarios.conservador} subtitle="Cuarta parte más baja del mercado (p25) — caída de demanda" currency={currency} valorUF={valorUF} />
-          <EscenarioCard escenario={results.escenarios.base} subtitle="Mediana del mercado (p50) — operación esperable" currency={currency} valorUF={valorUF} featured />
-          <EscenarioCard escenario={results.escenarios.agresivo} subtitle="Cuarta parte más alta del mercado (p75) — temporada alta" currency={currency} valorUF={valorUF} />
+          <EscenarioCard escenario={results.escenarios.base} subtitle="Mediana observada de la zona (p50) — operación esperable" currency={currency} valorUF={valorUF} featured />
+          <EscenarioCard escenario={results.escenarios.agresivo} label="Potencial (gestión pro)" subtitle="Potencial con gestión profesional, estabilizado" currency={currency} valorUF={valorUF} />
         </div>
       </div>
 
@@ -175,12 +178,17 @@ function EscenarioCard({
   currency,
   valorUF,
   featured = false,
+  label,
 }: {
   escenario: EscenarioSTR;
   subtitle: string;
   currency: "CLP" | "UF";
   valorUF: number;
   featured?: boolean;
+  /** Override presentacional del rótulo. Si se pasa, reemplaza a
+   * `escenario.label` SOLO en la UI (el motor no se toca). Usado para
+   * relabelizar "Agresivo" → "Potencial (gestión pro)". */
+  label?: string;
 }) {
   const isCritical = escenario.flujoCajaMensual < 0;
   const borderColor = featured
@@ -201,7 +209,7 @@ function EscenarioCard({
         className="font-mono uppercase mb-2"
         style={{ fontSize: 10, letterSpacing: "1.2px", color: "var(--franco-text-secondary)", fontWeight: 500 }}
       >
-        {escenario.label}
+        {label ?? escenario.label}
       </p>
       <p
         className="font-mono font-bold m-0"

@@ -1,9 +1,49 @@
 "use client";
 
+/**
+ * ShareButton — botón "Compartir" reutilizable (chrome).
+ *
+ * Generalización del antiguo `app/analisis/[id]/share-button.tsx` (atado a
+ * LTR) a un componente compartido por LTR / STR / AMBAS. Se inyecta en el
+ * `actionsSlot` de UnifiedNav.
+ *
+ * Comportamiento (idéntico al original):
+ *   - Móvil: usa `navigator.share` nativo si existe (con `title`/`text`).
+ *   - Desktop / fallback: dropdown con Copiar link · WhatsApp · Email · X.
+ *   - posthog.capture('analysis_shared', { analysis_id, comuna, score, modalidad }).
+ *
+ * Única adición sobre el original: si llega `pdfUrl`, se agrega la opción
+ * "Descargar PDF" al dropdown; si no, no se muestra.
+ *
+ * La URL compartida se arma con `window.location.origin + path`.
+ */
+
 import { useState, useEffect, useRef } from "react";
 import { usePostHog } from "posthog-js/react";
 import { Button } from "@/components/ui/button";
-import { Share2, Check, Link2, Mail } from "lucide-react";
+import { Share2, Check, Link2, Mail, Download } from "lucide-react";
+
+export type ShareModalidad = "LTR" | "STR" | "AMBAS";
+
+export interface ShareButtonProps {
+  /** Link relativo a compartir, ej. `/analisis/${id}`. La URL completa se
+   *  arma con `window.location.origin`. */
+  path: string;
+  /** ID del análisis para analytics (posthog `analysis_id`). */
+  analysisId: string;
+  /** Título para navigator.share. */
+  title: string;
+  /** Texto para navigator.share. */
+  text: string;
+  /** Datos usados para los mensajes sociales (WhatsApp/Email/X). Opcionales. */
+  score?: number;
+  nombre?: string;
+  comuna?: string;
+  /** Si viene, agrega la opción "Descargar PDF" al dropdown. */
+  pdfUrl?: string;
+  /** Modalidad del análisis — se incluye en el evento de analytics. */
+  modalidad: ShareModalidad;
+}
 
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
@@ -21,7 +61,17 @@ function XIcon({ className }: { className?: string }) {
   );
 }
 
-export function ShareButton({ id, score, nombre, comuna }: { id: string; score: number; nombre: string; comuna?: string }) {
+export function ShareButton({
+  path,
+  analysisId,
+  title,
+  text,
+  score,
+  nombre,
+  comuna,
+  pdfUrl,
+  modalidad,
+}: ShareButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -36,18 +86,21 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
-  const url = typeof window !== "undefined" ? `${window.location.origin}/analisis/${id}` : "";
+  const url = typeof window !== "undefined" ? `${window.location.origin}${path}` : "";
 
   const handleClick = async () => {
-    posthog?.capture('analysis_shared', { analysis_id: id, comuna, score });
+    posthog?.capture('analysis_shared', { analysis_id: analysisId, comuna, score, modalidad });
+    // Si hay PDF para descargar, abrimos el menú propio: el share nativo del SO solo
+    // comparte la URL y no puede exponer "Descargar PDF". Con pdfUrl presente preferimos
+    // el menú (que igual trae WhatsApp / Copiar link / Email / X + Descargar PDF).
+    if (pdfUrl) {
+      setOpen(!open);
+      return;
+    }
     // Mobile: use native share
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
-        await navigator.share({
-          title: `Análisis Franco: ${nombre}`,
-          text: `Mira el análisis de este depto. Score: ${score}/100`,
-          url,
-        });
+        await navigator.share({ title, text, url });
         return;
       } catch {
         // user cancelled or not supported, fall through to dropdown
@@ -63,22 +116,42 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
   };
 
   const shareWhatsApp = () => {
-    const text = `Analicé este depto con Franco y el Score es ${score}/100. Míralo acá → ${url}`;
-    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    // Sin score (AMBAS): usa `text`. Con score (LTR/STR): mensaje original.
+    const msg =
+      score === undefined
+        ? `${text} → ${url}`
+        : `Analicé este depto con Franco y el Score es ${score}/100. Míralo acá → ${url}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, "_blank");
     setOpen(false);
   };
 
   const shareEmail = () => {
-    const subject = `Te comparto mi análisis Franco: ${nombre}`;
+    // Sin score (AMBAS): subject = `title`, body = `text`. Con score: original.
+    const subject =
+      score === undefined ? title : `Te comparto mi análisis Franco: ${nombre}`;
     const comunaText = comuna ? `\nComuna: ${comuna}` : "";
-    const body = `Hice un análisis de inversión con Franco para este depto.\n\nScore: ${score}/100${comunaText}\n\nVer análisis: ${url}`;
+    const body =
+      score === undefined
+        ? `${text}\n\nVer comparativa: ${url}`
+        : `Hice un análisis de inversión con Franco para este depto.\n\nScore: ${score}/100${comunaText}\n\nVer análisis: ${url}`;
     window.open(`mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
     setOpen(false);
   };
 
   const shareX = () => {
-    const text = `Analicé este depto con Franco: Score ${score}/100 🏠 ${url}`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`, "_blank");
+    // Sin score (AMBAS): usa `text`. Con score (LTR/STR): mensaje original.
+    const msg =
+      score === undefined
+        ? `${text} ${url}`
+        : `Analicé este depto con Franco: Score ${score}/100 🏠 ${url}`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(msg)}`, "_blank");
+    setOpen(false);
+  };
+
+  const downloadPDF = () => {
+    if (!pdfUrl) return;
+    // Navegación directa: el endpoint responde Content-Disposition: attachment.
+    window.location.href = pdfUrl;
     setOpen(false);
   };
 
@@ -106,6 +179,12 @@ export function ShareButton({ id, score, nombre, comuna }: { id: string; score: 
             <XIcon className="h-4 w-4 text-[var(--franco-text)]" />
             X (Twitter)
           </button>
+          {pdfUrl && (
+            <button onClick={downloadPDF} className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-[var(--franco-text)] transition-colors hover:bg-[var(--franco-elevated)]">
+              <Download className="h-4 w-4 text-[var(--franco-text-secondary)]" />
+              Descargar PDF
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -94,3 +94,4 @@ supabase/seeds/
 
 # dumps de auditoría
 audit/
+.env.local

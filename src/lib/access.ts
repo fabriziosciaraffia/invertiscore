@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { consumeCredit as consumeLedgerCredit } from "@/lib/credits-grant";
+import { consumeCredit as consumeLedgerCredit, getAvailableCredits } from "@/lib/credits-grant";
 
 function createAdminClient() {
   return createClient(
@@ -9,20 +9,31 @@ function createAdminClient() {
 }
 
 /**
- * ¿La fila de user_credits da acceso por suscripción? true si está 'active', o
- * si está 'past_due' con la gracia AÚN vigente (now < grace_ends_at). past_due
- * vencido (o sin grace_ends_at) NO da acceso. No contempla is_unlimited — ese
- * free pass se evalúa aparte en cada caller.
+ * ¿La fila de user_credits da acceso por suscripción? true si:
+ *  - 'active', o
+ *  - 'past_due' con la gracia AÚN vigente (now < grace_ends_at), o
+ *  - 'cancelled' con el ciclo pagado AÚN vigente (now < subscription_ends_at):
+ *    el usuario canceló pero conserva acceso hasta fin del período que ya pagó.
+ * past_due/cancelled vencidos (o sin la fecha respectiva) NO dan acceso. No
+ * contempla is_unlimited — ese free pass se evalúa aparte en cada caller.
  */
 export function hasSubscriptionAccess(row: {
   subscription_status?: string | null;
   grace_ends_at?: string | null;
+  subscription_ends_at?: string | null;
 }): boolean {
   if (row.subscription_status === "active") return true;
   if (
     row.subscription_status === "past_due" &&
     row.grace_ends_at &&
     new Date(row.grace_ends_at) > new Date()
+  ) {
+    return true;
+  }
+  if (
+    row.subscription_status === "cancelled" &&
+    row.subscription_ends_at &&
+    new Date(row.subscription_ends_at) > new Date()
   ) {
     return true;
   }
@@ -85,7 +96,7 @@ export async function chargeAnalysisCredit(
 
   const { data: row } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at")
+    .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at, subscription_ends_at")
     .eq("user_id", userId)
     .single();
 
@@ -162,13 +173,17 @@ export async function getUserAccessLevel(
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, grace_ends_at")
+    .select("credits, subscription_status, grace_ends_at, subscription_ends_at")
     .eq("user_id", userId)
     .single();
 
   if (!data) return "free";
   if (hasSubscriptionAccess(data)) return "subscriber";
-  if (data.credits > 0) return "premium";
+  // Saldo real = ledger vivo + legacy. Antes leía solo data.credits (contador
+  // legacy = 0 en el modelo ledger) y devolvía "free" a quien sí tenía saldo en
+  // credit_grants. getAvailableCredits incluye el contador legacy, así que cubre
+  // ambos modelos.
+  if ((await getAvailableCredits(userId, supabase)) > 0) return "premium";
   return "free";
 }
 
@@ -190,7 +205,7 @@ export async function consumeCredit(
   // Check subscription
   const { data: credits } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, is_unlimited, grace_ends_at")
+    .select("credits, subscription_status, is_unlimited, grace_ends_at, subscription_ends_at")
     .eq("user_id", userId)
     .single();
 

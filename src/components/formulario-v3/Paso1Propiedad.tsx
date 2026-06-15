@@ -8,8 +8,10 @@ import { MapaThumbnail, type Comparable } from "./MapaThumbnail";
 import { ModalDetallesDepto } from "./ModalDetallesDepto";
 import { ModalZonaNoDisponible } from "./ModalZonaNoDisponible";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import {
   previewDetalles,
+  resetPropertyEstimatesPatch,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -32,6 +34,11 @@ export function Paso1Propiedad({
   const direccionRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const autocompleteRef = useRef<any>(null);
+  // El listener de Places se registra una sola vez (deps [setState]); su
+  // closure capturaría el state del montaje. Para que el reset al cambiar de
+  // propiedad lea editedFields/dorm/habilitación ACTUALES, los espejamos acá.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // ¿La comuna seleccionada está fuera de cobertura (no Gran Santiago)?
   // state.comuna se llena solo al elegir una opción del autocomplete.
@@ -58,11 +65,28 @@ export function Paso1Propiedad({
         // Extract comuna from address components
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const comps = (place.address_components || []) as any[];
-        const comuna = comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name
-          || comps.find((c) => c.types.includes("locality"))?.long_name
+        // En la RM chilena Google Places mapea la COMUNA a `locality` y la
+        // PROVINCIA a `administrative_area_level_3` (ej. Providencia: locality=
+        // Providencia, admin_level_3=Santiago). Priorizar locality; admin_level_3
+        // solo como fallback.
+        const comuna = comps.find((c) => c.types.includes("locality"))?.long_name
+          || comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name
           || "";
         const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comuna.toLowerCase());
         const comunaFinal = match?.comuna || comuna;
+        // Estado actual (no el del closure del montaje — ver stateRef).
+        const cur = stateRef.current;
+        // ¿Cambió la identidad de la propiedad? Solo entonces reiniciamos las
+        // estimaciones (evita pisar ediciones si re-eligen la misma dirección).
+        // Este listener nunca corre en el montaje, así que el guard contra
+        // mount-inicial está cubierto por construcción.
+        const propertyChanged =
+          addr !== cur.direccionConfirmada || comunaFinal !== cur.comuna;
+        const dorm = parseInt(cur.dormitorios, 10);
+        const costDefaults = getCostosDefault(
+          Number.isFinite(dorm) && dorm >= 0 ? dorm : 2,
+          cur.habilitacion,
+        );
         setState({
           direccion: addr,
           direccionConfirmada: addr,
@@ -70,6 +94,11 @@ export function Paso1Propiedad({
           lng,
           comuna: comunaFinal,
           ciudad: match?.ciudad || "Santiago",
+          // Reset atómico de las estimaciones de la propiedad (mantiene las
+          // preferencias de financiamiento: piePct/plazoCredito/tasaInteres).
+          ...(propertyChanged
+            ? resetPropertyEstimatesPatch(cur.editedFields, costDefaults)
+            : {}),
         });
         // Gate de cobertura: si la comuna no es Gran Santiago, abrimos el
         // warning bloqueante. El paso 1 no avanza mientras siga fuera de zona.

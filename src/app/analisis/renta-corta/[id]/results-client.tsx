@@ -21,6 +21,9 @@ import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
+import { ShareButton } from "@/components/chrome/ShareButton";
+import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
@@ -32,6 +35,15 @@ import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBann
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
+
+// Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
+// "7 de junio 2026". Usado en el header público de la vista guest.
+function formatFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 interface STRResultsProps {
   analysisId: string;
@@ -49,6 +61,7 @@ interface STRResultsProps {
   userCredits: number;
   welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
+  printMode?: boolean;
 }
 
 export function STRResultsClient({
@@ -60,10 +73,12 @@ export function STRResultsClient({
   nombre,
   comuna,
   superficie,
+  createdAt,
   isSharedView,
   userCredits,
   welcomeAvailable = true,
   aiAnalysisInitial,
+  printMode = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
 
@@ -157,9 +172,36 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      <UnifiedNav variant="app" />
+      {/* Chrome de nav/header — oculto en print mode (el PDF agrega su header) */}
+      {!printMode && (accessLevel === "guest" ? (
+        <PublicShareHeader date={formatFechaCorta(createdAt)} />
+      ) : (
+        <UnifiedNav
+          variant="app"
+          actionsSlot={
+            <ShareButton
+              path={`/analisis/renta-corta/${analysisId}`}
+              pdfUrl={`/api/analisis/renta-corta/${analysisId}/pdf`}
+              analysisId={analysisId}
+              modalidad="STR"
+              title={`Análisis Franco: ${propiedadTitle}`}
+              text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
+              score={score ?? undefined}
+              nombre={propiedadTitle}
+              comuna={comuna}
+            />
+          }
+        />
+      ))}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest, no en print */}
+        {accessLevel === "guest" && !printMode && (
+          <div className="mb-5">
+            <ConversionHook href="/register" />
+          </div>
+        )}
+
         {/* Banner análisis incompleto — Commit E.0 (2026-05-13).
             Análisis STR generados antes del FrancoScoreSTR (Commit 2) no tienen
             score persistido. Antes mostrábamos "50" hardcoded; ahora "—" en el
@@ -221,6 +263,7 @@ export function STRResultsClient({
               revenueMensualBase={results.escenarios.base.ingresoBrutoMensual}
               currency={currency}
               valorUF={ufValue}
+              occFuente={results.occFuente}
             />
             <div style={{ height: 24 }} />
           </>
@@ -248,40 +291,55 @@ export function STRResultsClient({
           results={results}
           currency={currency}
           valorUF={ufValue}
+          forceOpen={printMode}
         />
 
-        {/* CTA banner (free) */}
-        <div style={{ height: 24 }} />
-        <ProCTABanner
-          analysesCount={1}
-          isLoggedIn={accessLevel !== "guest"}
-          accessLevel={accessLevel}
-          welcomeAvailable={welcomeAvailable}
-          isSharedView={isSharedView}
-          source="str_v2"
-        />
+        {/* CTAs de dueño/wallet — ocultos en print mode */}
+        {!printMode && (
+          <>
+            {/* CTA banner (free) */}
+            <div style={{ height: 24 }} />
+            <ProCTABanner
+              analysesCount={1}
+              isLoggedIn={accessLevel !== "guest"}
+              accessLevel={accessLevel}
+              welcomeAvailable={welcomeAvailable}
+              isSharedView={isSharedView}
+              source="str_v2"
+            />
 
-        {/* Wallet status */}
-        <div style={{ height: 16 }} />
-        <WalletStatusCTA
-          welcomeAvailable={welcomeAvailable}
-          credits={userCredits}
-          isSubscriber={isSubscriber}
-          isAdmin={isAdmin}
-          isSharedView={isSharedView}
-          source="str"
-        />
+            {/* Wallet status */}
+            <div style={{ height: 16 }} />
+            <WalletStatusCTA
+              welcomeAvailable={welcomeAvailable}
+              credits={userCredits}
+              isSubscriber={isSubscriber}
+              isAdmin={isAdmin}
+              isSharedView={isSharedView}
+              source="str"
+            />
+          </>
+        )}
 
-        {/* Link analizar otra propiedad */}
-        <div className="mt-6 mb-4 flex items-center justify-center">
-          <Link
-            href="/analisis/renta-corta"
-            className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
-          >
-            Analizar otra propiedad
-            <ArrowRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
+        {/* Link analizar otra propiedad — oculto en print mode (es navegación) */}
+        {!printMode && (
+          <div className="mt-6 mb-4 flex items-center justify-center">
+            <Link
+              href="/analisis/renta-corta"
+              className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+            >
+              Analizar otra propiedad
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
+          </div>
+        )}
+
+        {/* CTA conversión — cierre (campo Signal Red) · solo guest, no en print */}
+        {accessLevel === "guest" && !printMode && (
+          <div className="mt-8 mb-4">
+            <ConversionCloser href="/register" />
+          </div>
+        )}
 
         {/* Disclaimer */}
         <p
@@ -296,7 +354,8 @@ export function STRResultsClient({
         </p>
       </main>
 
-      <AppFooter variant="minimal" />
+      {/* Footer del sitio — oculto en print mode (chrome, no cuerpo del análisis) */}
+      {!printMode && <AppFooter variant="minimal" />}
     </div>
   );
 }

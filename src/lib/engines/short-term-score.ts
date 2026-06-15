@@ -1,5 +1,6 @@
 import { ShortTermResult } from './short-term-engine';
 import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from '../data/str-attractors';
+import { findNearestStation } from '../metro-stations';
 
 // ============================================================
 // TIPOS
@@ -42,7 +43,10 @@ export interface ScoreSTRInputs {
   revenueP50: number;
   monthlyRevenue: number[];
 
-  distanciaMetro: number;
+  // Remediación metro 2026-06: `distanciaMetro` deprecado. La distancia a metro
+  // se deriva de lat/lng dentro de calcAtractores (findNearestStation, filtro
+  // "active"), fuente única igual que clínica/negocios/ski. El wizard nunca
+  // enviaba este campo → caía siempre al default 2000m, infravalorando metro.
 }
 
 // ============================================================
@@ -216,7 +220,16 @@ function calcRegulacion(regulacion: string): number {
   return 45;
 }
 
-function calcAtractores(lat: number, lng: number, distanciaMetro: number): { score: number; detail: string } {
+// Distancia "metro lejano" usada cuando no hay estación derivable (sin coords o
+// sin estaciones activas en el dataset). >4000m → cae al tramo final (score 10).
+const METRO_FALLBACK_DIST = 5000;
+
+function calcAtractores(lat: number, lng: number): { score: number; detail: string } {
+  // Remediación metro 2026-06: la distancia a metro se deriva de lat/lng (fuente
+  // única, igual que clínica/negocios/ski) vía findNearestStation con filtro
+  // "active" (excluye estaciones futuras L7/L8/L9). Antes venía del param
+  // `distanciaMetro` que el wizard nunca enviaba → default 2000m sistemático.
+  const distanciaMetro = findNearestStation(lat, lng, "active")?.distance ?? METRO_FALLBACK_DIST;
   const metroScore = distanciaMetro <= 400 ? 100 :
     distanciaMetro <= 700 ? 85 + (700 - distanciaMetro) / 300 * 15 :
     distanciaMetro <= 1000 ? 70 + (1000 - distanciaMetro) / 300 * 15 :
@@ -277,7 +290,7 @@ function calcFactibilidad(inputs: ScoreSTRInputs): DimensionScore {
 
   const puntajeRegulacion = calcRegulacion(inputs.regulacionEdificio);
 
-  const atractores = calcAtractores(inputs.lat, inputs.lng, inputs.distanciaMetro);
+  const atractores = calcAtractores(inputs.lat, inputs.lng);
 
   const score = Math.round(
     puntajeRevenue * 0.30 +
@@ -333,6 +346,19 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   const coc = base.cashOnCash; // decimal (-0.10 = -10%)
   const beRatio = inputs.results.breakEvenPctDelMercado; // 1.00 = break-even al precio del mercado
 
+  // Gate flujo-negativo (2026-06): si el escenario base deja flujo mensual
+  // negativo, COMPRAR solo se sostiene si el horizonte cierra favorablemente
+  // (equity + plusvalía compensan el aporte mensual). Doctrina: "flujo negativo
+  // != mala inversión; mala es cuando flujo neg + plusvalía + equity no cierran".
+  // tir en PORCENTAJE nominal a 10 años (9.16 = 9,16%); multCap ratio crudo (1.51).
+  const exit = inputs.results.exitScenario;
+  const tir = exit?.tirAnual;
+  const multCap = exit?.multiplicadorCapital;
+  const horizonteCierraFavorable =
+    exit != null &&
+    typeof tir === "number" && Number.isFinite(tir) && tir !== 0 &&
+    ((tir >= 10) || (typeof multCap === "number" && multCap >= 1.8));
+
   // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
   if (inputs.regulacionEdificio === 'no') {
     veredicto = 'BUSCAR OTRA';
@@ -359,6 +385,9 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
     } else if (coc < -0.10) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
+    } else if (base.flujoCajaMensual < 0 && !horizonteCierraFavorable) {
+      veredicto = 'AJUSTA SUPUESTOS';
+      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador <1,8x)';
     } else if (beRatio > 1.10) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'Break-even >110% del mercado — margen operativo apretado';

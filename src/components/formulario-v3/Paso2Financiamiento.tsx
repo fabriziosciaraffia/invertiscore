@@ -15,6 +15,7 @@ import {
   fmtCLP,
   fmtCLPShort,
   fmtUF,
+  markFieldEdited,
   mesesHastaEntrega,
   parseDecimalLocale,
   type WizardV3State,
@@ -83,12 +84,9 @@ export function Paso2Financiamiento({
   // Helper: setState + tracking en editedFields. Aplica al patrón de campos
   // editables del Paso 2 (sliders piePct, plazoCredito; input tasaInteres;
   // CTA subsidio). El precio usa este patrón inline desde Fase 4.
+  // La lógica vive en markFieldEdited (wizardV3State) — compartida con Paso 3.
   function trackEdit(key: keyof WizardV3State, value: string) {
-    const patch = { [key]: value } as Partial<WizardV3State>;
-    if (!state.editedFields.includes(key as string)) {
-      patch.editedFields = [...state.editedFields, key as string];
-    }
-    setState(patch);
+    setState(markFieldEdited(state.editedFields, key, value));
   }
 
   const precioCLP = precioUF * ufCLP;
@@ -123,6 +121,24 @@ export function Paso2Financiamiento({
     if (!precioSugeridoUF || precioSugeridoUF <= 0) return;
     setState({ precio: String(precioSugeridoUF) });
   }, [precioSugeridoUF, state.precio, state.editedFields, setState]);
+
+  // Hint de comparables del precio sugerido. Especifica QUÉ son los N
+  // comparables (condición + dormitorios de la tipología del usuario) para no
+  // confundirlos con la densidad bruta de venta del mapa del Paso 1 ("N
+  // comparables cerca"): allá es toda la zona, acá es solo su tipología.
+  const comparablesHint = (() => {
+    if (!precioM2SampleSize || precioM2SampleSize <= 0) return "";
+    const n = precioM2SampleSize;
+    const plural = n !== 1;
+    const sustantivo = plural ? "deptos" : "depto";
+    const condicion = state.tipoPropiedad === "nuevo"
+      ? (plural ? "nuevos" : "nuevo")
+      : (plural ? "usados" : "usado");
+    const dorms = Number(state.dormitorios) || 0;
+    const dormPart = dorms > 0 ? ` de ${dorms}D` : "";
+    const cierre = plural ? "similares" : "similar";
+    return ` · basado en ${n} ${sustantivo} ${condicion}${dormPart} ${cierre} en la zona`;
+  })();
 
   const mesesSugeridos = state.estadoVenta === "futura"
     ? mesesHastaEntrega(state.fechaEntregaMes, state.fechaEntregaAnio)
@@ -161,14 +177,8 @@ export function Paso2Financiamiento({
               placeholder="3.200"
               className={`${inputBase} pl-10`}
               value={state.precio}
-              onChange={(raw) => {
-                const patch: Partial<WizardV3State> = { precio: raw };
-                // Al editar manualmente, bloquear el re-prefill automático.
-                if (!state.editedFields.includes("precio")) {
-                  patch.editedFields = [...state.editedFields, "precio"];
-                }
-                setState(patch);
-              }}
+              // Al editar manualmente, bloquear el re-prefill automático.
+              onChange={(raw) => setState(markFieldEdited(state.editedFields, "precio", raw))}
               onBlur={commitPrecio}
             />
           </div>
@@ -182,9 +192,7 @@ export function Paso2Financiamiento({
             {superficie > 0 && precioM2UF
               ? ` (UF ${(Math.round(precioM2UF * 100) / 100).toLocaleString("es-CL")}/m² × ${superficie.toLocaleString("es-CL")}m²)`
               : ""}
-            {precioM2SampleSize && precioM2SampleSize > 0
-              ? ` · basado en ${precioM2SampleSize} ${precioM2SampleSize === 1 ? "unidad comparable" : "unidades comparables"} en la zona`
-              : ""}
+            {comparablesHint}
           </p>
         )}
         {/* Validación suave: precio/m² del usuario vs promedio de zona.

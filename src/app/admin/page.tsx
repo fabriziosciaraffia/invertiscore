@@ -4,8 +4,10 @@ import { createClient as createServerSupabase } from "@/lib/supabase/server";
 import { createClient } from "@supabase/supabase-js";
 import { isAdminUser } from "@/lib/admin";
 import { hasSubscriptionAccess } from "@/lib/access";
-import { StatusBadge } from "@/components/ui/StatusBadge";
+import { getLedgerBalances } from "@/lib/credits-grant";
+import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { AdminActions } from "./admin-actions";
+import { RetryButton } from "./retry-button";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,18 @@ function fmtDateShort(date: string | null | undefined): string {
 
 function fmtToday(): string {
   return new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
+}
+
+// Label legible del producto para la tabla de documentos tributarios.
+function fmtProducto(p: string | null | undefined): string {
+  if (!p) return "—";
+  if (p === "single") return "1 análisis";
+  const m = p.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
+  if (m) {
+    const nombre = m[1] === "plan10" ? "Plan 10" : m[1] === "plan50" ? "Plan 50" : "Ilimitado";
+    return `${nombre} · ${m[2] === "annual" ? "anual" : "mensual"}`;
+  }
+  return p;
 }
 
 export default async function AdminPage() {
@@ -134,6 +148,15 @@ export default async function AdminPage() {
     if (u.id && u.email) emailById.set(u.id, u.email);
   }
 
+  // ─── DOCUMENTOS TRIBUTARIOS ───
+  const { data: docsData } = await sb
+    .from("documentos_tributarios")
+    .select(
+      "id, payment_id, user_id, folio, monto_total, estado, ambiente, error_mensaje, created_at, payments(product)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(15);
+
   // ─── ÚLTIMOS USUARIOS ───
   const { data: recentUsers } = await sb.auth.admin.listUsers({ page: 1, perPage: 10 });
 
@@ -145,6 +168,12 @@ export default async function AdminPage() {
   for (const c of (creditsForUsers ?? []) as Array<{ user_id: string; credits: number; subscription_status: string; grace_ends_at: string | null }>) {
     creditsMap.set(c.user_id, { credits: c.credits, subscription_status: c.subscription_status, grace_ends_at: c.grace_ends_at });
   }
+
+  // Saldo del ledger por usuario en UNA sola query (evita N+1 al listar usuarios).
+  // El saldo a mostrar = ledger vivo (este map) + legacy user_credits.credits (creditsMap).
+  const ledgerMap = recentUserIds.length
+    ? await getLedgerBalances(recentUserIds, sb)
+    : new Map<string, number>();
 
   const { data: lastAnalisisPerUser } = recentUserIds.length
     ? await sb.from("analisis").select("user_id, created_at").in("user_id", recentUserIds).order("created_at", { ascending: false })
@@ -391,7 +420,8 @@ export default async function AdminPage() {
               <tbody>
                 {(recentUsers?.users ?? []).map((u) => {
                   const c = creditsMap.get(u.id);
-                  const credits = c?.credits ?? 0;
+                  // Saldo real = ledger vivo (batch) + contador legacy.
+                  const credits = (ledgerMap.get(u.id) ?? 0) + (c?.credits ?? 0);
                   const subStatus = c?.subscription_status ?? "none";
                   const isSubscriber = subStatus === "active";
                   // past_due con gracia vigente (mantiene acceso). hasSubscriptionAccess
@@ -500,6 +530,102 @@ export default async function AdminPage() {
                   <td className="font-mono text-xs font-bold text-[var(--franco-text)] py-2 pr-4">{fmtNumber(covTotal.venta)}</td>
                   <td></td>
                 </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {/* ─── SECCIÓN 8: DOCUMENTOS TRIBUTARIOS ─── */}
+        <section className="mb-8">
+          <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Documentos tributarios</h2>
+          <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left">
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Fecha</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Email</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Folio</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Producto</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Monto</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Estado</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Ambiente</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2">Acción</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(docsData ?? []).length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="font-body text-sm text-[var(--franco-text-muted)] py-3">
+                      Sin documentos tributarios.
+                    </td>
+                  </tr>
+                )}
+                {(docsData ?? []).map((d) => {
+                  const estado = d.estado as string;
+                  const tone: StatusBadgeTone =
+                    estado === "emitido"
+                      ? "ink-400"
+                      : estado === "error"
+                      ? "signal-red"
+                      : estado === "anulado"
+                      ? "ink-500"
+                      : "muted";
+                  const estadoLabel =
+                    estado === "emitido"
+                      ? "Emitido"
+                      : estado === "error"
+                      ? "Error"
+                      : estado === "anulado"
+                      ? "Anulado"
+                      : "Pendiente";
+                  const productRel = d.payments as
+                    | { product?: string }
+                    | { product?: string }[]
+                    | null;
+                  const product = Array.isArray(productRel)
+                    ? productRel[0]?.product
+                    : productRel?.product;
+                  const ambiente = d.ambiente as string;
+                  return (
+                    <tr key={d.id} className="border-b border-[var(--franco-border)] last:border-b-0">
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
+                        {fmtDateShort(d.created_at as string)}
+                      </td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4 truncate max-w-[200px]">
+                        {emailById.get(d.user_id as string) ?? "—"}
+                      </td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
+                        {d.folio ?? "—"}
+                      </td>
+                      <td className="font-body text-xs text-[var(--franco-text)] py-2 pr-4">
+                        {fmtProducto(product)}
+                      </td>
+                      <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
+                        {fmtCLP(d.monto_total as number)}
+                      </td>
+                      <td className="py-2 pr-4">
+                        <StatusBadge label={estadoLabel} tone={tone} className="text-[10px]" />
+                        {estado === "error" && d.error_mensaje && (
+                          <div
+                            className="font-body text-xs text-[var(--franco-text-muted)] mt-1 max-w-[220px] truncate"
+                            title={d.error_mensaje as string}
+                          >
+                            {d.error_mensaje as string}
+                          </div>
+                        )}
+                      </td>
+                      <td
+                        className="font-mono text-[10px] uppercase py-2 pr-4"
+                        style={{ color: ambiente === "dev" ? "var(--ink-700)" : "var(--franco-text-muted)" }}
+                      >
+                        {ambiente}
+                      </td>
+                      <td className="py-2">
+                        {estado === "error" && <RetryButton documentoId={d.id as string} />}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

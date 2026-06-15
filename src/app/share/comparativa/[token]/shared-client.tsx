@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import Link from "next/link";
+import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import FrancoLogo from "@/components/franco-logo";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
@@ -147,30 +148,25 @@ export function SharedComparativaClient(p: Props) {
   return (
     <div
       className="min-h-screen flex flex-col"
-      style={{ background: p.printMode ? "white" : "var(--franco-bg)" }}
+      // En print mode renderizamos el subtree en TEMA CLARO: data-theme="light"
+      // resuelve los tokens --franco-* en su versión clara (bg, cards, texto)
+      // para todo el contenido del PDF. Sin esto el texto heredaba los tokens
+      // dark (#FAFAF8 ≈ blanco) sobre fondo blanco → ilegible.
+      data-theme={p.printMode ? "light" : undefined}
+      style={{ background: "var(--franco-bg)" }}
     >
       {/* Header público (solo en NO-print, ya que PDF agrega su propio header) */}
-      {!p.printMode && (
-        <header
-          className="border-b border-[var(--franco-border)] px-4 sm:px-6 py-4"
-          style={{ background: "var(--franco-bg)" }}
-        >
-          <div className="mx-auto max-w-[900px] flex items-center justify-between gap-4">
-            <FrancoLogo inverted size="sm" href="/" />
-            <div className="text-right">
-              <p className="font-mono text-[9px] uppercase tracking-[2px] text-[var(--franco-text-muted)] mb-0.5">
-                ANÁLISIS COMPARTIDO
-              </p>
-              <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
-                {fechaCorta}
-              </p>
-            </div>
-          </div>
-        </header>
-      )}
+      {!p.printMode && <PublicShareHeader date={fechaCorta} />}
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[900px] px-4 py-6">
+          {/* CTA conversión — anzuelo (superficie Ink) · solo web */}
+          {!p.printMode && (
+            <div className="mb-5">
+              <ConversionHook href="/register" />
+            </div>
+          )}
+
           {/* Banner identificador del análisis (visible siempre) */}
           {p.printMode && (
             <div className="mb-5 pb-4" style={{ borderBottom: "1px solid var(--franco-border)" }}>
@@ -306,32 +302,10 @@ export function SharedComparativaClient(p: Props) {
             </>
           )}
 
-          {/* CTA conversión — solo en vista web, oculto en PDF */}
+          {/* CTA conversión — cierre (campo Signal Red) · solo en vista web */}
           {!p.printMode && (
-            <div
-              className="rounded-2xl border p-6 sm:p-8 mt-8 mb-4 text-center"
-              style={{
-                background: "color-mix(in srgb, var(--signal-red) 4%, transparent)",
-                borderColor: "color-mix(in srgb, var(--signal-red) 25%, transparent)",
-                borderStyle: "dashed",
-              }}
-            >
-              <p className="font-mono text-[10px] uppercase tracking-[3px] text-signal-red mb-2">
-                ¿ESTÁS EVALUANDO TU PROPIA INVERSIÓN?
-              </p>
-              <h3 className="font-heading text-[20px] sm:text-[22px] font-bold text-[var(--franco-text)] leading-snug mb-2">
-                Franco analiza tu depto y te dice si conviene comprar
-              </h3>
-              <p className="font-body text-[14px] text-[var(--franco-text-secondary)] leading-relaxed mb-4 max-w-[600px] mx-auto">
-                Datos reales del mercado, sin conflictos de interés. Veredicto en menos de un minuto.
-              </p>
-              <Link
-                href="/"
-                className="inline-flex items-center gap-2 rounded-md px-5 py-2.5 font-mono text-[12px] uppercase tracking-[0.06em] font-semibold transition-opacity hover:opacity-90"
-                style={{ background: "var(--signal-red)", color: "var(--ink-100)" }}
-              >
-                Crear tu propio análisis →
-              </Link>
+            <div className="mt-8 mb-4">
+              <ConversionCloser href="/register" />
             </div>
           )}
 

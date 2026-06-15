@@ -67,15 +67,6 @@ function calcOccDerivada(
   return STR_OCUPACION_TARGET.auto_gestion_residencial;
 }
 
-function calcFactorADR(
-  tipoEdificio: WizardV3State["tipoEdificio"],
-  habilitacion: WizardV3State["habilitacion"],
-): number {
-  const fE = tipoEdificio === "dedicado" ? 1.10 : 1.00;
-  const fH = { basico: 1.0, estandar: 1.05, premium: 1.10 }[habilitacion];
-  return fE * fH;
-}
-
 // ─── Tipos ──────────────────────────────────────────────
 
 interface ResumenRow {
@@ -149,6 +140,9 @@ export function Paso4Resumen({
   onEditarStep,
   onVolver,
   onAnalizar,
+  isLoggedIn,
+  onComprarLtr,
+  comprando,
   submitting,
   submitError,
 }: {
@@ -161,6 +155,12 @@ export function Paso4Resumen({
   onVolver: () => void;
   /** "Analizar ahora →" — submit final. */
   onAnalizar: () => void;
+  /** Sesión activa. Habilita el flujo de compra pre-pago (solo logueado + LTR). */
+  isLoggedIn: boolean;
+  /** Crea el análisis LTR bloqueado y va a checkout con su id. */
+  onComprarLtr: () => void;
+  /** True mientras se crea la fila bloqueada + redirige a checkout. */
+  comprando: boolean;
   submitting: boolean;
   submitError: string;
 }) {
@@ -186,7 +186,6 @@ export function Paso4Resumen({
 
   const motor = gestionOptionToMotor(state.gestionOption);
   const occDerivada = calcOccDerivada(state.tipoEdificio, motor.adminPro);
-  const factorADR = calcFactorADR(state.tipoEdificio, state.habilitacion);
   const occFinal = state.occOverride !== null ? state.occOverride : occDerivada;
   const adrEsOverride = state.adrOverride !== null;
   const occEsOverride = state.occOverride !== null;
@@ -281,7 +280,7 @@ export function Paso4Resumen({
       {
         label: "Habilitación",
         value: LABEL_HABILITACION[state.habilitacion],
-        tooltip: "Calidad del amoblamiento y fotos. Premium implica decoración curada y amenidades extra; influye en cuánto puedes cobrar por noche.",
+        tooltip: "Calidad del amoblamiento y fotos. Premium implica decoración curada y amenidades extra; define el costo de habilitación, no la tarifa.",
       },
       {
         label: "Edificio permite Airbnb",
@@ -298,7 +297,7 @@ export function Paso4Resumen({
         value: adrEsOverride
           ? `${fmtCLP(state.adrOverride!)} (Ajustado manualmente)`
           : "Derivada automáticamente",
-        tooltip: "Lo que vas a cobrar por noche con tu tipo de edificio y nivel de amoblamiento. Es la base del cálculo de ingresos.",
+        tooltip: "Lo que vas a cobrar por noche, anclado a la tarifa de mercado de la zona. Es la base del cálculo de ingresos.",
       },
       {
         label: "Ocupación estabilizada",
@@ -306,11 +305,6 @@ export function Paso4Resumen({
           ? `${Math.round(occFinal * 100)}% (Ajustado manualmente)`
           : `${Math.round(occDerivada * 100)}% (mes 7+)`,
         tooltip: "Porcentaje del año que el depto está reservado, una vez que pasaste los primeros 6 meses de ramp-up y tienes reseñas.",
-      },
-      {
-        label: "Factor de tarifa (edif × hab)",
-        value: `×${factorADR.toFixed(2)}`,
-        tooltip: "Multiplicador que el motor aplica a la tarifa promedio del mercado según tu tipo de edificio y habilitación.",
       },
     );
   }
@@ -413,6 +407,15 @@ export function Paso4Resumen({
         <StateBox variant="left-border" state="negative">{submitError}</StateBox>
       )}
 
+      {/* Ancla pre-pago: deja claro que se paga por ESTE análisis ya configurado,
+          no por un crédito abstracto. Solo logueado + LTR (el caso del botón de
+          compra nuevo). Sans regular, sin color (sistema de 2 colores). */}
+      {!canAnalyze && isLoggedIn && mod === "ltr" && (
+        <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0">
+          Estás comprando este análisis{state.comuna ? ` de ${state.comuna}` : ""}. Pagas y se desbloquea al instante.
+        </p>
+      )}
+
       {/* Footer CTAs siguiendo Patrón 5 — Form Step.
           El Paso 4 es el cierre del wizard, así que el pie SIEMPRE tiene un
           CTA primario. Con créditos: "Analizar ahora" (submit). Sin créditos:
@@ -440,7 +443,23 @@ export function Paso4Resumen({
               <>Analizar ahora →</>
             )}
           </button>
+        ) : isLoggedIn && mod === "ltr" ? (
+          // Logueado + LTR: crear análisis bloqueado y pagar por ÉL. El copy
+          // ancla al análisis concreto ("este análisis"), no a un crédito.
+          <button
+            type="button"
+            onClick={onComprarLtr}
+            disabled={comprando}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {comprando ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</>
+            ) : (
+              <>Desbloquear este análisis · $9.990</>
+            )}
+          </button>
         ) : (
+          // Guest o STR/Ambas: flujo viejo intacto (checkout pelado).
           <Link
             href="/checkout?product=single"
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"

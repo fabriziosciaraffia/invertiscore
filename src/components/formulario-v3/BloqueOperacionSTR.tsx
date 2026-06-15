@@ -22,7 +22,8 @@
 // Preview live:
 //   - ADR baseline mock (en futuro vendrá del prefetch AirROI; hoy hardcoded
 //     o derivado del airRoi suggestion del Paso3).
-//   - Factores ADR aplicados (edificio × habilitación).
+//   - Tarifa estimada = baseline (sin uplift por edificio/habilitación; los
+//     factores ADR están neutralizados a 1.00, ver calcFactorEdif/calcFactorHab).
 //   - Ocupación target según banda.
 //   - Revenue mensual estimado.
 //
@@ -60,13 +61,16 @@ function calcBandaOcc(tipoEdificio: WizardV3State["tipoEdificio"], adminPro: boo
   return { banda, occ: STR_OCUPACION_TARGET[banda] };
 }
 
-function calcFactorEdif(tipoEdificio: WizardV3State["tipoEdificio"]): number {
-  // null se trata como residencial_puro para el preview (motor también lo hace).
-  return tipoEdificio === "dedicado" ? 1.10 : 1.00;
+// Factores ADR neutralizados a 1.00 (2026-06) para reflejar el motor: el uplift
+// de ADR por edificio/habilitación no tenía respaldo (ver STR_ADR_FACTOR en
+// short-term-engine.ts). El preview ya no infla la tarifa por estos ejes.
+// Estructura intacta por si se re-ancla con data.
+function calcFactorEdif(): number {
+  return 1.00;
 }
 
-function calcFactorHab(hab: WizardV3State["habilitacion"]): number {
-  return { basico: 1.0, estandar: 1.05, premium: 1.10 }[hab];
+function calcFactorHab(): number {
+  return 1.00;
 }
 
 const inputBase =
@@ -86,8 +90,8 @@ export function BloqueOperacionSTR({
 }) {
   // ─── Derivaciones live ───
   const motor = gestionOptionToMotor(state.gestionOption);
-  const factorEdif = calcFactorEdif(state.tipoEdificio);
-  const factorHab = calcFactorHab(state.habilitacion);
+  const factorEdif = calcFactorEdif();
+  const factorHab = calcFactorHab();
   const factorADRTotal = factorEdif * factorHab;
   const { banda, occ: occDerivada } = calcBandaOcc(state.tipoEdificio, motor.adminPro);
 
@@ -172,8 +176,8 @@ export function BloqueOperacionSTR({
         </span>
         <div className="flex flex-col gap-1.5">
           {([
-            { value: "residencial_puro", label: "Residencial", subtitle: "La mayoría vive ahí · ADR ×1.00" },
-            { value: "dedicado", label: "Dedicado 100% renta corta", subtitle: "Tipo Andes STR, HOM · tarifa +10%" },
+            { value: "residencial_puro", label: "Residencial", subtitle: "La mayoría de los vecinos vive ahí" },
+            { value: "dedicado", label: "Dedicado 100% renta corta", subtitle: "Tipo Andes STR, HOM — diseñado para Airbnb" },
           ] as const).map((opt) => {
             const active = state.tipoEdificio === opt.value;
             return (
@@ -360,26 +364,14 @@ export function BloqueOperacionSTR({
               </span>
               <span>{fmtCLP(adrBaselineSugerido)}</span>
             </div>
-            <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-              <span className="flex items-center gap-1.5">
-                × factor edificio
-                <InfoTooltip content="Cuánto más puedes cobrar si tu edificio está diseñado para Airbnb (aparthotel) en vez de uno residencial común." />
-              </span>
-              <span>×{factorEdif.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-              <span className="flex items-center gap-1.5">
-                × factor habilitación
-                <InfoTooltip content="Cuánto más puedes cobrar si invertiste en buen amoblamiento y fotos profesionales." />
-              </span>
-              <span>×{factorHab.toFixed(2)}</span>
-            </div>
 
-            {/* Tu tarifa diaria estimada — editable (interna: adrAjustado) */}
+            {/* Tu tarifa diaria estimada — editable (interna: adrAjustado).
+                Sin uplift por edificio/habilitación (factores neutralizados a
+                1.00): la base = tarifa de mercado, salvo override manual. */}
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
               <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
                 Tu tarifa diaria estimada
-                <InfoTooltip content="Lo que vas a cobrar por noche con tu tipo de edificio y nivel de amoblamiento. Es la base del cálculo de ingresos." />
+                <InfoTooltip content="Lo que vas a cobrar por noche, anclado a la tarifa de mercado de la zona. Es la base del cálculo de ingresos." />
               </span>
               {!adrEsOverride ? (
                 <span className="flex items-center gap-2">

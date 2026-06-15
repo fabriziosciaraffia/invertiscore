@@ -3,13 +3,24 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { AnalysisNav } from "./analysis-nav";
+import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { PremiumResults } from "./results-client";
 import { getUFValue } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+
+// Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
+// "7 de junio 2026". Usado en el header público de la vista guest.
+function formatFechaCorta(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const meses = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+  return `${d.getDate()} de ${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -51,9 +62,16 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function AnalisisDetallePage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams?: { print?: string };
 }) {
+  // Modo print (PDF headless): renderiza el cuerpo del análisis sin chrome de
+  // navegación ni CTAs de conversión, con AdvancedSection abierta, para que
+  // Puppeteer lo capture completo. Ver api/.../pdf (2b).
+  const printMode = searchParams?.print === "true";
+
   const supabase = createClient();
 
   const [{ data: { user } }, ufValue] = await Promise.all([
@@ -114,11 +132,6 @@ export default async function AnalisisDetallePage({
   const isSharedLink = !isLoggedIn && !!analisis.user_id;
   const isPremium = isAdmin || isDemo || !!analisis.is_premium;
 
-  // Fase 1: Guest sin registro → siempre redirigir a /register (sin excepciones)
-  if (!user) {
-    redirect('/register');
-  }
-
   // Owner first name for personalization
   const ownerFullName = user?.user_metadata?.full_name || user?.user_metadata?.name || '';
   const ownerFirstName = isOwner ? (ownerFullName.split(' ')[0] || '') : '';
@@ -130,13 +143,18 @@ export default async function AnalisisDetallePage({
   let userCredits = 0;
   let welcomeAvailable = true;
   if (user) {
-    const { data: credits } = await supabase
+    // welcome_credit_used sale del contador; el SALDO real sale del ledger
+    // (credit_grants + legacy) vía getAvailableCredits. Leer user_credits.credits
+    // crudo era el bug: =0 en el modelo ledger → el wallet decía "sin créditos" a
+    // quien sí tenía saldo comprado. RLS credit_grants_select_own permite leerlo
+    // con el server client. Mismo fix que /cuenta y /perfil.
+    const { data: creditsRow } = await supabase
       .from("user_credits")
-      .select("credits, welcome_credit_used")
+      .select("welcome_credit_used")
       .eq("user_id", user.id)
       .single();
-    userCredits = credits?.credits ?? 0;
-    welcomeAvailable = !(credits?.welcome_credit_used ?? false);
+    welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    userCredits = await getAvailableCredits(user.id, supabase);
   }
 
   // Pro CTA banner: total de analisis del user para threshold check.
@@ -180,15 +198,19 @@ export default async function AnalisisDetallePage({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Navbar */}
-      <AnalysisNav
-        userId={user?.id ?? null}
-        analysisId={analisis.id}
-        score={analisis.score}
-        nombre={analisis.nombre}
-        comuna={analisis.comuna}
-        isSharedView={isSharedView}
-      />
+      {/* Navbar — oculto en print mode (el PDF agrega su propio header) */}
+      {!printMode && (accessLevel === "guest" ? (
+        <PublicShareHeader date={formatFechaCorta(analisis.created_at)} />
+      ) : (
+        <AnalysisNav
+          userId={user?.id ?? null}
+          analysisId={analisis.id}
+          score={analisis.score}
+          nombre={analisis.nombre}
+          comuna={analisis.comuna}
+          isSharedView={isSharedView}
+        />
+      ))}
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
         <PremiumResults
@@ -218,6 +240,7 @@ export default async function AnalisisDetallePage({
           ownerFirstName={ownerFirstName}
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
+          printMode={printMode}
         />
 
         {/* Fallback for old analyses without full results */}

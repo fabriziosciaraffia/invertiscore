@@ -13,7 +13,7 @@ import type { AirbnbEstimateResponse } from "@/lib/airbnb/types";
  * HTML como JSON y tiraba SyntaxError. Eliminado al llamar la lib directo.
  */
 export async function POST(req: NextRequest) {
-  let body: { address?: unknown; bedrooms?: unknown; baths?: unknown; guests?: unknown };
+  let body: { address?: unknown; comuna?: unknown; bedrooms?: unknown; baths?: unknown; guests?: unknown };
   try {
     body = await req.json();
   } catch {
@@ -24,12 +24,16 @@ export async function POST(req: NextRequest) {
   }
 
   const address = typeof body.address === "string" ? body.address : "";
+  // F1: comuna entra al cache_key. Este wrapper HTTP no la exigía; si el caller
+  // la envía se usa, si no se pasa "" explícito (el address suele venir formateado
+  // con comuna embebida desde el flujo principal).
+  const comuna = typeof body.comuna === "string" ? body.comuna : "";
   const bedrooms = Number(body.bedrooms);
   const baths = Number(body.baths);
   const guests = Number(body.guests);
 
   try {
-    const result = await getAirbnbEstimate(address, bedrooms, baths, guests);
+    const result = await getAirbnbEstimate(address, comuna, bedrooms, baths, guests);
 
     // HTTP status apropiado por shape de la respuesta (mantiene contrato previo).
     if (result.success) {
