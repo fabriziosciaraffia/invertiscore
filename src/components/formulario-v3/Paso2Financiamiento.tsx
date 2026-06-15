@@ -15,6 +15,7 @@ import {
   fmtCLP,
   fmtCLPShort,
   fmtUF,
+  markFieldEdited,
   mesesHastaEntrega,
   parseDecimalLocale,
   type WizardV3State,
@@ -83,12 +84,9 @@ export function Paso2Financiamiento({
   // Helper: setState + tracking en editedFields. Aplica al patrón de campos
   // editables del Paso 2 (sliders piePct, plazoCredito; input tasaInteres;
   // CTA subsidio). El precio usa este patrón inline desde Fase 4.
+  // La lógica vive en markFieldEdited (wizardV3State) — compartida con Paso 3.
   function trackEdit(key: keyof WizardV3State, value: string) {
-    const patch = { [key]: value } as Partial<WizardV3State>;
-    if (!state.editedFields.includes(key as string)) {
-      patch.editedFields = [...state.editedFields, key as string];
-    }
-    setState(patch);
+    setState(markFieldEdited(state.editedFields, key, value));
   }
 
   const precioCLP = precioUF * ufCLP;
@@ -179,14 +177,8 @@ export function Paso2Financiamiento({
               placeholder="3.200"
               className={`${inputBase} pl-10`}
               value={state.precio}
-              onChange={(raw) => {
-                const patch: Partial<WizardV3State> = { precio: raw };
-                // Al editar manualmente, bloquear el re-prefill automático.
-                if (!state.editedFields.includes("precio")) {
-                  patch.editedFields = [...state.editedFields, "precio"];
-                }
-                setState(patch);
-              }}
+              // Al editar manualmente, bloquear el re-prefill automático.
+              onChange={(raw) => setState(markFieldEdited(state.editedFields, "precio", raw))}
               onBlur={commitPrecio}
             />
           </div>
