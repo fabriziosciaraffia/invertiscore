@@ -222,6 +222,55 @@ export function markFieldEdited(
   return patch;
 }
 
+/** Campos que son ESTIMACIONES de la propiedad: se reinician cuando cambia la
+ * identidad (dirección/comuna), porque pertenecían a la propiedad anterior. NO
+ * incluye las preferencias de financiamiento (piePct/plazoCredito/tasaInteres),
+ * que se mantienen entre propiedades. */
+export const PROPERTY_ESTIMATE_FIELDS = [
+  "arriendo", "gastos", "contribuciones", "precio",
+  "costoElectricidad", "costoAgua", "costoWifi", "costoInsumos",
+  "mantencionMensual", "costoAmoblamiento",
+] as const;
+
+/** Patch para reiniciar las estimaciones de Franco al cambiar de propiedad.
+ * Pensado para mergearse en el MISMO setState que cambia dirección/comuna
+ * (atómico), de modo que los efectos de prefill, al re-dispararse, vean
+ * editedFields ya limpio y repueblen para la nueva propiedad.
+ *
+ *  - arriendo/gastos/contribuciones/precio → "" : el efecto de suggestions
+ *    (keyed en comuna) repuebla los primeros tres vía `prev.editedFields`; el
+ *    precio lo repuebla el efecto del Paso 2 (que solo corre si precio === "").
+ *  - costos op STR + amoblamiento → default de tipología: su efecto de escalado
+ *    NO se re-dispara con el cambio de comuna (deps = dorm/habilitación), así
+ *    que se setean explícitamente desde `costDefaults`.
+ *  - editedFields → se quitan estos campos para que el prefill vuelva a mandar. */
+export function resetPropertyEstimatesPatch(
+  editedFields: string[],
+  costDefaults: {
+    costoElectricidad: number;
+    costoAgua: number;
+    costoWifi: number;
+    costoInsumos: number;
+    mantencion: number;
+    costoAmoblamiento: number;
+  },
+): Partial<WizardV3State> {
+  const reset = new Set<string>(PROPERTY_ESTIMATE_FIELDS);
+  return {
+    arriendo: "",
+    gastos: "",
+    contribuciones: "",
+    precio: "",
+    costoElectricidad: String(costDefaults.costoElectricidad),
+    costoAgua: String(costDefaults.costoAgua),
+    costoWifi: String(costDefaults.costoWifi),
+    costoInsumos: String(costDefaults.costoInsumos),
+    mantencionMensual: String(costDefaults.mantencion),
+    costoAmoblamiento: String(costDefaults.costoAmoblamiento),
+    editedFields: editedFields.filter((f) => !reset.has(f)),
+  };
+}
+
 export function fmtCLP(n: number): string {
   return "$" + Math.round(n).toLocaleString("es-CL");
 }
