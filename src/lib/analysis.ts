@@ -1040,11 +1040,11 @@ function calcNegociacionScenario(
       razon = "El precio sugerido alinea con comparables y mejora marginalmente tu matemática.";
     }
   } else {
-    // Modo 3 — alinear mercado: el precio está sobre o cerca del valor real.
+    // Modo 3 — alinear mercado: el precio está sobre o cerca del valor estimado de mercado.
     const baseSugerido = Math.min(input.precio, vmFrancoUF);
     precioSugeridoUF = Math.round(baseSugerido * 0.97 * 10) / 10;
     modo = "alinear_mercado";
-    razon = "Pagas sobre el valor real de la zona. Este precio te alinea con comparables y mejora la matemática.";
+    razon = "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática.";
   }
 
   const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp);
