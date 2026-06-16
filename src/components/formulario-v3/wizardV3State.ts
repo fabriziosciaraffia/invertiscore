@@ -175,7 +175,10 @@ export const DEFAULT_STATE: WizardV3State = {
   estaAmoblado: false,
   costoAmoblamiento: "3500000",
   edificioPermiteAirbnb: "no_seguro",
-  tipoEdificio: null,
+  // Preseleccionado residencial (antes null) para que el preview de ingresos
+  // del Paso 3 se vea de entrada sin gatear por "¿Cómo es el edificio?". El
+  // motor ya coercionaba null → residencial_puro, así que el payload no cambia.
+  tipoEdificio: "residencial_puro",
   adminPro: false,
   gestionOption: "tu_mismo",
   habilitacion: "basico",
