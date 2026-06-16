@@ -102,7 +102,9 @@ export async function POST(request: Request) {
         // remaining=quantity); expira en 1 año (regla heredada de grantCredits).
         // quantity = 1 por default (compra de 1 crédito o filas legacy).
         const creditQty = payment.quantity ?? 1;
-        await grantCredits(userId, "single", creditQty, { paymentId });
+        // noExpire: el análisis comprado NO caduca (coherente con el copy "análisis
+        // sin caducidad"). El ledger ya cuenta y consume NULL bien (lo deja último).
+        await grantCredits(userId, "single", creditQty, { paymentId, noExpire: true });
 
         // Si la compra vino atada a un análisis, desbloquearlo en el acto
         // (mismo comportamiento que tenía 'pro'). Reusa la lógica ledger-aware
