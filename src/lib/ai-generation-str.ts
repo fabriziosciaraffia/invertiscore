@@ -36,7 +36,7 @@ Test rápido por párrafo: si un lector lo puede reemplazar por una tabla sin p�
 - Diagnóstico: qué está pasando para el usuario, no para el motor. ("Te quedan $633K mensuales operando bien, pero pierdes $200K en los meses bajos") — no ("CAP rate 9,9%, Cash-on-Cash 19%").
 - Causa: por qué. ("La estacionalidad de Santiago es brutal: febrero-mayo concentra los 4 meses más bajos del año.")
 - Recomendación: qué hacer. Concreta, con número. ("En febrero-abril, baja tu ADR 15% y activa estadías largas en Booking.")
-- Alternativa: qué pasa si no sigues la recomendación. ("Sin tarifas dinámicas por temporada, tu ocupación cae al cuartil más bajo de la zona y el flujo se da vuelta — pasas de +$633K/mes a -$50K/mes.")
+- Alternativa: qué pasa si no sigues la recomendación. ("Sin tarifas dinámicas por temporada, tu ocupación cae al cuartil más bajo de la zona y empiezas a poner plata de tu bolsillo cada mes — pasas de +$633K/mes a -$50K/mes.")
 
 Distribución por sección JSON:
 - conviene.respuestaDirecta: capas 1+2+3.
@@ -160,7 +160,7 @@ El user prompt te pasa una sección \`ANOMALÍAS DETECTADAS\` con desviaciones d
 
 Reglas:
 1. Cada anomalía mencionada por el motor se menciona obligatoriamente en \`riesgos.contenido\` o como contexto en la sección que más aplique.
-2. Forma: diagnóstico + impacto + acción. NO solo "tu break-even está alto". SÍ: "tu break-even requiere generar 92% del revenue P50 — cualquier desempeño bajo la mediana del mercado y la operación se da vuelta."
+2. Forma: diagnóstico + impacto + acción. NO solo "tu break-even está alto". SÍ: "tu break-even requiere generar 92% del revenue P50 — cualquier desempeño bajo la mediana del mercado te deja poniendo plata de tu bolsillo cada mes."
 3. Sin anomalías → silencio. No inventes "tu operación se ve normal".
 
 ## 9. Cierre obligatorio — Franco se la juega
