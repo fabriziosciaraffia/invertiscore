@@ -498,10 +498,12 @@ export function Paso3Modalidad({
           </section>
         )}
 
-        {/* ── Zona COMUNES (siempre visible) — en single se rotula "Costos". ── */}
+        {/* ── Zona COSTOS DEL DEPARTAMENTO (siempre visible). Nombre unificado
+            en todas las modalidades; la intro (solo AMBAS) transmite el "común
+            a ambas" sin cambiar el título. ── */}
         <section className="flex flex-col gap-5">
           <ZoneHeader
-            name={isAmbas ? "Comunes a ambas" : "Costos"}
+            name="Costos del departamento"
             intro={isAmbas ? "Gastos fijos del depto: los pagas arriendes como arriendes." : undefined}
           />
           <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
@@ -605,16 +607,18 @@ export function Paso3Modalidad({
 
 // ─── Sub-componentes ──────────────────────────────────
 
-/** Header de zona operacional (Renta larga / Renta corta / Comunes).
+/** Header de zona operacional (Renta larga / Renta corta / Costos del depto).
  * Reemplaza las letras A/B/C/D: el nombre de zona ES la estructura.
- * Label Mono uppercase (Ink secondary) + intro Sans opcional (Ink muted),
- * esta última solo en AMBAS donde desambigua qué input alimenta qué escenario. */
+ * Título Serif Bold 18px — mismo tratamiento de autoridad que los títulos de
+ * sección del Paso 4 (ResumenSection) para que la pertenencia se lea fuerte.
+ * Intro Sans opcional (Ink muted) solo en AMBAS, donde desambigua qué input
+ * alimenta qué escenario. */
 function ZoneHeader({ name, intro }: { name: string; intro?: string }) {
   return (
     <div>
-      <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)]">
+      <h3 className="font-heading text-[18px] font-bold text-[var(--franco-text)] m-0 leading-tight">
         {name}
-      </div>
+      </h3>
       {intro && (
         <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-1 leading-snug">
           {intro}
