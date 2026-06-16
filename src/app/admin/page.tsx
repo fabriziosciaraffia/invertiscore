@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { isAdminUser } from "@/lib/admin";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { getLedgerBalances } from "@/lib/credits-grant";
+import { conceptoBoleta, type PaymentForDTE } from "@/lib/openfactura/client";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { AdminActions } from "./admin-actions";
 import { RetryButton } from "./retry-button";
@@ -51,17 +52,6 @@ function fmtToday(): string {
   return new Date().toLocaleDateString("es-CL", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// Label legible del producto para la tabla de documentos tributarios.
-function fmtProducto(p: string | null | undefined): string {
-  if (!p) return "—";
-  if (p === "single") return "1 análisis";
-  const m = p.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
-  if (m) {
-    const nombre = m[1] === "plan10" ? "Plan 10" : m[1] === "plan50" ? "Plan 50" : "Ilimitado";
-    return `${nombre} · ${m[2] === "annual" ? "anual" : "mensual"}`;
-  }
-  return p;
-}
 
 export default async function AdminPage() {
   // Auth check
@@ -152,10 +142,33 @@ export default async function AdminPage() {
   const { data: docsData } = await sb
     .from("documentos_tributarios")
     .select(
-      "id, payment_id, user_id, folio, monto_total, estado, ambiente, error_mensaje, created_at, payments(product)"
+      "id, payment_id, user_id, folio, monto_total, estado, ambiente, autoservicio_url, error_mensaje, created_at, payments(product, analysis_id, quantity, flow_order, commerce_order)"
     )
     .order("created_at", { ascending: false })
-    .limit(15);
+    .limit(50);
+
+  // Comuna del análisis atado (single con analysisId) → concepto "Análisis en {comuna}"
+  // + link. Segunda query (mismo patrón que emailById): NO hay FK payments.analysis_id
+  // → analisis, así que no se puede embeber anidado.
+  const payOf = (d: { payments?: unknown }) =>
+    (Array.isArray(d.payments) ? d.payments[0] : d.payments) as
+      | { product?: string; analysis_id?: string | null; quantity?: number | null; flow_order?: number | null; commerce_order?: string | null }
+      | null
+      | undefined;
+  const docAnalysisIds = Array.from(
+    new Set(
+      (docsData ?? [])
+        .map((d) => payOf(d)?.analysis_id ?? null)
+        .filter((x): x is string => !!x)
+    )
+  );
+  const comunaByAnalysisId = new Map<string, string>();
+  if (docAnalysisIds.length) {
+    const { data: anRows } = await sb.from("analisis").select("id, comuna").in("id", docAnalysisIds);
+    for (const a of (anRows ?? []) as Array<{ id: string; comuna: string | null }>) {
+      if (a.comuna) comunaByAnalysisId.set(a.id, a.comuna);
+    }
+  }
 
   // ─── ÚLTIMOS USUARIOS ───
   const { data: recentUsers } = await sb.auth.admin.listUsers({ page: 1, perPage: 10 });
@@ -545,7 +558,7 @@ export default async function AdminPage() {
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Fecha</th>
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Email</th>
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Folio</th>
-                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Producto</th>
+                  <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Concepto</th>
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Monto</th>
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Estado</th>
                   <th className="font-body text-xs font-medium text-[var(--franco-text-muted)] pb-2 pr-4">Ambiente</th>
@@ -578,13 +591,26 @@ export default async function AdminPage() {
                       : estado === "anulado"
                       ? "Anulado"
                       : "Pendiente";
-                  const productRel = d.payments as
-                    | { product?: string }
-                    | { product?: string }[]
-                    | null;
-                  const product = Array.isArray(productRel)
-                    ? productRel[0]?.product
-                    : productRel?.product;
+                  const pay = payOf(d);
+                  const analysisId = pay?.analysis_id ?? null;
+                  const flowOrder = pay?.flow_order ?? null;
+                  const autoservicioUrl = (d.autoservicio_url as string | null) ?? null;
+                  // Concepto del caso (reusa conceptoBoleta del helper de facturación):
+                  // single+comuna → "Análisis en {comuna}"; single sin comuna → "{N} análisis";
+                  // plan* → glosa del plan. Si la comuna no resuelve (análisis borrado),
+                  // cae al fallback "{N} análisis" sin romper.
+                  const conceptoPayment = {
+                    id: d.payment_id,
+                    user_id: d.user_id,
+                    product: pay?.product ?? "single",
+                    amount: d.monto_total,
+                    commerce_order: pay?.commerce_order ?? "",
+                    quantity: pay?.quantity ?? 1,
+                  } as PaymentForDTE;
+                  const concepto = conceptoBoleta(
+                    conceptoPayment,
+                    analysisId ? { comuna: comunaByAnalysisId.get(analysisId) } : undefined
+                  );
                   const ambiente = d.ambiente as string;
                   return (
                     <tr key={d.id} className="border-b border-[var(--franco-border)] last:border-b-0">
@@ -596,9 +622,14 @@ export default async function AdminPage() {
                       </td>
                       <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
                         {d.folio ?? "—"}
+                        {flowOrder != null && (
+                          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-0.5">
+                            Flow {flowOrder}
+                          </div>
+                        )}
                       </td>
                       <td className="font-body text-xs text-[var(--franco-text)] py-2 pr-4">
-                        {fmtProducto(product)}
+                        {concepto.label}
                       </td>
                       <td className="font-mono text-xs text-[var(--franco-text)] py-2 pr-4">
                         {fmtCLP(d.monto_total as number)}
@@ -621,7 +652,27 @@ export default async function AdminPage() {
                         {ambiente}
                       </td>
                       <td className="py-2">
-                        {estado === "error" && <RetryButton documentoId={d.id as string} />}
+                        <div className="flex flex-col items-start gap-1">
+                          {estado === "emitido" && autoservicioUrl && (
+                            <a
+                              href={autoservicioUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-body text-xs text-[var(--franco-text-muted)] hover:text-[#C8323C] transition-colors"
+                            >
+                              Ver boleta →
+                            </a>
+                          )}
+                          {analysisId && (
+                            <Link
+                              href={`/analisis/${analysisId}`}
+                              className="font-body text-xs text-[var(--franco-text-muted)] hover:text-[#C8323C] transition-colors"
+                            >
+                              Ver análisis →
+                            </Link>
+                          )}
+                          {estado === "error" && <RetryButton documentoId={d.id as string} />}
+                        </div>
                       </td>
                     </tr>
                   );
