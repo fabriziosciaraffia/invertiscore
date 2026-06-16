@@ -359,7 +359,12 @@ export function buildBoletaHtml(p: {
   monto: number;
   fechaEmision: string; // YYYY-MM-DD
   autoservicioUrl: string;
+  /** Concepto del caso: label (fila "Concepto") + frase (párrafo intro). Fallback
+   * razonable si no llega (no debería). */
+  concepto?: { label: string; frase: string };
 }): string {
+  const frase = p.concepto?.frase || "tu compra en Franco";
+  const conceptoLabel = p.concepto?.label || "Análisis";
   const montoFormatted = new Intl.NumberFormat('es-CL', {
     style: 'currency', currency: 'CLP', maximumFractionDigits: 0,
   }).format(p.monto);
@@ -393,7 +398,7 @@ export function buildBoletaHtml(p: {
         </h1>
 
         <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
-          Acá está tu boleta por tu análisis en Franco. La tienes adjunta en PDF y XML, y también puedes verla en línea.
+          Acá está tu boleta por ${frase}. La tienes adjunta en PDF y XML, y también puedes verla en línea.
         </p>
 
         <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #FAFAF8; font-weight: 600; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
@@ -403,6 +408,7 @@ export function buildBoletaHtml(p: {
         <div style="background: #1A1A1A; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px 0;">
           <div style="color: #71717A; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 16px; font-family: 'Courier New', monospace;">Información del documento</div>
           ${docRow('Documento', `Boleta electrónica N° ${p.folio}`)}
+          ${docRow('Concepto', conceptoLabel)}
           ${docRow('Emitida', fechaLegible)}
           ${docRow('Para', p.to)}
           ${docRow('Total', montoFormatted, true, true)}
@@ -424,17 +430,18 @@ export async function sendBoletaEmail(params: {
   monto: number;
   fechaEmision: string; // YYYY-MM-DD
   autoservicioUrl: string;
+  concepto?: { label: string; frase: string };
   pdfBase64?: string | null;
   xmlBase64?: string | null;
 }): Promise<void> {
-  const { to, folio, monto, fechaEmision, autoservicioUrl, pdfBase64, xmlBase64 } = params;
+  const { to, folio, monto, fechaEmision, autoservicioUrl, concepto, pdfBase64, xmlBase64 } = params;
 
   // Adjuntos: el PDF/XML vienen en base64 desde OpenFactura → Buffer para Resend.
   const attachments: Array<{ filename: string; content: Buffer }> = [];
   if (pdfBase64) attachments.push({ filename: `boleta-39-folio-${folio}.pdf`, content: Buffer.from(pdfBase64, 'base64') });
   if (xmlBase64) attachments.push({ filename: `boleta-39-folio-${folio}.xml`, content: Buffer.from(xmlBase64, 'base64') });
 
-  const html = buildBoletaHtml({ to, folio, monto, fechaEmision, autoservicioUrl });
+  const html = buildBoletaHtml({ to, folio, monto, fechaEmision, autoservicioUrl, concepto });
 
   const resend = getResend();
   if (!resend) {

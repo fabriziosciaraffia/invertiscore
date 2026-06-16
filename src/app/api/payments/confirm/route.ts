@@ -232,6 +232,18 @@ export async function POST(request: Request) {
         try {
           const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
           const userEmail = dteUser?.user?.email;
+          // Comuna del análisis atado → concepto "Análisis en {comuna}" en el
+          // correo. Sin analysisId (compra de crédito), queda undefined y el
+          // concepto cae en "N análisis". Solo afecta el copy, no la glosa del DTE.
+          let comuna: string | undefined;
+          if (analysisId) {
+            const { data: analisisRow } = await supabase
+              .from("analisis")
+              .select("comuna")
+              .eq("id", analysisId)
+              .single();
+            comuna = (analisisRow?.comuna as string | undefined) || undefined;
+          }
           if (userEmail) {
             const result = await emitirBoletaDTE({
               payment: {
@@ -244,6 +256,7 @@ export async function POST(request: Request) {
                 quantity: payment.quantity ?? 1,
               },
               userEmail,
+              comuna,
             });
             if (!result.ok && !result.skipped) {
               console.error("[payments/confirm] emisión boleta falló:", result.error);

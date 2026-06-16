@@ -104,6 +104,45 @@ export function glosaForProduct(product: string): string {
 }
 
 /**
+ * Concepto del correo de boleta según el caso de compra. Devuelve `label` (para
+ * la fila "Concepto" de la card) y `frase` (para el párrafo intro, encaja en
+ * "Acá está tu boleta por {frase}."). Voz Franco: directo, tuteo, "análisis"
+ * invariable. Tres casos:
+ *   - suscripción (plan*): label = glosa legible; frase = "tu suscripción al {Plan}".
+ *   - single + comuna: análisis atado → "Análisis en {comuna}" / "tu análisis en {comuna}".
+ *   - single sin comuna: crédito → "{N} análisis"; frase "tu compra de {N} análisis"
+ *     (o "tu análisis" si N=1).
+ */
+export function conceptoBoleta(
+  payment: PaymentForDTE,
+  opts?: { comuna?: string }
+): { label: string; frase: string } {
+  const product = payment.product;
+
+  const m = product.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
+  if (m) {
+    const planNombre =
+      m[1] === "plan10" ? "Plan 10" : m[1] === "plan50" ? "Plan 50" : "Plan Ilimitado";
+    return { label: glosaForProduct(product), frase: `tu suscripción al ${planNombre}` };
+  }
+
+  if (product === "single" && opts?.comuna) {
+    return { label: `Análisis en ${opts.comuna}`, frase: `tu análisis en ${opts.comuna}` };
+  }
+
+  if (product === "single") {
+    const n = payment.quantity ?? 1;
+    return {
+      label: `${n} análisis`,
+      frase: n === 1 ? "tu análisis" : `tu compra de ${n} análisis`,
+    };
+  }
+
+  // Fallback (legacy/desconocido) — no debería ocurrir en el path actual.
+  return { label: "Análisis", frase: "tu compra en Franco" };
+}
+
+/**
  * Entero determinístico y estable para documentReference.ID del autoservicio
  * (el esquema exige un número, OF-16). Hash simple del commerce_order acotado a
  * < 1e9 (entero seguro). No es reversible; solo único-y-estable por orden.
@@ -249,6 +288,7 @@ export async function emitirBoletaDTE({
   payment,
   userEmail,
   emisor,
+  comuna,
 }: {
   payment: PaymentForDTE;
   userEmail: string;
@@ -257,6 +297,9 @@ export async function emitirBoletaDTE({
    * en QA contra dev-api, donde el emisor debe ser el dueño de la apikey demo.
    */
   emisor?: Record<string, string | number>;
+  /** Comuna del análisis atado (single con analysisId). Solo afecta el copy del
+   * correo (concepto "Análisis en {comuna}"); no toca la glosa del DTE. */
+  comuna?: string;
 }): Promise<EmitirResult> {
   // Kill-switch: permite desplegar a prod con el código cableado pero SIN emitir
   // boletas hasta activar la flag. No-op total: no toca la DB ni llama a la API.
@@ -431,6 +474,7 @@ export async function emitirBoletaDTE({
         monto: total,
         fechaEmision: fecha,
         autoservicioUrl: autoservicioUrl ?? "",
+        concepto: conceptoBoleta(payment, { comuna }),
         pdfBase64: data.PDF ?? null,
         xmlBase64: data.XML ?? null,
       });
