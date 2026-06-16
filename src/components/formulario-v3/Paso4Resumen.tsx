@@ -74,6 +74,10 @@ interface ResumenRow {
   value: string;
   /** Opcional. 1 oración pedagógica en lenguaje no-técnico. */
   tooltip?: string;
+  /** Marca la fila como valor de REFERENCIA derivado (no editable en esta
+   * modalidad). Se renderiza atenuado + tag "Referencia" para no implicar que
+   * el "Editar →" de la sección lleva a un input para tocarlo. */
+  referencia?: boolean;
 }
 
 interface SectionConfig {
@@ -123,7 +127,18 @@ function ResumenSection({
               {row.label}
               {row.tooltip && <InfoTooltip content={row.tooltip} />}
             </dt>
-            <dd className="font-mono text-[13px] text-[var(--franco-text)] text-right m-0">{row.value}</dd>
+            <dd
+              className={`font-mono text-[13px] text-right m-0 ${
+                row.referencia ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]"
+              }`}
+            >
+              {row.referencia && (
+                <span className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)] mr-2">
+                  Referencia
+                </span>
+              )}
+              {row.value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -260,6 +275,35 @@ export function Paso4Resumen({
     },
   ];
 
+  // Orden LTR → STR (alineado al Paso 3). Primero el bloque LTR, luego el
+  // estado del depto (STR), luego el resto de la operación STR.
+  if (mod === "ltr" || mod === "both") {
+    operacionalRows.push(
+      {
+        label: "Vacancia LTR",
+        value: `${state.vacanciaPct}%`,
+        tooltip: "Porcentaje del año estimado sin arrendatario en arriendo tradicional. Default 5% ≈ 18 días/año.",
+      },
+      {
+        label: "Gestión LTR",
+        value: state.adminPct === "0" ? "Autogestión" : `${state.adminPct}% corredor`,
+        tooltip: "Quién gestiona el arriendo tradicional. Autogestión = sin costo. Corredor = comisión mensual sobre el arriendo (típico 7-10%).",
+      },
+    );
+  }
+
+  // Estado del depto: solo aplica para STR. En LTR puro no tiene sentido
+  // porque típicamente no se amobla para arrendar a largo plazo.
+  if (mod === "str" || mod === "both") {
+    operacionalRows.push({
+      label: "Estado del depto",
+      value: state.estaAmoblado
+        ? "Ya amoblado"
+        : `Falta amoblar (${state.costoAmoblamiento ? fmtCLP(parseNum(state.costoAmoblamiento)) : "—"})`,
+      tooltip: "Si el depto ya viene amoblado, no se descuenta nada del flujo. Si no, sumamos el costo de amoblar como inversión inicial.",
+    });
+  }
+
   if (mod === "str" || mod === "both") {
     operacionalRows.push(
       {
@@ -309,33 +353,6 @@ export function Paso4Resumen({
     );
   }
 
-  if (mod === "ltr" || mod === "both") {
-    operacionalRows.push(
-      {
-        label: "Vacancia LTR",
-        value: `${state.vacanciaPct}%`,
-        tooltip: "Porcentaje del año estimado sin arrendatario en arriendo tradicional. Default 5% ≈ 18 días/año.",
-      },
-      {
-        label: "Gestión LTR",
-        value: state.adminPct === "0" ? "Autogestión" : `${state.adminPct}% corredor`,
-        tooltip: "Quién gestiona el arriendo tradicional. Autogestión = sin costo. Corredor = comisión mensual sobre el arriendo (típico 7-10%).",
-      },
-    );
-  }
-
-  // Estado del depto: solo aplica para STR. En LTR puro no tiene sentido
-  // porque típicamente no se amobla para arrendar a largo plazo.
-  if (mod === "str" || mod === "both") {
-    operacionalRows.push({
-      label: "Estado del depto",
-      value: state.estaAmoblado
-        ? "Ya amoblado"
-        : `Falta amoblar (${state.costoAmoblamiento ? fmtCLP(parseNum(state.costoAmoblamiento)) : "—"})`,
-      tooltip: "Si el depto ya viene amoblado, no se descuenta nada del flujo. Si no, sumamos el costo de amoblar como inversión inicial.",
-    });
-  }
-
   const seccionOperacional: SectionConfig = {
     numero: "03 · OPERACIONAL",
     title: "Cómo lo operas",
@@ -348,6 +365,10 @@ export function Paso4Resumen({
       label: "Arriendo de referencia LTR",
       value: state.arriendo ? `${fmtCLP(parseNum(state.arriendo))}/mes` : "—",
       tooltip: "Arriendo tradicional estimado. En modo Ambas se usa para comparar STR vs LTR; en modo STR solo es referencia visual.",
+      // STR-only: la zona Renta larga del Paso 3 está oculta, así que no hay
+      // input para editarlo. Se marca como referencia derivada (atenuada + tag)
+      // para no implicar que el "Editar →" de la sección lleva a un campo.
+      referencia: mod === "str",
     },
     {
       label: "Gastos comunes",

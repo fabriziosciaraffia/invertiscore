@@ -272,7 +272,7 @@ Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sosten
 Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
 Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail}` : "(desglose no disponible)"}
 
-=== ESCENARIO BASE (mediana observada de la zona (P50)) ===
+=== ESCENARIO BASE (ocupación en la mediana observada de la zona) ===
 Revenue anual: ${fmtCLP(base.revenueAnual)}
 ADR: ${fmtCLP(base.adrReferencia)}/noche, Ocupación: ${Math.round(base.ocupacionReferencia * 100)}% (mediana observada de la zona)
 Ocupación upside (potencial con gestión profesional, estabilizado): ${Math.round(agr.ocupacionReferencia * 100)}%
@@ -287,9 +287,9 @@ FLUJO DE CAJA MENSUAL: ${fmtCLPSigned(base.flujoCajaMensual)}
 CAP rate: ${(base.capRate * 100).toFixed(2)}%
 Cash-on-Cash: ${(base.cashOnCash * 100).toFixed(1)}%
 
-=== ESCENARIOS POR PERCENTIL ===
-Conservador (P25): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
-Base (P50):        NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
+=== ESCENARIOS (conservador / base / upside) ===
+Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
+Base (ocupación en la mediana observada): NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
 Upside (gestión profesional): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
 
 === COMPARATIVA STR vs LTR ===

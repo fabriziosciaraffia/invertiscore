@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
+import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
@@ -83,13 +84,15 @@ export default async function ComparativaPage({
   let userCredits = 0;
   let welcomeAvailable = true;
   if (user) {
+    // SALDO real = ledger + legacy vía getAvailableCredits (mismo fix que
+    // /analisis/[id], /cuenta, /perfil). welcome sale del contador.
     const { data: creditsRow } = await supabase
       .from("user_credits")
-      .select("credits, welcome_credit_used")
+      .select("welcome_credit_used")
       .eq("user_id", user.id)
       .single();
-    userCredits = creditsRow?.credits ?? 0;
     welcomeAvailable = !(creditsRow?.welcome_credit_used ?? false);
+    userCredits = await getAvailableCredits(user.id, supabase);
   }
 
   let accessLevel: "guest" | "free" | "premium" | "subscriber";

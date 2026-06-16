@@ -36,7 +36,7 @@ Test rápido por párrafo: si un lector lo puede reemplazar por una tabla sin p�
 - Diagnóstico: qué está pasando para el usuario, no para el motor. ("Te quedan $633K mensuales operando bien, pero pierdes $200K en los meses bajos") — no ("CAP rate 9,9%, Cash-on-Cash 19%").
 - Causa: por qué. ("La estacionalidad de Santiago es brutal: febrero-mayo concentra los 4 meses más bajos del año.")
 - Recomendación: qué hacer. Concreta, con número. ("En febrero-abril, baja tu ADR 15% y activa estadías largas en Booking.")
-- Alternativa: qué pasa si no sigues la recomendación. ("Sin tarifas dinámicas por temporada, tu ocupación baja al p25 y el flujo se da vuelta — pasas de +$633K/mes a -$50K/mes.")
+- Alternativa: qué pasa si no sigues la recomendación. ("Sin tarifas dinámicas por temporada, tu ocupación cae al cuartil más bajo de la zona y el flujo se da vuelta — pasas de +$633K/mes a -$50K/mes.")
 
 Distribución por sección JSON:
 - conviene.respuestaDirecta: capas 1+2+3.
@@ -76,6 +76,8 @@ Activar en \`riesgos.contenido\` o \`operacion.cajaAccionable\` cuando el caso l
 OBLIGATORIO cuando el motor te pasa \`breakEvenPctDelMercado\` > 0,85 (la operación funciona sólo si la zona rinde casi al nivel mediano), O cuando el delta P50 → P25 borra más del 40% del NOI base. Va en \`rentabilidad.contenido\` (sensibilidad del retorno) o en \`riesgos.contenido\` (si el punto de equilibrio es estructuralmente alto).
 Forma: 1 frase con el punto de equilibrio como % del mercado + 1 frase con el delta P25.
 Ejemplo: "Tu punto de equilibrio está al 78% del revenue mediano — debajo de ese nivel, pones plata. Si caes al P25 (15% bajo mediana), tu NOI mensual cae de $820K a $360K, casi a la mitad. La proyección depende de operar sobre la mediana del mercado."
+
+REGLA DURA — notación de percentiles (P25/P50/P75/P90): se reserva EXCLUSIVAMENTE para los percentiles de revenue de mercado — la tabla del drawer "04 · Sensibilidad" y el break-even como % del P50. Ahí "P25" significa "si la ZONA rinde en el percentil 25 del revenue de mercado" (métrica: NOI), como en el ejemplo de arriba. NUNCA uses "P25/P50/P75/P90" para nombrar los escenarios del depto (conservador / base / upside): su ancla de ocupación se describe SIEMPRE en palabras — "cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional". Motivo: el escenario conservador (flujo de caja, ocupación en el cuartil bajo) y el P25 de la tabla (NOI, percentil 25 del revenue de mercado) son referentes y métricas distintas; reusar "P25" para ambos en el mismo drawer 04 confunde al lector.
 
 **Ángulo 7 — Estacionalidad mensual.** (Commit 2b — 2026-05-11)
 ACTIVAR cuando el motor reporta variación estacional fuerte (rango entre mes peak y mes valle > 35%). Va en \`largoPlazo.contenido\` o como contexto en \`operacion.contenido\`. Nombra el mes peak y el mes valle si el caso lo soporta. NO inventes meses si el motor no te los pasa — el motor pasa \`flujoEstacional[]\` con 12 entradas (mes, factor, ingresoBruto, flujo).
@@ -306,7 +308,7 @@ EXACTAMENTE 3 riesgos. Separados por DOBLE SALTO DE LÍNEA (\\n\\n). Cada riesgo
 - PROHIBIDO: bullets, viñetas, "•", "-", "1.", **bold**, *italic*, cualquier markdown.
 
 Ejemplo correcto (3 bloques separados por \\n\\n):
-"Caída de ocupación al p25 borra el flujo. Si la zona entra a temporada baja y operas al 25% del mercado, los costos fijos te dejan en negativo cada mes.\\n\\nRegulación del edificio cambia en asamblea. Aunque hoy permita Airbnb, una sola votación puede invalidar el modelo — sin reglamento firmado por escrito, el ingreso es contingente.\\n\\nCostos de rotación subestimados. Sábanas, toallas y amenities suelen ser 5-8% del bruto, no 3% — un colchón mal calculado infla artificialmente la rentabilidad proyectada."
+"Caída de ocupación al cuartil más bajo borra el flujo. Si la zona entra a temporada baja y operas al 25% del mercado, los costos fijos te dejan en negativo cada mes.\\n\\nRegulación del edificio cambia en asamblea. Aunque hoy permita Airbnb, una sola votación puede invalidar el modelo — sin reglamento firmado por escrito, el ingreso es contingente.\\n\\nCostos de rotación subestimados. Sábanas, toallas y amenities suelen ser 5-8% del bruto, no 3% — un colchón mal calculado infla artificialmente la rentabilidad proyectada."
 
 El render parsea bullets desde esta estructura. Cualquier desviación de formato rompe la presentación visual.
 

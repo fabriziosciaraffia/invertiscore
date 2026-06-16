@@ -17,7 +17,7 @@ function resolveProduct(key: string) {
 
   const oneTime = p.kind === "one_time";
   const period = oneTime
-    ? "Pago único — créditos sin caducidad"
+    ? "Pago único — análisis sin caducidad"
     : p.billing === "annual"
       ? "Facturación anual · renueva automáticamente"
       : "Facturación mensual · cancela cuando quieras";
@@ -31,6 +31,7 @@ function resolveProduct(key: string) {
     title: p.subject,
     subtitle,
     price: fmtCLP(p.amount),
+    amount: p.amount, // unitario, para el cálculo dinámico N × precio
     period,
     features: BASE_FEATURES,
     endpoint: oneTime ? "/api/payments/create" : "/api/subscriptions/create",
@@ -65,6 +66,14 @@ function CheckoutContent() {
   // el título del checkout. Read-only, no toca el path de pago. Fallback: null
   // → se muestra el título genérico del catálogo.
   const [analysisComuna, setAnalysisComuna] = useState<string | null>(null);
+
+  // Cantidad de análisis (créditos). Solo aplica a la compra de crédito suelto
+  // (single sin analysisId). Reset defensivo a 1 si cambia el producto o aparece
+  // un analysisId, para no arrastrar la cantidad a un contexto donde no aplica.
+  const [qty, setQty] = useState(1);
+  useEffect(() => {
+    setQty(1);
+  }, [productKey, analysisId]);
 
   useEffect(() => {
     if (!analysisId) return;
@@ -107,6 +116,11 @@ function CheckoutContent() {
       if (analysisId && product.oneTime) {
         body.analysisId = analysisId;
       }
+      // Cantidad: solo en pago único. Con analysisId el selector está oculto y
+      // qty=1, y el backend fuerza 1 igual → seguro mandarlo siempre en oneTime.
+      if (product.oneTime) {
+        body.quantity = String(qty);
+      }
 
       const res = await fetch(product.endpoint, {
         method: "POST",
@@ -115,7 +129,7 @@ function CheckoutContent() {
       });
       const data = await res.json();
       if (data.url) {
-        posthog?.capture('payment_initiated', { product: productKey, amount: product.price });
+        posthog?.capture('payment_initiated', { product: productKey, amount: qty * product.amount, quantity: qty });
         window.location.href = data.url;
       } else {
         setError(data?.details || data?.error || "Error al procesar el pago");
@@ -180,15 +194,58 @@ function CheckoutContent() {
         <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
           <div className="mb-6">
             <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
-              {product.oneTime && analysisComuna ? `Análisis en ${analysisComuna}` : product.title}
+              {product.oneTime && !analysisId
+                ? `Franco — ${qty} análisis`
+                : product.oneTime && analysisComuna
+                ? `Análisis en ${analysisComuna}`
+                : product.title}
             </p>
-            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">{product.subtitle}</p>
+            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">
+              {product.oneTime && !analysisId ? `${qty} análisis` : product.subtitle}
+            </p>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
-            <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{product.price}</span>
+            <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{fmtCLP(qty * product.amount)}</span>
           </div>
+          {product.oneTime && !analysisId && (
+            <p className="font-mono text-xs text-[var(--franco-text-muted)] mb-1">
+              {qty} × {fmtCLP(product.amount)}
+            </p>
+          )}
           <p className="font-body text-xs text-[var(--franco-text-muted)] mb-6">{product.period}</p>
+
+          {/* Selector de cantidad — solo compra de crédito suelto (single sin
+              analysisId). Ink/neutros: Signal Red está reservado al CTA. El número
+              va en el font de datos (mono). */}
+          {product.oneTime && !analysisId && (
+            <div className="mb-6">
+              <p className="font-body text-sm text-[var(--franco-text)] mb-3">¿Cuántos análisis?</p>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQty((q) => Math.max(1, q - 1))}
+                  disabled={qty <= 1}
+                  aria-label="Quitar un análisis"
+                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  −
+                </button>
+                <span className="font-mono text-lg font-medium text-[var(--franco-text)] w-8 text-center tabular-nums">
+                  {qty}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setQty((q) => Math.min(20, q + 1))}
+                  disabled={qty >= 20}
+                  aria-label="Agregar un análisis"
+                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="border-t border-[var(--franco-border)] pt-5 mb-6">
             <p className="font-body text-[11px] text-[var(--franco-text-muted)] uppercase tracking-wide font-semibold mb-3">Incluye</p>
