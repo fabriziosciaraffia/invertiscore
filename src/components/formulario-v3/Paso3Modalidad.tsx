@@ -1,11 +1,13 @@
 "use client";
 
-// Paso 3 — Operacional inline. Iteración 2026-05-10.
-// Reemplaza el modal ModalAjusteCondiciones por 4 bloques inline:
-//   A · Estado del depto (estaAmoblado + habilitacion)
-//   B · Operación Airbnb (componente BloqueOperacionSTR con preview + overrides)
-//   C · Comparativa renta larga (arriendo + extras)
-//   D · Costos mensuales (gastos + contribuciones + costos op STR collapsible)
+// Paso 3 — Operacional inline.
+// Estructura por ZONAS de pertenencia (sin letras A/B/C/D):
+//   Renta larga (LTR)  · arriendo + extras + vacancia + gestión LTR
+//   Renta corta (STR)  · estado del depto + operación Airbnb + costos operativos
+//   Comunes            · gastos comunes + contribuciones
+// Orden LTR → STR → Comunes. Los headers de zona son la estructura; las intros
+// de una línea aparecen solo en AMBAS (desambiguan qué input alimenta qué
+// escenario). En modalidad única el chip ya identifica el modo → label sin intro.
 //
 // El paso 4 (ajuste fino) es opcional. CTAs:
 //   - "Saltar y analizar" → onAnalizar directo
@@ -106,6 +108,8 @@ export function Paso3Modalidad({
   const mod = state.modalidad;
   const showSTR = mod === "str" || mod === "both";
   const showLTR = mod === "ltr" || mod === "both";
+  // Solo en AMBAS las intros de zona aportan (desambiguan LTR vs STR vs común).
+  const isAmbas = mod === "both";
 
   function selectModalidad(key: "ltr" | "str" | "both") {
     setState({ modalidad: key });
@@ -120,6 +124,11 @@ export function Paso3Modalidad({
   }
 
   const modLabel = OPCIONES.find((o) => o.key === mod);
+
+  // Tipología para los headers dinámicos de las cards STR.
+  const tipologiaLabel = state.esStudio
+    ? "para tu studio"
+    : `para tu depto ${state.dormitorios || "—"}D${state.banos || "—"}B`;
 
   // Derivar ADR baseline para el bloque B. AirROI da ingreso mensual + occ;
   // ADR/noche = (ingresoAnual) / (occ × 365).
@@ -169,7 +178,7 @@ export function Paso3Modalidad({
     );
   }
 
-  // ── Estado 2: modalidad elegida → bloques A-D ──
+  // ── Estado 2: modalidad elegida → zonas operacionales ──
   const canAnalyze = canAnalyzeFromTier(tierInfo);
 
   return (
@@ -232,299 +241,310 @@ export function Paso3Modalidad({
         </div>
       )}
 
-      {/* ════ Bloque A · Estado del depto (solo STR / AMBAS) ════
-          En LTR puro no aplica — no se amobla para arrendar a largo plazo. */}
-      {showSTR && (
-      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
-        <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
-          A · Estado del depto · {state.esStudio
-            ? "para tu studio"
-            : `para tu depto ${state.dormitorios || "—"}D${state.banos || "—"}B`}
-        </div>
+      {/* ════ Zonas operacionales — agrupadas por pertenencia (LTR / STR /
+          Comunes), orden LTR → STR → Comunes. Los headers de zona son la
+          estructura (sin letras A/B/C/D); las intros aparecen solo en AMBAS.
+          Gap mayor (gap-10) entre zonas; gap menor (gap-5) dentro. ════ */}
+      <div className="flex flex-col gap-10">
 
-        {/* ¿Está amoblado? */}
-        <div>
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">¿Está amoblado?</span>
-            <InfoTooltip content="Si el depto ya viene amoblado, no se considera inversión inicial. Si no, sumamos el costo de amoblar al cálculo." />
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            {([
-              { value: false, label: "No, falta amoblar" },
-              { value: true, label: "Sí, ya amoblado" },
-            ] as const).map((opt) => {
-              const active = state.estaAmoblado === opt.value;
-              return (
-                <button
-                  key={String(opt.value)}
-                  type="button"
-                  onClick={() => setState({ estaAmoblado: opt.value })}
-                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
-                    active
-                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2 leading-snug">
-            {state.estaAmoblado ? "Sin inversión inicial pendiente." : "Se calcula inversión inicial para amoblar."}
-          </p>
-          {!state.estaAmoblado && (
-            <div className="mt-3">
-              <span className="flex items-center gap-1.5 mb-1.5">
-                <label className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-                  Costo de amoblar (CLP único)
-                </label>
-                <InfoTooltip content="Inversión única para amoblar el depto y dejarlo listo para Airbnb. Se descuenta del flujo del año 1." />
-              </span>
-              <MoneyInput
-                className={inputBase}
-                value={state.costoAmoblamiento}
-                onChange={(raw) => trackEdit("costoAmoblamiento", raw)}
-              />
-              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                Default escalado por dormitorios × habilitación.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Habilitación */}
-        <div>
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Habilitación / posicionamiento</span>
-            <InfoTooltip content="Qué tan cuidado está el departamento: amoblamiento, fotos y amenidades. Premium implica decoración curada, blancos hoteleros y amenidades extra. Define el costo de habilitación, no la tarifa." />
-          </span>
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { value: "basico", label: "Básico" },
-              { value: "estandar", label: "Estándar" },
-              { value: "premium", label: "Premium" },
-            ] as const).map((opt) => {
-              const active = state.habilitacion === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => setState({ habilitacion: opt.value })}
-                  className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
-                    active
-                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
-          </div>
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
-            {state.habilitacion === "basico" && "Funcional, fotos amateur."}
-            {state.habilitacion === "estandar" && "Decente, con fotos profesionales."}
-            {state.habilitacion === "premium" && "Decoración curada y amenidades extra."}
-          </p>
-        </div>
-      </div>
-      )}
-
-      {/* ════ Bloque B · Operación Airbnb (solo STR/AMBAS) ════ */}
-      {showSTR && (
-        <BloqueOperacionSTR
-          state={state}
-          setState={setState}
-          adrBaselineSugerido={adrBaselineSugerido}
-        />
-      )}
-
-      {/* ════ Bloque C · Comparativa renta larga (solo LTR/AMBAS) ════ */}
-      {showLTR && (
-        <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
-          <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
-            C · Comparativa renta larga
-          </div>
-
-          <label className="block">
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Arriendo mensual estimado</span>
-              <InfoTooltip content="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares en la zona." />
-            </span>
-            <MoneyInput
-              className={inputBase}
-              value={state.arriendo}
-              onChange={(raw) => trackEdit("arriendo", raw)}
+        {/* ── Zona RENTA LARGA (solo LTR / AMBAS) ── */}
+        {showLTR && (
+          <section className="flex flex-col gap-5">
+            <ZoneHeader
+              name="Renta larga"
+              intro={isAmbas ? "Cuánto cobras de arriendo y qué se te va en vacancia y gestión." : undefined}
             />
-            {suggestions.arriendo && (
-              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                Mercado sugiere {fmtCLP(suggestions.arriendo)}
-                {suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.
-              </p>
-            )}
-          </label>
-
-          {Number(state.estacionamientos) > 0 && (
-            <label className="block">
-              <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-                Arriendo estacionamiento ($/mes)
-              </span>
-              <MoneyInput
-                className={inputBase}
-                value={state.arriendoEstac}
-                onChange={(raw) => setState({ arriendoEstac: raw })}
-                placeholder={(40000 * Number(state.estacionamientos)).toLocaleString("es-CL")}
-              />
-            </label>
-          )}
-
-          {Number(state.bodegas) > 0 && (
-            <label className="block">
-              <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
-                Arriendo bodega ($/mes)
-              </span>
-              <MoneyInput
-                className={inputBase}
-                value={state.arriendoBodega}
-                onChange={(raw) => setState({ arriendoBodega: raw })}
-                placeholder={(15000 * Number(state.bodegas)).toLocaleString("es-CL")}
-              />
-            </label>
-          )}
-
-          {/* Vacancia + % gestión LTR — movidos desde paso 4 (eran "ajuste
-              fino" mal ubicados; pertenecen al bloque operacional LTR). */}
-          <div className="grid grid-cols-2 gap-3 pt-3 border-t border-dashed border-[var(--franco-border)]">
-            <label className="block">
-              <span className="flex items-center gap-1.5 mb-1.5">
-                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Vacancia: {state.vacanciaPct}%</span>
-                <InfoTooltip content="Porcentaje del año sin arrendatario. Default 5% ≈ 18 días/año. Se descuenta del flujo proyectado." />
-              </span>
-              <input
-                type="range" min={0} max={25} step={1}
-                value={state.vacanciaPct}
-                onChange={(e) => setState({ vacanciaPct: e.target.value })}
-                className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
-              />
-            </label>
-            <label className="block">
-              <span className="flex items-center gap-1.5 mb-1.5">
-                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Gestión LTR: {state.adminPct}%</span>
-                <InfoTooltip content="Comisión del corredor LTR (publicación, cobranza). Default 0% = autogestión. Típico 7-10% si delegas." />
-              </span>
-              <input
-                type="range" min={0} max={15} step={1}
-                value={state.adminPct}
-                onChange={(e) => setState({ adminPct: e.target.value })}
-                className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
-              />
-            </label>
-          </div>
-        </div>
-      )}
-
-      {/* ════ Bloque D · Costos mensuales (siempre visible) ════ */}
-      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
-        <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
-          D · Costos mensuales recurrentes
-        </div>
-
-        <label className="block">
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
-              Gastos comunes mensuales
-            </span>
-            <InfoTooltip content="Cuota mensual a la administración del edificio. La pagas tú aunque el depto esté vacío." />
-          </span>
-          <MoneyInput
-            className={inputBase}
-            value={state.gastos}
-            onChange={(raw) => trackEdit("gastos", raw)}
-          />
-          {suggestions.gastos && (
-            <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-              Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).
-            </p>
-          )}
-        </label>
-
-        <label className="block">
-          <span className="flex items-center gap-1.5 mb-1.5">
-            <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
-              Contribuciones (trimestral, CLP)
-            </span>
-            <InfoTooltip content="Impuesto territorial que paga el dueño cada 3 meses. Lo calcula el SII según el avalúo fiscal." />
-          </span>
-          <MoneyInput
-            className={inputBase}
-            value={state.contribuciones}
-            onChange={(raw) => trackEdit("contribuciones", raw)}
-          />
-          {suggestions.contribuciones && (
-            <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-              Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).
-            </p>
-          )}
-        </label>
-
-        {/* Costos operativos STR — collapsible, solo si STR/AMBAS.
-            Título dinámico con tipología (mismo patrón que header Bloque A). */}
-        {showSTR && (
-          <div className="pt-3 border-t border-dashed border-[var(--franco-border)]">
-            <button
-              type="button"
-              onClick={() => setStrCostsOpen((o) => !o)}
-              className="flex w-full items-center justify-between"
-            >
-              <span className="font-body text-[13px] font-medium text-[var(--franco-text)]">
-                Costos operativos STR {state.esStudio
-                  ? "para tu studio"
-                  : `para tu depto ${state.dormitorios || "—"}D${state.banos || "—"}B`}
-              </span>
-              <ChevronDown className={`h-4 w-4 transition-transform ${strCostsOpen ? "rotate-180" : ""}`} />
-            </button>
-            {strCostsOpen && (
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <CostInput
-                  label="Electricidad"
-                  value={state.costoElectricidad}
-                  onChange={(v) => trackEdit("costoElectricidad", v)}
-                  tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
+            <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+              <label className="block">
+                <span className="flex items-center gap-1.5 mb-1.5">
+                  <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Arriendo mensual estimado</span>
+                  <InfoTooltip content="Sugerencia calculada con la mediana de arriendos publicados de propiedades similares en la zona." />
+                </span>
+                <MoneyInput
+                  className={inputBase}
+                  value={state.arriendo}
+                  onChange={(raw) => trackEdit("arriendo", raw)}
                 />
-                <CostInput
-                  label="Agua"
-                  value={state.costoAgua}
-                  onChange={(v) => trackEdit("costoAgua", v)}
-                  tooltip="Cuenta de agua mensual promedio. La paga el dueño."
-                />
-                <CostInput
-                  label="Internet"
-                  value={state.costoWifi}
-                  onChange={(v) => trackEdit("costoWifi", v)}
-                  tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
-                />
-                <CostInput
-                  label="Insumos"
-                  value={state.costoInsumos}
-                  onChange={(v) => trackEdit("costoInsumos", v)}
-                  tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
-                />
-                <CostInput
-                  label="Mantención"
-                  value={state.mantencionMensual}
-                  onChange={(v) => trackEdit("mantencionMensual", v)}
-                  tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
-                />
+                {suggestions.arriendo && (
+                  <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                    Mercado sugiere {fmtCLP(suggestions.arriendo)}
+                    {suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.
+                  </p>
+                )}
+              </label>
+
+              {Number(state.estacionamientos) > 0 && (
+                <label className="block">
+                  <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+                    Arriendo estacionamiento ($/mes)
+                  </span>
+                  <MoneyInput
+                    className={inputBase}
+                    value={state.arriendoEstac}
+                    onChange={(raw) => setState({ arriendoEstac: raw })}
+                    placeholder={(40000 * Number(state.estacionamientos)).toLocaleString("es-CL")}
+                  />
+                </label>
+              )}
+
+              {Number(state.bodegas) > 0 && (
+                <label className="block">
+                  <span className="font-body text-[12px] font-medium text-[var(--franco-text)] block mb-1.5">
+                    Arriendo bodega ($/mes)
+                  </span>
+                  <MoneyInput
+                    className={inputBase}
+                    value={state.arriendoBodega}
+                    onChange={(raw) => setState({ arriendoBodega: raw })}
+                    placeholder={(15000 * Number(state.bodegas)).toLocaleString("es-CL")}
+                  />
+                </label>
+              )}
+
+              {/* Vacancia + % gestión LTR — pertenecen al bloque operacional LTR. */}
+              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-dashed border-[var(--franco-border)]">
+                <label className="block">
+                  <span className="flex items-center gap-1.5 mb-1.5">
+                    <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Vacancia: {state.vacanciaPct}%</span>
+                    <InfoTooltip content="Porcentaje del año sin arrendatario. Default 5% ≈ 18 días/año. Se descuenta del flujo proyectado." />
+                  </span>
+                  <input
+                    type="range" min={0} max={25} step={1}
+                    value={state.vacanciaPct}
+                    onChange={(e) => setState({ vacanciaPct: e.target.value })}
+                    className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+                  />
+                </label>
+                <label className="block">
+                  <span className="flex items-center gap-1.5 mb-1.5">
+                    <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Gestión LTR: {state.adminPct}%</span>
+                    <InfoTooltip content="Comisión del corredor LTR (publicación, cobranza). Default 0% = autogestión. Típico 7-10% si delegas." />
+                  </span>
+                  <input
+                    type="range" min={0} max={15} step={1}
+                    value={state.adminPct}
+                    onChange={(e) => setState({ adminPct: e.target.value })}
+                    className="w-full h-2 bg-[var(--franco-border-hover)] rounded-full accent-[var(--franco-text)] cursor-pointer"
+                  />
+                </label>
               </div>
-            )}
-            {strCostsOpen && (
-              <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-2 m-0">
-                Defaults escalados por tipología (excepto Internet, que es plan fijo). Edita si tienes data real.
-              </p>
-            )}
-          </div>
+            </div>
+          </section>
         )}
+
+        {/* ── Zona RENTA CORTA (solo STR / AMBAS) ── */}
+        {showSTR && (
+          <section className="flex flex-col gap-5">
+            <ZoneHeader
+              name="Renta corta"
+              intro={isAmbas ? "Cómo habilitas el depto, quién lo opera y qué cuesta correrlo." : undefined}
+            />
+
+            {/* Estado del depto */}
+            <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+              <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
+                Estado del depto · {tipologiaLabel}
+              </div>
+
+              {/* ¿Está amoblado? */}
+              <div>
+                <span className="flex items-center gap-1.5 mb-1.5">
+                  <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">¿Está amoblado?</span>
+                  <InfoTooltip content="Si el depto ya viene amoblado, no se considera inversión inicial. Si no, sumamos el costo de amoblar al cálculo." />
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([
+                    { value: false, label: "No, falta amoblar" },
+                    { value: true, label: "Sí, ya amoblado" },
+                  ] as const).map((opt) => {
+                    const active = state.estaAmoblado === opt.value;
+                    return (
+                      <button
+                        key={String(opt.value)}
+                        type="button"
+                        onClick={() => setState({ estaAmoblado: opt.value })}
+                        className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                          active
+                            ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                            : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-2 leading-snug">
+                  {state.estaAmoblado ? "Sin inversión inicial pendiente." : "Se calcula inversión inicial para amoblar."}
+                </p>
+                {!state.estaAmoblado && (
+                  <div className="mt-3">
+                    <span className="flex items-center gap-1.5 mb-1.5">
+                      <label className="font-body text-[12px] font-medium text-[var(--franco-text)]">
+                        Costo de amoblar (CLP único)
+                      </label>
+                      <InfoTooltip content="Inversión única para amoblar el depto y dejarlo listo para Airbnb. Se descuenta del flujo del año 1." />
+                    </span>
+                    <MoneyInput
+                      className={inputBase}
+                      value={state.costoAmoblamiento}
+                      onChange={(raw) => trackEdit("costoAmoblamiento", raw)}
+                    />
+                    <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                      Default escalado por dormitorios × habilitación.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Habilitación */}
+              <div>
+                <span className="flex items-center gap-1.5 mb-1.5">
+                  <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">Habilitación / posicionamiento</span>
+                  <InfoTooltip content="Qué tan cuidado está el departamento: amoblamiento, fotos y amenidades. Premium implica decoración curada, blancos hoteleros y amenidades extra. Define el costo de habilitación, no la tarifa." />
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { value: "basico", label: "Básico" },
+                    { value: "estandar", label: "Estándar" },
+                    { value: "premium", label: "Premium" },
+                  ] as const).map((opt) => {
+                    const active = state.habilitacion === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setState({ habilitacion: opt.value })}
+                        className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
+                          active
+                            ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
+                            : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="font-body text-[11px] text-[var(--franco-text-muted)] m-0 mt-1.5 leading-snug">
+                  {state.habilitacion === "basico" && "Funcional, fotos amateur."}
+                  {state.habilitacion === "estandar" && "Decente, con fotos profesionales."}
+                  {state.habilitacion === "premium" && "Decoración curada y amenidades extra."}
+                </p>
+              </div>
+            </div>
+
+            {/* Operación Airbnb */}
+            <BloqueOperacionSTR
+              state={state}
+              setState={setState}
+              adrBaselineSugerido={adrBaselineSugerido}
+            />
+
+            {/* Costos operativos — movidos desde la antigua zona Costos. El
+                header de la card es el toggle del collapsible. El gate showSTR
+                lo hereda de esta zona (no necesita condición propia). */}
+            <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+              <button
+                type="button"
+                onClick={() => setStrCostsOpen((o) => !o)}
+                className="flex w-full items-center justify-between"
+              >
+                <span className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
+                  Costos operativos · {tipologiaLabel}
+                </span>
+                <ChevronDown className={`h-4 w-4 text-[var(--franco-text-muted)] transition-transform ${strCostsOpen ? "rotate-180" : ""}`} />
+              </button>
+              {strCostsOpen && (
+                <div className="grid grid-cols-2 gap-3">
+                  <CostInput
+                    label="Electricidad"
+                    value={state.costoElectricidad}
+                    onChange={(v) => trackEdit("costoElectricidad", v)}
+                    tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
+                  />
+                  <CostInput
+                    label="Agua"
+                    value={state.costoAgua}
+                    onChange={(v) => trackEdit("costoAgua", v)}
+                    tooltip="Cuenta de agua mensual promedio. La paga el dueño."
+                  />
+                  <CostInput
+                    label="Internet"
+                    value={state.costoWifi}
+                    onChange={(v) => trackEdit("costoWifi", v)}
+                    tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
+                  />
+                  <CostInput
+                    label="Insumos"
+                    value={state.costoInsumos}
+                    onChange={(v) => trackEdit("costoInsumos", v)}
+                    tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
+                  />
+                  <CostInput
+                    label="Mantención"
+                    value={state.mantencionMensual}
+                    onChange={(v) => trackEdit("mantencionMensual", v)}
+                    tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
+                  />
+                </div>
+              )}
+              {strCostsOpen && (
+                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] m-0">
+                  Defaults escalados por tipología (excepto Internet, que es plan fijo). Edita si tienes data real.
+                </p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── Zona COMUNES (siempre visible) — en single se rotula "Costos". ── */}
+        <section className="flex flex-col gap-5">
+          <ZoneHeader
+            name={isAmbas ? "Comunes a ambas" : "Costos"}
+            intro={isAmbas ? "Gastos fijos del depto: los pagas arriendes como arriendes." : undefined}
+          />
+          <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
+                  Gastos comunes mensuales
+                </span>
+                <InfoTooltip content="Cuota mensual a la administración del edificio. La pagas tú aunque el depto esté vacío." />
+              </span>
+              <MoneyInput
+                className={inputBase}
+                value={state.gastos}
+                onChange={(raw) => trackEdit("gastos", raw)}
+              />
+              {suggestions.gastos && (
+                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                  Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).
+                </p>
+              )}
+            </label>
+
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[13px] font-semibold text-[var(--franco-text)]">
+                  Contribuciones (trimestral, CLP)
+                </span>
+                <InfoTooltip content="Impuesto territorial que paga el dueño cada 3 meses. Lo calcula el SII según el avalúo fiscal." />
+              </span>
+              <MoneyInput
+                className={inputBase}
+                value={state.contribuciones}
+                onChange={(raw) => trackEdit("contribuciones", raw)}
+              />
+              {suggestions.contribuciones && (
+                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                  Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).
+                </p>
+              )}
+            </label>
+          </div>
+        </section>
+
       </div>
 
       {/* Costo tier-aware */}
@@ -584,6 +604,25 @@ export function Paso3Modalidad({
 }
 
 // ─── Sub-componentes ──────────────────────────────────
+
+/** Header de zona operacional (Renta larga / Renta corta / Comunes).
+ * Reemplaza las letras A/B/C/D: el nombre de zona ES la estructura.
+ * Label Mono uppercase (Ink secondary) + intro Sans opcional (Ink muted),
+ * esta última solo en AMBAS donde desambigua qué input alimenta qué escenario. */
+function ZoneHeader({ name, intro }: { name: string; intro?: string }) {
+  return (
+    <div>
+      <div className="font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)]">
+        {name}
+      </div>
+      {intro && (
+        <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0 mt-1 leading-snug">
+          {intro}
+        </p>
+      )}
+    </div>
+  );
+}
 
 function CostInput({
   label, value, onChange, tooltip,
