@@ -17,7 +17,7 @@ function resolveProduct(key: string) {
 
   const oneTime = p.kind === "one_time";
   const period = oneTime
-    ? "Pago único — créditos sin caducidad"
+    ? "Pago único — análisis sin caducidad"
     : p.billing === "annual"
       ? "Facturación anual · renueva automáticamente"
       : "Facturación mensual · cancela cuando quieras";
@@ -194,15 +194,21 @@ function CheckoutContent() {
         <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 md:p-8">
           <div className="mb-6">
             <p className="font-body text-sm font-semibold text-[var(--franco-text)]">
-              {product.oneTime && analysisComuna ? `Análisis en ${analysisComuna}` : product.title}
+              {product.oneTime && !analysisId
+                ? `Franco — ${qty} análisis`
+                : product.oneTime && analysisComuna
+                ? `Análisis en ${analysisComuna}`
+                : product.title}
             </p>
-            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">{product.subtitle}</p>
+            <p className="font-body text-xs text-[var(--franco-text-muted)] mt-0.5">
+              {product.oneTime && !analysisId ? `${qty} análisis` : product.subtitle}
+            </p>
           </div>
 
           <div className="flex items-baseline gap-2 mb-1">
             <span className="font-mono text-3xl font-bold text-[var(--franco-text)]">{fmtCLP(qty * product.amount)}</span>
           </div>
-          {product.oneTime && !analysisId && qty > 1 && (
+          {product.oneTime && !analysisId && (
             <p className="font-mono text-xs text-[var(--franco-text-muted)] mb-1">
               {qty} × {fmtCLP(product.amount)}
             </p>
@@ -221,7 +227,7 @@ function CheckoutContent() {
                   onClick={() => setQty((q) => Math.max(1, q - 1))}
                   disabled={qty <= 1}
                   aria-label="Quitar un análisis"
-                  className="w-9 h-9 rounded-lg border border-[var(--franco-border)] flex items-center justify-center text-lg text-[var(--franco-text)] hover:border-[var(--franco-text-muted)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--franco-border)]"
+                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   −
                 </button>
@@ -233,7 +239,7 @@ function CheckoutContent() {
                   onClick={() => setQty((q) => Math.min(20, q + 1))}
                   disabled={qty >= 20}
                   aria-label="Agregar un análisis"
-                  className="w-9 h-9 rounded-lg border border-[var(--franco-border)] flex items-center justify-center text-lg text-[var(--franco-text)] hover:border-[var(--franco-text-muted)] transition-colors disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-[var(--franco-border)]"
+                  className="w-9 h-9 rounded-lg border border-[var(--signal-red)] bg-transparent flex items-center justify-center text-lg text-[var(--signal-red)] transition-colors hover:bg-[color-mix(in_srgb,var(--signal-red)_8%,transparent)] disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                 >
                   +
                 </button>
