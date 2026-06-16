@@ -340,10 +340,17 @@ export function Paso3Modalidad({
               intro={isAmbas ? "Cómo habilitas el depto, quién lo opera y qué cuesta correrlo." : undefined}
             />
 
-            {/* Estado del depto */}
+            {/* Ingresos estimados Airbnb — héroe de la sub-zona STR (primero) */}
+            <BloqueOperacionSTR
+              state={state}
+              setState={setState}
+              adrBaselineSugerido={adrBaselineSugerido}
+            />
+
+            {/* Habilitación del depto */}
             <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5 space-y-4">
               <div className="font-mono text-[10px] text-[var(--franco-text-muted)] uppercase tracking-[0.1em]">
-                Estado del depto · {tipologiaLabel}
+                Habilitación del depto · {tipologiaLabel}
               </div>
 
               {/* ¿Está amoblado? */}
@@ -433,13 +440,6 @@ export function Paso3Modalidad({
                 </p>
               </div>
             </div>
-
-            {/* Operación Airbnb */}
-            <BloqueOperacionSTR
-              state={state}
-              setState={setState}
-              adrBaselineSugerido={adrBaselineSugerido}
-            />
 
             {/* Costos operativos — movidos desde la antigua zona Costos. El
                 header de la card es el toggle del collapsible. El gate showSTR
