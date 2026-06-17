@@ -52,11 +52,16 @@ export function UsarEstimacion({
 export function CampoEstado({
   edited,
   onRestore,
+  hint,
   children,
 }: {
   edited: boolean;
   /** Restaura al valor estimado. Undefined → no hay sugerencia que restaurar. */
   onRestore?: () => void;
+  /** Hint reactivo (sub-2): cuando un param del mismo depto movió la sugerencia
+   * de un campo editado. Reemplaza "Usar estimación" por "Franco sugiere $Y ·
+   * usar" (misma acción de restaurar, contextual). */
+  hint?: { value: string; onUse: () => void };
   /** Descripción de la sugerencia (solo se muestra en estado "estimado"). */
   children?: ReactNode;
 }) {
@@ -65,7 +70,22 @@ export function CampoEstado({
       {edited ? (
         <>
           <FieldEstadoTag estado="modificado" />
-          {onRestore && <UsarEstimacion onClick={onRestore} label="Usar estimación" />}
+          {hint ? (
+            <span className="font-mono text-[10px] text-[var(--franco-text-muted)] flex items-center gap-1">
+              Franco sugiere
+              <span className="text-[var(--franco-text)]">{hint.value}</span>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={hint.onUse}
+                className="underline decoration-dotted hover:text-[var(--franco-text)]"
+              >
+                usar
+              </button>
+            </span>
+          ) : (
+            onRestore && <UsarEstimacion onClick={onRestore} label="Usar estimación" />
+          )}
         </>
       ) : (
         <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--franco-text-muted)] leading-snug">

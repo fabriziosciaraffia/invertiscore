@@ -97,7 +97,7 @@ export function Paso1Propiedad({
           // Reset atómico de las estimaciones de la propiedad (mantiene las
           // preferencias de financiamiento: piePct/plazoCredito/tasaInteres).
           ...(propertyChanged
-            ? resetPropertyEstimatesPatch(cur.editedFields, costDefaults)
+            ? resetPropertyEstimatesPatch(cur.editedFields, cur.suggestionBaselines, costDefaults)
             : {}),
         });
         // Gate de cobertura: si la comuna no es Gran Santiago, abrimos el
