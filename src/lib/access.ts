@@ -105,7 +105,7 @@ export async function chargeAnalysisCredit(
     return {
       ok: false,
       reason: "no_credits",
-      message: "Necesitas un crédito para crear un análisis",
+      message: "Te quedaste sin análisis disponibles.",
     };
   }
 
@@ -161,7 +161,7 @@ export async function chargeAnalysisCredit(
   return {
     ok: false,
     reason: "no_credits",
-    message: "Necesitas un crédito para crear un análisis",
+    message: "Te quedaste sin análisis disponibles.",
   };
 }
 

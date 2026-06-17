@@ -131,8 +131,8 @@ export default async function PerfilPage() {
     planCtaText = "Reactivar suscripción →";
     planCtaHref = "/pricing";
   } else if (credits > 0) {
-    planLabel = "Créditos Pro";
-    planDescription = `Tienes ${credits} ${credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}. Úsalos en cualquier análisis.`;
+    planLabel = "Análisis disponibles";
+    planDescription = `Tienes ${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"}. Úsalos cuando quieras.`;
     planCtaText = "Comprar más";
     planCtaHref = "/pricing";
   } else {
@@ -222,7 +222,7 @@ export default async function PerfilPage() {
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-[#C8323C]" />
             <div className="font-mono text-3xl font-bold text-[#C8323C]">{credits}</div>
             <div className="mt-1 text-sm text-[var(--franco-text-muted)]">
-              {credits === 1 ? "crédito Pro disponible" : "créditos Pro disponibles"}
+              {credits === 1 ? "análisis disponible" : "análisis disponibles"}
             </div>
             <p className="mt-3 text-xs text-[var(--franco-text-muted)]">
               Úsalo en cualquier análisis tuyo desde la página de resultados.

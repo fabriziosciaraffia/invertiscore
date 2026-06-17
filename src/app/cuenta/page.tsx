@@ -140,17 +140,17 @@ export default async function CuentaPage() {
               <>
                 <StatusBadge label="PRO" tone="signal-red" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                  Tienes <strong className="font-mono">{credits}</strong> {credits === 1 ? "crédito" : "créditos"} para análisis Pro
+                  Tienes <strong className="font-mono">{credits}</strong> análisis {credits === 1 ? "disponible" : "disponibles"}
                 </p>
                 <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                  Cada análisis Pro consume 1 crédito
+                  Cada informe Pro usa 1 análisis
                 </p>
                 <div className="mt-4">
                   <Link
                     href="/pricing"
                     className="inline-block rounded-md bg-signal-red px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-signal-red/90"
                   >
-                    Comprar más créditos →
+                    Comprar más análisis →
                   </Link>
                 </div>
               </>
@@ -160,7 +160,7 @@ export default async function CuentaPage() {
               <>
                 <StatusBadge label="FREE" tone="muted" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
-                  No tienes créditos ni suscripción activa
+                  No tienes análisis ni suscripción activa
                 </p>
                 <div className="mt-4">
                   <Link

@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { consumeCredit } from "@/lib/access";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { isAdminUser } from "@/lib/admin";
 import { findNearestStation } from "@/lib/metro-stations";
 import {
@@ -385,7 +386,7 @@ INSTRUCCIÓN FINAL
 Responde SOLO con el JSON.`;
 
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT_STR,

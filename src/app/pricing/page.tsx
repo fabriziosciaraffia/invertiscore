@@ -38,7 +38,7 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 // ─── FAQ (Phase 2.38 · lista simple, body siempre visible) ───
 const FAQ_ITEMS: { q: string; a: string }[] = [
   {
-    q: "¿Los créditos caducan?",
+    q: "¿Los análisis caducan?",
     a: "1 análisis: no caduca. Suscripciones: acumulables hasta 1 año, luego se resetea.",
   },
   {

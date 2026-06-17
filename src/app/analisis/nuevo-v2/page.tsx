@@ -501,7 +501,7 @@ export default function NuevoAnalisisV3Page() {
     // motivo (race con tierInfo aún no cargado, doble click) escapa al disable.
     // Mantiene al user en Paso 3 con el paywall card visible.
     if (!canAnalyzeFromTier(tierInfo)) {
-      setSubmitError("Necesitas un crédito para crear un análisis");
+      setSubmitError("Te quedaste sin análisis. Compra uno para continuar.");
       return;
     }
 
@@ -674,7 +674,7 @@ export default function NuevoAnalisisV3Page() {
       });
       if (!chargeRes.ok) {
         const err = await chargeRes.json().catch(() => ({}));
-        setSubmitError(err.error || "No se pudo cobrar el crédito");
+        setSubmitError(err.error || "No pudimos procesar tu análisis. Intenta de nuevo.");
         setSubmitting(false);
         return;
       }

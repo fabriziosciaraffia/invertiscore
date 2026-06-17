@@ -16,6 +16,7 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@/lib/supabase/server";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { calcGuestProfile, PERFIL_LABEL, type GuestProfileResult, type PerfilHuespedSTR } from "@/lib/str-guest-profile";
 
 const anthropic = new Anthropic();
@@ -175,7 +176,7 @@ async function generateGuestInsightAI(
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1200,
       system: GUEST_INSIGHT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

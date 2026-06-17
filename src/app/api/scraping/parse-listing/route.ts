@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { createClient } from "@/lib/supabase/server";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 
 const anthropic = new Anthropic();
 const firecrawl = new FirecrawlApp({ apiKey: process.env.FIRECRAWL_API_KEY! });
@@ -220,7 +221,7 @@ export async function POST(req: NextRequest) {
 
     // Extract structured data with Claude
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 2000,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: buildUserPrompt(truncated, ufValue) }],

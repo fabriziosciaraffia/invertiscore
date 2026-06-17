@@ -111,7 +111,7 @@ async function consumeAnalysisCredit(analysisId: string): Promise<{ ok: boolean;
     });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
-      return { ok: false, error: data?.error || "Error al usar crédito" };
+      return { ok: false, error: data?.error || "No pudimos procesar tu análisis. Intenta de nuevo." };
     }
     return { ok: true };
   } catch {
