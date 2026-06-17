@@ -510,7 +510,7 @@ export async function sendPaymentFailedEmail(
 
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
           Si no haces nada, tu cuenta vuelve al plan gratis y conservas los
-          créditos que te queden.
+          análisis que te queden.
         </p>
 
         ${ctaButton('Reactivar mi suscripción →', ctaUrl)}
@@ -757,7 +757,7 @@ export async function sendAccountDeletionUserEmail(to: string, name: string): Pr
           Qué pasa ahora
         </p>
         <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 24px 0;">
-          Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: análisis, créditos e información de perfil. Te confirmaremos a este mismo correo cuando el proceso esté completo.
+          Vamos a eliminar de forma permanente tu cuenta y todos tus datos asociados: tus análisis, tu saldo disponible e información de perfil. Te confirmaremos a este mismo correo cuando el proceso esté completo.
         </p>
 
         <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 1.5px; color: #71717A; text-transform: uppercase; margin: 0 0 10px 0;">

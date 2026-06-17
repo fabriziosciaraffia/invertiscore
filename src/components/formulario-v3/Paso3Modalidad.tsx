@@ -730,9 +730,9 @@ export function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
 function tierCopy(info: TierInfo): { costo: string; plan: string; color: string; canAnalyze: boolean } {
   if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)", canAnalyze: true };
   if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)", canAnalyze: true };
-  if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} créditos Pro`, plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`, color: "var(--franco-text)", canAnalyze: true };
-  if (info.welcomeAvailable) return { costo: "Usarás tu crédito gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true };
-  return { costo: "Sin créditos disponibles. Compra uno para continuar.", plan: "SIN CRÉDITOS", color: "var(--signal-red)", canAnalyze: false };
+  if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} análisis`, plan: `PRO · ${info.credits} análisis`, color: "var(--franco-text)", canAnalyze: true };
+  if (info.welcomeAvailable) return { costo: "Usarás tu análisis gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true };
+  return { costo: "Sin análisis disponibles. Compra uno para continuar.", plan: "SIN ANÁLISIS", color: "var(--signal-red)", canAnalyze: false };
 }
 
 // Re-exports utilitarios para compatibilidad con callsites antiguos

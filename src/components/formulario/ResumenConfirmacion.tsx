@@ -98,14 +98,14 @@ function tierCopy(info: TierInfo): { costo: string; plan: string; costoColor: st
   }
   if (info.tier === "premium" && info.credits > 0) {
     return {
-      costo: `Usarás 1 de tus ${info.credits} créditos Pro`,
-      plan: `PRO · ${info.credits} crédito${info.credits === 1 ? "" : "s"}`,
+      costo: `Usarás 1 de tus ${info.credits} análisis`,
+      plan: `PRO · ${info.credits} análisis`,
       costoColor: "var(--franco-v-adjust)",
     };
   }
   if (info.tier === "free") {
     return {
-      costo: "Usarás tu crédito gratis de bienvenida",
+      costo: "Usarás tu análisis gratis de bienvenida",
       plan: "GRATUITO",
       costoColor: "var(--franco-v-adjust)",
     };

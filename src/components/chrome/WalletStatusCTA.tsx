@@ -174,7 +174,7 @@ function resolveVariant(args: {
     const plural = args.credits === 1 ? "" : "s";
     return {
       state: "credits",
-      message: `Tienes ${args.credits} crédito${plural} para tu próximo análisis.`,
+      message: `Tienes ${args.credits} análisis disponible${plural}.`,
       plan: `PRO · ${args.credits}`,
       ctaLabel: "Crear otro análisis",
       href: "/analisis/nuevo-v2",
@@ -191,8 +191,8 @@ function resolveVariant(args: {
     return {
       state: "no_credits",
       message:
-        "Necesitas un crédito para tu próximo análisis.",
-      plan: "SIN CRÉDITOS",
+        "Te quedaste sin análisis disponibles.",
+      plan: "SIN ANÁLISIS",
       ctaLabel: `Comprar 1 análisis · ${fmtCLP(SINGLE_PRICE)}`,
       href: "/checkout?product=single",
       tone: "avoid",

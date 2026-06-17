@@ -75,7 +75,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       },
       {
         q: "¿Puedo analizar varios deptos?",
-        a: "Sí. El análisis básico (score + métricas + comparación zona) es gratis e ilimitado. Cada informe Pro desbloquea un análisis específico. Si quieres analizar otro depto, necesitas otro crédito o una suscripción mensual.",
+        a: "Sí. El análisis básico (score + métricas + comparación zona) es gratis e ilimitado. Cada informe Pro desbloquea un análisis específico. Si quieres analizar otro depto, necesitas otro análisis o una suscripción mensual.",
       },
     ],
   },

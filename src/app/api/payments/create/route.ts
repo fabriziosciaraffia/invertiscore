@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     if (analysisComuna) {
       subject = `Franco — Análisis ${analysisComuna}`;
     } else if (quantity > 1) {
-      subject = `Franco — ${quantity} créditos`;
+      subject = `Franco — ${quantity} análisis`;
     }
   }
   const commerceOrder = `franco-${randomUUID()}`;

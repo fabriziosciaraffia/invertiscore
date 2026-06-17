@@ -100,7 +100,7 @@ export function ProCTABanner({
             Más análisis con Franco
           </p>
           <p className="hidden sm:block font-body text-[12px] text-[var(--franco-text-secondary)] m-0 leading-snug mt-0.5">
-            Créditos sin vencimiento o suscripción con 30% off anual
+            Análisis sin vencimiento o suscripción con 30% off anual
           </p>
         </div>
 
