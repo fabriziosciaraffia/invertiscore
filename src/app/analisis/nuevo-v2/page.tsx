@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { usePostHog } from "posthog-js/react";
 import { Loader2 } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
@@ -31,8 +31,9 @@ const LEGACY_V2_KEY = "franco_draft_v2";
 const MIGRATION_FLAG = "franco_draft_v2_migrated_to_v3";
 const GUEST_LS_KEY = "franco_guest_analysis_v2";
 
-export default function NuevoAnalisisV3Page() {
+function NuevoAnalisisV3Inner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const posthog = usePostHog();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -109,20 +110,34 @@ export default function NuevoAnalisisV3Page() {
     } catch { /* ignore */ }
 
     // 2) Cargar draft v3 si existe
+    // ?resume=1 = vuelta post-registro del guest: queremos retomar solo.
+    const resume = searchParams.get("resume") === "1";
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        const SEIS_HORAS = 6 * 60 * 60 * 1000;
+        // Ventana de validez del draft: 24h. El round-trip del guest incluye
+        // confirmación por email (puede confirmar más tarde), así que 6h era
+        // muy corto y perdíamos el borrador. 24h cubre el caso real.
+        const VENTANA_DRAFT_MS = 24 * 60 * 60 * 1000;
         const esValido = parsed && typeof parsed === "object"
           && typeof parsed.savedAt === "number"
-          && (Date.now() - parsed.savedAt) < SEIS_HORAS
+          && (Date.now() - parsed.savedAt) < VENTANA_DRAFT_MS
           && parsed.data && typeof parsed.data === "object";
         if (esValido && parsed.data.direccion) {
-          // Draft válido y con contenido real (tiene dirección): NO rehidratar
-          // automático. Lo guardamos para ofrecer recuperación vía banner; el
-          // form arranca limpio (DEFAULT_STATE) hasta que el usuario decida.
-          setDraftPendiente(parsed.data as WizardV3State);
+          if (resume) {
+            // Vuelta post-registro: auto-rehidratar con el MISMO merge que el
+            // banner "Retomar", aterrizar en el paso 4 (resumen) y NO mostrar el
+            // banner. Limpiamos el query param para que un refresh no re-dispare.
+            setState((prev) => ({ ...prev, ...(parsed.data as WizardV3State) }));
+            setStep(4);
+            router.replace("/analisis/nuevo-v2");
+          } else {
+            // Draft válido y con contenido real (tiene dirección): NO rehidratar
+            // automático. Lo guardamos para ofrecer recuperación vía banner; el
+            // form arranca limpio (DEFAULT_STATE) hasta que el usuario decida.
+            setDraftPendiente(parsed.data as WizardV3State);
+          }
         } else {
           // Inválido (viejo / formato plano previo) o sin contenido real (sin
           // dirección) -> descartar sin banner, form limpio.
@@ -157,6 +172,10 @@ export default function NuevoAnalisisV3Page() {
       setTierInfo({ tier: "guest", isAdmin: false, credits: 0, email: null });
       setIsLoggedIn(false);
     });
+    // Mount-once a propósito: router/searchParams se leen una sola vez al montar.
+    // Incluirlos re-dispararía todos los fetch (UF/tasa/tier) y la rehidratación
+    // al cambiar la URL (justo lo que hace router.replace acá arriba).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Persist draft (debounced) ──
@@ -958,6 +977,20 @@ export default function NuevoAnalisisV3Page() {
         .animate-slide-right { animation: slideRight 300ms ease-out; }
       `}</style>
     </div>
+  );
+}
+
+// useSearchParams (?resume=1) exige un límite de Suspense en App Router; mismo
+// patrón que checkout/page.tsx. El wrapper es el default export de la ruta.
+export default function NuevoAnalisisV3Page() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[var(--franco-bg)]">
+        <p className="font-body text-sm text-[var(--franco-text-secondary)]">Cargando…</p>
+      </div>
+    }>
+      <NuevoAnalisisV3Inner />
+    </Suspense>
   );
 }
 

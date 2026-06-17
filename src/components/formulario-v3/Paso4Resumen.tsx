@@ -479,8 +479,20 @@ export function Paso4Resumen({
               <>Desbloquear este análisis · $9.990</>
             )}
           </button>
+        ) : !isLoggedIn ? (
+          // Guest: NO lo mandamos a checkout (que lo rebota a registro con
+          // next=checkout → vuelve a checkout sin análisis y el draft queda
+          // huérfano). Va directo a crear cuenta y regresa al wizard con
+          // ?resume=1 para retomar ESTE paso y pagar. Type-agnostic (LTR/STR/Ambas):
+          // no hardcodea precio porque el monto depende de la modalidad.
+          <Link
+            href={`/register?next=${encodeURIComponent("/analisis/nuevo-v2?resume=1")}`}
+            className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"
+          >
+            Crear cuenta gratis <ArrowRight size={14} />
+          </Link>
         ) : (
-          // Guest o STR/Ambas: flujo viejo intacto (checkout pelado).
+          // STR/Ambas logueado sin crédito: flujo viejo intacto (checkout pelado).
           <Link
             href="/checkout?product=single"
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"
