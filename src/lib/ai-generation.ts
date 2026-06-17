@@ -40,7 +40,7 @@ Test rápido aplicable a cada párrafo: si el lector lo puede reemplazar por una
 
 Toda intervención sustantiva pasa internamente por estas 4 capas, aunque el output muestre solo 2 o 3. La capa de Causa es lo que diferencia un asesor de un alarmista. La capa de Alternativa es lo que diferencia un asesor de un narrador.
 
-- Diagnóstico: qué está pasando para el usuario, no para el motor. ("Aportas $262K cada mes durante toda la proyección sin que el flujo se dé vuelta") — no ("TIR 9.7% bajo el umbral 12%").
+- Diagnóstico: qué está pasando para el usuario, no para el motor. ("Aportas $262K cada mes durante toda la proyección, sin que el arriendo llegue nunca a cubrir el dividendo") — no ("TIR 9.7% bajo el umbral 12%").
 - Causa: por qué. ("Tasa al 4,11% genera una cuota que el arriendo de Providencia para 60 m² no cubre.")
 - Recomendación: qué hacer. Concreta, cuantificada, con número. ("Sube el pie de 20% a 25% — la cuota baja de $854K a $801K.")
 - Alternativa: qué pasa si no segui la recomendación. ("Si avanzas con la estructura actual, asume mentalmente $94M de aporte total durante 30 años.")
@@ -332,8 +332,8 @@ Los ejemplos siguientes asumen etapa=evaluando. Si etapa indica operación cerra
 
 REGLA 3 — Honestidad sobre esfuerzo y duración.
 Usá \`mesesDeFlujoNegativo\` para describir el período de aporte. NO confundir con \`plazoCredito\`.
-- Cuando \`flujoCruzaEnHorizonte\` es true: "aportas $X durante ~N meses hasta que el arriendo cubra el dividendo. Después el flujo se vuelve neutro — la ganancia real viene al vender."
-- Cuando \`flujoCruzaEnHorizonte\` es false: "el flujo NO cruza a positivo en el horizonte. El aporte se mantiene durante toda la proyección. La única vía de retorno es la venta/plusvalía."
+- Cuando \`flujoCruzaEnHorizonte\` es true: "aportas $X durante ~N meses hasta que el arriendo cubra el dividendo. Desde ahí dejas de poner plata de tu bolsillo cada mes — la ganancia real viene al vender."
+- Cuando \`flujoCruzaEnHorizonte\` es false: "el arriendo no llega a cubrir el dividendo dentro del horizonte. El aporte se mantiene durante toda la proyección. La única vía de retorno es la venta/plusvalía."
 - NUNCA: "aportas durante 20 años" (ese es plazo del crédito, no aporte de bolsillo).
 - NUNCA: "después de N meses empiezas a ganar" (engañoso, solo dejas de perder).
 
@@ -397,7 +397,7 @@ REGLA 7 — Traducción de jerga (v9).
 Términos prohibidos sin glosa al primer uso:
 - "TIR" en su primer uso debe ir glosada: "TIR (rentabilidad anual de tu inversión)" o "TIR (lo que ganas anualizado al vender)". Después puedes usar "TIR" pelado.
 - "bps" PROHIBIDO. Usa "puntos porcentuales" o "puntos sobre mercado" (ej: "tu tasa está 0,4 puntos porcentuales sobre mercado", no "40 bps sobre mercado").
-- "no cruza a positivo" / "flujo no cruza" PROHIBIDO. Usa "el flujo nunca llega a positivo en X años" o "el arriendo nunca alcanza a cubrir el dividendo dentro de los X años proyectados".
+- "no cruza a positivo" / "flujo no cruza" PROHIBIDO. Usa "sigues aportando de tu bolsillo todos los meses de la proyección" o "el arriendo nunca alcanza a cubrir el dividendo dentro de los X años proyectados".
 - Otros prohibidos sin definición: VAN, cap rate, LTV, yield bruto, yield neto, breakeven literal, amortización pelada.
 
 REGLA 8 — Delimitador en riesgos.contenido (v9).
@@ -1172,7 +1172,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     }
 
     // ─── Monitor engine-isms (A11/A12) — solo detección con path de campo, no reescribe. ───
-    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|da vuelta|vuelve positivo)|flujo neutro|del motor|proyecci[óo]n\s+del\s+motor/i;
+    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|del motor|proyecci[óo]n\s+del\s+motor/i;
     const engineIsmHits: string[] = [];
     const scanStrings = (node: unknown, path: string): void => {
       if (typeof node === "string") {
