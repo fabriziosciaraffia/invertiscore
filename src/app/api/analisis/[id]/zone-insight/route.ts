@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
@@ -525,7 +526,7 @@ Genera tu respuesta como JSON exactamente con esta forma:
 
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 1200,
       system: INSIGHT_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

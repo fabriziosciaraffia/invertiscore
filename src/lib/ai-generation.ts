@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import {
@@ -1092,7 +1093,7 @@ negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf 
 Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arriba.`;
 
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 8000,
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT,

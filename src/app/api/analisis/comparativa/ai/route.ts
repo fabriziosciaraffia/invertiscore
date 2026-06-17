@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isAdminUser } from "@/lib/admin";
+import { CLAUDE_MODEL } from "@/lib/ai-config";
 import type { FullAnalysisResult, AIAnalysisComparativa, RecomendacionModalidadAmbas } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
@@ -198,7 +199,7 @@ INSTRUCCIÓN FINAL
 Responde SOLO con el JSON.`;
 
     const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: CLAUDE_MODEL,
       max_tokens: 4000,
       messages: [{ role: "user", content: userPrompt }],
       system: SYSTEM_PROMPT_AMBAS,
