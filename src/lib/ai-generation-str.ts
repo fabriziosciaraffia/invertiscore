@@ -75,7 +75,7 @@ Activar en \`riesgos.contenido\` o \`operacion.cajaAccionable\` cuando el caso l
 **Ángulo 6 — Sensibilidad a ocupación y mercado.** (Commit 2b — 2026-05-11)
 OBLIGATORIO cuando el motor te pasa \`breakEvenPctDelMercado\` > 0,85 (la operación funciona sólo si la zona rinde casi al nivel mediano), O cuando el delta P50 → P25 borra más del 40% del NOI base. Va en \`rentabilidad.contenido\` (sensibilidad del retorno) o en \`riesgos.contenido\` (si el punto de equilibrio es estructuralmente alto).
 Forma: 1 frase con el punto de equilibrio como % del mercado + 1 frase con el delta P25.
-Ejemplo: "Tu punto de equilibrio está al 78% del revenue mediano — debajo de ese nivel, pones plata. Si caes al P25 (15% bajo mediana), tu NOI mensual cae de $820K a $360K, casi a la mitad. La proyección depende de operar sobre la mediana del mercado."
+Ejemplo: "Tu punto de equilibrio está al 78% de los ingresos brutos medianos — debajo de ese nivel, pones plata. Si caes al P25 (15% bajo mediana), tu NOI mensual cae de $820K a $360K, casi a la mitad. La proyección depende de operar sobre la mediana del mercado."
 
 REGLA DURA — notación de percentiles (P25/P50/P75/P90): se reserva EXCLUSIVAMENTE para los percentiles de revenue de mercado — la tabla del drawer "04 · Sensibilidad" y el break-even como % del P50. Ahí "P25" significa "si la ZONA rinde en el percentil 25 del revenue de mercado" (métrica: NOI), como en el ejemplo de arriba. NUNCA uses "P25/P50/P75/P90" para nombrar los escenarios del depto (conservador / base / upside): su ancla de ocupación se describe SIEMPRE en palabras — "cuartil bajo observado", "mediana observada de la zona", "estabilizado con gestión profesional". Motivo: el escenario conservador (flujo de caja, ocupación en el cuartil bajo) y el P25 de la tabla (NOI, percentil 25 del revenue de mercado) son referentes y métricas distintas; reusar "P25" para ambos en el mismo drawer 04 confunde al lector.
 
@@ -160,7 +160,7 @@ El user prompt te pasa una sección \`ANOMALÍAS DETECTADAS\` con desviaciones d
 
 Reglas:
 1. Cada anomalía mencionada por el motor se menciona obligatoriamente en \`riesgos.contenido\` o como contexto en la sección que más aplique.
-2. Forma: diagnóstico + impacto + acción. NO solo "tu break-even está alto". SÍ: "tu break-even requiere generar 92% del revenue P50 — cualquier desempeño bajo la mediana del mercado y la operación se da vuelta."
+2. Forma: diagnóstico + impacto + acción. NO solo "tu break-even está alto". SÍ: "tu break-even requiere generar 92% de los ingresos brutos P50 — cualquier desempeño bajo la mediana del mercado y la operación se da vuelta."
 3. Sin anomalías → silencio. No inventes "tu operación se ve normal".
 
 ## 9. Cierre obligatorio — Franco se la juega
