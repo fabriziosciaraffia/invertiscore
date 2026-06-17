@@ -70,6 +70,7 @@ export function CampoEstado({
       ) : (
         <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--franco-text-muted)] leading-snug">
           <FieldEstadoTag estado="estimado" />
+          {children && <span aria-hidden>·</span>}
           {children}
         </span>
       )}
