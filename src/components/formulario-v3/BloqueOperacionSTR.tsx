@@ -25,7 +25,8 @@
 import { useEffect, useState } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
-import { FieldEstadoTag, UsarEstimacion } from "./FieldEstado";
+import { MoneyInput } from "@/components/ui/MoneyInput";
+import { CampoEstado } from "./FieldEstado";
 import {
   fmtCLP,
   gestionOptionToMotor,
@@ -100,57 +101,42 @@ export function BloqueOperacionSTR({
     ? Math.round((adrFinal * occFinal * 365) / 12)
     : null;
 
-  // ─── Override handlers ───
-  function enableAdrOverride() {
-    if (adrDerivado != null) setState({ adrOverride: adrDerivado });
-  }
+  // ─── Restaurar al valor estimado (override → null) ───
   function resetAdrOverride() { setState({ adrOverride: null }); }
-  function enableOccOverride() { setState({ occOverride: occDerivada }); }
   function resetOccOverride() { setState({ occOverride: null }); }
 
-  // ─── Local buffers para inputs (iter 2026-05-10) ───
-  // Permitir borrar el contenido sin colapsar el override. La validación
-  // (parse a número, commit a state) ocurre en blur.
-  const [adrBuffer, setAdrBuffer] = useState<string>(
-    state.adrOverride !== null ? String(state.adrOverride) : "",
-  );
-  const [occBuffer, setOccBuffer] = useState<string>(
-    state.occOverride !== null ? String(Math.round(state.occOverride * 100)) : "",
-  );
-  // Sync cuando override se cambia desde afuera (ej. "Usar sugerido" reset).
-  useEffect(() => {
-    setAdrBuffer(state.adrOverride !== null ? String(state.adrOverride) : "");
-  }, [state.adrOverride]);
-  useEffect(() => {
-    setOccBuffer(state.occOverride !== null ? String(Math.round(state.occOverride * 100)) : "");
-  }, [state.occOverride]);
-
-  function commitAdrBuffer() {
-    const trimmed = adrBuffer.trim();
-    if (trimmed === "") {
-      // Empty → mantener override pero con valor inválido implícito hace que
-      // adrFinal caiga al derivado. Mejor reset explícito.
-      setState({ adrOverride: null });
-      return;
-    }
-    const num = Number(trimmed);
-    if (!Number.isFinite(num) || num <= 0) {
-      setState({ adrOverride: null });
-      return;
-    }
-    setState({ adrOverride: Math.round(num) });
+  // Tarifa: edición directa de la caja → setea override. Vacío / igual a la
+  // tarifa sugerida → vuelve a "estimado" (override null). El display de la caja
+  // usa el override si existe, si no la derivada (ver `value` del MoneyInput).
+  function onTarifaChange(raw: string) {
+    const n = Number(raw);
+    const esOverride = Number.isFinite(n) && n > 0 && (adrDerivado == null || Math.round(n) !== adrDerivado);
+    setState({ adrOverride: esOverride ? Math.round(n) : null });
   }
+
+  // ─── Buffer local de ocupación (input %) ───
+  // El input muestra la banda derivada cuando no hay override, o el override.
+  // La validación (parse, comparar con la banda) ocurre en blur.
+  const [occBuffer, setOccBuffer] = useState<string>(
+    state.occOverride !== null
+      ? String(Math.round(state.occOverride * 100))
+      : String(Math.round(occDerivada * 100)),
+  );
+  useEffect(() => {
+    setOccBuffer(
+      state.occOverride !== null
+        ? String(Math.round(state.occOverride * 100))
+        : String(Math.round(occDerivada * 100)),
+    );
+  }, [state.occOverride, occDerivada]);
+
   function commitOccBuffer() {
     const trimmed = occBuffer.trim();
-    if (trimmed === "") {
-      setState({ occOverride: null });
-      return;
-    }
+    if (trimmed === "") { setState({ occOverride: null }); return; }
     const pct = Number(trimmed);
-    if (!Number.isFinite(pct) || pct <= 0 || pct > 95) {
-      setState({ occOverride: null });
-      return;
-    }
+    if (!Number.isFinite(pct) || pct <= 0 || pct > 95) { setState({ occOverride: null }); return; }
+    // Coincide con la banda derivada → no es override (queda "Estimado por Franco").
+    if (Math.round(occDerivada * 100) === Math.round(pct)) { setState({ occOverride: null }); return; }
     setState({ occOverride: pct / 100 });
   }
 
@@ -160,139 +146,77 @@ export function BloqueOperacionSTR({
         Ingresos estimados Airbnb
       </div>
 
-      {/* ── HÉROE: Ingreso mensual estimado (resultado primero) ──
-          Border-left Ink con esquinas izquierdas cuadradas (regla design
-          system). El KPI del ingreso es el dominante; tarifa y ocupación
-          quedan como breakdown de soporte debajo. */}
-      <div
-        className="rounded-r-lg p-4"
-        style={{
-          borderLeft: "3px solid var(--franco-text)",
-          borderTopLeftRadius: 0,
-          borderBottomLeftRadius: 0,
-          background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
-        }}
-      >
-        <p className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)] m-0 mb-1.5 flex items-center gap-2">
-          <span className="flex items-center gap-1.5">
+      {/* ── Resultado: ingreso mensual estimado (derivado, no editable) ──
+          Línea de resumen modesta (un escalón sobre el valor de campo), sin
+          caja ni border-left: se integra al lenguaje de la card. */}
+      <div>
+        <div className="flex items-baseline justify-between gap-x-3 gap-y-1 flex-wrap">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--franco-text-secondary)]">
             Ingreso mensual estimado
             <InfoTooltip content="Lo que entra a tu bolsillo cada mes en promedio, antes de descontar gastos, comisiones y crédito hipotecario. Calculado como tarifa × ocupación × 30 días." />
           </span>
-          <span className="inline-flex items-center gap-1 normal-case tracking-normal font-normal text-[var(--franco-text-muted)]">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--franco-text)] animate-pulse" aria-hidden />
-            live
-          </span>
-        </p>
-
-        {adrBaselineSugerido == null ? (
-          <p className="font-body text-[13px] text-[var(--franco-text-muted)] m-0 flex items-center gap-2">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--franco-text)] animate-pulse" aria-hidden />
-            Esperando estimación de mercado…
-          </p>
-        ) : (
-          <>
-            {/* KPI dominante del ingreso (Mono Bold) + qualifier "bruto" sutil */}
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono text-[26px] font-bold text-[var(--franco-text)] leading-none">
+          {adrBaselineSugerido == null ? (
+            <span className="flex items-center gap-1.5 font-body text-[12px] text-[var(--franco-text-muted)]">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--franco-text)] animate-pulse" aria-hidden />
+              Esperando estimación de mercado…
+            </span>
+          ) : (
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-mono text-[18px] font-semibold text-[var(--franco-text)] leading-none">
                 {revenueMensual != null ? fmtCLP(revenueMensual) : "—"}
               </span>
               <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">/mes · bruto</span>
-            </div>
+            </span>
+          )}
+        </div>
 
-            {/* Breakdown de soporte: tarifa de mercado, tu tarifa (override),
-                ocupación (override). Overrides inline intactos. */}
-            <div className="space-y-1.5 mt-3 pt-3 border-t border-dashed border-[var(--franco-border)]">
-              <div className="flex justify-between font-mono text-[11px] text-[var(--franco-text-muted)]">
-                <span className="flex items-center gap-1.5">
-                  Tarifa diaria promedio del mercado
-                  <InfoTooltip content="Lo que cobran por noche, en promedio, los Airbnb parecidos al tuyo en esta zona." />
-                </span>
-                <span>{fmtCLP(adrBaselineSugerido)}</span>
+        {/* Tarifa diaria + Ocupación — variables editables que producen el
+            resultado. Cajas como el resto de los campos, con marcador de estado. */}
+        <div className="mt-3 pt-4 border-t border-dashed border-[var(--franco-border)]">
+          <div className="grid grid-cols-2 gap-3">
+            {/* Tu tarifa diaria */}
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Tu tarifa diaria</span>
+                <InfoTooltip content="Lo que vas a cobrar por noche, anclado a la tarifa de mercado de la zona. Es la base del cálculo de ingresos." />
+              </span>
+              <MoneyInput
+                className={inputBase}
+                value={adrEsOverride ? String(state.adrOverride) : (adrDerivado != null ? String(adrDerivado) : "")}
+                onChange={onTarifaChange}
+              />
+              <CampoEstado edited={adrEsOverride} onRestore={resetAdrOverride}>
+                {adrBaselineSugerido != null && <>mercado sugiere {fmtCLP(adrBaselineSugerido)}/noche</>}
+              </CampoEstado>
+            </label>
+
+            {/* Ocupación estabilizada */}
+            <label className="block">
+              <span className="flex items-center gap-1.5 mb-1.5">
+                <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">Ocupación (mes 7+)</span>
+                <InfoTooltip content="Porcentaje del año que el depto está reservado. 'Estabilizada' = cuando ya llevas más de 6 meses operando, tienes reseñas y el listing maduró." />
+              </span>
+              <div className="relative">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={occBuffer}
+                  onChange={(e) => setOccBuffer(e.target.value)}
+                  onBlur={commitOccBuffer}
+                  className={`${inputBase} pr-8 text-right`}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">%</span>
               </div>
+              <CampoEstado edited={occEsOverride} onRestore={resetOccOverride}>
+                banda {(occDerivada * 100).toFixed(0)}% (mes 7+)
+              </CampoEstado>
+            </label>
+          </div>
 
-              {/* Tu tarifa diaria estimada — editable (interna: adrAjustado).
-                  Sin uplift por edificio/habilitación (factores neutralizados a
-                  1.00): la base = tarifa de mercado, salvo override manual. */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
-                <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
-                  Tu tarifa diaria estimada
-                  <InfoTooltip content="Lo que vas a cobrar por noche, anclado a la tarifa de mercado de la zona. Es la base del cálculo de ingresos." />
-                </span>
-                {!adrEsOverride ? (
-                  <span className="flex items-center gap-2">
-                    <span className="font-mono text-[13px] font-semibold text-[var(--franco-text)]">
-                      {adrDerivado != null ? fmtCLP(adrDerivado) : "—"}/noche
-                    </span>
-                    <button
-                      type="button"
-                      onClick={enableAdrOverride}
-                      className="font-mono text-[10px] text-[var(--franco-text-muted)] underline decoration-dotted hover:text-[var(--franco-text)]"
-                    >
-                      Editar manualmente
-                    </button>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={adrBuffer}
-                      onChange={(e) => setAdrBuffer(e.target.value)}
-                      onBlur={commitAdrBuffer}
-                      placeholder="—"
-                      className="w-28 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
-                    />
-                    <FieldEstadoTag estado="modificado" />
-                    <UsarEstimacion onClick={resetAdrOverride} label="Usar estimación" />
-                  </span>
-                )}
-              </div>
-
-              {/* Ocupación — editable */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-dashed border-[var(--franco-border)]">
-                <span className="flex items-center gap-1.5 font-mono text-[12px] font-semibold text-[var(--franco-text)]">
-                  Ocupación estabilizada (mes 7+)
-                  <InfoTooltip content="Porcentaje del año que el depto está reservado. 'Estabilizada' = cuando ya llevas más de 6 meses operando, tienes reseñas y el listing maduró." />
-                </span>
-                {!occEsOverride ? (
-                  <span className="flex items-center gap-2">
-                    <span className="font-mono text-[13px] font-semibold text-[var(--franco-text)]">
-                      {(occDerivada * 100).toFixed(0)}%
-                    </span>
-                    <button
-                      type="button"
-                      onClick={enableOccOverride}
-                      className="font-mono text-[10px] text-[var(--franco-text-muted)] underline decoration-dotted hover:text-[var(--franco-text)]"
-                    >
-                      Editar manualmente
-                    </button>
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={occBuffer}
-                      onChange={(e) => setOccBuffer(e.target.value)}
-                      onBlur={commitOccBuffer}
-                      placeholder="—"
-                      className="w-20 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
-                    />
-                    <span className="font-mono text-[12px]">%</span>
-                    <FieldEstadoTag estado="modificado" />
-                    <UsarEstimacion onClick={resetOccOverride} label="Usar estimación" />
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-2 italic">
-              {(adrEsOverride || occEsOverride)
-                ? "Override manual activo — el motor usa tus valores en lugar de los derivados de los ejes."
-                : "Banda operacional: " + banda.replace(/_/g, " ") + "."}
-            </p>
-          </>
-        )}
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-2 italic">
+            Banda operacional: {banda.replace(/_/g, " ")}.
+          </p>
+        </div>
       </div>
 
       {/* ── Ajusta los supuestos (demotado, debajo del ingreso) ──
