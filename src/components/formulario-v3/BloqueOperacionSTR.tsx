@@ -25,6 +25,7 @@
 import { useEffect, useState } from "react";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
+import { FieldEstadoTag, UsarEstimacion } from "./FieldEstado";
 import {
   fmtCLP,
   gestionOptionToMotor,
@@ -241,16 +242,8 @@ export function BloqueOperacionSTR({
                       placeholder="—"
                       className="w-28 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
                     />
-                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
-                      Ajustado manualmente
-                    </span>
-                    <button
-                      type="button"
-                      onClick={resetAdrOverride}
-                      className="font-mono text-[10px] text-[var(--franco-text-muted)] underline decoration-dotted hover:text-[var(--franco-text)]"
-                    >
-                      Usar sugerido
-                    </button>
+                    <FieldEstadoTag estado="modificado" />
+                    <UsarEstimacion onClick={resetAdrOverride} label="Usar estimación" />
                   </span>
                 )}
               </div>
@@ -286,16 +279,8 @@ export function BloqueOperacionSTR({
                       className="w-20 h-8 px-2 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] font-mono text-[12px] text-right"
                     />
                     <span className="font-mono text-[12px]">%</span>
-                    <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
-                      Ajustado manualmente
-                    </span>
-                    <button
-                      type="button"
-                      onClick={resetOccOverride}
-                      className="font-mono text-[10px] text-[var(--franco-text-muted)] underline decoration-dotted hover:text-[var(--franco-text)]"
-                    >
-                      Usar sugerido
-                    </button>
+                    <FieldEstadoTag estado="modificado" />
+                    <UsarEstimacion onClick={resetOccOverride} label="Usar estimación" />
                   </span>
                 )}
               </div>

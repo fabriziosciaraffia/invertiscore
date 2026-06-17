@@ -225,6 +225,46 @@ export function markFieldEdited(
   return patch;
 }
 
+/** Inverso de markFieldEdited: restaura un campo al valor estimado por Franco y
+ * lo quita de editedFields (vuelve a contar como "no editado", de modo que el
+ * prefill puede volver a mandar). Devuelve el patch — helper puro. */
+export function unmarkFieldEdited(
+  editedFields: string[],
+  key: keyof WizardV3State,
+  value: string,
+): Partial<WizardV3State> {
+  return {
+    [key]: value,
+    editedFields: editedFields.filter((f) => f !== (key as string)),
+  } as Partial<WizardV3State>;
+}
+
+/** Labels human-readable por key de campo, alineadas con editedFields. Si una
+ * key falta acá, los consumidores caen a la key cruda. (Movido desde el viejo
+ * ResumenCard para compartirlo con los marcadores de estado del Paso 3.) */
+export const FIELD_LABELS: Record<string, string> = {
+  precio: "Precio",
+  piePct: "Pie",
+  plazoCredito: "Plazo",
+  tasaInteres: "Tasa",
+  arriendo: "Arriendo",
+  vacanciaPct: "Vacancia",
+  adminPct: "Gestión del arriendo",
+  arriendoEstac: "Arriendo estac.",
+  arriendoBodega: "Arriendo bodega",
+  gastos: "Gastos comunes",
+  contribuciones: "Contribuciones",
+  modoGestion: "Modo gestión",
+  comisionAdminPct: "Comisión administrador",
+  costoElectricidad: "Electricidad",
+  costoAgua: "Agua",
+  costoWifi: "WiFi",
+  costoInsumos: "Insumos",
+  mantencionMensual: "Mantención",
+  estaAmoblado: "Amoblado",
+  costoAmoblamiento: "Costo de amoblar",
+};
+
 /** Campos que son ESTIMACIONES de la propiedad: se reinician cuando cambia la
  * identidad (dirección/comuna), porque pertenecían a la propiedad anterior. NO
  * incluye las preferencias de financiamiento (piePct/plazoCredito/tasaInteres),

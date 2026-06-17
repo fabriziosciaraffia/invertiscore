@@ -13,17 +13,19 @@
 //   - "Saltar y analizar" → onAnalizar directo
 //   - "Continuar a ajuste fino →" → onAvanzar4
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Loader2, Check, X, ArrowRight, ChevronDown } from "lucide-react";
+import { Loader2, Check, ArrowRight, ChevronDown } from "lucide-react";
 import { StateBox } from "@/components/ui/StateBox";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { MoneyInput } from "@/components/ui/MoneyInput";
 import { BloqueOperacionSTR } from "./BloqueOperacionSTR";
+import { CampoEstado } from "./FieldEstado";
 import {
   fmtCLP,
   fmtUF,
   markFieldEdited,
+  unmarkFieldEdited,
   parseDecimalLocale,
   type Modalidad,
   type WizardV3State,
@@ -62,6 +64,7 @@ export function Paso3Modalidad({
   ufCLP,
   tierInfo,
   suggestions,
+  costDefaults,
   airRoi,
   onAnalizar,
   onAvanzar4,
@@ -79,6 +82,16 @@ export function Paso3Modalidad({
     gastos: number | null;
     contribuciones: number | null;
   };
+  /** Defaults de tipología (getCostosDefault) para restaurar costos STR /
+   * amoblamiento vía "Usar estimación de Franco". */
+  costDefaults: {
+    costoElectricidad: number;
+    costoAgua: number;
+    costoWifi: number;
+    costoInsumos: number;
+    mantencion: number;
+    costoAmoblamiento: number;
+  };
   airRoi: AirRoiSuggestion;
   /** "Saltar y analizar" → POST directo. */
   onAnalizar: () => void;
@@ -90,18 +103,6 @@ export function Paso3Modalidad({
   submitting: boolean;
   submitError: string;
 }) {
-  // Banner introductorio dismissable
-  const [introDismissed, setIntroDismissed] = useState(false);
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("franco_p3_intro_dismissed") === "1") setIntroDismissed(true);
-    } catch { /* private mode */ }
-  }, []);
-  function dismissIntro() {
-    try { sessionStorage.setItem("franco_p3_intro_dismissed", "1"); } catch { /* graceful */ }
-    setIntroDismissed(true);
-  }
-
   // Costos operativos STR collapsible
   const [strCostsOpen, setStrCostsOpen] = useState(true);
 
@@ -224,23 +225,6 @@ export function Paso3Modalidad({
         </p>
       </div>
 
-      {/* Banner introductorio */}
-      {!introDismissed && (
-        <div className="flex items-start gap-3">
-          <p className="font-mono text-[11px] m-0 flex-1 leading-[1.6] text-[var(--franco-text-secondary)]">
-            ● Completa los bloques operacionales abajo. Defaults son sugerencias del mercado — edita si tienes data real.
-          </p>
-          <button
-            type="button"
-            onClick={dismissIntro}
-            aria-label="Cerrar mensaje"
-            className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] transition-colors"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
       {/* ════ Zonas operacionales — agrupadas por pertenencia (LTR / STR /
           Comunes), orden LTR → STR → Comunes. Los headers de zona son la
           estructura (sin letras A/B/C/D); las intros aparecen solo en AMBAS.
@@ -265,11 +249,17 @@ export function Paso3Modalidad({
                   value={state.arriendo}
                   onChange={(raw) => trackEdit("arriendo", raw)}
                 />
-                {suggestions.arriendo && (
-                  <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                    Mercado sugiere {fmtCLP(suggestions.arriendo)}
-                    {suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.
-                  </p>
+                {(state.editedFields.includes("arriendo") || suggestions.arriendo != null) && (
+                  <CampoEstado
+                    edited={state.editedFields.includes("arriendo")}
+                    onRestore={suggestions.arriendo != null
+                      ? () => setState(unmarkFieldEdited(state.editedFields, "arriendo", String(suggestions.arriendo)))
+                      : undefined}
+                  >
+                    {suggestions.arriendo != null && (
+                      <>Mercado sugiere {fmtCLP(suggestions.arriendo)}{suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.</>
+                    )}
+                  </CampoEstado>
                 )}
               </label>
 
@@ -397,9 +387,12 @@ export function Paso3Modalidad({
                       value={state.costoAmoblamiento}
                       onChange={(raw) => trackEdit("costoAmoblamiento", raw)}
                     />
-                    <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
+                    <CampoEstado
+                      edited={state.editedFields.includes("costoAmoblamiento")}
+                      onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoAmoblamiento", String(costDefaults.costoAmoblamiento)))}
+                    >
                       Default escalado por dormitorios × habilitación.
-                    </p>
+                    </CampoEstado>
                   </div>
                 )}
               </div>
@@ -462,37 +455,42 @@ export function Paso3Modalidad({
                     value={state.costoElectricidad}
                     onChange={(v) => trackEdit("costoElectricidad", v)}
                     tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
+                    edited={state.editedFields.includes("costoElectricidad")}
+                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoElectricidad", String(costDefaults.costoElectricidad)))}
                   />
                   <CostInput
                     label="Agua"
                     value={state.costoAgua}
                     onChange={(v) => trackEdit("costoAgua", v)}
                     tooltip="Cuenta de agua mensual promedio. La paga el dueño."
+                    edited={state.editedFields.includes("costoAgua")}
+                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoAgua", String(costDefaults.costoAgua)))}
                   />
                   <CostInput
                     label="Internet"
                     value={state.costoWifi}
                     onChange={(v) => trackEdit("costoWifi", v)}
                     tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
+                    edited={state.editedFields.includes("costoWifi")}
+                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoWifi", String(costDefaults.costoWifi)))}
                   />
                   <CostInput
                     label="Insumos"
                     value={state.costoInsumos}
                     onChange={(v) => trackEdit("costoInsumos", v)}
                     tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
+                    edited={state.editedFields.includes("costoInsumos")}
+                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoInsumos", String(costDefaults.costoInsumos)))}
                   />
                   <CostInput
                     label="Mantención"
                     value={state.mantencionMensual}
                     onChange={(v) => trackEdit("mantencionMensual", v)}
                     tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
+                    edited={state.editedFields.includes("mantencionMensual")}
+                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "mantencionMensual", String(costDefaults.mantencion)))}
                   />
                 </div>
-              )}
-              {strCostsOpen && (
-                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] m-0">
-                  Defaults escalados por tipología (excepto Internet, que es plan fijo). Edita si tienes data real.
-                </p>
               )}
             </div>
           </section>
@@ -519,10 +517,17 @@ export function Paso3Modalidad({
                 value={state.gastos}
                 onChange={(raw) => trackEdit("gastos", raw)}
               />
-              {suggestions.gastos && (
-                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                  Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).
-                </p>
+              {(state.editedFields.includes("gastos") || suggestions.gastos != null) && (
+                <CampoEstado
+                  edited={state.editedFields.includes("gastos")}
+                  onRestore={suggestions.gastos != null
+                    ? () => setState(unmarkFieldEdited(state.editedFields, "gastos", String(suggestions.gastos)))
+                    : undefined}
+                >
+                  {suggestions.gastos != null && (
+                    <>Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).</>
+                  )}
+                </CampoEstado>
               )}
             </label>
 
@@ -538,10 +543,17 @@ export function Paso3Modalidad({
                 value={state.contribuciones}
                 onChange={(raw) => trackEdit("contribuciones", raw)}
               />
-              {suggestions.contribuciones && (
-                <p className="font-mono text-[11px] text-[var(--franco-text-muted)] mt-1 m-0">
-                  Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).
-                </p>
+              {(state.editedFields.includes("contribuciones") || suggestions.contribuciones != null) && (
+                <CampoEstado
+                  edited={state.editedFields.includes("contribuciones")}
+                  onRestore={suggestions.contribuciones != null
+                    ? () => setState(unmarkFieldEdited(state.editedFields, "contribuciones", String(suggestions.contribuciones)))
+                    : undefined}
+                >
+                  {suggestions.contribuciones != null && (
+                    <>Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).</>
+                  )}
+                </CampoEstado>
               )}
             </label>
           </div>
@@ -629,13 +641,17 @@ function ZoneHeader({ name, intro }: { name: string; intro?: string }) {
 }
 
 function CostInput({
-  label, value, onChange, tooltip,
+  label, value, onChange, tooltip, edited, onRestore,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   /** Opcional. 1 frase explicando el campo en lenguaje no técnico. */
   tooltip?: string;
+  /** Campo en editedFields → marcador "Modificado por ti" + restaurar. */
+  edited: boolean;
+  /** Restaura al default de tipología (getCostosDefault). */
+  onRestore: () => void;
 }) {
   return (
     <label className="block">
@@ -650,6 +666,7 @@ function CostInput({
         value={value}
         onChange={onChange}
       />
+      <CampoEstado edited={edited} onRestore={onRestore} />
     </label>
   );
 }

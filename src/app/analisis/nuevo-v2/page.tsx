@@ -337,6 +337,11 @@ export default function NuevoAnalisisV3Page() {
     && state.direccion === state.direccionConfirmada);
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
+  // Defaults de tipología (mismos que usa el efecto de escalado de costos) —
+  // plomeados a Paso3 para que "Usar estimación de Franco" pueda restaurar los
+  // costos STR / amoblamiento al valor estimado actual.
+  const costDefaults = getCostosDefault(parseInt(state.dormitorios, 10) || 2, state.habilitacion);
+
   function goNext() {
     if (step === 1 && canAdvanceFromStep1) { setSlideDir("left"); setStep(2); }
     else if (step === 2 && canAdvanceFromStep2) { setSlideDir("left"); setStep(3); }
@@ -834,6 +839,7 @@ export default function NuevoAnalisisV3Page() {
                   gastos: suggestions.gastos,
                   contribuciones: suggestions.contribuciones,
                 }}
+                costDefaults={costDefaults}
                 airRoi={airRoi}
                 onAnalizar={handleAnalizar}
                 onAvanzar4={() => { setSlideDir("left"); setStep(4); }}
