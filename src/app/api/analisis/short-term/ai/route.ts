@@ -415,8 +415,8 @@ Responde SOLO con el JSON.`;
     // del motor, lo completamos con el valor autoritativo del input.
     if (!aiResult.veredicto) aiResult.veredicto = veredictoMotor;
 
-    // ─── Monitor engine-isms STR (revenue / ramp-up / "del motor") — solo detección, no reescribe. ───
-    const STR_DRIFT_RE = /\brevenue\b|ramp-?up|del motor|proyecci[óo]n\s+del\s+motor/i;
+    // ─── Monitor engine-isms STR (revenue / ramp-up / "el|del motor") — solo detección, no reescribe. ───
+    const STR_DRIFT_RE = /\brevenue\b|ramp-?up|\b(el|del)\s+motor\b|proyecci[óo]n\s+del\s+motor/i;
     const strDriftHits: string[] = [];
     const scanStrings = (node: unknown, path: string): void => {
       if (typeof node === "string") {
