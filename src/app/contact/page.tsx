@@ -19,10 +19,10 @@ export default function ContactPage() {
           <p>
             Escríbenos a{" "}
             <a
-              href="mailto:contacto@refranco.ai"
+              href="mailto:hola@refranco.ai"
               className="text-[#C8323C] font-semibold hover:underline"
             >
-              contacto@refranco.ai
+              hola@refranco.ai
             </a>
           </p>
         </div>
