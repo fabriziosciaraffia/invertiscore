@@ -25,6 +25,40 @@ import {
 //
 // El flujo: paso 4 (logueado, sin crédito) → este endpoint → /checkout?
 // product=single&analysisId=<id> → Flow → confirm desbloquea (+ IA según tipo).
+
+// ─── Builder de la fila LTR locked ──────────────────────
+// Construcción de la fila LTR bloqueada (runAnalysis local + objeto insert),
+// extraída para compartirla entre la rama LTR-single y la rama AMBAS. Mismo
+// shape que /api/analisis (cobrado) salvo is_premium (default false) y
+// pending_payment=true. NO incluye user_id/creator_name (los pone el caller,
+// que tiene el `user` autenticado a mano).
+function buildLockedLtrRow(body: AnalisisInput, ufValue: number) {
+  const result = runAnalysis(body, ufValue);
+  return {
+    nombre: body.nombre,
+    comuna: body.comuna,
+    ciudad: body.ciudad,
+    direccion: body.direccion || null,
+    tipo: body.tipo,
+    tipo_analisis: "long-term",
+    methodology_version: "v2",
+    dormitorios: body.dormitorios,
+    banos: body.banos,
+    superficie: body.superficie,
+    antiguedad: body.antiguedad,
+    precio: body.precio,
+    arriendo: body.arriendo,
+    gastos: body.gastos,
+    contribuciones: body.contribuciones,
+    score: result.score,
+    desglose: result.desglose,
+    resumen: result.resumen,
+    results: result,
+    input_data: body,
+    pending_payment: true,
+  };
+}
+
 export async function POST(request: Request) {
   try {
     // ─── INSTRUMENTACIÓN TEMPORAL (quitar tras medir el bottleneck) ───
@@ -39,19 +73,80 @@ export async function POST(request: Request) {
     const { user } = auth;
     console.log(`[LOCKED-TIMING] auth (createClient + getUser): ${Date.now() - t0}ms`);
 
-    const body: AnalisisInput = await request.json();
+    const rawBody = await request.json();
 
-    // Discriminador de modalidad. AMBAS NO pasa por acá (el flujo Ambas crea
-    // LTR+STR por separado, no una sola fila bloqueada). LTR vs STR: el payload
-    // STR trae precioCompra / tipoAnalisis="short-term" (mismos marcadores que
-    // antes, ahora para RUTEAR en vez de rechazar).
-    const maybeMod = body as unknown as { tipoAnalisis?: string; precioCompra?: unknown; modalidad?: string };
+    // Discriminador de modalidad. LTR vs STR (single): el payload STR trae
+    // precioCompra / tipoAnalisis="short-term". AMBAS: trae tipoAnalisis="both"
+    // con sub-payloads { ltr, str } — crea DOS filas locked en este request.
+    const maybeMod = rawBody as {
+      tipoAnalisis?: string;
+      precioCompra?: unknown;
+      modalidad?: string;
+      ltr?: unknown;
+      str?: unknown;
+    };
+
+    // ─── Rama AMBAS: dos filas locked (LTR + STR), sin cobro ───
+    // Body { tipoAnalisis:"both", ltr:<payload LTR>, str:<payload STR> }. Ambas
+    // nacen pending_payment=true / is_premium=false; confirm las desbloquea y
+    // premia (ver payments/confirm rama companion_str_id). Devuelve { ltrId, strId }
+    // para que el checkout lleve el LTR en analysis_id y el STR como companion.
     if (maybeMod.tipoAnalisis === "both" || maybeMod.modalidad === "both") {
-      return NextResponse.json(
-        { error: "El flujo Ambas no se crea por este endpoint" },
-        { status: 400 },
-      );
+      const ltrPayload = maybeMod.ltr as AnalisisInput | undefined;
+      const strPayload = maybeMod.str as ShortTermAnalysisBody | undefined;
+      if (!ltrPayload || !strPayload) {
+        return NextResponse.json(
+          { error: "Faltan los payloads ltr/str para el flujo Ambas" },
+          { status: 400 },
+        );
+      }
+
+      const ufBoth = await getUFValue();
+      // STR primero: puede fallar (AirROI caído / sin datos) con su propio
+      // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
+      const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth);
+      if (!builtStr.ok) return builtStr.response;
+
+      const creatorName =
+        user?.user_metadata?.nombre || user?.user_metadata?.full_name || "Anónimo";
+
+      const { data: ltrData, error: ltrErr } = await supabase
+        .from("analisis")
+        .insert({
+          ...buildLockedLtrRow(ltrPayload, ufBoth),
+          user_id: user.id,
+          creator_name:
+            user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
+          is_premium: false,
+        })
+        .select("id")
+        .single();
+      if (ltrErr || !ltrData) {
+        console.error("[analisis/locked] BOTH LTR insert error:", ltrErr);
+        return NextResponse.json({ error: "Error al guardar el análisis" }, { status: 500 });
+      }
+
+      const { data: strData, error: strErr } = await supabase
+        .from("analisis")
+        .insert({
+          ...builtStr.row,
+          user_id: user.id,
+          creator_name: creatorName,
+          is_premium: false,
+          pending_payment: true,
+        })
+        .select("id")
+        .single();
+      if (strErr || !strData) {
+        console.error("[analisis/locked] BOTH STR insert error:", strErr);
+        return NextResponse.json({ error: "Error al guardar el análisis" }, { status: 500 });
+      }
+
+      console.log(`[LOCKED-TIMING] TOTAL handler (BOTH): ${Date.now() - t0}ms`);
+      return NextResponse.json({ ltrId: ltrData.id, strId: strData.id });
     }
+
+    const body = rawBody as AnalisisInput;
     const isStr = maybeMod.tipoAnalisis === "short-term" || maybeMod.precioCompra !== undefined;
 
     // ─── Rama STR: motor compartido (incluye AirROI), fila bloqueada ───
@@ -88,47 +183,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ id: strData.id });
     }
 
-    // ─── Rama LTR (sin cambios): runAnalysis + insert bloqueado ───
-    // Mismo motor y misma UF explícita que /api/analisis (LTR cobrado).
+    // ─── Rama LTR (single): runAnalysis + insert bloqueado ───
+    // Mismo motor y misma UF explícita que /api/analisis (LTR cobrado). El row
+    // sale de buildLockedLtrRow (compartido con la rama AMBAS); is_premium queda
+    // en su default false y pending_payment=true (incluido en el row).
     const tUf = Date.now();
     const ufValue = await getUFValue();
     console.log(`[LOCKED-TIMING] getUFValue: ${Date.now() - tUf}ms`);
 
-    const tRun = Date.now();
-    const result = runAnalysis(body, ufValue);
-    console.log(`[LOCKED-TIMING] runAnalysis: ${Date.now() - tRun}ms`);
-
     const tIns = Date.now();
-
-    // Mismo insert que /api/analisis (route.ts), con dos diferencias:
-    //   - is_premium queda en su default false (NO se llama markPremium).
-    //   - pending_payment=true (oculta la fila del dashboard hasta el pago).
     const { data, error } = await supabase
       .from("analisis")
       .insert({
+        ...buildLockedLtrRow(body, ufValue),
         user_id: user.id,
-        nombre: body.nombre,
-        comuna: body.comuna,
-        ciudad: body.ciudad,
-        direccion: body.direccion || null,
-        tipo: body.tipo,
-        tipo_analisis: "long-term",
-        methodology_version: "v2",
-        dormitorios: body.dormitorios,
-        banos: body.banos,
-        superficie: body.superficie,
-        antiguedad: body.antiguedad,
-        precio: body.precio,
-        arriendo: body.arriendo,
-        gastos: body.gastos,
-        contribuciones: body.contribuciones,
-        score: result.score,
-        desglose: result.desglose,
-        resumen: result.resumen,
-        results: result,
-        input_data: body,
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
-        pending_payment: true,
       })
       .select("id")
       .single();

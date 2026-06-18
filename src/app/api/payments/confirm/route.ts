@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     if (flowStatus === 2) {
       const { data: payment, error: selectError } = await supabase
         .from("payments")
-        .select("id, user_id, product, amount, commerce_order, flow_order, quantity, analysis_id")
+        .select("id, user_id, product, amount, commerce_order, flow_order, quantity, analysis_id, payment_data")
         .eq("commerce_order", flowData.commerceOrder)
         .single();
 
@@ -96,6 +96,12 @@ export async function POST(request: Request) {
       }
 
       const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
+
+      // Flujo AMBAS pre-pago: el STR companion viaja en payment_data; el LTR va
+      // en analysis_id. UN solo crédito cubre ambas filas (paridad con el Ambas
+      // pagado: pre-cobro único + claim del segundo sin re-cobrar).
+      const companionStrId =
+        (payment.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
 
       if (userId && product === "single") {
         // Modelo nuevo: N créditos al ledger en UN grant (amount=quantity,
@@ -133,9 +139,12 @@ export async function POST(request: Request) {
             .select("tipo_analisis")
             .maybeSingle();
 
-          // Solo LTR: generateAiAnalysis asume el shape del motor long-term
-          // (results.metrics/desglose). STR usa otro endpoint de IA on-demand,
-          // así que no se toca aquí.
+          // LTR (single Y Ambas): generateAiAnalysis asume el shape del motor
+          // long-term (results.metrics/desglose). Se genera también en el flujo
+          // Ambas pre-pago para paridad con el Ambas PAGADO, donde /api/analisis
+          // genera la IA LTR inline al crear (route.ts) — así la vista LTR pelada
+          // (/analisis/<ltrId>) queda robusta. El STR companion NO se toca acá:
+          // usa su endpoint on-demand y la comparativa corre su propia narrativa.
           //
           // await (no IIFE fire-and-forget): en serverless un promise sin await
           // puede morir cuando se envía el response. try/catch para no romper el
@@ -147,6 +156,19 @@ export async function POST(request: Request) {
             } catch (e) {
               console.error("[payments/confirm] generateAiAnalysis diferida falló:", e);
             }
+          }
+
+          // AMBAS pre-pago: la 2ª fila (STR companion) se premia DIRECTO, sin
+          // consumir otro crédito (el único cobro ya cubrió ambas). El flip
+          // combinado is_premium + pending_payment va guardado por
+          // .eq("pending_payment", true) → idempotente ante reenvío de webhook.
+          // NO se genera IA STR acá (la comparativa la corre on-demand).
+          if (companionStrId) {
+            await supabase
+              .from("analisis")
+              .update({ is_premium: true, pending_payment: false })
+              .eq("id", companionStrId)
+              .eq("pending_payment", true);
           }
         }
       } else if (userId && product) {

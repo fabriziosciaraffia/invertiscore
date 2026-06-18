@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     // Get latest payment for this user
     const { data } = await admin
       .from("payments")
-      .select("id, commerce_order, product, amount, status, created_at, analysis_id")
+      .select("id, commerce_order, product, amount, status, created_at, analysis_id, payment_data")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
