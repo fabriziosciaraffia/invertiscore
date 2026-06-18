@@ -304,9 +304,10 @@ export const PROPERTY_ESTIMATE_FIELDS = [
  *    NO se re-dispara con el cambio de comuna (deps = dorm/habilitación), así
  *    que se setean explícitamente desde `costDefaults`.
  *  - editedFields → se quitan estos campos para que el prefill vuelva a mandar.
- *  - suggestionBaselines → se limpian las keys de estos campos (no quedan stale
- *    de la propiedad anterior). Inocuo a nivel correctness — el hint exige el
- *    campo editado y el reset lo des-edita — pero higiénico. */
+ *  - suggestionBaselines → se limpian las keys de estos campos + "adr"/"occ"
+ *    (no quedan stale de la propiedad anterior).
+ *  - adrOverride/occOverride → null: los overrides de tarifa/ocupación NO deben
+ *    sobrevivir al cambio de propiedad (eran de la propiedad anterior). */
 export function resetPropertyEstimatesPatch(
   editedFields: string[],
   suggestionBaselines: Record<string, number>,
@@ -331,9 +332,13 @@ export function resetPropertyEstimatesPatch(
     costoInsumos: String(costDefaults.costoInsumos),
     mantencionMensual: String(costDefaults.mantencion),
     costoAmoblamiento: String(costDefaults.costoAmoblamiento),
+    // Overrides de tarifa/ocupación (familia override) — no sobreviven al
+    // cambio de propiedad.
+    adrOverride: null,
+    occOverride: null,
     editedFields: editedFields.filter((f) => !reset.has(f)),
     suggestionBaselines: Object.fromEntries(
-      Object.entries(suggestionBaselines).filter(([k]) => !reset.has(k)),
+      Object.entries(suggestionBaselines).filter(([k]) => !reset.has(k) && k !== "adr" && k !== "occ"),
     ),
   };
 }

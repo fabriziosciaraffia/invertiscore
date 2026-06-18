@@ -30,6 +30,7 @@ import { CampoEstado } from "./FieldEstado";
 import {
   fmtCLP,
   gestionOptionToMotor,
+  omit,
   type WizardV3State,
 } from "./wizardV3State";
 
@@ -101,17 +102,39 @@ export function BloqueOperacionSTR({
     ? Math.round((adrFinal * occFinal * 365) / 12)
     : null;
 
-  // ─── Restaurar al valor estimado (override → null) ───
-  function resetAdrOverride() { setState({ adrOverride: null }); }
-  function resetOccOverride() { setState({ occOverride: null }); }
+  // ─── Hint reactivo (sub-2 C2, familia override). Baseline keyado "adr"/"occ"
+  // en suggestionBaselines = derivada al momento de setear el override. El hint
+  // aparece si la derivada se movió DESPUÉS (un param del depto la cambió) y
+  // restaurar cambiaría el valor. Mismo patrón que C1 (CampoEstado.hint). ──
+  const baseAdr = state.suggestionBaselines.adr;
+  const baseOcc = state.suggestionBaselines.occ;
+  const showHintAdr = adrEsOverride && adrDerivado != null && baseAdr != null
+    && Math.round(adrDerivado) !== Math.round(baseAdr)
+    && (adrFinal == null || Math.round(adrDerivado) !== Math.round(adrFinal));
+  const showHintOcc = occEsOverride && baseOcc != null
+    && Math.round(occDerivada * 100) !== Math.round(baseOcc * 100)
+    && Math.round(occFinal * 100) !== Math.round(occDerivada * 100);
 
-  // Tarifa: edición directa de la caja → setea override. Vacío / igual a la
-  // tarifa sugerida → vuelve a "estimado" (override null). El display de la caja
-  // usa el override si existe, si no la derivada (ver `value` del MoneyInput).
+  // ─── Restaurar al valor estimado (override → null) + limpiar baseline ───
+  function resetAdrOverride() {
+    setState({ adrOverride: null, suggestionBaselines: omit(state.suggestionBaselines, "adr") });
+  }
+  function resetOccOverride() {
+    setState({ occOverride: null, suggestionBaselines: omit(state.suggestionBaselines, "occ") });
+  }
+
+  // Tarifa: edición directa de la caja → setea override + baseline["adr"] =
+  // derivada actual. Vacío / igual a la tarifa sugerida → "estimado" (null) +
+  // limpia baseline. El display usa el override si existe, si no la derivada.
   function onTarifaChange(raw: string) {
     const n = Number(raw);
     const esOverride = Number.isFinite(n) && n > 0 && (adrDerivado == null || Math.round(n) !== adrDerivado);
-    setState({ adrOverride: esOverride ? Math.round(n) : null });
+    setState({
+      adrOverride: esOverride ? Math.round(n) : null,
+      suggestionBaselines: esOverride && adrDerivado != null
+        ? { ...state.suggestionBaselines, adr: adrDerivado }
+        : omit(state.suggestionBaselines, "adr"),
+    });
   }
 
   // ─── Buffer local de ocupación (input %) ───
@@ -130,14 +153,19 @@ export function BloqueOperacionSTR({
     );
   }, [state.occOverride, occDerivada]);
 
+  // Setea override + baseline["occ"] = banda derivada; si coincide con la banda
+  // o es inválido → "estimado" (null) + limpia baseline.
   function commitOccBuffer() {
     const trimmed = occBuffer.trim();
-    if (trimmed === "") { setState({ occOverride: null }); return; }
     const pct = Number(trimmed);
-    if (!Number.isFinite(pct) || pct <= 0 || pct > 95) { setState({ occOverride: null }); return; }
-    // Coincide con la banda derivada → no es override (queda "Estimado por Franco").
-    if (Math.round(occDerivada * 100) === Math.round(pct)) { setState({ occOverride: null }); return; }
-    setState({ occOverride: pct / 100 });
+    const esOverride = trimmed !== "" && Number.isFinite(pct) && pct > 0 && pct <= 95
+      && Math.round(occDerivada * 100) !== Math.round(pct);
+    setState({
+      occOverride: esOverride ? pct / 100 : null,
+      suggestionBaselines: esOverride
+        ? { ...state.suggestionBaselines, occ: occDerivada }
+        : omit(state.suggestionBaselines, "occ"),
+    });
   }
 
   return (
@@ -185,7 +213,13 @@ export function BloqueOperacionSTR({
                 value={adrEsOverride ? String(state.adrOverride) : (adrDerivado != null ? String(adrDerivado) : "")}
                 onChange={onTarifaChange}
               />
-              <CampoEstado edited={adrEsOverride} onRestore={resetAdrOverride}>
+              <CampoEstado
+                edited={adrEsOverride}
+                onRestore={resetAdrOverride}
+                hint={showHintAdr && adrDerivado != null
+                  ? { value: `${fmtCLP(adrDerivado)}/noche`, onUse: resetAdrOverride }
+                  : undefined}
+              >
                 {adrBaselineSugerido != null && <>mercado sugiere {fmtCLP(adrBaselineSugerido)}/noche</>}
               </CampoEstado>
             </label>
@@ -207,7 +241,13 @@ export function BloqueOperacionSTR({
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[12px] text-[var(--franco-text-muted)] pointer-events-none">%</span>
               </div>
-              <CampoEstado edited={occEsOverride} onRestore={resetOccOverride}>
+              <CampoEstado
+                edited={occEsOverride}
+                onRestore={resetOccOverride}
+                hint={showHintOcc
+                  ? { value: `${(occDerivada * 100).toFixed(0)}%`, onUse: resetOccOverride }
+                  : undefined}
+              >
                 banda {(occDerivada * 100).toFixed(0)}% (mes 7+)
               </CampoEstado>
             </label>
