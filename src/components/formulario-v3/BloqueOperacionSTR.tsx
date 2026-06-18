@@ -55,18 +55,6 @@ function calcBandaOcc(tipoEdificio: WizardV3State["tipoEdificio"], adminPro: boo
   return { banda, occ: STR_OCUPACION_TARGET[banda] };
 }
 
-// Factores ADR neutralizados a 1.00 (2026-06) para reflejar el motor: el uplift
-// de ADR por edificio/habilitación no tenía respaldo (ver STR_ADR_FACTOR en
-// short-term-engine.ts). El preview ya no infla la tarifa por estos ejes.
-// Estructura intacta por si se re-ancla con data.
-function calcFactorEdif(): number {
-  return 1.00;
-}
-
-function calcFactorHab(): number {
-  return 1.00;
-}
-
 const inputBase =
   "w-full h-10 rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[14px] font-body text-[var(--franco-text)] focus:border-signal-red focus:ring-1 focus:ring-signal-red/20 focus:outline-none";
 
@@ -84,13 +72,12 @@ export function BloqueOperacionSTR({
 }) {
   // ─── Derivaciones live ───
   const motor = gestionOptionToMotor(state.gestionOption);
-  const factorEdif = calcFactorEdif();
-  const factorHab = calcFactorHab();
-  const factorADRTotal = factorEdif * factorHab;
   const { banda, occ: occDerivada } = calcBandaOcc(state.tipoEdificio, motor.adminPro);
 
+  // ADR sugerido = baseline de mercado tal cual. No se aplica factor por edificio/
+  // habilitación: el uplift de ADR no tenía respaldo (ver STR_ADR_FACTOR, =1.00).
   const adrDerivado = adrBaselineSugerido != null
-    ? Math.round(adrBaselineSugerido * factorADRTotal)
+    ? Math.round(adrBaselineSugerido)
     : null;
 
   const adrEsOverride = state.adrOverride !== null;
