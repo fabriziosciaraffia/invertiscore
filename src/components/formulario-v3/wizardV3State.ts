@@ -129,6 +129,13 @@ export interface WizardV3State {
    * detecta el flag y reemplaza su CTA primario por "Volver al resumen →",
    * que vuelve a step=4 + limpia el flag. Null = no hay edit pendiente. */
   returnToStep: number | null;
+
+  /** Hint reactivo (affordance sub-2): por cada campo prellenado EDITADO,
+   * guarda la sugerencia de Franco al momento del último edit. Si la sugerencia
+   * viva se mueve después (un param del mismo depto la cambió), se ofrece
+   * "Franco sugiere $Y · usar". Se escribe en trackEdit y se limpia al
+   * restaurar / al cambiar de propiedad (bloque 1b). */
+  suggestionBaselines: Record<string, number>;
 }
 
 export const DEFAULT_STATE: WizardV3State = {
@@ -189,6 +196,7 @@ export const DEFAULT_STATE: WizardV3State = {
   sampleSize: 0,
   radiusUsed: null,
   returnToStep: null,
+  suggestionBaselines: {},
 };
 
 // ─── Helpers ──────────────────────────────────────────
@@ -239,6 +247,15 @@ export function unmarkFieldEdited(
   } as Partial<WizardV3State>;
 }
 
+/** Devuelve una copia del record sin la key dada (no muta). Usado para limpiar
+ * suggestionBaselines al restaurar un campo. */
+export function omit<V>(obj: Record<string, V>, key: string): Record<string, V> {
+  if (!(key in obj)) return obj;
+  const next = { ...obj };
+  delete next[key];
+  return next;
+}
+
 /** Labels human-readable por key de campo, alineadas con editedFields. Si una
  * key falta acá, los consumidores caen a la key cruda. (Movido desde el viejo
  * ResumenCard para compartirlo con los marcadores de estado del Paso 3.) */
@@ -286,9 +303,14 @@ export const PROPERTY_ESTIMATE_FIELDS = [
  *  - costos op STR + amoblamiento → default de tipología: su efecto de escalado
  *    NO se re-dispara con el cambio de comuna (deps = dorm/habilitación), así
  *    que se setean explícitamente desde `costDefaults`.
- *  - editedFields → se quitan estos campos para que el prefill vuelva a mandar. */
+ *  - editedFields → se quitan estos campos para que el prefill vuelva a mandar.
+ *  - suggestionBaselines → se limpian las keys de estos campos + "adr"/"occ"
+ *    (no quedan stale de la propiedad anterior).
+ *  - adrOverride/occOverride → null: los overrides de tarifa/ocupación NO deben
+ *    sobrevivir al cambio de propiedad (eran de la propiedad anterior). */
 export function resetPropertyEstimatesPatch(
   editedFields: string[],
+  suggestionBaselines: Record<string, number>,
   costDefaults: {
     costoElectricidad: number;
     costoAgua: number;
@@ -310,7 +332,14 @@ export function resetPropertyEstimatesPatch(
     costoInsumos: String(costDefaults.costoInsumos),
     mantencionMensual: String(costDefaults.mantencion),
     costoAmoblamiento: String(costDefaults.costoAmoblamiento),
+    // Overrides de tarifa/ocupación (familia override) — no sobreviven al
+    // cambio de propiedad.
+    adrOverride: null,
+    occOverride: null,
     editedFields: editedFields.filter((f) => !reset.has(f)),
+    suggestionBaselines: Object.fromEntries(
+      Object.entries(suggestionBaselines).filter(([k]) => !reset.has(k) && k !== "adr" && k !== "occ"),
+    ),
   };
 }
 

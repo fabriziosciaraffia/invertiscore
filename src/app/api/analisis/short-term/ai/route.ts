@@ -415,6 +415,25 @@ Responde SOLO con el JSON.`;
     // del motor, lo completamos con el valor autoritativo del input.
     if (!aiResult.veredicto) aiResult.veredicto = veredictoMotor;
 
+    // ─── Monitor engine-isms STR (revenue / ramp-up / "el|del motor") — solo detección, no reescribe. ───
+    const STR_DRIFT_RE = /\brevenue\b|ramp-?up|\b(el|del)\s+motor\b|proyecci[óo]n\s+del\s+motor/i;
+    const strDriftHits: string[] = [];
+    const scanStrings = (node: unknown, path: string): void => {
+      if (typeof node === "string") {
+        const m = node.match(STR_DRIFT_RE);
+        if (m) strDriftHits.push(`${path}="${m[0]}"`);
+        return;
+      }
+      if (Array.isArray(node)) { node.forEach((n, i) => scanStrings(n, `${path}[${i}]`)); return; }
+      if (node && typeof node === "object") {
+        Object.entries(node as Record<string, unknown>).forEach(([k, v]) => scanStrings(v, path ? `${path}.${k}` : k));
+      }
+    };
+    scanStrings(aiResult, "");
+    if (strDriftHits.length > 0) {
+      console.warn(`[STR-DRIFT] ${analysisId}: ${strDriftHits.length} hit(s) — ${strDriftHits.join(" | ")}`);
+    }
+
     await supabase.from("analisis").update({ ai_analysis: aiResult }).eq("id", analysisId);
 
     return NextResponse.json(aiResult);

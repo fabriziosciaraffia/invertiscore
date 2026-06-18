@@ -26,10 +26,18 @@ import {
   fmtUF,
   markFieldEdited,
   unmarkFieldEdited,
+  omit,
   parseDecimalLocale,
   type Modalidad,
   type WizardV3State,
 } from "./wizardV3State";
+
+// Campos prellenados con marcador/hint (familia editedFields). tarifa/ocupación
+// (familia override) viven en BloqueOperacionSTR (sub-2 C2), no acá.
+type HintFieldKey =
+  | "arriendo" | "gastos" | "contribuciones"
+  | "costoElectricidad" | "costoAgua" | "costoWifi" | "costoInsumos"
+  | "mantencionMensual" | "costoAmoblamiento";
 import type { AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 
 const OPCIONES: { key: "ltr" | "str" | "both"; label: string; sub: string; star?: boolean }[] = [
@@ -116,12 +124,64 @@ export function Paso3Modalidad({
     setState({ modalidad: key });
   }
 
+  // Resolver único de "sugerencia actual de Franco" por campo: mercado
+  // (suggestions) o default de tipología (costDefaults). Usado para escribir el
+  // baseline en trackEdit, para el showHint y para restaurar.
+  function currentSuggestionFor(key: HintFieldKey): number | null {
+    switch (key) {
+      case "arriendo": return suggestions.arriendo;
+      case "gastos": return suggestions.gastos;
+      case "contribuciones": return suggestions.contribuciones;
+      case "costoElectricidad": return costDefaults.costoElectricidad;
+      case "costoAgua": return costDefaults.costoAgua;
+      case "costoWifi": return costDefaults.costoWifi;
+      case "costoInsumos": return costDefaults.costoInsumos;
+      case "mantencionMensual": return costDefaults.mantencion;
+      case "costoAmoblamiento": return costDefaults.costoAmoblamiento;
+    }
+  }
+
   // setState + marcado en editedFields para los campos PRELLENADOS (arriendo,
   // gastos, contribuciones, costos op STR, amoblamiento). Sin esto, el prefill
   // de mercado/escalado los sobrescribía en silencio tras una edición manual.
-  // Mismo mecanismo que el Paso 2 (markFieldEdited en wizardV3State).
+  // Además escribe el baseline del hint = sugerencia al momento del edit (en el
+  // MISMO patch). Re-editar lo actualiza → el hint compara contra tu último edit.
   function trackEdit(key: keyof WizardV3State, value: string) {
-    setState(markFieldEdited(state.editedFields, key, value));
+    const sug = currentSuggestionFor(key as HintFieldKey);
+    setState({
+      ...markFieldEdited(state.editedFields, key, value),
+      ...(sug != null
+        ? { suggestionBaselines: { ...state.suggestionBaselines, [key]: sug } }
+        : {}),
+    });
+  }
+
+  // Restaurar (botón "Usar estimación" de sub-1 y el "usar" del hint comparten
+  // esto): aplica la sugerencia, des-edita el campo y limpia su baseline.
+  function restoreField(key: HintFieldKey, sugValue: number) {
+    setState({
+      ...unmarkFieldEdited(state.editedFields, key, String(sugValue)),
+      suggestionBaselines: omit(state.suggestionBaselines, key),
+    });
+  }
+
+  // Props de marcador/hint por campo: edited + onRestore + hint (cuando un param
+  // movió la sugerencia DESPUÉS del edit y restaurar cambiaría el valor).
+  function estadoProps(key: HintFieldKey) {
+    const sug = currentSuggestionFor(key);
+    const edited = state.editedFields.includes(key);
+    const base = state.suggestionBaselines[key];
+    const val = Number(state[key]) || 0;
+    const showHint = edited && sug != null && base != null
+      && Math.round(sug) !== Math.round(base)
+      && Math.round(sug) !== Math.round(val);
+    return {
+      edited,
+      onRestore: sug != null ? () => restoreField(key, sug) : undefined,
+      hint: showHint && sug != null
+        ? { value: fmtCLP(sug), onUse: () => restoreField(key, sug) }
+        : undefined,
+    };
   }
 
   const modLabel = OPCIONES.find((o) => o.key === mod);
@@ -250,12 +310,7 @@ export function Paso3Modalidad({
                   onChange={(raw) => trackEdit("arriendo", raw)}
                 />
                 {(state.editedFields.includes("arriendo") || suggestions.arriendo != null) && (
-                  <CampoEstado
-                    edited={state.editedFields.includes("arriendo")}
-                    onRestore={suggestions.arriendo != null
-                      ? () => setState(unmarkFieldEdited(state.editedFields, "arriendo", String(suggestions.arriendo)))
-                      : undefined}
-                  >
+                  <CampoEstado {...estadoProps("arriendo")}>
                     {suggestions.arriendo != null && (
                       <>Mercado sugiere {fmtCLP(suggestions.arriendo)}{suggestions.arriendoSampleSize ? ` · ${suggestions.arriendoSampleSize} comparables` : ""}.</>
                     )}
@@ -387,10 +442,7 @@ export function Paso3Modalidad({
                       value={state.costoAmoblamiento}
                       onChange={(raw) => trackEdit("costoAmoblamiento", raw)}
                     />
-                    <CampoEstado
-                      edited={state.editedFields.includes("costoAmoblamiento")}
-                      onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoAmoblamiento", String(costDefaults.costoAmoblamiento)))}
-                    >
+                    <CampoEstado {...estadoProps("costoAmoblamiento")}>
                       Default escalado por dormitorios × habilitación.
                     </CampoEstado>
                   </div>
@@ -455,40 +507,35 @@ export function Paso3Modalidad({
                     value={state.costoElectricidad}
                     onChange={(v) => trackEdit("costoElectricidad", v)}
                     tooltip="Cuenta de luz mensual promedio. En Airbnb la paga el dueño, no el huésped."
-                    edited={state.editedFields.includes("costoElectricidad")}
-                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoElectricidad", String(costDefaults.costoElectricidad)))}
+                    {...estadoProps("costoElectricidad")}
                   />
                   <CostInput
                     label="Agua"
                     value={state.costoAgua}
                     onChange={(v) => trackEdit("costoAgua", v)}
                     tooltip="Cuenta de agua mensual promedio. La paga el dueño."
-                    edited={state.editedFields.includes("costoAgua")}
-                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoAgua", String(costDefaults.costoAgua)))}
+                    {...estadoProps("costoAgua")}
                   />
                   <CostInput
                     label="Internet"
                     value={state.costoWifi}
                     onChange={(v) => trackEdit("costoWifi", v)}
                     tooltip="Plan de internet mensual. Es fijo, no varía con el tamaño del depto. Esencial para Airbnb — un mal internet baja las reseñas."
-                    edited={state.editedFields.includes("costoWifi")}
-                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoWifi", String(costDefaults.costoWifi)))}
+                    {...estadoProps("costoWifi")}
                   />
                   <CostInput
                     label="Insumos"
                     value={state.costoInsumos}
                     onChange={(v) => trackEdit("costoInsumos", v)}
                     tooltip="Reposición mensual de amenities, café, papel higiénico, jabones."
-                    edited={state.editedFields.includes("costoInsumos")}
-                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "costoInsumos", String(costDefaults.costoInsumos)))}
+                    {...estadoProps("costoInsumos")}
                   />
                   <CostInput
                     label="Mantención"
                     value={state.mantencionMensual}
                     onChange={(v) => trackEdit("mantencionMensual", v)}
                     tooltip="Reparaciones menores y reposición de equipamiento que se desgasta."
-                    edited={state.editedFields.includes("mantencionMensual")}
-                    onRestore={() => setState(unmarkFieldEdited(state.editedFields, "mantencionMensual", String(costDefaults.mantencion)))}
+                    {...estadoProps("mantencionMensual")}
                   />
                 </div>
               )}
@@ -518,12 +565,7 @@ export function Paso3Modalidad({
                 onChange={(raw) => trackEdit("gastos", raw)}
               />
               {(state.editedFields.includes("gastos") || suggestions.gastos != null) && (
-                <CampoEstado
-                  edited={state.editedFields.includes("gastos")}
-                  onRestore={suggestions.gastos != null
-                    ? () => setState(unmarkFieldEdited(state.editedFields, "gastos", String(suggestions.gastos)))
-                    : undefined}
-                >
+                <CampoEstado {...estadoProps("gastos")}>
                   {suggestions.gastos != null && (
                     <>Mercado sugiere {fmtCLP(suggestions.gastos)} (tier comuna · superficie × valor m²).</>
                   )}
@@ -544,12 +586,7 @@ export function Paso3Modalidad({
                 onChange={(raw) => trackEdit("contribuciones", raw)}
               />
               {(state.editedFields.includes("contribuciones") || suggestions.contribuciones != null) && (
-                <CampoEstado
-                  edited={state.editedFields.includes("contribuciones")}
-                  onRestore={suggestions.contribuciones != null
-                    ? () => setState(unmarkFieldEdited(state.editedFields, "contribuciones", String(suggestions.contribuciones)))
-                    : undefined}
-                >
+                <CampoEstado {...estadoProps("contribuciones")}>
                   {suggestions.contribuciones != null && (
                     <>Mercado sugiere {fmtCLP(suggestions.contribuciones)} (cálculo SII estimado).</>
                   )}
@@ -641,7 +678,7 @@ function ZoneHeader({ name, intro }: { name: string; intro?: string }) {
 }
 
 function CostInput({
-  label, value, onChange, tooltip, edited, onRestore,
+  label, value, onChange, tooltip, edited, onRestore, hint,
 }: {
   label: string;
   value: string;
@@ -651,7 +688,9 @@ function CostInput({
   /** Campo en editedFields → marcador "Modificado por ti" + restaurar. */
   edited: boolean;
   /** Restaura al default de tipología (getCostosDefault). */
-  onRestore: () => void;
+  onRestore?: () => void;
+  /** Hint reactivo cuando el default de tipología se movió tras el edit. */
+  hint?: { value: string; onUse: () => void };
 }) {
   return (
     <label className="block">
@@ -666,7 +705,7 @@ function CostInput({
         value={value}
         onChange={onChange}
       />
-      <CampoEstado edited={edited} onRestore={onRestore} />
+      <CampoEstado edited={edited} onRestore={onRestore} hint={hint} />
     </label>
   );
 }

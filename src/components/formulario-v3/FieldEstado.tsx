@@ -5,7 +5,7 @@
 // criticidad (regla del rojo del design system). Reusa los patrones ya
 // existentes en BloqueOperacionSTR (badge de override + botón "Usar sugerido").
 
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 /** Tag de estado de un campo prellenado por Franco:
  *  - "estimado": prellenado y no tocado → Mono uppercase 9px, --franco-text-muted.
@@ -19,7 +19,7 @@ export function FieldEstadoTag({ estado }: { estado: "estimado" | "modificado" }
     );
   }
   return (
-    <span className="font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
+    <span className="franco-tag-fade font-mono text-[9px] uppercase tracking-[0.08em] font-semibold text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] rounded-sm px-1.5 py-0.5">
       Modificado por ti
     </span>
   );
@@ -52,20 +52,55 @@ export function UsarEstimacion({
 export function CampoEstado({
   edited,
   onRestore,
+  hint,
   children,
 }: {
   edited: boolean;
   /** Restaura al valor estimado. Undefined → no hay sugerencia que restaurar. */
   onRestore?: () => void;
+  /** Hint reactivo (sub-2): cuando un param del mismo depto movió la sugerencia
+   * de un campo editado. Reemplaza "Usar estimación" por "Franco sugiere $Y ·
+   * usar" (misma acción de restaurar, contextual). */
+  hint?: { value: string; onUse: () => void };
   /** Descripción de la sugerencia (solo se muestra en estado "estimado"). */
   children?: ReactNode;
 }) {
+  // Flash al restaurar: la transición editado → no-editado (botón "Usar
+  // estimación", hint "usar" o reset por cambio de propiedad) dispara el flash
+  // en este wrapper. Limpieza por timeout (no animationend → robusto a
+  // prefers-reduced-motion, donde la clase no anima). Solo este campo.
+  const prevEdited = useRef(edited);
+  const [flashing, setFlashing] = useState(false);
+  useEffect(() => {
+    const restored = prevEdited.current && !edited;
+    prevEdited.current = edited;
+    if (!restored) return;
+    setFlashing(true);
+    const t = setTimeout(() => setFlashing(false), 260);
+    return () => clearTimeout(t);
+  }, [edited]);
+
   return (
-    <div className="flex items-center gap-x-2 gap-y-1 mt-1 flex-wrap">
+    <div className={`flex items-center gap-x-2 gap-y-1 mt-1 flex-wrap${flashing ? " franco-field-flash" : ""}`}>
       {edited ? (
         <>
           <FieldEstadoTag estado="modificado" />
-          {onRestore && <UsarEstimacion onClick={onRestore} label="Usar estimación" />}
+          {hint ? (
+            <span className="franco-hint-in font-mono text-[10px] text-[var(--franco-text-muted)] flex items-center gap-1">
+              Franco sugiere
+              <span className="text-[var(--franco-text)]">{hint.value}</span>
+              <span aria-hidden>·</span>
+              <button
+                type="button"
+                onClick={hint.onUse}
+                className="underline decoration-dotted hover:text-[var(--franco-text)]"
+              >
+                usar
+              </button>
+            </span>
+          ) : (
+            onRestore && <UsarEstimacion onClick={onRestore} label="Usar estimación" />
+          )}
         </>
       ) : (
         <span className="flex items-center gap-1.5 font-mono text-[11px] text-[var(--franco-text-muted)] leading-snug">
