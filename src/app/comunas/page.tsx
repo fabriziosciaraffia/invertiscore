@@ -40,10 +40,8 @@ export default async function ComunasIndexPage() {
           ¿En qué comuna conviene más invertir en un departamento?
         </h1>
         <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
-          Datos reales de 20.000+ propiedades en 24 comunas de Santiago.
-        </p>
-        <p className="mt-1.5 font-body text-sm text-[var(--franco-text-muted)]">
-          Por ahora, Franco está disponible para estas 24 comunas de Gran Santiago.
+          Ranking de rentabilidad — las {comunas.length} comunas con muestra de
+          mercado suficiente para comparar.
         </p>
 
         {/* Grid */}
