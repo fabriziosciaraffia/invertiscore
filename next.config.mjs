@@ -31,6 +31,13 @@ const nextConfig = {
         destination: '/analisis/nuevo-v2',
         permanent: false,
       },
+      // 301: /proximamente fue retirada (waitlist de pre-lanzamiento). La cobertura
+      // ahora vive en /cobertura; mandamos la vieja URL a la home.
+      {
+        source: '/proximamente',
+        destination: '/',
+        permanent: true,
+      },
     ];
   },
 };
