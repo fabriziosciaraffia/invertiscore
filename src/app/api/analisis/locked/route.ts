@@ -5,22 +5,26 @@ import { getUFValue } from "@/lib/uf";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
+  buildShortTermAnalysisRow,
+  type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 
-// Crear un análisis LTR BLOQUEADO pre-pago (Camino A, solo LTR + solo logueado).
+// Crear un análisis BLOQUEADO pre-pago (Camino A, LTR o STR, solo logueado).
 //
-// Hermano de /api/analisis (LTR cobrado) pero deliberadamente NO:
+// Hermano de /api/analisis (LTR) y /api/analisis/short-term (STR) pero
+// deliberadamente NO:
 //   - NO cobra crédito (sin ensureCreditCharged/chargeAnalysisCredit).
 //   - NO marca premium (sin markPremiumAndClaimPrepaid → is_premium queda false).
-//   - NO dispara la narrativa IA (Anthropic se difiere a /api/payments/confirm
-//     tras el pago, para no gastar tokens en quien abandona el checkout).
+//   - NO dispara la narrativa IA (LTR la difiere a /api/payments/confirm; STR la
+//     genera on-demand al ver el análisis ya pagado — ver results-client STR).
 //
 // Inserta pending_payment=true → la fila queda inerte y oculta del dashboard
-// hasta que confirm la desbloquee. El motor (runAnalysis) es cálculo local
-// gratis, así que computar la fila por adelantado no tiene costo de API.
+// hasta que confirm la desbloquee. LTR usa runAnalysis (cálculo local gratis);
+// STR usa buildShortTermAnalysisRow (incluye AirROI, normalmente cache-HIT del
+// prefetch del wizard). El flujo AMBAS NO pasa por acá (crea LTR+STR aparte).
 //
-// El flujo: paso 4 (logueado, LTR, sin crédito) → este endpoint → /checkout?
-// product=single&analysisId=<id> → Flow → confirm desbloquea + dispara IA.
+// El flujo: paso 4 (logueado, sin crédito) → este endpoint → /checkout?
+// product=single&analysisId=<id> → Flow → confirm desbloquea (+ IA según tipo).
 export async function POST(request: Request) {
   try {
     // ─── INSTRUMENTACIÓN TEMPORAL (quitar tras medir el bottleneck) ───
@@ -37,16 +41,54 @@ export async function POST(request: Request) {
 
     const body: AnalisisInput = await request.json();
 
-    // Guard LTR-only: este endpoint NO computa STR (crear STR pagaría AirROI al
-    // crear, fuera de alcance). Rechazar payloads con marcadores short-term.
-    const maybeStr = body as unknown as { tipoAnalisis?: string; precioCompra?: unknown };
-    if (maybeStr.tipoAnalisis === "short-term" || maybeStr.precioCompra !== undefined) {
+    // Discriminador de modalidad. AMBAS NO pasa por acá (el flujo Ambas crea
+    // LTR+STR por separado, no una sola fila bloqueada). LTR vs STR: el payload
+    // STR trae precioCompra / tipoAnalisis="short-term" (mismos marcadores que
+    // antes, ahora para RUTEAR en vez de rechazar).
+    const maybeMod = body as unknown as { tipoAnalisis?: string; precioCompra?: unknown; modalidad?: string };
+    if (maybeMod.tipoAnalisis === "both" || maybeMod.modalidad === "both") {
       return NextResponse.json(
-        { error: "Este endpoint solo crea análisis de renta larga (LTR)" },
+        { error: "El flujo Ambas no se crea por este endpoint" },
         { status: 400 },
       );
     }
+    const isStr = maybeMod.tipoAnalisis === "short-term" || maybeMod.precioCompra !== undefined;
 
+    // ─── Rama STR: motor compartido (incluye AirROI), fila bloqueada ───
+    if (isStr) {
+      const ufStr = await getUFValue();
+      const built = await buildShortTermAnalysisRow(
+        body as unknown as ShortTermAnalysisBody,
+        ufStr,
+      );
+      if (!built.ok) return built.response;
+
+      const { data: strData, error: strError } = await supabase
+        .from("analisis")
+        .insert({
+          ...built.row,
+          user_id: user.id,
+          creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || "Anónimo",
+          // Igual que LTR locked: sin cobro, sin premium, fila oculta hasta pagar.
+          is_premium: false,
+          pending_payment: true,
+        })
+        .select("id")
+        .single();
+
+      if (strError) {
+        console.error("[analisis/locked] STR Supabase insert error:", strError);
+        return NextResponse.json(
+          { error: "Error al guardar el análisis" },
+          { status: 500 },
+        );
+      }
+
+      console.log(`[LOCKED-TIMING] TOTAL handler (STR): ${Date.now() - t0}ms`);
+      return NextResponse.json({ id: strData.id });
+    }
+
+    // ─── Rama LTR (sin cambios): runAnalysis + insert bloqueado ───
     // Mismo motor y misma UF explícita que /api/analisis (LTR cobrado).
     const tUf = Date.now();
     const ufValue = await getUFValue();
