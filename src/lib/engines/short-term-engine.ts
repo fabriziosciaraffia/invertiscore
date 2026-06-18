@@ -298,6 +298,18 @@ export interface ShortTermResult {
   //                      (OCC_FALLBACK_MERCADO). UI/IA deben mostrar caveat en este caso.
   // Opcional para back-compat con análisis persistidos pre-remediación.
   occFuente?: OccFuenteSTR;
+
+  // Transparencia 2026-06 — DISPLAY-ONLY. Mediana de la ocupación REALIZADA de
+  // la pool de comparables AirROI (ttm_occupancy). `calcShortTerm` NUNCA lo
+  // setea: lo adjunta el api route al persistir, fuera del scoring. Sirve para
+  // mostrar al lado de la ocupación estimada sin tocar el veredicto. Ausente en
+  // análisis históricos (la UI no renderiza la fila si falta).
+  ocupacionRealizadaComparables?: {
+    p50: number;
+    p50Superhost: number;
+    n: number;
+    nSuperhost: number;
+  };
 }
 
 export interface SensibilidadPrecioRow {

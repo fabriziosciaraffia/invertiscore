@@ -1,4 +1,4 @@
-import type { AirROIComparable, TierMetrics, TopComparable } from "./types";
+import type { AirROIComparable, RealizedOccupancy, TierMetrics, TopComparable } from "./types";
 
 /** Calculate the median of a numeric array */
 function median(values: number[]): number {
@@ -72,6 +72,38 @@ export function getTopComparables(comparables: AirROIComparable[]): TopComparabl
       amenities_count: c.property_details.amenities?.length ?? 0,
       cover_photo_url: c.cover_photo_url,
     }));
+}
+
+/**
+ * Resumen DISPLAY-ONLY de ocupación realizada desde `comparable_listings` (raw
+ * AirROI). Función PURA — no toca el scoring. Devuelve null si no hay pool
+ * válida. Transparencia 2026-06. Ver `RealizedOccupancy` en types.ts.
+ */
+export function summarizeRealizedOccupancy(listings: unknown): RealizedOccupancy | null {
+  if (!Array.isArray(listings) || listings.length === 0) return null;
+
+  // Shape mínimo del listing crudo (solo lo que necesitamos del raw).
+  type RawListingPerf = {
+    performance_metrics?: { ttm_occupancy?: number; ttm_revenue?: number };
+    host_info?: { superhost?: boolean };
+  };
+
+  const valid = (listings as RawListingPerf[]).filter(
+    (l) => (l.performance_metrics?.ttm_occupancy ?? 0) > 0
+        && (l.performance_metrics?.ttm_revenue ?? 0) > 0,
+  );
+  if (valid.length === 0) return null;
+
+  const occ = (l: RawListingPerf) => l.performance_metrics!.ttm_occupancy as number;
+  const sh = valid.filter((l) => l.host_info?.superhost === true);
+  const r4 = (x: number) => Math.round(x * 10000) / 10000;
+
+  return {
+    p50: r4(median(valid.map(occ))),
+    p50Superhost: sh.length ? r4(median(sh.map(occ))) : 0,
+    n: valid.length,
+    nSuperhost: sh.length,
+  };
 }
 
 /** Full processing pipeline */

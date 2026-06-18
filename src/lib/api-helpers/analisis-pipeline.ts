@@ -501,7 +501,20 @@ export async function buildShortTermAnalysisRow(
       score: francoScore.score,
       desglose: francoScore.desglose,
       resumen: francoScore.veredicto,
-      results: { ...result, tipoAnalisis: "short-term", veredicto: francoScore.veredicto, francoScore, airbnbRaw: airbnbResult.data },
+      // `ocupacionRealizadaComparables` es DISPLAY-ONLY: se adjunta acá, fuera
+      // de calcShortTerm/calcFrancoScoreSTR, por lo que NO toca el veredicto.
+      // Vive en el helper para que single (short-term/route) y pre-pago
+      // (analisis/locked) lo persistan por igual.
+      results: {
+        ...result,
+        tipoAnalisis: "short-term",
+        veredicto: francoScore.veredicto,
+        francoScore,
+        airbnbRaw: airbnbResult.data,
+        ...(airbnbResult.realizedOccupancy
+          ? { ocupacionRealizadaComparables: airbnbResult.realizedOccupancy }
+          : {}),
+      },
       input_data: { ...body, tipoAnalisis: "short-term" },
     },
   };

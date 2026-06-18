@@ -18,6 +18,7 @@ import {
   filterComparables,
   getTopComparables,
   processComparables,
+  summarizeRealizedOccupancy,
 } from "./process-comparables";
 import type {
   AirROIComparable,
@@ -121,11 +122,16 @@ export async function getAirbnbEstimate(
     const isDirectSource = cached.comparables_count === 0 && cached.tier_premium_count === 0;
     const rawResponse = cached.raw_response as Record<string, unknown>;
 
+    // Display-only (transparencia 2026-06): occ realizada desde la pool cruda.
+    // Lee `comparable_listings` APARTE — NO toca isDirectSource ni el scoring.
+    const realizedOccupancy = summarizeRealizedOccupancy(rawResponse?.comparable_listings);
+
     if (isDirectSource) {
       return {
         success: true,
         cached: true,
         source: "calculator_direct",
+        realizedOccupancy,
         data: {
           address: cached.address,
           bedrooms: cached.bedrooms,
@@ -148,6 +154,7 @@ export async function getAirbnbEstimate(
       success: true,
       cached: true,
       source: "comparables",
+      realizedOccupancy,
       data: {
         address: cached.address,
         bedrooms: cached.bedrooms,
@@ -210,6 +217,13 @@ export async function getAirbnbEstimate(
 
   const airroiRaw = await airroiRes.json();
 
+  // Display-only (transparencia 2026-06): occ realizada desde la pool cruda
+  // `comparable_listings`. DELIBERADAMENTE separado de `rawComparables` de abajo
+  // — NO se agrega a esa lista de alias para no flipear el path a "comparables".
+  const realizedOccupancy = summarizeRealizedOccupancy(
+    (airroiRaw as Record<string, unknown>)?.comparable_listings,
+  );
+
   // ── Resolve comparables array (multiple shape variants) ─
   const rawComparables: unknown[] =
     airroiRaw.comparables ??
@@ -260,6 +274,7 @@ export async function getAirbnbEstimate(
       success: true,
       cached: false,
       source: "comparables",
+      realizedOccupancy,
       data: {
         address: address.trim(),
         bedrooms,
@@ -329,6 +344,7 @@ export async function getAirbnbEstimate(
       success: true,
       cached: false,
       source: "calculator_direct",
+      realizedOccupancy,
       data: {
         address: address.trim(),
         bedrooms,
