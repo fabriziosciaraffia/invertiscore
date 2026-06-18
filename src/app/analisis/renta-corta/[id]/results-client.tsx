@@ -264,6 +264,7 @@ export function STRResultsClient({
               currency={currency}
               valorUF={ufValue}
               occFuente={results.occFuente}
+              occRealizada={results.ocupacionRealizadaComparables}
             />
             <div style={{ height: 24 }} />
           </>

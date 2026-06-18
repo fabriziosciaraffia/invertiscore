@@ -280,7 +280,18 @@ export async function POST(request: Request) {
         resumen: francoScore.veredicto,
         // results.tipoAnalisis y input_data.tipoAnalisis se preservan para
         // backward-compat con análisis pre-migration que se leen por JSON.
-        results: { ...result, tipoAnalisis: "short-term", veredicto: francoScore.veredicto, francoScore, airbnbRaw: airbnbResult.data },
+        // `ocupacionRealizadaComparables` es DISPLAY-ONLY: se adjunta acá, fuera
+        // de calcShortTerm/calcFrancoScoreSTR, por lo que NO toca el veredicto.
+        results: {
+          ...result,
+          tipoAnalisis: "short-term",
+          veredicto: francoScore.veredicto,
+          francoScore,
+          airbnbRaw: airbnbResult.data,
+          ...(airbnbResult.realizedOccupancy
+            ? { ocupacionRealizadaComparables: airbnbResult.realizedOccupancy }
+            : {}),
+        },
         input_data: { ...body, tipoAnalisis: "short-term" },
         creator_name:
           user?.user_metadata?.nombre ||

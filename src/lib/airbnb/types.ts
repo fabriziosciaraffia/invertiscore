@@ -90,11 +90,31 @@ export interface AirbnbEstimateDirectData {
   expires_at: string;
 }
 
+/**
+ * Resumen DISPLAY-ONLY de la ocupación REALIZADA de la pool de comparables
+ * (mediana de `performance_metrics.ttm_occupancy`). Transparencia 2026-06.
+ * Independiente del path de scoring (direct/comparables): se computa leyendo
+ * `comparable_listings` aparte, NUNCA entra a processComparables ni al motor.
+ */
+export interface RealizedOccupancy {
+  /** Mediana ttm_occupancy de la pool válida (decimal 0–1). */
+  p50: number;
+  /** Mediana ttm_occupancy del subset superhost (decimal; 0 si nSuperhost===0). */
+  p50Superhost: number;
+  /** Comparables válidos (ttm_occupancy>0 && ttm_revenue>0). */
+  n: number;
+  /** Comparables válidos con host superhost. */
+  nSuperhost: number;
+}
+
 export interface AirbnbEstimateSuccess {
   success: true;
   cached: boolean;
   source?: "comparables" | "calculator_direct";
   data: AirbnbEstimateData | AirbnbEstimateDirectData;
+  /** Display-only — resumen de occ realizada de comparable_listings. No altera
+   *  el path de scoring; ausente/null si no hubo pool válida. */
+  realizedOccupancy?: RealizedOccupancy | null;
 }
 
 export interface AirbnbEstimateError {

@@ -3,6 +3,13 @@
 // Calibración v1 (mayo 2026) + override manual (iter 2026-05-10).
 
 import type { EjesAplicadosSTR as EjesType, OccFuenteSTR } from "@/lib/engines/short-term-engine";
+import { InfoTooltip } from "@/components/ui/tooltip";
+
+// Mínimo de comparables válidos para mostrar la ocupación realizada. Bajo este
+// umbral la mediana es ruido — no se muestra la fila.
+const MIN_N_REALIZADA = 10;
+// Mínimo de superhosts para mostrar su sub-dato (muestra muy chica = no fiable).
+const MIN_N_SUPERHOST = 3;
 
 interface Props {
   ejes: EjesType | undefined;
@@ -14,6 +21,9 @@ interface Props {
    * análisis es del motor nuevo: la fila separa ocupación observada vs
    * potencial. Si es undefined (v1), se mantiene la fila legacy. */
   occFuente?: OccFuenteSTR;
+  /** Display-only (transparencia 2026-06). Mediana de occ realizada de la pool
+   * de comparables AirROI. Si undefined (análisis histórico), no se renderiza. */
+  occRealizada?: { p50: number; p50Superhost: number; n: number; nSuperhost: number };
 }
 
 const fmtCLP = (n: number): string => "$" + Math.round(n).toLocaleString("es-CL");
@@ -32,7 +42,7 @@ const LABEL_HABILITACION: Record<string, string> = {
   premium: "Premium",
 };
 
-export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, occFuente }: Props) {
+export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, occFuente, occRealizada }: Props) {
   if (!ejes) return null;
 
   const occPct = (ejes.ocupacionTarget * 100).toFixed(0);
@@ -135,7 +145,10 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
             {/* Motor nuevo (Remediación 2026-06): el base factura la ocupación
                 OBSERVADA; el target se muestra aparte como potencial. */}
             <div className="flex justify-between font-mono text-[12px]">
-              <span className="text-[var(--franco-text-muted)]">Ocupación observada de la zona</span>
+              <span className="text-[var(--franco-text-muted)] inline-flex items-center gap-1.5">
+                Ocupación estimada de la zona
+                <InfoTooltip content="Estimación del modelo de AirROI para la zona; es la ocupación que usa el cálculo." />
+              </span>
               {occEsOverride ? (
                 <span className="flex items-center gap-2">
                   <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
@@ -147,6 +160,22 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                 <span className="text-[var(--franco-text)] font-semibold">{occFinalPct}%</span>
               )}
             </div>
+            {/* Transparencia 2026-06 — ocupación REALIZADA de comparables, justo
+                debajo de la estimada. Display-only: no afecta el veredicto. Se
+                oculta si la muestra es chica (n<10) o no hay dato (históricos). */}
+            {occRealizada && occRealizada.n >= MIN_N_REALIZADA && (
+              <div className="flex justify-between font-mono text-[12px]">
+                <span className="text-[var(--franco-text-muted)] inline-flex items-center gap-1.5">
+                  Ocupación realizada de comparables
+                  <InfoTooltip content="Mediana de la ocupación real de los últimos 12 meses de las propiedades comparables activas." />
+                </span>
+                <span className="text-[var(--franco-text-secondary)]">
+                  mediana {(occRealizada.p50 * 100).toFixed(0)}% · {occRealizada.n} comparables
+                  {occRealizada.nSuperhost >= MIN_N_SUPERHOST &&
+                    ` · superhost ${(occRealizada.p50Superhost * 100).toFixed(0)}%`}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between font-mono text-[12px]">
               <span className="text-[var(--franco-text-muted)]">Potencial con gestión profesional</span>
               <span className="text-[var(--franco-text-secondary)]">{occPct}% ({occGapTxt})</span>
@@ -179,7 +208,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
           para esta dirección, se usó la mediana de Santiago. */}
       {occFuente === "fallback_mercado" && (
         <p className="mt-3 font-body text-[11px] italic text-[var(--franco-text-muted)] leading-relaxed">
-          No hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). El número base es referencial.
+          Sin datos suficientes para estimar la ocupación de esta dirección; se usó la mediana de Santiago (~45%) como referencia.
         </p>
       )}
 
