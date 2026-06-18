@@ -67,8 +67,8 @@ export default function PrivacyPage() {
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">5. Tus derechos</h2>
             <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
               Puedes solicitar acceso, rectificación o eliminación de tus datos en cualquier momento escribiendo a{" "}
-              <a href="mailto:contacto@refranco.ai" className="text-[#C8323C] font-semibold hover:underline">
-                contacto@refranco.ai
+              <a href="mailto:hola@refranco.ai" className="text-[#C8323C] font-semibold hover:underline">
+                hola@refranco.ai
               </a>
               . Procesaremos tu solicitud en un plazo razonable.
             </p>
@@ -95,8 +95,8 @@ export default function PrivacyPage() {
             <h2 className="font-heading font-bold text-lg text-[var(--franco-text)]">8. Contacto</h2>
             <p className="font-body text-[15px] text-[var(--franco-text)] leading-relaxed mt-3">
               Para consultas sobre privacidad:{" "}
-              <a href="mailto:contacto@refranco.ai" className="text-[#C8323C] font-semibold hover:underline">
-                contacto@refranco.ai
+              <a href="mailto:hola@refranco.ai" className="text-[#C8323C] font-semibold hover:underline">
+                hola@refranco.ai
               </a>
             </p>
           </section>

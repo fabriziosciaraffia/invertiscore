@@ -193,11 +193,15 @@ export function UnifiedNav({
     : "·";
 
   const logoHref = loggedIn ? "/dashboard" : "/";
-  const howHref = isLanding ? "#que-hace-franco" : "/#que-hace-franco";
+  // Resuelve una ancla de la landing según contexto: en la home es un hash
+  // local (#id); fuera de la home apunta a la ruta raíz (/#id).
+  const anchor = (id: string) => (isLanding ? `#${id}` : `/#${id}`);
 
   // ── Sets de links del centro según auth ───────────────────────────
   const publicLinks: NavLink[] = [
-    { label: "Cómo funciona", href: howHref },
+    { label: "Qué", href: anchor("que-es-franco") },
+    { label: "Por qué", href: anchor("el-problema") },
+    { label: "Cómo", href: anchor("que-hace-franco") },
     { label: "Precios", href: "/pricing" },
     { label: "Ingresar", href: "/login" },
   ];
@@ -314,7 +318,7 @@ export function UnifiedNav({
                   borderColor: "var(--landing-card-border)",
                 }}
               >
-                Beta · Santiago
+                Beta · disponible para Santiago
               </span>
             )}
 
@@ -601,7 +605,7 @@ function MobileSheet({
                   borderColor: "var(--franco-border)",
                 }}
               >
-                Beta · Santiago
+                Beta · disponible para Santiago
               </span>
             </div>
           )}

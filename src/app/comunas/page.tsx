@@ -42,6 +42,9 @@ export default async function ComunasIndexPage() {
         <p className="mt-3 font-body text-base text-[var(--franco-text-secondary)]">
           Datos reales de 20.000+ propiedades en 24 comunas de Santiago.
         </p>
+        <p className="mt-1.5 font-body text-sm text-[var(--franco-text-muted)]">
+          Por ahora, Franco está disponible para estas 24 comunas de Gran Santiago.
+        </p>
 
         {/* Grid */}
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

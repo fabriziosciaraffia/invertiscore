@@ -52,20 +52,19 @@ export default function LandingFooter() {
           <FooterCol
             title="Producto"
             items={[
-              { label: "Cómo funciona", href: "/#que-hace-franco" },
-              { label: "Precios", href: "/#pricing" },
-              { label: "Para asesores", href: "/register" },
-              { label: "Metodología", href: "/proximamente" },
+              { label: "Qué", href: "/#que-es-franco" },
+              { label: "Por qué", href: "/#el-problema" },
+              { label: "Cómo", href: "/#que-hace-franco" },
+              { label: "Precios", href: "/pricing" },
+              { label: "Ingresar", href: "/login" },
             ]}
           />
 
           <FooterCol
             title="Recursos"
             items={[
-              { label: "Glosario", href: "/proximamente" },
-              { label: "Casos de uso", href: "/#que-hace-franco" },
-              { label: "Blog", href: "/proximamente" },
-              { label: "FAQ", href: "/proximamente" },
+              { label: "FAQ", href: "/faq" },
+              { label: "Dónde está disponible", href: "/comunas" },
             ]}
           />
 
@@ -73,8 +72,7 @@ export default function LandingFooter() {
             title="Contacto"
             items={[
               { label: "hola@refranco.ai", href: "mailto:hola@refranco.ai" },
-              { label: "Instagram", href: "https://instagram.com" },
-              { label: "LinkedIn", href: "https://linkedin.com" },
+              { label: "Instagram", href: "https://www.instagram.com/refranco.ai/" },
             ]}
           />
         </div>

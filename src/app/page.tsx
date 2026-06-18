@@ -32,8 +32,8 @@ export default function LandingPage() {
         <UnifiedNav variant="landing" />
         <main>
           <SectionHero />
-          <SectionProblem />
           <SectionWhatFrancoIs />
+          <SectionProblem />
           <SectionWhatFrancoDoes />
           <SectionUseCases />
           <SectionCTAPrimary />

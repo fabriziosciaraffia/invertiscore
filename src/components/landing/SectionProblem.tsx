@@ -58,6 +58,7 @@ const STATS: ReadonlyArray<Stat> = [
 export default function SectionProblem() {
   return (
     <section
+      id="el-problema"
       className="relative overflow-hidden"
       style={{ background: "var(--franco-bg-alt)" }}
     >
