@@ -64,7 +64,7 @@ export default function LandingFooter() {
             title="Recursos"
             items={[
               { label: "FAQ", href: "/faq" },
-              { label: "Dónde está disponible", href: "/comunas" },
+              { label: "Dónde está disponible", href: "/cobertura" },
             ]}
           />
 
