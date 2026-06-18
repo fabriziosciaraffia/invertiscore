@@ -393,7 +393,7 @@ function NuevoAnalisisV3Inner() {
 
   // ─── Build payload LTR (reusable) ──
   // Extraído para que el submit con crédito (handleAnalizar) y la compra
-  // pre-pago (onComprarLtr → /api/analisis/locked) usen EXACTAMENTE los mismos
+  // pre-pago (onComprar("ltr") → /api/analisis/locked) usen EXACTAMENTE los mismos
   // datos: el análisis bloqueado que se paga debe ser idéntico al configurado.
   function buildLtrPayload() {
     const parseIntSafe = (v: string, fallback: number): number => {
@@ -477,25 +477,115 @@ function NuevoAnalisisV3Inner() {
     };
   }
 
-  // ─── Compra pre-pago LTR (logueado + LTR + sin crédito) ──
+  // ─── Build payload STR (reusable) ──
+  // Hermano de buildLtrPayload: extraído para que el submit con crédito
+  // (handleAnalizar) y la compra pre-pago (onComprar("str") → /api/analisis/locked)
+  // usen EXACTAMENTE el mismo payload — mismo derivado de dormitorios/baños/
+  // huéspedes ⇒ misma cache-key del prefetch AirROI server-side. tipoAnalisis
+  // explícito para que /api/analisis/locked rutee a la rama STR.
+  function buildStrPayload() {
+    const parseIntSafe = (v: string, fallback: number): number => {
+      if (v === "" || v == null) return fallback;
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : fallback;
+    };
+    const supUtil = parseDecimalLocale(state.superficieUtil);
+    const precioUF = parseNum(state.precio);
+    const precioCompraCLP = Math.round(precioUF * ufCLP);
+    const arriendo = Number(state.arriendo) || 0;
+    const gastos = Number(state.gastos) || 0;
+    const contribuciones = Number(state.contribuciones) || 0;
+
+    // Convenciones del endpoint /api/analisis/short-term:
+    //   - body.piePct y body.tasaInteres en %, el endpoint divide por 100
+    //   - body.comisionAdministrador en decimal (0.20 = 20%)
+    //   - body.precioCompra en CLP, body.precioCompraUF en UF
+    return {
+      tipoAnalisis: "short-term" as const,
+
+      // Identificación + propiedad
+      direccion: state.direccion || "",
+      comuna: state.comuna,
+      ciudad: state.ciudad || "Santiago",
+      tipoPropiedad: state.tipoPropiedad,
+      lat: state.lat,
+      lng: state.lng,
+      dormitorios: parseIntSafe(state.dormitorios, 2),
+      banos: parseIntSafe(state.banos, 1),
+      superficieUtil: supUtil,
+      capacidadHuespedes: parseIntSafe(state.capacidadHuespedes, 2),
+
+      // Financiamiento (compartido con LTR)
+      precioCompra: precioCompraCLP,
+      precioCompraUF: precioUF,
+      piePct: Number(state.piePct),
+      tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
+      plazoCredito: Number(state.plazoCredito),
+
+      // Operación Airbnb
+      modoGestion: state.modoGestion,
+      comisionAdministrador: state.modoGestion === "administrador"
+        ? (parseDecimalLocale(state.comisionAdminPct) / 100)
+        : 0.20,
+      edificioPermiteAirbnb: state.edificioPermiteAirbnb,
+
+      // Modelo STR v1 — 3 ejes operacionales + operador.
+      // tipoEdificio null = el user no eligió en el wizard. Motor STR
+      // defaultea a residencial_puro silenciosamente.
+      tipoEdificio: state.tipoEdificio ?? "residencial_puro",
+      adminPro: state.adminPro,
+      habilitacion: state.habilitacion,
+      operadorNombre:
+        state.tipoEdificio === "dedicado" && state.operadorNombre.trim().length > 0
+          ? state.operadorNombre.trim()
+          : null,
+
+      // Overrides manuales (iter 2026-05-10). null si el usuario no editó;
+      // número si overrideó el valor derivado por ejes.
+      adrOverride: typeof state.adrOverride === "number" ? state.adrOverride : null,
+      occOverride: typeof state.occOverride === "number" ? state.occOverride : null,
+
+      // Costos operativos mensuales
+      costoElectricidad: Number(state.costoElectricidad) || 0,
+      costoAgua: Number(state.costoAgua) || 0,
+      costoWifi: Number(state.costoWifi) || 0,
+      costoInsumos: Number(state.costoInsumos) || 0,
+      gastosComunes: gastos,
+      mantencion: Number(state.mantencionMensual) || 0,
+      contribuciones,
+
+      // Inversión inicial
+      estaAmoblado: state.estaAmoblado,
+      costoAmoblamiento: Number(state.costoAmoblamiento) || 0,
+
+      // Comparativa
+      arriendoLargoMensual: arriendo,
+    };
+  }
+
+  // ─── Compra pre-pago (logueado + sin crédito) — LTR o STR ──
   // Crea la fila del análisis YA computada pero BLOQUEADA (sin cobrar crédito)
   // vía /api/analisis/locked, y manda a checkout con su analysisId. Tras pagar,
-  // confirm desbloquea + dispara la IA, y el redirect post-pago lleva al análisis.
-  async function onComprarLtr() {
+  // confirm desbloquea + dispara la IA, y el redirect post-pago lleva al análisis
+  // (la vista /analisis/[id] auto-redirige a /analisis/renta-corta/[id] cuando el
+  // tipo es short-term). Mismo checkout single para ambas modalidades. AMBAS NO
+  // pasa por acá (su flujo crea LTR+STR por separado y sigue intacto).
+  async function onComprar(modalidad: "ltr" | "str") {
     setSubmitError("");
     setComprando(true);
     try {
+      const payload = modalidad === "str" ? buildStrPayload() : buildLtrPayload();
       const res = await fetch("/api/analisis/locked", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildLtrPayload()),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "No se pudo crear el análisis. Intenta de nuevo.");
       }
       const { id } = (await res.json()) as { id: string };
-      posthog?.capture("locked_analysis_created", { comuna: state.comuna });
+      posthog?.capture("locked_analysis_created", { comuna: state.comuna, modalidad });
       router.push(`/checkout?product=single&analysisId=${id}`);
       // No reseteamos comprando: estamos navegando, el spinner se mantiene.
     } catch (err) {
@@ -531,92 +621,11 @@ function NuevoAnalisisV3Inner() {
         throw new Error("Elige una modalidad para continuar");
       }
 
-      // ─── Helpers compartidos ──
-      // Parser que respeta el 0 explícito (studios, sin estac, sin bodega)
-      // pero usa fallback si el campo está vacío / inválido. Crítico para el
-      // caso B4 de la auditoría: `Number("0") || fallback` era falsy y
-      // sobrescribía 0 con 2.
-      const parseIntSafe = (v: string, fallback: number): number => {
-        if (v === "" || v == null) return fallback;
-        const n = Number(v);
-        return Number.isFinite(n) && n >= 0 ? n : fallback;
-      };
-      const supUtil = parseDecimalLocale(state.superficieUtil);
-      const precioUF = parseNum(state.precio);
-      const precioCompraCLP = Math.round(precioUF * ufCLP);
-
-      const arriendo = Number(state.arriendo) || 0;
-      const gastos = Number(state.gastos) || 0;
-      const contribuciones = Number(state.contribuciones) || 0;
-
-      // ─── Payload LTR (extraído a buildLtrPayload, compartido con onComprarLtr) ──
+      // ─── Payloads (extraídos a buildLtrPayload / buildStrPayload) ──
+      // Mismos builders que usa el flujo pre-pago (onComprar), de modo que el
+      // análisis que se paga sea idéntico al que se computa con crédito.
       const ltrPayload = buildLtrPayload();
-
-      // ─── Payload STR (Ronda 2a — usa defaults del state cuando UI no
-      // expone aún el input. Inputs específicos STR llegan en Ronda 2b.) ──
-      // Convenciones del endpoint /api/analisis/short-term:
-      //   - body.piePct y body.tasaInteres en %, el endpoint divide por 100
-      //   - body.comisionAdministrador en decimal (0.20 = 20%)
-      //   - body.precioCompra en CLP, body.precioCompraUF en UF
-      const strPayload = {
-        // Identificación + propiedad
-        direccion: state.direccion || "",
-        comuna: state.comuna,
-        ciudad: state.ciudad || "Santiago",
-        tipoPropiedad: state.tipoPropiedad,
-        lat: state.lat,
-        lng: state.lng,
-        dormitorios: parseIntSafe(state.dormitorios, 2),
-        banos: parseIntSafe(state.banos, 1),
-        superficieUtil: supUtil,
-        capacidadHuespedes: parseIntSafe(state.capacidadHuespedes, 2),
-
-        // Financiamiento (compartido con LTR)
-        precioCompra: precioCompraCLP,
-        precioCompraUF: precioUF,
-        piePct: Number(state.piePct),
-        tasaInteres: parseDecimalLocale(state.tasaInteres) || 4.72,
-        plazoCredito: Number(state.plazoCredito),
-
-        // Operación Airbnb
-        modoGestion: state.modoGestion,
-        comisionAdministrador: state.modoGestion === "administrador"
-          ? (parseDecimalLocale(state.comisionAdminPct) / 100)
-          : 0.20,
-        edificioPermiteAirbnb: state.edificioPermiteAirbnb,
-
-        // Modelo STR v1 — 3 ejes operacionales + operador.
-        // tipoEdificio null = el user no eligió en el wizard. Motor STR
-        // defaultea a residencial_puro silenciosamente.
-        tipoEdificio: state.tipoEdificio ?? "residencial_puro",
-        adminPro: state.adminPro,
-        habilitacion: state.habilitacion,
-        operadorNombre:
-          state.tipoEdificio === "dedicado" && state.operadorNombre.trim().length > 0
-            ? state.operadorNombre.trim()
-            : null,
-
-        // Overrides manuales (iter 2026-05-10). null si el usuario no editó;
-        // número si overrideó el valor derivado por ejes.
-        adrOverride: typeof state.adrOverride === "number" ? state.adrOverride : null,
-        occOverride: typeof state.occOverride === "number" ? state.occOverride : null,
-
-        // Costos operativos mensuales
-        costoElectricidad: Number(state.costoElectricidad) || 0,
-        costoAgua: Number(state.costoAgua) || 0,
-        costoWifi: Number(state.costoWifi) || 0,
-        costoInsumos: Number(state.costoInsumos) || 0,
-        gastosComunes: gastos,
-        mantencion: Number(state.mantencionMensual) || 0,
-        contribuciones,
-
-        // Inversión inicial
-        estaAmoblado: state.estaAmoblado,
-        costoAmoblamiento: Number(state.costoAmoblamiento) || 0,
-
-        // Comparativa
-        arriendoLargoMensual: arriendo,
-      };
+      const strPayload = buildStrPayload();
 
       // ─── Sub-funciones de POST (const arrow para strict-mode ES5) ──
       // chargeId opcional: para flujo AMBAS el wizard pre-cobra UNA vez vía
@@ -889,7 +898,7 @@ function NuevoAnalisisV3Inner() {
                 onVolver={() => { setSlideDir("right"); setStep(3); }}
                 onAnalizar={handleAnalizar}
                 isLoggedIn={isLoggedIn === true}
-                onComprarLtr={onComprarLtr}
+                onComprar={onComprar}
                 comprando={comprando}
                 submitting={submitting}
                 submitError={submitError}
