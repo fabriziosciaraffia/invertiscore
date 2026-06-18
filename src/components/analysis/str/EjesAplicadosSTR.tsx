@@ -63,12 +63,14 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
             <div className="font-body text-[11px] text-[var(--franco-text-muted)]">
               {ejes.tipoEdificio === "dedicado" && "Diseñado para renta corta — operación más fluida y ocupación más estable."}
               {ejes.tipoEdificio === "mixto" && "Algunos vecinos operan Airbnb. Aceptación parcial."}
-              {ejes.tipoEdificio === "residencial_puro" && "La mayoría de los vecinos vive ahí. ADR sin uplift."}
+              {ejes.tipoEdificio === "residencial_puro" && "La mayoría de los vecinos vive ahí."}
             </div>
           </div>
-          <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-            ADR ×{ejes.factorEdificio.toFixed(2)}
-          </div>
+          {ejes.factorEdificio.toFixed(2) !== "1.00" && (
+            <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
+              ADR ×{ejes.factorEdificio.toFixed(2)}
+            </div>
+          )}
         </div>
 
         {/* Eje 3: habilitación */}
@@ -80,12 +82,14 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
             <div className="font-body text-[11px] text-[var(--franco-text-muted)]">
               {ejes.habilitacion === "premium" && "Decoración curada, blancos hoteleros, amenidades."}
               {ejes.habilitacion === "estandar" && "Amoblamiento decente + fotos profesionales."}
-              {ejes.habilitacion === "basico" && "Funcional, fotos amateur. Sin uplift."}
+              {ejes.habilitacion === "basico" && "Funcional, fotos amateur."}
             </div>
           </div>
-          <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-            ADR ×{ejes.factorHabilitacion.toFixed(2)}
-          </div>
+          {ejes.factorHabilitacion.toFixed(2) !== "1.00" && (
+            <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
+              ADR ×{ejes.factorHabilitacion.toFixed(2)}
+            </div>
+          )}
         </div>
 
         {/* Eje 2: gestión */}
@@ -113,7 +117,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
           <span className="text-[var(--franco-text-secondary)]">{fmtMoney(ejes.adrBaselineP50, currency, valorUF)}</span>
         </div>
         <div className="flex justify-between font-mono text-[12px]">
-          <span className="text-[var(--franco-text-muted)]">Tu tarifa diaria estimada (×{ejes.factorADRTotal.toFixed(2)})</span>
+          <span className="text-[var(--franco-text-muted)]">Tu tarifa diaria estimada{ejes.factorADRTotal.toFixed(2) !== "1.00" ? ` (×${ejes.factorADRTotal.toFixed(2)})` : ""}</span>
           {adrEsOverride ? (
             <span className="flex items-center gap-2">
               <span className="text-[var(--franco-text-muted)] line-through">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>
