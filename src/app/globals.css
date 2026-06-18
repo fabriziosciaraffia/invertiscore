@@ -688,3 +688,25 @@ input[type="number"] {
   pointer-events: none;
   z-index: -1;
 }
+
+/* ── Affordance "estimado · ajustable" — micro-motion (sub-2 D) ──
+   Solo cuando el usuario NO pidió reducir movimiento. Ink only, sin Signal
+   Red, 150-250ms. Las clases solo existen bajo no-preference: para reduced
+   motion no hacen nada (no requieren cleanup vía animationend). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes franco-field-flash {
+    0%   { background-color: color-mix(in srgb, var(--franco-text) 8%, transparent); }
+    100% { background-color: transparent; }
+  }
+  @keyframes franco-hint-in {
+    from { opacity: 0; transform: translateY(2px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes franco-tag-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .franco-field-flash { animation: franco-field-flash 200ms ease-out; border-radius: 6px; }
+  .franco-hint-in     { animation: franco-hint-in 180ms ease-out; }
+  .franco-tag-fade    { animation: franco-tag-fade 200ms ease-out; }
+}
