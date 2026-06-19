@@ -64,6 +64,14 @@ const FAQ_SECTIONS: FAQSection[] = [
         q: "¿Franco reemplaza a un corredor?",
         a: "No. Franco complementa tu proceso de decisión. Un corredor te muestra propiedades y gestiona la transacción; Franco te dice si esa propiedad es buen negocio como inversión, con datos.",
       },
+      {
+        q: "¿Necesito saber de finanzas para entender el análisis?",
+        a: "No. Franco traduce los números a un veredicto claro —COMPRAR, AJUSTA SUPUESTOS o BUSCAR OTRA— con recomendaciones concretas. Si quieres entrar al detalle de los cálculos, están todos disponibles; pero no necesitas hacerlo para decidir.",
+      },
+      {
+        q: "¿Necesito juntar la tasa de mi crédito, los precios de arriendo, los gastos comunes y todo eso antes de analizar?",
+        a: "No. Con la dirección de la propiedad basta para partir. El resto lo completamos con parámetros de mercado, y tú los ajustas si tienes datos más precisos.",
+      },
     ],
   },
   {
@@ -76,6 +84,14 @@ const FAQ_SECTIONS: FAQSection[] = [
       {
         q: "¿Puedo analizar varios deptos?",
         a: "Sí. El análisis básico (score + métricas + comparación zona) es gratis e ilimitado. Cada informe Pro desbloquea un análisis específico. Si quieres analizar otro depto, necesitas otro análisis o una suscripción mensual.",
+      },
+      {
+        q: "Me parece caro y complejo.",
+        a: "En 30 segundos obtienes un análisis de inversión equivalente al de un equipo de finanzas corporativo, por el precio de dos cafés. Y el primero es gratis, te lo regalamos.",
+      },
+      {
+        q: "¿Necesitas factura?",
+        a: "Cada compra genera una boleta, y junto a ella te llega un correo con los pasos para convertirla en factura. El trámite es simple y lo haces tú mismo.",
       },
     ],
   },

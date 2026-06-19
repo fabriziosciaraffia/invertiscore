@@ -50,12 +50,8 @@ const FAQ_ITEMS: { q: string; a: string }[] = [
     a: "Mantienes acceso hasta el fin del ciclo pagado.",
   },
   {
-    q: "¿Aceptan factura?",
-    a: "Sí, todos los planes incluyen factura electrónica.",
-  },
-  {
-    q: "¿Hay descuento adicional por volumen?",
-    a: "Sí, los planes mayores ya incluyen el descuento por volumen. Para casos especiales contacta soporte.",
+    q: "¿Necesitas factura?",
+    a: "Cada compra genera una boleta, y junto a ella te llega un correo con los pasos para convertirla en factura. El trámite es simple y lo haces tú mismo.",
   },
 ];
 
