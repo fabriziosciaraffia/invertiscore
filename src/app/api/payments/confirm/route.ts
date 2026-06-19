@@ -66,14 +66,27 @@ export async function POST(request: Request) {
     // se persiste crudo más abajo.
     const flowStatus = Number(flowData.status);
 
-    // Update payment record
+    // AMBAS pre-pago: el companion_str_id lo guardó payments/create en
+    // payment_data. El UPDATE de abajo pisa payment_data con la respuesta de
+    // Flow, así que lo capturamos ANTES y lo re-inyectamos — si no, se pierde y
+    // el STR companion nunca se desbloquea + el return rutea al LTR pelado.
+    const { data: prePayment } = await supabase
+      .from("payments")
+      .select("payment_data")
+      .eq("commerce_order", flowData.commerceOrder)
+      .maybeSingle();
+    const companionStrId =
+      (prePayment?.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
+
+    // Update payment record. Preservamos companion_str_id dentro del payload de
+    // Flow para que las lecturas downstream (este handler + payments/status) lo vean.
     const { error: updateError } = await supabase
       .from("payments")
       .update({
         status: newStatus,
         flow_status: flowData.status,
         flow_order: flowData.flowOrder,
-        payment_data: flowData,
+        payment_data: companionStrId ? { ...flowData, companion_str_id: companionStrId } : flowData,
         updated_at: new Date().toISOString(),
       })
       .eq("commerce_order", flowData.commerceOrder);
@@ -97,11 +110,9 @@ export async function POST(request: Request) {
 
       const { id: paymentId, user_id: userId, product, analysis_id: analysisId } = payment;
 
-      // Flujo AMBAS pre-pago: el STR companion viaja en payment_data; el LTR va
-      // en analysis_id. UN solo crédito cubre ambas filas (paridad con el Ambas
-      // pagado: pre-cobro único + claim del segundo sin re-cobrar).
-      const companionStrId =
-        (payment.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
+      // Flujo AMBAS pre-pago: companionStrId se capturó arriba (antes del UPDATE
+      // que pisa payment_data con la respuesta de Flow). El LTR va en analysis_id.
+      // UN solo crédito cubre ambas filas (paridad con el Ambas pagado).
 
       if (userId && product === "single") {
         // Modelo nuevo: N créditos al ledger en UN grant (amount=quantity,
