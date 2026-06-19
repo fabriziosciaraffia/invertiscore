@@ -31,10 +31,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId, quantity: rawQuantity } = body as {
+  const { product, analysisId, quantity: rawQuantity, companionStrId } = body as {
     product: string;
     analysisId?: string;
     quantity?: number | string;
+    // Flujo AMBAS pre-pago: el LTR viaja en analysis_id; el STR (companion) se
+    // guarda en payment_data para que confirm desbloquee ambas filas y el
+    // return rutee a la comparativa.
+    companionStrId?: string;
   };
 
   if (!product || !PRODUCTS[product]) {
@@ -133,6 +137,10 @@ export async function POST(request: Request) {
       quantity,
       status: "pending",
       analysis_id: analysisId || null,
+      // AMBAS pre-pago: guardamos el STR companion. confirm lo detecta para
+      // desbloquear/premiar la 2ª fila; el return lo lee para rutear a la
+      // comparativa. Solo presente en el flujo Ambas.
+      ...(companionStrId ? { payment_data: { companion_str_id: companionStrId } } : {}),
     });
 
     if (insertError) {

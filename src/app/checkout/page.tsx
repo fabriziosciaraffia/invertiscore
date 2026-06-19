@@ -56,6 +56,10 @@ function CheckoutContent() {
   const posthog = usePostHog();
   const productKey = searchParams.get("product") || "single";
   const analysisId = searchParams.get("analysisId");
+  // Flujo AMBAS pre-pago: el STR companion viaja junto al LTR (analysisId).
+  // Se reenvía a payments/create para que confirm desbloquee ambas filas y el
+  // return rutee a la comparativa. Null en LTR/STR single.
+  const companionStrId = searchParams.get("companionStrId");
 
   const product = resolveProduct(productKey);
 
@@ -98,13 +102,13 @@ function CheckoutContent() {
       if (!data.user) {
         // Auth-gate único: sin sesión → a registro, preservando el product key
         // (y analysisId si vino) en ?next= para retomar la compra al volver.
-        const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}`;
+        const returnUrl = `/checkout?product=${productKey}${analysisId ? `&analysisId=${analysisId}` : ""}${companionStrId ? `&companionStrId=${companionStrId}` : ""}`;
         window.location.href = `/register?next=${encodeURIComponent(returnUrl)}`;
       } else {
         setAuthenticated(true);
       }
     });
-  }, [productKey, analysisId]);
+  }, [productKey, analysisId, companionStrId]);
 
   async function handlePay() {
     if (!product) return;
@@ -115,6 +119,11 @@ function CheckoutContent() {
       // analysisId solo aplica al pago único (single): desbloquea ese análisis.
       if (analysisId && product.oneTime) {
         body.analysisId = analysisId;
+        // AMBAS: el STR companion viaja junto. payments/create lo stashea en
+        // payment_data; confirm desbloquea ambas filas con un solo crédito.
+        if (companionStrId) {
+          body.companionStrId = companionStrId;
+        }
       }
       // Cantidad: solo en pago único. Con analysisId el selector está oculto y
       // qty=1, y el backend fuerza 1 igual → seguro mandarlo siempre en oneTime.

@@ -170,10 +170,10 @@ export function Paso4Resumen({
   onVolver: () => void;
   /** "Analizar ahora →" — submit final. */
   onAnalizar: () => void;
-  /** Sesión activa. Habilita el flujo de compra pre-pago (logueado + LTR/STR). */
+  /** Sesión activa. Habilita el flujo de compra pre-pago (logueado + LTR/STR/Ambas). */
   isLoggedIn: boolean;
-  /** Crea el análisis bloqueado (LTR o STR) y va a checkout con su id. */
-  onComprar: (modalidad: "ltr" | "str") => void;
+  /** Crea el/los análisis bloqueado(s) (LTR, STR o Ambas) y va a checkout. */
+  onComprar: (modalidad: "ltr" | "str" | "both") => void;
   /** True mientras se crea la fila bloqueada + redirige a checkout. */
   comprando: boolean;
   submitting: boolean;
@@ -429,11 +429,11 @@ export function Paso4Resumen({
       )}
 
       {/* Ancla pre-pago: deja claro que se paga por ESTE análisis ya configurado,
-          no por un crédito abstracto. Logueado + LTR/STR (el caso del botón de
-          compra pre-pago). Sans regular, sin color (sistema de 2 colores). */}
-      {!canAnalyze && isLoggedIn && (mod === "ltr" || mod === "str") && (
+          no por un crédito abstracto. Logueado + LTR/STR/Ambas (el caso del botón
+          de compra pre-pago). Sans regular, sin color (sistema de 2 colores). */}
+      {!canAnalyze && isLoggedIn && (mod === "ltr" || mod === "str" || mod === "both") && (
         <p className="font-body text-[12px] text-[var(--franco-text-muted)] m-0">
-          Estás comprando este análisis{state.comuna ? ` de ${state.comuna}` : ""}. Pagas y se desbloquea al instante.
+          Estás comprando este análisis{mod === "both" ? " comparativo" : ""}{state.comuna ? ` de ${state.comuna}` : ""}. Pagas y se desbloquea al instante.
         </p>
       )}
 
@@ -464,10 +464,11 @@ export function Paso4Resumen({
               <>Analizar ahora →</>
             )}
           </button>
-        ) : isLoggedIn && (mod === "ltr" || mod === "str") ? (
-          // Logueado + LTR/STR: crear análisis bloqueado y pagar por ÉL. El copy
-          // ancla al análisis concreto ("este análisis"), no a un crédito. Mismo
-          // checkout single ($9.990) para ambas modalidades; AMBAS cae al else.
+        ) : isLoggedIn && (mod === "ltr" || mod === "str" || mod === "both") ? (
+          // Logueado + LTR/STR/Ambas: crear el/los análisis bloqueado(s) y pagar
+          // por ÉL. El copy ancla al análisis concreto ("este análisis"), no a un
+          // crédito. Mismo checkout single ($9.990) para las tres modalidades;
+          // Ambas crea 2 filas locked y un solo cobro las cubre.
           <button
             type="button"
             onClick={() => onComprar(mod)}
@@ -476,6 +477,8 @@ export function Paso4Resumen({
           >
             {comprando ? (
               <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</>
+            ) : mod === "both" ? (
+              <>Desbloquear este análisis comparativo · $9.990</>
             ) : (
               <>Desbloquear este análisis · $9.990</>
             )}
@@ -493,8 +496,9 @@ export function Paso4Resumen({
             Crear cuenta gratis <ArrowRight size={14} />
           </Link>
         ) : (
-          // Ambas logueado sin crédito: flujo viejo intacto (checkout pelado).
-          // STR ya pasa por la rama pre-pago de arriba; acá solo cae "both".
+          // Fallback defensivo: logueado sin modalidad elegida (mod===null), que
+          // en la práctica no ocurre en el Paso 4 (se llega con modalidad ya
+          // seleccionada). LTR/STR/Ambas ya pasan por la rama pre-pago de arriba.
           <Link
             href="/checkout?product=single"
             className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-7 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2"

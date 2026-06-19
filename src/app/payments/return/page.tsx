@@ -46,6 +46,10 @@ function PaymentReturnContent() {
             // va DENTRO de la rama paid: nunca antes de la confirmación, para no
             // aterrizar en un análisis aún bloqueado. Otros productos (pack
             // suelto, sin analysis_id) caen a la pantalla genérica con CTA.
+            //
+            // AMBAS pre-pago: si el pago trae un STR companion en payment_data,
+            // el analysis_id es el LTR → ruteamos a la comparativa con ambos ids.
+            const companionStrId = (data.payment.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
             if (
               !redirectedRef.current &&
               data.payment.product === "single" &&
@@ -53,7 +57,11 @@ function PaymentReturnContent() {
             ) {
               redirectedRef.current = true;
               setRedirecting(true);
-              router.push(`/analisis/${data.payment.analysis_id}`);
+              if (companionStrId) {
+                router.push(`/analisis/comparativa?ltr=${data.payment.analysis_id}&str=${companionStrId}`);
+              } else {
+                router.push(`/analisis/${data.payment.analysis_id}`);
+              }
             }
           } else if (data.payment.status === "rejected" || data.payment.status === "cancelled") {
             setPaymentStatus("error");

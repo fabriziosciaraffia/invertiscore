@@ -568,12 +568,36 @@ function NuevoAnalisisV3Inner() {
   // vía /api/analisis/locked, y manda a checkout con su analysisId. Tras pagar,
   // confirm desbloquea + dispara la IA, y el redirect post-pago lleva al análisis
   // (la vista /analisis/[id] auto-redirige a /analisis/renta-corta/[id] cuando el
-  // tipo es short-term). Mismo checkout single para ambas modalidades. AMBAS NO
-  // pasa por acá (su flujo crea LTR+STR por separado y sigue intacto).
-  async function onComprar(modalidad: "ltr" | "str") {
+  // tipo es short-term). Mismo checkout single para las tres modalidades.
+  //
+  // AMBAS: crea DOS filas locked en un solo POST ({ tipoAnalisis:"both", ltr, str }
+  // → { ltrId, strId }). El LTR viaja en analysisId y el STR como companionStrId;
+  // confirm desbloquea+premia ambas con UN crédito y el return rutea a la
+  // comparativa. Mismo precio single ($9.990) que LTR/STR.
+  async function onComprar(modalidad: "ltr" | "str" | "both") {
     setSubmitError("");
     setComprando(true);
     try {
+      if (modalidad === "both") {
+        const res = await fetch("/api/analisis/locked", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tipoAnalisis: "both",
+            ltr: buildLtrPayload(),
+            str: buildStrPayload(),
+          }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || "No se pudo crear el análisis. Intenta de nuevo.");
+        }
+        const { ltrId, strId } = (await res.json()) as { ltrId: string; strId: string };
+        posthog?.capture("locked_analysis_created", { comuna: state.comuna, modalidad });
+        router.push(`/checkout?product=single&analysisId=${ltrId}&companionStrId=${strId}`);
+        return;
+      }
+
       const payload = modalidad === "str" ? buildStrPayload() : buildLtrPayload();
       const res = await fetch("/api/analisis/locked", {
         method: "POST",
