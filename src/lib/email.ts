@@ -1,5 +1,6 @@
 import { Resend } from 'resend';
 import { FLOW_PRODUCTS, type FlowProductKey } from './flow-products';
+import { PROPERTIES_COUNT } from './stats';
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
@@ -128,7 +129,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
                 <p style="font-family: 'Courier New', Courier, monospace; font-size: 11px; letter-spacing: 2px; color: #888780; text-transform: uppercase; margin: 0 0 16px 0;">Cómo funciona</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
                   ${welcomeStep('01', 'Ingresas los datos del depto: dirección, precio, superficie.')}
-                  ${welcomeStep('02', 'Franco cruza tu depto con +20.000 propiedades reales + datos Airbnb en línea.')}
+                  ${welcomeStep('02', `Franco cruza tu depto con ${PROPERTIES_COUNT} propiedades reales + datos Airbnb en línea.`)}
                   ${welcomeStep('03', 'Recibes un veredicto —comprar, ajustar el precio o buscar otra— con su explicación.')}
                 </table>
               </div>

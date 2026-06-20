@@ -4,6 +4,7 @@ import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import SectionHeader from "./SectionHeader";
 import { RevealOnScroll } from "./RevealOnScroll";
+import { PROPERTIES_COUNT } from "@/lib/stats";
 
 /**
  * Sección 04 · Cómo funciona (F.11 Phase 2.3 · reset estilo Linear).
@@ -43,7 +44,7 @@ const STEPS: ReadonlyArray<Step> = [
     eyebrow: "Análisis en 30 segundos",
     title: "Calcula contribuciones, flujos y comparables.",
     description:
-      "Franco autocompleta el resto con datos del SII, +34.000 propiedades y precios Airbnb en tiempo real.",
+      `Franco autocompleta el resto con datos del SII, ${PROPERTIES_COUNT} propiedades y precios Airbnb en tiempo real.`,
     mockupLeft: true,
     mockup: <MockupStep02 />,
   },

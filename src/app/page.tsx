@@ -12,11 +12,11 @@ import SectionCTASecondary from "@/components/landing/SectionCTASecondary";
 import SectionPricing from "@/components/landing/SectionPricing";
 import SectionFinalCTA from "@/components/landing/SectionFinalCTA";
 import LandingFooter from "@/components/landing/LandingFooter";
+import { PROPERTIES_COUNT } from "@/lib/stats";
 
 export const metadata = {
   title: "Franco — ¿Y si el depto no se paga solo?",
-  description:
-    "Antes de invertir, ve si los números cierran. Análisis de inversión inmobiliaria con datos reales: 34.000+ deptos, arriendo largo y Airbnb, 24 comunas. Veredicto en 30 segundos.",
+  description: `Antes de invertir, ve si los números cierran. Análisis de inversión inmobiliaria con datos reales: ${PROPERTIES_COUNT} deptos, arriendo largo y Airbnb, 24 comunas. Veredicto en 30 segundos.`,
 };
 
 export default function LandingPage() {

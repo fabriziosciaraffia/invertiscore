@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
+import { PROPERTIES_COUNT } from "@/lib/stats";
 
 interface FAQItem {
   q: string;
@@ -54,7 +55,7 @@ const FAQ_SECTIONS: FAQSection[] = [
       },
       {
         q: "¿De dónde salen los datos?",
-        a: "Analizamos información de mercado de más de 20.000 propiedades en 24 comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.",
+        a: `Analizamos información de mercado de ${PROPERTIES_COUNT} propiedades en 24 comunas de Santiago. Los datos incluyen precios de venta, arriendos y condiciones actuales del mercado.`,
       },
       {
         q: "¿Qué tan confiable es el análisis?",

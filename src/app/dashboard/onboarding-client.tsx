@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PRICING_PLANS, productKeyFor, fmtCLP } from "@/lib/pricing";
+import { PROPERTIES_COUNT } from "@/lib/stats";
 
 // Planes recurrentes que se siembran como información SECUNDARIA debajo del
 // héroe ("cuando quieras más"). NO son la decisión de entrada — el primer
@@ -72,7 +73,7 @@ export function OnboardingClient() {
         <div className="mx-auto mt-12 flex max-w-[480px] flex-col gap-[14px]">
           {[
             { n: "1", title: "Ingresa los datos del departamento", sub: "Precio, ubicación, superficie, dormitorios" },
-            { n: "2", title: "Franco analiza con datos reales", sub: "20.000+ propiedades, 24 comunas, plusvalía histórica" },
+            { n: "2", title: "Franco analiza con datos reales", sub: `${PROPERTIES_COUNT} propiedades, 24 comunas, plusvalía histórica` },
             { n: "3", title: "Recibe un veredicto claro", sub: "COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA" },
           ].map((step) => (
             <div key={step.n} className="flex items-center gap-4">
