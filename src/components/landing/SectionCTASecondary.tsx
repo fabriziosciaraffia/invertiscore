@@ -53,7 +53,7 @@ export default function SectionCTASecondary() {
         {/* DER · CTA */}
         <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
           <Link
-            href="/register"
+            href="/analisis/nuevo-v2"
             className="group inline-flex items-center gap-2 font-mono font-bold uppercase text-[#C8323C] transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[rgba(200,50,60,0.06)]"
             style={{
               background: "transparent",

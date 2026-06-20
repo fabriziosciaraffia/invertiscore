@@ -171,7 +171,7 @@ function HeroCopy({ reduce, mobile }: { reduce: boolean; mobile: boolean }) {
         className={`${mobile ? "mt-5" : "mt-7"} flex items-start`}
       >
         <Link
-          href="/register"
+          href="/analisis/nuevo-v2"
           className="group inline-flex items-center gap-2 rounded-md bg-[#C8323C] px-6 py-[14px] font-mono text-[13px] font-semibold uppercase tracking-[0.06em] text-white shadow-[0_2px_0_rgba(0,0,0,0.08)] transition-[transform,filter] duration-150 hover:scale-[1.02] hover:brightness-95"
         >
           Analizar departamento

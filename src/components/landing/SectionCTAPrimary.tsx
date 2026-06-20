@@ -46,7 +46,7 @@ export default function SectionCTAPrimary() {
         {/* DER · CTA */}
         <div className="flex shrink-0 flex-col items-start gap-2.5 md:items-end">
           <Link
-            href="/register"
+            href="/analisis/nuevo-v2"
             className="group inline-flex items-center gap-2 font-mono font-bold uppercase transition-[transform,background] duration-150 hover:scale-[1.02] hover:bg-[#F4F4F4]"
             style={{
               background: "#FFFFFF",

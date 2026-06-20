@@ -78,7 +78,7 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Ventaja apalancado", value: "+$15M" },
     ],
     ctaText: "Analizar departamento →",
-    ctaHref: "/register",
+    ctaHref: "/analisis/nuevo-v2",
   },
   {
     id: "02",
@@ -95,7 +95,7 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Potencial Airbnb", value: "+$148K/mes" },
     ],
     ctaText: "Evaluar inversión →",
-    ctaHref: "/register",
+    ctaHref: "/analisis/nuevo-v2",
   },
   {
     id: "03",
@@ -111,7 +111,7 @@ const PROFILES: ReadonlyArray<Profile> = [
       { label: "Plan asesor", value: "Ilimitado" },
     ],
     ctaText: "Franco para asesores →",
-    ctaHref: "/register",
+    ctaHref: "/analisis/nuevo-v2",
   },
 ];
 
