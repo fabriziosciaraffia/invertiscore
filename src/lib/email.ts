@@ -536,6 +536,10 @@ export async function sendCheckoutRecoveryEmail(
   to: string,
   name: string | null,
   productLabel: string,
+  // Tipo de checkout abandonado. 'single' = análisis suelto (ruta A, default por
+  // compat). 'plan' = suscripción (ruta B) → copy de plan. El cron lo deriva del
+  // kind del catálogo.
+  kind: 'single' | 'plan' = 'single',
 ): Promise<boolean> {
   const resend = getResend();
   if (!resend) {
@@ -546,6 +550,14 @@ export async function sendCheckoutRecoveryEmail(
   const firstName = (name ?? '').split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
   const ctaUrl = `${SITE_URL}/pricing`;
+
+  // Copy ramificado por tipo. Single: "tu análisis sigue ahí". Plan: "tu plan
+  // <nombre> sigue ahí". El resto (saludo, CTA a /pricing, cierre) es común.
+  const intro = kind === 'plan'
+    ? `${greeting} empezaste a suscribirte a <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
+       y no alcanzaste a terminar el pago. Sin apuro — tu plan sigue ahí cuando quieras retomarlo.`
+    : `${greeting} empezaste a comprar <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
+       y no alcanzaste a terminar el pago. Sin apuro — tu análisis sigue ahí cuando quieras retomarlo.`;
 
   try {
     await resend.emails.send({
@@ -558,8 +570,7 @@ export async function sendCheckoutRecoveryEmail(
         </h1>
 
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 16px 0;">
-          ${greeting} empezaste a comprar <span style="color: #FAFAF8; font-weight: 600;">${productLabel}</span>
-          y no alcanzaste a terminar el pago. Sin apuro — tu análisis sigue ahí cuando quieras retomarlo.
+          ${intro}
         </p>
 
         <p style="color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0 0 8px 0;">
