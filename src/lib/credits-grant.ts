@@ -130,9 +130,12 @@ export async function setPlanFields(
  * …). Se usa como `source` del grant para auditoría (distingue mensual de anual
  * en el ledger). product.plan es solo la base ("plan10"), insuficiente.
  *
- * NOTA: el otorgamiento idempotente por payment_id de un cargo de suscripción vive
- * en processSubscriptionCharge. applyPlanCredits se mantiene para los callers
- * existentes; tras el fix (Opción C) el alta usa solo setPlanFields.
+ * @deprecated (modelo C) SIN callers: register-callback ahora usa setPlanFields y
+ * payment-callback usa processSubscriptionCharge. El grant de una suscripción lo
+ * otorga el COBRO confirmado (processSubscriptionCharge, idempotente por payment_id),
+ * NO el alta. NO re-introducir esta llamada en register-callback: el alta volvería a
+ * otorgar el mes 1 y, sumado al grant del cobro, causaría DOBLE GRANT del mes 1. Se
+ * conserva a propósito (no se borra) por si un flujo futuro la necesita con esa salvedad.
  */
 export async function applyPlanCredits(
   userId: string,
