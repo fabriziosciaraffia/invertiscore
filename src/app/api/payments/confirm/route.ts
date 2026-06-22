@@ -17,7 +17,7 @@ function adminProductLabel(product: string): string {
   return (
     FLOW_PRODUCTS[product as FlowProductKey]?.subject ??
     (product === "pro"
-      ? "Análisis Pro"
+      ? "Análisis"
       : product === "pack3"
         ? "Pack x3"
         : product === "subscription"

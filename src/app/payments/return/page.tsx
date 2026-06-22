@@ -120,7 +120,7 @@ function PaymentReturnContent() {
             <p className="mt-2 font-body text-sm text-[var(--franco-text-secondary)]">
               {type === "subscription"
                 ? "Tu suscripción Franco está activa. Análisis ilimitados."
-                : "Tu análisis premium está desbloqueado."
+                : "Tu análisis está desbloqueado."
               }
             </p>
             <div className="mt-6 flex flex-col gap-2">

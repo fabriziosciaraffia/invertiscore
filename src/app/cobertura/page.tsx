@@ -7,7 +7,7 @@ import { AppFooter } from "@/components/chrome/AppFooter";
 export const metadata: Metadata = {
   title: "¿Dónde está disponible Franco?",
   description:
-    "Franco analiza departamentos como inversión en las comunas de Gran Santiago. Mira en qué comunas hoy tienes el análisis completo con datos reales.",
+    "Franco analiza departamentos como inversión en las comunas de Gran Santiago. Mira en qué comunas hoy tienes el análisis con datos reales.",
   alternates: { canonical: "https://refranco.ai/cobertura" },
   openGraph: {
     title: "¿Dónde está disponible Franco?",

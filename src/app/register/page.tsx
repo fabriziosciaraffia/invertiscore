@@ -137,7 +137,7 @@ export default function RegisterPage() {
                     Crea tu cuenta gratis
                   </h1>
                   <p className="mt-1.5 font-body text-sm text-[var(--franco-text-secondary)]">
-                    Análisis completo de cualquier departamento en 30 segundos.
+                    Análisis de cualquier departamento en 30 segundos.
                   </p>
                 </div>
 
