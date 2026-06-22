@@ -79,12 +79,16 @@ const FAQ_SECTIONS: FAQSection[] = [
     title: "Sobre el pago",
     items: [
       {
-        q: "¿Qué incluye el informe Pro?",
-        a: "Análisis IA personalizado con veredicto y precio sugerido, proyecciones de patrimonio y flujo a 20 años, escenarios de salida (venta y refinanciamiento), panel para ajustar variables de financiamiento, y análisis de sensibilidad con 3 escenarios.",
+        q: "¿Qué incluye el análisis?",
+        a: "Un análisis con IA personalizado: veredicto y precio sugerido, proyecciones de patrimonio y flujo a 20 años, escenarios de salida (venta y refinanciamiento), panel para ajustar variables de financiamiento, y análisis de sensibilidad con 3 escenarios. Es un solo análisis que entrega toda la información, en la modalidad que elijas: arriendo largo plazo, Airbnb o ambas comparadas.",
       },
       {
-        q: "¿Puedo analizar varios deptos?",
-        a: "Sí. El análisis básico (score + métricas + comparación zona) es gratis e ilimitado. Cada informe Pro desbloquea un análisis específico. Si quieres analizar otro depto, necesitas otro análisis o una suscripción mensual.",
+        q: "¿Puedo analizar varios departamentos?",
+        a: "Sí. Puedes analizar cuantos quieras — cada departamento es un análisis. El primero es gratis; para seguir, compras análisis o te suscribes a un plan mensual con varios incluidos.",
+      },
+      {
+        q: "¿Puedo comparar mis análisis?",
+        a: "Sí. Desde tu dashboard puedes seleccionar hasta 3 departamentos que ya analizaste y verlos lado a lado: score, rentabilidad, flujo y proyección a 10 años, con un veredicto automático de cuál es la mejor inversión y por qué.",
       },
       {
         q: "Me parece caro y complejo.",
