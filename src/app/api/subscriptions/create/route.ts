@@ -185,6 +185,33 @@ export async function POST(request: Request) {
       })
       .eq("user_id", user.id);
 
+    // RUTA B · carrito abandonado de suscripción: dejamos una fila payments
+    // PENDING al iniciar el checkout (antes de mandar a Flow), simétrico con
+    // payments/create para el single. Si el user abandona el registro de tarjeta,
+    // register-callback nunca la flipea y el cron abandoned-checkout la detecta.
+    // commerce_order determinístico (user+plan) → UPSERT idempotente: reintentar
+    // el checkout del mismo plan no acumula filas. register-callback la flipea a
+    // 'paid' (UPDATE) al activar; aquí solo nace pending.
+    const pendingOrder = `franco-sub-pending-${user.id}-${product}`;
+    const { error: pendingErr } = await admin
+      .from("payments")
+      .upsert(
+        {
+          user_id: user.id,
+          commerce_order: pendingOrder,
+          product,
+          amount: chosen.amount,
+          status: "pending",
+          recovery_email_sent_at: null,
+        },
+        { onConflict: "commerce_order" },
+      );
+    if (pendingErr) {
+      // No bloqueamos el checkout por esto: la recuperación es best-effort, la
+      // activación (register-callback) no depende de esta fila.
+      console.error("[subscriptions/create] pending payment upsert error:", pendingErr);
+    }
+
     // Send customer to register their card
     // Register card
     const registerData = await flowPost("customer/register", {

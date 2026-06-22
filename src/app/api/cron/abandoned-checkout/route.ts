@@ -4,17 +4,17 @@ import { sendCheckoutRecoveryEmail } from "@/lib/email";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 
 /**
- * Cron · Recuperación de carrito abandonado (ruta A · compra única "single").
+ * Cron · Recuperación de carrito abandonado (ruta A · single · + ruta B · planes).
  *
- * payments/create inserta una fila status='pending' al iniciar el checkout. Si
- * el usuario abandona, Flow nunca llama a urlConfirmation y la fila queda en
- * 'pending' indefinidamente. Este cron busca esas filas con created_at > 6h,
- * sin email de recuperación previo, EXCLUYE a quienes ya compraron un 'single'
- * (no nagear a quien sí pagó), manda el email y marca recovery_email_sent_at
- * para no reenviar.
+ * payments/create (single) y subscriptions/create (planes, ruta B) insertan una
+ * fila status='pending' al iniciar el checkout. Si el usuario abandona, Flow
+ * nunca finaliza y la fila queda en 'pending'. Este cron busca esas filas con
+ * created_at > 6h, sin email de recuperación previo, manda el email (copy
+ * ramificado single vs plan) y marca recovery_email_sent_at para no reenviar.
  *
- * Solo product='single' (único one_time del catálogo). Las suscripciones NO
- * dejan fila pending en payments, así que esta ruta no las toca.
+ * Cubre todas las keys del catálogo (single + 6 planes). Exclusiones: quienes ya
+ * compraron un 'single' pagado, y quienes tienen subscription_status='active'
+ * (red de seguridad ruta B: al activar, register-callback flipea su pending a paid).
  *
  * Idempotente: recovery_email_sent_at IS NULL en el filtro + se setea al enviar.
  *
@@ -31,6 +31,10 @@ function createAdminClient() {
 // Umbral de abandono: una 'pending' más vieja que esto se considera abandonada
 // (no "está pagando ahora"). 6 horas.
 const ABANDON_THRESHOLD_MS = 6 * 60 * 60 * 1000;
+
+// Productos recuperables: el single (ruta A) + los planes de suscripción
+// (ruta B, pending dejado por subscriptions/create). Todas las keys del catálogo.
+const RECOVERABLE_PRODUCTS = Object.keys(FLOW_PRODUCTS) as FlowProductKey[];
 
 export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -52,7 +56,7 @@ export async function GET(request: Request) {
     .from("payments")
     .select("id, user_id, product, created_at")
     .eq("status", "pending")
-    .eq("product", "single")
+    .in("product", RECOVERABLE_PRODUCTS)
     .lte("created_at", cutoffIso)
     .is("recovery_email_sent_at", null);
 
@@ -80,7 +84,30 @@ export async function GET(request: Request) {
     paidUserIds = new Set((paidRows ?? []).map((r) => r.user_id));
   }
 
-  const toRecover = (candidates ?? []).filter((c) => !paidUserIds.has(c.user_id));
+  // Red de seguridad (ruta B): excluir users con suscripción activa. Al activar,
+  // register-callback flipea el pending a 'paid' (ya no sería candidato), pero si
+  // por timing/fallo quedó un pending vivo no queremos nagear a quien ya suscribió.
+  let activeSubUserIds = new Set<string>();
+  if (userIds.length > 0) {
+    const { data: activeRows, error: activeErr } = await supabase
+      .from("user_credits")
+      .select("user_id")
+      .in("user_id", userIds)
+      .eq("subscription_status", "active");
+    if (activeErr) {
+      console.error("[cron/abandoned-checkout] active-sub lookup error:", activeErr);
+      return NextResponse.json({ error: "Query failed" }, { status: 500 });
+    }
+    activeSubUserIds = new Set((activeRows ?? []).map((r) => r.user_id));
+  }
+
+  // Exclusión single-pagado SCOPED al producto: un single pagado solo bloquea la
+  // recuperación de un pending 'single' (ruta A), NO la de un pending de plan
+  // (ruta B) — un comprador de análisis suelto puede abandonar un checkout de
+  // suscripción y debe ser recuperable. Para planes, la red es activeSubUserIds.
+  const toRecover = (candidates ?? []).filter(
+    (c) => !(c.product === "single" && paidUserIds.has(c.user_id)) && !activeSubUserIds.has(c.user_id),
+  );
 
   let processed = 0;
   let sent = 0;
@@ -101,13 +128,17 @@ export async function GET(request: Request) {
 
       const name =
         u.user_metadata?.nombre || u.user_metadata?.full_name || null;
+      const productKey = row.product as FlowProductKey;
       const productLabel =
-        FLOW_PRODUCTS[row.product as FlowProductKey]?.subject ?? "tu análisis";
+        FLOW_PRODUCTS[productKey]?.subject ?? "tu análisis";
+      // Tipo de checkout abandonado: 'single' (análisis suelto) vs plan
+      // (suscripción) → ramifica el copy del email. Derivado del kind del catálogo.
+      const productKind = FLOW_PRODUCTS[productKey]?.kind === "recurring" ? "plan" : "single";
 
       // Marcamos recovery_email_sent_at SOLO si Resend confirmó el envío. Si
       // falló (o Resend no está configurado), dejamos la fila sin marcar para
       // reintentar en la próxima corrida (no se pierde la recuperación).
-      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel);
+      const ok = await sendCheckoutRecoveryEmail(u.email, name, productLabel, productKind);
       if (!ok) {
         console.error(
           "[cron/abandoned-checkout] envío falló, se reintentará; payment:",
