@@ -251,7 +251,7 @@ export function UnifiedNav({
   // ── CTA primario (Signal Red) ─────────────────────────────────────
   const ctaPrimary = loggedIn
     ? { label: "Nuevo análisis", href: "/analisis/nuevo-v2" }
-    : { label: "Analizar departamento", href: "/register" };
+    : { label: "Analizar departamento", href: "/analisis/nuevo-v2" };
 
   // ───────────────────────── MINIMAL ───────────────────────────────
   if (minimal) {
