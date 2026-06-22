@@ -101,8 +101,12 @@ export async function GET(request: Request) {
     activeSubUserIds = new Set((activeRows ?? []).map((r) => r.user_id));
   }
 
+  // Exclusión single-pagado SCOPED al producto: un single pagado solo bloquea la
+  // recuperación de un pending 'single' (ruta A), NO la de un pending de plan
+  // (ruta B) — un comprador de análisis suelto puede abandonar un checkout de
+  // suscripción y debe ser recuperable. Para planes, la red es activeSubUserIds.
   const toRecover = (candidates ?? []).filter(
-    (c) => !paidUserIds.has(c.user_id) && !activeSubUserIds.has(c.user_id),
+    (c) => !(c.product === "single" && paidUserIds.has(c.user_id)) && !activeSubUserIds.has(c.user_id),
   );
 
   let processed = 0;
