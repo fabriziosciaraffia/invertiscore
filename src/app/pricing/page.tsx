@@ -8,6 +8,7 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import PricingPlans from "@/components/landing/PricingPlans";
 import SavingsCalculator from "@/components/landing/SavingsCalculator";
+import { getFAQItemsByIds } from "@/lib/faq-data";
 import type { User } from "@supabase/supabase-js";
 
 // ─── FadeIn ─────────────────────────────────────────
@@ -36,24 +37,8 @@ function FadeIn({ children, className = "", delay = 0 }: { children: React.React
 }
 
 // ─── FAQ (Phase 2.38 · lista simple, body siempre visible) ───
-const FAQ_ITEMS: { q: string; a: string }[] = [
-  {
-    q: "¿Los análisis caducan?",
-    a: "1 análisis: no caduca. Suscripciones: acumulables hasta 1 año, luego se resetea.",
-  },
-  {
-    q: "¿Puedo cambiar de plan?",
-    a: "Sí, en cualquier momento. Ajustes aplican al siguiente ciclo.",
-  },
-  {
-    q: "¿Qué pasa si cancelo?",
-    a: "Mantienes acceso hasta el fin del ciclo pagado.",
-  },
-  {
-    q: "¿Necesitas factura?",
-    a: "Cada compra genera una boleta, y junto a ella te llega un correo con los pasos para convertirla en factura. El trámite es simple y lo haces tú mismo.",
-  },
-];
+// Teaser: 4 ítems desde la fuente única (@/lib/faq-data), mismo orden.
+const FAQ_ITEMS = getFAQItemsByIds(["caducan", "cambiar-plan", "cancelar", "factura"]);
 
 // ─── Page ───────────────────────────────────────────
 export default function PricingPage() {
