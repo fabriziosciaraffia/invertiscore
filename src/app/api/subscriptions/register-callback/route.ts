@@ -82,18 +82,74 @@ export async function POST(request: Request) {
 
     // Record as payment (monto y producto reales del plan elegido). Capturamos
     // el id para el FK del grant.
-    const { data: paymentRow } = await supabase
+    //
+    // RUTA B · flip del pending: subscriptions/create dejó una fila PENDING
+    // keyed por user+plan (franco-sub-pending-<userId>-<planKey>). Si existe, la
+    // FLIPEAMOS a 'paid' (UPDATE) en vez de insertar una segunda fila — así el
+    // cron de abandono no la ve como carrito vivo y no hay fila pending huérfana.
+    // Al flipear le ponemos el commerce_order final (franco-sub-<subId>) +
+    // payment_data. Fallback a INSERT si no había pending (activación nunca se
+    // rompe: flujos viejos / pending perdido).
+    const paidOrder = `franco-sub-${subData.subscriptionId}`;
+    const { data: pendingRow } = await supabase
       .from("payments")
-      .insert({
-        user_id: userCredit.user_id,
-        commerce_order: `franco-sub-${subData.subscriptionId}`,
-        product: match.key,
-        amount: match.product.amount,
-        status: "paid",
-        payment_data: subData,
-      })
       .select("id")
-      .single();
+      .eq("user_id", userCredit.user_id)
+      .eq("product", match.key)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let paymentRow: { id: string } | null = null;
+    if (pendingRow) {
+      const { data: flipped } = await supabase
+        .from("payments")
+        .update({
+          commerce_order: paidOrder,
+          amount: match.product.amount,
+          status: "paid",
+          payment_data: subData,
+        })
+        .eq("id", pendingRow.id)
+        .select("id")
+        .single();
+      paymentRow = flipped ?? null;
+    } else {
+      // UPSERT do-nothing (no INSERT plano): si un retry de Flow llega tras un
+      // flip/insert previo (y el guard 'active' no cortó por fallo a mitad de la
+      // primera corrida), `franco-sub-<subId>` ya existe → el INSERT plano
+      // chocaría con el UNIQUE de commerce_order. ignoreDuplicates evita romper.
+      const { data: inserted, error: insertErr } = await supabase
+        .from("payments")
+        .upsert(
+          {
+            user_id: userCredit.user_id,
+            commerce_order: paidOrder,
+            product: match.key,
+            amount: match.product.amount,
+            status: "paid",
+            payment_data: subData,
+          },
+          { onConflict: "commerce_order", ignoreDuplicates: true },
+        )
+        .select("id")
+        .maybeSingle();
+
+      // Duplicado (sin error y sin fila) = este cobro YA se procesó en una
+      // corrida previa. NO-OP TOTAL: salimos antes de applyPlanCredits, que NO es
+      // idempotente (grantCredits hace INSERT plano sin dedup → un 2º llamado
+      // doblaría el grant). Repone la guardia que antes daba el choque del INSERT.
+      // La suscripción ya quedó activa en la corrida original → success redirect.
+      if (!inserted && !insertErr) {
+        console.error(
+          "[register-callback] cobro ya procesado (commerce_order duplicado), no-op:",
+          paidOrder,
+        );
+        return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
+      }
+      paymentRow = inserted ?? null;
+    }
 
     // Otorgar el grant del ciclo (amount=capacity, expira en 1 año) o, para
     // unlimited, setear is_unlimited sin grant. applyPlanCredits también setea
