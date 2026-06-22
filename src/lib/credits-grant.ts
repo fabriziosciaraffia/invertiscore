@@ -80,20 +80,20 @@ export async function grantCredits(
 }
 
 /**
- * Aplica un producto recurrente al usuario tras un cargo OK:
- *  - unlimited → NO inserta grant; setea is_unlimited=true.
- *  - finito    → grantCredits(capacity).
- * En ambos casos setea active_plan / billing_period / subscription_ends_at.
+ * Setea SOLO los campos de PLAN en user_credits (la "activación"), sin otorgar
+ * grant: active_plan, billing_period, is_unlimited, subscription_ends_at.
  *
- * `key` es la product key completa del catálogo (plan10_mensual, plan10_annual,
- * …). Se usa como `source` del grant para auditoría (distingue mensual de anual
- * en el ledger). product.plan es solo la base ("plan10"), insuficiente.
+ * Separado de applyPlanCredits para el modelo "el grant sigue al cobro" (Opción C):
+ * el alta (register-callback) activa la suscripción con esto, y el grant del ciclo
+ * lo otorga el cobro confirmado (payment-callback / cron reconciler) vía
+ * processSubscriptionCharge. Así el alta no puede duplicar el grant del mes 1.
+ *
+ * Devuelve true si el UPDATE no falló. (No necesita `key`: los campos salen todos
+ * de `product`; el `key` solo se usa como source del grant, que acá no ocurre.)
  */
-export async function applyPlanCredits(
+export async function setPlanFields(
   userId: string,
-  product: FlowProduct,
-  key: FlowProductKey,
-  opts: GrantOpts = {}
+  product: FlowProduct
 ): Promise<boolean> {
   if (!userId) return false;
 
@@ -101,14 +101,6 @@ export async function applyPlanCredits(
   const now = new Date();
   const cycleMs = product.billing === "annual" ? ONE_YEAR_MS : ONE_MONTH_MS;
   const subscriptionEndsAt = new Date(now.getTime() + cycleMs).toISOString();
-
-  let ok = true;
-
-  if (!product.isUnlimited) {
-    // Plan con capacidad finita → grant del ciclo (expira en 1 año).
-    // source = key completa del catálogo (mensual/anual), no la base product.plan.
-    ok = await grantCredits(userId, key, product.capacity ?? 0, opts);
-  }
 
   const { error } = await supabase
     .from("user_credits")
@@ -122,10 +114,43 @@ export async function applyPlanCredits(
     .eq("user_id", userId);
 
   if (error) {
-    console.error("[applyPlanCredits] user_credits update error:", error);
+    console.error("[setPlanFields] user_credits update error:", error);
     return false;
   }
-  return ok;
+  return true;
+}
+
+/**
+ * Aplica un producto recurrente al usuario tras un cargo OK:
+ *  - unlimited → NO inserta grant; setea is_unlimited=true.
+ *  - finito    → grantCredits(capacity).
+ * En ambos casos setea los campos de plan (vía setPlanFields).
+ *
+ * `key` es la product key completa del catálogo (plan10_mensual, plan10_annual,
+ * …). Se usa como `source` del grant para auditoría (distingue mensual de anual
+ * en el ledger). product.plan es solo la base ("plan10"), insuficiente.
+ *
+ * NOTA: el otorgamiento idempotente por payment_id de un cargo de suscripción vive
+ * en processSubscriptionCharge. applyPlanCredits se mantiene para los callers
+ * existentes; tras el fix (Opción C) el alta usa solo setPlanFields.
+ */
+export async function applyPlanCredits(
+  userId: string,
+  product: FlowProduct,
+  key: FlowProductKey,
+  opts: GrantOpts = {}
+): Promise<boolean> {
+  if (!userId) return false;
+
+  let ok = true;
+  if (!product.isUnlimited) {
+    // Plan con capacidad finita → grant del ciclo (expira en 1 año).
+    // source = key completa del catálogo (mensual/anual), no la base product.plan.
+    ok = await grantCredits(userId, key, product.capacity ?? 0, opts);
+  }
+
+  const fieldsOk = await setPlanFields(userId, product);
+  return ok && fieldsOk;
 }
 
 /**
