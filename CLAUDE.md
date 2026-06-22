@@ -92,6 +92,10 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - Si llegan commits a `origin/master` durante el trabajo: `git merge origin/master --no-edit`. Si hay **conflicto, detenete sin resolver** y reportá.
 - **No commitees**: scripts de QA/diagnóstico (`scripts/of-*` y similares, untracked) ni `.claude/settings.local.json`.
 - Se trabaja con **git worktrees** (uno por sesión/feature, más el principal); por eso verificá siempre `pwd` y la branch antes de cualquier operación git/npm.
+- **Worktrees con junction a node_modules**: si se crea un junction/symlink de `node_modules` apuntando al repo principal (para evitar `npm ci` en el worktree), ANTES de `git worktree remove`:
+  1. Matar cualquier dev server vivo del worktree (`next dev`, etc.) — el `TaskStop` mata el wrapper de bash, no el proceso node, y deja el dir 'busy'.
+  2. Eliminar el junction de forma segura (sin seguir al target).
+  Razón: el `rm -rf` interno de `git worktree remove` puede seguir el junction y borrar `node_modules` del repo principal. Si pasa, el daño típico es solo `node_modules/.bin` (shims) → se repara con `npm rebuild`.
 
 ## Type-check, lint y scripts
 - Type-check: `node_modules/.bin/tsc --noEmit` — **NO** `npx tsc`. El repo puede venir sin `node_modules` → `npm ci` primero.
