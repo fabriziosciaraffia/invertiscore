@@ -217,7 +217,7 @@ export function MiniCard({
       </p>
       <div className="border-t-[0.5px] border-[var(--franco-border)] mt-4 pt-3.5">
         <span className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)]">
-          Leer análisis completo →
+          Leer análisis →
         </span>
       </div>
     </button>

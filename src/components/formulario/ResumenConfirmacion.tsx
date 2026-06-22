@@ -99,7 +99,7 @@ function tierCopy(info: TierInfo): { costo: string; plan: string; costoColor: st
   if (info.tier === "premium" && info.credits > 0) {
     return {
       costo: `Usarás 1 de tus ${info.credits} análisis`,
-      plan: `PRO · ${info.credits} análisis`,
+      plan: `${info.credits} análisis`,
       costoColor: "var(--franco-v-adjust)",
     };
   }

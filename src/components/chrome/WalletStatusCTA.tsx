@@ -175,7 +175,7 @@ function resolveVariant(args: {
     return {
       state: "credits",
       message: `Tienes ${args.credits} análisis disponible${plural}.`,
-      plan: `PRO · ${args.credits}`,
+      plan: `${args.credits} análisis`,
       ctaLabel: "Crear otro análisis",
       href: "/analisis/nuevo-v2",
       tone: "neutral",

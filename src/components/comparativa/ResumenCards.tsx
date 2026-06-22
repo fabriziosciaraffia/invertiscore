@@ -137,7 +137,7 @@ function ResumenCard({
         href={href}
         className="mt-5 inline-flex items-center gap-1.5 font-body text-[13px] font-medium text-[var(--franco-text)] hover:text-signal-red transition-colors"
       >
-        Ver análisis completo
+        Ver análisis
         <ArrowRight size={14} />
       </Link>
     </div>

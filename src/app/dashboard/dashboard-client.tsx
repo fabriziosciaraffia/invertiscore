@@ -546,7 +546,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                               </span>
                             )}
                             {item.is_premium && (
-                              <span className="rounded bg-signal-red/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-signal-red">PRO</span>
+                              <span className="rounded bg-signal-red/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-signal-red">✓</span>
                             )}
                           </div>
                           <div className="mt-0.5 flex items-center gap-1.5">
