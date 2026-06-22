@@ -137,7 +137,7 @@ export default async function PerfilPage() {
     planCtaHref = "/pricing";
   } else {
     planLabel = "Gratuito";
-    planDescription = "Acceso a análisis básicos. Compra informes Pro por $4.990 o suscríbete para análisis ilimitados.";
+    planDescription = "Tu primer análisis es gratis. Para analizar más, compra análisis ($9.990) o suscríbete a un plan mensual.";
     planCtaText = "Ver planes";
     planCtaHref = "/pricing";
   }
@@ -148,7 +148,7 @@ export default async function PerfilPage() {
   }
 
   function fmtProductName(product: string): string {
-    if (product === "pro") return "Franco Pro";
+    if (product === "pro") return "Análisis";
     if (product === "pack3") return "Pack 3×";
     if (product === "subscription") return "Suscripción";
     return product;
@@ -235,13 +235,13 @@ export default async function PerfilPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Clock className="h-5 w-5 text-[#C8323C]" />
-              <CardTitle className="text-[var(--franco-text)]">Historial de Informes Pro</CardTitle>
+              <CardTitle className="text-[var(--franco-text)]">Historial de análisis</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
             {payments.length === 0 ? (
               <p className="text-sm text-[var(--franco-text-secondary)]">
-                Aún no has comprado informes Pro.
+                Aún no has comprado análisis.
               </p>
             ) : (
               <div className="space-y-3">

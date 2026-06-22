@@ -87,7 +87,7 @@ export default async function CuentaPage() {
             {isSubscriber && (
               <>
                 <StatusBadge label="SUSCRIPTOR" tone="ink-400" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis Pro ilimitados</p>
+                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis ilimitados</p>
                 {subEnd && (
                   <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
                     Próxima renovación: {fmtDate(subEnd)}
@@ -138,12 +138,12 @@ export default async function CuentaPage() {
 
             {hasCredits && (
               <>
-                <StatusBadge label="PRO" tone="signal-red" />
+                <StatusBadge label="SALDO" tone="signal-red" />
                 <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
                   Tienes <strong className="font-mono">{credits}</strong> análisis {credits === 1 ? "disponible" : "disponibles"}
                 </p>
                 <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
-                  Cada informe Pro usa 1 análisis
+                  Cada análisis que generes usa 1 de tu saldo.
                 </p>
                 <div className="mt-4">
                   <Link
@@ -198,7 +198,7 @@ export default async function CuentaPage() {
                 </thead>
                 <tbody>
                   {payments.map((p) => {
-                    const productLabel = p.product === "pro" ? "Análisis Pro" : p.product === "pack3" ? "Pack x3" : p.product === "subscription" ? "Suscripción Mensual" : p.product;
+                    const productLabel = p.product === "pro" ? "Análisis" : p.product === "pack3" ? "Pack x3" : p.product === "subscription" ? "Suscripción Mensual" : p.product;
                     const isCredit = p.amount === 0 || (p.commerce_order && p.commerce_order.startsWith("credit-"));
                     const statusLabel = p.status === "paid" ? "Pagado" : p.status === "rejected" ? "Rechazado" : "Pendiente";
                     const statusColor = p.status === "paid" ? "var(--ink-400)" : p.status === "rejected" ? "var(--signal-red)" : "var(--ink-500)";
