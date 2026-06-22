@@ -24,6 +24,7 @@ import {
   grantCredits,
   recurringProductByPlan,
   recurringProductByAmount,
+  refreshSubscriptionEndsAt,
 } from "@/lib/credits-grant";
 import { emitirBoletaDTE, type PaymentForDTE } from "@/lib/openfactura/client";
 
@@ -204,6 +205,24 @@ export async function processSubscriptionCharge(
   }
   if (!paymentId) return fail("no_payment_id");
 
+  // freshFila = true solo si ESTE llamado insertó la fila (no un 23505/reproceso).
+  // El camino de error de DB no-23505 ya retornó arriba (fail), así que acá freshFila
+  // distingue limpio (a) inserción nueva de (b) fila ya existente.
+  const freshFila = !insertErr;
+
+  // gate del cutoff: calculado UNA vez (lo usan el refresh de ends_at y el grant).
+  const gate = grantGate(chargeDate);
+
+  // 4.5 Refresh del fin de período pagado = now + ciclo. Sigue al COBRO, NO al grant:
+  // se hace aunque el grant quede suspendido (cutoff_unset) — el período igual avanza.
+  // Solo en la PRIMERA vez que se procesa el cargo (freshFila) → un único write por
+  // cargo, sin drift por reprocesos del cron. Excluye cargos genuinamente pre-C
+  // (pre_cutoff: no extender períodos viejos; protege la canary). Sin producto resuelto
+  // no sabemos el ciclo → se omite.
+  if (freshFila && match && gate.reason !== "pre_cutoff") {
+    await refreshSubscriptionEndsAt(userId, match.product);
+  }
+
   // 5. Ensure grant. Cuatro guardas, en orden:
   //  (a) grantGate (cutoff): FAIL-SAFE. Sin SUBSCRIPTION_GRANT_CUTOFF → NO se otorga
   //      (suspendido por seguridad). Con cutoff: solo cargos post-C (los pre-C ya
@@ -214,7 +233,6 @@ export async function processSubscriptionCharge(
   //      hay ya un lote ligado a ESTE payment_id.
   // Fila + boleta se aseguran SIEMPRE (idempotentes), corra o no el grant.
   let granted = false;
-  const gate = grantGate(chargeDate);
   if (!gate.allow) {
     console.error(
       gate.reason === "cutoff_unset"

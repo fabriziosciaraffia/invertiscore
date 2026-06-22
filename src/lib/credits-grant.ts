@@ -121,6 +121,42 @@ export async function setPlanFields(
 }
 
 /**
+ * Refresca SOLO subscription_ends_at = now + ciclo del plan. NO toca ningún otro
+ * campo (active_plan/billing_period/is_unlimited/next_monthly_grant_at quedan como
+ * están).
+ *
+ * El "fin del período pagado" sigue al COBRO confirmado: cada renovación lo empuja,
+ * independiente de si se otorgó grant. Lo usa processSubscriptionCharge en la primera
+ * vez que procesa un cargo (fila recién insertada) para que el cron monthly-grants
+ * (cota superior del anual) y la UI no queden con la fecha del alta. Devuelve true si
+ * el UPDATE no falló.
+ */
+export async function refreshSubscriptionEndsAt(
+  userId: string,
+  product: FlowProduct
+): Promise<boolean> {
+  if (!userId) return false;
+
+  const supabase = createAdminClient();
+  const now = new Date();
+  const cycleMs = product.billing === "annual" ? ONE_YEAR_MS : ONE_MONTH_MS;
+
+  const { error } = await supabase
+    .from("user_credits")
+    .update({
+      subscription_ends_at: new Date(now.getTime() + cycleMs).toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("[refreshSubscriptionEndsAt] user_credits update error:", error);
+    return false;
+  }
+  return true;
+}
+
+/**
  * Aplica un producto recurrente al usuario tras un cargo OK:
  *  - unlimited → NO inserta grant; setea is_unlimited=true.
  *  - finito    → grantCredits(capacity).
