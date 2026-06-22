@@ -152,7 +152,7 @@ export default function PricingPage() {
               <p className="font-mono text-[9px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] m-0 mb-2">Producto</p>
               <div className="flex flex-col gap-1.5">
                 <Link href={ctaHref} className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Análisis gratis</Link>
-                <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Informe Pro</Link>
+                <Link href="/pricing" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Planes</Link>
                 <Link href="/dashboard" className="font-body text-[11px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">Dashboard</Link>
               </div>
             </div>
