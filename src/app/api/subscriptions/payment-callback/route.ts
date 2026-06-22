@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost } from "@/lib/flow";
-import { applyPlanCredits, recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
+import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
-import { emitirBoletaDTE } from "@/lib/openfactura/client";
+import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
+
+// commerceOrder de un cargo de suscripción: "sus_<subId>_<invoiceId>_<ts>".
+// Capturamos el prefijo sus_<subId> para mapear contra user_credits.subscription_id.
+const SUB_ID_RE = /^(sus_[a-zA-Z0-9]+)_/;
 
 function createAdminClient() {
   return createClient(
@@ -24,19 +28,36 @@ export async function POST(request: Request) {
     const flowData = await flowPost("payment/getStatus", { token });
     const supabase = createAdminClient();
 
-    // Find user by subscription
+    // Resolver el dueño de la suscripción. PRIMARIO (fix): parsear sus_<subId> del
+    // commerceOrder de Flow → user_credits.subscription_id. Los cargos recurrentes
+    // NO traen nuestro optional.userId ni un commerceOrder que matchee payments, así
+    // que sin esto userId quedaba null y el cargo se descartaba en silencio.
+    // Fallbacks legacy: optional.userId y commerceOrder en payments.
     let userId: string | null = null;
-    try {
-      const optional = JSON.parse(flowData.optional || "{}");
-      userId = optional.userId;
-    } catch { /* ignore */ }
+
+    const subMatch = SUB_ID_RE.exec(flowData.commerceOrder || "");
+    if (subMatch) {
+      const { data } = await supabase
+        .from("user_credits")
+        .select("user_id")
+        .eq("subscription_id", subMatch[1])
+        .maybeSingle();
+      userId = data?.user_id ?? null;
+    }
+
+    if (!userId) {
+      try {
+        const optional = JSON.parse(flowData.optional || "{}");
+        userId = optional.userId ?? null;
+      } catch { /* ignore */ }
+    }
 
     if (!userId && flowData.commerceOrder) {
       const { data } = await supabase
         .from("payments")
         .select("user_id")
         .eq("commerce_order", flowData.commerceOrder)
-        .single();
+        .maybeSingle();
       userId = data?.user_id || null;
     }
 
@@ -45,7 +66,7 @@ export async function POST(request: Request) {
     const flowStatus = Number(flowData.status);
     if (flowStatus === 2 && userId) {
       // Cargo recurrente OK → mantener suscripción activa. Si venía de past_due
-      // (recuperación dentro de la gracia), limpiar grace_ends_at.
+      // (recuperación dentro de la gracia), limpiar grace_ends_at. Idempotente.
       await supabase
         .from("user_credits")
         .update({
@@ -55,83 +76,46 @@ export async function POST(request: Request) {
         })
         .eq("user_id", userId);
 
-      // Identificar el plan suscrito. Preferimos el plan persistido en
-      // user_credits (active_plan/billing_period, seteado en subscriptions/create)
-      // que es fuente de verdad exacta. Fallback al mapeo por monto solo si no
-      // hubiera plan persistido (payment/getStatus NO devuelve planId; los 6
-      // montos de FLOW_PRODUCTS son únicos, así que el monto sirve de respaldo).
-      const { data: uc } = await supabase
-        .from("user_credits")
-        .select("active_plan, billing_period")
-        .eq("user_id", userId)
-        .maybeSingle();
+      // Fila franco-sub-pay-<flowOrder> + grant (idempotente por payment_id, gateado
+      // por el cutoff de C) + boleta DTE 39: todo en el helper compartido (el mismo
+      // que usará el cron reconciler). chargeDate ← requestDate es CRÍTICO: sin él el
+      // fail-safe del cutoff suspende el grant. El helper NUNCA lanza y deduplica solo
+      // (commerce_order UNIQUE + grant por payment_id + boleta por payment_id), así
+      // que un reenvío del mismo cobro es no-op seguro.
+      const result = await processSubscriptionCharge({
+        flowOrder: Number(flowData.flowOrder),
+        commerceOrder: flowData.commerceOrder,
+        amount: Number(flowData.amount),
+        status: flowStatus,
+        payer: flowData.payer,
+        chargeDate: flowData.requestDate,
+        flowData,
+      });
+      console.error(
+        "[payment-callback] processSubscriptionCharge →",
+        JSON.stringify(result)
+      );
 
-      const match =
-        recurringProductByPlan(uc?.active_plan, uc?.billing_period) ??
-        recurringProductByAmount(flowData.amount);
-      const productKey = match?.key ?? "subscription";
-
-      // Clave de dedupe del cobro = flowOrder de Flow (único e idéntico ante un
-      // reenvío del MISMO cobro; distinto en el cobro del año siguiente). Sin él
-      // no podemos deduplicar, así que NO inventamos id (el `|| Date.now()` viejo
-      // rompía la idempotencia): logueamos y salimos. Status 2 sin flowOrder no es
-      // un caso reintenable útil → 200 para que Flow no insista.
-      const flowOrder = flowData.flowOrder;
-      if (!flowOrder) {
-        console.error(
-          "[payment-callback] flowOrder ausente; cobro no procesado (sin dedupe):",
-          flowData.commerceOrder
-        );
-        return NextResponse.json({ status: "ok" });
-      }
-
-      // Guarda de idempotencia INSERT-first: commerce_order es UNIQUE. Un reenvío
-      // del mismo cobro choca contra el constraint (Postgres 23505) → ya procesado,
-      // salir SIN otorgar ni re-armar. El INSERT es atómico, así que no hay ventana
-      // TOCTOU entre "chequear" y "otorgar".
-      const { data: paymentRow, error: insertErr } = await supabase
-        .from("payments")
-        .insert({
-          user_id: userId,
-          commerce_order: `franco-sub-pay-${flowOrder}`,
-          product: productKey,
-          amount: flowData.amount || 19990,
-          status: "paid",
-          flow_order: flowOrder,
-          flow_status: flowData.status,
-          payment_data: flowData,
-        })
-        .select("id")
-        .single();
-
-      if (insertErr) {
-        // PostgrestError.code === '23505' = unique_violation → cobro ya registrado.
-        if (insertErr.code === "23505") {
-          console.error(`[payment-callback] duplicate webhook, flowOrder=${flowOrder} ignored`);
-          return NextResponse.json({ status: "ok" });
-        }
-        // Cualquier otro error de INSERT es real (no un duplicado): NO otorgamos y
-        // respondemos error para que Flow reintente. Distinguir esto del 23505
-        // evita (a) regalar un grant tratando un dup como éxito y (b) descartar un
-        // cobro válido por un fallo transitorio tratándolo como dup.
-        console.error("[payment-callback] payments insert error:", insertErr);
-        return NextResponse.json({ status: "error" }, { status: 200 });
-      }
-
-      // Otorgar créditos del ciclo según el plan (o is_unlimited). Si no se pudo
-      // identificar el plan por monto, NO otorgamos (evita grants erróneos) — la
-      // suscripción queda activa pero el caso queda logueado para revisión.
-      if (match) {
-        await applyPlanCredits(userId, match.product, match.key, { paymentId: paymentRow?.id ?? null });
-
-        // Re-armar el lote mensual de planes ANUALES finitos. El cron monthly-grants
-        // dejó next_monthly_grant_at=null al cerrar el ciclo anterior; sin esto la
-        // renovación solo daría el mes 1 (el grant de applyPlanCredits) y perdería
-        // los meses 2-12. Mensual recobra por su propio webhook recurrente y
-        // unlimited es free pass → en ambos no se toca. Patrón de register-callback.
-        const isAnnualFinite =
-          match.product.billing === "annual" && match.product.isUnlimited !== true;
-        if (isAnnualFinite) {
+      // Re-armar el lote mensual de planes ANUALES finitos SOLO ante un cargo FRESCO
+      // (result.granted = se insertó un lote nuevo en este llamado). En un reenvío del
+      // webhook (granted=false) NO re-armamos, para no empujar next_monthly_grant_at
+      // repetidamente. El cron monthly-grants otorga los meses 2-12 desde esta fecha.
+      // (Antes esto vivía tras el INSERT-first; ahora el helper hace el INSERT y la
+      // idempotencia del grant, y result.granted refleja "cargo fresco".)
+      if (result.granted) {
+        const { data: uc } = await supabase
+          .from("user_credits")
+          .select("active_plan, billing_period")
+          .eq("user_id", userId)
+          .maybeSingle();
+        const match =
+          recurringProductByPlan(uc?.active_plan, uc?.billing_period) ??
+          recurringProductByAmount(Number(flowData.amount));
+        if (
+          match &&
+          match.product.billing === "annual" &&
+          match.product.isUnlimited !== true
+        ) {
           const now = new Date();
           await supabase
             .from("user_credits")
@@ -140,55 +124,6 @@ export async function POST(request: Request) {
               updated_at: now.toISOString(),
             })
             .eq("user_id", userId);
-        }
-      } else {
-        console.error(
-          "[subscriptions/payment-callback] amount sin plan en FLOW_PRODUCTS:",
-          flowData.amount
-        );
-      }
-
-      // Emisión de boleta electrónica (DTE 39) del cobro recurrente — primer ciclo
-      // y renovaciones pasan por acá (el cobro real de Flow, no el alta). Mismo
-      // patrón que el enganche single de payments/confirm: detrás del kill-switch
-      // (el helper igual lo re-chequea), email resuelto vía getUserById (este
-      // camino no lo cargaba), y try/catch que JAMÁS rompe el 200 que Flow espera.
-      // La glosa sale del product key (plan10_mensual → "Plan 10 … suscripción
-      // mensual") vía glosaForProduct del helper. payment_id = la fila recién
-      // insertada (franco-sub-pay-<flowOrder>), 1:1 con esta boleta.
-      const dtePaymentId = paymentRow?.id;
-      // Monto REAL del cobro. Sin fallback inventado: si Flow no devolvió un monto
-      // válido (>0), NO emitimos una boleta con un número falso — saltamos con log,
-      // igual que el skip del kill-switch.
-      const montoCobro = Number(flowData.amount);
-      if (dtePaymentId && process.env.OPENFACTURA_ENABLED === "true") {
-        if (!Number.isFinite(montoCobro) || montoCobro <= 0) {
-          console.error("[boleta-sub] monto inválido, skip:", flowData.amount);
-        } else {
-          try {
-            const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
-            const userEmail = dteUser?.user?.email;
-            if (userEmail) {
-              const result = await emitirBoletaDTE({
-                payment: {
-                  id: dtePaymentId,
-                  user_id: userId,
-                  product: productKey,
-                  amount: montoCobro,
-                  commerce_order: `franco-sub-pay-${flowOrder}`,
-                  flow_order: Number(flowOrder),
-                },
-                userEmail,
-              });
-              if (!result.ok && !result.skipped) {
-                console.error("[payment-callback] emisión boleta falló:", result.error);
-              }
-            } else {
-              console.error("[payment-callback] sin email para emitir boleta, user:", userId);
-            }
-          } catch (e) {
-            console.error("[payment-callback] emisión boleta excepción:", e);
-          }
         }
       }
     } else if ((flowStatus === 3 || flowStatus === 4) && userId) {
