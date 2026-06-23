@@ -430,6 +430,9 @@ export async function buildShortTermAnalysisRow(
     dormitorios: body.dormitorios,
     banos: body.banos,
     tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
+    // Antigüedad para el CapEx de puesta a punto: el form STR no la captura,
+    // así que se deriva igual que la fila persistida (nuevo=0, usado=5).
+    antiguedad: body.tipoPropiedad === "nuevo" ? 0 : 5,
     comuna: typeof body.comuna === "string" ? body.comuna : undefined,
     piePercent: body.piePct / 100,
     tasaCredito: body.tasaInteres / 100,

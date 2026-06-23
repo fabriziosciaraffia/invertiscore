@@ -17,6 +17,8 @@ import {
   type RecomendacionModalidadSTR,
 } from "./str-universo-santiago";
 import { calcInversionInicialCLP } from "../inversion-inicial";
+import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
+import type { HallazgoPuestaAPunto } from "../types";
 
 // =========================================
 // Types
@@ -58,6 +60,13 @@ export interface ShortTermInputs {
    * form ("nuevo"/"usado"). Necesario para evaluar subsidio Ley 21.748
    * (Commit 3a · 2026-05-12). Opcional para back-compat con análisis legacy. */
   tipoPropiedad?: string;
+
+  /** Antigüedad en años. Necesaria para el CapEx de puesta a punto (usados).
+   * Opcional para back-compat con análisis legacy — si falta, se trata como 0
+   * (sin CapEx). El pipeline STR la deriva de tipoPropiedad (nuevo=0, usado=5). */
+  antiguedad?: number;
+  /** Override opt-in del CapEx de puesta a punto (CLP). Sin UI esta sesión. */
+  costoPuestaAPuntoCLP?: number;
 
   /** Comuna del depto. Usado para Commit 4 (zonaSTR + benchmark universo
    * Santiago). Opcional para back-compat — si falta, zonaSTR score cae a
@@ -222,6 +231,10 @@ export interface ShortTermResult {
   montoCredito: number;
   dividendoMensual: number;
   capitalInvertido: number;
+
+  // Proto-hallazgos del motor (hoy solo CapEx puesta a punto, modalidad 'str').
+  // Vacío/omitido si Nuevo o CapEx 0. Sin ordenamiento ni rendering.
+  hallazgos?: HallazgoPuestaAPunto[];
 
   // Escenarios
   escenarios: {
@@ -829,7 +842,26 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   const montoCredito = precioCompra - pie;
   const dividendoMensual = calcDividendo(montoCredito, input.tasaCredito, input.plazoCredito);
   const gastosCierre = Math.round(precioCompra * GASTOS_CIERRE_PCT);
-  const capitalInvertido = calcInversionInicialCLP({ pieCLP: pie, gastosCierreCLP: gastosCierre, costoAmoblamientoCLP: input.costoAmoblamiento });
+  // CapEx puesta a punto (usados): ADICIONAL al amoblado, no lo reemplaza.
+  const capexPuestaAPunto = calcCapexPuestaAPunto({
+    antiguedad: input.antiguedad ?? 0,
+    superficieUtilM2: input.superficie,
+    valorUF: input.valorUF,
+    overrideCLP: input.costoPuestaAPuntoCLP,
+  });
+  const capitalInvertido = calcInversionInicialCLP({
+    pieCLP: pie,
+    gastosCierreCLP: gastosCierre,
+    costoAmoblamientoCLP: input.costoAmoblamiento,
+    capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+  });
+  const hallazgoPuestaAPunto = buildHallazgoPuestaAPunto({
+    capex: capexPuestaAPunto,
+    antiguedad: input.antiguedad ?? 0,
+    superficieUtilM2: input.superficie,
+    modalidad: "str",
+    inversionInicialCLP: capitalInvertido,
+  });
 
   // Comisión según modo de gestión
   const comisionRate = modoGestion === 'auto' ? COMISION_AIRBNB : comisionAdministrador;
@@ -1028,6 +1060,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     base,
     costosOperativosTotales,
     comisionRate,
+    capexPuestaAPunto.montoCLP,
   );
 
   // --- 11. Viabilidad STR honesta por zona (Commit 4 · 2026-05-12) ---
@@ -1054,6 +1087,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     montoCredito,
     dividendoMensual,
     capitalInvertido,
+    hallazgos: hallazgoPuestaAPunto ? [hallazgoPuestaAPunto] : [],
     escenarios: { conservador, base, agresivo },
     comparativa: {
       ltr: { ingresoBruto: ltr_ingresoBruto, noiMensual: ltr_noiMensual, flujoCaja: ltr_flujoCaja },
@@ -1090,6 +1124,7 @@ function calcSensibilidadPrecio(
   base: EscenarioSTR,
   costosOperativosTotales: number,
   comisionRate: number,
+  capexPuestaAPuntoCLP: number = 0,
 ): SensibilidadPrecioRow[] {
   const revenueAnual = base.revenueAnual;
   const revenueMensual = revenueAnual / 12;
@@ -1107,7 +1142,9 @@ function calcSensibilidadPrecio(
     const pieMonto = precioCLP * input.piePercent;
     const creditoMonto = precioCLP - pieMonto;
     const dividendoMensual = calcDividendo(creditoMonto, input.tasaCredito, input.plazoCredito);
-    const capitalInvertido = pieMonto + (input.costoAmoblamiento || 0);
+    // Respeta la fórmula vigente de este companion (sin gastos de cierre); el
+    // CapEx puesta a punto es el único delta nuevo (decisión sesión capex).
+    const capitalInvertido = pieMonto + (input.costoAmoblamiento || 0) + capexPuestaAPuntoCLP;
     const flujoCajaMensual = noiMensualConst - dividendoMensual;
     const capRate = precioCLP > 0 ? noiAnual / precioCLP : 0;
     const cashOnCash = capitalInvertido > 0 ? (flujoCajaMensual * 12) / capitalInvertido : 0;

@@ -43,6 +43,10 @@ export interface AnalisisInput {
   // Administración de arriendo (property management)
   usaAdministrador?: boolean;
   comisionAdministrador?: number;
+  // Override opt-in del CapEx de puesta a punto (CLP). Si viene, el motor lo usa
+  // tal cual (origen='override') en lugar de la curva por antigüedad. Sin UI esta
+  // sesión — el motor solo lo lee si el caller lo setea.
+  costoPuestaAPuntoCLP?: number;
 }
 
 export interface MonthlyCashflow {
@@ -145,6 +149,35 @@ export interface AnalysisMetrics {
     tasaConSubsidio: number;  // tasa mercado - 0.6
     aplicado: boolean;        // si la tasa ingresada <= tasaConSubsidio + 0.2
   };
+  // CapEx de puesta a punto (usados) — ya incorporado a capitalInvertido.
+  // Opcional para back-compat con metrics construidos fuera de calcMetrics
+  // (enrich-legacy, mocks). Consumidores leen con `?? 0`.
+  capexPuestaAPuntoCLP?: number;
+  // Proto-hallazgo tipado emitido por el motor (null si Nuevo / CapEx 0).
+  hallazgoPuestaAPunto?: HallazgoPuestaAPunto | null;
+}
+
+// Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
+// global `Hallazgo<T>`: es la primera (y única) instancia bien formada de la
+// futura capa de hallazgos. Sin emisor-ordenado ni rendering acá: el motor lo
+// siembra y la IA lo narra aguas abajo. Ver skill analysis-voice-franco.
+export interface HallazgoPuestaAPunto {
+  id: "capex_puesta_a_punto";
+  tipo: "capex_habilitacion";
+  valor: {
+    montoCLP: number;
+    montoUF: number;
+    ufM2: number;
+    antiguedadAnios: number;
+    superficieUtilM2: number;
+    modalidad: "ltr" | "str" | "ambas";
+    origen: "derivado" | "override";
+  };
+  // Nunca 'favorable': una puesta a punto siempre resta de tu plata día 1.
+  direccion: "adverso" | "neutral";
+  decisividad: number; // 0..1 — fracción de la inversión inicial que se va a CapEx
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
 }
 
 export interface NegociacionScenario {
@@ -255,6 +288,9 @@ export interface FullAnalysisResult {
   resumen: string;
   pros: string[];
   contras: string[];
+  // Proto-hallazgos del motor (hoy solo CapEx puesta a punto). Vacío/omitido si
+  // no aplica. Sin lógica de ordenamiento — es la semilla de la capa.
+  hallazgos?: HallazgoPuestaAPunto[];
 }
 
 export interface AIAnalysis {
