@@ -15,6 +15,10 @@ import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
  * Idempotente y barato de re-correr: para los cargos que el webhook YA procesó es
  * un no-op (unos SELECT). Solo hace trabajo real sobre los que el webhook perdió.
  *
+ * Frecuencia: DIARIA (Vercel Hobby no admite crons sub-diarios). Como backstop
+ * alcanza: el webhook es el camino real-time; la ventana de escaneo HOY+AYER (~48h)
+ * garantiza recuperar cualquier cobro perdido dentro de <24h pese al ritmo diario.
+ *
  * Canary: el cargo del 22-jun se protege por el cutoff SUBSCRIPTION_GRANT_CUTOFF
  * (su grant se suspende por ser pre-C); además la ventana hoy/ayer deja de
  * alcanzarlo a partir del 24-jun.
