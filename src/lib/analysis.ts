@@ -11,6 +11,7 @@ import type {
   NegociacionScenario,
 } from "./types";
 import { estimarContribuciones } from "./contribuciones";
+import { calcInversionInicialCLP } from "./inversion-inicial";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -257,7 +258,7 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   // cuotas durante la obra). Sumarlas inflaba ~2x el capital invertido y
   // distorsionaba cashOnCash y mesesPaybackPie. Modelo A — Item 9 auditoría.
   const gastosCompra = Math.round(precioCLP * GASTOS_CIERRE_PCT);
-  const capitalInvertido = pieCLP + gastosCompra;
+  const capitalInvertido = calcInversionInicialCLP({ pieCLP, gastosCierreCLP: gastosCompra });
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -532,7 +533,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
 
   // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
   const gastosCompra = Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
-  const inversionInicial = metrics.pieCLP + gastosCompra;
+  const inversionInicial = calcInversionInicialCLP({ pieCLP: metrics.pieCLP, gastosCierreCLP: gastosCompra });
 
   // "Plata que realmente pusiste" = inicial + aportes mensuales acumulados
   // Solo años con flujo anual negativo cuentan como aporte del bolsillo.

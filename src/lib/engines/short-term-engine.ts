@@ -16,6 +16,7 @@ import {
   type ZonaSTRScore,
   type RecomendacionModalidadSTR,
 } from "./str-universo-santiago";
+import { calcInversionInicialCLP } from "../inversion-inicial";
 
 // =========================================
 // Types
@@ -828,7 +829,7 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   const montoCredito = precioCompra - pie;
   const dividendoMensual = calcDividendo(montoCredito, input.tasaCredito, input.plazoCredito);
   const gastosCierre = Math.round(precioCompra * GASTOS_CIERRE_PCT);
-  const capitalInvertido = pie + input.costoAmoblamiento + gastosCierre;
+  const capitalInvertido = calcInversionInicialCLP({ pieCLP: pie, gastosCierreCLP: gastosCierre, costoAmoblamientoCLP: input.costoAmoblamiento });
 
   // Comisión según modo de gestión
   const comisionRate = modoGestion === 'auto' ? COMISION_AIRBNB : comisionAdministrador;
