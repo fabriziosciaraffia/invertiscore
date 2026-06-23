@@ -8,6 +8,7 @@ import type {
   AIReestructuracionSection,
   FullAnalysisResult,
   AnalisisInput,
+  HallazgoPuestaAPunto,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -19,7 +20,7 @@ import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
 import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
-export type DrawerKey = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona";
+export type DrawerKey = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona" | "capexPuestaAPunto";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -52,6 +53,9 @@ const DRAWER_META: Record<
   largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "riesgos" },
   riesgos: { num: "05", label: "Riesgos", prev: "largoPlazo", next: "zona" },
   zona: { num: "06", label: "Zona", prev: "riesgos", next: undefined },
+  // Hoja: no se interpone en la cadena 02-06 (es un hallazgo del motor, no una
+  // sección IA). Sin prev/next → solo cierra.
+  capexPuestaAPunto: { num: "+", label: "Puesta a punto", prev: undefined, next: undefined },
 };
 
 function fmtCLP(n: number): string {
@@ -1880,6 +1884,105 @@ function DrawerReestructuracion({
   );
 }
 
+// Drawer del hallazgo CapEx puesta a punto (motor, no IA). Muestra los montos
+// precomputados + decisividad + procedencia visible (no audit-only).
+function DrawerCapexPuestaAPunto({
+  hallazgo,
+  currency,
+}: {
+  hallazgo: HallazgoPuestaAPunto;
+  currency: "CLP" | "UF";
+}) {
+  const { montoCLP, montoUF, ufM2, antiguedadAnios, superficieUtilM2 } = hallazgo.valor;
+  const montoFmt =
+    currency === "CLP"
+      ? "$" + Math.round(montoCLP).toLocaleString("es-CL")
+      : "UF " + Math.round(montoUF).toLocaleString("es-CL");
+  const pctInversion = Math.round(hallazgo.decisividad * 100);
+
+  // Procedencia visible — no audit-only. Voz: tuteo neutro (skill §2.1).
+  const procedenciaTexto =
+    hallazgo.procedencia.confianza === "alta"
+      ? "Basado en la cotización que ingresaste."
+      : hallazgo.procedencia.confianza === "baja"
+        ? "Estimación gruesa: no capturamos la antigüedad exacta. Con una cotización real, el número se ajusta."
+        : "Estimación según la antigüedad del depto. Con una cotización real, el número se ajusta.";
+
+  return (
+    <div>
+      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
+        <span>No es flipping: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
+        <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
+      </p>
+
+      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
+        {hallazgo.fraseCanonica}
+      </div>
+
+      {/* Cifras del hallazgo — chips numéricos en mono */}
+      <div
+        className="rounded-[8px] p-4 mb-4"
+        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
+          Puesta a punto estimada
+        </p>
+        {/* Stack en móvil: el monto CLP (largo) se monta sobre los otros chips
+            si se fuerzan 3 columnas a 380px. 3 cols recién desde sm. */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Inversión
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {montoFmt}
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Por m²
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {ufM2.toFixed(1).replace(".", ",")} <span className="text-[14px] font-medium">UF/m²</span>
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              De tu plata día 1
+            </p>
+            <p
+              className={`font-mono font-bold text-[20px] m-0 leading-tight ${
+                hallazgo.decisividad > 0.3 ? "text-signal-red" : "text-[var(--franco-text)]"
+              }`}
+            >
+              {pctInversion}%
+            </p>
+          </div>
+        </div>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
+          Depto de {antiguedadAnios} años · {superficieUtilM2} m² útiles.
+        </p>
+      </div>
+
+      {/* Procedencia visible */}
+      <div
+        className="rounded-r-[8px] p-4"
+        style={{
+          borderLeft: "3px solid var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+          De dónde sale
+        </p>
+        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+          {procedenciaTexto}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main drawer ────────────────────────────────────
 function ZoneSkeleton() {
   return (
@@ -1998,12 +2101,15 @@ export function AnalysisDrawer({
   // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
   const zonaTitle = "Lo que no ves a simple vista";
   const reestructuracionTitle = "¿Y si cambias la estructura?";
+  const capexTitle = "Dejarlo listo para arrendar";
   const section =
     activeKey === "zona"
       ? ({ pregunta: zonaTitle } as { pregunta: string })
       : activeKey === "reestructuracion"
         ? ({ pregunta: reestructuracionTitle } as { pregunta: string })
-        : aiAnalysis[activeKey];
+        : activeKey === "capexPuestaAPunto"
+          ? ({ pregunta: capexTitle } as { pregunta: string })
+          : aiAnalysis[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -2120,6 +2226,12 @@ export function AnalysisDrawer({
               currency={currency}
               results={results}
               valorUF={valorUF}
+            />
+          )}
+          {activeKey === "capexPuestaAPunto" && results.hallazgos?.[0]?.id === "capex_puesta_a_punto" && (
+            <DrawerCapexPuestaAPunto
+              hallazgo={results.hallazgos[0]}
+              currency={currency}
             />
           )}
           {activeKey === "largoPlazo" && (
