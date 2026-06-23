@@ -244,6 +244,32 @@ export function Paso1Propiedad({
         </div>
       </div>
 
+      {/* ── Antigüedad (obligatoria para usados) ── */}
+      {state.tipoPropiedad === "usado" && (
+        <div>
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <label className="font-body text-[13px] font-medium text-[var(--franco-text)]">
+              Antigüedad
+            </label>
+            <InfoTooltip
+              content="Cuántos años tiene el depto. Afecta la proyección de plusvalía y la inversión de puesta a punto para arrendar a precio de mercado."
+            />
+          </div>
+          <select
+            className={`${inputBase} ${inputOk} font-mono appearance-none`}
+            value={state.antiguedad}
+            onChange={(e) => setState({ antiguedad: e.target.value as WizardV3State["antiguedad"] })}
+          >
+            <option value="">Selecciona…</option>
+            <option value="0-2">0-2 años</option>
+            <option value="3-5">3-5 años</option>
+            <option value="6-10">6-10 años</option>
+            <option value="11-20">11-20 años</option>
+            <option value="20+">20+ años</option>
+          </select>
+        </div>
+      )}
+
       {/* ── Card Detalles del depto ── */}
       <div
         className="rounded-xl p-4 flex items-center justify-between gap-3"

@@ -353,7 +353,9 @@ function NuevoAnalisisV3Inner() {
   const canAdvanceFromStep1 = !!(state.direccion && state.comuna && state.tipoPropiedad
     && parseDecimalLocale(state.superficieUtil) > 0
     && isComunaDisponible(state.comuna)
-    && state.direccion === state.direccionConfirmada);
+    && state.direccion === state.direccionConfirmada
+    // Usados deben elegir antigüedad deliberadamente (sin default).
+    && (state.tipoPropiedad !== "usado" || state.antiguedad !== ""));
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
   // Defaults de tipología (mismos que usa el efecto de escalado de costos) —

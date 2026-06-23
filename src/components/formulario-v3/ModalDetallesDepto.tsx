@@ -25,7 +25,6 @@ export function ModalDetallesDepto({
     banos: state.banos,
     estacionamientos: state.estacionamientos,
     bodegas: state.bodegas,
-    antiguedad: state.antiguedad,
     capacidadHuespedes: state.capacidadHuespedes,
   });
 
@@ -139,32 +138,6 @@ export function ModalDetallesDepto({
           </select>
         </Field>
       </div>
-
-      {state.tipoPropiedad === "usado" && (
-        <div className="mt-4">
-          <label className="block">
-            <span className="flex items-center gap-1.5 mb-1.5">
-              <span className="font-body text-[12px] font-medium text-[var(--franco-text)]">
-                Antigüedad
-              </span>
-              <InfoTooltip
-                content="Afecta la proyección de plusvalía. Deptos sobre 30 años suelen apreciarse menos que nuevos en la misma zona."
-              />
-            </span>
-            <select
-              className={`${inputClass} appearance-none`}
-              value={local.antiguedad}
-              onChange={(e) => setLocal({ ...local, antiguedad: e.target.value as WizardV3State["antiguedad"] })}
-            >
-              <option value="0-2">0-2 años</option>
-              <option value="3-5">3-5 años</option>
-              <option value="6-10">6-10 años</option>
-              <option value="11-20">11-20 años</option>
-              <option value="20+">20+ años</option>
-            </select>
-          </label>
-        </div>
-      )}
 
       <div className="mt-5">
         <StateBox variant="left-border" state="info">
