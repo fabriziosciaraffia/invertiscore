@@ -42,7 +42,19 @@ export function hasSubscriptionAccess(row: {
 
 export type ChargeResult =
   | { ok: true; mode: "welcome" | "paid" | "subscription" }
-  | { ok: false; reason: "no_credits" | "no_user"; message: string };
+  | {
+      ok: false;
+      reason: "no_credits" | "no_user";
+      message: string;
+      // Contexto plan-aware del bloqueo: presente SOLO cuando un plan FINITO
+      // (plan10/plan50) con suscripción vigente agota su saldo del ciclo. Ausente
+      // para no-suscriptores. Campos ADITIVOS y opcionales → no rompen consumidores
+      // que solo miran ok/message. El frontend (Etapa 2) los usa para distinguir
+      // "suscriptor sin saldo" de "no-suscriptor sin créditos".
+      plan?: string | null;
+      subscriptionActive?: boolean;
+      nextCharge?: string | null;
+    };
 
 /**
  * Cobra 1 crédito al user para crear un análisis. Lógica:
@@ -96,7 +108,7 @@ export async function chargeAnalysisCredit(
 
   const { data: row } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at, subscription_ends_at")
+    .select("credits, subscription_status, welcome_credit_used, is_unlimited, grace_ends_at, subscription_ends_at, active_plan")
     .eq("user_id", userId)
     .single();
 
@@ -109,9 +121,12 @@ export async function chargeAnalysisCredit(
     };
   }
 
-  // Subscriber con acceso (active o past_due en gracia) o plan ilimitado → free
-  // pass. NO descuenta credits ni toca welcome.
-  if (hasSubscriptionAccess(row) || row.is_unlimited) {
+  // FREE-PASS solo para ILIMITADO: acceso sin consumir ⟺ is_unlimited. Los planes
+  // FINITOS (plan10/plan50, en cualquier estado de sub) caen abajo al flujo de ledger
+  // → consumen su saldo del ciclo y se bloquean al llegar a 0. NO descuenta ni toca
+  // welcome. (hasSubscriptionAccess sigue usándose para el bloqueo plan-aware más
+  // abajo y en otras funciones.)
+  if (row.is_unlimited) {
     return { ok: true, mode: "subscription" };
   }
 
@@ -158,6 +173,22 @@ export async function chargeAnalysisCredit(
     // Race perdida: otra request consumió el último crédito.
   }
 
+  // Bloqueo. Si es un plan FINITO con suscripción vigente (agotó su saldo del ciclo),
+  // enriquecemos el return para que el frontend distinga "suscriptor sin saldo" de
+  // "no-suscriptor sin créditos". Solo AGREGAMOS campos; ok/reason/message intactos.
+  // (Acá row no es null — el caso !row ya retornó arriba; e is_unlimited ya free-pasó.)
+  if (hasSubscriptionAccess(row) && !row.is_unlimited) {
+    return {
+      ok: false,
+      reason: "no_credits",
+      message: "Te quedaste sin análisis disponibles.",
+      plan: row.active_plan ?? null,
+      subscriptionActive: true,
+      nextCharge: row.subscription_ends_at ?? null,
+    };
+  }
+
+  // No-suscriptor (o sin suscripción vigente): return actual, sin campos extra.
   return {
     ok: false,
     reason: "no_credits",
@@ -211,8 +242,12 @@ export async function consumeCredit(
 
   if (!credits) return false;
 
-  // Subscribers con acceso (active o past_due en gracia) / ilimitado no consumen.
-  if (hasSubscriptionAccess(credits) || credits.is_unlimited) {
+  // FREE-PASS solo para ILIMITADO. Los planes FINITOS caen al ledger (consumen su
+  // saldo del ciclo); si está en 0, cae al final → return false (bloqueo). El return
+  // es boolean (lo miran 4 consumidores con `if (!credited)`), así que el contexto
+  // plan-aware del bloqueo vive en chargeAnalysisCredit, no acá. (hasSubscriptionAccess
+  // ya no da free-pass a finitos; sigue en uso en otras funciones.)
+  if (credits.is_unlimited) {
     await supabase.from("analisis").update({ is_premium: true }).eq("id", analysisId);
     return true;
   }
