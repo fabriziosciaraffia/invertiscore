@@ -73,6 +73,17 @@ export async function grantCredits(
   });
 
   if (error) {
+    // 23505 = unique_violation del índice uq_credit_grants_payment_id: ya hay un lote
+    // para este payment_id → dedup ESPERADO (carrera webhook+cron sobre el mismo cargo).
+    // El otro proceso ya otorgó; NO es un error real → log informativo, no console.error
+    // (mismo criterio que emitirBoletaDTE con su 23505). Return false igual que siempre.
+    if (error.code === "23505") {
+      console.log(
+        "[grantCredits] grant ya existe para payment_id (dedup esperado), skip:",
+        opts.paymentId
+      );
+      return false;
+    }
     console.error("[grantCredits] insert error:", error);
     return false;
   }
