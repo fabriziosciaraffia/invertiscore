@@ -73,6 +73,10 @@ export function buildHallazgoPuestaAPunto(p: {
   superficieUtilM2: number;
   modalidad: "ltr" | "str" | "ambas";
   inversionInicialCLP: number;
+  // true cuando la antigüedad de entrada NO es dato real del usuario sino un
+  // fallback (hoy: STR, donde el form no captura antigüedad y el pipeline la
+  // hardcodea usado=5). Degrada la confianza de la procedencia.
+  antiguedadEsFallback?: boolean;
 }): HallazgoPuestaAPunto | null {
   if (p.capex.montoCLP <= 0) return null;
 
@@ -82,8 +86,19 @@ export function buildHallazgoPuestaAPunto(p: {
   const pct = Math.round(decisividad * 100);
   const ufFmt = Math.round(p.capex.montoUF).toLocaleString("es-CL");
   const clpFmt = "$" + p.capex.montoCLP.toLocaleString("es-CL");
-  const confianza: "alta" | "media" = p.capex.origen === "override" ? "alta" : "media";
-  const base = p.capex.origen === "override" ? "override del usuario" : "curva por antigüedad";
+  // Procedencia honesta: override > antigüedad real (LTR) > fallback gruesa (STR).
+  let confianza: "alta" | "media" | "baja";
+  let base: string;
+  if (p.capex.origen === "override") {
+    confianza = "alta";
+    base = "override del usuario";
+  } else if (p.antiguedadEsFallback) {
+    confianza = "baja";
+    base = "antigüedad no capturada (STR) — estimación gruesa";
+  } else {
+    confianza = "media";
+    base = "curva por antigüedad";
+  }
 
   const fraseCanonica =
     `Departamento de ${p.antiguedad} años: para captar arriendo de mercado, ` +

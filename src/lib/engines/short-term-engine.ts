@@ -861,6 +861,8 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     superficieUtilM2: input.superficie,
     modalidad: "str",
     inversionInicialCLP: capitalInvertido,
+    // STR: la antigüedad es un fallback (el form no la captura) → confianza baja.
+    antiguedadEsFallback: true,
   });
 
   // Comisión según modo de gestión
