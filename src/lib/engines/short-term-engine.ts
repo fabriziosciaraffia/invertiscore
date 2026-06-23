@@ -65,6 +65,10 @@ export interface ShortTermInputs {
    * Opcional para back-compat con análisis legacy — si falta, se trata como 0
    * (sin CapEx). El pipeline STR la deriva de tipoPropiedad (nuevo=0, usado=5). */
   antiguedad?: number;
+  /** true cuando `antiguedad` NO vino del usuario sino de un fallback del borde
+   * (ej. body STR sin el campo → el pipeline deriva usado=5). Degrada la
+   * confianza del hallazgo de puesta a punto a 'baja'. Default false (real). */
+  antiguedadEsFallback?: boolean;
   /** Override opt-in del CapEx de puesta a punto (CLP). Sin UI esta sesión. */
   costoPuestaAPuntoCLP?: number;
 
@@ -861,8 +865,9 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     superficieUtilM2: input.superficie,
     modalidad: "str",
     inversionInicialCLP: capitalInvertido,
-    // STR: la antigüedad es un fallback (el form no la captura) → confianza baja.
-    antiguedadEsFallback: true,
+    // Honestidad de la procedencia: 'baja' solo si la antigüedad nació de un
+    // fallback del borde (el caller lo marca). Si vino real del payload, 'media'.
+    antiguedadEsFallback: input.antiguedadEsFallback ?? false,
   });
 
   // Comisión según modo de gestión

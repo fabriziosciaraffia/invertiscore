@@ -334,6 +334,9 @@ export interface ShortTermAnalysisBody {
   comuna?: string;
   ciudad?: string;
   tipoPropiedad?: string;
+  /** Antigüedad real en años (la manda nuevo-v2). Ausente en renta-corta legacy
+   * → el pipeline deriva un fallback (usado=5) y marca confianza baja. */
+  antiguedad?: number;
   dormitorios: number;
   banos: number;
   superficieUtil: number;
@@ -424,15 +427,20 @@ export async function buildShortTermAnalysisRow(
 
   const airbnbData = buildAirbnbData(airbnbResult.data, ufValue);
 
+  // Antigüedad: real si el payload la trae (nuevo-v2); fallback derivado si no
+  // (renta-corta legacy). El flag de fallback viaja al motor para que el hallazgo
+  // de puesta a punto declare confianza baja solo cuando la edad es estimada.
+  const antiguedadEsFallback = body.antiguedad == null;
+  const antiguedadResuelta = body.antiguedad ?? (body.tipoPropiedad === "nuevo" ? 0 : 5);
+
   const inputs: ShortTermInputs = {
     precioCompra: body.precioCompra,
     superficie: body.superficieUtil,
     dormitorios: body.dormitorios,
     banos: body.banos,
     tipoPropiedad: typeof body.tipoPropiedad === "string" ? body.tipoPropiedad : undefined,
-    // Antigüedad para el CapEx de puesta a punto: el form STR no la captura,
-    // así que se deriva igual que la fila persistida (nuevo=0, usado=5).
-    antiguedad: body.tipoPropiedad === "nuevo" ? 0 : 5,
+    antiguedad: antiguedadResuelta,
+    antiguedadEsFallback,
     comuna: typeof body.comuna === "string" ? body.comuna : undefined,
     piePercent: body.piePct / 100,
     tasaCredito: body.tasaInteres / 100,
@@ -496,7 +504,7 @@ export async function buildShortTermAnalysisRow(
       dormitorios: body.dormitorios,
       banos: body.banos,
       superficie: body.superficieUtil,
-      antiguedad: body.tipoPropiedad === "nuevo" ? 0 : 5,
+      antiguedad: antiguedadResuelta,
       precio: body.precioCompraUF,
       arriendo: body.arriendoLargoMensual,
       gastos: body.gastosComunes,
