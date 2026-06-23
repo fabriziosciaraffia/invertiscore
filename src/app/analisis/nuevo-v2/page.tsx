@@ -353,7 +353,9 @@ function NuevoAnalisisV3Inner() {
   const canAdvanceFromStep1 = !!(state.direccion && state.comuna && state.tipoPropiedad
     && parseDecimalLocale(state.superficieUtil) > 0
     && isComunaDisponible(state.comuna)
-    && state.direccion === state.direccionConfirmada);
+    && state.direccion === state.direccionConfirmada
+    // Usados deben elegir antigüedad deliberadamente (sin default).
+    && (state.tipoPropiedad !== "usado" || state.antiguedad !== ""));
   const canAdvanceFromStep2 = parseNum(state.precio) > 0;
 
   // Defaults de tipología (mismos que usa el efecto de escalado de costos) —
@@ -492,6 +494,9 @@ function NuevoAnalisisV3Inner() {
     const supUtil = parseDecimalLocale(state.superficieUtil);
     const precioUF = parseNum(state.precio);
     const precioCompraCLP = Math.round(precioUF * ufCLP);
+    // Antigüedad real (misma derivación que buildLtrPayload) — el motor STR la
+    // usa para el CapEx de puesta a punto; sin esto el pipeline cae al fallback.
+    const antigNum = state.tipoPropiedad === "usado" ? antiguedadToNumber(state.antiguedad) : 0;
     const arriendo = Number(state.arriendo) || 0;
     const gastos = Number(state.gastos) || 0;
     const contribuciones = Number(state.contribuciones) || 0;
@@ -508,6 +513,7 @@ function NuevoAnalisisV3Inner() {
       comuna: state.comuna,
       ciudad: state.ciudad || "Santiago",
       tipoPropiedad: state.tipoPropiedad,
+      antiguedad: antigNum,
       lat: state.lat,
       lng: state.lng,
       dormitorios: parseIntSafe(state.dormitorios, 2),

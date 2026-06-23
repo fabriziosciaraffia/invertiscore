@@ -4,6 +4,7 @@ import { findNearestStation } from "@/lib/metro-stations";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -689,7 +690,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
     const GASTOS_CIERRE_PCT = 0.02;
-    const inversionTotal = m.pieCLP + Math.round(m.precioCLP * GASTOS_CIERRE_PCT);
+    const inversionTotal = calcInversionInicialCLP({ pieCLP: m.pieCLP, gastosCierreCLP: Math.round(m.precioCLP * GASTOS_CIERRE_PCT) });
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const fechaEntregaFmt = input.fechaEntrega

@@ -26,7 +26,8 @@ export interface WizardV3State {
   bodegas: string;
   arriendoEstac: string;
   arriendoBodega: string;
-  antiguedad: "0-2" | "3-5" | "6-10" | "11-20" | "20+";
+  // "" = sentinel "no elegido": obligatorio para usados (gate del paso 1).
+  antiguedad: "" | "0-2" | "3-5" | "6-10" | "11-20" | "20+";
   /** Capacidad de huéspedes — usado por motor STR (matching AirROI). Visible
    * siempre en el modal Detalles, irrelevante para LTR. */
   capacidadHuespedes: string;
@@ -154,7 +155,7 @@ export const DEFAULT_STATE: WizardV3State = {
   bodegas: "0",
   arriendoEstac: "",
   arriendoBodega: "",
-  antiguedad: "3-5",
+  antiguedad: "",
   capacidadHuespedes: "2",
   estadoVenta: "inmediata",
   fechaEntregaMes: "",
@@ -369,6 +370,8 @@ export function antiguedadToNumber(val: string): number {
     case "6-10": return 8;
     case "11-20": return 15;
     case "20+": return 25;
+    // "" (no elegido) y cualquier otro → fallback 5. El gate del paso 1 impide
+    // que un usado avance con "", así que en la práctica no llega vacío.
     default: return 5;
   }
 }
@@ -428,8 +431,7 @@ export function previewDetalles(s: WizardV3State): string {
   parts.push(e > 0 ? `${e} estac` : "sin estac");
   const bo = Number(s.bodegas) || 0;
   parts.push(bo > 0 ? `${bo} bodega${bo > 1 ? "s" : ""}` : "sin bodega");
-  if (s.tipoPropiedad === "usado") {
-    parts.push(`${s.antiguedad} años`);
-  }
+  // Antigüedad ya no vive en el modal Detalles (subió al paso 1 como campo
+  // obligatorio para usados), por eso no se incluye en este preview.
   return parts.join(" · ");
 }

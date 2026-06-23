@@ -11,6 +11,8 @@ import type {
   NegociacionScenario,
 } from "./types";
 import { estimarContribuciones } from "./contribuciones";
+import { calcInversionInicialCLP } from "./inversion-inicial";
+import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -257,7 +259,26 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
   // cuotas durante la obra). Sumarlas inflaba ~2x el capital invertido y
   // distorsionaba cashOnCash y mesesPaybackPie. Modelo A — Item 9 auditoría.
   const gastosCompra = Math.round(precioCLP * GASTOS_CIERRE_PCT);
-  const capitalInvertido = pieCLP + gastosCompra;
+  // CapEx puesta a punto (usados): suma a la base de capital como equity día 1.
+  // Nuevo ⇒ antiguedad 0 ⇒ curva 0 ⇒ sin CapEx ni hallazgo. Determinístico.
+  const capexPuestaAPunto = calcCapexPuestaAPunto({
+    antiguedad: input.antiguedad,
+    superficieUtilM2: input.superficie,
+    valorUF: ufClp,
+    overrideCLP: input.costoPuestaAPuntoCLP,
+  });
+  const capitalInvertido = calcInversionInicialCLP({
+    pieCLP,
+    gastosCierreCLP: gastosCompra,
+    capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+  });
+  const hallazgoPuestaAPunto = buildHallazgoPuestaAPunto({
+    capex: capexPuestaAPunto,
+    antiguedad: input.antiguedad,
+    superficieUtilM2: input.superficie,
+    modalidad: "ltr",
+    inversionInicialCLP: capitalInvertido,
+  });
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -309,6 +330,8 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
       const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
       return { califica, tasaConSubsidio, aplicado: califica && aplicaSubsidio(input.tasaInteres, tasaConSubsidio) };
     })(),
+    capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+    hallazgoPuestaAPunto,
   };
 }
 
@@ -531,8 +554,14 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   const retornoTotal = proy.flujoAcumulado + gananciaNeta;
 
   // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
+  // + CapEx puesta a punto (ya computado en calcMetrics, reutilizado acá para
+  // que inversionInicial == capitalInvertido sin recomputar la curva).
   const gastosCompra = Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
-  const inversionInicial = metrics.pieCLP + gastosCompra;
+  const inversionInicial = calcInversionInicialCLP({
+    pieCLP: metrics.pieCLP,
+    gastosCierreCLP: gastosCompra,
+    capexPuestaAPuntoCLP: metrics.capexPuestaAPuntoCLP ?? 0,
+  });
 
   // "Plata que realmente pusiste" = inicial + aportes mensuales acumulados
   // Solo años con flujo anual negativo cuentan como aporte del bolsillo.
@@ -1261,5 +1290,8 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     resumen,
     pros,
     contras,
+    // Proto-hallazgos del motor: hoy solo CapEx puesta a punto (LTR), sembrado
+    // cuando aplica (usado con antigüedad > 2). Sin ordenamiento ni rendering.
+    hallazgos: metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : [],
   };
 }
