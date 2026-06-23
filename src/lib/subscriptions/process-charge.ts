@@ -47,6 +47,19 @@ const SUB_ID_RE = /^(sus_[a-zA-Z0-9]+)_/;
 // desplegar C (ISO; ej. el día del deploy).
 const GRANT_CUTOFF = process.env.SUBSCRIPTION_GRANT_CUTOFF ?? null;
 
+// Log de arranque (cada cold-start): confirma CÓMO parseó el cutoff sin esperar un
+// cobro — la env var es Sensitive y no se ve en el panel. Guardado contra Invalid
+// Date: new Date(...).toISOString() LANZA si el valor no parsea, y no queremos romper
+// el import del módulo justo en el caso de typo que este log busca exponer.
+console.log(
+  "[process-charge] GRANT_CUTOFF →",
+  GRANT_CUTOFF
+    ? Number.isNaN(new Date(GRANT_CUTOFF).getTime())
+      ? `INVALID(${GRANT_CUTOFF})`
+      : new Date(GRANT_CUTOFF).toISOString()
+    : "UNSET"
+);
+
 /**
  * Decide si se PUEDE otorgar grant para un cargo, según el cutoff de C.
  *
