@@ -52,12 +52,33 @@ export interface TierInfo {
   credits: number;
   welcomeAvailable?: boolean;
   email: string | null;
+  // Estado del plan (de /api/me/tier; lectura, NO gating — la autoridad es el backend).
+  // El front los usa para distinguir un suscriptor FINITO (plan10/plan50: saldo real,
+  // bloquea en 0) de un ILIMITADO (is_unlimited: free-pass). Opcionales: los callsites
+  // con fallback {tier,isAdmin,credits,email} siguen tipando.
+  activePlan?: string | null;
+  isUnlimited?: boolean;
+  nextCharge?: string | null;
 }
 
+/** ¿Plan FINITO (plan10/plan50, NO ilimitado)? Estos consumen saldo del ledger. */
+function isFinitePlan(info: TierInfo): boolean {
+  return !info.isUnlimited && (info.activePlan === "plan10" || info.activePlan === "plan50");
+}
+
+/**
+ * ¿Puede iniciar/enviar un análisis desde el front? Espejo del backend (Etapa 1):
+ *   - admin / ilimitado → siempre (free-pass real).
+ *   - saldo del ledger > 0 → sí (finito-con-saldo O no-suscriptor con créditos comprados).
+ *   - welcome disponible → sí (el backend cobra welcome ANTES del ledger).
+ *   - resto → no (finito-en-0 sin welcome, O no-suscriptor sin nada).
+ * El backend sigue siendo la autoridad (403 = defensa en profundidad); esto solo evita
+ * que el usuario llene el wizard para que lo rechacen al final.
+ */
 export function canAnalyzeFromTier(info: TierInfo | null): boolean {
   if (!info) return false;
   if (info.isAdmin) return true;
-  if (info.tier === "subscriber") return true;
+  if (info.isUnlimited) return true;
   if (info.credits > 0) return true;
   if (info.welcomeAvailable) return true;
   return false;
@@ -739,25 +760,40 @@ export function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
             </p>
           </div>
         </div>
-        {/* Deep-link de compra: paga $9.990 y desbloquea su próximo análisis
-            directo, conservando la intención de compra (vs /pricing genérico).
-            Link secundario a planes para quien quiere volumen. */}
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-          <Link
-            href="/checkout?product=single"
-            className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
-            style={{ color: "var(--signal-red)" }}
-          >
-            Comprar 1 análisis
-            <ArrowRight size={12} />
-          </Link>
-          <Link
-            href="/pricing"
-            className="inline-flex items-center self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors"
-          >
-            Ver todos los planes
-          </Link>
-        </div>
+        {copy.variant === "upgrade" ? (
+          /* Suscriptor finito agotó su ciclo: el saldo se renueva solo en {nextCharge}.
+             No tiene sentido ofrecerle "comprar 1" — su camino es subir de plan. */
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
+              style={{ color: "var(--signal-red)" }}
+            >
+              Subir de plan
+              <ArrowRight size={12} />
+            </Link>
+          </div>
+        ) : (
+          /* Deep-link de compra: paga $9.990 y desbloquea su próximo análisis
+             directo, conservando la intención de compra (vs /pricing genérico).
+             Link secundario a planes para quien quiere volumen. */
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+            <Link
+              href="/checkout?product=single"
+              className="inline-flex items-center gap-1.5 self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium hover:opacity-80 transition-opacity"
+              style={{ color: "var(--signal-red)" }}
+            >
+              Comprar 1 análisis
+              <ArrowRight size={12} />
+            </Link>
+            <Link
+              href="/pricing"
+              className="inline-flex items-center self-start font-mono text-[11px] uppercase tracking-[0.06em] font-medium text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors"
+            >
+              Ver todos los planes
+            </Link>
+          </div>
+        )}
       </div>
     );
   }
@@ -783,12 +819,78 @@ export function CostoCard({ tierInfo }: { tierInfo: TierInfo }) {
   );
 }
 
-function tierCopy(info: TierInfo): { costo: string; plan: string; color: string; canAnalyze: boolean } {
-  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)", canAnalyze: true };
-  if (info.tier === "subscriber") return { costo: "Incluido en tu suscripción FrancoMensual", plan: "FRANCOMENSUAL", color: "var(--franco-text)", canAnalyze: true };
-  if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} análisis`, plan: `${info.credits} análisis`, color: "var(--franco-text)", canAnalyze: true };
-  if (info.welcomeAvailable) return { costo: "Usarás tu análisis gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true };
-  return { costo: "Sin análisis disponibles. Compra uno para continuar.", plan: "SIN ANÁLISIS", color: "var(--signal-red)", canAnalyze: false };
+/**
+ * "plan10" → "PLAN 10" · "plan50" → "PLAN 50" (chip "Plan actual", mono uppercase).
+ * Cualquier otro plan finito (futuro plan20, etc.) → "SUSCRIPCIÓN" genérico: no le
+ * mentimos "PLAN 10" a quien no lo tiene. Defensivo: hoy solo se invoca con plan10/50.
+ */
+function planChipLabel(activePlan: string | null | undefined): string {
+  if (activePlan === "plan10") return "PLAN 10";
+  if (activePlan === "plan50") return "PLAN 50";
+  return "SUSCRIPCIÓN";
+}
+
+/** Capacidad mensual del plan finito: plan50 → 50, plan10 (y default) → 10. */
+function planCapacity(activePlan: string | null | undefined): number {
+  return activePlan === "plan50" ? 50 : 10;
+}
+
+/**
+ * ISO → "23 de julio" (es-CL, sin año). null si falta/inválida (el caller usa una
+ * frase alternativa sin fecha). TZ FIJA America/Santiago: el día mostrado no desfasa
+ * por la hora local del navegador en bordes de medianoche (la fecha es visible al user).
+ */
+function formatNextCharge(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    day: "numeric",
+    month: "long",
+  }).format(d);
+}
+
+// variant gobierna el CTA del CostoCard cuando NO puede analizar:
+//   "upgrade" → suscriptor finito agotó el ciclo (CTA "Subir de plan").
+//   "buy"     → no-suscriptor sin créditos (CTA "Comprar 1 análisis" + planes).
+// "ok" = puede analizar (no se muestra CTA de bloqueo).
+function tierCopy(info: TierInfo): { costo: string; plan: string; color: string; canAnalyze: boolean; variant: "ok" | "buy" | "upgrade" } {
+  if (info.isAdmin) return { costo: "Análisis gratis (admin)", plan: "ADMIN", color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+
+  // Suscriptor ILIMITADO: free-pass real, sin consumir saldo.
+  if (info.isUnlimited) return { costo: "Incluido en tu suscripción", plan: "ILIMITADO", color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+
+  // Suscriptor FINITO (plan10/plan50): muestra el saldo REAL del ciclo (antes decía
+  // "Incluido en tu suscripción" a todos — mentira para un finito en 0).
+  if (isFinitePlan(info)) {
+    if (info.credits > 0) {
+      const verbo = info.credits === 1 ? "queda" : "quedan";
+      return { costo: `Te ${verbo} ${info.credits} análisis este ciclo`, plan: planChipLabel(info.activePlan), color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+    }
+    // Edge: finito sin estrenar (welcome pendiente, ledger en 0). El backend cobra
+    // welcome antes que el ledger → puede analizar. Mantiene paridad con canAnalyzeFromTier.
+    if (info.welcomeAvailable) {
+      return { costo: "Usarás tu análisis gratis de bienvenida", plan: planChipLabel(info.activePlan), color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+    }
+    // Finito en 0: bloqueo plan-aware con CTA "Subir de plan". Con fecha de
+    // renovación si la tenemos; si no, frase alternativa sin fecha.
+    const fecha = formatNextCharge(info.nextCharge);
+    return {
+      costo: fecha
+        ? `Usaste todos tus análisis. Tu plan suma ${planCapacity(info.activePlan)} el ${fecha}.`
+        : "Usaste todos tus análisis. Tu saldo se renueva con tu plan.",
+      plan: planChipLabel(info.activePlan),
+      color: "var(--signal-red)",
+      canAnalyze: false,
+      variant: "upgrade",
+    };
+  }
+
+  // No-suscriptor: ramas existentes SIN CAMBIO.
+  if (info.credits > 0) return { costo: `Usarás 1 de tus ${info.credits} análisis`, plan: `${info.credits} análisis`, color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+  if (info.welcomeAvailable) return { costo: "Usarás tu análisis gratis de bienvenida", plan: "GRATUITO", color: "var(--franco-text)", canAnalyze: true, variant: "ok" };
+  return { costo: "Sin análisis disponibles. Compra uno para continuar.", plan: "SIN ANÁLISIS", color: "var(--signal-red)", canAnalyze: false, variant: "buy" };
 }
 
 // Re-exports utilitarios para compatibilidad con callsites antiguos

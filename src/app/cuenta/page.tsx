@@ -28,7 +28,7 @@ export default async function CuentaPage() {
   // Fetch credits + subscription
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, subscription_ends_at, grace_ends_at")
+    .select("credits, subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan")
     .eq("user_id", user.id)
     .single();
 
@@ -40,6 +40,15 @@ export default async function CuentaPage() {
   const subStatus: string = creditsRow?.subscription_status ?? "none";
   const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
+  // Distinción plan FINITO vs ILIMITADO (Etapa 2): un finito (plan10/plan50) consume
+  // saldo del ledger → ya NO es "ilimitado". Solo is_unlimited mantiene ese copy.
+  const isUnlimited: boolean = creditsRow?.is_unlimited === true;
+  const activePlan: string | null = (creditsRow?.active_plan as string) ?? null;
+  // Solo plan10/plan50 explícitos; cualquier otro plan finito (futuro plan20, etc.)
+  // → "SUSCRIPCIÓN" genérico (no mostrar "PLAN 10" a quien no lo tiene). El saldo se
+  // muestra igual.
+  const planLabel: string =
+    activePlan === "plan10" ? "PLAN 10" : activePlan === "plan50" ? "PLAN 50" : "SUSCRIPCIÓN";
 
   // Fetch payment history
   const { data: paymentsData } = await supabase
@@ -86,8 +95,21 @@ export default async function CuentaPage() {
           <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-6">
             {isSubscriber && (
               <>
-                <StatusBadge label="SUSCRIPTOR" tone="ink-400" />
-                <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis ilimitados</p>
+                {isUnlimited ? (
+                  <>
+                    <StatusBadge label="SUSCRIPTOR" tone="ink-400" />
+                    <p className="mt-3 font-body text-sm text-[var(--franco-text)]">Análisis ilimitados</p>
+                  </>
+                ) : (
+                  <>
+                    {/* Plan FINITO: muestra el saldo REAL del ciclo (antes decía
+                        "ilimitados" — falso para un plan10/plan50). */}
+                    <StatusBadge label={planLabel} tone="ink-400" />
+                    <p className="mt-3 font-body text-sm text-[var(--franco-text)]">
+                      <strong className="font-mono">{credits}</strong> análisis {credits === 1 ? "disponible" : "disponibles"}
+                    </p>
+                  </>
+                )}
                 {subEnd && (
                   <p className="mt-1 font-body text-xs text-[var(--franco-text-muted)]">
                     Próxima renovación: {fmtDate(subEnd)}
