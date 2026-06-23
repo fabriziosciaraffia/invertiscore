@@ -31,8 +31,9 @@ export function CapexPuestaAPuntoMiniCard({
       ? "$" + Math.round(montoCLP).toLocaleString("es-CL")
       : "UF " + Math.round(montoUF).toLocaleString("es-CL");
 
-  // KPI condicional Signal Red: solo cuando el CapEx pesa fuerte en la plata día 1.
-  const pesaFuerte = hallazgo.decisividad > 0.3;
+  // KPI condicional Signal Red: cuando el CapEx pesa fuerte en la plata día 1.
+  // Umbral 0.20 calibrado a la distribución real (máx ~0.20, mediana ~0.07).
+  const pesaFuerte = hallazgo.decisividad > 0.2;
 
   return (
     <button

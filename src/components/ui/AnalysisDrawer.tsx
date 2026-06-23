@@ -1952,7 +1952,7 @@ function DrawerCapexPuestaAPunto({
             </p>
             <p
               className={`font-mono font-bold text-[20px] m-0 leading-tight ${
-                hallazgo.decisividad > 0.3 ? "text-signal-red" : "text-[var(--franco-text)]"
+                hallazgo.decisividad > 0.2 ? "text-signal-red" : "text-[var(--franco-text)]"
               }`}
             >
               {pctInversion}%
