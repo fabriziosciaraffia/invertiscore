@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { flowPost, flowGet } from "@/lib/flow";
-import { recurringProductByPlan, applyPlanCredits, addOneMonth } from "@/lib/credits-grant";
+import { recurringProductByPlan, setPlanFields, addOneMonth } from "@/lib/credits-grant";
 import { resolvePlanId } from "@/lib/flow-products";
 import { sendPaymentConfirmationEmail } from "@/lib/email";
 import { resolveDisplayName } from "@/lib/welcome";
@@ -101,9 +101,11 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
-    let paymentRow: { id: string } | null = null;
+    // La fila de alta (franco-sub-<subId>) se crea/flipea igual; ya no capturamos su
+    // id porque bajo modelo C el grant NO se ata a la fila del alta sino a la del
+    // cobro (franco-sub-pay-<flowOrder>, en processSubscriptionCharge).
     if (pendingRow) {
-      const { data: flipped } = await supabase
+      await supabase
         .from("payments")
         .update({
           commerce_order: paidOrder,
@@ -111,10 +113,7 @@ export async function POST(request: Request) {
           status: "paid",
           payment_data: subData,
         })
-        .eq("id", pendingRow.id)
-        .select("id")
-        .single();
-      paymentRow = flipped ?? null;
+        .eq("id", pendingRow.id);
     } else {
       // UPSERT do-nothing (no INSERT plano): si un retry de Flow llega tras un
       // flip/insert previo (y el guard 'active' no cortó por fallo a mitad de la
@@ -136,11 +135,12 @@ export async function POST(request: Request) {
         .select("id")
         .maybeSingle();
 
-      // Duplicado (sin error y sin fila) = este cobro YA se procesó en una
-      // corrida previa. NO-OP TOTAL: salimos antes de applyPlanCredits, que NO es
-      // idempotente (grantCredits hace INSERT plano sin dedup → un 2º llamado
-      // doblaría el grant). Repone la guardia que antes daba el choque del INSERT.
-      // La suscripción ya quedó activa en la corrida original → success redirect.
+      // Duplicado (sin error y sin fila) = este cobro YA se procesó en una corrida
+      // previa. NO-OP TOTAL: salimos antes de re-activar y re-mandar el email de
+      // bienvenida. (Bajo modelo C el alta ya no otorga grant — el grant lo da el
+      // cobro confirmado vía processSubscriptionCharge — pero igual evitamos
+      // re-procesar el alta.) La suscripción ya quedó activa en la corrida original
+      // → success redirect.
       if (!inserted && !insertErr) {
         console.error(
           "[register-callback] cobro ya procesado (commerce_order duplicado), no-op:",
@@ -148,22 +148,22 @@ export async function POST(request: Request) {
         );
         return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
       }
-      paymentRow = inserted ?? null;
     }
 
-    // Otorgar el grant del ciclo (amount=capacity, expira en 1 año) o, para
-    // unlimited, setear is_unlimited sin grant. applyPlanCredits también setea
-    // active_plan/billing_period/subscription_ends_at, pero NO toca
-    // subscription_status ni subscription_id (esos van en el UPDATE de abajo).
-    await applyPlanCredits(userCredit.user_id, match.product, match.key, {
-      paymentId: paymentRow?.id ?? null,
-    });
+    // MODELO C — "el grant sigue al cobro": el alta SOLO activa (setea los campos de
+    // plan), NO otorga grant. El grant del mes 1 lo da el cobro confirmado
+    // (payment-callback / cron reconciler) vía processSubscriptionCharge, así el alta
+    // no puede duplicar el mes 1. setPlanFields setea active_plan/billing_period/
+    // is_unlimited/subscription_ends_at; NO toca subscription_status ni
+    // subscription_id (esos van en el UPDATE de abajo).
+    await setPlanFields(userCredit.user_id, match.product);
 
-    // Activar la suscripción (campos que applyPlanCredits no maneja).
+    // Activar la suscripción (campos que setPlanFields no maneja).
     // next_monthly_grant_at: solo para ANUAL finito (no unlimited). El mes 1 lo
-    // otorgó applyPlanCredits; esto marca cuándo toca el mes 2 = subscription_start
-    // + 1 mes. Mensual recobra por cargo recurrente real (payment-callback) y
-    // unlimited es free pass → en ambos queda null (el cron los ignora).
+    // otorga el cobro confirmado (payment-callback/reconciler), no el alta; esto
+    // marca cuándo toca el mes 2 = subscription_start + 1 mes. Mensual recobra por
+    // cargo recurrente real (payment-callback) y unlimited es free pass → en ambos
+    // queda null (el cron los ignora).
     const now = new Date();
     const isAnnualFinite =
       match.product.billing === "annual" && match.product.isUnlimited !== true;
