@@ -5,7 +5,7 @@ import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
-import { calcCapexPuestaAPunto } from "@/lib/capex-puesta-a-punto";
+import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "@/lib/capex-puesta-a-punto";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -209,6 +209,16 @@ OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` o \`conviene.reencuadre
 
 Forma: diagnóstico + implicancia.
 Ejemplo: "Santiago centro creció 0,8% anualizado en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón."
+
+## 8.1 CapEx de puesta a punto (usados) — cuándo y dónde narrarlo
+
+Cuando el caso incluye un bloque \`CAPEX PUESTA A PUNTO\`, el depto es usado y necesita una puesta a punto (pintura, pisos, cocina/baño) antes de captar arriendo de mercado. Es plata 100% de tu bolsillo el día 1 — parte de la inversión inicial, NO un gasto mensual y NO una palanca de precio.
+
+Reglas:
+1. El monto te viene DADO (UF y CLP) y el % que pesa sobre la inversión inicial también. NO los recalcules ni los inventes. Si no está en el bloque, no existe.
+2. PROHIBIDO recitar el monto (A1). En vez de "necesitas UF X de puesta a punto", REENCUADRA: qué significa que tu inversión inicial real sea más alta de lo que parece, que la plata día 1 no es solo el pie, que captar arriendo de mercado tiene un costo de entrada previo.
+3. PLACEMENT: la mención va SOLO en \`conviene.reencuadre\`. NUNCA en \`costoMensual\` (es día-1, no mensual) ni en \`negociacion\` (no se negocia con el vendedor). Una sola mención, integrada en la prosa del reencuadre — no una sección aparte.
+4. Si el bloque NO aparece, silencio: no menciones puesta a punto, ni "el depto está impecable", nada. Sin bloque, el tema no existe para ti.
 
 ## 9. Cierre obligatorio — Franco se la juega
 
@@ -718,6 +728,17 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
     });
 
+    // Hallazgo CapEx con decisividad/fraseCanonica idénticos a la card: mismo
+    // builder del motor, inversionInicialCLP == inversionTotal (incluye el CapEx).
+    // null cuando el depto es nuevo o el CapEx es 0.
+    const hallazgoCapex = buildHallazgoPuestaAPunto({
+      capex: capexPuestaAPunto,
+      antiguedad: input.antiguedad,
+      superficieUtilM2: input.superficie,
+      modalidad: "ltr",
+      inversionInicialCLP: inversionTotal,
+    });
+
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const fechaEntregaFmt = input.fechaEntrega
       ? (() => { const [a, me] = input.fechaEntrega.split("-").map(Number); return `${mesesEs[(me || 1) - 1]} ${a}`; })()
@@ -1015,6 +1036,22 @@ SUBSIDIO LEY 21.748 (depto califica):
 - compliance: lenguaje NO imperativo al referirse al subsidio (regulatorio).`;
     })();
 
+    // Bloque opcional CapEx puesta a punto — datos puros (cifras YA formateadas
+    // del hallazgo, sin recalcular) + puntero al placement. GATE DE NARRACIÓN:
+    // solo cuando el hallazgo es adverso Y pesa >= 12% de la inversión inicial
+    // (decisividad). Umbral 0.12, más bajo que el 0.20 del rojo de la card: con
+    // 0.20 casi nunca se narra (mediana ~0.08). Bajo el umbral, o nuevo, o sin
+    // CapEx → "" y la IA queda ciega al tema (no puede mencionarlo).
+    const CAPEX_GATE_NARRACION = 0.12;
+    const capexBloque = (hallazgoCapex && hallazgoCapex.direccion === "adverso" && hallazgoCapex.decisividad >= CAPEX_GATE_NARRACION)
+      ? `
+CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} años — dato del motor, NO recalcular):
+- monto puesta a punto: ${fmtUF(hallazgoCapex.valor.montoUF)} (${fmtCLP(hallazgoCapex.valor.montoCLP)}) de tu bolsillo el día 1
+- pesa ~${Math.round(hallazgoCapex.decisividad * 100)}% de tu inversión inicial total (${fmtCLP(inversionTotal)})
+- es parte de la plata día 1, NO un gasto mensual ni palanca de precio
+- placement: menciónalo SOLO en conviene.reencuadre (regla §8.1). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.`
+      : "";
+
     // financingHealth — clasificación de pie + tasa para el escalonado §5 del system.
     const fh = (results as { financingHealth?: import("./types").FullAnalysisResult["financingHealth"] }).financingHealth;
     const financingHealthBloque = fh ? `
@@ -1112,7 +1149,7 @@ UBICACIÓN Y PLUSVALÍA
 ${metroInfo}
 ${plusvaliaHistoricaInfo}
 ${esFueraGranSantiago ? "ADVERTENCIA: propiedad fuera del Gran Santiago. Datos de metro, plusvalía y comparables pueden ser imprecisos — mencionar limitación al usuario." : ""}
-${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}
+${anomaliasTexto}${anomaliaValorTexto}${anomaliasFinTexto}${subsidioBloque}${capexBloque}
 ${anclasBloque}
 
 negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf de las anclas (REGLA 6 v9)
