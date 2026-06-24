@@ -9,6 +9,7 @@ import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCa
 import { HeroVerdictBlock } from "./HeroVerdictBlock";
 import { MiniCard } from "./MiniCard";
 import { ReestructuracionMiniCard } from "./ReestructuracionMiniCard";
+import { CapexPuestaAPuntoMiniCard } from "./CapexPuestaAPuntoMiniCard";
 import { hasAiV2 } from "./AIInsightSection";
 
 /**
@@ -187,6 +188,20 @@ export function SubjectCardGrid({
           />
         </div>
       )}
+
+      {/* Card opcional: CapEx puesta a punto (motor, no IA). Aparece cuando el
+          motor emite el hallazgo con dirección adversa (usado con antig > 2). */}
+      {results?.hallazgos?.[0]?.id === "capex_puesta_a_punto" &&
+        results.hallazgos[0].direccion === "adverso" && (
+          <div className="mt-3">
+            <CapexPuestaAPuntoMiniCard
+              hallazgo={results.hallazgos[0]}
+              currency={currency}
+              valorUF={valorUF}
+              onClick={() => setActiveDrawer("capexPuestaAPunto")}
+            />
+          </div>
+        )}
 
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (
