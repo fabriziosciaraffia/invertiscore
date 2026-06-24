@@ -155,6 +155,9 @@ export interface AnalysisMetrics {
   capexPuestaAPuntoCLP?: number;
   // Proto-hallazgo tipado emitido por el motor (null si Nuevo / CapEx 0).
   hallazgoPuestaAPunto?: HallazgoPuestaAPunto | null;
+  // Proto-hallazgo de cap rate (LTR). null si el cap rate no es computable
+  // (precio o arriendo ≤ 0). Carrier interno; se empuja a results.hallazgos.
+  hallazgoCapRate?: HallazgoCapRate | null;
 }
 
 // Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
@@ -179,6 +182,34 @@ export interface HallazgoPuestaAPunto {
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
+
+// Proto-hallazgo tipado — CAP rate (rentabilidad operativa) para LTR. Misma
+// forma que HallazgoPuestaAPunto: el motor envuelve el número que YA calcula
+// (analysis.ts:250) sin recalcularlo, lo compara contra una referencia de
+// mercado (getCapRefComuna) y emite decisividad + dirección determinísticas.
+// La IA lo narra aguas abajo. Ver cap-rate-hallazgo.ts.
+export interface HallazgoCapRate {
+  id: "cap_rate";
+  tipo: "rentabilidad_operativa";
+  valor: {
+    capRatePct: number;   // cap rate del sujeto, % NETO (NOI) — reusado de :250
+    capRefPct: number;    // referencia de mercado contra la que se compara
+    gapPts: number;       // capRatePct − capRefPct, en puntos (signed)
+    banda: number;        // banda de saturación de la decisividad, en puntos
+    fuente: string;       // procedencia de la referencia (auditoría de la brecha)
+    scope: "nacional" | "comuna";
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable si capRate ≥ referencia; adverso si <. (La frase puede decir "en
+  // línea" cuando |gap| es mínimo, pero la señal-máquina es binaria.)
+  direccion: "favorable" | "adverso";
+  decisividad: number; // 0..1 — |gap| / banda, saturado
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
+}
+
+// Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
+export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;
@@ -288,9 +319,9 @@ export interface FullAnalysisResult {
   resumen: string;
   pros: string[];
   contras: string[];
-  // Proto-hallazgos del motor (hoy solo CapEx puesta a punto). Vacío/omitido si
-  // no aplica. Sin lógica de ordenamiento — es la semilla de la capa.
-  hallazgos?: HallazgoPuestaAPunto[];
+  // Proto-hallazgos del motor (CapEx puesta a punto + cap rate). Vacío/omitido
+  // si no aplica. Sin lógica de ordenamiento — es la semilla de la capa.
+  hallazgos?: Hallazgo[];
 }
 
 export interface AIAnalysis {
