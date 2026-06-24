@@ -5,6 +5,7 @@ import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
+import { calcCapexPuestaAPunto } from "@/lib/capex-puesta-a-punto";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -615,9 +616,12 @@ export function hasNewAiStructure(ai: unknown): boolean {
  *
  * This function does NOT handle auth, ownership, or credit consumption.
  * Callers must do that before invoking.
+ *
+ * `opts.persist` (default true): cuando es false, genera y devuelve el resultado
+ * SIN escribir a Supabase. Sirve para validación local del prompt sin tocar datos.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient): Promise<any | null> {
+export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean } = {}): Promise<any | null> {
   try {
     const { data: analysis } = await supabase
       .from("analisis")
@@ -688,9 +692,31 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       // use defaults
     }
 
+    // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
+    // motor (analysis.ts:264-273), no se lee de results.hallazgos — ese campo NO
+    // se persiste; la página lo regenera vía recomputeResultsForLegacy/runAnalysis.
+    // Recomputar acá el CapEx (no el motor entero) es lo que mantiene la cifra
+    // alineada con la card/drawer. valorUF = UF del snapshot (misma base que el
+    // resto del prompt); el montoUF depende solo de antigüedad×superficie, así
+    // que coincide exacto con la card; el montoCLP escala con la UF, igual que
+    // toda otra cifra CLP del análisis.
+    const capexPuestaAPunto = calcCapexPuestaAPunto({
+      antiguedad: input.antiguedad,
+      superficieUtilM2: input.superficie,
+      valorUF: UF_CLP,
+      overrideCLP: input.costoPuestaAPuntoCLP,
+    });
+
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
     const GASTOS_CIERRE_PCT = 0.02;
-    const inversionTotal = calcInversionInicialCLP({ pieCLP: m.pieCLP, gastosCierreCLP: Math.round(m.precioCLP * GASTOS_CIERRE_PCT) });
+    // Incluye el CapEx para que inversionTotal == capitalInvertido del motor
+    // (analysis.ts). Sin esto, la IA veía una inversión inicial más baja que la
+    // de la card y narrar el CapEx la contradeciría.
+    const inversionTotal = calcInversionInicialCLP({
+      pieCLP: m.pieCLP,
+      gastosCierreCLP: Math.round(m.precioCLP * GASTOS_CIERRE_PCT),
+      capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+    });
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
     const fechaEntregaFmt = input.fechaEntrega
@@ -1189,6 +1215,11 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     scanStrings(aiResult, "");
     if (engineIsmHits.length > 0) {
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
+    }
+
+    if (opts.persist === false) {
+      // Modo validación local: no escribe a Supabase.
+      return aiResult;
     }
 
     const { error: updateError } = await supabase
