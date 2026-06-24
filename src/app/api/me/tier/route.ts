@@ -16,6 +16,9 @@ export async function GET() {
         credits: 0,
         welcomeAvailable: false,
         email: null,
+        activePlan: null,
+        isUnlimited: false,
+        nextCharge: null,
       });
     }
 
@@ -30,7 +33,7 @@ export async function GET() {
       getAvailableCredits(user.id, supabase),
       supabase
         .from("user_credits")
-        .select("welcome_credit_used")
+        .select("welcome_credit_used, active_plan, is_unlimited, subscription_ends_at")
         .eq("user_id", user.id)
         .maybeSingle(),
     ]);
@@ -41,6 +44,14 @@ export async function GET() {
       credits,
       welcomeAvailable: !(welcomeRow.data?.welcome_credit_used ?? false),
       email: user.email ?? null,
+      // Estado del plan (lectura, NO gating). El front lo usa para distinguir un
+      // suscriptor FINITO (plan10/plan50 → muestra saldo real, bloquea en 0) de un
+      // ILIMITADO (is_unlimited → "Análisis ilimitados"). nextCharge = fin del ciclo
+      // vigente (cuándo se renueva el saldo). Aditivo: consumidores previos ignoran
+      // estos campos.
+      activePlan: welcomeRow.data?.active_plan ?? null,
+      isUnlimited: welcomeRow.data?.is_unlimited ?? false,
+      nextCharge: welcomeRow.data?.subscription_ends_at ?? null,
     });
   } catch {
     return NextResponse.json({
@@ -49,6 +60,9 @@ export async function GET() {
       credits: 0,
       welcomeAvailable: false,
       email: null,
+      activePlan: null,
+      isUnlimited: false,
+      nextCharge: null,
     });
   }
 }

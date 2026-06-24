@@ -13,6 +13,7 @@ import type {
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
+import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -279,6 +280,18 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     modalidad: "ltr",
     inversionInicialCLP: capitalInvertido,
   });
+  // Hallazgo de cap rate: envuelve el número de :250 (no lo recalcula) y lo
+  // compara contra la referencia de mercado. getCapRefComuna es el único punto
+  // de resolución (hoy → ancla nacional). Solo emite si el cap rate es computable.
+  const hallazgoCapRate =
+    precioCLP > 0 && ingresoMensual > 0
+      ? buildHallazgoCapRate({
+          capRatePct: capRate,
+          ref: getCapRefComuna(input.comuna),
+          comuna: input.comuna,
+          modalidad: "ltr",
+        })
+      : null;
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -332,6 +345,7 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     })(),
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
     hallazgoPuestaAPunto,
+    hallazgoCapRate,
   };
 }
 
@@ -1290,8 +1304,11 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     resumen,
     pros,
     contras,
-    // Proto-hallazgos del motor: hoy solo CapEx puesta a punto (LTR), sembrado
-    // cuando aplica (usado con antigüedad > 2). Sin ordenamiento ni rendering.
-    hallazgos: metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : [],
+    // Proto-hallazgos del motor (LTR): CapEx puesta a punto (cuando aplica) +
+    // cap rate (siempre que sea computable). Sin ordenamiento ni rendering acá.
+    hallazgos: [
+      ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
+      ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
+    ],
   };
 }

@@ -52,7 +52,7 @@ export default async function PerfilPage() {
   // Fetch user credits + subscription status
   const { data: creditsRow } = await supabase
     .from("user_credits")
-    .select("credits, subscription_status, subscription_ends_at, grace_ends_at")
+    .select("credits, subscription_status, subscription_ends_at, grace_ends_at, is_unlimited, active_plan")
     .eq("user_id", user.id)
     .single();
 
@@ -64,6 +64,10 @@ export default async function PerfilPage() {
   const graceEndsAt: string | null = (creditsRow?.grace_ends_at as string) ?? null;
   const subEnd: string | null = (creditsRow?.subscription_ends_at as string) ?? null;
   const isSubscriber = subStatus === "active";
+  // Plan FINITO (plan10/plan50) vs ILIMITADO: un finito consume saldo del ledger →
+  // ya NO es "ilimitado". Solo is_unlimited mantiene ese copy.
+  const isUnlimited: boolean = creditsRow?.is_unlimited === true;
+  const activePlan: string | null = (creditsRow?.active_plan as string) ?? null;
   // Cancelado con el ciclo pagado aún vigente: conserva acceso Pro hasta subEnd.
   // hasSubscriptionAccess es la fuente de verdad (now < ends_at), igual que access.ts.
   const isCancelledActive =
@@ -109,9 +113,17 @@ export default async function PerfilPage() {
     planLabel = "Admin";
     planDescription = "Acceso completo a todas las funciones.";
     planCtaText = null;
-  } else if (isSubscriber) {
+  } else if (isSubscriber && isUnlimited) {
     planLabel = "Suscripción Mensual";
     planDescription = "Análisis ilimitados + todas las variables del panel de ajustes.";
+    planCtaText = "Gestionar";
+    planCtaHref = "/pricing";
+  } else if (isSubscriber) {
+    // Plan FINITO (plan10/plan50): saldo REAL del ciclo (antes decía "ilimitados").
+    // Solo plan10/plan50 explícitos; otro plan finito (futuro plan20, etc.) → genérico
+    // "Suscripción" (no mostrar "Plan 10" a quien no lo tiene). El saldo se muestra igual.
+    planLabel = activePlan === "plan10" ? "Plan 10" : activePlan === "plan50" ? "Plan 50" : "Suscripción";
+    planDescription = `${credits} ${credits === 1 ? "análisis disponible" : "análisis disponibles"} · todas las variables.`;
     planCtaText = "Gestionar";
     planCtaHref = "/pricing";
   } else if (isPastDueGrace) {
@@ -216,8 +228,11 @@ export default async function PerfilPage() {
           </CardContent>
         </Card>
 
-        {/* Créditos disponibles */}
-        {credits > 0 && !isSubscriber && (
+        {/* Créditos disponibles. Visible a no-suscriptores Y a finitos (plan10/plan50,
+            que ahora consumen saldo). Oculto solo a ILIMITADOS (no aplica un contador).
+            Nota: un ilimitado tiene credits=0, pero el !isUnlimited lo blinda por si
+            quedan grants viejos. */}
+        {credits > 0 && !isUnlimited && (
           <div className="mb-6 rounded-xl border border-[#C8323C]/30 bg-[var(--franco-card)] p-5 text-center">
             <Sparkles className="mx-auto mb-2 h-5 w-5 text-[#C8323C]" />
             <div className="font-mono text-3xl font-bold text-[#C8323C]">{credits}</div>
