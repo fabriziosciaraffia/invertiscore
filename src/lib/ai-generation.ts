@@ -217,7 +217,7 @@ Cuando el caso incluye un bloque \`CAPEX PUESTA A PUNTO\`, el depto es usado y n
 Reglas:
 1. El monto te viene DADO (UF y CLP) y el % que pesa sobre la inversión inicial también. NO los recalcules ni los inventes. Si no está en el bloque, no existe.
 2. PROHIBIDO recitar el monto (A1). En vez de "necesitas UF X de puesta a punto", REENCUADRA: qué significa que tu inversión inicial real sea más alta de lo que parece, que la plata día 1 no es solo el pie, que captar arriendo de mercado tiene un costo de entrada previo.
-3. PLACEMENT: la mención va SOLO en \`conviene.reencuadre\`. NUNCA en \`costoMensual\` (es día-1, no mensual) ni en \`negociacion\` (no se negocia con el vendedor). Una sola mención, integrada en la prosa del reencuadre — no una sección aparte.
+3. PLACEMENT: la mención va ÚNICAMENTE en \`conviene.reencuadre\`. Está PROHIBIDO mencionar la puesta a punto / CapEx en CUALQUIER otra sección: nada en \`largoPlazo\`, \`costoMensual\`, \`negociacion\`, \`riesgos\` ni en ningún otro campo. Es día-1 y reencuadra la inversión inicial — NO es comparación de instrumentos ni costo mensual. En particular, al comparar con instrumentos (depósito UF, fondos) en \`largoPlazo\`, NO la listes entre lo que esos instrumentos no exigen: ese reencuadre ya vive en \`conviene.reencuadre\` y no se repite. Una sola mención, integrada en la prosa del reencuadre — no una sección aparte.
 4. Si el bloque NO aparece, silencio: no menciones puesta a punto, ni "el depto está impecable", nada. Sin bloque, el tema no existe para ti.
 
 ## 9. Cierre obligatorio — Franco se la juega
