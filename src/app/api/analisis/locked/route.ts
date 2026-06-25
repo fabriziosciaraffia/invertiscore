@@ -6,6 +6,7 @@ import {
   createSupabaseServer,
   requireAuthenticatedUser,
   buildShortTermAnalysisRow,
+  prefetchMedianaComunaVenta,
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 
@@ -32,8 +33,12 @@ import {
 // shape que /api/analisis (cobrado) salvo is_premium (default false) y
 // pending_payment=true. NO incluye user_id/creator_name (los pone el caller,
 // que tiene el `user` autenticado a mano).
-function buildLockedLtrRow(body: AnalisisInput, ufValue: number) {
-  const result = runAnalysis(body, ufValue);
+function buildLockedLtrRow(
+  body: AnalisisInput,
+  ufValue: number,
+  medianaComuna?: { mediana: number | null; n: number }
+) {
+  const result = runAnalysis(body, ufValue, medianaComuna);
   return {
     nombre: body.nombre,
     comuna: body.comuna,
@@ -107,13 +112,16 @@ export async function POST(request: Request) {
       const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth);
       if (!builtStr.ok) return builtStr.response;
 
+      // Mediana comunal pre-fetcheada para inyectar al motor LTR (patrón cap_rate).
+      const medianaLtr = await prefetchMedianaComunaVenta(supabase, ltrPayload, ufBoth);
+
       const creatorName =
         user?.user_metadata?.nombre || user?.user_metadata?.full_name || "Anónimo";
 
       const { data: ltrData, error: ltrErr } = await supabase
         .from("analisis")
         .insert({
-          ...buildLockedLtrRow(ltrPayload, ufBoth),
+          ...buildLockedLtrRow(ltrPayload, ufBoth, medianaLtr),
           user_id: user.id,
           creator_name:
             user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
@@ -191,11 +199,14 @@ export async function POST(request: Request) {
     const ufValue = await getUFValue();
     console.log(`[LOCKED-TIMING] getUFValue: ${Date.now() - tUf}ms`);
 
+    // Mediana comunal pre-fetcheada para inyectar al motor (patrón cap_rate).
+    const medianaLtr = await prefetchMedianaComunaVenta(supabase, body, ufValue);
+
     const tIns = Date.now();
     const { data, error } = await supabase
       .from("analisis")
       .insert({
-        ...buildLockedLtrRow(body, ufValue),
+        ...buildLockedLtrRow(body, ufValue, medianaLtr),
         user_id: user.id,
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
       })

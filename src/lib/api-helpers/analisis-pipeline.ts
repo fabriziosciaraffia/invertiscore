@@ -17,6 +17,8 @@ import { createClient, type SupabaseClient, type User } from "@supabase/supabase
 import { cookies } from "next/headers";
 import { chargeAnalysisCredit } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import type { AnalisisInput } from "@/lib/types";
 import {
   calcShortTerm,
   type ShortTermInputs,
@@ -27,6 +29,34 @@ import {
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
 import type { AirbnbEstimateData, AirbnbEstimateDirectData } from "@/lib/airbnb/types";
+
+// ─── Pre-fetch de mediana comunal (para inyectar al motor) ───
+
+/**
+ * Pre-fetch defensivo de la mediana comunal de venta UF/m² (scraped_properties)
+ * para inyectarla al motor SÍNCRONO (calcMetrics/runAnalysis) igual que ufClp.
+ * Centraliza el try/catch: un fallo de la query NO debe romper la creación o el
+ * recálculo del análisis — cae a { mediana: null, n: 0 } y el motor emite
+ * precioVsComuna con sujetoUfM2 presente y desviación null.
+ */
+export async function prefetchMedianaComunaVenta(
+  supabase: SupabaseClient,
+  input: Pick<AnalisisInput, "comuna" | "superficie" | "dormitorios">,
+  ufValue: number
+): Promise<{ mediana: number | null; n: number }> {
+  try {
+    return await getComunaMedianaVentaUF(
+      supabase,
+      input.comuna,
+      input.superficie,
+      input.dormitorios,
+      ufValue
+    );
+  } catch (e) {
+    console.error("[prefetchMedianaComunaVenta] falló (no bloquea el análisis):", e);
+    return { mediana: null, n: 0 };
+  }
+}
 
 // ─── Clients ───────────────────────────────────────────
 

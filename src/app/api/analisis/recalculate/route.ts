@@ -6,6 +6,7 @@ import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -87,8 +88,10 @@ export async function POST(request: Request) {
 
     // Pasar UF actual explícitamente al motor.
     const ufValue = await getUFValue();
+    // Mediana comunal pre-fetcheada para inyectar al motor (patrón cap_rate).
+    const medianaComuna = await prefetchMedianaComunaVenta(supabase, safeInput, ufValue);
 
-    const result = runAnalysis(safeInput, ufValue);
+    const result = runAnalysis(safeInput, ufValue, medianaComuna);
 
     const { error } = await supabase
       .from("analisis")

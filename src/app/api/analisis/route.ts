@@ -11,6 +11,7 @@ import {
   requireAuthenticatedUser,
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
+  prefetchMedianaComunaVenta,
 } from "@/lib/api-helpers/analisis-pipeline";
 
 export async function POST(request: Request) {
@@ -31,7 +32,10 @@ export async function POST(request: Request) {
     // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
     // ver audit/sesionA-residual-2/diagnostico.md).
     const ufValue = await getUFValue();
-    const result = runAnalysis(body, ufValue);
+    // Pre-fetch async de la mediana comunal de venta UF/m² para inyectarla al
+    // motor síncrono (patrón cap_rate). Defensivo: cae a null sin romper.
+    const medianaComuna = await prefetchMedianaComunaVenta(supabase, body, ufValue);
+    const result = runAnalysis(body, ufValue, medianaComuna);
 
     const dbClient = supabase;
 
