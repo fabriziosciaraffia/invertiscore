@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { fmtNumber, fmtRelative, fmtDateShort } from "@/lib/admin-format";
+import { fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
 
 // Fila serializable que arma el server component. Solo datos planos: el render
 // (badges, links, formatters) ocurre acá en cliente para permitir el buscador
@@ -28,7 +28,7 @@ function SaldoCell({ row }: { row: UsuarioRow }) {
   }
   // Suscriptor activo con plan finito → badge del plan + número de saldo.
   if (row.subscriptionStatus === "active") {
-    const planLabel = row.activePlan ? `Plan ${row.activePlan}` : "Suscriptor";
+    const planLabel = row.activePlan ? fmtPlanLabel(row.activePlan) : "Suscriptor";
     return (
       <span className="inline-flex items-center gap-2">
         <StatusBadge label={planLabel} tone="ink-400" className="text-[10px]" />

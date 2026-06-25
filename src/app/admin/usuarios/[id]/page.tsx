@@ -6,7 +6,7 @@ import { isAdminUser } from "@/lib/admin";
 import { resolveDisplayName } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
-import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort } from "@/lib/admin-format";
+import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +30,7 @@ function initials(name: string, email: string): string {
 // COMPRAR y AJUSTA SUPUESTOS van en Ink (regla del rojo de franco-design-system).
 function veredictoTone(v: string): StatusBadgeTone {
   if (v === "BUSCAR OTRA") return "signal-red";
-  if (v === "AJUSTA SUPUESTOS") return "ink-700";
+  if (v === "AJUSTA SUPUESTOS") return "ink-500";
   return "ink-400"; // COMPRAR
 }
 
@@ -138,7 +138,7 @@ export default async function AdminUsuarioDetallePage({
   const estadoBadge: { label: string; tone: StatusBadgeTone } = isUnlimited
     ? { label: "Ilimitado", tone: "ink-400" }
     : subStatus === "active"
-    ? { label: activePlan ? `Plan ${activePlan}` : "Suscriptor", tone: "ink-400" }
+    ? { label: activePlan ? fmtPlanLabel(activePlan) : "Suscriptor", tone: "ink-400" }
     : tienePagoPaid
     ? { label: "Pagador", tone: "ink-700" }
     : { label: "Gratis", tone: "muted" };

@@ -27,3 +27,26 @@ export function fmtDateShort(date: string | null | undefined): string {
   if (!date) return "—";
   return new Date(date).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
 }
+
+/**
+ * Label limpio para active_plan (user_credits). Los valores en DB son
+ * 'plan10'|'plan50'|'unlimited'|'single' — sin esto, anteponer "Plan " daba
+ * "Plan plan10". Cualquier valor desconocido se capitaliza tal cual.
+ */
+export function fmtPlanLabel(activePlan: string | null | undefined): string {
+  switch (activePlan) {
+    case "plan10":
+      return "Plan 10";
+    case "plan50":
+      return "Plan 50";
+    case "unlimited":
+      return "Ilimitado";
+    case "single":
+      return "Individual";
+    default: {
+      const v = (activePlan ?? "").trim();
+      if (!v) return "Plan";
+      return v.charAt(0).toUpperCase() + v.slice(1);
+    }
+  }
+}
