@@ -257,7 +257,42 @@ export interface HallazgoFlujoMensual {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — SOBREPRECIO vs comuna (precio/m² del sujeto vs mediana
+// comunal de venta). 4º hallazgo, pero ASIMÉTRICO respecto a los otros tres: NO
+// lo siembra el motor en results.hallazgos. Su desviación depende de la mediana
+// comunal, que se resuelve ASYNC (getComunaMedianaVentaUF) y NO existe en el motor
+// en runtime — el recompute sync del render (recompute-results-for-legacy) la deja
+// en null, así que un hallazgo motor-seeded saldría null en TODO render. Por eso lo
+// construye AI-GENERATION (donde la mediana ya está resuelta) y se persiste en
+// ai_analysis (AIAnalysisV2.hallazgoSobreprecio), NO en la union `Hallazgo`. Reusa
+// metrics.precioVsComuna (FASE A, buildPrecioVsComuna) — no recalcula nada.
+// Ver sobreprecio-hallazgo.ts.
+export interface HallazgoSobreprecio {
+  id: "sobreprecio";
+  tipo: "precio_vs_comuna";
+  valor: {
+    sujetoUfM2: number;          // precio/superficie SIN estac — reusado de precioVsComuna
+    medianaComunaUfM2: number;   // mediana comunal de venta UF/m² (ya resuelta async)
+    desviacionPct: number;       // (sujeto − mediana)/mediana × 100, entero — FUENTE ÚNICA
+    sobreprecioUfM2: number;     // sujeto − mediana, en UF/m² a 1 decimal
+    banda: number;               // banda de saturación de la decisividad, en %
+    n: number;                   // N de ventas usadas para la mediana
+  };
+  // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: en o BAJO la mediana =
+  // favorable (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro
+  // = peor. (La frase puede decir "en línea" cuando |desv| ≤ 2; la señal-máquina
+  // es binaria: favorable si desv ≤ 0.)
+  direccion: "favorable" | "adverso";
+  decisividad: number; // 0..1 — |desviacionPct| / banda, saturado
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
+// NOTA: HallazgoSobreprecio queda DELIBERADAMENTE fuera — no es motor-seeded
+// (vive en ai_analysis, ver su doc). El render futuro que quiera tratar las dos
+// fuentes de forma uniforme (3 de results.hallazgos + sobreprecio de ai_analysis)
+// necesitará un tipo paraguas que las junte; NO se crea acá.
 export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate | HallazgoFlujoMensual;
 
 export interface NegociacionScenario {
