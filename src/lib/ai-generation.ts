@@ -15,6 +15,7 @@ import {
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
+import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 
 const anthropic = new Anthropic();
 
@@ -702,6 +703,19 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       // use defaults
     }
 
+    // Comparación UF/m² del sujeto vs mediana comunal — FUENTE ÚNICA vía el builder
+    // del motor (buildPrecioVsComuna). sujetoUfM2 va SIN estacionamiento
+    // (input.precio/superficie), idéntico al que persiste el motor en
+    // metrics.precioVsComuna y al que muestra el hero. La mediana ya resuelta
+    // (3 fallbacks de arriba) se inyecta tal cual; mediana null si no es confiable.
+    // n no se usa en la narración (lo cablea FASE B al construir el hallazgo).
+    const pvc = buildPrecioVsComuna({
+      sujetoUfM2: input.superficie > 0 ? input.precio / input.superficie : 0,
+      medianaComunaUfM2: precioM2ZonaConfiable ? precioM2Zona : null,
+      confiable: precioM2ZonaConfiable,
+      n: 0,
+    });
+
     // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
     // motor (analysis.ts:264-273), no se lee de results.hallazgos — ese campo NO
     // se persiste; la página lo regenera vía recomputeResultsForLegacy/runAnalysis.
@@ -778,7 +792,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
         anomalias.push(`ARRIENDO BAJO: El usuario ingresó arriendo de ${fmtCLP(input.arriendo)} pero el mercado indica ${fmtCLP(arriendoRef)} (${Math.round(Math.abs(diffArriendo))}% bajo mercado). Podría estar subestimando o es una zona particular. Sugiere verificar.`);
       }
     }
-    const precioM2Usuario = input.precio / input.superficie;
+    const precioM2Usuario = pvc.sujetoUfM2;
     const precioM2Ref = zonaRadio?.precioM2VentaCLP ? (zonaRadio.precioM2VentaCLP / UF_CLP) : precioM2Zona;
     if (precioM2Ref > 0 && precioM2Usuario > 0) {
       const diffPrecio = ((precioM2Usuario - precioM2Ref) / precioM2Ref) * 100;
@@ -869,15 +883,10 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // alucinaciones. Solo puede hablar del indicador por m².
     // Threshold: |diferencia| > $1M CLP ≈ UF 25 — descarta ruido de redondeo.
     const tieneDiferenciaValida = Math.abs(diferenciaCLP) > 1_000_000;
-    // `sobrepreciioPorM2UF`: siempre computable cuando hay precioM2Zona,
-    // independiente de que vmFranco sea real o fallback. Deja que la IA hable
-    // de sobreprecio/m² sin inventar el absoluto.
-    // Solo computar sobreprecio por m² si la mediana de zona es confiable
-    // (market_data devolvió valor real). Cuando precioM2Zona == m.precioM2
-    // por fallback, decir "sin dato" en vez de pasar 0 al modelo.
-    const sobreprecioPorM2UF = precioM2ZonaConfiable && precioM2Zona > 0 && m.precioM2 > 0
-      ? Math.round((m.precioM2 - precioM2Zona) * 10) / 10
-      : null;
+    // Sobreprecio absoluto (UF/m²) desde la FUENTE ÚNICA (pvc): null si la mediana
+    // de zona no es confiable — el builder lo garantiza. La IA no inventa el
+    // absoluto cuando no hay dato.
+    const sobreprecioPorM2UF = pvc.sobreprecioUfM2;
 
     const neg = results.negociacion;
     const precioSugeridoCLPNeg = neg?.precioSugeridoCLP ?? Math.round(Math.min(input.precio, vmFrancoUF) * 0.97 * UF_CLP);
@@ -1060,11 +1069,9 @@ financingHealth:
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
 - tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}` : "";
 
-    // Sobreprecio por m² expresado en PORCENTAJE (sobreprecioPorM2UF es absoluto en UF, ver L823).
-    // Se usa solo para presentar el dato de zona agrupado en el bloque "COMPARACIÓN DE PRECIO POR M²".
-    const sobreprecioPctZona = (precioM2ZonaConfiable && precioM2Zona > 0 && m.precioM2 > 0)
-      ? Math.round(((m.precioM2 - precioM2Zona) / precioM2Zona) * 100)
-      : null;
+    // Sobreprecio en PORCENTAJE desde la FUENTE ÚNICA (pvc.desviacionPct): null si
+    // la mediana de zona no es confiable. Se presenta en "COMPARACIÓN DE PRECIO POR M²".
+    const sobreprecioPctZona = pvc.desviacionPct;
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
@@ -1115,7 +1122,7 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - vmFranco: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← FALLBACK del motor, no es valor de mercado real"}
 - diferencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO por fallback de vmFranco"}
 - tieneDiferenciaValida: ${tieneDiferenciaValida}
-- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${m.precioM2.toFixed(1)} vs zona ${precioM2Zona.toFixed(1)})` : "sin dato"}
+- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${pvc.sujetoUfM2.toFixed(1)} vs zona ${precioM2Zona.toFixed(1)})` : "sin dato"}
 - precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
 - precioCon10pctDescuento: ${fmtUF(precioConDescuento10)}
 - tirActual: ${tirActual.toFixed(1)}%
@@ -1139,7 +1146,7 @@ PROYECCIÓN Y ALTERNATIVAS
 - dividendoSiTasaSube2pp: ${fmtCLP(dividendoSiTasaSube2)}
 
 COMPARACIÓN DE PRECIO POR M² (datos verificados del motor — usa estos números, NO estimes de memoria)
-- Precio/m² de este depto: ${fmtUF(m.precioM2)}
+- Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
 - Mediana de la comuna: ${precioM2ZonaConfiable ? fmtUF(precioM2Zona) : "sin dato confiable de zona"}
 - Sobreprecio por m²: ${sobreprecioPctZona !== null ? (sobreprecioPctZona >= 0 ? "+" : "") + sobreprecioPctZona + "% (USA ESTE NÚMERO EXACTO — no recalcules ni estimes la mediana de memoria)" : "sin dato — no afirmes nada sobre precio vs zona (ver REGLA 0)"}
 - arriendoZona: ${fmtCLP(arriendoZona)}
@@ -1203,7 +1210,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       if (idx >= 0) {
         aiResult.conviene.datosClave[idx].valor_clp = `${signo}${sobreprecioPctZona}%`;
         aiResult.conviene.datosClave[idx].valor_uf = `${signo}${sobreprecioPctZona}%`;
-        aiResult.conviene.datosClave[idx].subtexto = `${fmtUF(m.precioM2)}/m² vs ${fmtUF(precioM2Zona)}/m² mediana`;
+        aiResult.conviene.datosClave[idx].subtexto = `${fmtUF(pvc.sujetoUfM2)}/m² vs ${fmtUF(precioM2Zona)}/m² mediana`;
       }
     }
 
