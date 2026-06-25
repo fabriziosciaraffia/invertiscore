@@ -14,6 +14,7 @@ import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
+import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -292,6 +293,17 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
           modalidad: "ltr",
         })
       : null;
+  // Hallazgo de flujo mensual: envuelve el aporte de :242 (no lo recalcula). La
+  // decisividad es |aporte| / dividendo, espejo del Gate 1 del veredicto (:1225).
+  // Solo emite si hay dividendo computable (>0).
+  const hallazgoFlujoMensual =
+    dividendo > 0
+      ? buildHallazgoFlujoMensual({
+          flujoNetoMensualCLP: flujoNetoMensual,
+          dividendoMensualCLP: dividendo,
+          modalidad: "ltr",
+        })
+      : null;
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -346,6 +358,7 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
     hallazgoPuestaAPunto,
     hallazgoCapRate,
+    hallazgoFlujoMensual,
   };
 }
 
@@ -1309,6 +1322,7 @@ export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisRe
     hallazgos: [
       ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
       ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
+      ...(metrics.hallazgoFlujoMensual ? [metrics.hallazgoFlujoMensual] : []),
     ],
   };
 }

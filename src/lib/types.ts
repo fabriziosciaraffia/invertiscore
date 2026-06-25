@@ -158,6 +158,9 @@ export interface AnalysisMetrics {
   // Proto-hallazgo de cap rate (LTR). null si el cap rate no es computable
   // (precio o arriendo ≤ 0). Carrier interno; se empuja a results.hallazgos.
   hallazgoCapRate?: HallazgoCapRate | null;
+  // Proto-hallazgo de flujo mensual (LTR). null si no hay dividendo computable
+  // (>0). Carrier interno; se empuja a results.hallazgos.
+  hallazgoFlujoMensual?: HallazgoFlujoMensual | null;
 }
 
 // Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
@@ -208,8 +211,31 @@ export interface HallazgoCapRate {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — flujo mensual (aporte de bolsillo) para LTR. Misma
+// forma que los anteriores: el motor envuelve el aporte que YA calcula
+// (analysis.ts:242) sin recalcularlo. A diferencia de cap_rate NO hay referencia
+// externa — el número sale de inputs del usuario vía motor (confianza "alta").
+// La decisividad es |aporte| / dividendo saturado a 1 (espejo del Gate 1 del
+// veredicto, :1225). La IA lo narra aguas abajo. Ver flujo-mensual-hallazgo.ts.
+export interface HallazgoFlujoMensual {
+  id: "flujo_mensual";
+  tipo: "aporte_mensual";
+  valor: {
+    flujoNetoMensualCLP: number;   // aporte mensual neto, CLP signed — reusado de :242
+    dividendoMensualCLP: number;   // divisor de la decisividad (:224)
+    ratioSobreDividendo: number;   // |aporte| / dividendo, pre-saturación (≥0)
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable si el aporte ≥ 0 (el arriendo cubre todo); adverso si < 0 (pones
+  // plata de tu bolsillo). El signo NO determina decisividad — la magnitud sí.
+  direccion: "favorable" | "adverso";
+  decisividad: number; // 0..1 — |aporte| / dividendo, saturado
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
-export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate;
+export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate | HallazgoFlujoMensual;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;
