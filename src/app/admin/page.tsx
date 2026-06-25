@@ -7,6 +7,7 @@ import { hasSubscriptionAccess } from "@/lib/access";
 import { getLedgerBalances } from "@/lib/credits-grant";
 import { conceptoBoleta, type PaymentForDTE } from "@/lib/openfactura/client";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
+import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort } from "@/lib/admin-format";
 import { AdminActions } from "./admin-actions";
 import { RetryButton } from "./retry-button";
 
@@ -19,33 +20,10 @@ function admin() {
   );
 }
 
-function fmtCLP(n: number): string {
-  return "$" + Math.round(n).toLocaleString("es-CL");
-}
-
-function fmtNumber(n: number): string {
-  return n.toLocaleString("es-CL");
-}
-
-function fmtRelative(date: string | null | undefined): string {
-  if (!date) return "—";
-  const ms = Date.now() - new Date(date).getTime();
-  const hours = Math.floor(ms / (1000 * 60 * 60));
-  if (hours < 1) return "hace minutos";
-  if (hours < 24) return `hace ${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `hace ${days}d`;
-}
-
 function isStale(date: string | null | undefined, hoursThreshold: number): boolean {
   if (!date) return true;
   const ms = Date.now() - new Date(date).getTime();
   return ms > hoursThreshold * 60 * 60 * 1000;
-}
-
-function fmtDateShort(date: string | null | undefined): string {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function fmtToday(): string {
