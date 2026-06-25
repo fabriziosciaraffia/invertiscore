@@ -551,6 +551,12 @@ export interface AIAnalysisV2 {
   // acá para revisión humana. La regla operativa post-E.2: la IA NUNCA
   // contradice el motor en el render; este campo es la válvula de escape.
   francoCaveat?: string;
+  // FASE B sobreprecio — hallazgo determinístico inyectado post-LLM (NO lo
+  // devuelve el modelo). FUENTE ÚNICA de la desviación precio/m² vs mediana
+  // comunal: lo lee el chip del hero y se narra en el párrafo (mata el bug
+  // gemelo). Vive acá y NO en results.hallazgos porque su mediana es async
+  // (ver HallazgoSobreprecio en este archivo). null si no hay dato de zona.
+  hallazgoSobreprecio?: HallazgoSobreprecio | null;
 }
 
 // ─── STR — IA Análisis v2 (Ronda 4d) ──────────────────────────────

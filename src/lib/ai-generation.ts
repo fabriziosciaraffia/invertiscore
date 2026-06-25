@@ -16,6 +16,7 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
+import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
 
 const anthropic = new Anthropic();
 
@@ -716,6 +717,14 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       n: 0,
     });
 
+    // FASE B — Hallazgo de SOBREPRECIO (4º hallazgo). Vive acá y NO en el motor:
+    // su desviación depende de la mediana async (precioM2Zona) que el recompute
+    // sync del render no tiene. Es la FUENTE ÚNICA de la desviación: este mismo
+    // prompt narra su cifra (bloque "COMPARACIÓN DE PRECIO POR M²") y el chip del
+    // hero la lee del objeto persistido (más abajo). Mata el bug gemelo.
+    // Ver sobreprecio-hallazgo.ts (asimetría) y types.ts (fuera de la union).
+    const hallazgoSobreprecio = buildHallazgoSobreprecio(pvc);
+
     // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
     // motor (analysis.ts:264-273), no se lee de results.hallazgos — ese campo NO
     // se persiste; la página lo regenera vía recomputeResultsForLegacy/runAnalysis.
@@ -1069,10 +1078,6 @@ financingHealth:
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
 - tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}` : "";
 
-    // Sobreprecio en PORCENTAJE desde la FUENTE ÚNICA (pvc.desviacionPct): null si
-    // la mediana de zona no es confiable. Se presenta en "COMPARACIÓN DE PRECIO POR M²".
-    const sobreprecioPctZona = pvc.desviacionPct;
-
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1145,10 +1150,11 @@ PROYECCIÓN Y ALTERNATIVAS
 - dividendoSiTasaSube1pp: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
 - dividendoSiTasaSube2pp: ${fmtCLP(dividendoSiTasaSube2)}
 
-COMPARACIÓN DE PRECIO POR M² (datos verificados del motor — usa estos números, NO estimes de memoria)
+COMPARACIÓN DE PRECIO POR M² (hallazgo de sobreprecio del motor — FUENTE ÚNICA, NO recalcules ni estimes de memoria)
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
-- Mediana de la comuna: ${precioM2ZonaConfiable ? fmtUF(precioM2Zona) : "sin dato confiable de zona"}
-- Sobreprecio por m²: ${sobreprecioPctZona !== null ? (sobreprecioPctZona >= 0 ? "+" : "") + sobreprecioPctZona + "% (USA ESTE NÚMERO EXACTO — no recalcules ni estimes la mediana de memoria)" : "sin dato — no afirmes nada sobre precio vs zona (ver REGLA 0)"}
+- Mediana de la comuna: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de zona"}
+- Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs zona (ver REGLA 0)"}
+- Lectura canónica del hallazgo (narra ESTA idea con tus palabras; NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? `"${hallazgoSobreprecio.fraseCanonica}"` : "—"}
 - arriendoZona: ${fmtCLP(arriendoZona)}
 - yieldZona: ${yieldZona.toFixed(1)}%
 
@@ -1200,20 +1206,6 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       aiResult.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
     }
 
-    // Blindaje: la cifra de sobreprecio/mediana la pone el motor, no el modelo (prior confabulable).
-    if (precioM2ZonaConfiable && sobreprecioPctZona !== null && Array.isArray(aiResult?.conviene?.datosClave)) {
-      const signo = sobreprecioPctZona >= 0 ? "+" : "";
-      const idx = aiResult.conviene.datosClave.findIndex(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (d: any) => typeof d?.label === "string" && /sobreprecio|precio por m|precio\/m/i.test(d.label)
-      );
-      if (idx >= 0) {
-        aiResult.conviene.datosClave[idx].valor_clp = `${signo}${sobreprecioPctZona}%`;
-        aiResult.conviene.datosClave[idx].valor_uf = `${signo}${sobreprecioPctZona}%`;
-        aiResult.conviene.datosClave[idx].subtexto = `${fmtUF(pvc.sujetoUfM2)}/m² vs ${fmtUF(precioM2Zona)}/m² mediana`;
-      }
-    }
-
     // Salvaguarda de orden: en BUSCAR OTRA, un chip rojo debe liderar (no un accent/neutral).
     // Stable-sort por color; conserva el orden relativo entre rojos y entre no-rojos.
     if (readVeredicto(results) === "BUSCAR OTRA" && Array.isArray(aiResult?.conviene?.datosClave)) {
@@ -1230,8 +1222,9 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     }
 
     // Validación de prosa (solo detección para QA — NO reescribe el texto en esta iteración).
-    if (precioM2ZonaConfiable && sobreprecioPctZona !== null) {
-      const medianaReal = Math.round(precioM2Zona);
+    // Lee la mediana de la FUENTE ÚNICA (hallazgoSobreprecio): la misma que narró el prompt.
+    if (hallazgoSobreprecio) {
+      const medianaReal = Math.round(hallazgoSobreprecio.valor.medianaComunaUfM2);
       const camposProsa = [
         aiResult?.conviene?.respuestaDirecta_uf, aiResult?.conviene?.reencuadre_uf,
       ].filter((s: unknown) => typeof s === "string").join(" ");
@@ -1259,6 +1252,15 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     scanStrings(aiResult, "");
     if (engineIsmHits.length > 0) {
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
+    }
+
+    // FASE B — inyectar el hallazgo de sobreprecio (determinístico, NO del LLM)
+    // en ai_analysis. FUENTE ÚNICA de la desviación: el chip del hero lo lee de
+    // acá (Commit 3) y el párrafo se narró con sus mismas cifras (prompt arriba).
+    // Vive en ai_analysis y NO en results.hallazgos porque su mediana es async y
+    // el recompute sync del render la dejaría null (ver sobreprecio-hallazgo.ts).
+    if (aiResult) {
+      aiResult.hallazgoSobreprecio = hallazgoSobreprecio;
     }
 
     if (opts.persist === false) {
