@@ -15,6 +15,7 @@ import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
+import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -199,7 +200,15 @@ function calcPrecioParaFlujo(
   return disponibleParaDividendo / (financiamiento * factorAmort);
 }
 
-function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
+function calcMetrics(
+  input: AnalisisInput,
+  ufClp: number,
+  // Mediana comunal de venta UF/m² YA RESUELTA por el caller (pre-fetch async en
+  // el pipeline, igual que entra ufClp). El motor sigue síncrono y puro: recibe
+  // el número, no hace queries. Opcional → callers que no la pasan obtienen
+  // precioVsComuna con sujetoUfM2 presente y desviación null.
+  medianaComunaVentaUF?: { mediana: number | null; n: number }
+): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
   if (input.estacionamiento === "opcional" && input.precioEstacionamiento > 0) {
@@ -304,6 +313,20 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
           modalidad: "ltr",
         })
       : null;
+  // Comparación UF/m² del sujeto vs mediana comunal de venta — fuente ÚNICA de la
+  // cifra UF/m² del sujeto (narración/anomalías/hero leen de acá). sujetoUfM2 va
+  // SIN estacionamiento (input.precio/superficie, NO precioM2 que suma el parking),
+  // para quedar en la misma base que la mediana (precio_aviso/superficie, sin
+  // parking adicional). El campo se puebla siempre; la desviación solo si hay
+  // mediana confiable. La query async la hace el pipeline, no el motor.
+  const sujetoUfM2SinEstac = input.superficie > 0 ? input.precio / input.superficie : 0;
+  const precioVsComuna = buildPrecioVsComuna({
+    sujetoUfM2: sujetoUfM2SinEstac,
+    medianaComunaUfM2: medianaComunaVentaUF?.mediana ?? null,
+    confiable: medianaComunaVentaUF?.mediana != null && medianaComunaVentaUF.mediana > 0,
+    n: medianaComunaVentaUF?.n ?? 0,
+  });
+
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
 
@@ -359,6 +382,7 @@ function calcMetrics(input: AnalisisInput, ufClp: number): AnalysisMetrics {
     hallazgoPuestaAPunto,
     hallazgoCapRate,
     hallazgoFlujoMensual,
+    precioVsComuna,
   };
 }
 
@@ -1144,8 +1168,14 @@ function calcNegociacionScenario(
   };
 }
 
-export function runAnalysis(input: AnalisisInput, ufClp: number): FullAnalysisResult {
-  const metrics = calcMetrics(input, ufClp);
+export function runAnalysis(
+  input: AnalisisInput,
+  ufClp: number,
+  // Mediana comunal de venta UF/m² ya resuelta (pre-fetch del pipeline). Se
+  // propaga tal cual a calcMetrics. Opcional para no romper callers existentes.
+  medianaComunaVentaUF?: { mediana: number | null; n: number }
+): FullAnalysisResult {
+  const metrics = calcMetrics(input, ufClp, medianaComunaVentaUF);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
