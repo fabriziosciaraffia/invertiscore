@@ -187,7 +187,11 @@ export default async function AnalisisDetallePage({
   // Basic metrics for free section (works with or without full results)
   const precioCLP = analisis.precio * UF_CLP;
   const yieldBruto = precioCLP > 0 ? ((analisis.arriendo * 12) / precioCLP * 100) : 0;
-  const precioM2 = analisis.superficie > 0 ? analisis.precio / analisis.superficie : 0;
+  // Hero "$/M²": lee la cifra canónica del motor (sin estacionamiento, fuente
+  // única compartida con la narración IA y las anomalías). Fallback al cómputo
+  // local solo para filas legacy sin results.metrics.precioVsComuna.
+  const precioM2 = results?.metrics?.precioVsComuna?.sujetoUfM2
+    ?? (analisis.superficie > 0 ? analisis.precio / analisis.superficie : 0);
   const flujoEstimado = results?.metrics?.flujoNetoMensual ?? (analisis.arriendo - Math.round((analisis.precio * 0.8 * UF_CLP * 0.0472 / 12) / (1 - Math.pow(1 + 0.0472 / 12, -300))) - analisis.gastos - Math.round(analisis.contribuciones / 3));
 
   const resumenEjecutivo = results?.resumenEjecutivo ??
