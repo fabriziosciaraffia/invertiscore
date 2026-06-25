@@ -161,6 +161,29 @@ export interface AnalysisMetrics {
   // Proto-hallazgo de flujo mensual (LTR). null si no hay dividendo computable
   // (>0). Carrier interno; se empuja a results.hallazgos.
   hallazgoFlujoMensual?: HallazgoFlujoMensual | null;
+  // Comparación UF/m² del sujeto (SIN estacionamiento) vs mediana comunal de
+  // VENTA. Fuente ÚNICA de la cifra UF/m² del sujeto para narración/anomalías/
+  // hero; se computa una vez vía buildPrecioVsComuna. desviacionPct null si no
+  // hay mediana confiable. (FASE A: solo el cómputo; FASE B construye el hallazgo.)
+  precioVsComuna?: PrecioVsComuna | null;
+}
+
+// Comparación determinística de precio/m² del sujeto vs mediana comunal de VENTA
+// (UF/m²). NO es un hallazgo (FASE A): la empaqueta el builder puro
+// buildPrecioVsComuna (precio-vs-comuna.ts). FASE B construirá el hallazgo encima.
+export interface PrecioVsComuna {
+  /** Precio depto / superficie, SIN estacionamiento (base comparable a la mediana comunal). NO es metrics.precioM2. */
+  sujetoUfM2: number;
+  /** Mediana de venta UF/m² de la comuna, ya resuelta por el caller. null si no hay dato confiable. */
+  medianaComunaUfM2: number | null;
+  /** (sujeto − mediana) / mediana × 100, entero. null si !confiable. */
+  desviacionPct: number | null;
+  /** sujeto − mediana, en UF/m² a 1 decimal. null si !confiable. */
+  sobreprecioUfM2: number | null;
+  /** true cuando hay mediana comunal de venta confiable (>0). */
+  confiable: boolean;
+  /** N de ventas válidas usadas para la mediana (0 si no hay). */
+  n: number;
 }
 
 // Proto-hallazgo tipado — CapEx de puesta a punto para usados. NO es un type
