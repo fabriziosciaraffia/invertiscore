@@ -144,67 +144,45 @@ export function buildHeroDatosClave(
     color: "accent",
   };
 
-  // 3) Pasada / Sobreprecio / Precio alineado — vs valor de mercado Franco
-  const precioUF = results?.metrics?.valorMercadoUsuarioUF ?? 0; // no siempre viene
-  const vmFrancoUF = results?.metrics?.valorMercadoFrancoUF ?? 0;
-  const precioCLP = results?.metrics?.precioCLP ?? 0;
-  const vmFrancoCLP = vmFrancoUF > 0 ? vmFrancoUF * (valorUF || 0) : precioCLP;
-  const diferenciaCLP = vmFrancoCLP - precioCLP;
-  const pctDiferencia = vmFrancoCLP > 0 ? (Math.abs(diferenciaCLP) / vmFrancoCLP) * 100 : 0;
-  const esPasada = diferenciaCLP > 0 && pctDiferencia > 2;
-  const esSobreprecio = diferenciaCLP < 0 && pctDiferencia > 2;
-
-  let pasadaLabel: string;
-  let pasadaValorCLP: string;
-  let pasadaValorUF: string;
-  let pasadaSub: string;
-  let pasadaColor: DatoClave["color"];
-  const fmtCLPSigned = (v: number) => (v >= 0 ? "+$" : "−$") + Math.round(Math.abs(v)).toLocaleString("es-CL");
-  const fmtUFSigned = (v: number) => {
-    const uf = v / (valorUF || 1);
-    return (v >= 0 ? "+UF " : "−UF ") + Math.round(Math.abs(uf)).toLocaleString("es-CL");
-  };
-
-  let pasadaIsLabel: boolean;
-  if (esPasada) {
-    pasadaLabel = "Ventaja";
-    pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
-    pasadaValorUF = fmtUFSigned(diferenciaCLP);
-    pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% bajo mercado`;
-    pasadaColor = "green";
-    pasadaIsLabel = true; // etiqueta cuantitativa sin verbo
-  } else if (esSobreprecio) {
-    pasadaLabel = "Sobreprecio";
-    pasadaValorCLP = fmtCLPSigned(diferenciaCLP);
-    pasadaValorUF = fmtUFSigned(diferenciaCLP);
-    pasadaSub = `${pctDiferencia.toFixed(1).replace(".", ",")}% sobre mercado`;
-    pasadaColor = "red";
-    pasadaIsLabel = true; // etiqueta cuantitativa sin verbo
+  // 3) Sobreprecio vs comuna — FUENTE ÚNICA: el hallazgo de ai_analysis (FASE B).
+  // El chip ahora responde "¿caro vs la comuna?" (UF/m² sujeto SIN estac vs mediana
+  // comunal), NO vs vmFranco. Es la MISMA desviación que narra el párrafo → mata el
+  // bug gemelo. Dirección invertida: sobre la mediana = caro (rojo), bajo = barato
+  // (verde). Sin dato de zona ⇒ card "sin dato": NO hay fallback a vmFranco (diseño
+  // FASE B, una sola pregunta).
+  const hs = aiData.hallazgoSobreprecio;
+  let sobreprecioCard: DatoClave;
+  if (hs) {
+    const desv = hs.valor.desviacionPct;
+    const desvAbs = Math.abs(desv);
+    const medianaFmt = `UF ${(Math.round(hs.valor.medianaComunaUfM2 * 10) / 10)
+      .toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}/m²`;
+    const pct = `${desv >= 0 ? "+" : "−"}${desvAbs}%`;
+    if (desvAbs <= 2) {
+      sobreprecioCard = {
+        label: "Precio alineado", valor_clp: pct, valor_uf: pct,
+        subtexto: `En línea con la comuna (${medianaFmt})`, isLabel: false, color: "neutral",
+      };
+    } else if (desv > 0) {
+      sobreprecioCard = {
+        label: "Sobreprecio", valor_clp: pct, valor_uf: pct,
+        subtexto: `Sobre la mediana de la comuna (${medianaFmt})`, isLabel: true, color: "red",
+      };
+    } else {
+      sobreprecioCard = {
+        label: "Ventaja", valor_clp: pct, valor_uf: pct,
+        subtexto: `Bajo la mediana de la comuna (${medianaFmt})`, isLabel: true, color: "green",
+      };
+    }
   } else {
-    // Precio y vmFranco coinciden (≤2% de diferencia). En vez de mostrar
-    // "≈ UF 0" sin contexto (semánticamente confuso), mostrar el precio de
-    // compra como valor del card y un subtexto claro.
-    pasadaLabel = "Precio alineado";
-    pasadaValorCLP = "$" + Math.round(precioCLP).toLocaleString("es-CL");
-    pasadaValorUF = "UF " + Math.round(precioCLP / (valorUF || 1)).toLocaleString("es-CL");
-    pasadaSub = "Tu precio coincide con mercado";
-    pasadaColor = "neutral";
-    pasadaIsLabel = false; // verbo "coincide" conjugado → narrative
+    sobreprecioCard = {
+      label: "Precio vs zona", valor_clp: "—", valor_uf: "—",
+      subtexto: "Sin dato de zona", isLabel: false, color: "neutral",
+    };
   }
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _precioUFUnused = precioUF;
-  const retornoCard: DatoClave = {
-    label: pasadaLabel,
-    valor_clp: pasadaValorCLP,
-    valor_uf: pasadaValorUF,
-    subtexto: pasadaSub,
-    isLabel: pasadaIsLabel,
-    color: pasadaColor,
-  };
 
-  // Subtextos are motor-dictated to stay consistent with the sign of the value.
   // Silence unused vars if they aren't consumed here.
   void currency;
   void iaDatos;
-  return [aporteCard, precioCard, retornoCard];
+  return [aporteCard, precioCard, sobreprecioCard];
 }
