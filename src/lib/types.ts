@@ -161,6 +161,10 @@ export interface AnalysisMetrics {
   // Proto-hallazgo de flujo mensual (LTR). null si no hay dividendo computable
   // (>0). Carrier interno; se empuja a results.hallazgos.
   hallazgoFlujoMensual?: HallazgoFlujoMensual | null;
+  // Proto-hallazgo de plusvalía (LTR). Reusa la tasa histórica per-comuna que usa
+  // el scoring (:823-824); cae al promedio Gran Santiago sin dato propio. null
+  // solo si la tasa no es finita. Carrier interno; se empuja a results.hallazgos.
+  hallazgoPlusvalia?: HallazgoPlusvalia | null;
   // Comparación UF/m² del sujeto (SIN estacionamiento) vs mediana comunal de
   // VENTA. Fuente ÚNICA de la cifra UF/m² del sujeto para narración/anomalías/
   // hero; se computa una vez vía buildPrecioVsComuna. desviacionPct null si no
@@ -288,12 +292,42 @@ export interface HallazgoSobreprecio {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — PLUSVALÍA (apreciación histórica de la comuna) para
+// LTR. Misma forma que HallazgoCapRate: el motor envuelve la tasa histórica
+// anualizada que YA usa el scoring (analysis.ts:823-824) sin recalcularla, la
+// compara contra un UMBRAL ABSOLUTO de apreciación real (getPlusvaliaRef) y emite
+// decisividad + dirección determinísticas. Es el CONTRAPESO de la tesis: rara vez
+// tumba/salva sola, aporta al patrimonio. HISTÓRICA (2014-2024), NO garantía
+// futura — por eso la confianza nunca es "alta". La IA lo narra aguas abajo.
+// Ver plusvalia-hallazgo.ts.
+export interface HallazgoPlusvalia {
+  id: "plusvalia";
+  tipo: "apreciacion_historica";
+  valor: {
+    anualizadaPct: number;  // tasa histórica anual de la comuna, % — reusada de :823-824
+    refPct: number;         // umbral de apreciación real contra el que se compara
+    gapPts: number;         // anualizadaPct − refPct, en puntos (signed)
+    banda: number;          // banda de saturación de la decisividad, en puntos
+    fuente: string;         // procedencia del umbral (auditoría de la brecha)
+    scope: "absoluta" | "comuna";
+    tieneData: boolean;     // true si la comuna tiene dato propio; false ⇒ default
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable si la comuna apreció ≥ umbral real (ganó valor real); adverso si <
+  // (perdió valor real aunque el nominal suba). La frase puede decir "en línea"
+  // cuando |gap| es mínimo; la señal-máquina es binaria.
+  direccion: "favorable" | "adverso";
+  decisividad: number; // 0..1 — |gap| / banda, saturado
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // NOTA: HallazgoSobreprecio queda DELIBERADAMENTE fuera — no es motor-seeded
 // (vive en ai_analysis, ver su doc). El render futuro que quiera tratar las dos
 // fuentes de forma uniforme (3 de results.hallazgos + sobreprecio de ai_analysis)
 // necesitará un tipo paraguas que las junte; NO se crea acá.
-export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate | HallazgoFlujoMensual;
+export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate | HallazgoFlujoMensual | HallazgoPlusvalia;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;

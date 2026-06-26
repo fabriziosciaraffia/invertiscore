@@ -15,6 +15,7 @@ import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
+import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
@@ -43,6 +44,11 @@ export function getMantencionRate(antiguedad: number): number {
   return 0.015;
 }
 
+// DEUDA (fuera de alcance del hallazgo de plusvalía): la proyección de patrimonio
+// (calcProjections, :488/548) usa esta tasa GLOBAL hardcodeada en vez de la tasa
+// histórica per-comuna que sí usa el scoring (:823-824) y el hallazgo de plusvalía.
+// Es incoherente: infla/depila el patrimonio proyectado respecto del score. Pendiente
+// de unificar (reusar PLUSVALIA_HISTORICA[comuna].anualizada como default del proyector).
 const PLUSVALIA_ANUAL = 0.04;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
@@ -313,6 +319,19 @@ function calcMetrics(
           modalidad: "ltr",
         })
       : null;
+  // Hallazgo de plusvalía: envuelve la tasa histórica anualizada de la comuna que
+  // YA usa el scoring (:823-824), no la recalcula, contra un umbral absoluto de
+  // apreciación real (getPlusvaliaRef). Cae elegante al promedio Gran Santiago sin
+  // dato propio (confianza baja). CONTRAPESO de la tesis; HISTÓRICA, no garantía
+  // futura. Siempre computable (la tasa o su default es finita).
+  const plusvaliaComuna = resolvePlusvaliaComuna(input.comuna);
+  const hallazgoPlusvalia = buildHallazgoPlusvalia({
+    anualizadaPct: plusvaliaComuna.anualizada,
+    tieneData: plusvaliaComuna.tieneData,
+    ref: getPlusvaliaRef(),
+    comuna: input.comuna,
+    modalidad: "ltr",
+  });
   // Comparación UF/m² del sujeto vs mediana comunal de venta — fuente ÚNICA de la
   // cifra UF/m² del sujeto (narración/anomalías/hero leen de acá). sujetoUfM2 va
   // SIN estacionamiento (input.precio/superficie, NO precioM2 que suma el parking),
@@ -382,6 +401,7 @@ function calcMetrics(
     hallazgoPuestaAPunto,
     hallazgoCapRate,
     hallazgoFlujoMensual,
+    hallazgoPlusvalia,
     precioVsComuna,
   };
 }
@@ -1348,11 +1368,13 @@ export function runAnalysis(
     pros,
     contras,
     // Proto-hallazgos del motor (LTR): CapEx puesta a punto (cuando aplica) +
-    // cap rate (siempre que sea computable). Sin ordenamiento ni rendering acá.
+    // cap rate y flujo mensual (cuando son computables) + plusvalía histórica
+    // (siempre). Sin ordenamiento ni rendering acá.
     hallazgos: [
       ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
       ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
       ...(metrics.hallazgoFlujoMensual ? [metrics.hallazgoFlujoMensual] : []),
+      ...(metrics.hallazgoPlusvalia ? [metrics.hallazgoPlusvalia] : []),
     ],
   };
 }
