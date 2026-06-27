@@ -133,3 +133,66 @@ export function classifyFinancingHealth(input: ClassifyFinancingHealthInput, ufC
     overall: worstLevel(pieLevel, tasaLevel),
   };
 }
+
+// ── Reestructuración financiera (números deterministas del Nivel 3) ─────────
+//
+// FASE A (espejo de sobreprecio): el motor calcula los números de la estructura
+// sugerida que ANTES inventaba la IA (ai-generation.ts §5 Nivel 3). La IA pasa a
+// LEERLOS; deja de estimarlos. NO emite Hallazgo tipado todavía (eso es FASE B).
+//
+// Doctrina de las 3 palancas:
+//   - PIE: dirección clara para todo perfil (más alto = menos crédito = menor
+//     cuota). Se sugiere subir al óptimo (PIE_RECOMMENDED_PCT) si está por debajo.
+//   - TASA: dirección clara para todo perfil (más baja = menor cuota). Se sugiere
+//     bajar al promedio de mercado (MARKET_AVG_TASA_UF) si está por encima.
+//   - PLAZO: NEUTRAL. La dirección correcta depende del perfil del inversor (corto
+//     = menos interés total; largo = libera flujo) y Franco hoy no tiene perfil.
+//     El motor NO recomienda cambiar el plazo: se mantiene el del usuario y el
+//     impacto se calcula SOLO sobre pie+tasa.
+
+export interface ReestructuracionFinanciera {
+  pieSugerido_pct: number;
+  plazoSugerido_anios: number;
+  tasaObjetivo_pct: number;
+  impactoCuotaMensual_clp: number;
+}
+
+/**
+ * Calcula los 4 números deterministas de la reestructuración sugerida reusando
+ * `calcDividendo` del motor. Puro y síncrono. Cuando pie y tasa ya están en o
+ * mejor que el óptimo, no hay palanca: impactoCuotaMensual_clp = 0 y los
+ * sugeridos quedan iguales a los actuales.
+ */
+export function buildReestructuracionFinanciera(
+  input: ClassifyFinancingHealthInput,
+  ufClp: number,
+): ReestructuracionFinanciera {
+  const { pie_pct, tasa_pct, precio_uf, plazo_anios } = input;
+  const precioCLP = precio_uf * ufClp;
+
+  // Pie: subir al óptimo si está por debajo; si ya está en o sobre el óptimo, no
+  // se sugiere cambio (el pie no es la palanca en ese caso).
+  const pieSugerido = pie_pct < PIE_RECOMMENDED_PCT ? PIE_RECOMMENDED_PCT : pie_pct;
+
+  // Tasa: bajar al promedio de mercado si está por encima; si ya está en o bajo
+  // el mercado, no se sugiere cambio. Fuente única del 4.1: MARKET_AVG_TASA_UF.
+  const tasaObjetivo = tasa_pct > MARKET_AVG_TASA_UF ? MARKET_AVG_TASA_UF : tasa_pct;
+
+  // Plazo neutral: passthrough del valor del usuario (ver doctrina arriba).
+  const plazoSugerido = plazo_anios;
+
+  // Impacto = baja de cuota al pasar a la estructura sugerida (pie+tasa), con el
+  // plazo fijo. Resta de dividendos; clamp a 0 por si no hay palanca.
+  const creditoActualCLP = precioCLP * (1 - pie_pct / 100);
+  const creditoSugeridoCLP = precioCLP * (1 - pieSugerido / 100);
+  const dividendoActual = calcDividendo(creditoActualCLP, tasa_pct, plazo_anios);
+  const dividendoSugerido = calcDividendo(creditoSugeridoCLP, tasaObjetivo, plazo_anios);
+  const impacto = Math.max(0, dividendoActual - dividendoSugerido);
+
+  return {
+    pieSugerido_pct: pieSugerido,
+    plazoSugerido_anios: plazoSugerido,
+    tasaObjetivo_pct: tasaObjetivo,
+    impactoCuotaMensual_clp: Math.round(impacto),
+  };
+}
