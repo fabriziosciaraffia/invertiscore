@@ -123,9 +123,12 @@ export async function getConfig(key: string): Promise<{ value: string; updated_a
   return null;
 }
 
-// Hardcoded defaults for config values
+// Hardcoded defaults for config values. tasa_hipotecaria alineado con la
+// referencia canónica del motor (MARKET_AVG_TASA_UF = 4.1 en
+// lib/financing-health.ts): el fallback no debe divergir de la tasa contra la
+// que el motor juzga, o un row de DB ausente reintroduce el sesgo.
 const CONFIG_DEFAULTS: Record<string, string> = {
-  tasa_hipotecaria: "4.72",
+  tasa_hipotecaria: "4.1",
 };
 
 export async function getConfigValue(key: string): Promise<string> {

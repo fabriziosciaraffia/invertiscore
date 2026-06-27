@@ -11,9 +11,12 @@ export async function GET(request: Request) {
 
   const result = await getConfig(key);
 
-  // Hardcoded defaults
+  // Hardcoded defaults. tasa_hipotecaria alineado con la referencia canónica del
+  // motor (MARKET_AVG_TASA_UF = 4.1 en lib/financing-health.ts): si el row de DB
+  // faltara, el wizard prefilearía la MISMA tasa contra la que el motor juzga, sin
+  // sesgo. NO subir esto sin subir también esa constante.
   const defaults: Record<string, string> = {
-    tasa_hipotecaria: "4.72",
+    tasa_hipotecaria: "4.1",
   };
 
   return NextResponse.json({
