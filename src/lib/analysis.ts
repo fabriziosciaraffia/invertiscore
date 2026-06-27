@@ -26,6 +26,7 @@ import {
   aplicaSubsidio,
 } from "./constants/subsidio";
 import { classifyFinancingHealth } from "./financing-health";
+import { buildHallazgoEstructuraFinanciamiento } from "./estructura-financiamiento-hallazgo";
 import type { Veredicto } from "./types";
 
 // El valor de la UF se pasa explícitamente como parámetro a cada función que
@@ -1343,6 +1344,14 @@ export function runAnalysis(
     precio_uf: input.precio,
     plazo_anios: input.plazoCredito,
   }, ufClp);
+  // Hallazgo de estructura de financiamiento: envuelve el overall que YA emite
+  // classifyFinancingHealth (peor de pie+tasa), no lo recalcula. 6º hallazgo y el
+  // primero categórico (decisividad por nivel). Motor-seeded como cap_rate/plusvalia
+  // — recompute sync lo regenera. Guard null si los pcts no son finitos.
+  const hallazgoEstructura = buildHallazgoEstructuraFinanciamiento({
+    financingHealth,
+    modalidad: "ltr",
+  });
 
   return {
     score: clamp(score, 0, 100),
@@ -1369,12 +1378,14 @@ export function runAnalysis(
     contras,
     // Proto-hallazgos del motor (LTR): CapEx puesta a punto (cuando aplica) +
     // cap rate y flujo mensual (cuando son computables) + plusvalía histórica
-    // (siempre). Sin ordenamiento ni rendering acá.
+    // (siempre) + estructura de financiamiento (pie+tasa, siempre que los pcts
+    // sean finitos). Sin ordenamiento ni rendering acá.
     hallazgos: [
       ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
       ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
       ...(metrics.hallazgoFlujoMensual ? [metrics.hallazgoFlujoMensual] : []),
       ...(metrics.hallazgoPlusvalia ? [metrics.hallazgoPlusvalia] : []),
+      ...(hallazgoEstructura ? [hallazgoEstructura] : []),
     ],
   };
 }
