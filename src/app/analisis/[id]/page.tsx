@@ -12,6 +12,7 @@ import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -116,8 +117,16 @@ export default async function AnalisisDetallePage({
   // (`ai_analysis`) vive en columna separada y se preserva por construcción.
   // Si falta input_data (caso edge legacy), cae a enrichMetricsLegacy como
   // patch mínimo. Ver audit/sesionB-bug-snapshot/diagnostico.md.
+  // Mediana comunal inyectada al recompute (sobreprecio-sync): permite que el
+  // motor siembre el hallazgo de sobreprecio sync en el primer render, en vez de
+  // depender del ai_analysis async. El prefetch tolera fallos (cae a mediana null
+  // → hallazgo no emitido, comportamiento previo). Mismo helper/query que usan
+  // creación y recalculate.
+  const medianaComuna = inputDataRaw
+    ? await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufValue)
+    : undefined;
   const results: FullAnalysisResult | null = inputDataRaw
-    ? recomputeResultsForLegacy(inputDataRaw, ufValue)
+    ? recomputeResultsForLegacy(inputDataRaw, ufValue, medianaComuna)
     : (rawResults && rawResults.metrics
       ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
       : rawResults);

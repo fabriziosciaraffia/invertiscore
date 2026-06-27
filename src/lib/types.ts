@@ -175,6 +175,11 @@ export interface AnalysisMetrics {
   // hero; se computa una vez vía buildPrecioVsComuna. desviacionPct null si no
   // hay mediana confiable. (FASE A: solo el cómputo; FASE B construye el hallazgo.)
   precioVsComuna?: PrecioVsComuna | null;
+  // Proto-hallazgo de sobreprecio (LTR). Lo construye buildHallazgoSobreprecio
+  // sobre precioVsComuna; null si la mediana comunal no es confiable (sin dato de
+  // zona, o recompute sin mediana inyectada). Carrier interno; se empuja a
+  // results.hallazgos cuando la mediana está disponible (sobreprecio-sync).
+  hallazgoSobreprecio?: HallazgoSobreprecio | null;
 }
 
 // Comparación determinística de precio/m² del sujeto vs mediana comunal de VENTA
@@ -267,13 +272,13 @@ export interface HallazgoFlujoMensual {
 }
 
 // Proto-hallazgo tipado — SOBREPRECIO vs comuna (precio/m² del sujeto vs mediana
-// comunal de venta). 4º hallazgo, pero ASIMÉTRICO respecto a los otros tres: NO
-// lo siembra el motor en results.hallazgos. Su desviación depende de la mediana
-// comunal, que se resuelve ASYNC (getComunaMedianaVentaUF) y NO existe en el motor
-// en runtime — el recompute sync del render (recompute-results-for-legacy) la deja
-// en null, así que un hallazgo motor-seeded saldría null en TODO render. Por eso lo
-// construye AI-GENERATION (donde la mediana ya está resuelta) y se persiste en
-// ai_analysis (AIAnalysisV2.hallazgoSobreprecio), NO en la union `Hallazgo`. Reusa
+// comunal de venta). Su desviación depende de la mediana comunal, que se resuelve
+// ASYNC (getComunaMedianaVentaUF). El motor lo siembra sync en results.hallazgos
+// cuando recibe la mediana INYECTADA (prefetchMedianaComunaVenta en creación,
+// recalculate y el recompute del render — sobreprecio-sync); si la mediana no está
+// disponible, queda null y no se siembra. Sigue construyéndose también en
+// AI-GENERATION y persistiéndose en ai_analysis (AIAnalysisV2.hallazgoSobreprecio)
+// por ahora — la limpieza del path viejo es un paso aparte. Reusa
 // metrics.precioVsComuna (FASE A, buildPrecioVsComuna) — no recalcula nada.
 // Ver sobreprecio-hallazgo.ts.
 export interface HallazgoSobreprecio {
@@ -363,15 +368,15 @@ export interface HallazgoEstructuraFinanciamiento {
 }
 
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
-// NOTA: HallazgoSobreprecio queda DELIBERADAMENTE fuera — no es motor-seeded
-// (vive en ai_analysis, ver su doc). El render futuro que quiera tratar las dos
-// fuentes de forma uniforme (3 de results.hallazgos + sobreprecio de ai_analysis)
-// necesitará un tipo paraguas que las junte; NO se crea acá.
+// HallazgoSobreprecio se incorporó (sobreprecio-sync): el motor lo siembra sync
+// cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
+// persistiéndose en ai_analysis por ahora (limpieza del viejo = paso aparte).
 export type Hallazgo =
   | HallazgoPuestaAPunto
   | HallazgoCapRate
   | HallazgoFlujoMensual
   | HallazgoPlusvalia
+  | HallazgoSobreprecio
   | HallazgoEstructuraFinanciamiento;
 
 export interface NegociacionScenario {

@@ -26,11 +26,17 @@ import { runAnalysis } from "@/lib/analysis";
  * - Es idempotente: si ya existe un snapshot del motor actual, el output
  *   es bit-a-bit idéntico (mismo input + mismo motor → mismo output).
  *
+ * Mediana comunal (sobreprecio-sync): el caller (page.tsx) la prefetchea y la
+ * inyecta para que el motor pueda sembrar el hallazgo de sobreprecio sync. Sin
+ * ella, precioVsComuna queda con desviación null y el hallazgo no se emite —
+ * comportamiento idéntico al previo.
+ *
  * @see audit/sesionB-bug-snapshot/diagnostico.md
  */
 export function recomputeResultsForLegacy(
   input: AnalisisInput,
   ufClp: number,
+  medianaComuna?: { mediana: number | null; n: number },
 ): FullAnalysisResult {
-  return runAnalysis(input, ufClp);
+  return runAnalysis(input, ufClp, medianaComuna);
 }

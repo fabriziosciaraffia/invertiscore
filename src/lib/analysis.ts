@@ -17,6 +17,7 @@ import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
+import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
 import {
@@ -346,6 +347,11 @@ function calcMetrics(
     confiable: medianaComunaVentaUF?.mediana != null && medianaComunaVentaUF.mediana > 0,
     n: medianaComunaVentaUF?.n ?? 0,
   });
+  // Hallazgo de sobreprecio: builder puro y determinístico sobre precioVsComuna
+  // (NO recalcula la desviación). null cuando la mediana no es confiable — caso
+  // típico del recompute de render SIN mediana inyectada. Carrier interno; se
+  // empuja a results.hallazgos cuando existe (sobreprecio-sync).
+  const hallazgoSobreprecio = buildHallazgoSobreprecio(precioVsComuna);
 
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
@@ -404,6 +410,7 @@ function calcMetrics(
     hallazgoFlujoMensual,
     hallazgoPlusvalia,
     precioVsComuna,
+    hallazgoSobreprecio,
   };
 }
 
@@ -1378,13 +1385,15 @@ export function runAnalysis(
     contras,
     // Proto-hallazgos del motor (LTR): CapEx puesta a punto (cuando aplica) +
     // cap rate y flujo mensual (cuando son computables) + plusvalía histórica
-    // (siempre) + estructura de financiamiento (pie+tasa, siempre que los pcts
-    // sean finitos). Sin ordenamiento ni rendering acá.
+    // (siempre) + sobreprecio vs comuna (cuando hay mediana inyectada) +
+    // estructura de financiamiento (pie+tasa, siempre que los pcts sean finitos).
+    // Sin ordenamiento ni rendering acá.
     hallazgos: [
       ...(metrics.hallazgoPuestaAPunto ? [metrics.hallazgoPuestaAPunto] : []),
       ...(metrics.hallazgoCapRate ? [metrics.hallazgoCapRate] : []),
       ...(metrics.hallazgoFlujoMensual ? [metrics.hallazgoFlujoMensual] : []),
       ...(metrics.hallazgoPlusvalia ? [metrics.hallazgoPlusvalia] : []),
+      ...(metrics.hallazgoSobreprecio ? [metrics.hallazgoSobreprecio] : []),
       ...(hallazgoEstructura ? [hallazgoEstructura] : []),
     ],
   };
