@@ -17,6 +17,7 @@ import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
+import { buildReestructuracionFinanciera } from "@/lib/financing-health";
 
 const anthropic = new Anthropic();
 
@@ -156,7 +157,7 @@ Forma: completa el campo \`reestructuracion\` del JSON output con contenido_clp,
 
 Cuando completas \`reestructuracion\`:
 - contenido_clp/uf: 3-5 frases. Diagnóstico de por qué la estructura actual no funciona + recomendación concreta + simulación del impacto. Tono honesto sobre el esfuerzo.
-- estructuraSugerida: números enteros plausibles. pieSugerido_pct entre 20 y 40, plazoSugerido_anios entre 20 y 30, tasaObjetivo_pct el promedio de mercado UF (típicamente 4.1) o más bajo si el caso aplica subsidio. impactoCuotaMensual_clp es la diferencia positiva entre cuota actual y cuota nueva (la cantidad que la cuota MENSUAL bajaría con la estructura sugerida).
+- estructuraSugerida: NO la calcules. Los 4 números (pieSugerido_pct, plazoSugerido_anios, tasaObjetivo_pct, impactoCuotaMensual_clp) los provee el MOTOR en \`estructuraSugeridaMotor\` (bloque financingHealth del input). Copialos tal cual: son la fuente única y el sistema los sobrescribe con los del motor de todas formas. Tu prosa (contenido_clp/uf) DEBE ser coherente con esos números — no menciones un pie, una tasa o un ahorro de cuota distintos a los del motor.
 
 ## 6. Tiempos verbales — disciplina pasada vs futura
 
@@ -534,11 +535,11 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
   "reestructuracion": {  // OPCIONAL — solo si Nivel 3 (§5)
     "contenido_clp": string,
     "contenido_uf": string,
-    "estructuraSugerida": {
-      "pieSugerido_pct": number,        // entero entre 20 y 40
-      "plazoSugerido_anios": number,    // entero entre 20 y 30
-      "tasaObjetivo_pct": number,       // típicamente 4.1
-      "impactoCuotaMensual_clp": number // diferencia positiva en CLP
+    "estructuraSugerida": {             // copiar de estructuraSugeridaMotor (input) — NO inventar; el motor los sobrescribe
+      "pieSugerido_pct": number,        // = estructuraSugeridaMotor.pieSugerido
+      "plazoSugerido_anios": number,    // = estructuraSugeridaMotor.plazoSugerido (igual al actual)
+      "tasaObjetivo_pct": number,       // = estructuraSugeridaMotor.tasaObjetivo
+      "impactoCuotaMensual_clp": number // = estructuraSugeridaMotor.impactoCuotaMensual
     }
   },
 
@@ -1072,11 +1073,31 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
 
     // financingHealth — clasificación de pie + tasa para el escalonado §5 del system.
     const fh = (results as { financingHealth?: import("./types").FullAnalysisResult["financingHealth"] }).financingHealth;
+    // FASE A — los números de la estructura sugerida (Nivel 3 §5) los calcula el
+    // MOTOR, no el LLM. Se proveen acá para que la prosa los narre y se inyectan
+    // post-LLM como fuente única (mismo patrón que hallazgoSobreprecio). UF_CLP =
+    // m.precioCLP / input.precio, así que el dividendoActual del builder == m.dividendo.
+    const reestructuracionFinanciera = fh
+      ? buildReestructuracionFinanciera(
+          {
+            pie_pct: input.piePct,
+            tasa_pct: input.tasaInteres,
+            precio_uf: input.precio,
+            plazo_anios: input.plazoCredito,
+          },
+          UF_CLP,
+        )
+      : null;
     const financingHealthBloque = fh ? `
 financingHealth:
 - overall: ${fh.overall}
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
-- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}` : "";
+- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}${reestructuracionFinanciera ? `
+estructuraSugeridaMotor (si completás reestructuracion, USA ESTOS NÚMEROS EXACTOS — NO los inventes ni recalcules; el sistema los sobrescribe con estos de todas formas):
+- pieSugerido: ${reestructuracionFinanciera.pieSugerido_pct}%
+- tasaObjetivo: ${reestructuracionFinanciera.tasaObjetivo_pct}%
+- plazoSugerido: ${reestructuracionFinanciera.plazoSugerido_anios} años (igual al actual — el motor no recomienda cambiar el plazo)
+- impactoCuotaMensual: ${fmtCLP(reestructuracionFinanciera.impactoCuotaMensual_clp)}/mes (baja de la cuota con el pie y la tasa sugeridos, plazo fijo)` : ""}` : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
@@ -1261,6 +1282,16 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // el recompute sync del render la dejaría null (ver sobreprecio-hallazgo.ts).
     if (aiResult) {
       aiResult.hallazgoSobreprecio = hallazgoSobreprecio;
+    }
+
+    // FASE A — los 4 números de estructuraSugerida son DETERMINISTAS (motor), no
+    // del LLM. Cuando la IA decide incluir la sección (Nivel 3, juicio cualitativo
+    // suyo), sobrescribimos los números con los del builder; la prosa
+    // (contenido_clp/uf) queda del LLM, narrada alrededor de estos mismos números
+    // (provistos en el prompt). FUENTE ÚNICA: el KPI "Cuota baja" y los chips del
+    // drawer leen de acá, == calcDividendo. Espejo de hallazgoSobreprecio.
+    if (aiResult?.reestructuracion && reestructuracionFinanciera) {
+      aiResult.reestructuracion.estructuraSugerida = reestructuracionFinanciera;
     }
 
     if (opts.persist === false) {
