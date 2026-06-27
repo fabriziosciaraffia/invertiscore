@@ -151,8 +151,6 @@ export function PremiumResults({
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   // ─── Banner partial-failure (Ronda 2b) ──
   // Cuando el wizard v3 hizo modalidad="both" y solo LTR se creó (STR falló por
@@ -171,14 +169,6 @@ export function PremiumResults({
       }
       sessionStorage.removeItem("franco_both_partial");
     } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => {
-    const mq = window.matchMedia("(hover: none)");
-    setIsTouchDevice(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsTouchDevice(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
   }, []);
 
   // PostHog: track analysis view
