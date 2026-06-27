@@ -54,7 +54,11 @@ function classifyTasaLevel(spread_bps: number): FinancingHealthLevel {
   return "problematico";
 }
 
-const LEVEL_RANK: Record<FinancingHealthLevel, number> = {
+// Orden canónico de severidad de los niveles (optimo=mejor … problematico=peor).
+// Exportado para que el Hallazgo de estructura (estructura-financiamiento-hallazgo.ts)
+// derive el DRIVER (cuál dimensión define el overall) sin replicar el orden ni
+// arriesgar drift. Es la ÚNICA fuente del ranking.
+export const LEVEL_RANK: Record<FinancingHealthLevel, number> = {
   optimo: 0,
   aceptable: 1,
   mejorable: 2,

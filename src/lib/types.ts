@@ -1,3 +1,8 @@
+// Type-only (erased en compilación → sin ciclo en runtime). El nivel canónico de
+// salud de financiamiento lo define financing-health.ts; el Hallazgo de estructura
+// lo reusa tal cual.
+import type { FinancingHealthLevel } from "./financing-health";
+
 export interface Desglose {
   rentabilidad: number;
   plusvalia: number;
@@ -322,12 +327,52 @@ export interface HallazgoPlusvalia {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — ESTRUCTURA de financiamiento (pie + tasa) para LTR. 6º y
+// último hallazgo, y el PRIMERO categórico: el motor envuelve el `overall` que YA
+// emite classifyFinancingHealth (financing-health.ts:133) sin recalcular nada. A
+// diferencia de cap_rate/plusvalia la decisividad NO es un gap continuo saturado —
+// es un mapa por NIVEL (4 escalones), porque el overall es el PEOR de dos
+// clasificaciones discretas (pie vs tasa), no una brecha. El `driver` (cuál
+// dimensión define el overall) se deriva comparando LEVEL_RANK de cada nivel.
+// Motor-seeded (sync, sin async) → va en results.hallazgos como cap_rate/plusvalia,
+// NO en ai_analysis. La IA lo narra aguas abajo. Ver estructura-financiamiento-hallazgo.ts.
+export interface HallazgoEstructuraFinanciamiento {
+  id: "estructura_financiamiento";
+  tipo: "salud_financiamiento";
+  valor: {
+    overall: FinancingHealthLevel;     // peor de pie+tasa — reusado de financingHealth.overall
+    driver: "pie" | "tasa" | "ambos";  // dimensión que define el overall (derivada de LEVEL_RANK)
+    pieLevel: FinancingHealthLevel;
+    piePct: number;                    // pie.actual_pct (umbral fijo 25% óptimo)
+    tasaLevel: FinancingHealthLevel;
+    tasaPct: number;                   // tasa.actual_pct
+    tasaMarketPct: number;             // tasa.market_avg_pct (MARKET_AVG_TASA_UF — referencia, no live)
+    spreadBps: number;                 // tasa.spread_bps (signed, vs mercado de referencia)
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable si overall es optimo|aceptable; adverso si mejorable|problematico.
+  // El corte cae entre aceptable y mejorable (donde el financiamiento pasa de
+  // "bien" a "con problema"). NO hay 'neutral': la clasificación es binaria.
+  direccion: "favorable" | "adverso";
+  // Por NIVEL, no |gap|/banda: optimo→0, aceptable→0.15, mejorable→0.5,
+  // problematico→0.85. El techo 0.85 reserva la decisividad máxima (1.0) para los
+  // hallazgos continuos en gaps extremos.
+  decisividad: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // NOTA: HallazgoSobreprecio queda DELIBERADAMENTE fuera — no es motor-seeded
 // (vive en ai_analysis, ver su doc). El render futuro que quiera tratar las dos
 // fuentes de forma uniforme (3 de results.hallazgos + sobreprecio de ai_analysis)
 // necesitará un tipo paraguas que las junte; NO se crea acá.
-export type Hallazgo = HallazgoPuestaAPunto | HallazgoCapRate | HallazgoFlujoMensual | HallazgoPlusvalia;
+export type Hallazgo =
+  | HallazgoPuestaAPunto
+  | HallazgoCapRate
+  | HallazgoFlujoMensual
+  | HallazgoPlusvalia
+  | HallazgoEstructuraFinanciamiento;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;
