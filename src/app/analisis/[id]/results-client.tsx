@@ -2,10 +2,6 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePostHog } from "posthog-js/react";
-import { Button } from "@/components/ui/button";
-import {
-  RefreshCw, Loader2,
-} from "lucide-react";
 import type { FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { calcFlujoDesglose, getMantencionRate, calcExitScenario, calcProjections } from "@/lib/analysis";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -81,7 +77,6 @@ export function PremiumResults({
   aiAnalysisInitial,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
-  hidePanel = false,
   demoAiData,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   creatorName,
@@ -113,7 +108,6 @@ export function PremiumResults({
   createdAt?: string;
   superficie?: number;
   precioUF?: number;
-  hidePanel?: boolean;
   demoAiData?: import("@/lib/types").AIAnalysisV2;
   creatorName?: string;
   isSharedView?: boolean;
@@ -126,7 +120,6 @@ export function PremiumResults({
   printMode?: boolean;
 }) {
   const posthog = usePostHog();
-  const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
@@ -136,21 +129,6 @@ export function PremiumResults({
   const arriendoGrowth = 3.5;
   const costGrowth = 3.0;
 
-
-  // Adjustable parameters panel
-  const [adjPrecio, setAdjPrecio] = useState(inputData?.precio ?? 0);
-  const [adjPiePct, setAdjPiePct] = useState(inputData?.piePct ?? 20);
-  const [adjPlazo, setAdjPlazo] = useState(inputData?.plazoCredito ?? 25);
-  const [adjTasa, setAdjTasa] = useState(inputData?.tasaInteres ?? 4.72);
-  const [adjArriendo, setAdjArriendo] = useState(inputData?.arriendo ?? 0);
-  const [adjGastos, setAdjGastos] = useState(inputData?.gastos ?? 0);
-  const [adjContribuciones, setAdjContribuciones] = useState(inputData?.contribuciones ?? 0);
-  const [adjVacanciaPct, setAdjVacanciaPct] = useState(() => Math.round((inputData?.vacanciaMeses ?? 1) * 100 / 12));
-  const [adjAdminPct, setAdjAdminPct] = useState(() => inputData?.usaAdministrador ? (inputData?.comisionAdministrador ?? 7) : 0);
-  const [recalcLoading, setRecalcLoading] = useState(false);
-  const [recalcSuccess, setRecalcSuccess] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [fabState, setFabState] = useState<'inputs' | 'hidden' | 'projections'>('inputs');
 
   // ─── Banner partial-failure (Ronda 2b) ──
   // Cuando el wizard v3 hizo modalidad="both" y solo LTR se creó (STR falló por
@@ -192,44 +170,6 @@ export function PremiumResults({
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const handleRecalculate = useCallback(async () => {
-    if (!analysisId || !inputData) return;
-    setRecalcLoading(true);
-    setRecalcSuccess(false);
-    try {
-      const updatedInput: AnalisisInput = {
-        ...inputData,
-        precio: adjPrecio,
-        piePct: adjPiePct,
-        plazoCredito: adjPlazo,
-        tasaInteres: adjTasa,
-        arriendo: adjArriendo,
-        gastos: adjGastos,
-        contribuciones: adjContribuciones,
-        vacanciaMeses: adjVacanciaPct * 12 / 100,
-        usaAdministrador: adjAdminPct > 0,
-        comisionAdministrador: adjAdminPct > 0 ? adjAdminPct : undefined,
-      };
-      const res = await fetch("/api/analisis/recalculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ analysisId, inputData: updatedInput }),
-      });
-      const resData = await res.json().catch(() => null);
-      if (res.ok) {
-        setRecalcSuccess(true);
-        posthog?.capture('recalculate_used', { analysis_id: analysisId, comuna });
-        setTimeout(() => window.location.reload(), 500);
-      } else {
-        alert(resData?.error || "Error al recalcular");
-      }
-    } catch {
-      alert("Error de conexión");
-    } finally {
-      setRecalcLoading(false);
-    }
-  }, [analysisId, inputData, adjPrecio, adjPiePct, adjPlazo, adjTasa, adjArriendo, adjGastos, adjContribuciones, adjVacanciaPct, adjAdminPct]);
 
   // AI Analysis state — new v2 structure. Polls /ai-status while the fire-and-forget
   // generation from /api/analisis completes; falls back to POST /api/analisis/ai after timeout.
@@ -996,129 +936,6 @@ export function PremiumResults({
 
     </>
   );
-
-  // Panel fields (scrollable) and button (fixed footer) — shared between desktop sidebar and mobile drawer
-  const hasPanelContent = !hidePanel && !isSharedView && (currentAccess === "premium" || currentAccess === "subscriber") && !!inputData;
-
-  // Mobile FAB: 3-state based on scroll (inputs → hidden → projections)
-  useEffect(() => {
-    if (!hasPanelContent) return;
-    const handleScroll = () => {
-      const proSection = document.getElementById("informe-pro-section");
-      const projZone = document.getElementById("projections-zone-marker");
-      const threshold = 80;
-      if (!proSection) { setFabState('inputs'); return; }
-      const proTop = proSection.getBoundingClientRect().top;
-      if (proTop > threshold) {
-        setFabState('inputs');
-      } else if (!projZone) {
-        setFabState('hidden');
-      } else {
-        const projTop = projZone.getBoundingClientRect().top;
-        setFabState(projTop < threshold ? 'projections' : 'hidden');
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [hasPanelContent]);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const panelFields = hasPanelContent ? (
-    <div className="space-y-2">
-      <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Cuánto cuesta</h4>
-        <div className="space-y-1">
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Precio (UF)</label>
-              <input type="number" value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-20 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-            </div>
-            <input type="range" min={500} max={10000} step={50} value={adjPrecio} onChange={(e) => setAdjPrecio(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Pie</label>
-              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjPiePct}%</span>
-            </div>
-            <input type="range" min={10} max={50} step={5} value={adjPiePct} onChange={(e) => setAdjPiePct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-        </div>
-      </div>
-      <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Financiamiento</h4>
-        <div className="space-y-1">
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Plazo</label>
-              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjPlazo} años</span>
-            </div>
-            <input type="range" min={10} max={30} step={1} value={adjPlazo} onChange={(e) => setAdjPlazo(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Tasa (%)</label>
-              <input type="number" step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-16 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-            </div>
-            <input type="range" min={1} max={8} step={0.1} value={adjTasa} onChange={(e) => setAdjTasa(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-        </div>
-      </div>
-      <div>
-        <h4 className="mb-1 font-mono text-[10px] uppercase tracking-wider text-[var(--franco-text-secondary)]">Cuánto genera</h4>
-        <div className="space-y-1">
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Arriendo</label>
-              <input type="number" value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-            </div>
-            <input type="range" min={100000} max={2000000} step={10000} value={adjArriendo} onChange={(e) => setAdjArriendo(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">GGCC</label>
-              <input type="number" value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-            </div>
-            <input type="range" min={0} max={300000} step={5000} value={adjGastos} onChange={(e) => setAdjGastos(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Contrib. /trim</label>
-              <input type="number" value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-24 rounded border border-[var(--franco-border)] bg-[var(--franco-card)] px-2 py-0.5 text-right text-[11px] font-mono text-[var(--franco-text)]" />
-            </div>
-            <input type="range" min={0} max={500000} step={10000} value={adjContribuciones} onChange={(e) => setAdjContribuciones(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Vacancia</label>
-              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjVacanciaPct}%</span>
-            </div>
-            <input type="range" min={0} max={25} step={1} value={adjVacanciaPct} onChange={(e) => setAdjVacanciaPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-            <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{`≈ ${(adjVacanciaPct * 12 / 100).toFixed(1)} meses/año`}</p>
-          </div>
-          <div>
-            <div className="flex items-center justify-between">
-              <label className="font-body text-sm font-medium text-[var(--franco-text)]">Gestión del arriendo</label>
-              <span className="text-[11px] font-medium text-[var(--franco-text)]">{adjAdminPct}%</span>
-            </div>
-            <input type="range" min={0} max={15} step={1} value={adjAdminPct} onChange={(e) => setAdjAdminPct(Number(e.target.value))} className="w-full accent-[var(--franco-text-muted)] h-1.5" />
-            <p className="text-[10px] text-[var(--franco-text-secondary)] leading-tight">{adjAdminPct > 0 ? `${fmtCLP(Math.round(adjArriendo * adjAdminPct / 100))}/mes` : "Sin administrador"}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  ) : null;
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const panelButton = hasPanelContent ? (
-    <div>
-      <Button onClick={handleRecalculate} disabled={recalcLoading} size="sm" className="w-full gap-2 bg-signal-red text-white hover:bg-signal-red/90">
-        {recalcLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-        {recalcLoading ? "Recalculando..." : "Recalcular"}
-      </Button>
-      {recalcSuccess && <p className="mt-1 text-center text-xs text-[var(--franco-positive)]">Actualizado</p>}
-    </div>
-  ) : null;
 
   // P5 Fase 24 — projectionFields dead code eliminado. Sliders huérfanos
   // (Horizonte, Plusvalía, Crecimiento arriendo/gastos) nunca se renderizaron.

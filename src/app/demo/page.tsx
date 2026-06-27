@@ -345,7 +345,6 @@ export default function DemoPage() {
           createdAt="2026-03-18T12:00:00Z"
           superficie={SUPERFICIE}
           precioUF={PRECIO_UF}
-          hidePanel
         />
       </div>
 
