@@ -128,8 +128,6 @@ export function PremiumResults({
   const posthog = usePostHog();
   const currentAccess = accessLevel;
   const [horizonYears, setHorizonYears] = useState(10);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [sensHorizon, setSensHorizon] = useState(10);
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
   // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
@@ -409,89 +407,6 @@ export function PremiumResults({
 
   // dynamicRefi removed — refi section now calculates directly from projData
 
-
-  // ─── Sensitivity scenarios with projections ───
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const sensScenarios = useMemo(() => {
-    if (!results || !m || !inputData) return null;
-
-    const precioCLP = inputData.precio * ufValue;
-    const pieCLP = precioCLP * (inputData.piePct / 100);
-    const creditoCLP = precioCLP * (1 - inputData.piePct / 100);
-    const nMeses = inputData.plazoCredito * 12;
-
-    const configs = [
-      { key: "pesimista", label: "Pesimista", sub: "Mercado difícil", icon: "↓", plusvalia: 2, arriendoGr: 1.5, gastosGr: 5, tasaDelta: 1.5, arriendoPct: -15, vacanciaDelta: 1, color: "var(--signal-red)", borderClass: "border-[var(--franco-sc-bad-border)]", bgClass: "bg-[var(--franco-sc-bad-bg)]", labelClass: "text-signal-red" },
-      { key: "base", label: "Base", sub: "Escenario actual", icon: "→", plusvalia: plusvaliaRate, arriendoGr: arriendoGrowth, gastosGr: costGrowth, tasaDelta: 0, arriendoPct: 0, vacanciaDelta: 0, color: "var(--franco-text)", borderClass: "border-[var(--franco-border)]", bgClass: "bg-[var(--franco-card)]", labelClass: "text-[var(--franco-text)]" },
-      { key: "optimista", label: "Optimista", sub: "Viento a favor", icon: "↑", plusvalia: 6, arriendoGr: 5, gastosGr: 2, tasaDelta: -1, arriendoPct: 10, vacanciaDelta: -Math.min(0.5, inputData.vacanciaMeses), color: "var(--franco-text)", borderClass: "border-[var(--franco-sc-good-border)]", bgClass: "bg-[var(--franco-sc-good-bg)]", labelClass: "text-[var(--franco-positive)]" },
-    ];
-
-    return configs.map(cfg => {
-      const h = Math.min(sensHorizon, 20);
-
-      // Scenario-adjusted inputs
-      const scenTasa = inputData.tasaInteres + cfg.tasaDelta;
-      const scenArriendo = Math.round(inputData.arriendo * (1 + cfg.arriendoPct / 100));
-      const scenVacancia = inputData.vacanciaMeses + cfg.vacanciaDelta;
-
-      // Recalculate dividendo with scenario tasa
-      const scenTasaMes = scenTasa / 100 / 12;
-      const scenDividendo = creditoCLP <= 0 ? 0 : scenTasaMes === 0 ? Math.round(creditoCLP / nMeses) : Math.round((creditoCLP * scenTasaMes) / (1 - Math.pow(1 + scenTasaMes, -nMeses)));
-
-      // Saldo crédito with scenario tasa
-      const calcSaldoScen = (mPagados: number) => {
-        if (mPagados >= nMeses) return 0;
-        if (scenTasaMes === 0) return creditoCLP * (1 - mPagados / nMeses);
-        const cuota = (creditoCLP * scenTasaMes) / (1 - Math.pow(1 + scenTasaMes, -nMeses));
-        return creditoCLP * Math.pow(1 + scenTasaMes, mPagados) - cuota * ((Math.pow(1 + scenTasaMes, mPagados) - 1) / scenTasaMes);
-      };
-
-      let arriendoAct = scenArriendo;
-      let gastosAct = m.gastos;
-      let contribAct = m.contribuciones;
-      let flujoAcumH = 0;
-      let flujoMes1 = 0;
-
-      for (let anio = 1; anio <= h; anio++) {
-        // Mantención sigue la fórmula del motor (precio × rate(antig+año) / 12).
-        // Antes la rama `inputData.provisionMantencion ||` usaba el snapshot
-        // mutado año-1 como CONSTANTE, divergente del motor año a año.
-        const mantBase = Math.round((precioCLP * getMantencionRate(inputData.antiguedad + anio)) / 12);
-        const mant = Math.round(mantBase * Math.pow(1 + cfg.gastosGr / 100, anio - 1));
-        const fl = calcFlujoDesglose({
-          arriendo: arriendoAct,
-          dividendo: scenDividendo,
-          ggcc: gastosAct,
-          contribuciones: contribAct,
-          mantencion: mant,
-          vacanciaMeses: scenVacancia,
-          usaAdministrador: inputData.usaAdministrador,
-          comisionAdministrador: inputData.comisionAdministrador,
-        });
-        if (anio === 1) flujoMes1 = fl.flujoNeto;
-        flujoAcumH += fl.flujoNeto * 12;
-        arriendoAct *= (1 + cfg.arriendoGr / 100);
-        gastosAct *= (1 + cfg.gastosGr / 100);
-        contribAct *= (1 + cfg.gastosGr / 100);
-      }
-
-      const valorVenta = precioCLP * Math.pow(1 + cfg.plusvalia / 100, h);
-      const saldoH = Math.max(0, calcSaldoScen(Math.min(h * 12, nMeses)));
-      const comision = valorVenta * 0.02;
-      const ganancia = valorVenta - saldoH - comision;
-      const utilidadNeta = ganancia + flujoAcumH - pieCLP;
-      const retorno = pieCLP > 0 ? (pieCLP + utilidadNeta) / pieCLP : 0;
-
-      return {
-        ...cfg, flujoMensual: flujoMes1, bolsilloTotal: Math.round(flujoAcumH),
-        valorVenta: Math.round(valorVenta), saldoCredito: Math.round(saldoH),
-        comisionVenta: Math.round(comision), gananciaBruta: Math.round(ganancia),
-        pieCLP: Math.round(pieCLP), utilidadNeta: Math.round(utilidadNeta),
-        retorno: Math.round(retorno * 10) / 10,
-        scenTasa, scenArriendo, scenVacancia: Math.round(scenVacancia * 100 / 12),
-      };
-    });
-  }, [results, m, inputData, sensHorizon, plusvaliaRate, arriendoGrowth, costGrowth]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const radarData = results ? [
