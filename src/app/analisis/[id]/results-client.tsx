@@ -35,26 +35,6 @@ import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historic
 
 const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const METRIC_TOOLTIPS: Record<string, string> = {
-  "Rentabilidad Bruta": "Rentabilidad anual bruta: arriendo anual dividido por el precio. No descuenta ningún gasto. Es el número de portada, sin descontar gastos.",
-  "Rentabilidad Neta": "Rentabilidad después de TODOS los gastos: operativos, vacancia, corretaje y recambio de arrendatario. Es el número más honesto de rentabilidad.",
-  "Rent. Operativa (CAP Rate)": "Retorno neto operativo anual (NOI/Precio). Descuenta gastos comunes, contribuciones y mantención. Estándar internacional para comparar propiedades.",
-  "Cash-on-Cash": "Retorno anual sobre TU capital invertido (el pie). Si es negativo, estás poniendo plata de tu bolsillo cada mes.",
-  "ROI Total": "Retorno total considerando flujo de caja + plusvalía en el período. Incluye el efecto del apalancamiento.",
-  "TIR": "Tasa Interna de Retorno. Permite comparar esta inversión con otras alternativas (depósito a plazo, fondos mutuos, etc.)",
-  "Payback Pie": "Meses que toma recuperar el pie invertido solo con flujo de caja. N/A si el flujo es negativo.",
-  "Franco Score": "Puntaje de 1-100 que evalúa 4 dimensiones: Rentabilidad (30%), Flujo de Caja (25%), Plusvalía (25%), Eficiencia de compra (20%)",
-};
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const RADAR_TOOLTIPS: Record<string, string> = {
-  "Rentabilidad": "Rentabilidad bruta del arriendo sobre el precio de compra. Incluye bonus por rentabilidad neta alta. Peso: 30%",
-  "Flujo Caja": "Flujo mensual relativo al arriendo. Mide qué proporción del ingreso queda disponible después de todos los gastos. Peso: 25%",
-  "Plusvalía": "Potencial de valorización basado en cercanía a estaciones de metro (actuales y futuras), plusvalía histórica de la comuna (2014-2024) y antigüedad del inmueble. Peso: 25%",
-  "Eficiencia": "Comparación de tu precio por m² y yield bruto contra publicaciones reales en un radio de 1,5 km. Peso: 20%",
-};
-
 // Ronda 4a.1: normalizeMetrics, fmtCLP, fmtPct, parseUFString → src/components/analysis/utils.ts
 // Ronda 4a.2: fmtUF, fmtMoney, fmtM, fmtAxisMoney → src/components/analysis/utils.ts.
 
@@ -80,44 +60,7 @@ const RADAR_TOOLTIPS: Record<string, string> = {
 // ReestructuracionMiniCard + DashboardAnalysisSection → src/components/analysis/.
 
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function calcTIR(flujos: number[]): number {
-  let rate = 0.1;
-  for (let iter = 0; iter < 100; iter++) {
-    let npv = 0, dnpv = 0;
-    for (let i = 0; i < flujos.length; i++) {
-      npv += flujos[i] / Math.pow(1 + rate, i);
-      dnpv -= (i * flujos[i]) / Math.pow(1 + rate, i + 1);
-    }
-    if (Math.abs(npv) < 1) break;
-    if (dnpv === 0) break;
-    rate -= npv / dnpv;
-    if (rate < -0.99) rate = -0.5;
-    if (rate > 10) rate = 1;
-  }
-  return Math.round(rate * 10000) / 100;
-}
-
-
 // RegisterOverlay removed — all users see content directly
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function consumeAnalysisCredit(analysisId: string): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const res = await fetch("/api/analisis/use-credit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ analysisId }),
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      return { ok: false, error: data?.error || "No pudimos procesar tu análisis. Intenta de nuevo." };
-    }
-    return { ok: true };
-  } catch {
-    return { ok: false, error: "Error de conexión" };
-  }
-}
 
 // PaywallOverlay removed — all users see content directly
 
@@ -187,8 +130,6 @@ export function PremiumResults({
   const [horizonYears, setHorizonYears] = useState(10);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [sensHorizon, setSensHorizon] = useState(10);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [exitMode, setExitMode] = useState<"venta" | "refinanciamiento">("venta");
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
   // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
@@ -196,8 +137,6 @@ export function PremiumResults({
   // expone en el futuro, rehacer limpio en SliderSimulacion bajo "Avanzado".
   const arriendoGrowth = 3.5;
   const costGrowth = 3.0;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [refiPct, setRefiPct] = useState(80);
 
 
   // Adjustable parameters panel
@@ -210,8 +149,6 @@ export function PremiumResults({
   const [adjContribuciones, setAdjContribuciones] = useState(inputData?.contribuciones ?? 0);
   const [adjVacanciaPct, setAdjVacanciaPct] = useState(() => Math.round((inputData?.vacanciaMeses ?? 1) * 100 / 12));
   const [adjAdminPct, setAdjAdminPct] = useState(() => inputData?.usaAdministrador ? (inputData?.comisionAdministrador ?? 7) : 0);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [drawerOpen, setDrawerOpen] = useState(false);
   const [recalcLoading, setRecalcLoading] = useState(false);
   const [recalcSuccess, setRecalcSuccess] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -470,7 +407,6 @@ export function PremiumResults({
     });
   }, [results, m, inputData, plusvaliaRate, ufValue]);
 
-  // Dynamic refinance scenario based on horizon + refiPct
   // dynamicRefi removed — refi section now calculates directly from projData
 
 
