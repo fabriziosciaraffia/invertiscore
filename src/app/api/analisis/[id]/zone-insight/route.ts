@@ -661,6 +661,28 @@ export async function GET(
       );
       precioM2 = stats.precioM2;
       ofertaComparable = stats.ofertaComparable;
+
+      // Fase B (sobreprecio-sync) — fuente única: si el análisis tiene snapshot de
+      // mediana (Fase A), la medianaComuna del drawer sale de AHÍ (alineada con
+      // hero/prosa/motor sync), no de getComunaMedianaVentaUF (que queda como
+      // FALLBACK intacto dentro de fetchComunaStats para análisis sin snapshot).
+      // SOLO se reemplaza la mediana; ofertaComparable / plusvalía / tuDepto se
+      // computan igual. El snapshot PRESENTE gana: mediana number>0 → usarla
+      // (construyendo precioM2 si la query fresca vino vacía); mediana null →
+      // "sin mediana confiable", no se muestra comparación (congelado al crear).
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const medSnap = (row as any).mediana_comuna_snapshot as
+        { mediana: number | null; n: number } | null | undefined;
+      if (medSnap != null) {
+        if (typeof medSnap.mediana === "number" && medSnap.mediana > 0) {
+          precioM2 = precioM2
+            ? { ...precioM2, medianaComuna: medSnap.mediana }
+            : { tuDepto: 0, medianaComuna: medSnap.mediana, diffPct: 0 };
+        } else {
+          precioM2 = null;
+        }
+      }
+
       // Fill in tuDepto using precioUF / superficie directly (in UF).
       // We deliberately ignore results.metrics.precioM2 (it can add optional parking
       // price into precioTotal) and input_data.* (which can diverge from the top-level
