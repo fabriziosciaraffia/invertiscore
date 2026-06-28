@@ -1,0 +1,17 @@
+-- Snapshot de la mediana comunal de venta UF/m² resuelta UNA vez al crear el
+-- análisis. Fuente única para las superficies que comparan precio vs comuna
+-- (sobreprecio, hero chip, prosa IA, drawer Zona) — evita que cada una resuelva
+-- por su lado y se desincronicen al congelarse en momentos distintos.
+--
+-- Determinista: se resuelve al crear (prefetchMedianaComunaVenta, ya corre en los
+-- flujos de creación) y NO se recomputa por render (a diferencia de `results`).
+-- nullable/default null: análisis viejos sin snapshot caen al fallback live.
+--
+-- Shape del jsonb:
+--   {
+--     mediana: number | null,   -- mediana comunal de venta UF/m² (null si no confiable)
+--     n: number,                -- N de ventas usadas para la mediana (0 si no hay)
+--     resolvedAt: string,       -- ISO timestamp de cuándo se resolvió
+--     nivel: string             -- fuente de la que salió ("prefetch")
+--   }
+ALTER TABLE analisis ADD COLUMN IF NOT EXISTS mediana_comuna_snapshot JSONB DEFAULT NULL;
