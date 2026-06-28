@@ -705,12 +705,33 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       // use defaults
     }
 
+    // Fase B (sobreprecio-sync) — fuente única: si el análisis tiene snapshot de
+    // mediana (Fase A), ÉSA es la mediana comunal para la comparación de
+    // sobreprecio, por encima de la cadena de 3 niveles de arriba (que queda como
+    // FALLBACK intacto para análisis sin snapshot). El snapshot PRESENTE gana
+    // siempre: mediana number>0 → usarla; mediana null → "sin mediana confiable"
+    // (no sobreprecio), congelado al crear y NO re-resuelto. Esto alinea hero chip,
+    // prosa IA y hallazgo viejo con el motor sync (mismo número → mata la
+    // divergencia). Se aplica acá (justo antes del consumidor) para no tocar la
+    // cadena, que además resuelve arriendoZona/yieldZona (fuera de este scope).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const medianaSnapshot = (analysis as any).mediana_comuna_snapshot as
+      { mediana: number | null; n: number } | null | undefined;
+    if (medianaSnapshot != null) {
+      if (typeof medianaSnapshot.mediana === "number" && medianaSnapshot.mediana > 0) {
+        precioM2Zona = medianaSnapshot.mediana;
+        precioM2ZonaConfiable = true;
+      } else {
+        precioM2ZonaConfiable = false; // snapshot congeló "sin mediana confiable"
+      }
+    }
+
     // Comparación UF/m² del sujeto vs mediana comunal — FUENTE ÚNICA vía el builder
     // del motor (buildPrecioVsComuna). sujetoUfM2 va SIN estacionamiento
     // (input.precio/superficie), idéntico al que persiste el motor en
     // metrics.precioVsComuna y al que muestra el hero. La mediana ya resuelta
-    // (3 fallbacks de arriba) se inyecta tal cual; mediana null si no es confiable.
-    // n no se usa en la narración (lo cablea FASE B al construir el hallazgo).
+    // (snapshot Fase B, o los 3 fallbacks) se inyecta tal cual; mediana null si no
+    // es confiable. n no se usa en la narración (lo cablea FASE B al construir el hallazgo).
     const pvc = buildPrecioVsComuna({
       sujetoUfM2: input.superficie > 0 ? input.precio / input.superficie : 0,
       medianaComunaUfM2: precioM2ZonaConfiable ? precioM2Zona : null,
