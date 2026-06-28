@@ -58,6 +58,30 @@ export async function prefetchMedianaComunaVenta(
   }
 }
 
+/** Shape persistido en analisis.mediana_comuna_snapshot (ver migración
+ * 20260627). Snapshot determinista de la mediana resuelta al crear; las
+ * superficies que comparan precio vs comuna lo leerán como fuente única (Fase B).
+ * `nivel` = "prefetch" porque hoy la única fuente es prefetchMedianaComunaVenta. */
+export interface MedianaComunaSnapshot {
+  mediana: number | null;
+  n: number;
+  resolvedAt: string;
+  nivel: string;
+}
+
+/** Envuelve el `{ mediana, n }` del prefetch con el timestamp y el nivel de
+ * procedencia, en el shape único que persisten los flujos de creación. */
+export function buildMedianaSnapshot(
+  resuelta: { mediana: number | null; n: number }
+): MedianaComunaSnapshot {
+  return {
+    mediana: resuelta.mediana,
+    n: resuelta.n,
+    resolvedAt: new Date().toISOString(),
+    nivel: "prefetch",
+  };
+}
+
 // ─── Clients ───────────────────────────────────────────
 
 export function createSupabaseServer() {

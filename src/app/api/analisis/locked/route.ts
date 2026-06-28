@@ -7,6 +7,7 @@ import {
   requireAuthenticatedUser,
   buildShortTermAnalysisRow,
   prefetchMedianaComunaVenta,
+  buildMedianaSnapshot,
   type ShortTermAnalysisBody,
 } from "@/lib/api-helpers/analisis-pipeline";
 
@@ -60,6 +61,8 @@ function buildLockedLtrRow(
     resumen: result.resumen,
     results: result,
     input_data: body,
+    // Snapshot de la mediana (Fase A): null si el caller no resolvió mediana.
+    mediana_comuna_snapshot: medianaComuna ? buildMedianaSnapshot(medianaComuna) : null,
     pending_payment: true,
   };
 }

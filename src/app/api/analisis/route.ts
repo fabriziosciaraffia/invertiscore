@@ -12,6 +12,7 @@ import {
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   prefetchMedianaComunaVenta,
+  buildMedianaSnapshot,
 } from "@/lib/api-helpers/analisis-pipeline";
 
 export async function POST(request: Request) {
@@ -66,6 +67,9 @@ export async function POST(request: Request) {
         resumen: result.resumen,
         results: result,
         input_data: body,
+        // Snapshot de la mediana resuelta acá (Fase A): fuente única futura para
+        // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
+        mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
       })
       .select()

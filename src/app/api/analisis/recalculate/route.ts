@@ -6,7 +6,7 @@ import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { isAdminUser } from "@/lib/admin";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, buildMedianaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 
 function createSupabaseServer() {
   const cookieStore = cookies();
@@ -105,6 +105,8 @@ export async function POST(request: Request) {
         resumen: result.resumen,
         results: result,
         input_data: safeInput,
+        // Re-snapshot al recalcular (mismo shape que la creación, Fase A).
+        mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
       })
       .eq("id", analysisId);
 
