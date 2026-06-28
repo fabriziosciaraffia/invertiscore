@@ -12,7 +12,7 @@ import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
-import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -119,11 +119,23 @@ export default async function AnalisisDetallePage({
   // patch mínimo. Ver audit/sesionB-bug-snapshot/diagnostico.md.
   // Mediana comunal inyectada al recompute (sobreprecio-sync): permite que el
   // motor siembre el hallazgo de sobreprecio sync en el primer render, en vez de
-  // depender del ai_analysis async. El prefetch tolera fallos (cae a mediana null
-  // → hallazgo no emitido, comportamiento previo). Mismo helper/query que usan
-  // creación y recalculate.
+  // depender del ai_analysis async.
+  // Fase B — fuente única: el snapshot PRESENTE gana siempre (foto fija del
+  // análisis). Si existe (mediana number O null), se usa tal cual — el null
+  // congelado al crear se respeta (el recompute lo trata como "sin sobreprecio",
+  // correcto) y NO se re-resuelve por render. FALLBACK a la resolución vieja
+  // (prefetch vivo) SOLO cuando no hay snapshot (análisis pre-Fase A) — exactamente
+  // el comportamiento previo (Fase 1). Mismo criterio "existe → usalo; ausente →
+  // fallback" en las 3 lecturas, para que traten el caso null idéntico (sin
+  // re-resolución no hay divergencia). El recompute recibe el mismo shape { mediana, n }.
+  const medianaSnapshot = (data as Record<string, unknown>).mediana_comuna_snapshot as
+    | MedianaComunaSnapshot
+    | null
+    | undefined;
   const medianaComuna = inputDataRaw
-    ? await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufValue)
+    ? (medianaSnapshot != null
+        ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0 }
+        : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufValue))
     : undefined;
   const results: FullAnalysisResult | null = inputDataRaw
     ? recomputeResultsForLegacy(inputDataRaw, ufValue, medianaComuna)
