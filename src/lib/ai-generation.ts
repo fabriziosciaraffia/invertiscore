@@ -633,6 +633,36 @@ export function hasNewAiStructure(ai: unknown): boolean {
  * `opts.persist` (default true): cuando es false, genera y devuelve el resultado
  * SIN escribir a Supabase. Sirve para validación local del prompt sin tocar datos.
  */
+// Modelo del micro-check CATCH-ROOT-A: clasificación binaria sí/no — haiku
+// (barato/rápido); en Fase 2 se llama varias veces por el loop de regeneración.
+const MICRO_CHECK_MODEL = "claude-haiku-4-5-20251001";
+
+// Detección semántica (Root A'): ¿la prosa afirma una mediana/promedio/precio DE
+// LA ZONA o un "% sobre la zona" cuando NO hay dato de zona confiable? El prompt-
+// only no frena la fabricación (el modelo reconstruye precio÷superficie), así que
+// se detecta a la salida. PUEDE lanzar (error de red / JSON inválido); el caller
+// la envuelve en try/catch (best-effort, nunca bloquea la generación).
+// Reutilizable por la Fase 2 (loop de regeneración).
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic): Promise<{ fabrica: boolean; cita: string }> {
+  const camposNarrativos = JSON.stringify({
+    headline: aiResult?.siendoFrancoHeadline_clp,
+    conviene: aiResult?.conviene?.respuestaDirecta_clp,
+    reencuadre: aiResult?.conviene?.reencuadre_clp,
+    negociacion: aiResult?.negociacion?.contenido_clp,
+    riesgos: aiResult?.riesgos?.contenido_clp,
+  });
+  const msg = await anthropicClient.messages.create({
+    model: MICRO_CHECK_MODEL,
+    max_tokens: 300,
+    system: "Sos un detector de un único patrón. Esta comuna NO tiene dato de mediana/promedio de precio de zona (el motor no lo tiene). Decime si la prosa AFIRMA una mediana, promedio o precio de referencia DE LA ZONA/COMUNA, o un porcentaje \"% sobre/bajo la zona/el promedio\" (cualquier comparación del precio del depto contra un valor de zona). NO cuenta como fabricación: decir explícitamente que NO hay dato de zona; ni la plusvalía histórica (% anual de apreciación). Respondé SOLO un JSON válido, sin texto alrededor: {\"fabrica\": true|false, \"cita\": \"fragmento textual exacto o cadena vacía\"}.",
+    messages: [{ role: "user", content: camposNarrativos }],
+  });
+  const t = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+  const parsed = JSON.parse(t.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());
+  return { fabrica: !!parsed?.fabrica, cita: String(parsed?.cita ?? "") };
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function generateAiAnalysis(analysisId: string, supabase: SupabaseClient, opts: { persist?: boolean } = {}): Promise<any | null> {
   try {
@@ -1294,6 +1324,27 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     scanStrings(aiResult, "");
     if (engineIsmHits.length > 0) {
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
+    }
+
+    // ─── CATCH-ROOT-A (Fase 1, modo OBSERVACIÓN) ──────────────────────────────
+    // Micro-check de fabricación de mediana de zona en el caso SIN dato confiable
+    // (!precioM2ZonaConfiable). Root A': el modelo fabrica "UF X/m², N% sobre la
+    // zona" aunque NO exista mediana; prompt-only no lo frena (3 fixes fallidos).
+    // Detección semántica vía LLM (el regex es ciego a fraseo nuevo). En esta fase
+    // SOLO detecta y loguea — NO regenera, NO modifica la prosa, NO bloquea.
+    // SIEMPRE best-effort: cualquier error se traga y el análisis sigue normal.
+    if (!precioM2ZonaConfiable && aiResult) {
+      try {
+        const r = await detectarFabricacionZona(aiResult, anthropic);
+        if (r.fabrica) {
+          console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=true cita="${r.cita.slice(0, 220)}"`);
+        } else {
+          console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=false`);
+        }
+      } catch (e) {
+        // Best-effort: el micro-check NUNCA bloquea ni rompe la generación.
+        console.warn(`[CATCH-ROOT-A] ${analysisId}: micro-check falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
     }
 
     // FASE B — inyectar el hallazgo de sobreprecio (determinístico, NO del LLM)
