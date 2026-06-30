@@ -606,7 +606,7 @@ Ejemplos del tipo de error a evitar:
 Cuando la relación importa para el análisis, haz el cálculo explícito en tu razonamiento interno antes de redactar la frase. Si dudas, escribe ambos montos en orden numérico antes de elegir el verbo.`;
 
 function fmtCLP(n: number): string {
-  return "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
+  return (n < 0 ? "-$" : "$") + Math.round(Math.abs(n)).toLocaleString("es-CL");
 }
 
 function fmtUF(n: number): string {
