@@ -1241,6 +1241,58 @@ negociacion.precioSugerido (este caso): "${fmtUF(techoUF)}" ← EXACTO techo_uf 
 
 Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arriba.`;
 
+    // Parsea el JSON crudo del modelo y aplica las normalizaciones DETERMINISTAS
+    // (merge de anclas de negociación + orden de chips en BUSCAR OTRA). Devuelve
+    // null si el JSON no parsea. NO persiste. Se reutiliza en la regeneración del
+    // catch-layer (Root A', Fase 2b) para que la prosa regenerada pase por las
+    // MISMAS normalizaciones que la original.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const parseAndNormalize = (rawText: string): any | null => {
+      let parsed;
+      try {
+        const cleaned = rawText.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e) {
+        console.error("Error parsing AI response:", e, "raw:", rawText.slice(0, 500));
+        return null;
+      }
+
+      // ─── Fase 3.6 v9 — merge anclas deterministas + glosas IA ─────────────
+      // El motor manda precios EXACTOS. La IA solo aporta glosas. Si la IA
+      // devolvió precios distintos (drift) o no devolvió `precios`, sobreescribir
+      // con las anclas y mantener solo glosas como string libre.
+      if (parsed?.negociacion) {
+        const iaGlosas = parsed.negociacion.precios || {};
+        parsed.negociacion.precios = {
+          ...anclasJsonPara_motor,
+          glosaPrimeraOferta_clp: String(iaGlosas.glosaPrimeraOferta_clp || ""),
+          glosaPrimeraOferta_uf: String(iaGlosas.glosaPrimeraOferta_uf || iaGlosas.glosaPrimeraOferta_clp || ""),
+          glosaTecho_clp: String(iaGlosas.glosaTecho_clp || ""),
+          glosaTecho_uf: String(iaGlosas.glosaTecho_uf || iaGlosas.glosaTecho_clp || ""),
+          glosaWalkAway_clp: String(iaGlosas.glosaWalkAway_clp || ""),
+          glosaWalkAway_uf: String(iaGlosas.glosaWalkAway_uf || iaGlosas.glosaWalkAway_clp || ""),
+        };
+        // precioSugerido = techo formateado, ignorar lo que diga la IA
+        parsed.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
+      }
+
+      // Salvaguarda de orden: en BUSCAR OTRA, un chip rojo debe liderar (no un accent/neutral).
+      // Stable-sort por color; conserva el orden relativo entre rojos y entre no-rojos.
+      if (readVeredicto(results) === "BUSCAR OTRA" && Array.isArray(parsed?.conviene?.datosClave)) {
+        const esRojo = (c: unknown) => c === "red";
+        parsed.conviene.datosClave = parsed.conviene.datosClave
+          .map((d: unknown, i: number) => ({ d, i }))
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .sort((a: any, b: any) => {
+            const ra = esRojo(a.d?.color) ? 0 : 1;
+            const rb = esRojo(b.d?.color) ? 0 : 1;
+            return ra !== rb ? ra - rb : a.i - b.i; // estable: desempata por índice original
+          })
+          .map((x: { d: unknown }) => x.d);
+      }
+      return parsed;
+    };
+
     const message = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 8000,
@@ -1250,48 +1302,8 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
 
     const text = message.content[0].type === "text" ? message.content[0].text : "";
 
-    let aiResult;
-    try {
-      const cleaned = text.replace(/^```json?\s*\n?/i, "").replace(/\n?```\s*$/i, "").trim();
-      aiResult = JSON.parse(cleaned);
-    } catch (e) {
-      console.error("Error parsing AI response:", e, "raw:", text.slice(0, 500));
-      return null;
-    }
-
-    // ─── Fase 3.6 v9 — merge anclas deterministas + glosas IA ─────────────
-    // El motor manda precios EXACTOS. La IA solo aporta glosas. Si la IA
-    // devolvió precios distintos (drift) o no devolvió `precios`, sobreescribir
-    // con las anclas y mantener solo glosas como string libre.
-    if (aiResult?.negociacion) {
-      const iaGlosas = aiResult.negociacion.precios || {};
-      aiResult.negociacion.precios = {
-        ...anclasJsonPara_motor,
-        glosaPrimeraOferta_clp: String(iaGlosas.glosaPrimeraOferta_clp || ""),
-        glosaPrimeraOferta_uf: String(iaGlosas.glosaPrimeraOferta_uf || iaGlosas.glosaPrimeraOferta_clp || ""),
-        glosaTecho_clp: String(iaGlosas.glosaTecho_clp || ""),
-        glosaTecho_uf: String(iaGlosas.glosaTecho_uf || iaGlosas.glosaTecho_clp || ""),
-        glosaWalkAway_clp: String(iaGlosas.glosaWalkAway_clp || ""),
-        glosaWalkAway_uf: String(iaGlosas.glosaWalkAway_uf || iaGlosas.glosaWalkAway_clp || ""),
-      };
-      // precioSugerido = techo formateado, ignorar lo que diga la IA
-      aiResult.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
-    }
-
-    // Salvaguarda de orden: en BUSCAR OTRA, un chip rojo debe liderar (no un accent/neutral).
-    // Stable-sort por color; conserva el orden relativo entre rojos y entre no-rojos.
-    if (readVeredicto(results) === "BUSCAR OTRA" && Array.isArray(aiResult?.conviene?.datosClave)) {
-      const esRojo = (c: unknown) => c === "red";
-      aiResult.conviene.datosClave = aiResult.conviene.datosClave
-        .map((d: unknown, i: number) => ({ d, i }))
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .sort((a: any, b: any) => {
-          const ra = esRojo(a.d?.color) ? 0 : 1;
-          const rb = esRojo(b.d?.color) ? 0 : 1;
-          return ra !== rb ? ra - rb : a.i - b.i; // estable: desempata por índice original
-        })
-        .map((x: { d: unknown }) => x.d);
-    }
+    let aiResult = parseAndNormalize(text);
+    if (!aiResult) return null;
 
     // Validación de prosa (solo detección para QA — NO reescribe el texto en esta iteración).
     // Lee la mediana de la FUENTE ÚNICA (hallazgoSobreprecio): la misma que narró el prompt.
@@ -1326,24 +1338,55 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       console.warn(`[ENGINE-ISM-DRIFT] ${analysisId}: ${engineIsmHits.length} hit(s) — ${engineIsmHits.join(" | ")}`);
     }
 
-    // ─── CATCH-ROOT-A (Fase 1, modo OBSERVACIÓN) ──────────────────────────────
-    // Micro-check de fabricación de mediana de zona en el caso SIN dato confiable
-    // (!precioM2ZonaConfiable). Root A': el modelo fabrica "UF X/m², N% sobre la
-    // zona" aunque NO exista mediana; prompt-only no lo frena (3 fixes fallidos).
-    // Detección semántica vía LLM (el regex es ciego a fraseo nuevo). En esta fase
-    // SOLO detecta y loguea — NO regenera, NO modifica la prosa, NO bloquea.
-    // SIEMPRE best-effort: cualquier error se traga y el análisis sigue normal.
+    // ─── CATCH-ROOT-A (Fase 2b, modo ACCIÓN) ──────────────────────────────────
+    // En el caso SIN dato confiable (!precioM2ZonaConfiable) el modelo fabrica
+    // "UF X/m², N% sobre la zona" aunque NO exista mediana; prompt-only no lo frena
+    // (3 fixes fallidos). Detección semántica (haiku, validada 8/8 sin FN, sin
+    // dejarse lavar por el eco honesto) + REGENERACIÓN con ejemplo-negativo de alta
+    // saliencia (la cita exacta de lo fabricado). MAX 2 reintentos; si tras eso
+    // sigue fabricando → FALLBACK: se conserva el último intento + flag interno de
+    // auditoría (_catchRootAFlag, NO se renderiza). AISLAMIENTO: TODO en try/catch
+    // con cap estricto — el catch-layer NUNCA cuelga, rompe ni bloquea la
+    // generación; fabricación residual es un caveat de calidad, no un error.
+    const CATCH_ROOTA_MAX_RETRIES = 2;
     if (!precioM2ZonaConfiable && aiResult) {
       try {
-        const r = await detectarFabricacionZona(aiResult, anthropic);
-        if (r.fabrica) {
-          console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=true cita="${r.cita.slice(0, 220)}"`);
-        } else {
+        let deteccion = await detectarFabricacionZona(aiResult, anthropic);
+        if (!deteccion.fabrica) {
           console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=false`);
+        } else {
+          console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=true (intento 0) cita="${deteccion.cita.slice(0, 220)}" — regenerando`);
+          for (let intento = 1; intento <= CATCH_ROOTA_MAX_RETRIES && deteccion.fabrica; intento++) {
+            const correctivo = `\n\n⚠️ CORRECCIÓN OBLIGATORIA — la versión anterior fabricó un dato que NO existe.\nLa versión anterior afirmó: "${deteccion.cita}".\nEsta comuna NO tiene dato de mediana/promedio/precio de zona (el motor no lo tiene). Está PROHIBIDO mencionar una mediana de zona, un promedio de zona, un precio/m² de zona, o un "% sobre/bajo la zona/el promedio". NO inventes esos números ni los back-computes desde precio÷superficie. La negociación se ancla en precioSugerido / TIR / flujo y en palancas no-precio. Reescribí el análisis COMPLETO sin ninguna comparación de precio vs zona.`;
+            const regen = await anthropic.messages.create({
+              model: CLAUDE_MODEL,
+              max_tokens: 8000,
+              messages: [{ role: "user", content: userPrompt + correctivo }],
+              system: SYSTEM_PROMPT,
+            });
+            const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+            const regenResult = parseAndNormalize(regenText);
+            if (!regenResult) {
+              // Regeneración no parseó: conservar la prosa previa (válida) y cortar.
+              console.warn(`[CATCH-ROOT-A] ${analysisId}: intento ${intento} no parseó — conservo la prosa previa`);
+              break;
+            }
+            aiResult = regenResult;
+            deteccion = await detectarFabricacionZona(aiResult, anthropic);
+            console.warn(`[CATCH-ROOT-A] ${analysisId}: intento ${intento} → fabrica=${deteccion.fabrica}${deteccion.fabrica ? ` cita="${deteccion.cita.slice(0, 160)}"` : ""}`);
+          }
+          if (deteccion.fabrica) {
+            // Fallback: agotó los reintentos y sigue fabricando. Se conserva el
+            // último intento + flag interno de auditoría (no se renderiza).
+            aiResult._catchRootAFlag = true;
+            console.warn(`[CATCH-ROOT-A] ${analysisId}: agotó ${CATCH_ROOTA_MAX_RETRIES} reintentos y sigue fabricando — fallback con flag interno`);
+          } else {
+            console.warn(`[CATCH-ROOT-A] ${analysisId}: resuelto (fabrica=false) tras regeneración`);
+          }
         }
       } catch (e) {
-        // Best-effort: el micro-check NUNCA bloquea ni rompe la generación.
-        console.warn(`[CATCH-ROOT-A] ${analysisId}: micro-check falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+        // Best-effort: el catch-layer NUNCA bloquea ni rompe la generación.
+        console.warn(`[CATCH-ROOT-A] ${analysisId}: catch-layer falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
       }
     }
 
