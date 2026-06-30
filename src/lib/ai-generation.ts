@@ -659,8 +659,26 @@ async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic
     messages: [{ role: "user", content: camposNarrativos }],
   });
   const t = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-  const parsed = JSON.parse(t.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim());
-  return { fabrica: !!parsed?.fabrica, cita: String(parsed?.cita ?? "") };
+  const cleaned = t.trim().replace(/^```json\s*/i, "").replace(/```\s*$/i, "").trim();
+  // Parse TOLERANTE (igual robustez que parseAndNormalize): haiku a veces agrega
+  // texto tras el JSON — más con este system con ejemplos. (1) tomar el 1er objeto
+  // {...}; (2) si no parsea, regex-extraer fabrica/cita; (3) si NADA parsea →
+  // default CONSERVADOR fabrica=true (ante la duda, asumir posible fabricación y
+  // dejar que la regeneración/flag actúe, en vez de dejar pasar sin verificar),
+  // logueado como parse-fail-default para distinguirlo de una detección real.
+  try {
+    const obj = cleaned.match(/\{[\s\S]*?\}/);
+    const parsed = JSON.parse(obj ? obj[0] : cleaned);
+    return { fabrica: !!parsed?.fabrica, cita: String(parsed?.cita ?? "") };
+  } catch {
+    const mf = cleaned.match(/"fabrica"\s*:\s*(true|false)/i);
+    if (mf) {
+      const mc = cleaned.match(/"cita"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      return { fabrica: mf[1].toLowerCase() === "true", cita: mc ? mc[1] : "" };
+    }
+    console.warn(`[CATCH-ROOT-A] detector parse-fail-default=true (haiku devolvió no-JSON): "${cleaned.slice(0, 120)}"`);
+    return { fabrica: true, cita: "" };
+  }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
