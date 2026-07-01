@@ -1223,22 +1223,26 @@ ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus pal
 - tirActual: ${tirActual.toFixed(1)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
+- lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}
 - Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}
 - Precio al que el arriendo cubre exacto la cuota: ${precioFlujoNeutroUF > 0 ? fmtUF(precioFlujoNeutroUF) + ` (descuento ${descuentoParaNeutro.toFixed(1)}%)` : "no existe — arriendo no cubre gastos fijos con esta estructura"}
 - Plusvalía inmediata estimada: ${plusvaliaFrancoPct.toFixed(1)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
-- lecturaFlujo (usá EXACTAMENTE este enfoque, NO "cruza/se revierte/se da vuelta/se vuelve positivo/flujo neutro"): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
+- lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
 - Aporte de tu bolsillo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
 - Aporte de tu bolsillo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
+- lecturaPatrimonio (narrá esta idea con tus palabras): en 10 años ponés ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendés, la ganancia neta es ${fmtUF(exit.gananciaNeta/UF_CLP)}
 - Valor proyectado de la propiedad a 5 años (plusvalía a futuro: 4%): ${fmtCLP(valorProp5)}
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: 4%): ${fmtCLP(valorProp10)}
+- lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de 4% anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
 - Ganancia neta si vendés a 10 años: ${fmtCLP(exit.gananciaNeta)}
 - Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}
 - Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}
 - Dividendo si la tasa sube 1 punto: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
 - Dividendo si la tasa sube 2 puntos: ${fmtCLP(dividendoSiTasaSube2)}
+- lecturaSensibilidadTasa (narrá esta idea con tus palabras): ${creditoCLP > 0 ? `si la tasa sube 1 punto tu dividendo pasa de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoSiTasaSube1)}; con 2 puntos, a ${fmtCLP(dividendoSiTasaSube2)}` : "sin crédito, la tasa no afecta tu dividendo"}
 
 COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de memoria)
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
@@ -1338,7 +1342,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     }
 
     // ─── Monitor engine-isms (A11/A12) — solo detección con path de campo, no reescribe. ───
-    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|del motor|proyecci[óo]n\s+del\s+motor/i;
+    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|(el|del)\s+motor|proyecci[óo]n\s+del\s+motor|se\s+(equilibr|estabiliz|neutraliz|nivela)|converg|inflexi[óo]n|punto de quiebre/i;
     const engineIsmHits: string[] = [];
     const scanStrings = (node: unknown, path: string): void => {
       if (typeof node === "string") {
