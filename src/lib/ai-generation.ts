@@ -456,9 +456,9 @@ PROHIBIDO presentar el % como tendencia limpia o predictor estructural. La frase
 
 PROHIBIDO INVENTAR: no atribuyas eventos específicos a comunas individuales si no están en este prompt o en datos verificados. Mantente en los 3 eventos genéricos del rango.
 
-REGLA 10 — Plusvalía: jerarquía canónica de la proyección.
+REGLA 10 — Plusvalía: jerarquía de la proyección base.
 
-La proyección canónica es 4% anual flat. Esa cifra es canónica para todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa.
+La proyección base es 4% anual flat. Esa cifra es la que usan todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa.
 
 La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la apuesta del 4%, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a 4%:
 - Histórica > 4% (ej. Quilicura 5,3%): la proyección es conservadora vs lo que la zona ya mostró.
@@ -474,7 +474,7 @@ PROHIBIDO:
 - "la histórica indica que tu TIR caerá"
 - "la plusvalía de [comuna] no sostiene la apuesta" (afirma que la proyección no se cumplirá)
 - "la histórica no respalda la proyección" / "no apoya el 4%"
-- Cualquier construcción que sugiera al usuario una proyección distinta al 4% canónico, incluyendo afirmaciones genéricas tipo "la zona no da para 4%".
+- Cualquier construcción que sugiera al usuario una proyección distinta al 4% base, incluyendo afirmaciones genéricas tipo "la zona no da para 4%".
 
 La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la zona se estanca, tu TIR cae" es válido (riesgo); "la zona no sostiene la proyección 4%" es prohibido (afirmación).
 
@@ -484,7 +484,7 @@ VÁLIDO:
 - "Quilicura subió 5,3% anual histórico — la proyección a 4% es conservadora versus lo que la zona ya mostró."
 - "Sin data histórica suficiente para esta comuna — la proyección a 4% es supuesto puro, sin verificación local."
 
-El caveat temporal de REGLA 9 (eventos 2019/pandemia/boom) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección canónica (4%) e histórica (contexto de riesgo).
+El caveat temporal de REGLA 9 (eventos 2019/pandemia/boom) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección base (4%) e histórica (contexto de riesgo).
 
 ## 13. Schema JSON de output
 
