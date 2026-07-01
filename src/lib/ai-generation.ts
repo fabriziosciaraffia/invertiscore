@@ -1342,7 +1342,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     }
 
     // ─── Monitor engine-isms (A11/A12) — solo detección con path de campo, no reescribe. ───
-    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|(el|del)\s+motor|proyecci[óo]n\s+del\s+motor|se\s+(equilibr|estabiliz|neutraliz|nivela)|converg|inflexi[óo]n|punto de quiebre/i;
+    const ENGINE_ISM_RE = /flujo[^.]{0,30}(cruza|revier|invier|da vuelta|vuelve positivo|vuelve neutro)|flujo neutro|(el|del)\s+motor|proyecci[óo]n\s+del\s+motor|se\s+(equilibr|estabiliz|neutraliz|nivela)|conver[gj]|inflexi[óo]n|punto de quiebre/i;
     const engineIsmHits: string[] = [];
     const scanStrings = (node: unknown, path: string): void => {
       if (typeof node === "string") {
