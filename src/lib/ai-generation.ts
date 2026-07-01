@@ -18,6 +18,11 @@ import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
 import { buildReestructuracionFinanciera } from "@/lib/financing-health";
+import { getCapRefComuna, buildHallazgoCapRate } from "@/lib/cap-rate-hallazgo";
+import { buildHallazgoFlujoMensual } from "@/lib/flujo-mensual-hallazgo";
+import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "@/lib/plusvalia-hallazgo";
+import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
+import type { Hallazgo } from "@/lib/types";
 
 const anthropic = new Anthropic();
 
@@ -1168,6 +1173,78 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
 - plazoSugerido: ${reestructuracionFinanciera.plazoSugerido_anios} años (igual al actual — no se recomienda cambiar el plazo)
 - impactoCuotaMensual: ${fmtCLP(reestructuracionFinanciera.impactoCuotaMensual_clp)}/mes (baja de la cuota con el pie y la tasa sugeridos, plazo fijo)` : ""}` : "";
 
+    // FINDINGS LAYER — ensamblado de los 6 hallazgos tipados desde el scope de
+    // generación (objetos VIVOS: hallazgoCapex/hallazgoSobreprecio ya construidos
+    // arriba + m/fh/input recomputados), NUNCA de results.hallazgos persistido.
+    // INVARIANTE: el número que narra el prompt == el que el render recomputa.
+    // El MOTOR calcula la decisividad (Tipo 1, determinístico); acá solo ordenamos
+    // y la traducimos a peso cualitativo — la IA la consume, no la asigna.
+    const hallazgoCapRateGen = buildHallazgoCapRate({
+      capRatePct: m.capRate,
+      ref: getCapRefComuna(input.comuna),
+      comuna: input.comuna,
+      modalidad: "ltr",
+    });
+    const hallazgoFlujoGen = buildHallazgoFlujoMensual({
+      flujoNetoMensualCLP: m.flujoNetoMensual,
+      dividendoMensualCLP: m.dividendo,
+      modalidad: "ltr",
+    });
+    const plusvaliaComunaGen = resolvePlusvaliaComuna(input.comuna);
+    const hallazgoPlusvaliaGen = buildHallazgoPlusvalia({
+      anualizadaPct: plusvaliaComunaGen.anualizada,
+      tieneData: plusvaliaComunaGen.tieneData,
+      ref: getPlusvaliaRef(),
+      comuna: input.comuna,
+      modalidad: "ltr",
+    });
+    const hallazgoEstructuraGen = fh
+      ? buildHallazgoEstructuraFinanciamiento({ financingHealth: fh, modalidad: "ltr" })
+      : null;
+    // Consumo dual de sobreprecio: la fuente es el objeto vivo de generación
+    // (hallazgoSobreprecio, construido con la mediana async ya resuelta); si
+    // faltara, cae al ya-persistido en results.hallazgos. aiResult aún no existe acá.
+    const hallazgoSobreprecioGen =
+      hallazgoSobreprecio ??
+      (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "sobreprecio") ??
+      null;
+
+    // Orden = pirámide, por decisividad DESC. .filter(Boolean) descarta nulls
+    // (capex si antigüedad ≤2, sobreprecio sin mediana → cae lecturaSinReferencia,
+    // flujo sin crédito, etc.). NO asume 6 fijos.
+    const hallazgosOrdenados: Hallazgo[] = [
+      hallazgoCapex,
+      hallazgoCapRateGen,
+      hallazgoFlujoGen,
+      hallazgoSobreprecioGen,
+      hallazgoPlusvaliaGen,
+      hallazgoEstructuraGen,
+    ]
+      .filter((h): h is Hallazgo => h != null)
+      .sort((a, b) => b.decisividad - a.decisividad);
+
+    // Peso CUALITATIVO por umbrales: NO se expone el float a la IA (invita a
+    // recitar "con una decisividad de 0,9…" → engine-ism). Cortes: ≥0.5 decisivo ·
+    // ≥0.2 relevante · resto contexto.
+    const pesoHallazgo = (dec: number): string =>
+      dec >= 0.5 ? "decisivo" : dec >= 0.2 ? "relevante" : "contexto";
+    const dirHallazgo = (dir: string): string =>
+      dir === "favorable" ? "a favor" : dir === "adverso" ? "en contra" : "neutral";
+
+    const hallazgosBloque = hallazgosOrdenados.length > 0
+      ? `
+HALLAZGOS DEL ANÁLISIS (vienen ordenados por cuánto pesan en la decisión; el 1º es el que más manda). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
+${hallazgosOrdenados
+  .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
+  .join("\n")}
+
+CÓMO NARRAR EN PIRÁMIDE:
+- El 1º es el TITULAR: el veredicto se explica primero por él. Va en el headline / respuesta directa.
+- Del 2º en adelante: encadenálos por qué refuerzan o tensionan al titular. Acá va la cadena del "¿conviene?".
+- Los últimos son contexto y matices — mencionalos sin protagonismo; una confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
+- Traducción obligatoria: "lo que más pesa acá es el rendimiento" ✔ · "el hallazgo de mayor decisividad" ✘.`
+      : "";
+
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
 
 PERFIL Y ETAPA
@@ -1210,6 +1287,7 @@ INDICADORES CALCULADOS
 - Multiplicador de capital (10 años): ${exit.multiplicadorCapital.toFixed(2)}x
 - Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
+${hallazgosBloque}
 
 VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - tipoNegociacion: ${tieneDiferenciaValida ? tipoNegociacion : "INDETERMINADO (NO usar — no hay valor de mercado de referencia, solo el precio pedido; aplica REGLA 0 §12 con SOLO el indicador por m²)"}
