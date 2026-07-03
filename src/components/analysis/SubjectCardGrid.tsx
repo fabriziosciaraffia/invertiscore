@@ -6,7 +6,7 @@ import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
-import { HeroVerdictBlock } from "./HeroVerdictBlock";
+import { HeroLTR } from "./HeroLTR";
 import { MiniCard } from "./MiniCard";
 import { ReestructuracionMiniCard } from "./ReestructuracionMiniCard";
 import { CapexPuestaAPuntoMiniCard } from "./CapexPuestaAPuntoMiniCard";
@@ -31,14 +31,13 @@ export function SubjectCardGrid({
   veredicto,
   score,
   propiedadTitle,
-  propiedadSubtitle,
-  metadataItems,
   onRetry,
   results,
   inputData,
   valorUF,
   analysisId,
   comuna,
+  createdAt,
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
@@ -56,6 +55,7 @@ export function SubjectCardGrid({
   valorUF: number;
   analysisId?: string;
   comuna?: string;
+  createdAt?: string;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
@@ -119,17 +119,18 @@ export function SubjectCardGrid({
 
   return (
     <div id="informe-pro-section" className="mb-8">
-      <HeroVerdictBlock
+      <HeroLTR
         data={aiAnalysis}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
         veredicto={veredicto}
         score={score}
         propiedadTitle={propiedadTitle}
-        propiedadSubtitle={propiedadSubtitle}
-        metadataItems={metadataItems}
+        inputData={inputData}
         results={results}
+        comuna={comuna}
         valorUF={valorUF}
+        createdAt={createdAt}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">

@@ -909,6 +909,7 @@ export function PremiumResults({
             valorUF={ufValue}
             analysisId={analysisId}
             comuna={comuna}
+            createdAt={createdAt}
           />
 
           {/* ═══ CAPA 3 · SIMULACIÓN (acordeón unificado) ═══ */}
