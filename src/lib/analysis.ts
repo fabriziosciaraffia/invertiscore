@@ -215,7 +215,12 @@ function calcMetrics(
   // el pipeline, igual que entra ufClp). El motor sigue síncrono y puro: recibe
   // el número, no hace queries. Opcional → callers que no la pasan obtienen
   // precioVsComuna con sujetoUfM2 presente y desviación null.
-  medianaComunaVentaUF?: { mediana: number | null; n: number }
+  medianaComunaVentaUF?: { mediana: number | null; n: number },
+  // Overrides de neutralización contrafactual (E1 · calibración de decisividades).
+  // Cuando se pasan, reemplazan un valor derivado ANTES de que alimente el resto
+  // del cálculo — hoy solo capex (feed de capitalInvertido → cashOnCash). Ausente
+  // ⇒ comportamiento idéntico (ningún caller lo pasa todavía).
+  neutralize?: { capexPuestaAPuntoCLP?: number }
 ): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
@@ -286,10 +291,16 @@ function calcMetrics(
     valorUF: ufClp,
     overrideCLP: input.costoPuestaAPuntoCLP,
   });
+  // Override de neutralización (E1): calcDecisividades pasa capex 0 para medir
+  // cuánto mueve la decisión sacando la puesta a punto. Ausente ⇒ monto real.
+  const capexParaCapital =
+    neutralize?.capexPuestaAPuntoCLP != null
+      ? neutralize.capexPuestaAPuntoCLP
+      : capexPuestaAPunto.montoCLP;
   const capitalInvertido = calcInversionInicialCLP({
     pieCLP,
     gastosCierreCLP: gastosCompra,
-    capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+    capexPuestaAPuntoCLP: capexParaCapital,
   });
   const hallazgoPuestaAPunto = buildHallazgoPuestaAPunto({
     capex: capexPuestaAPunto,
@@ -818,7 +829,11 @@ function lerp(value: number, inMin: number, inMax: number, outMin: number, outMa
 function calcPlusvaliaScore(
   lat: number | null | undefined, lng: number | null | undefined,
   comuna: string,
-  antiguedad: number
+  antiguedad: number,
+  // Override de neutralización contrafactual (E1 · calibración de decisividades):
+  // reemplaza la tasa histórica anualizada de la comuna (sub-componente 30%) por
+  // un valor neutro. Ausente ⇒ se usa la tasa real de PLUSVALIA_HISTORICA.
+  historicaOverride?: number | null
 ): number {
   // Sub-componente 1: Metro actual (35%)
   let metroActualScore = 50;
@@ -849,7 +864,10 @@ function calcPlusvaliaScore(
   // Sub-componente 3: Plusvalía histórica comuna (30%)
   const comunaNorm = comuna.trim();
   const historica = PLUSVALIA_HISTORICA[comunaNorm] || null;
-  const anualizada = historica ? historica.anualizada : PLUSVALIA_DEFAULT.anualizada;
+  const anualizada =
+    historicaOverride != null
+      ? historicaOverride
+      : historica ? historica.anualizada : PLUSVALIA_DEFAULT.anualizada;
   let historicaScore: number;
   if (anualizada >= 5) historicaScore = lerp(anualizada, 5, 7, 90, 100);
   else if (anualizada >= 4) historicaScore = lerp(anualizada, 4, 5, 75, 89);
@@ -970,6 +988,70 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
   }
 
   return clamp(score, 0, 100);
+}
+
+// =========================================
+// Veredicto: bandas del score + gates de seguridad
+// =========================================
+
+/**
+ * Deriva el veredicto desde el score + 3 gates de seguridad explícitos.
+ *
+ * Extraído del inline de runAnalysis (E1 · refactor inerte para la calibración de
+ * decisividades): MISMA lógica, ahora una función pura y llamable con métricas
+ * contrafactuales (calcDecisividades recomputa score+veredicto neutralizando cada
+ * factor y mide el Δ de la DECISIÓN completa, no solo del score).
+ *
+ * Los gates pueden hacer que el badge contradiga la banda del score — intencional
+ * (audit §2.4): señales estructurales (CoC severo, break-even imposible) priman
+ * sobre el promedio compuesto. Conducta idéntica al bloque original.
+ */
+export function deriveVeredicto(
+  score: number,
+  metrics: AnalysisMetrics,
+  breakEvenTasa: number,
+): Veredicto {
+  // Base por bandas (70 / 45 / 0). Commit E.1 · 2026-05-13: thresholds unificados
+  // LTR+STR (skill analysis-voice-franco §1.7). La sub-banda 40-44 cae a BUSCAR.
+  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
+
+  const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
+  const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
+  const flujoMuyNegativoRatio =
+    metrics.ingresoMensual > 0
+      ? metrics.flujoNetoMensual / metrics.ingresoMensual
+      : 0;
+
+  // GATE 1 — fuerza BUSCAR OTRA (señales más severas).
+  // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
+  if (
+    metrics.cashOnCash < -30 ||
+    breakEvenTasa === -1 ||
+    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
+    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
+  ) {
+    veredicto = "BUSCAR OTRA";
+  } else if (
+    // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
+    // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
+    veredicto === "COMPRAR" &&
+    (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
+  ) {
+    veredicto = "AJUSTA SUPUESTOS";
+  }
+
+  // GATE 3 — fuerza COMPRAR (upgrade lock-in cuando todo cierra).
+  // Único override que sube. NO se aplica si GATE 1 ya cerró a BUSCAR.
+  if (
+    veredicto !== "BUSCAR OTRA" &&
+    metrics.flujoNetoMensual >= 0 &&
+    metrics.rentabilidadNeta >= 4 &&
+    (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
+  ) {
+    veredicto = "COMPRAR";
+  }
+
+  return veredicto;
 }
 
 // =========================================
@@ -1268,53 +1350,12 @@ export function runAnalysis(
   const fmtR = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
   const coberturaPct = metrics.egresosMensuales > 0 ? Math.round((metrics.ingresoMensual / metrics.egresosMensuales) * 100) : 0;
 
-  // veredicto: base por score + overrides como gates explícitos.
-  // Commit E.1 · 2026-05-13: thresholds unificados LTR+STR a 70 / 45 / 0
-  // (skill analysis-voice-franco §1.7 · audit-commit-e-metodologia §2.4).
-  // Antes era 70 / 40. La sub-banda 40-44 ahora cae a BUSCAR OTRA, no a
-  // AJUSTA — coherente con la severidad de la zona.
-  let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
-
-  // NOTA: los siguientes overrides actúan como gates de seguridad explícitos
-  // (audit §2.4). Pueden hacer que el badge contradiga la banda del score —
-  // intencional: señales estructurales (CoC severo, break-even imposible)
-  // priman sobre el promedio compuesto.
-
-  const dividendoMensual = metrics.dividendo || 1; // evitar división por 0
-  const flujoNegativoRatio = Math.abs(metrics.flujoNetoMensual) / dividendoMensual;
-  const flujoMuyNegativoRatio =
-    metrics.ingresoMensual > 0
-      ? metrics.flujoNetoMensual / metrics.ingresoMensual
-      : 0;
-
-  // GATE 1 — fuerza BUSCAR OTRA (señales más severas).
-  // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
-  if (
-    metrics.cashOnCash < -30 ||
-    breakEvenTasa === -1 ||
-    ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
-    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
-  ) {
-    veredicto = "BUSCAR OTRA";
-  } else if (
-    // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
-    // CoC entre -10% y -30% O flujo neto < -5% del ingreso con CoC negativo.
-    veredicto === "COMPRAR" &&
-    (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
-  ) {
-    veredicto = "AJUSTA SUPUESTOS";
-  }
-
-  // GATE 3 — fuerza COMPRAR (upgrade lock-in cuando todo cierra).
-  // Único override que sube. NO se aplica si GATE 1 ya cerró a BUSCAR.
-  if (
-    veredicto !== "BUSCAR OTRA" &&
-    metrics.flujoNetoMensual >= 0 &&
-    metrics.rentabilidadNeta >= 4 &&
-    (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
-  ) {
-    veredicto = "COMPRAR";
-  }
+  // veredicto: base por bandas del score (70 / 45 / 0) + 3 gates de seguridad.
+  // La lógica vive ahora en deriveVeredicto() (E1 · refactor inerte) para poder
+  // recomputarla con métricas contrafactuales en calcDecisividades. Los gates
+  // pueden hacer que el badge contradiga la banda del score — intencional (audit
+  // §2.4): señales estructurales (CoC severo, break-even imposible) priman.
+  const veredicto: Veredicto = deriveVeredicto(score, metrics, breakEvenTasa);
 
   // Commit E.2 · clasificacion/clasificacionColor (legacy) derivan del veredicto
   // final (post-gates), no del score crudo. Evita divergencia que antes ensuciaba
