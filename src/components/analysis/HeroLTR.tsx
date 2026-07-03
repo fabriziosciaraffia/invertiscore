@@ -497,11 +497,10 @@ function gatherTopHallazgos(
   const out: Hallazgo[] = [];
   const push = (h: Hallazgo | null | undefined) => {
     if (!h || typeof h.decisividad !== "number") return;
-    // estructura_financiamiento se excluye del TOP-3 del hero: tiene su propia
-    // card (Reestructuración) más abajo, y la prosa del veredicto se apoya en el
-    // aporte mensual. Sin este filtro su decisividad (0,85 en 'problematico')
-    // desplazaría al aporte fuera del TOP-3.
-    if (h.id === "estructura_financiamiento") return;
+    // estructura_financiamiento ya NO se excluye: con la calibración a "Δdecisión"
+    // su decisividad refleja cuánto mueve la decisión (no el 0,85 fijo por nivel),
+    // así que cae bajo el aporte cuando no es vinculante y sube al TOP-3 solo si
+    // realmente lo es. El sort de dos niveles (decisividad, magnitud) lo ordena bien.
     out.push(h);
   };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
