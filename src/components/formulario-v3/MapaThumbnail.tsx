@@ -46,8 +46,9 @@ function validCoord(rawLat: unknown, rawLng: unknown): { lat: number; lng: numbe
  * `src/lib/map-styles.ts` como fuente única de verdad.
  *
  * Renderiza:
- *  - Pin rojo en el centro (la dirección del usuario).
- *  - Puntos verdes pequeños por cada comparable (tope 200 por límite de URL).
+ *  - Pin Signal Red en el centro (la dirección del usuario).
+ *  - Puntos Ink 400 (#B4B2A9) pequeños por cada comparable (tope 200 por límite
+ *    de URL). El design system elimina el verde: comparables son neutros.
  *  - Label abajo-derecha con "N comparables cerca".
  *
  * Si la imagen falla (API key faltante, Static Maps no habilitada, referrer
@@ -72,7 +73,6 @@ export function MapaThumbnail({
   const [imgFailed, setImgFailed] = useState(false);
   const [theme, setTheme] = useState<FrancoMapTheme>("dark");
   const [origin, setOrigin] = useState<string>("");
-  const [isLocalhost, setIsLocalhost] = useState(false);
 
   // Detectar theme actual + observar cambios en data-theme del <html>
   useEffect(() => {
@@ -87,13 +87,11 @@ export function MapaThumbnail({
     return () => obs.disconnect();
   }, []);
 
-  // Detectar host para decidir si usar icon custom (prod) o marker nativo (localhost).
-  // Se lee después de mount para no romper SSR.
+  // origin se lee después de mount (evita mismatch con SSR); gatea la construcción
+  // de la URL de Static Maps hasta tener window.
   useEffect(() => {
     if (typeof window === "undefined") return;
     setOrigin(window.location.origin);
-    const host = window.location.hostname;
-    setIsLocalhost(host === "localhost" || host === "127.0.0.1");
   }, []);
 
   // Log explícito si falta la API key (una vez por montaje con coords)
@@ -159,26 +157,20 @@ export function MapaThumbnail({
     parts.push(`markers=color:0xC8323C|size:mid|${center}`);
 
     // Marcadores de comparables: tope 200 para no exceder ~8KB de URL.
+    // Ink 400 (#B4B2A9) — el design system elimina el verde. Marcador de color
+    // nativo (mismo render en dev y prod, sin depender de un PNG hospedado).
     if (hasComparables) {
       const MAX_MARKERS = 200;
       const coords = validComparables
         .slice(0, MAX_MARKERS)
         .map((c) => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`)
         .join("|");
-      if (isLocalhost) {
-        // Dev: native colored dot (Google no puede alcanzar /map-dot-green.png
-        // desde localhost). El círculo verde se ve solo en prod.
-        parts.push(`markers=color:0x5DCAA5|size:tiny|${coords}`);
-      } else {
-        // Prod: custom PNG circle hospedado en /public (accesible públicamente).
-        const iconUrl = `${origin}/map-dot-green.png`;
-        parts.push(`markers=icon:${encodeURIComponent(iconUrl)}|${coords}`);
-      }
+      parts.push(`markers=color:0xB4B2A9|size:tiny|${coords}`);
     }
 
     parts.push(`key=${apiKey}`);
     return `https://maps.googleapis.com/maps/api/staticmap?${parts.join("&")}`;
-  }, [lat, lng, apiKey, theme, validComparables, origin, isLocalhost]);
+  }, [lat, lng, apiKey, theme, validComparables, origin]);
 
   if (!lat || !lng) return null;
 
