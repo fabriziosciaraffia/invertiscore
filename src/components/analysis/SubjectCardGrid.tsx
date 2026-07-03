@@ -7,9 +7,7 @@ import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
-import { MiniCard } from "./MiniCard";
-import { ReestructuracionMiniCard } from "./ReestructuracionMiniCard";
-import { CapexPuestaAPuntoMiniCard } from "./CapexPuestaAPuntoMiniCard";
+import { PiramideHallazgos } from "./PiramideHallazgos";
 import { hasAiV2 } from "./AIInsightSection";
 
 /**
@@ -133,76 +131,20 @@ export function SubjectCardGrid({
         createdAt={createdAt}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-        <MiniCard
-          section="costoMensual"
-          numero="02"
-          label="Costo mensual"
-          data={aiAnalysis.costoMensual}
-          currency={currency}
-          onClick={() => setActiveDrawer("costoMensual")}
-          results={results}
-          valorUF={valorUF}
-        />
-        <MiniCard
-          section="negociacion"
-          numero="03"
-          label="Negociación"
-          data={aiAnalysis.negociacion}
-          currency={currency}
-          onClick={() => setActiveDrawer("negociacion")}
-          results={results}
-          valorUF={valorUF}
-        />
-        <MiniCard
-          section="largoPlazo"
-          numero="04"
-          label="Largo plazo"
-          data={aiAnalysis.largoPlazo}
-          currency={currency}
-          onClick={() => setActiveDrawer("largoPlazo")}
-          results={results}
-          valorUF={valorUF}
-        />
-        <MiniCard
-          section="riesgos"
-          numero="05"
-          label="Riesgos"
-          data={aiAnalysis.riesgos}
-          currency={currency}
-          onClick={() => setActiveDrawer("riesgos")}
-          results={results}
-          valorUF={valorUF}
-        />
-      </div>
+      {/* Fase 1b — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA
+          (costoMensual/negociacion/largoPlazo/riesgos). Los "ver detalle" aún no se
+          conectan a drawers (paso siguiente). */}
+      <PiramideHallazgos
+        results={results}
+        aiAnalysis={aiAnalysis}
+        currency={currency}
+        valorUF={valorUF}
+      />
 
-      {/* Card opcional: Reestructuración (entre el grid 2x2 y la Zona).
-          Solo aparece cuando aiAnalysis.reestructuracion existe — Nivel 3 del
-          escalonado financingHealth (skill §1.5). */}
-      {aiAnalysis.reestructuracion && (
-        <div className="mt-3">
-          <ReestructuracionMiniCard
-            data={aiAnalysis.reestructuracion}
-            currency={currency}
-            valorUF={valorUF}
-            onClick={() => setActiveDrawer("reestructuracion")}
-          />
-        </div>
-      )}
-
-      {/* Card opcional: CapEx puesta a punto (motor, no IA). Aparece cuando el
-          motor emite el hallazgo con dirección adversa (usado con antig > 2). */}
-      {results?.hallazgos?.[0]?.id === "capex_puesta_a_punto" &&
-        results.hallazgos[0].direccion === "adverso" && (
-          <div className="mt-3">
-            <CapexPuestaAPuntoMiniCard
-              hallazgo={results.hallazgos[0]}
-              currency={currency}
-              valorUF={valorUF}
-              onClick={() => setActiveDrawer("capexPuestaAPunto")}
-            />
-          </div>
-        )}
+      {/* Fase 1b — Las cards Reestructuración (estructura) y Puesta a punto (capex)
+          se retiraron: ya son hallazgos DENTRO de la pirámide de arriba; dejarlas
+          duplicaba el dato. Sus drawers siguen existiendo y se reconectan desde la
+          pirámide en el paso siguiente. */}
 
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (
