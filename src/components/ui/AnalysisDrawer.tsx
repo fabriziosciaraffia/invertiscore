@@ -1898,7 +1898,9 @@ function DrawerCapexPuestaAPunto({
     currency === "CLP"
       ? "$" + Math.round(montoCLP).toLocaleString("es-CL")
       : "UF " + Math.round(montoUF).toLocaleString("es-CL");
-  const pctInversion = Math.round(hallazgo.decisividad * 100);
+  // fraccionInversion (capex/inversión inicial), NO decisividad — que desde E2 es
+  // la "Δdecisión" calibrada. Esta cifra es display: "X% de tu plata día 1".
+  const pctInversion = Math.round(hallazgo.valor.fraccionInversion * 100);
 
   // Procedencia visible — no audit-only. Voz: tuteo neutro (skill §2.1).
   const procedenciaTexto =
@@ -1952,7 +1954,7 @@ function DrawerCapexPuestaAPunto({
             </p>
             <p
               className={`font-mono font-bold text-[20px] m-0 leading-tight ${
-                hallazgo.decisividad > 0.2 ? "text-signal-red" : "text-[var(--franco-text)]"
+                hallazgo.valor.fraccionInversion > 0.2 ? "text-signal-red" : "text-[var(--franco-text)]"
               }`}
             >
               {pctInversion}%

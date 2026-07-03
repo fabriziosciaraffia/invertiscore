@@ -73,7 +73,6 @@ export function resolvePlusvaliaComuna(comuna: string): { anualizada: number; ti
 
 // ─── Builder del hallazgo ─────────────────────────────────────────────────
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
 
 /**
@@ -94,12 +93,14 @@ export function buildHallazgoPlusvalia(p: {
   ref: PlusvaliaRef;
   comuna: string;
   modalidad: "ltr" | "str" | "ambas";
+  /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
+   *  "Δdecisión" (E2). El builder ya NO la calcula con |gap|/banda. */
+  decisividad: number;
 }): HallazgoPlusvalia | null {
   if (!Number.isFinite(p.anualizadaPct) || !Number.isFinite(p.ref.pct)) return null;
 
   const gap = p.anualizadaPct - p.ref.pct; // signed
   const gapRounded = Math.round(gap * 10) / 10;
-  const decisividad = p.ref.banda > 0 ? clamp01(Math.abs(gap) / p.ref.banda) : 0;
   // favorable si apreció ≥ umbral real (ganó valor real); adverso si < (perdió
   // valor real aunque el nominal suba). La frase puede decir "en línea" cuando el
   // gap es mínimo, pero la señal-máquina es binaria.
@@ -153,7 +154,7 @@ export function buildHallazgoPlusvalia(p: {
       modalidad: p.modalidad,
     },
     direccion,
-    decisividad,
+    decisividad: p.decisividad,
     procedencia: {
       base,
       confianza: p.tieneData ? "media" : "baja",

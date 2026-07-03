@@ -22,6 +22,7 @@ import { getCapRefComuna, buildHallazgoCapRate } from "@/lib/cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "@/lib/flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "@/lib/plusvalia-hallazgo";
 import { buildHallazgoEstructuraFinanciamiento } from "@/lib/estructura-financiamiento-hallazgo";
+import { calcDecisividades } from "@/lib/analysis";
 import type { Hallazgo } from "@/lib/types";
 
 const anthropic = new Anthropic();
@@ -796,13 +797,22 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       n: 0,
     });
 
+    // Decisividades calibradas (E2 · escala común "Δdecisión"). Fuente única y
+    // self-contained desde input → idénticas a las que recomputa el render
+    // (recomputeResultsForLegacy→runAnalysis→calcDecisividades). Se inyectan en los
+    // 6 builders de abajo; ningún builder recalcula su decisividad.
+    const decisividades = calcDecisividades(input, UF_CLP, {
+      mediana: precioM2ZonaConfiable ? precioM2Zona : null,
+      n: 0,
+    });
+
     // FASE B — Hallazgo de SOBREPRECIO (4º hallazgo). Vive acá y NO en el motor:
     // su desviación depende de la mediana async (precioM2Zona) que el recompute
     // sync del render no tiene. Es la FUENTE ÚNICA de la desviación: este mismo
     // prompt narra su cifra (bloque "COMPARACIÓN DE PRECIO POR M²") y el chip del
     // hero la lee del objeto persistido (más abajo). Mata el bug gemelo.
     // Ver sobreprecio-hallazgo.ts (asimetría) y types.ts (fuera de la union).
-    const hallazgoSobreprecio = buildHallazgoSobreprecio(pvc);
+    const hallazgoSobreprecio = buildHallazgoSobreprecio(pvc, decisividades.sobreprecio ?? 0);
 
     // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
     // motor (analysis.ts:264-273), no se lee de results.hallazgos — ese campo NO
@@ -839,6 +849,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       superficieUtilM2: input.superficie,
       modalidad: "ltr",
       inversionInicialCLP: inversionTotal,
+      decisividad: decisividades.capex_puesta_a_punto ?? 0,
     });
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1188,11 +1199,13 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       ref: getCapRefComuna(input.comuna),
       comuna: input.comuna,
       modalidad: "ltr",
+      decisividad: decisividades.cap_rate ?? 0,
     });
     const hallazgoFlujoGen = buildHallazgoFlujoMensual({
       flujoNetoMensualCLP: m.flujoNetoMensual,
       dividendoMensualCLP: m.dividendo,
       modalidad: "ltr",
+      decisividad: decisividades.flujo_mensual ?? 0,
     });
     const plusvaliaComunaGen = resolvePlusvaliaComuna(input.comuna);
     const hallazgoPlusvaliaGen = buildHallazgoPlusvalia({
@@ -1201,9 +1214,10 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       ref: getPlusvaliaRef(),
       comuna: input.comuna,
       modalidad: "ltr",
+      decisividad: decisividades.plusvalia ?? 0,
     });
     const hallazgoEstructuraGen = fh
-      ? buildHallazgoEstructuraFinanciamiento({ financingHealth: fh, modalidad: "ltr" })
+      ? buildHallazgoEstructuraFinanciamiento({ financingHealth: fh, modalidad: "ltr", decisividad: decisividades.estructura_financiamiento ?? 0 })
       : null;
     // Consumo dual de sobreprecio: la fuente es el objeto vivo de generación
     // (hallazgoSobreprecio, construido con la mediana async ya resuelta); si

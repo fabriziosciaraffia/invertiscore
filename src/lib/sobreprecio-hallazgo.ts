@@ -37,7 +37,6 @@ export const SOBREPRECIO_BANDA_DEFAULT = 30;
  */
 const EN_LINEA_UMBRAL_PCT = 2;
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const fmtUF = (n: number) =>
   `UF ${(Math.round(n * 10) / 10).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`;
 
@@ -48,6 +47,9 @@ const fmtUF = (n: number) =>
  */
 export function buildHallazgoSobreprecio(
   pvc: PrecioVsComuna,
+  // Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
+  // "Δdecisión" (E2). El builder ya NO la calcula con |desviacionPct|/banda.
+  decisividad: number,
   banda: number = SOBREPRECIO_BANDA_DEFAULT,
 ): HallazgoSobreprecio | null {
   if (
@@ -60,7 +62,6 @@ export function buildHallazgoSobreprecio(
   }
 
   const desv = pvc.desviacionPct; // entero, ya redondeado en FASE A (buildPrecioVsComuna)
-  const decisividad = banda > 0 ? clamp01(Math.abs(desv) / banda) : 0;
 
   // DIRECCIÓN INVERTIDA (≠ cap_rate / flujo_mensual):
   //   desv ≤ 0 → favorable (en o bajo la mediana = entras barato)

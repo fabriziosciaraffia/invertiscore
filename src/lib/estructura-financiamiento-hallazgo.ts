@@ -17,20 +17,6 @@
 import { LEVEL_RANK, type FinancingHealth, type FinancingHealthLevel } from "./financing-health";
 import type { HallazgoEstructuraFinanciamiento } from "./types";
 
-// ─── Decisividad por nivel (no |gap|/banda — el overall es categórico) ────────
-//
-// Calibrado contra la distribución real (n=245): optimo 1.2% · aceptable 68.2% ·
-// mejorable 22.9% · problematico 7.8%. El caso modal (aceptable, pie 20% típico)
-// queda con peso bajo-favorable (0.15) sin inflar; la cola accionable (mejorable+
-// problematico, 30.6%) recibe peso real. El techo 0.85 (no 1.0) reserva la
-// decisividad máxima para los hallazgos continuos en gaps extremos.
-const DECISIVIDAD_POR_NIVEL: Record<FinancingHealthLevel, number> = {
-  optimo: 0,
-  aceptable: 0.15,
-  mejorable: 0.5,
-  problematico: 0.85,
-};
-
 // ─── Derivación del driver ────────────────────────────────────────────────────
 //
 // El `overall` NO guarda cuál dimensión lo definió (es worstLevel). Se deriva
@@ -142,6 +128,9 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
   /** financingHealth ya resuelto por el motor (financing-health.ts:133). */
   financingHealth: FinancingHealth;
   modalidad: "ltr" | "str" | "ambas";
+  /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
+   *  "Δdecisión" (E2). El builder ya NO la mapea por nivel (DECISIVIDAD_POR_NIVEL). */
+  decisividad: number;
 }): HallazgoEstructuraFinanciamiento | null {
   const fh = p.financingHealth;
   if (!Number.isFinite(fh.pie.actual_pct) || !Number.isFinite(fh.tasa.actual_pct)) return null;
@@ -150,7 +139,6 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
   const driver = deriveDriver(fh.pie.level, fh.tasa.level);
   const direccion: "favorable" | "adverso" =
     overall === "optimo" || overall === "aceptable" ? "favorable" : "adverso";
-  const decisividad = DECISIVIDAD_POR_NIVEL[overall];
 
   const fraseCanonica = buildFrase({
     overall,
@@ -176,7 +164,7 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
       modalidad: p.modalidad,
     },
     direccion,
-    decisividad,
+    decisividad: p.decisividad,
     procedencia: {
       base:
         `Estructura de financiamiento (pie + tasa) sobre tus datos declarados. El pie se evalúa ` +

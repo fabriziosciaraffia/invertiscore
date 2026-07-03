@@ -14,7 +14,6 @@
 
 import type { HallazgoFlujoMensual } from "./types";
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const fmtCLP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
 /**
@@ -37,16 +36,20 @@ const UMBRAL_DECISIVO = 0.5;
 export function buildHallazgoFlujoMensual(p: {
   /** Aporte mensual neto, en CLP. Signed. Reusado de analysis.ts:242. */
   flujoNetoMensualCLP: number;
-  /** Dividendo mensual, en CLP. Divisor de la decisividad (analysis.ts:224). */
+  /** Dividendo mensual, en CLP. Base de la frase "acotado/fuerte" (analysis.ts:224). */
   dividendoMensualCLP: number;
   modalidad: "ltr" | "str" | "ambas";
+  /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
+   *  "Δdecisión" (E2). El builder ya NO la calcula con |aporte|/dividendo. */
+  decisividad: number;
 }): HallazgoFlujoMensual | null {
   if (!Number.isFinite(p.flujoNetoMensualCLP)) return null;
   if (!Number.isFinite(p.dividendoMensualCLP) || p.dividendoMensualCLP <= 0) return null;
 
   const aporte = p.flujoNetoMensualCLP;
+  // ratio |aporte|/dividendo: ya NO es la decisividad, pero SIGUE definiendo la
+  // frase ("acotado" vs "fuerte") y el campo valor.ratioSobreDividendo.
   const ratio = Math.abs(aporte) / p.dividendoMensualCLP;
-  const decisividad = clamp01(ratio);
   const direccion: "favorable" | "adverso" = aporte >= 0 ? "favorable" : "adverso";
 
   const montoFmt = fmtCLP(aporte);
@@ -56,7 +59,7 @@ export function buildHallazgoFlujoMensual(p: {
     fraseCanonica =
       `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
       `La propiedad se sostiene sola desde el día uno.`;
-  } else if (decisividad < UMBRAL_DECISIVO) {
+  } else if (ratio < UMBRAL_DECISIVO) {
     fraseCanonica =
       `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
       `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`;
@@ -77,7 +80,7 @@ export function buildHallazgoFlujoMensual(p: {
       modalidad: p.modalidad,
     },
     direccion,
-    decisividad,
+    decisividad: p.decisividad,
     procedencia: {
       base: "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
       confianza: "alta",

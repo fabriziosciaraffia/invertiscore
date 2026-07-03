@@ -865,6 +865,9 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     superficieUtilM2: input.superficie,
     modalidad: "str",
     inversionInicialCLP: capitalInvertido,
+    // STR no usa la máquina de score/veredicto LTR (calcDecisividades es LTR-only);
+    // conserva su decisividad histórica = fracción capex/inversión inicial. E2.
+    decisividad: Math.max(0, Math.min(1, capitalInvertido > 0 ? capexPuestaAPunto.montoCLP / capitalInvertido : 0)),
     // Honestidad de la procedencia: 'baja' solo si la antigüedad nació de un
     // fallback del borde (el caller lo marca). Si vino real del payload, 'media'.
     antiguedadEsFallback: input.antiguedadEsFallback ?? false,

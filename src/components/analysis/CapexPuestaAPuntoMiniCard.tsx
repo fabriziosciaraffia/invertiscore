@@ -33,7 +33,9 @@ export function CapexPuestaAPuntoMiniCard({
 
   // KPI condicional Signal Red: cuando el CapEx pesa fuerte en la plata día 1.
   // Umbral 0.20 calibrado a la distribución real (máx ~0.20, mediana ~0.07).
-  const pesaFuerte = hallazgo.decisividad > 0.2;
+  // Usa fraccionInversion (capex/inversión), NO decisividad — que desde E2 es la
+  // "Δdecisión" calibrada y ya no la fracción de capital.
+  const pesaFuerte = hallazgo.valor.fraccionInversion > 0.2;
 
   return (
     <button

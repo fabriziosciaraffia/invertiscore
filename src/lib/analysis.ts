@@ -13,9 +13,9 @@ import type {
 import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
-import { getCapRefComuna, buildHallazgoCapRate } from "./cap-rate-hallazgo";
+import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
-import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia } from "./plusvalia-hallazgo";
+import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
@@ -26,7 +26,7 @@ import {
   calificaSubsidio as calificaSubsidioHelper,
   aplicaSubsidio,
 } from "./constants/subsidio";
-import { classifyFinancingHealth } from "./financing-health";
+import { classifyFinancingHealth, MARKET_AVG_TASA_UF } from "./financing-health";
 import { buildHallazgoEstructuraFinanciamiento } from "./estructura-financiamiento-hallazgo";
 import type { Veredicto } from "./types";
 
@@ -219,8 +219,13 @@ function calcMetrics(
   // Overrides de neutralización contrafactual (E1 · calibración de decisividades).
   // Cuando se pasan, reemplazan un valor derivado ANTES de que alimente el resto
   // del cálculo — hoy solo capex (feed de capitalInvertido → cashOnCash). Ausente
-  // ⇒ comportamiento idéntico (ningún caller lo pasa todavía).
-  neutralize?: { capexPuestaAPuntoCLP?: number }
+  // ⇒ comportamiento idéntico.
+  neutralize?: { capexPuestaAPuntoCLP?: number },
+  // Decisividades calibradas (E2) a inyectar en los 5 hallazgos LTR que se
+  // construyen acá. Las calcula calcDecisividades (que a su vez llama a calcMetrics
+  // SIN este param → los builders reciben 0, inocuo porque solo lee score/veredicto,
+  // no los hallazgos). El caller top-level (runAnalysis) sí las pasa.
+  decisividades?: Decisividades
 ): AnalysisMetrics {
   // Add optional parking price to total
   let precioTotal = input.precio;
@@ -308,6 +313,7 @@ function calcMetrics(
     superficieUtilM2: input.superficie,
     modalidad: "ltr",
     inversionInicialCLP: capitalInvertido,
+    decisividad: decisividades?.capex_puesta_a_punto ?? 0,
   });
   // Hallazgo de cap rate: envuelve el número de :250 (no lo recalcula) y lo
   // compara contra la referencia de mercado. getCapRefComuna es el único punto
@@ -319,6 +325,7 @@ function calcMetrics(
           ref: getCapRefComuna(input.comuna),
           comuna: input.comuna,
           modalidad: "ltr",
+          decisividad: decisividades?.cap_rate ?? 0,
         })
       : null;
   // Hallazgo de flujo mensual: envuelve el aporte de :242 (no lo recalcula). La
@@ -330,6 +337,7 @@ function calcMetrics(
           flujoNetoMensualCLP: flujoNetoMensual,
           dividendoMensualCLP: dividendo,
           modalidad: "ltr",
+          decisividad: decisividades?.flujo_mensual ?? 0,
         })
       : null;
   // Hallazgo de plusvalía: envuelve la tasa histórica anualizada de la comuna que
@@ -344,6 +352,7 @@ function calcMetrics(
     ref: getPlusvaliaRef(),
     comuna: input.comuna,
     modalidad: "ltr",
+    decisividad: decisividades?.plusvalia ?? 0,
   });
   // Comparación UF/m² del sujeto vs mediana comunal de venta — fuente ÚNICA de la
   // cifra UF/m² del sujeto (narración/anomalías/hero leen de acá). sujetoUfM2 va
@@ -362,7 +371,7 @@ function calcMetrics(
   // (NO recalcula la desviación). null cuando la mediana no es confiable — caso
   // típico del recompute de render SIN mediana inyectada. Carrier interno; se
   // empuja a results.hallazgos cuando existe (sobreprecio-sync).
-  const hallazgoSobreprecio = buildHallazgoSobreprecio(precioVsComuna);
+  const hallazgoSobreprecio = buildHallazgoSobreprecio(precioVsComuna, decisividades?.sobreprecio ?? 0);
 
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
@@ -929,7 +938,15 @@ function calcEficienciaScore(precioM2: number, yieldBruto: number, zonaRadio: an
   return Math.round(preciScore * 0.5 + yieldScore * 0.5);
 }
 
-function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, ufClp: number): number {
+function calcScoreFromMetrics(
+  input: AnalisisInput,
+  metrics: AnalysisMetrics,
+  ufClp: number,
+  // Overrides de neutralización contrafactual (E2 · calibración de decisividades).
+  // historicaOverride reemplaza la tasa histórica de la comuna en la dimensión
+  // Plusvalía (sub-componente 30%). Ausente ⇒ comportamiento idéntico.
+  overrides?: { historicaOverride?: number },
+): number {
   // Rentabilidad (30%): based on rentabilidad bruta calibrated for Chilean market
   let rentabilidad: number;
   const yb = metrics.rentabilidadBruta;
@@ -962,7 +979,7 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
   const inputAnyScore = input as any;
   const lat = inputAnyScore.zonaRadio?.lat || inputAnyScore.lat || null;
   const lng = inputAnyScore.zonaRadio?.lng || inputAnyScore.lng || null;
-  const plusvalia = calcPlusvaliaScore(lat, lng, input.comuna, input.antiguedad);
+  const plusvalia = calcPlusvaliaScore(lat, lng, input.comuna, input.antiguedad, overrides?.historicaOverride);
 
   // Eficiencia (20%): datos del radio real
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -994,23 +1011,31 @@ function calcScoreFromMetrics(input: AnalisisInput, metrics: AnalysisMetrics, uf
 // Veredicto: bandas del score + gates de seguridad
 // =========================================
 
+/** Qué gates de seguridad DISPARARON al derivar el veredicto (E2 · calibración). */
+export interface GateFlags {
+  /** GATE 1 — forzó BUSCAR OTRA (CoC severo, break-even imposible, flujo severo). */
+  gate1: boolean;
+  /** GATE 2 — degradó COMPRAR a AJUSTA SUPUESTOS (CoC negativo moderado). */
+  gate2: boolean;
+  /** GATE 3 — subió a COMPRAR (lock-in: flujo≥0 + neta≥4 + plusvalía inmediata≥0). */
+  gate3: boolean;
+}
+
 /**
- * Deriva el veredicto desde el score + 3 gates de seguridad explícitos.
- *
- * Extraído del inline de runAnalysis (E1 · refactor inerte para la calibración de
- * decisividades): MISMA lógica, ahora una función pura y llamable con métricas
- * contrafactuales (calcDecisividades recomputa score+veredicto neutralizando cada
- * factor y mide el Δ de la DECISIÓN completa, no solo del score).
+ * Núcleo del veredicto: bandas del score + 3 gates, devolviendo TAMBIÉN qué gate
+ * disparó. Fuente única de la lógica de gates (deriveVeredicto delega acá). El
+ * flag por gate lo consume calcDecisividades para detectar factores vinculantes:
+ * una neutralización que des-arma un gate de seguridad activo (gate1/gate2) marca
+ * el factor como decisivo aunque su Δscore continuo sea chico → floor alto.
  *
  * Los gates pueden hacer que el badge contradiga la banda del score — intencional
- * (audit §2.4): señales estructurales (CoC severo, break-even imposible) priman
- * sobre el promedio compuesto. Conducta idéntica al bloque original.
+ * (audit §2.4): señales estructurales (CoC severo, break-even imposible) priman.
  */
-export function deriveVeredicto(
+function evalVeredicto(
   score: number,
   metrics: AnalysisMetrics,
   breakEvenTasa: number,
-): Veredicto {
+): { veredicto: Veredicto; gates: GateFlags } {
   // Base por bandas (70 / 45 / 0). Commit E.1 · 2026-05-13: thresholds unificados
   // LTR+STR (skill analysis-voice-franco §1.7). La sub-banda 40-44 cae a BUSCAR.
   let veredicto: Veredicto = score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA";
@@ -1024,12 +1049,16 @@ export function deriveVeredicto(
 
   // GATE 1 — fuerza BUSCAR OTRA (señales más severas).
   // metrics.cashOnCash viene en % (no decimal). Ej: -30 = -30% CoC anual.
-  if (
+  const gate1 =
     metrics.cashOnCash < -30 ||
     breakEvenTasa === -1 ||
     ((metrics.plusvaliaInmediataFrancoPct ?? 0) < -8 && metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.3) ||
-    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5)
-  ) {
+    (metrics.flujoNetoMensual < 0 && flujoNegativoRatio > 0.5);
+
+  let gate2 = false;
+  let gate3 = false;
+
+  if (gate1) {
     veredicto = "BUSCAR OTRA";
   } else if (
     // GATE 2 — máximo AJUSTA SUPUESTOS (degrade COMPRAR; no toca BUSCAR).
@@ -1037,6 +1066,7 @@ export function deriveVeredicto(
     veredicto === "COMPRAR" &&
     (metrics.cashOnCash < -10 || (flujoMuyNegativoRatio < -0.05 && metrics.cashOnCash < 0))
   ) {
+    gate2 = true;
     veredicto = "AJUSTA SUPUESTOS";
   }
 
@@ -1048,10 +1078,197 @@ export function deriveVeredicto(
     metrics.rentabilidadNeta >= 4 &&
     (metrics.plusvaliaInmediataFrancoPct ?? 0) >= 0
   ) {
+    gate3 = true;
     veredicto = "COMPRAR";
   }
 
-  return veredicto;
+  return { veredicto, gates: { gate1, gate2, gate3 } };
+}
+
+/**
+ * Deriva el veredicto (solo el valor) desde el score + gates. Wrapper delgado
+ * sobre evalVeredicto (fuente única de gates). Puro y llamable con métricas
+ * contrafactuales (E1). Conducta idéntica al bloque original de runAnalysis.
+ */
+export function deriveVeredicto(
+  score: number,
+  metrics: AnalysisMetrics,
+  breakEvenTasa: number,
+): Veredicto {
+  return evalVeredicto(score, metrics, breakEvenTasa).veredicto;
+}
+
+// =========================================
+// Decisividades — escala común "Δdecisión" (E2 · calibración)
+// =========================================
+//
+// Reemplaza las 6 fórmulas ad-hoc de los builders por UNA escala comparable: por
+// hallazgo, se neutraliza SU driver a un valor neutro/mercado (ceteris paribus,
+// tornado), se recomputa la DECISIÓN completa (score + veredicto con gates) y se
+// mide cuánto se movió. Fuente única de verdad; los builders reciben el número.
+//
+// Máquina de referencia = la decisión COMPLETA (no el score solo): capex no toca
+// las 4 dimensiones pero SÍ mueve el veredicto vía cashOnCash (gate). El
+// solapamiento de drivers compartidos (arriendo → cap_rate y flujo; precio →
+// sobreprecio y eficiencia) se ACEPTA: buscamos un ranking comparable, no una
+// descomposición aditiva.
+
+/** decisividad calibrada por hallazgo (0..1). Ausente ⇒ hallazgo no aplicable. */
+export interface Decisividades {
+  capex_puesta_a_punto?: number;
+  cap_rate?: number;
+  flujo_mensual?: number;
+  sobreprecio?: number;
+  plusvalia?: number;
+  estructura_financiamiento?: number;
+}
+
+// Divisor de normalización: 25 pts = una banda de veredicto (70→45). |Δscore|≥25
+// satura a 1.0 (mueve una banda entera). Floor de factor vinculante: 0.85 (sobre
+// "decisivo" ≥0.5, bajo 1.0 reservado a vinculante + Δ enorme). Pie neutro: 25%.
+const DECISIVIDAD_DIVISOR = 25;
+const DECISIVIDAD_FLOOR = 0.85;
+const NEUTRAL_PIE_PCT = 25;
+
+const clamp01Dec = (v: number) => Math.max(0, Math.min(1, v));
+
+/**
+ * decisividad = clamp01(|Δscore| / 25), elevada a FLOOR si la neutralización
+ * FLIPEA el veredicto o DES-ARMA un gate de seguridad activo (gate1/gate2 que
+ * disparaba en base deja de disparar). El signo lo lleva `direccion` en el
+ * builder; acá solo magnitud.
+ */
+function decisividadDesde(
+  baseScore: number,
+  neuScore: number,
+  baseVeredicto: Veredicto,
+  neu: { veredicto: Veredicto; gates: GateFlags },
+  baseGates: GateFlags,
+): number {
+  const magnitud = clamp01Dec(Math.abs(baseScore - neuScore) / DECISIVIDAD_DIVISOR);
+  const flip = neu.veredicto !== baseVeredicto;
+  const gateDesarmado =
+    (baseGates.gate1 && !neu.gates.gate1) || (baseGates.gate2 && !neu.gates.gate2);
+  return flip || gateDesarmado ? Math.max(DECISIVIDAD_FLOOR, magnitud) : magnitud;
+}
+
+/**
+ * Busca el arriendo que lleva el CAP rate del sujeto a la referencia de mercado
+ * (neutralización de cap_rate). capRate es monótono creciente en arriendo →
+ * bisección robusta. Reusa calcMetrics (no asume linealidad del NOI).
+ */
+function solveArriendoForCapRate(
+  input: AnalisisInput,
+  ufClp: number,
+  mediana: { mediana: number | null; n: number } | undefined,
+  targetCapPct: number,
+): number {
+  let lo = 0;
+  let hi = Math.max(input.arriendo * 10, 1_000_000);
+  for (let i = 0; i < 40; i++) {
+    const mid = (lo + hi) / 2;
+    const m = calcMetrics({ ...input, arriendo: Math.round(mid) }, ufClp, mediana);
+    if (m.capRate < targetCapPct) lo = mid;
+    else hi = mid;
+  }
+  return Math.round((lo + hi) / 2);
+}
+
+/**
+ * Calcula la decisividad calibrada de los (hasta) 6 hallazgos LTR. Self-contained
+ * desde `input`: recomputa la base internamente para que los DOS sitios que la
+ * llaman (motor seed + ai-generation regen) obtengan valores idénticos con el
+ * mismo input (invariante "el número que narra == el que renderiza").
+ *
+ * Optimización selectiva de break-even: solo las neutralizaciones que tocan el
+ * flujo/tasa (cap_rate, estructura, sobreprecio, flujo) pueden mover el gate
+ * breakEvenTasa===-1; las demás (capex, plusvalía) reusan el break-even base.
+ */
+export function calcDecisividades(
+  input: AnalisisInput,
+  ufClp: number,
+  medianaComuna?: { mediana: number | null; n: number },
+): Decisividades {
+  const baseMetrics = calcMetrics(input, ufClp, medianaComuna);
+  const baseScore = calcScoreFromMetrics(input, baseMetrics, ufClp);
+  const baseBreakEven = calcBreakEvenTasa(input, baseMetrics, ufClp);
+  const base = evalVeredicto(baseScore, baseMetrics, baseBreakEven);
+
+  const out: Decisividades = {};
+  const fin = (neuScore: number, neu: { veredicto: Veredicto; gates: GateFlags }) =>
+    decisividadDesde(baseScore, neuScore, base.veredicto, neu, base.gates);
+
+  // ── capex: neutraliza el CapEx a 0 (knob metrics; input=0 no sirve, cae a la
+  //    curva). No toca flujo/tasa → reusa break-even base. Δscore=0 (no está en las
+  //    4 dims); solo mueve el veredicto vía cashOnCash. Solo si hay CapEx (>0). ──
+  const capexBase = calcCapexPuestaAPunto({
+    antiguedad: input.antiguedad,
+    superficieUtilM2: input.superficie,
+    valorUF: ufClp,
+    overrideCLP: input.costoPuestaAPuntoCLP,
+  });
+  if (capexBase.montoCLP > 0) {
+    const mNeu = calcMetrics(input, ufClp, medianaComuna, { capexPuestaAPuntoCLP: 0 });
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp);
+    out.capex_puesta_a_punto = fin(sNeu, evalVeredicto(sNeu, mNeu, baseBreakEven));
+  }
+
+  // ── cap_rate: neutraliza el arriendo para que el CAP rate == referencia de
+  //    mercado. Toca flujo (mismo driver arriendo) → recomputa break-even. ──
+  if (baseMetrics.precioCLP > 0 && baseMetrics.ingresoMensual > 0 && Number.isFinite(baseMetrics.capRate)) {
+    const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, CAP_RATE_REF_NACIONAL);
+    const inputNeu = { ...input, arriendo: arriendoNeu };
+    const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
+    out.cap_rate = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
+  }
+
+  // ── flujo_mensual: neutraliza flujoNetoMensual → 0 (break-even) a nivel métrica
+  //    (opción A: no roba el driver de otro hallazgo). cashOnCash → 0 por
+  //    coherencia. Con flujo 0 el break-even ya no es -1 (no es negativo). ──
+  if (baseMetrics.dividendo > 0) {
+    const mNeu = { ...baseMetrics, flujoNetoMensual: 0, cashOnCash: 0 };
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp);
+    const beNeu = baseBreakEven === -1 ? input.tasaInteres : baseBreakEven;
+    out.flujo_mensual = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
+  }
+
+  // ── sobreprecio: neutraliza el precio para que el precio/m² == mediana comunal
+  //    (sujeto = mediana → desviación 0). Toca flujo (precio→dividendo) →
+  //    recomputa break-even. Solo si hay mediana confiable. ──
+  if (medianaComuna?.mediana != null && medianaComuna.mediana > 0 && input.superficie > 0) {
+    const precioNeuUF = medianaComuna.mediana * input.superficie;
+    const inputNeu = { ...input, precio: precioNeuUF };
+    const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
+    out.sobreprecio = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
+  }
+
+  // ── plusvalia: neutraliza la tasa histórica de la comuna → umbral de
+  //    apreciación real (3%) vía override de score. No toca métricas ni flujo →
+  //    reusa base metrics y break-even. Mueve solo la dimensión Plusvalía. ──
+  {
+    const sNeu = calcScoreFromMetrics(input, baseMetrics, ufClp, { historicaOverride: PLUSVALIA_REF_REAL });
+    out.plusvalia = fin(sNeu, evalVeredicto(sNeu, baseMetrics, baseBreakEven));
+  }
+
+  // ── estructura: neutraliza pie → 25% y tasa → min(actual, mercado). Toca el
+  //    dividendo → flujo → recomputa break-even. ──
+  {
+    const inputNeu = {
+      ...input,
+      piePct: NEUTRAL_PIE_PCT,
+      tasaInteres: Math.min(input.tasaInteres, MARKET_AVG_TASA_UF),
+    };
+    const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
+    out.estructura_financiamiento = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
+  }
+
+  return out;
 }
 
 // =========================================
@@ -1285,7 +1502,10 @@ export function runAnalysis(
   // propaga tal cual a calcMetrics. Opcional para no romper callers existentes.
   medianaComunaVentaUF?: { mediana: number | null; n: number }
 ): FullAnalysisResult {
-  const metrics = calcMetrics(input, ufClp, medianaComunaVentaUF);
+  // Decisividades calibradas (E2): se computan ANTES de calcMetrics para
+  // inyectarlas en los hallazgos que este construye (escala común "Δdecisión").
+  const decisividades = calcDecisividades(input, ufClp, medianaComunaVentaUF);
+  const metrics = calcMetrics(input, ufClp, medianaComunaVentaUF, undefined, decisividades);
   const cashflowYear1 = calcCashflowYear1(input, metrics);
   const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
@@ -1399,6 +1619,7 @@ export function runAnalysis(
   const hallazgoEstructura = buildHallazgoEstructuraFinanciamiento({
     financingHealth,
     modalidad: "ltr",
+    decisividad: decisividades.estructura_financiamiento ?? 0,
   });
 
   return {

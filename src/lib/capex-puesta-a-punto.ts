@@ -73,6 +73,9 @@ export function buildHallazgoPuestaAPunto(p: {
   superficieUtilM2: number;
   modalidad: "ltr" | "str" | "ambas";
   inversionInicialCLP: number;
+  // Decisividad calibrada (0..1) inyectada por calcDecisividades (LTR) o por el
+  // caller (STR). El builder ya NO la calcula: escala común "Δdecisión" (E2).
+  decisividad: number;
   // true cuando la antigüedad de entrada NO es dato real del usuario sino un
   // fallback (hoy: STR, donde el form no captura antigüedad y el pipeline la
   // hardcodea usado=5). Degrada la confianza de la procedencia.
@@ -80,10 +83,12 @@ export function buildHallazgoPuestaAPunto(p: {
 }): HallazgoPuestaAPunto | null {
   if (p.capex.montoCLP <= 0) return null;
 
-  const decisividad = clamp01(
+  // Fracción del capital que va a puesta a punto — SOLO para la frase (pct). La
+  // decisividad ya NO sale de acá (viene calibrada a "Δdecisión" en p.decisividad).
+  const fraccionInversion = clamp01(
     p.inversionInicialCLP > 0 ? p.capex.montoCLP / p.inversionInicialCLP : 0,
   );
-  const pct = Math.round(decisividad * 100);
+  const pct = Math.round(fraccionInversion * 100);
   const ufFmt = Math.round(p.capex.montoUF).toLocaleString("es-CL");
   const clpFmt = "$" + p.capex.montoCLP.toLocaleString("es-CL");
   // Procedencia honesta: override > antigüedad real (LTR) > fallback gruesa (STR).
@@ -116,9 +121,10 @@ export function buildHallazgoPuestaAPunto(p: {
       superficieUtilM2: p.superficieUtilM2,
       modalidad: p.modalidad,
       origen: p.capex.origen,
+      fraccionInversion,
     },
     direccion: p.capex.montoUF > 0 ? "adverso" : "neutral",
-    decisividad,
+    decisividad: p.decisividad,
     procedencia: { base, confianza },
     fraseCanonica,
   };

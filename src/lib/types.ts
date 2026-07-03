@@ -215,10 +215,14 @@ export interface HallazgoPuestaAPunto {
     superficieUtilM2: number;
     modalidad: "ltr" | "str" | "ambas";
     origen: "derivado" | "override";
+    // Fracción de la inversión inicial que se va a CapEx (0..1). Cantidad DISPLAY
+    // ("X% de tu plata día 1", card/drawer). Antes vivía en `decisividad`; con la
+    // calibración E2 esa pasó a ser "Δdecisión", así que la fracción vive acá.
+    fraccionInversion: number;
   };
   // Nunca 'favorable': una puesta a punto siempre resta de tu plata día 1.
   direccion: "adverso" | "neutral";
-  decisividad: number; // 0..1 — fracción de la inversión inicial que se va a CapEx
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }

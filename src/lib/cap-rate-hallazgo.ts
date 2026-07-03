@@ -84,7 +84,6 @@ export function getCapRefComuna(comuna: string, injected?: CapRef | null): CapRe
 
 // ─── Builder del hallazgo ─────────────────────────────────────────────────
 
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const fmt1 = (n: number) => n.toFixed(1).replace(".", ",");
 
 /**
@@ -102,12 +101,14 @@ export function buildHallazgoCapRate(p: {
   ref: CapRef;
   comuna: string;
   modalidad: "ltr" | "str" | "ambas";
+  /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
+   *  "Δdecisión" (E2). El builder ya NO la calcula con |gap|/banda. */
+  decisividad: number;
 }): HallazgoCapRate | null {
   if (!Number.isFinite(p.capRatePct) || !Number.isFinite(p.ref.pct)) return null;
 
   const gap = p.capRatePct - p.ref.pct; // signed
   const gapRounded = Math.round(gap * 10) / 10;
-  const decisividad = p.ref.banda > 0 ? clamp01(Math.abs(gap) / p.ref.banda) : 0;
   const direccion: "favorable" | "adverso" =
     p.capRatePct >= p.ref.pct ? "favorable" : "adverso";
 
@@ -144,7 +145,7 @@ export function buildHallazgoCapRate(p: {
       modalidad: p.modalidad,
     },
     direccion,
-    decisividad,
+    decisividad: p.decisividad,
     procedencia: {
       base: "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
       confianza: p.ref.confianza,
