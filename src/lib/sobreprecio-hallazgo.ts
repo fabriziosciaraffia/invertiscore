@@ -50,6 +50,8 @@ export function buildHallazgoSobreprecio(
   // Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
   // "Δdecisión" (E2). El builder ya NO la calcula con |desviacionPct|/banda.
   decisividad: number,
+  // Magnitud continua pre-floor — desempate secundario del sort (E4).
+  magnitudContinua: number,
   banda: number = SOBREPRECIO_BANDA_DEFAULT,
 ): HallazgoSobreprecio | null {
   if (
@@ -100,6 +102,7 @@ export function buildHallazgoSobreprecio(
     },
     direccion,
     decisividad,
+    magnitudContinua,
     procedencia: {
       base: "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
       confianza: "media",

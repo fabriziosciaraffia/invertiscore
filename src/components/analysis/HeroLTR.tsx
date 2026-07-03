@@ -520,7 +520,11 @@ function gatherTopHallazgos(
     const prev = byId.get(h.id);
     if (!prev || h.decisividad > prev.decisividad) byId.set(h.id, h);
   }
-  return Array.from(byId.values()).sort((a, b) => b.decisividad - a.decisividad);
+  // Orden: decisividad DESC y, dentro del mismo valor, magnitud continua DESC
+  // (desempate E4 — mismo comparador que la pirámide en ai-generation.ts).
+  return Array.from(byId.values()).sort(
+    (a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0),
+  );
 }
 
 interface FindingView {

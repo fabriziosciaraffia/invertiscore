@@ -313,7 +313,8 @@ function calcMetrics(
     superficieUtilM2: input.superficie,
     modalidad: "ltr",
     inversionInicialCLP: capitalInvertido,
-    decisividad: decisividades?.capex_puesta_a_punto ?? 0,
+    decisividad: decisividades?.capex_puesta_a_punto?.decisividad ?? 0,
+    magnitudContinua: decisividades?.capex_puesta_a_punto?.magnitud ?? 0,
   });
   // Hallazgo de cap rate: envuelve el número de :250 (no lo recalcula) y lo
   // compara contra la referencia de mercado. getCapRefComuna es el único punto
@@ -325,7 +326,8 @@ function calcMetrics(
           ref: getCapRefComuna(input.comuna),
           comuna: input.comuna,
           modalidad: "ltr",
-          decisividad: decisividades?.cap_rate ?? 0,
+          decisividad: decisividades?.cap_rate?.decisividad ?? 0,
+          magnitudContinua: decisividades?.cap_rate?.magnitud ?? 0,
         })
       : null;
   // Hallazgo de flujo mensual: envuelve el aporte de :242 (no lo recalcula). La
@@ -337,7 +339,8 @@ function calcMetrics(
           flujoNetoMensualCLP: flujoNetoMensual,
           dividendoMensualCLP: dividendo,
           modalidad: "ltr",
-          decisividad: decisividades?.flujo_mensual ?? 0,
+          decisividad: decisividades?.flujo_mensual?.decisividad ?? 0,
+          magnitudContinua: decisividades?.flujo_mensual?.magnitud ?? 0,
         })
       : null;
   // Hallazgo de plusvalía: envuelve la tasa histórica anualizada de la comuna que
@@ -352,7 +355,8 @@ function calcMetrics(
     ref: getPlusvaliaRef(),
     comuna: input.comuna,
     modalidad: "ltr",
-    decisividad: decisividades?.plusvalia ?? 0,
+    decisividad: decisividades?.plusvalia?.decisividad ?? 0,
+    magnitudContinua: decisividades?.plusvalia?.magnitud ?? 0,
   });
   // Comparación UF/m² del sujeto vs mediana comunal de venta — fuente ÚNICA de la
   // cifra UF/m² del sujeto (narración/anomalías/hero leen de acá). sujetoUfM2 va
@@ -371,7 +375,11 @@ function calcMetrics(
   // (NO recalcula la desviación). null cuando la mediana no es confiable — caso
   // típico del recompute de render SIN mediana inyectada. Carrier interno; se
   // empuja a results.hallazgos cuando existe (sobreprecio-sync).
-  const hallazgoSobreprecio = buildHallazgoSobreprecio(precioVsComuna, decisividades?.sobreprecio ?? 0);
+  const hallazgoSobreprecio = buildHallazgoSobreprecio(
+    precioVsComuna,
+    decisividades?.sobreprecio?.decisividad ?? 0,
+    decisividades?.sobreprecio?.magnitud ?? 0,
+  );
 
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;
   const mesesPaybackPie = flujoNetoMensual > 0 ? Math.round(capitalInvertido / flujoNetoMensual) : 999;
@@ -1113,14 +1121,24 @@ export function deriveVeredicto(
 // sobreprecio y eficiencia) se ACEPTA: buscamos un ranking comparable, no una
 // descomposición aditiva.
 
-/** decisividad calibrada por hallazgo (0..1). Ausente ⇒ hallazgo no aplicable. */
+/**
+ * Resultado por hallazgo: `decisividad` (peso final 0..1, con floor) + `magnitud`
+ * continua pre-floor (|Δscore|/25). La magnitud NO es el peso: es SOLO el
+ * desempate secundario del sort cuando dos factores comparten decisividad (E4).
+ */
+export interface DecisividadFactor {
+  decisividad: number;
+  magnitud: number;
+}
+
+/** decisividad calibrada por hallazgo. Ausente ⇒ hallazgo no aplicable. */
 export interface Decisividades {
-  capex_puesta_a_punto?: number;
-  cap_rate?: number;
-  flujo_mensual?: number;
-  sobreprecio?: number;
-  plusvalia?: number;
-  estructura_financiamiento?: number;
+  capex_puesta_a_punto?: DecisividadFactor;
+  cap_rate?: DecisividadFactor;
+  flujo_mensual?: DecisividadFactor;
+  sobreprecio?: DecisividadFactor;
+  plusvalia?: DecisividadFactor;
+  estructura_financiamiento?: DecisividadFactor;
 }
 
 // Divisor de normalización: 25 pts = una banda de veredicto (70→45). |Δscore|≥25
@@ -1144,12 +1162,15 @@ function decisividadDesde(
   baseVeredicto: Veredicto,
   neu: { veredicto: Veredicto; gates: GateFlags },
   baseGates: GateFlags,
-): number {
+): DecisividadFactor {
   const magnitud = clamp01Dec(Math.abs(baseScore - neuScore) / DECISIVIDAD_DIVISOR);
   const flip = neu.veredicto !== baseVeredicto;
   const gateDesarmado =
     (baseGates.gate1 && !neu.gates.gate1) || (baseGates.gate2 && !neu.gates.gate2);
-  return flip || gateDesarmado ? Math.max(DECISIVIDAD_FLOOR, magnitud) : magnitud;
+  const decisividad = flip || gateDesarmado ? Math.max(DECISIVIDAD_FLOOR, magnitud) : magnitud;
+  // magnitud se conserva SIEMPRE (aunque el floor la pise en decisividad): es el
+  // desempate secundario. capex-des-arma-gate → magnitud 0 → último entre vinculantes.
+  return { decisividad, magnitud };
 }
 
 /**
@@ -1619,7 +1640,8 @@ export function runAnalysis(
   const hallazgoEstructura = buildHallazgoEstructuraFinanciamiento({
     financingHealth,
     modalidad: "ltr",
-    decisividad: decisividades.estructura_financiamiento ?? 0,
+    decisividad: decisividades.estructura_financiamiento?.decisividad ?? 0,
+    magnitudContinua: decisividades.estructura_financiamiento?.magnitud ?? 0,
   });
 
   return {

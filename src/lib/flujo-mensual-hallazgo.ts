@@ -42,6 +42,8 @@ export function buildHallazgoFlujoMensual(p: {
   /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
    *  "Δdecisión" (E2). El builder ya NO la calcula con |aporte|/dividendo. */
   decisividad: number;
+  /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
+  magnitudContinua: number;
 }): HallazgoFlujoMensual | null {
   if (!Number.isFinite(p.flujoNetoMensualCLP)) return null;
   if (!Number.isFinite(p.dividendoMensualCLP) || p.dividendoMensualCLP <= 0) return null;
@@ -81,6 +83,7 @@ export function buildHallazgoFlujoMensual(p: {
     },
     direccion,
     decisividad: p.decisividad,
+    magnitudContinua: p.magnitudContinua,
     procedencia: {
       base: "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
       confianza: "alta",

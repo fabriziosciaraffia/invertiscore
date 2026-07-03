@@ -76,6 +76,8 @@ export function buildHallazgoPuestaAPunto(p: {
   // Decisividad calibrada (0..1) inyectada por calcDecisividades (LTR) o por el
   // caller (STR). El builder ya NO la calcula: escala común "Δdecisión" (E2).
   decisividad: number;
+  // Magnitud continua pre-floor — desempate secundario del sort (E4).
+  magnitudContinua: number;
   // true cuando la antigüedad de entrada NO es dato real del usuario sino un
   // fallback (hoy: STR, donde el form no captura antigüedad y el pipeline la
   // hardcodea usado=5). Degrada la confianza de la procedencia.
@@ -125,6 +127,7 @@ export function buildHallazgoPuestaAPunto(p: {
     },
     direccion: p.capex.montoUF > 0 ? "adverso" : "neutral",
     decisividad: p.decisividad,
+    magnitudContinua: p.magnitudContinua,
     procedencia: { base, confianza },
     fraseCanonica,
   };

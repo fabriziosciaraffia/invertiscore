@@ -223,6 +223,9 @@ export interface HallazgoPuestaAPunto {
   // Nunca 'favorable': una puesta a punto siempre resta de tu plata día 1.
   direccion: "adverso" | "neutral";
   decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25, 0..1) — SOLO para desempatar el sort
+  // de la pirámide/hero entre factores con la misma decisividad (E4). NO es el peso.
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
@@ -247,7 +250,9 @@ export interface HallazgoCapRate {
   // favorable si capRate ≥ referencia; adverso si <. (La frase puede decir "en
   // línea" cuando |gap| es mínimo, pero la señal-máquina es binaria.)
   direccion: "favorable" | "adverso";
-  decisividad: number; // 0..1 — |gap| / banda, saturado
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
@@ -270,7 +275,9 @@ export interface HallazgoFlujoMensual {
   // favorable si el aporte ≥ 0 (el arriendo cubre todo); adverso si < 0 (pones
   // plata de tu bolsillo). El signo NO determina decisividad — la magnitud sí.
   direccion: "favorable" | "adverso";
-  decisividad: number; // 0..1 — |aporte| / dividendo, saturado
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
@@ -301,7 +308,9 @@ export interface HallazgoSobreprecio {
   // = peor. (La frase puede decir "en línea" cuando |desv| ≤ 2; la señal-máquina
   // es binaria: favorable si desv ≤ 0.)
   direccion: "favorable" | "adverso";
-  decisividad: number; // 0..1 — |desviacionPct| / banda, saturado
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
@@ -331,7 +340,9 @@ export interface HallazgoPlusvalia {
   // (perdió valor real aunque el nominal suba). La frase puede decir "en línea"
   // cuando |gap| es mínimo; la señal-máquina es binaria.
   direccion: "favorable" | "adverso";
-  decisividad: number; // 0..1 — |gap| / banda, saturado
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }
@@ -363,10 +374,9 @@ export interface HallazgoEstructuraFinanciamiento {
   // El corte cae entre aceptable y mejorable (donde el financiamiento pasa de
   // "bien" a "con problema"). NO hay 'neutral': la clasificación es binaria.
   direccion: "favorable" | "adverso";
-  // Por NIVEL, no |gap|/banda: optimo→0, aceptable→0.15, mejorable→0.5,
-  // problematico→0.85. El techo 0.85 reserva la decisividad máxima (1.0) para los
-  // hallazgos continuos en gaps extremos.
-  decisividad: number;
+  decisividad: number; // 0..1 — Δdecisión calibrada (calcDecisividades, E2)
+  // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
+  magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
   fraseCanonica: string;
 }

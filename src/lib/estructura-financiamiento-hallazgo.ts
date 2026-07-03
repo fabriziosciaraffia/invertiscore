@@ -131,6 +131,8 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
   /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
    *  "Δdecisión" (E2). El builder ya NO la mapea por nivel (DECISIVIDAD_POR_NIVEL). */
   decisividad: number;
+  /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
+  magnitudContinua: number;
 }): HallazgoEstructuraFinanciamiento | null {
   const fh = p.financingHealth;
   if (!Number.isFinite(fh.pie.actual_pct) || !Number.isFinite(fh.tasa.actual_pct)) return null;
@@ -165,6 +167,7 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
     },
     direccion,
     decisividad: p.decisividad,
+    magnitudContinua: p.magnitudContinua,
     procedencia: {
       base:
         `Estructura de financiamiento (pie + tasa) sobre tus datos declarados. El pie se evalúa ` +

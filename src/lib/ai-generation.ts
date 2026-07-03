@@ -812,7 +812,11 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     // prompt narra su cifra (bloque "COMPARACIÓN DE PRECIO POR M²") y el chip del
     // hero la lee del objeto persistido (más abajo). Mata el bug gemelo.
     // Ver sobreprecio-hallazgo.ts (asimetría) y types.ts (fuera de la union).
-    const hallazgoSobreprecio = buildHallazgoSobreprecio(pvc, decisividades.sobreprecio ?? 0);
+    const hallazgoSobreprecio = buildHallazgoSobreprecio(
+      pvc,
+      decisividades.sobreprecio?.decisividad ?? 0,
+      decisividades.sobreprecio?.magnitud ?? 0,
+    );
 
     // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
     // motor (analysis.ts:264-273), no se lee de results.hallazgos — ese campo NO
@@ -849,7 +853,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       superficieUtilM2: input.superficie,
       modalidad: "ltr",
       inversionInicialCLP: inversionTotal,
-      decisividad: decisividades.capex_puesta_a_punto ?? 0,
+      decisividad: decisividades.capex_puesta_a_punto?.decisividad ?? 0,
+      magnitudContinua: decisividades.capex_puesta_a_punto?.magnitud ?? 0,
     });
 
     const mesesEs = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
@@ -1199,13 +1204,15 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       ref: getCapRefComuna(input.comuna),
       comuna: input.comuna,
       modalidad: "ltr",
-      decisividad: decisividades.cap_rate ?? 0,
+      decisividad: decisividades.cap_rate?.decisividad ?? 0,
+      magnitudContinua: decisividades.cap_rate?.magnitud ?? 0,
     });
     const hallazgoFlujoGen = buildHallazgoFlujoMensual({
       flujoNetoMensualCLP: m.flujoNetoMensual,
       dividendoMensualCLP: m.dividendo,
       modalidad: "ltr",
-      decisividad: decisividades.flujo_mensual ?? 0,
+      decisividad: decisividades.flujo_mensual?.decisividad ?? 0,
+      magnitudContinua: decisividades.flujo_mensual?.magnitud ?? 0,
     });
     const plusvaliaComunaGen = resolvePlusvaliaComuna(input.comuna);
     const hallazgoPlusvaliaGen = buildHallazgoPlusvalia({
@@ -1214,10 +1221,16 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       ref: getPlusvaliaRef(),
       comuna: input.comuna,
       modalidad: "ltr",
-      decisividad: decisividades.plusvalia ?? 0,
+      decisividad: decisividades.plusvalia?.decisividad ?? 0,
+      magnitudContinua: decisividades.plusvalia?.magnitud ?? 0,
     });
     const hallazgoEstructuraGen = fh
-      ? buildHallazgoEstructuraFinanciamiento({ financingHealth: fh, modalidad: "ltr", decisividad: decisividades.estructura_financiamiento ?? 0 })
+      ? buildHallazgoEstructuraFinanciamiento({
+          financingHealth: fh,
+          modalidad: "ltr",
+          decisividad: decisividades.estructura_financiamiento?.decisividad ?? 0,
+          magnitudContinua: decisividades.estructura_financiamiento?.magnitud ?? 0,
+        })
       : null;
     // Consumo dual de sobreprecio: la fuente es el objeto vivo de generación
     // (hallazgoSobreprecio, construido con la mediana async ya resuelta); si
@@ -1239,7 +1252,12 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       hallazgoEstructuraGen,
     ]
       .filter((h): h is Hallazgo => h != null)
-      .sort((a, b) => b.decisividad - a.decisividad);
+      // Orden de la pirámide: decisividad DESC (el floor manda: vinculantes arriba)
+      // y, DENTRO del mismo valor, magnitud continua DESC (desempate E4 — el que
+      // mueve más el score va primero; el que empata por floor pero no mueve el
+      // score, ej. capex-des-arma-gate, queda al final del grupo). Mismo comparador
+      // que HeroLTR.tsx (mantener sincronizados).
+      .sort((a, b) => b.decisividad - a.decisividad || (b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
 
     // Peso CUALITATIVO por umbrales: NO se expone el float a la IA (invita a
     // recitar "con una decisividad de 0,9…" → engine-ism). Cortes: ≥0.5 decisivo ·

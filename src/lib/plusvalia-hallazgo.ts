@@ -96,6 +96,8 @@ export function buildHallazgoPlusvalia(p: {
   /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
    *  "Δdecisión" (E2). El builder ya NO la calcula con |gap|/banda. */
   decisividad: number;
+  /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
+  magnitudContinua: number;
 }): HallazgoPlusvalia | null {
   if (!Number.isFinite(p.anualizadaPct) || !Number.isFinite(p.ref.pct)) return null;
 
@@ -155,6 +157,7 @@ export function buildHallazgoPlusvalia(p: {
     },
     direccion,
     decisividad: p.decisividad,
+    magnitudContinua: p.magnitudContinua,
     procedencia: {
       base,
       confianza: p.tieneData ? "media" : "baja",

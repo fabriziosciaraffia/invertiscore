@@ -104,6 +104,8 @@ export function buildHallazgoCapRate(p: {
   /** Decisividad calibrada (0..1) inyectada por calcDecisividades — escala común
    *  "Δdecisión" (E2). El builder ya NO la calcula con |gap|/banda. */
   decisividad: number;
+  /** Magnitud continua pre-floor — desempate secundario del sort (E4). */
+  magnitudContinua: number;
 }): HallazgoCapRate | null {
   if (!Number.isFinite(p.capRatePct) || !Number.isFinite(p.ref.pct)) return null;
 
@@ -146,6 +148,7 @@ export function buildHallazgoCapRate(p: {
     },
     direccion,
     decisividad: p.decisividad,
+    magnitudContinua: p.magnitudContinua,
     procedencia: {
       base: "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
       confianza: p.ref.confianza,
