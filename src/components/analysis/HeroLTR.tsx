@@ -517,7 +517,16 @@ function gatherTopHallazgos(
   const byId = new Map<string, Hallazgo>();
   for (const h of out) {
     const prev = byId.get(h.id);
-    if (!prev || h.decisividad > prev.decisividad) byId.set(h.id, h);
+    // El hallazgo CON titular gana SIEMPRE al que no lo tiene (presencia de titular
+    // = clave primaria). Sobreprecio tiene copia persistida en ai_analysis (legacy,
+    // sin titular, decisividad de calibración vieja) y otra recomputada fresca (con
+    // titular). El fresco es la fuente de verdad: gana aunque su decisividad sea
+    // menor, y así el RANKING usa la decisividad correcta (no la stale). Entre dos
+    // con el mismo estado de titular, manda la mayor decisividad, como antes.
+    const hT = !!h.titular;
+    const pT = prev ? !!prev.titular : false;
+    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
+    if (gana) byId.set(h.id, h);
   }
   // Orden: decisividad DESC y, dentro del mismo valor, magnitud continua DESC
   // (desempate E4 — mismo comparador que la pirámide en ai-generation.ts).
@@ -542,7 +551,10 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
   // Narrativa = titular del motor (direction-aware, 6-12 palabras, sin número).
   // Fuente única con la pirámide; la línea nunca contradice al KPI ni queda
   // descabezada (el bug de rebanar fraseCanonica, que tiene 2 familias invertidas).
-  const desc = h.titular;
+  // Fallback SOLO para hallazgos legacy sin titular (sobreprecio persistido en
+  // ai_analysis pre-deploy, cuando el recompute fresco no está disponible):
+  // fraseCanonica COMPLETA — la línea jamás queda vacía. Se ve larga, nunca en blanco.
+  const desc = h.titular || h.fraseCanonica;
   switch (h.id) {
     case "sobreprecio": {
       const v = h.valor;

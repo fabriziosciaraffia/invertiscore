@@ -47,11 +47,17 @@ function gatherHallazgos(
   // Motor-seeded persistidos (estructura, y los demás en el recompute del render).
   if (Array.isArray(results?.hallazgos)) results.hallazgos.forEach(push);
 
-  // Dedup por id: gana la de mayor decisividad (misma regla que el hero).
+  // Dedup por id: el hallazgo CON titular gana SIEMPRE al que no lo tiene (misma
+  // regla que el hero — la copia legacy de sobreprecio en ai_analysis, sin titular
+  // y con decisividad vieja, no debe gobernar ni el ranking ni la narración). Entre
+  // dos con el mismo estado de titular, manda la mayor decisividad.
   const byId = new Map<string, Hallazgo>();
   for (const h of out) {
     const prev = byId.get(h.id);
-    if (!prev || h.decisividad > prev.decisividad) byId.set(h.id, h);
+    const hT = !!h.titular;
+    const pT = prev ? !!prev.titular : false;
+    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
+    if (gana) byId.set(h.id, h);
   }
   return Array.from(byId.values());
 }
