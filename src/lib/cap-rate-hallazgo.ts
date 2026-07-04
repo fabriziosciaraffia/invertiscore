@@ -120,15 +120,19 @@ export function buildHallazgoCapRate(p: {
   const gapFmt = fmt1(gapAbs);
 
   let fraseCanonica: string;
+  let titular: string;
   if (gapAbs < 0.2) {
+    titular = "Rinde en línea con lo que pide el mercado.";
     fraseCanonica =
       `Tu CAP rate es ${crFmt}% — en línea con la referencia de mercado (${refFmt}%). ` +
       `Rinde lo esperable para este precio.`;
   } else if (direccion === "favorable") {
+    titular = "Rinde por sobre lo que el mercado paga.";
     fraseCanonica =
       `Tu CAP rate es ${crFmt}% — +${gapFmt} pts sobre la referencia de mercado (${refFmt}%). ` +
       `Rinde por sobre lo que el mercado paga para este precio.`;
   } else {
+    titular = "Rinde bajo lo que el mercado exige acá.";
     fraseCanonica =
       `Tu CAP rate es ${crFmt}% — ${gapFmt} pts bajo la referencia de mercado (${refFmt}%). ` +
       `Rinde bajo el promedio; el precio pide ajuste o conviene comparar con opciones más rentables en la zona.`;
@@ -153,6 +157,7 @@ export function buildHallazgoCapRate(p: {
       base: "CAP rate neto (NOI) sobre tu arriendo y precio declarados, neto de gastos operativos",
       confianza: p.ref.confianza,
     },
+    titular,
     fraseCanonica,
   };
 }

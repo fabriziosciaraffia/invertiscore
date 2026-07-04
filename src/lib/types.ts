@@ -227,6 +227,11 @@ export interface HallazgoPuestaAPunto {
   // de la pirámide/hero entre factores con la misma decisividad (E4). NO es el peso.
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 
@@ -254,6 +259,11 @@ export interface HallazgoCapRate {
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 
@@ -279,6 +289,11 @@ export interface HallazgoFlujoMensual {
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 
@@ -312,6 +327,11 @@ export interface HallazgoSobreprecio {
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 
@@ -344,6 +364,11 @@ export interface HallazgoPlusvalia {
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 
@@ -378,6 +403,11 @@ export interface HallazgoEstructuraFinanciamiento {
   // Magnitud continua pre-floor (|Δscore|/25) — SOLO desempate secundario del sort (E4).
   magnitudContinua?: number;
   procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número (el número vive en el KPI de la fila). fraseCanonica es la línea larga
+  // (2 oraciones) que narra la pirámide; titular es el resumen de una línea. Ambos
+  // los emite el motor por rama, direction-aware. Ver *-hallazgo.ts.
+  titular: string;
   fraseCanonica: string;
 }
 

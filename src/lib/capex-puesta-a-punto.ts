@@ -112,6 +112,11 @@ export function buildHallazgoPuestaAPunto(p: {
     `considera unos UF ${ufFmt} (${clpFmt}) de puesta a punto — cerca del ${pct}% ` +
     `de tu inversión inicial. No es flipping: es dejarlo en estándar de arriendo.`;
 
+  const titular =
+    p.capex.montoUF > 0
+      ? "Necesita puesta a punto antes de arrendar a mercado."
+      : "No necesita puesta a punto para arrendar a mercado.";
+
   return {
     id: "capex_puesta_a_punto",
     tipo: "capex_habilitacion",
@@ -129,6 +134,7 @@ export function buildHallazgoPuestaAPunto(p: {
     decisividad: p.decisividad,
     magnitudContinua: p.magnitudContinua,
     procedencia: { base, confianza },
+    titular,
     fraseCanonica,
   };
 }

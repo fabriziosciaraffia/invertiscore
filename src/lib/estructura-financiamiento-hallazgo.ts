@@ -114,6 +114,29 @@ function buildFrase(p: {
   }
 }
 
+// ─── Titular corto (hero TOP-3) ───────────────────────────────────────────────
+//
+// Espejo de buildFrase pero de UNA línea, diagnóstico + dirección, SIN número (el
+// número vive en el KPI de la fila). favorable = optimo|aceptable; adverso = resto.
+function buildTitular(p: { overall: FinancingHealthLevel; driver: "pie" | "tasa" | "ambos" }): string {
+  switch (p.overall) {
+    case "optimo":
+      return "Tu financiamiento está sólido: pie y tasa bien puestos.";
+    case "aceptable":
+      if (p.driver === "pie") return "Tu financiamiento está bien; el pie deja un margen menor.";
+      if (p.driver === "tasa") return "Tu financiamiento está bien; la tasa deja un margen menor.";
+      return "Tu financiamiento está bien, sin un punto débil claro.";
+    case "mejorable":
+      if (p.driver === "pie") return "Tu financiamiento tiene margen: el pie te deja corto.";
+      if (p.driver === "tasa") return "Tu financiamiento tiene margen: la tasa está sobre el mercado.";
+      return "Tu financiamiento tiene margen de mejora en pie y tasa.";
+    case "problematico":
+      if (p.driver === "pie") return "Tu financiamiento tiene un problema de fondo por el pie.";
+      if (p.driver === "tasa") return "Tu financiamiento tiene un problema de fondo por la tasa.";
+      return "Tu financiamiento tiene un problema de fondo en pie y tasa.";
+  }
+}
+
 // ─── Builder del hallazgo ─────────────────────────────────────────────────────
 
 /**
@@ -151,6 +174,8 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
     spreadBps: fh.tasa.spread_bps,
   });
 
+  const titular = buildTitular({ overall, driver });
+
   return {
     id: "estructura_financiamiento",
     tipo: "salud_financiamiento",
@@ -175,6 +200,7 @@ export function buildHallazgoEstructuraFinanciamiento(p: {
         `mercado de referencia (UF ${fmtTasa(fh.tasa.market_avg_pct)}%), no en tiempo real — pull manual, puede estar desactualizado.`,
       confianza: "media",
     },
+    titular,
     fraseCanonica,
   };
 }

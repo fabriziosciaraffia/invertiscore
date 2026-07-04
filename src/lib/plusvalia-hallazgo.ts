@@ -120,19 +120,24 @@ export function buildHallazgoPlusvalia(p: {
   // "cayeron" de una comuna que apreció 2,4% sería falso (a diferencia de
   // cap_rate, cuyo valor nunca es negativo y por eso le bastan 3 ramas).
   let fraseCanonica: string;
+  let titular: string;
   if (gapAbs <= EN_LINEA_PTS) {
+    titular = "La zona subió parejo con la inflación, histórico normal.";
     fraseCanonica =
       `En la última década ${sujeto} se valorizaron ${apFmt}% anual, en línea con el umbral de apreciación real (${refFmt}%). ` +
       `Plusvalía histórica normal: referencia, no garantía futura.`;
   } else if (direccion === "favorable") {
+    titular = "La zona ganó valor real sobre la inflación, históricamente.";
     fraseCanonica =
       `En la última década ${sujeto} se valorizaron ${apFmt}% anual, sobre el umbral de apreciación real (${refFmt}%). ` +
       `Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita.`;
   } else if (p.anualizadaPct < 0) {
+    titular = "La zona perdió valor real en la última década.";
     fraseCanonica =
       `En la última década ${sujeto} cayeron ${fmt1(Math.abs(p.anualizadaPct))}% anual de valor, bajo el umbral de apreciación real (${refFmt}%). ` +
       `La historia no respalda una apuesta a plusvalía acá.`;
   } else {
+    titular = "La zona no le ganó a la inflación en la década.";
     fraseCanonica =
       `En la última década ${sujeto} se valorizaron ${apFmt}% anual, bajo el umbral de apreciación real (${refFmt}%). ` +
       `No le ganaron a la inflación de largo plazo; la plusvalía histórica acá es débil, no garantía futura.`;
@@ -162,6 +167,7 @@ export function buildHallazgoPlusvalia(p: {
       base,
       confianza: p.tieneData ? "media" : "baja",
     },
+    titular,
     fraseCanonica,
   };
 }

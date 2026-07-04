@@ -75,15 +75,19 @@ export function buildHallazgoSobreprecio(
   const desvAbs = Math.abs(desv);
 
   let fraseCanonica: string;
+  let titular: string;
   if (desvAbs <= EN_LINEA_UMBRAL_PCT) {
+    titular = "Pagas el metro a precio de zona, sin sobreprecio.";
     fraseCanonica =
       `Tu precio por m² (${sujetoFmt}) está en línea con la mediana de la zona (${medianaFmt}). ` +
       `Pagas lo que vale el metro en esta comuna.`;
   } else if (direccion === "favorable") {
+    titular = "Entras barato: el metro está bajo la zona.";
     fraseCanonica =
       `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% bajo la mediana de la zona (${medianaFmt}). ` +
       `Entras barato para esta comuna.`;
   } else {
+    titular = "Estás pagando caro el metro para esta comuna.";
     fraseCanonica =
       `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% sobre la mediana de la zona (${medianaFmt}). ` +
       `Estás pagando caro el metro para esta comuna.`;
@@ -107,6 +111,7 @@ export function buildHallazgoSobreprecio(
       base: "mediana de precios de PUBLICACIÓN de venta de la comuna (scraped), no transacción",
       confianza: "media",
     },
+    titular,
     fraseCanonica,
   };
 }

@@ -57,15 +57,19 @@ export function buildHallazgoFlujoMensual(p: {
   const montoFmt = fmtCLP(aporte);
 
   let fraseCanonica: string;
+  let titular: string;
   if (direccion === "favorable") {
+    titular = "El arriendo cubre la cuota y no pones nada.";
     fraseCanonica =
       `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
       `La propiedad se sostiene sola desde el día uno.`;
   } else if (ratio < UMBRAL_DECISIVO) {
+    titular = "Pones algo de tu bolsillo cada mes.";
     fraseCanonica =
       `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
       `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`;
   } else {
+    titular = "Pones plata de tu bolsillo todos los meses.";
     fraseCanonica =
       `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte fuerte respecto al dividendo. ` +
       `Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata ` +
@@ -88,6 +92,7 @@ export function buildHallazgoFlujoMensual(p: {
       base: "aporte mensual neto sobre tus datos declarados, tras dividendo y todos los gastos operativos",
       confianza: "alta",
     },
+    titular,
     fraseCanonica,
   };
 }
