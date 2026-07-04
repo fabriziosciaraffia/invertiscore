@@ -1570,12 +1570,22 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       const armar = (cont: unknown): string => {
         const c = typeof cont === "string" ? cont.trim() : "";
         if (!c) return apertura;
-        // Sanity de no-repetición (loguea, NO bloquea): si la continuación arranca
-        // copiando >6 palabras de la apertura fija.
+        // Sanity de no-repetición: si la continuación arranca copiando >6 palabras
+        // de la apertura fija, STRIP determinístico del prefijo duplicado y ensambla
+        // con lo que queda. Borde: si tras el strip quedan <15 palabras, no strippea
+        // (mejor duplicado que mutilado) y deja el warning.
         const cw = c.toLowerCase().split(/\s+/);
         let match = 0;
         while (match < aw.length && match < cw.length && aw[match] === cw[match]) match++;
-        if (match > 6) console.warn(`[PLANC-REPEAT] ${analysisId}: la continuación repite ${match} palabras de la apertura fija`);
+        if (match > 6) {
+          const resto = c.split(/\s+/).slice(match).join(" ").trim();
+          const restoWC = resto ? resto.split(/\s+/).filter(Boolean).length : 0;
+          if (restoWC >= 15) {
+            console.warn(`[PLANC-REPEAT-STRIPPED] ${analysisId}: continuación repetía ${match} palabras de la apertura — prefijo strippeado, quedan ${restoWC} palabras`);
+            return `${apertura} ${resto}`;
+          }
+          console.warn(`[PLANC-REPEAT] ${analysisId}: la continuación repite ${match} palabras de la apertura fija (strip omitido: quedarían ${restoWC} < 15 palabras)`);
+        }
         return `${apertura} ${c}`;
       };
       aiResult.conviene.respuestaDirecta_clp = armar(aiResult.conviene.respuestaDirecta_clp);
