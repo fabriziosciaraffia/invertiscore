@@ -16,10 +16,11 @@
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 
-// Mapa hallazgo → drawer de detalle (Fase 2). cap_rate queda SIN entrada a
-// propósito: su drawer llega en Fase 3. Sin entrada ⇒ sin affordance "Ver detalle".
+// Mapa hallazgo → drawer de detalle. Los 6 hallazgos LTR tienen drawer (cap_rate
+// se sumó en Fase 3). Sin entrada ⇒ sin affordance "Ver detalle".
 const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   flujo_mensual: "costoMensual",
+  cap_rate: "capRate",
   sobreprecio: "negociacion",
   plusvalia: "largoPlazo",
   capex_puesta_a_punto: "capexPuestaAPunto",

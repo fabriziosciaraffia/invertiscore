@@ -10,6 +10,7 @@ import type {
   AnalisisInput,
   HallazgoPuestaAPunto,
   HallazgoEstructuraFinanciamiento,
+  HallazgoCapRate,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -21,7 +22,7 @@ import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
 import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
-export type DrawerKey = "costoMensual" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona" | "capexPuestaAPunto";
+export type DrawerKey = "costoMensual" | "capRate" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona" | "capexPuestaAPunto";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -46,6 +47,10 @@ const DRAWER_META: Record<
   { num: string; label: string; prev?: DrawerKey; next?: DrawerKey }
 > = {
   costoMensual: { num: "02", label: "Costo mensual", prev: undefined, next: "negociacion" },
+  // "02+" indica complemento — cap rate es la cara de rentabilidad operativa del
+  // mismo bloque de costo/flujo. Se interpone entre costoMensual y negociacion
+  // solo cuando el hallazgo cap_rate existe (mismo mecanismo que reestructuracion).
+  capRate: { num: "02+", label: "Cap rate", prev: "costoMensual", next: "negociacion" },
   negociacion: { num: "03", label: "Negociación", prev: "costoMensual", next: "largoPlazo" },
   // "03+" indica complementariedad — reestructuracion es alternativa a negociar
   // cuando el problema es financiamiento, no precio. Solo aparece cuando
@@ -2076,6 +2081,124 @@ function DrawerCapexPuestaAPunto({
   );
 }
 
+// Drawer del hallazgo cap_rate (motor, no IA). Contenido liviano solo-motor, sin
+// chart: cap rate del deal vs referencia comunal, traducción a plata (arriendo
+// anual neto vs precio) y qué arriendo mensual pediría para alcanzar la
+// referencia. Los montos se derivan del cap rate × precio para ser 100%
+// consistentes con los % mostrados (no se recalcula NOI por otra vía).
+function DrawerCapRate({
+  hallazgo,
+  results,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoCapRate;
+  results: FullAnalysisResult;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const { capRatePct, capRefPct, gapPts, fuente } = hallazgo.valor;
+  const adverso = hallazgo.direccion === "adverso"; // rinde bajo la referencia
+  const precioCLP = results.metrics?.precioCLP ?? 0;
+  const arriendoActual = results.metrics?.ingresoMensual ?? 0;
+
+  // Arriendo anual neto (NOI) derivado del cap rate mostrado × precio — misma
+  // base que el %, sin recomputar por otra vía. El objetivo usa la referencia.
+  const noiAnual = (capRatePct / 100) * precioCLP;
+  const noiObjetivoAnual = (capRefPct / 100) * precioCLP;
+  // Gastos operativos constantes ⇒ Δneto ≈ Δarriendo bruto. Cálculo directo.
+  const gapNetoMensual = (noiObjetivoAnual - noiAnual) / 12; // >0 ⇒ falta rendimiento
+  const arriendoObjetivo = arriendoActual + gapNetoMensual;
+
+  const fmt = (n: number) => fmtMoney(n, currency, valorUF);
+  const pct = (n: number) => n.toFixed(1).replace(".", ",");
+
+  return (
+    <div>
+      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
+        <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
+        <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes del dividendo) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
+      </p>
+
+      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
+        {hallazgo.fraseCanonica}
+      </div>
+
+      {/* Cap rate vs referencia — chips numéricos en mono */}
+      <div
+        className="rounded-[8px] p-4 mb-4"
+        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
+          Rendimiento operativo
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Tu cap rate
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {pct(capRatePct)}%
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Referencia
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {pct(capRefPct)}%
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Brecha
+            </p>
+            <p
+              className={`font-mono font-bold text-[20px] m-0 leading-tight ${
+                adverso ? "text-signal-red" : "text-[var(--franco-text)]"
+              }`}
+            >
+              {gapPts > 0 ? "+" : gapPts < 0 ? "−" : ""}
+              {pct(Math.abs(gapPts))} pts
+            </p>
+          </div>
+        </div>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
+          Hoy: {fmt(noiAnual)} netos al año sobre un precio de {fmt(precioCLP)}. Referencia: {fuente}.
+        </p>
+      </div>
+
+      {/* Bloque conclusivo — arriendo que pediría la referencia (cálculo directo) */}
+      <div
+        className="rounded-r-[8px] p-4"
+        style={{
+          borderLeft: "3px solid var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+          {adverso ? "Para rendir como la zona" : "Ya rinde sobre la zona"}
+        </p>
+        {adverso ? (
+          <>
+            <p className="font-mono font-bold text-[24px] text-[var(--franco-text)] m-0 leading-tight">
+              {fmt(arriendoObjetivo)}
+              <span className="text-[14px] font-medium"> /mes</span>
+            </p>
+            <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mt-1">
+              Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de la zona ({pct(capRefPct)}%) necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
+            </p>
+          </>
+        ) : (
+          <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de la zona ({pct(capRefPct)}%). El activo trabaja a tu favor.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main drawer ────────────────────────────────────
 function ZoneSkeleton() {
   return (
@@ -2180,16 +2303,29 @@ export function AnalysisDrawer({
   comuna,
   arriendoUsuarioCLP,
 }: DrawerProps) {
-  // Navegación dinámica: cuando reestructuracion existe, se interpone entre
-  // negociacion y largoPlazo. Cuando no existe, la cadena salta directo.
+  // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer
+  // capRate y define si se interpone en la cadena de navegación.
+  const capRateHallazgo =
+    results.hallazgos?.find((h): h is HallazgoCapRate => h.id === "cap_rate") ??
+    results.metrics?.hallazgoCapRate ??
+    undefined;
+
+  // Navegación dinámica: capRate se interpone entre costoMensual y negociacion
+  // cuando el hallazgo existe; reestructuracion entre negociacion y largoPlazo
+  // cuando la sección IA existe. Ambos con el mismo mecanismo; sin ellos la
+  // cadena salta directo. (Los dos pueden aplicar a negociacion a la vez.)
   const meta = useMemo(() => {
-    const base = DRAWER_META[activeKey];
-    const hasReestructuracion = !!aiAnalysis.reestructuracion;
-    if (!hasReestructuracion) return base;
-    if (activeKey === "negociacion") return { ...base, next: "reestructuracion" as DrawerKey };
-    if (activeKey === "largoPlazo") return { ...base, prev: "reestructuracion" as DrawerKey };
-    return base;
-  }, [activeKey, aiAnalysis.reestructuracion]);
+    const m = { ...DRAWER_META[activeKey] };
+    if (capRateHallazgo) {
+      if (activeKey === "costoMensual") m.next = "capRate";
+      if (activeKey === "negociacion") m.prev = "capRate";
+    }
+    if (aiAnalysis.reestructuracion) {
+      if (activeKey === "negociacion") m.next = "reestructuracion";
+      if (activeKey === "largoPlazo") m.prev = "reestructuracion";
+    }
+    return m;
+  }, [activeKey, aiAnalysis.reestructuracion, capRateHallazgo]);
 
   // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
   const zonaTitle = "Lo que no ves a simple vista";
@@ -2199,6 +2335,7 @@ export function AnalysisDrawer({
     ? "¿Y si cambias la estructura?"
     : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
+  const capRateTitle = "Lo que renta hoy vs lo que debería";
 
   // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
   // fallback del drawer de reestructuración cuando no hay sección IA.
@@ -2212,7 +2349,9 @@ export function AnalysisDrawer({
         ? ({ pregunta: reestructuracionTitle } as { pregunta: string })
         : activeKey === "capexPuestaAPunto"
           ? ({ pregunta: capexTitle } as { pregunta: string })
-          : aiAnalysis[activeKey];
+          : activeKey === "capRate"
+            ? ({ pregunta: capRateTitle } as { pregunta: string })
+            : aiAnalysis[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -2343,6 +2482,14 @@ export function AnalysisDrawer({
             <DrawerCapexPuestaAPunto
               hallazgo={results.hallazgos[0]}
               currency={currency}
+            />
+          )}
+          {activeKey === "capRate" && capRateHallazgo && (
+            <DrawerCapRate
+              hallazgo={capRateHallazgo}
+              results={results}
+              currency={currency}
+              valorUF={valorUF}
             />
           )}
           {activeKey === "largoPlazo" && (
