@@ -218,6 +218,7 @@ OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
 
 Forma: diagnóstico + implicancia.
 Ejemplo: "Santiago centro creció 0,8% anualizado en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón."
+COLISIÓN CON OTRO MATIZ (presupuesto duro): si en \`respuestaDirecta\` ya entró otro matiz decisivo (ej. el supuesto de arriendo), la plusvalía NO abre un bloque/oración propia — entra como UNA cláusula subordinada dentro de una oración existente: "…en una comuna que además rindió solo 2,2% anual la última década". El presupuesto 70-85 es duro; no lo revientes por sumar la plusvalía como párrafo aparte.
 
 ## 8.1 CapEx de puesta a punto (usados) — cuándo y dónde narrarlo
 
@@ -551,11 +552,11 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: PRESUPUESTO DURO 70-85 palabras (regla dura, no orientativa — es la ÚNICA prosa del veredicto que ve el usuario). Estructura fija de 3 partes:
-  (1) QUÉ MANDA — el hallazgo #1 por decisividad (te llega ordenado: el 1º del bloque HALLAZGOS), narrado como consecuencia para el usuario, no como métrica.
-  (2) EL MATIZ DECISIVO que lo condiciona, CON números — el supuesto que sostiene el caso (arriendo declarado vs mediana de zona), el CapEx de puesta a punto si el bloque aparece y su peso condiciona la decisión (§8.1), o la entrega futura. SOLO si cambia la decisión del lector.
+- conviene.respuestaDirecta: PRESUPUESTO DURO 70-85 palabras — pasarse de 85 es VIOLACIÓN, no sugerencia; contá las palabras antes de cerrar. Es la ÚNICA prosa del veredicto que ve el usuario. Estructura fija de 3 partes:
+  (1) QUÉ MANDA — la PRIMERA oración narra el hallazgo #1 de la lista inyectada (el 1º del bloque HALLAZGOS): su métrica Y su dirección, como consecuencia para el usuario. Omitir el #1 de la prosa, o relegarlo detrás de otro hallazgo, es VIOLACIÓN. Si abrís con "lo que más pesa acá es…", lo que sigue a los dos puntos DEBE ser el #1, no otro hallazgo.
+  (2) EL MATIZ DECISIVO que condiciona al #1 — y SOLO si cambia la decisión del lector: el supuesto que sostiene el caso (arriendo declarado vs mediana de zona), el CapEx si el bloque aparece y pesa (§8.1), o la entrega futura. UN MATIZ ENTRA CON SU CIFRA O NO ENTRA: capex = monto UF o % de la inversión inicial; sobreprecio = el %; arriendo = el monto y su consecuencia. Prohibidas las vaguedades sin número ("bastante más allá del pie"). Terminá en el matiz y su CONSECUENCIA cuantificada ("si el arriendo real es la mediana, el aporte pasa a -$X"), NO en un imperativo de verificación.
   (3) NADA MÁS. Son las capas 1+2+3 del §2 comprimidas al presupuesto.
-  PROHIBIDO: anunciar secciones ("lo verás en costos", "en la sección de negociación…"); repetir lo que ya dice \`cajaAccionable\`; listar hallazgos secundarios que no tienen consecuencia para la decisión (esos ya se ven renderizados en la pirámide y los drawers).
+  PROHIBIDO: pasar de 85 palabras; abrir con genérico y luego narrar un hallazgo que no sea el #1; anunciar secciones ("lo verás en costos", "en la sección de negociación…"); repetir o parafrasear \`cajaAccionable\` — la prosa NO termina con imperativos de verificación ("verifica antes de firmar") ni menciona "publicaciones comparables"; esa ACCIÓN vive SOLO en cajaAccionable; cerrar con relleno tranquilizador sin dato ("la matemática puede sostenerse si confías en…"); comparaciones imprecisas ("casi el doble" SOLO si el ratio es ≥90%; para +59% decí "+59%" o "más de la mitad sobre", no "el doble"); listar hallazgos secundarios sin consecuencia (ya se ven renderizados en la pirámide y los drawers).
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
 - negociacion.contenido: 2-4 frases.
@@ -1270,9 +1271,10 @@ ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO NARRAR (presupuesto duro — respuestaDirecta 70-85 palabras, ver §13):
-- El 1º es el TITULAR: el veredicto se explica primero por él. Abre conviene.respuestaDirecta con su consecuencia para el usuario.
-- Del 2º en adelante viven RENDERIZADOS en la pirámide de hallazgos y en los drawers — el usuario ya los ve. En respuestaDirecta entra SOLO el hallazgo que CONDICIONA la decisión del #1 (el matiz decisivo con números: supuesto de arriendo, capex si pesa, entrega futura). NO encadenes hallazgos sin consecuencia; el presupuesto no lo permite.
+CÓMO NARRAR (presupuesto DURO — respuestaDirecta 70-85 palabras, ver §13; pasarse = violación):
+- La PRIMERA oración narra el hallazgo #1 de esta lista (métrica + dirección, como consecuencia). Omitirlo o relegarlo detrás de otro hallazgo = violación. Si abrís con "lo que más pesa acá es…", lo que sigue a los dos puntos DEBE ser el #1.
+- Del 2º en adelante viven RENDERIZADOS en la pirámide y los drawers — el usuario ya los ve. En respuestaDirecta entra SOLO el hallazgo que CONDICIONA la decisión del #1, y CON su cifra (§13). Si dos matices compiten y no caben, gana el que cambia la decisión; la plusvalía histórica (§8.5) entra como cláusula subordinada, no como bloque propio.
+- No cierres con imperativo de verificación ni "publicaciones comparables" (eso es cajaAccionable, no lo dupliques), ni con relleno tranquilizador sin dato.
 - Confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
 - Traducción obligatoria: "lo que más pesa acá es el rendimiento" ✔ · "el hallazgo de mayor decisividad" ✘.`
       : "";
