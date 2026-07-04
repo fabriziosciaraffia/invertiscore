@@ -50,10 +50,6 @@ export function HeroLTR({
   const hasDireccion = direccion.length > 0;
   const dorm = inputData?.dormitorios;
   const banos = inputData?.banos;
-  const subtitle =
-    dorm != null && banos != null
-      ? `Depto ${dorm}D/${banos}B · análisis de inversión`
-      : "Análisis de inversión";
 
   // ── Chips financieros (F2): respetan el toggle CLP/UF (regla "cambia todos los valores") ──
   const precioUF = Number(inputData?.precio) || 0;
@@ -122,8 +118,8 @@ export function HeroLTR({
     currency === "CLP" ? data.conviene.respuestaDirecta_clp : data.conviene.respuestaDirecta_uf;
   const cajaAccionable =
     currency === "CLP" ? data.conviene.cajaAccionable_clp : data.conviene.cajaAccionable_uf;
-  const veredictoFrase =
-    currency === "CLP" ? data.conviene.veredictoFrase_clp : data.conviene.veredictoFrase_uf;
+  // veredictoFrase (schema.conviene) ya no se renderiza en el hero compacto — la
+  // prosa fundida lo dice. El campo sigue en el schema (Entrega 2 decide su destino).
   const pregunta = data.conviene.pregunta || "¿Conviene o no conviene?";
   const topHallazgos = gatherTopHallazgos(results, data).slice(0, 3);
   const fechaFirma = formatFecha(createdAt);
@@ -136,8 +132,8 @@ export function HeroLTR({
         border: "0.5px solid var(--franco-border-strong)",
       }}
     >
-      {/* ═══ F1 · IDENTIDAD ═══ */}
-      <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-6 pb-5">
+      {/* ═══ F1 · IDENTIDAD (compacto: sin subtítulo · rótulo modalidad a la derecha) ═══ */}
+      <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
         <div className="min-w-0">
           <h1 className="font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
             {hasDireccion ? (
@@ -151,55 +147,27 @@ export function HeroLTR({
               propiedadTitle
             )}
           </h1>
-          <p className="mt-1.5 font-body text-[13.5px] text-[var(--franco-text-secondary)] m-0">
-            {subtitle}
-          </p>
         </div>
-        <CurrencyToggle currency={currency} onCurrencyChange={onCurrencyChange} />
-      </div>
-
-      <div className="h-px" style={{ background: "var(--franco-border)" }} />
-
-      {/* ═══ F2 · CHIPS (una fila; físicos | financieros con divisor mudo) ═══ */}
-      <div className="flex items-center px-6 md:px-8 py-3.5 overflow-x-auto">
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          <Chip icon={<BedDouble />} k={dorm != null ? String(dorm) : "—"} unit="dorm" />
-          <Chip icon={<Bath />} k={banos != null ? String(banos) : "—"} unit="baño" />
-          <Chip icon={<Ruler />} k={superficie > 0 ? String(superficie) : "—"} unit="m²" />
-          <Chip
-            icon={<Clock />}
-            k={inputData?.antiguedad != null ? String(inputData.antiguedad) : "—"}
-            unit="años"
-          />
-        </div>
-
-        <div
-          className="w-px self-stretch mx-3.5 my-0.5 shrink-0"
-          style={{ background: "var(--franco-border-hover)" }}
-        />
-
-        <div className="flex items-center gap-1.5 flex-nowrap">
-          <Chip icon={<Building2 />} k={precioMain} sub={precioSub} />
-          <Chip icon={<Scaling />} k={m2Main} unit="/m²" />
-          <Chip icon={<Percent />} k={`${piePct}%`} unit="pie" sub={`· ${plazoAnios} años · ${tasaStr}%`} />
-          <Chip icon={<Wallet />} k={arriendoStr} unit="arriendo est." />
+        {/* Rótulo de modalidad (Ink 500) + toggle — 0px de altura extra (comparten fila) */}
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="hidden sm:inline font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] whitespace-nowrap">
+            Análisis renta larga
+          </span>
+          <CurrencyToggle currency={currency} onCurrencyChange={onCurrencyChange} />
         </div>
       </div>
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
-      {/* ═══ F3 · SCORE | MAPA (grilla compartida 52/48; sin borde vertical — A1) ═══ */}
-      <div className={`grid grid-cols-1 ${SHARED_GRID} gap-x-8 gap-y-6 px-6 md:px-8 py-6`}>
-        {/* Score */}
+      {/* ═══ F3 · SCORE+CHIPS | MAPA (grilla propia 66/34; chips fundidos bajo el score) ═══ */}
+      <div className="grid grid-cols-1 md:grid-cols-[minmax(0,66fr)_minmax(0,34fr)] gap-x-8 gap-y-6 px-6 md:px-8 py-3">
+        {/* Score + chips */}
         <div>
-          <div className="flex items-center justify-between gap-3">
-            <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
-              Franco Score
-            </span>
-            <Wordmark />
-          </div>
+          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+            Franco Score
+          </span>
 
-          <div className="flex items-center gap-4 mt-4">
+          <div className="flex items-center gap-4 mt-3">
             <div className="font-mono font-bold text-[48px] md:text-[52px] leading-[0.9] tracking-[-0.02em] text-[var(--franco-text)]">
               {score}
               <span className="text-[22px] font-normal text-[var(--franco-text-muted)]">/100</span>
@@ -208,25 +176,47 @@ export function HeroLTR({
           </div>
 
           <ScoreBar score={score} />
+
+          {/* Chips fundidos: físicos / financieros, 2 filas envueltas (sin divisor) */}
+          <div className="mt-4 flex flex-col gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
+              <Chip icon={<BedDouble />} k={dorm != null ? String(dorm) : "—"} unit="dorm" />
+              <Chip icon={<Bath />} k={banos != null ? String(banos) : "—"} unit="baño" />
+              <Chip icon={<Ruler />} k={superficie > 0 ? String(superficie) : "—"} unit="m²" />
+              <Chip
+                icon={<Clock />}
+                k={inputData?.antiguedad != null ? String(inputData.antiguedad) : "—"}
+                unit="años"
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <Chip icon={<Building2 />} k={precioMain} sub={precioSub} />
+              <Chip icon={<Scaling />} k={m2Main} unit="/m²" />
+              <Chip icon={<Percent />} k={`${piePct}%`} unit="pie" sub={`· ${plazoAnios} años · ${tasaStr}%`} />
+              <Chip icon={<Wallet />} k={arriendoStr} unit="arriendo est." />
+            </div>
+          </div>
         </div>
 
-        {/* Mapa */}
-        <div>
-          <MapaThumbnail
-            lat={lat}
-            lng={lng}
-            comparables={comparables}
-            comparablesCount={comparablesCount}
-            locationLabel={mapLabel}
-            height={206}
-          />
+        {/* Mapa — altura fija igualada a la col izquierda (score+chips) */}
+        <div className="flex">
+          <div className="flex-1">
+            <MapaThumbnail
+              lat={lat}
+              lng={lng}
+              comparables={comparables}
+              comparablesCount={comparablesCount}
+              locationLabel={mapLabel}
+              height={196}
+            />
+          </div>
         </div>
       </div>
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
       {/* ═══ F4 · VEREDICTO | FINDINGS (misma grilla 52/48; sin borde vertical — A1) ═══ */}
-      <div className={`grid grid-cols-1 ${SHARED_GRID} gap-x-8 gap-y-8 px-6 md:px-8 py-7`}>
+      <div className={`grid grid-cols-1 ${SHARED_GRID} gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]`}>
         {/* Veredicto */}
         <div>
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
@@ -280,10 +270,10 @@ export function HeroLTR({
             />
           ))}
 
-          {veredictoFrase && (
-            <div className="mt-4 pt-3.5 border-t border-[var(--franco-border)] font-body text-[12.5px] leading-[1.5] text-[var(--franco-text-secondary)]">
-              {veredictoFrase}
-              <span className="block mt-2 font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
+          {/* Puente a la pirámide — pegado al TOP-3 (veredictoFrase ya no se renderiza) */}
+          {topHallazgos.length > 0 && (
+            <div className="mt-3 pt-2.5 border-t border-[var(--franco-border)]">
+              <span className="block font-mono text-[10.5px] uppercase tracking-[0.05em] text-[var(--franco-text-tertiary)]">
                 Cómo pesa cada hallazgo ↓
               </span>
             </div>
@@ -294,7 +284,7 @@ export function HeroLTR({
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
       {/* ═══ PIE · FIRMA (absorbe el disclaimer IA) ═══ */}
-      <div className="flex items-center justify-between gap-3 px-6 md:px-8 py-4">
+      <div className="flex items-center justify-between gap-3 px-6 md:px-8 py-2">
         <span className="font-body text-[11px] text-[var(--franco-text-muted)]">
           Análisis generado por IA{fechaFirma ? ` · ${fechaFirma}` : ""}
         </span>
