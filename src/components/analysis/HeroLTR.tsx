@@ -539,11 +539,15 @@ interface FindingView {
 // término técnico + KPI). Narrowing por `id` (unión discriminada).
 function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): FindingView {
   const tip = h.procedencia?.base ?? "";
+  // Narrativa = titular del motor (direction-aware, 6-12 palabras, sin número).
+  // Fuente única con la pirámide; la línea nunca contradice al KPI ni queda
+  // descabezada (el bug de rebanar fraseCanonica, que tiene 2 familias invertidas).
+  const desc = h.titular;
   switch (h.id) {
     case "sobreprecio": {
       const v = h.valor;
       return {
-        desc: "Estás pagando caro el metro para esta comuna: casi el doble de la mediana.",
+        desc,
         term: "Precio/m² vs zona",
         tooltip: `${tip}${v.n ? ` · n = ${v.n}` : ""}.`,
         kpi: `+${Math.round(v.desviacionPct)}%`,
@@ -554,7 +558,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     case "cap_rate": {
       const v = h.valor;
       return {
-        desc: "Rinde bajo el promedio que el mercado exige para este precio.",
+        desc,
         term: "CAP rate",
         tooltip: tip ? `${tip}.` : "Rentabilidad operativa neta (NOI) sobre el precio.",
         kpi: `${pct1(v.capRatePct)}%`,
@@ -565,7 +569,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     case "flujo_mensual": {
       const v = h.valor;
       return {
-        desc: "El arriendo no cubre el dividendo: pones plata todos los meses.",
+        desc,
         term: "Aporte mensual",
         tooltip: tip
           ? `${tip}.`
@@ -578,7 +582,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     case "plusvalia": {
       const v = h.valor;
       return {
-        desc: "La zona tiene track record de plusvalía razonable — no rescata el precio.",
+        desc,
         term: "Plusvalía histórica",
         tooltip: tip ? `${tip}.` : "Apreciación histórica de la comuna. Referencia, no garantía.",
         kpi: `${pct1(v.anualizadaPct)}%`,
@@ -589,7 +593,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     case "capex_puesta_a_punto": {
       const v = h.valor;
       return {
-        desc: "Necesita puesta a punto antes de captar arriendo de mercado.",
+        desc,
         term: "CapEx habilitación",
         tooltip: tip ? `${tip}.` : "Inversión estimada para dejarlo en estándar de arriendo.",
         kpi: currency === "UF" ? fmtUF(v.montoUF) : fmtCLP(v.montoCLP),
@@ -600,7 +604,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
     case "estructura_financiamiento": {
       const v = h.valor;
       return {
-        desc: "La estructura de financiamiento (pie y tasa) define parte del riesgo.",
+        desc,
         term: "Estructura (pie/tasa)",
         tooltip: tip ? `${tip}.` : "Salud combinada de pie y tasa contra el mercado.",
         kpi: `${v.piePct}% / ${pct1(v.tasaPct)}%`,
