@@ -61,13 +61,22 @@ export function HeroLTR({
   const tasaStr = tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 });
   const arriendoCLP = Number(inputData?.arriendo) || 0;
 
-  const precioMain = currency === "UF" ? fmtUF(precioUF) : fmtCLP(precioUF * valorUF);
-  const precioSub = currency === "UF" ? fmtCLP(precioUF * valorUF) : fmtUF(precioUF);
+  // Chips financieros — UNA moneda según el toggle (el mismo que rige la prosa).
+  // CLP en millones abreviados ("$139,7 MM"); bajo $1 MM en miles ("$600 mil"),
+  // porque "$0,6 MM" para un arriendo lee mal. UF en su valor pleno ("UF 3.500").
+  // fmtM de utils usa sufijo "M"/"K" (otra convención) — acá va "MM" (millones).
+  const fmtMM = (clp: number) => {
+    if (Math.abs(clp) < 1_000_000) return "$" + Math.round(clp / 1000).toLocaleString("es-CL") + " mil";
+    return "$" + (clp / 1_000_000).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " MM";
+  };
+  const precioChip = currency === "UF" ? fmtUF(precioUF) : fmtMM(precioUF * valorUF);
   // UF/m² SIEMPRE en UF: es la métrica de comparación contra la mediana de la
   // comuna (el finding "Precio/m² vs zona" también la expresa en UF). No flipea
   // con el toggle — en CLP el $/m² sería un número enorme e inconsistente.
   const m2Main = `UF ${(Math.round(precioM2UF * 10) / 10).toLocaleString("es-CL")}`;
-  const arriendoStr = arriendoCLP > 0 ? fmtMoney(arriendoCLP, currency, valorUF) : "—";
+  const arriendoChip = arriendoCLP > 0
+    ? (currency === "UF" ? fmtUF(arriendoCLP / valorUF) : fmtMM(arriendoCLP))
+    : "—";
 
   // ── Score / mapa (F3) ──
   // Coords desde input_data (misma fuente que el resto de la página).
@@ -190,10 +199,10 @@ export function HeroLTR({
               />
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <Chip icon={<Building2 />} k={precioMain} sub={precioSub} />
+              <Chip icon={<Building2 />} k={precioChip} />
               <Chip icon={<Scaling />} k={m2Main} unit="/m²" />
               <Chip icon={<Percent />} k={`${piePct}%`} unit="pie" sub={`· ${plazoAnios} años · ${tasaStr}%`} />
-              <Chip icon={<Wallet />} k={arriendoStr} unit="arriendo est." />
+              <Chip icon={<Wallet />} k={arriendoChip} unit="arr." />
             </div>
           </div>
         </div>
