@@ -604,13 +604,15 @@ export interface AIConvieneSection {
   pregunta: string;
   respuestaDirecta_clp: string;
   respuestaDirecta_uf: string;
-  veredictoFrase_clp: string;
-  veredictoFrase_uf: string;
-  // Opcional: el prompt LTR dejó de emitirlo (campo huérfano, sin consumidor de
-  // render). Se conserva en el tipo para análisis viejos persistidos que sí lo traen.
+  // Opcionales (Entrega 2 · prosa fundida): el prompt LTR ya no los emite —
+  // respuestaDirecta absorbió lo decisivo del reencuadre y el hero no renderiza
+  // ninguno. Se conservan en el tipo para análisis viejos persistidos que sí los
+  // traen (la OG image los usa con cadena de fallback; ver /api/og/veredicto).
+  veredictoFrase_clp?: string;
+  veredictoFrase_uf?: string;
   datosClave?: DatoClave[];
-  reencuadre_clp: string;
-  reencuadre_uf: string;
+  reencuadre_clp?: string;
+  reencuadre_uf?: string;
   cajaAccionable_clp: string;
   cajaAccionable_uf: string;
   cajaLabel: string;

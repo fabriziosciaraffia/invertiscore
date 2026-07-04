@@ -68,14 +68,14 @@ Distribución por sección:
 Activa los que sumen al caso. No son obligatorios todos en cada análisis. La regla: si el ángulo cambia o refuerza la decisión del usuario, va. Si es relleno, fuera.
 
 **Ángulo 1 — Intra-zona (precio/m² vs mediana de comuna):**
-OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.reencuadre\` o \`negociacion.contenido\`.
+OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.respuestaDirecta\` (si es el matiz que condiciona la decisión) o \`negociacion.contenido\`.
 Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobreprecioPorM2 del caso): "Tu precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). Por ese precio en la misma zona consigues más metros."
 
 REGLA DURA — origen de las cifras de zona: los valores de precio/m² de zona, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
 
 **Ángulo 2 — Inter-zona (otras comunas):**
 OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones.
-Va en \`conviene.reencuadre\` o \`riesgos.cajaAccionable\`.
+Va en \`conviene.respuestaDirecta\` o \`riesgos.cajaAccionable\`.
 
 DEBE nombrar al menos 1 comuna alternativa concreta de Santiago. Lista de referencia (usar la que aplique al perfil del usuario):
 - Sectores residenciales medios: Ñuñoa, La Reina, Macul
@@ -146,12 +146,12 @@ El input incluye un objeto \`financingHealth\` con clasificación de pie y tasa 
 
 NIVEL 1 — Validación silenciosa.
 Cuándo: \`overall\` ∈ {optimo, aceptable}.
-Forma: una sola frase integrada en \`conviene.reencuadre\` o en \`largoPlazo.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
+Forma: una sola frase integrada en \`conviene.respuestaDirecta\` o en \`largoPlazo.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Ejemplo:
 > "La estructura está bien calibrada: [pie%] de pie a [plazo] años con tasa [tasa]% es coherente con lo que da el mercado hoy."
 
 NIVEL 2 — Observación táctica.
 Cuándo: \`overall\` === "mejorable".
-Forma: una observación corta + el impacto cuantificado, en \`conviene.reencuadre\` o como nota en \`negociacion.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Usá el \`impact_message\` que viene en \`financingHealth.pie\` o \`financingHealth.tasa\`. Ejemplo:
+Forma: una observación corta + el impacto cuantificado, en \`conviene.respuestaDirecta\` (si condiciona la decisión) o como nota en \`negociacion.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Usá el \`impact_message\` que viene en \`financingHealth.pie\` o \`financingHealth.tasa\`. Ejemplo:
 > "Tu tasa al 4,5% está ~40 bps sobre el mercado. Cotiza en 2-3 bancos antes de firmar — bajar a 4,1% reduce la cuota mensual ~$48K."
 
 NIVEL 3 — Reestructuración recomendada.
@@ -211,7 +211,7 @@ Reglas:
 4. Si el caso tiene anomalías significativas, mencionalas en \`riesgos.contenido\` o como alerta en \`costoMensual.alerta\` cuando aplique.
 
 5. **Plusvalía histórica de la comuna (cuando viene en el input):**
-OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` o \`conviene.reencuadre\` cuando:
+OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
 - plusvaliaHistoricaAnualizada < 2% (zona estancada)
 - plusvaliaHistoricaAnualizada negativa (zona perdiendo valor)
 - Ángulo 3 (instrumentos) sería invalidado sin contexto histórico (la comparación TIR vs depósito/fondo asume plusvalía estable o creciente; si la zona está perdiendo valor, hay que explicitarlo).
@@ -226,7 +226,7 @@ Cuando el caso incluye un bloque \`CAPEX PUESTA A PUNTO\`, el depto es usado y n
 Reglas:
 1. El monto te viene DADO (UF y CLP) y el % que pesa sobre la inversión inicial también. NO los recalcules ni los inventes. Si no está en el bloque, no existe.
 2. PROHIBIDO recitar el monto (A1). En vez de "necesitas UF X de puesta a punto", REENCUADRA: qué significa que tu inversión inicial real sea más alta de lo que parece, que la plata día 1 no es solo el pie, que captar arriendo de mercado tiene un costo de entrada previo.
-3. PLACEMENT: la mención va ÚNICAMENTE en \`conviene.reencuadre\`. Está PROHIBIDO mencionar la puesta a punto / CapEx en CUALQUIER otra sección: nada en \`largoPlazo\`, \`costoMensual\`, \`negociacion\`, \`riesgos\` ni en ningún otro campo. Es día-1 y reencuadra la inversión inicial — NO es comparación de instrumentos ni costo mensual. En particular, al comparar con instrumentos (depósito UF, fondos) en \`largoPlazo\`, NO la listes entre lo que esos instrumentos no exigen: ese reencuadre ya vive en \`conviene.reencuadre\` y no se repite. Una sola mención, integrada en la prosa del reencuadre — no una sección aparte.
+3. PLACEMENT + CRITERIO DE DECISIVIDAD: cuando el bloque \`CAPEX PUESTA A PUNTO\` aparece, ya viene gateado a que PESA (adverso y ≥12% de la inversión inicial). Intégralo en \`conviene.respuestaDirecta\` como el matiz de inversión inicial — pero SOLO si su peso condiciona la decisión del lector: que la plata día-1 real sea sustancialmente mayor que el pie es lo que lo vuelve parte del veredicto. NO es un "menciónalo siempre": si el caso se decide por otra cosa y el CapEx no mueve la aguja, omitilo. Está PROHIBIDO mencionarlo en CUALQUIER otra sección: nada en \`largoPlazo\`, \`costoMensual\`, \`negociacion\`, \`riesgos\` ni en ningún otro campo. Es día-1 y reencuadra la inversión inicial — NO es comparación de instrumentos ni costo mensual; al comparar con instrumentos en \`largoPlazo\`, NO lo listes entre lo que esos instrumentos no exigen. Una sola mención, integrada en la prosa; REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.
 4. Si el bloque NO aparece, silencio: no menciones puesta a punto, ni "el depto está impecable", nada. Sin bloque, el tema no existe para ti.
 
 ## 9. Cierre obligatorio — Franco se la juega
@@ -439,7 +439,7 @@ El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos 
 - Estallido social, octubre 2019.
 - Pandemia, 2020-2021.
 
-REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene\`, \`largoPlazo\`, \`riesgos\`), debes situar el número en su período: nombrá ≥1 de los tres tramos que el rango cruza y decí que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
+REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene.respuestaDirecta\`, \`largoPlazo\`, \`riesgos\`), debes situar el número en su período: nombrá ≥1 de los tres tramos que el rango cruza y decí que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
 
 ENCUADRE OBLIGATORIO — el evento es CUÁNDO, no POR QUÉ:
 - Correcto (el rango CRUZA el período): "ese número cruza el estallido y la pandemia, así que es ruidoso".
@@ -510,10 +510,6 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
     "pregunta": "¿Conviene o no conviene?",
     "respuestaDirecta_clp": string,
     "respuestaDirecta_uf": string,
-    "veredictoFrase_clp": string,
-    "veredictoFrase_uf": string,
-    "reencuadre_clp": string,
-    "reencuadre_uf": string,
     "cajaAccionable_clp": string,
     "cajaAccionable_uf": string,
     "cajaLabel": string
@@ -555,9 +551,11 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: 2-4 frases.
-- conviene.veredictoFrase: 1 frase corta.
-- conviene.reencuadre: 3-5 frases.
+- conviene.respuestaDirecta: PRESUPUESTO DURO 70-85 palabras (regla dura, no orientativa — es la ÚNICA prosa del veredicto que ve el usuario). Estructura fija de 3 partes:
+  (1) QUÉ MANDA — el hallazgo #1 por decisividad (te llega ordenado: el 1º del bloque HALLAZGOS), narrado como consecuencia para el usuario, no como métrica.
+  (2) EL MATIZ DECISIVO que lo condiciona, CON números — el supuesto que sostiene el caso (arriendo declarado vs mediana de zona), el CapEx de puesta a punto si el bloque aparece y su peso condiciona la decisión (§8.1), o la entrega futura. SOLO si cambia la decisión del lector.
+  (3) NADA MÁS. Son las capas 1+2+3 del §2 comprimidas al presupuesto.
+  PROHIBIDO: anunciar secciones ("lo verás en costos", "en la sección de negociación…"); repetir lo que ya dice \`cajaAccionable\`; listar hallazgos secundarios que no tienen consecuencia para la decisión (esos ya se ven renderizados en la pirámide y los drawers).
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
 - negociacion.contenido: 2-4 frases.
@@ -656,9 +654,7 @@ const MICRO_CHECK_MODEL = "claude-haiku-4-5-20251001";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function detectarFabricacionZona(aiResult: any, anthropicClient: Anthropic): Promise<{ fabrica: boolean; cita: string }> {
   const camposNarrativos = JSON.stringify({
-    headline: aiResult?.siendoFrancoHeadline_clp,
     conviene: aiResult?.conviene?.respuestaDirecta_clp,
-    reencuadre: aiResult?.conviene?.reencuadre_clp,
     negociacion: aiResult?.negociacion?.contenido_clp,
     riesgos: aiResult?.riesgos?.contenido_clp,
   });
@@ -1162,7 +1158,7 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
 - monto puesta a punto: ${fmtUF(hallazgoCapex.valor.montoUF)} (${fmtCLP(hallazgoCapex.valor.montoCLP)}) de tu bolsillo el día 1
 - pesa ~${Math.round(hallazgoCapex.decisividad * 100)}% de tu inversión inicial total (${fmtCLP(inversionTotal)})
 - es parte de la plata día 1, NO un gasto mensual ni palanca de precio
-- placement: menciónalo SOLO en conviene.reencuadre (regla §8.1). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.`
+- placement: intégralo en conviene.respuestaDirecta SOLO si su peso condiciona la decisión (regla §8.1). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.`
       : "";
 
     // financingHealth — clasificación de pie + tasa para el escalonado §5 del system.
@@ -1274,10 +1270,10 @@ ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO NARRAR EN PIRÁMIDE:
-- El 1º es el TITULAR: el veredicto se explica primero por él. Va al inicio de conviene.respuestaDirecta.
-- Del 2º en adelante: encadenálos por qué refuerzan o tensionan al titular. Acá va la cadena del "¿conviene?".
-- Los últimos son contexto y matices — mencionalos sin protagonismo; una confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
+CÓMO NARRAR (presupuesto duro — respuestaDirecta 70-85 palabras, ver §13):
+- El 1º es el TITULAR: el veredicto se explica primero por él. Abre conviene.respuestaDirecta con su consecuencia para el usuario.
+- Del 2º en adelante viven RENDERIZADOS en la pirámide de hallazgos y en los drawers — el usuario ya los ve. En respuestaDirecta entra SOLO el hallazgo que CONDICIONA la decisión del #1 (el matiz decisivo con números: supuesto de arriendo, capex si pesa, entrega futura). NO encadenes hallazgos sin consecuencia; el presupuesto no lo permite.
+- Confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
 - Traducción obligatoria: "lo que más pesa acá es el rendimiento" ✔ · "el hallazgo de mayor decisividad" ✘.`
       : "";
 
@@ -1434,7 +1430,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     if (hallazgoSobreprecio) {
       const medianaReal = Math.round(hallazgoSobreprecio.valor.medianaComunaUfM2);
       const camposProsa = [
-        aiResult?.conviene?.respuestaDirecta_uf, aiResult?.conviene?.reencuadre_uf,
+        aiResult?.conviene?.respuestaDirecta_uf,
       ].filter((s: unknown) => typeof s === "string").join(" ");
       // Heurística simple: si la prosa menciona una mediana de zona distinta a la real ±2 UF
       const matchUF = camposProsa.match(/zona\D{0,20}UF\s*(\d{2,4})/i) || camposProsa.match(/mediana\D{0,20}UF\s*(\d{2,4})/i);
