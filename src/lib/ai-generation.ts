@@ -218,7 +218,7 @@ OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
 
 Forma: diagnóstico + implicancia.
 Ejemplo: "Santiago centro creció 0,8% anualizado en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón."
-COLISIÓN CON OTRO MATIZ (presupuesto duro): si en \`respuestaDirecta\` ya entró otro matiz decisivo (ej. el supuesto de arriendo), la plusvalía NO abre un bloque/oración propia — entra como UNA cláusula subordinada dentro de una oración existente: "…en una comuna que además rindió solo 2,2% anual la última década". El presupuesto 70-85 es duro; no lo revientes por sumar la plusvalía como párrafo aparte.
+COLISIÓN CON OTRO MATIZ: si en la continuación ya entró otro matiz decisivo (ej. el arriendo), la plusvalía NO abre oración propia — entra como cláusula subordinada ("…en una comuna que además rindió 2,2% anual la última década"). No revientes el presupuesto por sumarla como párrafo aparte.
 
 ## 8.1 CapEx de puesta a punto (usados) — cuándo y dónde narrarlo
 
@@ -227,7 +227,7 @@ Cuando el caso incluye un bloque \`CAPEX PUESTA A PUNTO\`, el depto es usado y n
 Reglas:
 1. El monto te viene DADO (UF y CLP) y el % que pesa sobre la inversión inicial también. NO los recalcules ni los inventes. Si no está en el bloque, no existe.
 2. PROHIBIDO recitar el monto (A1). En vez de "necesitas UF X de puesta a punto", REENCUADRA: qué significa que tu inversión inicial real sea más alta de lo que parece, que la plata día 1 no es solo el pie, que captar arriendo de mercado tiene un costo de entrada previo.
-3. PLACEMENT + CRITERIO DE DECISIVIDAD: cuando el bloque \`CAPEX PUESTA A PUNTO\` aparece, ya viene gateado a que PESA (adverso y ≥12% de la inversión inicial). Intégralo en \`conviene.respuestaDirecta\` como el matiz de inversión inicial — pero SOLO si su peso condiciona la decisión del lector: que la plata día-1 real sea sustancialmente mayor que el pie es lo que lo vuelve parte del veredicto. NO es un "menciónalo siempre": si el caso se decide por otra cosa y el CapEx no mueve la aguja, omitilo. Está PROHIBIDO mencionarlo en CUALQUIER otra sección: nada en \`largoPlazo\`, \`costoMensual\`, \`negociacion\`, \`riesgos\` ni en ningún otro campo. Es día-1 y reencuadra la inversión inicial — NO es comparación de instrumentos ni costo mensual; al comparar con instrumentos en \`largoPlazo\`, NO lo listes entre lo que esos instrumentos no exigen. Una sola mención, integrada en la prosa; REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.
+3. PLACEMENT + DECISIVIDAD: cuando aparece el bloque \`CAPEX PUESTA A PUNTO\`, ya viene gateado a que PESA (adverso y ≥12% de la inversión inicial). Va SOLO en \`conviene.respuestaDirecta\`, como el matiz de inversión inicial — y solo si condiciona la decisión (que la plata día-1 real supere de lejos al pie); si el caso se decide por otra cosa, omitilo (NO es "siempre"). PROHIBIDO en cualquier otra sección (\`largoPlazo\`, \`costoMensual\`, \`negociacion\`, \`riesgos\`). REENCUADRA qué significa para tu inversión inicial real — NO recites el monto.
 4. Si el bloque NO aparece, silencio: no menciones puesta a punto, ni "el depto está impecable", nada. Sin bloque, el tema no existe para ti.
 
 ## 9. Cierre obligatorio — Franco se la juega
@@ -552,11 +552,10 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: PRESUPUESTO DURO 70-85 palabras — pasarse de 85 es VIOLACIÓN, no sugerencia; contá las palabras antes de cerrar. Es la ÚNICA prosa del veredicto que ve el usuario. Estructura fija de 3 partes:
-  (1) QUÉ MANDA — la PRIMERA oración narra el HALLAZGO #1 nombrado en el bloque de hallazgos (la línea "HALLAZGO #1 —"): su métrica y su dirección, como consecuencia para el usuario. Omitirlo o relegarlo detrás de otro hallazgo es VIOLACIÓN. (El molde de apertura y el porqué de "no otro" viven en el bloque de hallazgos — no se repiten acá.)
-  (2) EL MATIZ DECISIVO que condiciona al #1 — y SOLO si cambia la decisión del lector: el supuesto que sostiene el caso (arriendo declarado vs mediana de zona), el CapEx si el bloque aparece y pesa (§8.1), o la entrega futura. UN MATIZ ENTRA CON SU CIFRA O NO ENTRA: capex = monto UF o % de la inversión inicial; sobreprecio = el %; arriendo = el monto y su consecuencia. Prohibidas las vaguedades sin número ("bastante más allá del pie"). Terminá en el matiz y su CONSECUENCIA cuantificada ("si el arriendo real es la mediana, el aporte pasa a -$X"), NO en un imperativo de verificación.
-  (3) NADA MÁS. Son las capas 1+2+3 del §2 comprimidas al presupuesto.
-  PROHIBIDO: pasar de 85 palabras; abrir con genérico y luego narrar un hallazgo que no sea el #1; anunciar secciones ("lo verás en costos", "en la sección de negociación…"); repetir o parafrasear \`cajaAccionable\` — la prosa NO termina con imperativos de verificación ("verifica antes de firmar") ni menciona "publicaciones comparables"; esa ACCIÓN vive SOLO en cajaAccionable; cerrar con relleno tranquilizador sin dato ("la matemática puede sostenerse si confías en…"); comparaciones imprecisas ("casi el doble" SOLO si el ratio es ≥90%; para +59% decí "+59%" o "más de la mitad sobre", no "el doble"); dirección del porcentaje mal expresada — las brechas de arriendo/precio DECLARADO vs mediana se dicen SIEMPRE como "X% SOBRE la mediana/mercado", NUNCA como "X% más bajo" del valor declarado (un valor no puede ser >100% más bajo; ej. "131% más bajo" es matemáticamente imposible: si declaraste $560K y la mediana es $216K, es "+159% sobre la mediana", no "−131%"); listar hallazgos secundarios sin consecuencia (ya se ven renderizados en la pirámide y los drawers).
+- conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN — la PRIMERA oración la pone el motor (la "PRIMERA ORACIÓN FIJA", que narra el #1) y se antepone sola; NO la escribas ni la repitas. Tu continuación:
+  (1) EL MATIZ DECISIVO que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. UN MATIZ ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Terminá en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
+  (2) PRESUPUESTO DURO 50-60 palabras de CONTINUACIÓN (la apertura fija NO cuenta) — pasarse es violación; contá antes de cerrar.
+  PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones imprecisas ("casi el doble" solo si ≥90%); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
 - negociacion.contenido: 2-4 frases.
@@ -1268,21 +1267,14 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen ordenados por cuánto pesan en la decisión; el 1º es el que más manda). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
 
-HALLAZGO #1 — TU PRIMERA ORACIÓN NARRA ESTE (con su métrica y su dirección), no otro aunque otro tenga una métrica más vistosa: ${hallazgosOrdenados[0].id} — «${hallazgosOrdenados[0].fraseCanonica}»
+PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
 
-Lista completa (el #1 es el mismo nombrado recién):
+Lista completa de hallazgos (para elegir el matiz de tu continuación; el 1º es el de la apertura fija):
 ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO NARRAR (presupuesto DURO — respuestaDirecta 70-85 palabras, ver §13; pasarse = violación):
-- La PRIMERA oración narra el HALLAZGO #1 nombrado arriba (su métrica y dirección, como consecuencia). Omitirlo o relegarlo detrás de otro hallazgo = violación.
-- MOLDE DE APERTURA: si usás "lo que más pesa acá es {X}", el sustantivo {X} DEBE ser el HALLAZGO #1 de ESTE caso — X varía según cuál sea: "el precio por metro cuadrado", "el aporte mensual", "el rendimiento", "la plusvalía", etc. NO uses "el rendimiento" por defecto: es solo un ejemplo entre varios, no el ganador fijo. Si el #1 es sobreprecio, X = "el precio por m²", NO "el rendimiento".
-- Del 2º en adelante viven RENDERIZADOS en la pirámide y los drawers — el usuario ya los ve. En respuestaDirecta entra SOLO el hallazgo que CONDICIONA la decisión del #1, y CON su cifra (§13). Si dos matices compiten y no caben, gana el que cambia la decisión; la plusvalía histórica (§8.5) entra como cláusula subordinada, no como bloque propio.
-- No cierres con imperativo de verificación ni "publicaciones comparables" (eso es cajaAccionable, no lo dupliques), ni con relleno tranquilizador sin dato.
-- Confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
-- La prosa NUNCA menciona "hallazgo", números de orden ("el hallazgo #4 agrega…"), ni la mecánica interna de este prompt (decisividad, pirámide, "el bloque").
-- Traducción de jerga a llano: "el hallazgo de mayor decisividad" ✘ → "lo que más pesa acá es {el #1 de este caso, nombrado con su sustantivo real}" ✔.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): arrancá donde termina la apertura fija con el matiz decisivo que condiciona al #1 (su cifra + su consecuencia cuantificada), 50-60 palabras, sin repetir la métrica ni las palabras de la apertura. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
@@ -1525,6 +1517,31 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // el recompute sync del render la dejaría null (ver sobreprecio-hallazgo.ts).
     if (aiResult) {
       aiResult.hallazgoSobreprecio = hallazgoSobreprecio;
+    }
+
+    // PLAN C — apertura determinística de respuestaDirecta: el MOTOR escribe la
+    // primera oración (fraseCanonica del hallazgo #1); la IA solo continúa. Se
+    // antepone acá, post-LLM (y post-regeneración del catch-layer), para que el #1
+    // SIEMPRE lidere sin depender de la obediencia del modelo — 4 iteraciones de
+    // instrucción fallaban en los mismos casos. fraseCanonica es un string ÚNICO
+    // (no dual _clp/_uf): agnóstico de moneda salvo flujo_mensual (CLP $) y capex
+    // (UF+CLP inline); se usa igual en ambas variantes, la apertura no flipea con el toggle.
+    if (aiResult?.conviene && hallazgosOrdenados[0]?.fraseCanonica) {
+      const apertura = String(hallazgosOrdenados[0].fraseCanonica).trim();
+      const aw = apertura.toLowerCase().split(/\s+/);
+      const armar = (cont: unknown): string => {
+        const c = typeof cont === "string" ? cont.trim() : "";
+        if (!c) return apertura;
+        // Sanity de no-repetición (loguea, NO bloquea): si la continuación arranca
+        // copiando >6 palabras de la apertura fija.
+        const cw = c.toLowerCase().split(/\s+/);
+        let match = 0;
+        while (match < aw.length && match < cw.length && aw[match] === cw[match]) match++;
+        if (match > 6) console.warn(`[PLANC-REPEAT] ${analysisId}: la continuación repite ${match} palabras de la apertura fija`);
+        return `${apertura} ${c}`;
+      };
+      aiResult.conviene.respuestaDirecta_clp = armar(aiResult.conviene.respuestaDirecta_clp);
+      aiResult.conviene.respuestaDirecta_uf = armar(aiResult.conviene.respuestaDirecta_uf);
     }
 
     // FASE A — los 4 números de estructuraSugerida son DETERMINISTAS (motor), no
