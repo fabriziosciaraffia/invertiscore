@@ -554,7 +554,7 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 Largos por campo:
 - conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN — la PRIMERA oración la pone el motor (la "PRIMERA ORACIÓN FIJA", que narra el #1) y se antepone sola; NO la escribas ni la repitas. Tu continuación:
   (1) EL MATIZ DECISIVO que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. UN MATIZ ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Terminá en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (2) PRESUPUESTO DURO 50-60 palabras de CONTINUACIÓN (la apertura fija NO cuenta) — pasarse es violación; contá antes de cerrar.
+  (2) PRESUPUESTO DURO 45-55 palabras de CONTINUACIÓN — pasarse es violación; contá antes de cerrar. La apertura fija ya consume 24-32 palabras; el TOTAL ensamblado debe quedar ≤85.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones imprecisas ("casi el doble" solo si ≥90%); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
@@ -1274,7 +1274,7 @@ ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): arrancá donde termina la apertura fija con el matiz decisivo que condiciona al #1 (su cifra + su consecuencia cuantificada), 50-60 palabras, sin repetir la métrica ni las palabras de la apertura. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): arrancá donde termina la apertura fija con el matiz decisivo que condiciona al #1 (su cifra + su consecuencia cuantificada), 45-55 palabras, sin repetir la métrica ni las palabras de la apertura. "casi el doble" SOLO si el ratio es ≥90% (para 76% u 83% decí "+76%"/"+83% sobre"). Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
