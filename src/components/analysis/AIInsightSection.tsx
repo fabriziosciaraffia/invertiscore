@@ -58,12 +58,15 @@ export const VERDICT_TOOLTIPS: Record<string, string> = {
 export const FRANCO_SCORE_TOOLTIP =
   "Puntaje 0-100 que combina rentabilidad (30%), flujo de caja (25%), plusvalía proyectada (25%) y eficiencia (20%) del depto. Sobre 70: COMPRAR. Entre 50-70: AJUSTA SUPUESTOS. Bajo 50: BUSCAR OTRA.";
 
-/** Detecta la estructura nueva v2 del análisis IA. */
+/** Detecta la estructura nueva v2 del análisis IA.
+ * Discriminador: `conviene.respuestaDirecta_clp` (no `siendoFrancoHeadline_clp`,
+ * que el prompt LTR dejó de emitir — campo huérfano no renderizado). Los
+ * análisis viejos persistidos siguen pasando: traían respuestaDirecta_clp junto
+ * al headline, sin regresión hacia atrás. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function hasAiV2(ai: any): ai is AIAnalysisV2 {
   return !!ai
     && typeof ai === "object"
-    && typeof ai.siendoFrancoHeadline_clp === "string"
     && !!ai.conviene
     && typeof ai.conviene.respuestaDirecta_clp === "string";
 }

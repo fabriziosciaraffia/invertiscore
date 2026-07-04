@@ -502,8 +502,6 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 
 \`\`\`
 {
-  "siendoFrancoHeadline_clp": string,
-  "siendoFrancoHeadline_uf": string,
   "francoCaveat": string,   // OPCIONAL · audit-only NO renderizado al usuario.
                             // Si crees que el veredicto es incorrecto,
                             // explica 1-2 frases por qué. Si concuerdas, omite el campo.
@@ -514,9 +512,6 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
     "respuestaDirecta_uf": string,
     "veredictoFrase_clp": string,
     "veredictoFrase_uf": string,
-    "datosClave": [
-      { "label": string, "valor_clp": string, "valor_uf": string, "subtexto": string, "color": "red"|"green"|"neutral"|"accent" }
-    ],
     "reencuadre_clp": string,
     "reencuadre_uf": string,
     "cajaAccionable_clp": string,
@@ -560,12 +555,10 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- siendoFrancoHeadline: 1 frase, máx 25 palabras.
 - conviene.respuestaDirecta: 2-4 frases.
 - conviene.veredictoFrase: 1 frase corta.
 - conviene.reencuadre: 3-5 frases.
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
-- conviene.datosClave: EXACTAMENTE 3 chips. Uno con color "accent" (el más accionable). Los otros 2 con "red"/"green"/"neutral" según valor.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
 - negociacion.contenido: 2-4 frases.
 - negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras, con número específico.
@@ -624,13 +617,20 @@ function fmtUF(n: number): string {
 }
 
 /**
- * Detects whether an ai_analysis object already uses the new structure
- * (siendoFrancoHeadline_clp + conviene). If so, callers can skip regeneration.
+ * Detects whether an ai_analysis object already uses the new structure. If so,
+ * callers can skip regeneration.
+ *
+ * Discriminador: `conviene.respuestaDirecta_clp` (no `siendoFrancoHeadline_clp`,
+ * que el prompt LTR ya no emite — era campo huérfano no renderizado). Los
+ * análisis viejos persistidos SIGUEN pasando: traían respuestaDirecta_clp junto
+ * con el headline, así que no hay regresión hacia atrás.
  */
 export function hasNewAiStructure(ai: unknown): boolean {
   if (!ai || typeof ai !== "object") return false;
   const obj = ai as Record<string, unknown>;
-  return typeof obj.siendoFrancoHeadline_clp === "string" && typeof obj.conviene === "object";
+  const conviene = obj.conviene as Record<string, unknown> | undefined;
+  return typeof conviene === "object" && conviene !== null
+    && typeof conviene.respuestaDirecta_clp === "string";
 }
 
 /**
@@ -1275,7 +1275,7 @@ ${hallazgosOrdenados
   .join("\n")}
 
 CÓMO NARRAR EN PIRÁMIDE:
-- El 1º es el TITULAR: el veredicto se explica primero por él. Va en el headline / respuesta directa.
+- El 1º es el TITULAR: el veredicto se explica primero por él. Va al inicio de conviene.respuestaDirecta.
 - Del 2º en adelante: encadenálos por qué refuerzan o tensionan al titular. Acá va la cadena del "¿conviene?".
 - Los últimos son contexto y matices — mencionalos sin protagonismo; una confianza baja se dice como cautela ("con los datos de zona disponibles…"), no como disclaimer técnico.
 - Traducción obligatoria: "lo que más pesa acá es el rendimiento" ✔ · "el hallazgo de mayor decisividad" ✘.`
@@ -1412,20 +1412,8 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         parsed.negociacion.precioSugerido = `UF ${techoUF.toLocaleString("es-CL")}`;
       }
 
-      // Salvaguarda de orden: en BUSCAR OTRA, un chip rojo debe liderar (no un accent/neutral).
-      // Stable-sort por color; conserva el orden relativo entre rojos y entre no-rojos.
-      if (readVeredicto(results) === "BUSCAR OTRA" && Array.isArray(parsed?.conviene?.datosClave)) {
-        const esRojo = (c: unknown) => c === "red";
-        parsed.conviene.datosClave = parsed.conviene.datosClave
-          .map((d: unknown, i: number) => ({ d, i }))
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .sort((a: any, b: any) => {
-            const ra = esRojo(a.d?.color) ? 0 : 1;
-            const rb = esRojo(b.d?.color) ? 0 : 1;
-            return ra !== rb ? ra - rb : a.i - b.i; // estable: desempata por índice original
-          })
-          .map((x: { d: unknown }) => x.d);
-      }
+      // (Eliminada la salvaguarda de orden de conviene.datosClave: el prompt LTR
+      // ya no emite ese campo — era huérfano, no lo renderiza ningún consumidor.)
       return parsed;
     };
 

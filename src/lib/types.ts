@@ -606,7 +606,9 @@ export interface AIConvieneSection {
   respuestaDirecta_uf: string;
   veredictoFrase_clp: string;
   veredictoFrase_uf: string;
-  datosClave: DatoClave[];
+  // Opcional: el prompt LTR dejó de emitirlo (campo huérfano, sin consumidor de
+  // render). Se conserva en el tipo para análisis viejos persistidos que sí lo traen.
+  datosClave?: DatoClave[];
   reencuadre_clp: string;
   reencuadre_uf: string;
   cajaAccionable_clp: string;
@@ -665,8 +667,11 @@ export interface AIReestructuracionSection {
 }
 
 export interface AIAnalysisV2 {
-  siendoFrancoHeadline_clp: string;
-  siendoFrancoHeadline_uf: string;
+  // Opcionales: el prompt LTR dejó de emitirlos (campos huérfanos, sin consumidor
+  // de render — el hero usa chips de inputData y conviene.respuestaDirecta). Se
+  // conservan en el tipo para análisis viejos persistidos que sí los traen.
+  siendoFrancoHeadline_clp?: string;
+  siendoFrancoHeadline_uf?: string;
   conviene: AIConvieneSection;
   costoMensual: AISection;
   negociacion: AINegociacionSection;
