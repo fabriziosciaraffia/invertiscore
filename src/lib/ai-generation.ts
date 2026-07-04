@@ -553,8 +553,8 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 
 Largos por campo:
 - conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN — la PRIMERA oración la pone el motor (la "PRIMERA ORACIÓN FIJA", que narra el #1) y se antepone sola; NO la escribas ni la repitas. Tu continuación:
-  (1) EL MATIZ DECISIVO que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. UN MATIZ ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Terminá en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
-  (2) PRESUPUESTO DURO 45-55 palabras de CONTINUACIÓN — pasarse es violación; contá antes de cerrar. La apertura fija ya consume 24-32 palabras; el TOTAL ensamblado debe quedar ≤85.
+  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Terminá en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
+  (2) PRESUPUESTO: la continuación tiene un MÁXIMO por caso que se te indica en el bloque de hallazgos ("MÁXIMO N palabras", = 85 − las palabras de la apertura fija). El TOTAL ensamblado (apertura + continuación) debe quedar ≤85. Un guard lo mide y puede pedirte recortar.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones imprecisas ("casi el doble" solo si ≥90%); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
 - conviene.cajaAccionable: 1 frase, pregunta o acción concreta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
@@ -1263,18 +1263,26 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const dirHallazgo = (dir: string): string =>
       dir === "favorable" ? "a favor" : dir === "adverso" ? "en contra" : "neutral";
 
+    // PLAN C — presupuesto DINÁMICO de la continuación: máximo por caso = 85 − las
+    // palabras que consume la apertura fija (fraseCanonica del #1). Se inyecta en el
+    // userPrompt y se reusa en el guard post-LLM.
+    const aperturaWC = hallazgosOrdenados.length > 0
+      ? String(hallazgosOrdenados[0].fraseCanonica).trim().split(/\s+/).filter(Boolean).length
+      : 0;
+    const maxContinuacion = Math.max(30, 85 - aperturaWC);
+
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
 HALLAZGOS DEL ANÁLISIS (vienen ordenados por cuánto pesan en la decisión; el 1º es el que más manda). Narralos en pirámide con TU voz. NO copies la frase literal, NO nombres "hallazgo", "decisividad" ni el número de orden en tu prosa. Cuando dos de arriba tiran para lados opuestos (uno a favor, otro en contra), sostené la tensión con honestidad — no la aplanes.
 
-PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
+PRIMERA ORACIÓN FIJA de conviene.respuestaDirecta (consume ${aperturaWC} palabras) — YA está escrita y se antepone automáticamente. NO la escribas, NO la repitas, NO la parafrasees; tu texto CONTINÚA después de ella: «${hallazgosOrdenados[0].fraseCanonica}»
 
 Lista completa de hallazgos (para elegir el matiz de tu continuación; el 1º es el de la apertura fija):
 ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): arrancá donde termina la apertura fija con el matiz decisivo que condiciona al #1 (su cifra + su consecuencia cuantificada), 45-55 palabras, sin repetir la métrica ni las palabras de la apertura. "casi el doble" SOLO si el ratio es ≥90% (para 76% u 83% decí "+76%"/"+83% sobre"). Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. "casi el doble" SOLO si el ratio es ≥90% (para 76% u 83% decí "+76%"/"+83% sobre"). Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
@@ -1507,6 +1515,36 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       } catch (e) {
         // Best-effort: el catch-layer NUNCA bloquea ni rompe la generación.
         console.warn(`[CATCH-ROOT-A] ${analysisId}: catch-layer falló (best-effort, el análisis sigue normal): ${(e as Error)?.message ?? e}`);
+      }
+    }
+
+    // PLAN C GUARD — enforcement de presupuesto por construcción. La continuación
+    // (lo que escribió el modelo, aún SIN la apertura) no puede superar
+    // maxContinuacion (= 85 − palabras de la apertura). El modelo no cuenta bien
+    // (v5/v6 se pasaban), así que medimos acá: si supera maxContinuacion×1.1, UN
+    // retry con feedback (patrón CATCH-ROOT-A); si el retry también excede, se
+    // acepta + log [PLANC-BUDGET]. Corre ANTES de FASE B para que la reinyección
+    // determinística caiga sobre el aiResult final.
+    if (aiResult?.conviene && hallazgosOrdenados.length > 0) {
+      const wcCont = (s: unknown) => (typeof s === "string" && s.trim() ? s.trim().split(/\s+/).filter(Boolean).length : 0);
+      const contWC = wcCont(aiResult.conviene.respuestaDirecta_clp);
+      if (contWC > maxContinuacion * 1.1) {
+        console.warn(`[PLANC-BUDGET] ${analysisId}: continuación ${contWC} palabras > máx ${maxContinuacion} — retry`);
+        const correctivo = `\n\n⚠️ CORRECCIÓN DE PRESUPUESTO: tu conviene.respuestaDirecta midió ${contWC} palabras; el MÁXIMO de la continuación es ${maxContinuacion}. Reescribí el JSON COMPLETO desarrollando UN SOLO matiz (el de mayor consecuencia en plata) en ≤${maxContinuacion} palabras; los demás matices viven en la pirámide — no los encadenes.`;
+        try {
+          const regen = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt + correctivo }], system: SYSTEM_PROMPT });
+          const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
+          const regenResult = parseAndNormalize(regenText);
+          if (regenResult) {
+            const contWC2 = wcCont(regenResult.conviene?.respuestaDirecta_clp);
+            console.warn(`[PLANC-BUDGET] ${analysisId}: retry → ${contWC2} palabras${contWC2 > maxContinuacion * 1.1 ? ` (sigue > máx ${maxContinuacion}, aceptado)` : " (OK)"}`);
+            aiResult = regenResult;
+          } else {
+            console.warn(`[PLANC-BUDGET] ${analysisId}: retry no parseó — conservo la continuación previa`);
+          }
+        } catch (e) {
+          console.warn(`[PLANC-BUDGET] ${analysisId}: retry falló (best-effort): ${(e as Error)?.message ?? e}`);
+        }
       }
     }
 
