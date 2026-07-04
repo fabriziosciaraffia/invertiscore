@@ -14,6 +14,17 @@
 //  - Anatomía y tokens del mockup aprobado (mockup-piramide.html), con --franco-*.
 
 import type { Hallazgo } from "@/lib/types";
+import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
+
+// Mapa hallazgo → drawer de detalle (Fase 2). cap_rate queda SIN entrada a
+// propósito: su drawer llega en Fase 3. Sin entrada ⇒ sin affordance "Ver detalle".
+const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
+  flujo_mensual: "costoMensual",
+  sobreprecio: "negociacion",
+  plusvalia: "largoPlazo",
+  capex_puesta_a_punto: "capexPuestaAPunto",
+  estructura_financiamiento: "reestructuracion",
+};
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
@@ -124,6 +135,7 @@ export function GenericFindingCard({
   currency = "CLP",
   valorUF,
   palanca,
+  onOpenDrawer,
 }: {
   hallazgo: Hallazgo;
   /** 1 = decisivo (grande) · 2 = segundo plano (mediano) · 3 = revisado (chip). */
@@ -133,10 +145,21 @@ export function GenericFindingCard({
   valorUF: number;
   /** Zona de "palanca" opcional (nivel 1): acción/CTA bajo un border-top. */
   palanca?: React.ReactNode;
+  /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
+  onOpenDrawer?: (key: DrawerKey) => void;
 }) {
   const d = findingDisplay(hallazgo, currency, valorUF);
   const dir = direccionMeta(hallazgo.direccion);
   const kpiColor = d.kpiRed ? "text-signal-red" : "";
+
+  // Affordance de detalle: solo cuando el hallazgo mapea a un drawer Y hay handler.
+  const drawerKey = HALLAZGO_DRAWER[hallazgo.id];
+  const hasDetalle = !!drawerKey && !!onOpenDrawer;
+  const openDetalle = () => {
+    if (drawerKey && onOpenDrawer) onOpenDrawer(drawerKey);
+  };
+  // Nivel 3: el chip completo es el trigger (sin texto extra). Niveles 1-2: link.
+  const chipClickable = nivel === 3 && hasDetalle;
 
   // Tokens de tamaño por nivel (escala del mockup: tier1 > tier2 > tier3).
   const pad = nivel === 1 ? "p-7" : nivel === 2 ? "p-6" : "p-4";
@@ -149,8 +172,21 @@ export function GenericFindingCard({
 
   return (
     <div
-      className={`rounded-2xl ${pad}`}
+      className={`rounded-2xl ${pad} ${chipClickable ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
       style={{ background: bg, border: `0.5px solid ${border}` }}
+      {...(chipClickable
+        ? {
+            role: "button" as const,
+            tabIndex: 0,
+            onClick: openDetalle,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openDetalle();
+              }
+            },
+          }
+        : {})}
     >
       {/* head: kick + title (izq) · punto de dirección (der) */}
       <div className="flex items-start justify-between gap-4">
@@ -204,14 +240,31 @@ export function GenericFindingCard({
         </div>
       ) : null}
 
-      {/* pie: SOLO un caveat de procedencia que aclara cómo leer el dato (niveles
-          1-2). Sin barra de confianza. Sin decisividad. Si no hay caveat real, no
-          hay pie (el boilerplate "sobre tus datos declarados" no se muestra). */}
-      {nivel !== 3 && d.procedencia ? (
-        <div className="mt-4 pt-3.5" style={{ borderTop: "0.5px solid var(--franco-border)" }}>
-          <span className="font-body" style={{ fontSize: 11, color: "var(--franco-text-muted)" }}>
-            {d.procedencia}
-          </span>
+      {/* pie (niveles 1-2): caveat de procedencia (izq, cuando aclara cómo leer el
+          dato) + affordance "Ver detalle →" (abajo-derecha). Sin barra de confianza,
+          sin decisividad. Se muestra si hay procedencia real o hay drawer conectado. */}
+      {nivel !== 3 && (d.procedencia || hasDetalle) ? (
+        <div
+          className="mt-4 pt-3.5 flex items-center justify-between gap-3"
+          style={{ borderTop: "0.5px solid var(--franco-border)" }}
+        >
+          {d.procedencia ? (
+            <span className="font-body min-w-0" style={{ fontSize: 11, color: "var(--franco-text-muted)" }}>
+              {d.procedencia}
+            </span>
+          ) : (
+            <span />
+          )}
+          {hasDetalle ? (
+            <button
+              type="button"
+              onClick={openDetalle}
+              className="font-mono uppercase tracking-[0.06em] shrink-0 transition-colors hover:text-[var(--franco-text-secondary)]"
+              style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
+            >
+              Ver detalle →
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

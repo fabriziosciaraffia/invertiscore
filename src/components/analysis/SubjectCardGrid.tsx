@@ -131,14 +131,15 @@ export function SubjectCardGrid({
         createdAt={createdAt}
       />
 
-      {/* Fase 1b — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA
-          (costoMensual/negociacion/largoPlazo/riesgos). Los "ver detalle" aún no se
-          conectan a drawers (paso siguiente). */}
+      {/* Fase 2 — La pirámide de hallazgos reemplaza el grid 2×2 de dimensiones IA.
+          Cada card abre su drawer vía onOpenDrawer (setActiveDrawer, dueño del
+          estado acá). cap_rate no mapea a drawer todavía (llega en Fase 3). */}
       <PiramideHallazgos
         results={results}
         aiAnalysis={aiAnalysis}
         currency={currency}
         valorUF={valorUF}
+        onOpenDrawer={setActiveDrawer}
       />
 
       {/* Fase 1b — Las cards Reestructuración (estructura) y Puesta a punto (capex)

@@ -16,6 +16,7 @@
 // del HeroLTR a propósito (no se toca el hero); la unificación es posterior.
 
 import type { AIAnalysisV2, FullAnalysisResult, Hallazgo } from "@/lib/types";
+import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { GenericFindingCard } from "./GenericFindingCard";
 
 // Comparador de dos niveles: decisividad DESC, luego magnitud continua DESC.
@@ -60,11 +61,14 @@ export function PiramideHallazgos({
   aiAnalysis,
   currency,
   valorUF,
+  onOpenDrawer,
 }: {
   results: FullAnalysisResult | null | undefined;
   aiAnalysis: AIAnalysisV2 | null | undefined;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** Abre el drawer de detalle de un hallazgo (threadeado a cada card). */
+  onOpenDrawer: (key: DrawerKey) => void;
 }) {
   const gathered = gatherHallazgos(results, aiAnalysis);
   if (gathered.length === 0) return null;
@@ -97,13 +101,13 @@ export function PiramideHallazgos({
 
       <div className="flex flex-col gap-3">
         {/* Nivel 1 — decisivo, ancho completo */}
-        <GenericFindingCard hallazgo={nivel1} nivel={1} currency={currency} valorUF={valorUF} />
+        <GenericFindingCard hallazgo={nivel1} nivel={1} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {nivel2.map((h) => (
-              <GenericFindingCard key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} />
+              <GenericFindingCard key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
             ))}
           </div>
         )}
@@ -112,7 +116,7 @@ export function PiramideHallazgos({
         {nivel3.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {nivel3.map((h) => (
-              <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} />
+              <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
             ))}
           </div>
         )}
