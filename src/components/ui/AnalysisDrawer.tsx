@@ -9,6 +9,7 @@ import type {
   FullAnalysisResult,
   AnalisisInput,
   HallazgoPuestaAPunto,
+  HallazgoEstructuraFinanciamiento,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { readVeredicto } from "@/lib/results-helpers";
@@ -1884,6 +1885,96 @@ function DrawerReestructuracion({
   );
 }
 
+// Fallback del drawer de estructura/financiamiento: cuando NO existe
+// aiAnalysis.reestructuracion (salud financiera sana, sin Nivel 3), el "ver
+// detalle" del hallazgo estructura abre este contenido liviano solo-motor. Sin
+// IA, sin chart. Confirma que la estructura está sana (pie, tasa, cuota actual
+// desde el hallazgo + results.metrics) y que no hay palanca urgente que mover.
+// Estilo sobrio de DrawerCapexPuestaAPunto.
+function DrawerEstructuraSana({
+  hallazgo,
+  results,
+  currency,
+  valorUF,
+}: {
+  hallazgo: HallazgoEstructuraFinanciamiento;
+  results: FullAnalysisResult;
+  currency: "CLP" | "UF";
+  valorUF: number;
+}) {
+  const { piePct, tasaPct, tasaMarketPct } = hallazgo.valor;
+  const cuotaActual = results.metrics?.dividendo ?? 0;
+  const pieFmt = Number.isInteger(piePct) ? String(piePct) : piePct.toFixed(1).replace(".", ",");
+
+  return (
+    <div>
+      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
+        <span>Tu estructura de financiamiento está sana: el pie y la tasa no están frenando el deal.</span>
+        <InfoTooltip content="Cuando el pie y la tasa están en rango, el problema —si lo hay— está en el precio o el flujo, no en cómo financias." />
+      </p>
+
+      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
+        {hallazgo.fraseCanonica}
+      </div>
+
+      {/* Estructura actual — chips numéricos en mono */}
+      <div
+        className="rounded-[8px] p-4 mb-4"
+        style={{ background: "var(--franco-elevated)", border: "0.5px solid var(--franco-border)" }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-3">
+          Tu estructura actual
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Pie
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {pieFmt}%
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Tasa
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {tasaPct.toFixed(1).replace(".", ",")}%
+            </p>
+          </div>
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-secondary)] m-0 mb-1">
+              Cuota mensual
+            </p>
+            <p className="font-mono font-bold text-[20px] text-[var(--franco-text)] m-0 leading-tight">
+              {fmtMoney(cuotaActual, currency, valorUF)}
+            </p>
+          </div>
+        </div>
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
+          Óptimo de pie 25% · tasa de mercado {tasaMarketPct.toFixed(1).replace(".", ",")}%.
+        </p>
+      </div>
+
+      {/* Bloque conclusivo — sin palanca urgente */}
+      <div
+        className="rounded-r-[8px] p-4"
+        style={{
+          borderLeft: "3px solid var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+          Sin palanca urgente
+        </p>
+        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+          No hay una palanca de financiamiento urgente que mover. Si este deal necesita ajuste, está en el precio o el flujo, no en cómo lo financias.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // Drawer del hallazgo CapEx puesta a punto (motor, no IA). Muestra los montos
 // precomputados + decisividad + procedencia visible (no audit-only).
 function DrawerCapexPuestaAPunto({
@@ -2102,8 +2193,18 @@ export function AnalysisDrawer({
 
   // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
   const zonaTitle = "Lo que no ves a simple vista";
-  const reestructuracionTitle = "¿Y si cambias la estructura?";
+  // Sin IA de reestructuración (estructura sana), el título del fallback no debe
+  // insinuar una palanca que mover.
+  const reestructuracionTitle = aiAnalysis.reestructuracion
+    ? "¿Y si cambias la estructura?"
+    : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
+
+  // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
+  // fallback del drawer de reestructuración cuando no hay sección IA.
+  const estructuraHallazgo = results.hallazgos?.find(
+    (h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento",
+  );
   const section =
     activeKey === "zona"
       ? ({ pregunta: zonaTitle } as { pregunta: string })
@@ -2222,14 +2323,22 @@ export function AnalysisDrawer({
               valorUF={valorUF}
             />
           )}
-          {activeKey === "reestructuracion" && aiAnalysis.reestructuracion && (
-            <DrawerReestructuracion
-              data={aiAnalysis.reestructuracion}
-              currency={currency}
-              results={results}
-              valorUF={valorUF}
-            />
-          )}
+          {activeKey === "reestructuracion" &&
+            (aiAnalysis.reestructuracion ? (
+              <DrawerReestructuracion
+                data={aiAnalysis.reestructuracion}
+                currency={currency}
+                results={results}
+                valorUF={valorUF}
+              />
+            ) : estructuraHallazgo ? (
+              <DrawerEstructuraSana
+                hallazgo={estructuraHallazgo}
+                results={results}
+                currency={currency}
+                valorUF={valorUF}
+              />
+            ) : null)}
           {activeKey === "capexPuestaAPunto" && results.hallazgos?.[0]?.id === "capex_puesta_a_punto" && (
             <DrawerCapexPuestaAPunto
               hallazgo={results.hallazgos[0]}
