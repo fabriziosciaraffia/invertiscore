@@ -5,7 +5,7 @@ import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { AnalysisNav } from "./analysis-nav";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { PremiumResults } from "./results-client";
-import { getUFValue } from "@/lib/uf";
+import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { getZoneComparison } from "@/lib/market-data";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
@@ -108,6 +108,13 @@ export default async function AnalisisDetallePage({
   const analisis = data as Analisis;
   const rawResults: FullAnalysisResult | null = analisis.results || null;
   const inputDataRaw = analisis.input_data as AnalisisInput | undefined;
+  // Fix drift UF prosa↔KPI (Opción 3): el render recomputa con la UF CONGELADA al
+  // crear (reconstruida desde precioCLP/precio), NO con la UF viva. Así los KPI
+  // calzan con la prosa IA, que también usa la UF congelada (ai-generation.ts:716).
+  // `ufValue` (getUFValue) queda solo como fallback para filas legacy sin precioCLP
+  // reconstruible. Mismo patrón "snapshot congelado gana" que mediana_comuna_snapshot.
+  // Ver of-audit-drift-uf.md.
+  const ufFrozen = resolveUfForAnalysis(rawResults, inputDataRaw, ufValue, analisis.id);
   // Recompute on-load (Opción A — idempotente). Garantiza coherencia entre
   // snapshots persistidos pre-evolución del motor y runtime fresh:
   // - TIR Card 04 (snapshot) vs Card 08 (runtime) — cierra B3 H3 inconsistency.
@@ -135,10 +142,10 @@ export default async function AnalisisDetallePage({
   const medianaComuna = inputDataRaw
     ? (medianaSnapshot != null
         ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0 }
-        : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufValue))
+        : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
   const results: FullAnalysisResult | null = inputDataRaw
-    ? recomputeResultsForLegacy(inputDataRaw, ufValue, medianaComuna)
+    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna)
     : (rawResults && rawResults.metrics
       ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
       : rawResults);
@@ -203,7 +210,7 @@ export default async function AnalisisDetallePage({
     accessLevel = isPremium ? "premium" : "free";
   }
 
-  const UF_CLP = ufValue;
+  const UF_CLP = ufFrozen;
 
   // Basic metrics for free section (works with or without full results)
   const precioCLP = analisis.precio * UF_CLP;
@@ -249,7 +256,7 @@ export default async function AnalisisDetallePage({
           freeFlujo={flujoEstimado}
           freePrecioM2={precioM2}
           resumenEjecutivo={resumenEjecutivo}
-          ufValue={ufValue}
+          ufValue={ufFrozen}
           zoneData={zoneData}
           aiAnalysisInitial={(data as Record<string, unknown>).ai_analysis as Record<string, unknown> | undefined ?? undefined}
           nombre={analisis.nombre}
