@@ -87,6 +87,15 @@ export function PiramideHallazgos({
   const nivel2 = ordered.slice(1, 3);
   const nivel3 = ordered.slice(3);
 
+  // Kicker honesto de la corona: "Lo más decisivo" solo si el coronado (ordered[0],
+  // que el orden Filosofía 1 elige por "adverso primero") es TAMBIÉN el de mayor
+  // decisividad real del set. Si no lo es (ej. un favorable más decisivo que todos
+  // los adversos), la card muestra "Ojo antes de firmar" — así no contradice al
+  // TOP-3 del hero, que sí ordena por decisividad. Tolerancia float por si dos
+  // hallazgos empatan en el máximo.
+  const maxDecisividad = Math.max(...gathered.map((h) => h.decisividad));
+  const esElMasDecisivo = nivel1.decisividad >= maxDecisividad - 1e-9;
+
   return (
     <section className="mt-3">
       {/* Encuadre — ordenado por lo que más pesa (molde zone-h del mockup) */}
@@ -98,7 +107,7 @@ export function PiramideHallazgos({
           El detalle
         </span>
         <span className="font-serif font-bold" style={{ fontSize: 19 }}>
-          Ordenado por lo que más pesa en este deal
+          Empezando por lo adverso
         </span>
         <span className="font-body ml-auto shrink-0" style={{ fontSize: 12, color: "var(--franco-text-tertiary)" }}>
           {ordered.length} hallazgos
@@ -107,7 +116,7 @@ export function PiramideHallazgos({
 
       <div className="flex flex-col gap-3">
         {/* Nivel 1 — decisivo, ancho completo */}
-        <GenericFindingCard hallazgo={nivel1} nivel={1} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+        <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (

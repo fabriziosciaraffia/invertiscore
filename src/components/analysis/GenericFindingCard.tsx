@@ -136,6 +136,7 @@ export function GenericFindingCard({
   currency = "CLP",
   valorUF,
   palanca,
+  esElMasDecisivo = true,
   onOpenDrawer,
 }: {
   hallazgo: Hallazgo;
@@ -146,6 +147,11 @@ export function GenericFindingCard({
   valorUF: number;
   /** Zona de "palanca" opcional (nivel 1): acción/CTA bajo un border-top. */
   palanca?: React.ReactNode;
+  /** Solo aplica al nivel 1 (corona): si el coronado ES el de mayor decisividad
+   *  del set, el kicker dice "Lo más decisivo"; si no (la corona la gana el orden
+   *  Filosofía 1, no la decisividad), dice "Ojo antes de firmar" — honesto, sin
+   *  afirmar un peso que el dato no respalda. Default true: no altera otros callers. */
+  esElMasDecisivo?: boolean;
   /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
   onOpenDrawer?: (key: DrawerKey) => void;
 }) {
@@ -169,7 +175,8 @@ export function GenericFindingCard({
   const resumenSize = nivel === 3 ? "text-[12.5px]" : "text-[13.5px]";
   const border = nivel === 1 ? "var(--franco-border-strong)" : "var(--franco-border)";
   const bg = nivel === 3 ? "rgba(26,26,26,0.55)" : "var(--franco-card)";
-  const kick = nivel === 1 ? `Lo más decisivo · ${d.kick.toLowerCase()}` : d.kick;
+  const kickPrefix = esElMasDecisivo ? "Lo más decisivo" : "Ojo antes de firmar";
+  const kick = nivel === 1 ? `${kickPrefix} · ${d.kick.toLowerCase()}` : d.kick;
 
   return (
     <div
