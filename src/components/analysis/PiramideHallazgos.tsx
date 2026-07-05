@@ -96,6 +96,25 @@ export function PiramideHallazgos({
   const maxDecisividad = Math.max(...gathered.map((h) => h.decisividad));
   const esElMasDecisivo = nivel1.decisividad >= maxDecisividad - 1e-9;
 
+  // Eco literal apertura↔corona: la prosa (respuestaDirecta, Plan C) SIEMPRE abre con
+  // la fraseCanonica del hallazgo #1 por decisividad (ai-generation.ts:1567-1592). Cuando
+  // ese #1 es también el coronado por la pirámide (Filosofía 1), el body de la corona
+  // —que es esa MISMA fraseCanonica— repite el bloque que la prosa ya dijo arriba.
+  // Detección DIRECTA (no proxy) sobre el texto persistido de la moneda mostrada: si la
+  // respuestaDirecta empieza (normalizada) con la fraseCanonica del coronado, se suprime
+  // solo el <p> body de la corona. Sin eco (corona≠#1, o prosa pre-Plan-C con apertura
+  // distinta) → body intacto. Normalización mínima: colapsa whitespace + trim + lower
+  // (ambos lados salen del mismo string del motor; el trim/collapse blinda el borde).
+  const respuestaDirectaCorona =
+    currency === "CLP"
+      ? aiAnalysis?.conviene?.respuestaDirecta_clp
+      : aiAnalysis?.conviene?.respuestaDirecta_uf;
+  const normEco = (s: string | null | undefined) =>
+    (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+  const fraseCorona = normEco(nivel1.fraseCanonica);
+  const bodyCoronaDuplicado =
+    fraseCorona.length > 0 && normEco(respuestaDirectaCorona).startsWith(fraseCorona);
+
   return (
     <section className="mt-3">
       {/* Encuadre — ordenado por lo que más pesa (molde zone-h del mockup) */}
@@ -115,8 +134,9 @@ export function PiramideHallazgos({
       </div>
 
       <div className="flex flex-col gap-3">
-        {/* Nivel 1 — decisivo, ancho completo */}
-        <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+        {/* Nivel 1 — decisivo, ancho completo. bodyDuplicado suprime el <p> si la
+            prosa ya abrió con esta misma fraseCanonica (eco literal apertura↔corona). */}
+        <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} bodyDuplicado={bodyCoronaDuplicado} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (

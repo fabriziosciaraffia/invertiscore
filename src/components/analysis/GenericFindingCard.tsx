@@ -137,6 +137,7 @@ export function GenericFindingCard({
   valorUF,
   palanca,
   esElMasDecisivo = true,
+  bodyDuplicado = false,
   onOpenDrawer,
 }: {
   hallazgo: Hallazgo;
@@ -152,6 +153,12 @@ export function GenericFindingCard({
    *  Filosofía 1, no la decisividad), dice "Ojo antes de firmar" — honesto, sin
    *  afirmar un peso que el dato no respalda. Default true: no altera otros callers. */
   esElMasDecisivo?: boolean;
+  /** Suprime el <p> body (fraseCanonica) cuando ese texto YA lo dice la apertura de
+   *  la prosa (respuestaDirecta abre con la misma fraseCanonica del coronado). Evita
+   *  que el usuario lea el mismo bloque dos veces en una pantalla. Lo computa el caller
+   *  (PiramideHallazgos) por detección directa. Default false → body se muestra
+   *  (backward-compat con todos los demás callers y con niveles 2/3). */
+  bodyDuplicado?: boolean;
   /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
   onOpenDrawer?: (key: DrawerKey) => void;
 }) {
@@ -236,10 +243,15 @@ export function GenericFindingCard({
         {d.ksub}
       </div>
 
-      {/* resumen = fraseCanonica (el motor la escribe; la IA la reescribe aguas abajo) */}
-      <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
-        {hallazgo.fraseCanonica}
-      </p>
+      {/* resumen = fraseCanonica (el motor la escribe; la IA la reescribe aguas abajo).
+          Se OMITE cuando bodyDuplicado: la apertura de la prosa ya abrió con esta misma
+          fraseCanonica y repetirla sería el mismo bloque dos veces. Al no renderizar el
+          <p> tampoco queda su margen → sin hueco; el pie/procedencia toma su mt propio. */}
+      {!bodyDuplicado && (
+        <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
+          {hallazgo.fraseCanonica}
+        </p>
+      )}
 
       {/* palanca opcional (nivel 1): border-top + slot de acción */}
       {nivel === 1 && palanca ? (
