@@ -20,6 +20,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { renderPdf } from "@/lib/pdf/render-pdf";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -56,8 +57,9 @@ export async function GET(
       );
     }
 
-    const direccionLabel = (row.direccion as string | null)
-      || (row.comuna ? `Depto en ${row.comuna}` : "Análisis de inversión");
+    const direccionLabel = row.direccion
+      ? formatDireccionDisplay(row.direccion as string, row.comuna as string | null)
+      : (row.comuna ? `Depto en ${row.comuna}` : "Análisis de inversión");
     const fechaCorta = new Date().toLocaleDateString("es-CL", {
       day: "numeric", month: "long", year: "numeric",
     });

@@ -5,6 +5,7 @@ import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "
 import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet } from "lucide-react";
 import { fmtCLP, fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 /**
  * Hero de resultados LTR — rediseño dark (Fase 1a). Referencia visual aprobada:
@@ -45,7 +46,9 @@ export function HeroLTR({
   createdAt?: string;
 }) {
   // ── Identidad (F1): dirección + comuna de inputData; fallback al título legacy ──
-  const direccion = inputData?.direccion?.trim() || "";
+  // Solo-calle: el H1 concatena "· {comuna}" aparte (línea ~150), así que NO le
+  // pasamos comuna al helper para no duplicarla.
+  const direccion = formatDireccionDisplay(inputData?.direccion);
   const comunaLabel = comuna || inputData?.comuna || ciudad || "";
   const hasDireccion = direccion.length > 0;
   const dorm = inputData?.dormitorios;

@@ -6,6 +6,7 @@ import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import FrancoLogo from "@/components/franco-logo";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
@@ -143,7 +144,9 @@ export function SharedComparativaClient(p: Props) {
   const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
 
   const fechaCorta = formatFechaCorta(p.createdAt);
-  const direccionDisplay = p.direccion || `Depto ${p.dormitorios}D${p.banos}B en ${p.comuna}`;
+  const direccionDisplay = p.direccion
+    ? formatDireccionDisplay(p.direccion, p.comuna)
+    : `Depto ${p.dormitorios}D${p.banos}B en ${p.comuna}`;
 
   return (
     <div
