@@ -893,13 +893,24 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       }
     }
     const precioM2Usuario = pvc.sujetoUfM2;
-    const precioM2Ref = zonaRadio?.precioM2VentaCLP ? (zonaRadio.precioM2VentaCLP / UF_CLP) : precioM2Zona;
-    if (precioM2Ref > 0 && precioM2Usuario > 0) {
-      const diffPrecio = ((precioM2Usuario - precioM2Ref) / precioM2Ref) * 100;
-      if (diffPrecio > 30) {
-        anomalias.push(`PRECIO ALTO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(diffPrecio)}% sobre el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Posible sobreprecio.`);
-      } else if (diffPrecio < -30) {
-        anomalias.push(`PRECIO BAJO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(Math.abs(diffPrecio))}% bajo el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Excelente oportunidad si es correcto.`);
+    // CATCH-ROOT-A (raíz): la anomalía de precio/m² SOLO se emite con una mediana
+    // de zona CONFIABLE — misma condición que pvc / hallazgoSobreprecio (null si
+    // !confiable) y que el bloque "COMPARACIÓN DE PRECIO POR M²" del prompt ("sin
+    // dato confiable de zona"). Sin dato confiable, `precioM2Ref` caería a
+    // `precioM2Zona`, que conserva un promedio market/seed NO verificado (:754) que
+    // el snapshot no reseteó (:779): emitirlo inyectaba "X% sobre el promedio de la
+    // zona (UF Y/m²)" al prompt mientras el resto decía "sin dato", y el modelo
+    // copiaba la cifra (fabricación). Gatear acá elimina la cifra del input; el
+    // guard/detector queda como red de seguridad.
+    if (precioM2ZonaConfiable) {
+      const precioM2Ref = zonaRadio?.precioM2VentaCLP ? (zonaRadio.precioM2VentaCLP / UF_CLP) : precioM2Zona;
+      if (precioM2Ref > 0 && precioM2Usuario > 0) {
+        const diffPrecio = ((precioM2Usuario - precioM2Ref) / precioM2Ref) * 100;
+        if (diffPrecio > 30) {
+          anomalias.push(`PRECIO ALTO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(diffPrecio)}% sobre el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Posible sobreprecio.`);
+        } else if (diffPrecio < -30) {
+          anomalias.push(`PRECIO BAJO: Precio/m² de ${fmtUF(precioM2Usuario)} está ${Math.round(Math.abs(diffPrecio))}% bajo el promedio de la zona (${fmtUF(precioM2Ref)}/m²). Excelente oportunidad si es correcto.`);
+        }
       }
     }
     const ggccEstimado = input.superficie * 2000;
@@ -1484,12 +1495,24 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
           console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=false`);
         } else {
           console.warn(`[CATCH-ROOT-A] ${analysisId}: fabrica=true (intento 0) cita="${deteccion.cita.slice(0, 220)}" — regenerando`);
+          // Defensa B: el retry reconstruye el userPrompt SIN la sección de anomalías.
+          // El fix raíz (A) ya saca la anomalía de precio/m² del prompt en el caso
+          // !confiable, pero el retry reusaba el userPrompt completo y podía seguir
+          // primado por el resto de la sección; strip determinista de `anomaliasTexto`
+          // (la string exacta interpolada en el prompt) lo elimina de la regeneración.
+          // DECISIÓN DELIBERADA (no efecto colateral): se remueve la sección de
+          // anomalías COMPLETA — incluidas anomalías de OTROS tipos (arriendo, GGCC,
+          // contribuciones) que fueran legítimas. Es aceptable: solo aplica al intento
+          // de regeneración de este guard (que ya solo corre en el caso sin mediana
+          // confiable) y prioriza matar la fabricación sobre conservar esas anomalías
+          // en el retry. El userPrompt original y el resto del correctivo no se tocan.
+          const userPromptSinAnomalias = anomaliasTexto ? userPrompt.split(anomaliasTexto).join("") : userPrompt;
           for (let intento = 1; intento <= CATCH_ROOTA_MAX_RETRIES && deteccion.fabrica; intento++) {
             const correctivo = `\n\n⚠️ CORRECCIÓN OBLIGATORIA — la versión anterior fabricó un dato que NO existe.\nLa versión anterior afirmó: "${deteccion.cita}".\nEsta comuna NO tiene dato de mediana/promedio/precio de zona (no hay dato de zona). Está PROHIBIDO mencionar una mediana de zona, un promedio de zona, un precio/m² de zona, o un "% sobre/bajo la zona/el promedio". NO inventes esos números ni los back-computes desde precio÷superficie. La negociación se ancla en precioSugerido / TIR / flujo y en palancas no-precio. Reescribí el análisis COMPLETO sin ninguna comparación de precio vs zona.`;
             const regen = await anthropic.messages.create({
               model: CLAUDE_MODEL,
               max_tokens: 8000,
-              messages: [{ role: "user", content: userPrompt + correctivo }],
+              messages: [{ role: "user", content: userPromptSinAnomalias + correctivo }],
               system: SYSTEM_PROMPT,
             });
             const regenText = regen.content[0].type === "text" ? regen.content[0].text : "";
