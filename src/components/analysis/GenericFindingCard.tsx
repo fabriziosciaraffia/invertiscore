@@ -15,6 +15,7 @@
 
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
+import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 
 // Mapa hallazgo → drawer de detalle. Los 6 hallazgos LTR tienen drawer (cap_rate
 // se sumó en Fase 3). Sin entrada ⇒ sin affordance "Ver detalle".
@@ -164,6 +165,9 @@ export function GenericFindingCard({
 }) {
   const d = findingDisplay(hallazgo, currency, valorUF);
   const dir = direccionMeta(hallazgo.direccion);
+  // Caveat corto de procedencia (pie): se suprime cuando la corona muestra la
+  // procedencia extendida en el body (bodyDuplicado) — Flag A, no duplicar procedencia.
+  const procedenciaCorta = bodyDuplicado ? undefined : d.procedencia;
   const kpiColor = d.kpiRed ? "text-signal-red" : "";
 
   // Affordance de detalle: solo cuando el hallazgo mapea a un drawer Y hay handler.
@@ -247,9 +251,16 @@ export function GenericFindingCard({
           Se OMITE cuando bodyDuplicado: la apertura de la prosa ya abrió con esta misma
           fraseCanonica y repetirla sería el mismo bloque dos veces. Al no renderizar el
           <p> tampoco queda su margen → sin hueco; el pie/procedencia toma su mt propio. */}
-      {!bodyDuplicado && (
+      {!bodyDuplicado ? (
         <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
           {hallazgo.fraseCanonica}
+        </p>
+      ) : (
+        // Corona sin body: la prosa ya abrió con esta misma fraseCanonica. En vez de
+        // dejar aire vertical, mostramos la procedencia extendida (de dónde sale el
+        // dato). Reemplaza también el caveat corto del pie (procedenciaCorta, Flag A).
+        <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-muted)" }}>
+          {procedenciaExtendida(hallazgo, currency, valorUF)}
         </p>
       )}
 
@@ -263,14 +274,14 @@ export function GenericFindingCard({
       {/* pie (niveles 1-2): caveat de procedencia (izq, cuando aclara cómo leer el
           dato) + affordance "Ver detalle →" (abajo-derecha). Sin barra de confianza,
           sin decisividad. Se muestra si hay procedencia real o hay drawer conectado. */}
-      {nivel !== 3 && (d.procedencia || hasDetalle) ? (
+      {nivel !== 3 && (procedenciaCorta || hasDetalle) ? (
         <div
           className="mt-4 pt-3.5 flex items-center justify-between gap-3"
           style={{ borderTop: "0.5px solid var(--franco-border)" }}
         >
-          {d.procedencia ? (
+          {procedenciaCorta ? (
             <span className="font-body min-w-0" style={{ fontSize: 11, color: "var(--franco-text-muted)" }}>
-              {d.procedencia}
+              {procedenciaCorta}
             </span>
           ) : (
             <span />

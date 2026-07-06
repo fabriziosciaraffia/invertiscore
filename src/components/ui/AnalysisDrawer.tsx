@@ -13,7 +13,7 @@ import type {
   HallazgoCapRate,
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
-import { readVeredicto } from "@/lib/results-helpers";
+import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
@@ -22,7 +22,7 @@ import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
 import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
-export type DrawerKey = "costoMensual" | "capRate" | "negociacion" | "reestructuracion" | "largoPlazo" | "riesgos" | "zona" | "capexPuestaAPunto";
+export type DrawerKey = "costoMensual" | "capRate" | "negociacion" | "reestructuracion" | "largoPlazo" | "zona" | "capexPuestaAPunto";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -56,9 +56,11 @@ const DRAWER_META: Record<
   // cuando el problema es financiamiento, no precio. Solo aparece cuando
   // aiAnalysis.reestructuracion existe.
   reestructuracion: { num: "03+", label: "Reestructuración", prev: "negociacion", next: "largoPlazo" },
-  largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "riesgos" },
-  riesgos: { num: "05", label: "Riesgos", prev: "largoPlazo", next: "zona" },
-  zona: { num: "06", label: "Zona", prev: "riesgos", next: undefined },
+  largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "zona" },
+  // 05 · Riesgos retirado (Entrega A): drawer huérfano, ninguna card lo abría.
+  // largoPlazo ↔ zona se recablean entre sí. Zona mantiene "06" (consistente con la
+  // card "06 · ZONA"); el 05 simplemente ya no existe.
+  zona: { num: "06", label: "Zona", prev: "largoPlazo", next: undefined },
   // Hoja: no se interpone en la cadena 02-06 (es un hallazgo del motor, no una
   // sección IA). Sin prev/next → solo cierra.
   capexPuestaAPunto: { num: "+", label: "Puesta a punto", prev: undefined, next: undefined },
@@ -1717,80 +1719,6 @@ export function extractRiesgos(
   });
 }
 
-function DrawerRiesgos({
-  data,
-  currency,
-}: {
-  data: AISection;
-  currency: "CLP" | "UF";
-}) {
-  const content = currency === "CLP" ? data.contenido_clp : data.contenido_uf;
-  // Flag para distinguir "riesgos del análisis" vs "fallback genérico"
-  // (Fase 22 P1.5.1) — se usa para mostrar disclaimer al user.
-  const parsedRiesgos = useMemo(() => extractRiesgos(content), [content]);
-  const usandoFallback = parsedRiesgos.length === 0;
-  const riesgos = usandoFallback
-    ? [
-        { titulo: "Subida de tasas", descripcion: "Si las tasas suben, tu dividendo mensual aumenta y el flujo empeora." },
-        { titulo: "Vacancia prolongada", descripcion: "Si el depto queda sin arrendatario, asumes todos los costos sin ingreso." },
-        { titulo: "Plusvalía inferior", descripcion: "Si la zona no crece al ritmo histórico, tu ganancia a 10 años baja." },
-      ]
-    : parsedRiesgos;
-
-  return (
-    <div>
-      {/* Disclaimer Fase 22 P1.5.1 — solo cuando se usa fallback hardcoded.
-          Patrón: dot mono 11px text-secondary (mismo que mensajes educativos). */}
-      {usandoFallback && (
-        <p className="font-mono text-[11px] mb-4 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-          ● Lista genérica de riesgos típicos. El análisis específico no generó riesgos personalizados.
-        </p>
-      )}
-
-      <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-2 m-0">
-        <span>Toda inversión tiene flancos. Los más relevantes para este depto:</span>
-        <InfoTooltip content="Riesgos identificados que pueden afectar la rentabilidad o el flujo de la inversión." />
-      </p>
-
-      {/* Mensaje educativo dot Fase 4.8 — contexto del scope de riesgos. */}
-      <p className="font-mono text-[11px] mt-2 mb-3 m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● Estos riesgos vienen de los datos del análisis específico. Para deptos con flujo positivo o zona estable, los flancos pueden ser menores que los listados.
-      </p>
-
-      <div className="flex flex-col gap-2.5 my-4">
-        {riesgos.map((r, i) => (
-          <div
-            key={i}
-            className="rounded-r-lg p-3"
-            style={{
-              borderLeft: "3px solid var(--signal-red)",
-              background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
-              border: "0.5px solid color-mix(in srgb, var(--signal-red) 25%, transparent)",
-              borderLeftWidth: "3px",
-            }}
-          >
-            <h4 className="font-body font-medium text-[13px] mb-1 m-0" style={{ color: "var(--signal-red)" }}>
-              {r.titulo}
-            </h4>
-            <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 leading-[1.45]">
-              {r.descripcion}
-            </p>
-          </div>
-        ))}
-      </div>
-
-      <StateBox
-        variant="left-border"
-        state="attention"
-        label={data.cajaLabel || "Si decides avanzar, protege estos flancos:"}
-        className="mt-5"
-      >
-        {currency === "CLP" ? data.cajaAccionable_clp : data.cajaAccionable_uf}
-      </StateBox>
-    </div>
-  );
-}
-
 // ─── Reestructuración drawer ────────────────────────
 // Aparece solo cuando aiAnalysis.reestructuracion existe (Nivel 3 del
 // escalonado financingHealth, skill §1.5). Commit E.3 · 2026-05-13 — la
@@ -1918,10 +1846,6 @@ function DrawerEstructuraSana({
         <InfoTooltip content="Cuando el pie y la tasa están en rango, el problema —si lo hay— está en el precio o el flujo, no en cómo financias." />
       </p>
 
-      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
-        {hallazgo.fraseCanonica}
-      </div>
-
       {/* Estructura actual — chips numéricos en mono */}
       <div
         className="rounded-[8px] p-4 mb-4"
@@ -1961,6 +1885,23 @@ function DrawerEstructuraSana({
         </p>
       </div>
 
+      {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
+          eco de fraseCanonica que ya mostró la card) */}
+      <div
+        className="rounded-r-[8px] p-4 mb-4"
+        style={{
+          borderLeft: "3px solid var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+          De dónde sale
+        </p>
+        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+          {procedenciaExtendida(hallazgo, currency, valorUF)}
+        </p>
+      </div>
+
       {/* Bloque conclusivo — sin palanca urgente */}
       <div
         className="rounded-r-[8px] p-4"
@@ -1985,9 +1926,11 @@ function DrawerEstructuraSana({
 function DrawerCapexPuestaAPunto({
   hallazgo,
   currency,
+  valorUF,
 }: {
   hallazgo: HallazgoPuestaAPunto;
   currency: "CLP" | "UF";
+  valorUF: number;
 }) {
   const { montoCLP, montoUF, ufM2, antiguedadAnios, superficieUtilM2 } = hallazgo.valor;
   const montoFmt =
@@ -1998,24 +1941,12 @@ function DrawerCapexPuestaAPunto({
   // la "Δdecisión" calibrada. Esta cifra es display: "X% de tu plata día 1".
   const pctInversion = Math.round(hallazgo.valor.fraccionInversion * 100);
 
-  // Procedencia visible — no audit-only. Voz: tuteo neutro (skill §2.1).
-  const procedenciaTexto =
-    hallazgo.procedencia.confianza === "alta"
-      ? "Basado en la cotización que ingresaste."
-      : hallazgo.procedencia.confianza === "baja"
-        ? "Estimación gruesa: no capturamos la antigüedad exacta. Con una cotización real, el número se ajusta."
-        : "Estimación según la antigüedad del depto. Con una cotización real, el número se ajusta.";
-
   return (
     <div>
       <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
         <span>No es flipping: es dejar el depto en estándar de arriendo para captar el precio de mercado.</span>
         <InfoTooltip content="Pintura, pisos, cocina/baño al día. Un usado sin puesta a punto suele arrendar bajo el precio de mercado de la zona." />
       </p>
-
-      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
-        {hallazgo.fraseCanonica}
-      </div>
 
       {/* Cifras del hallazgo — chips numéricos en mono */}
       <div
@@ -2074,7 +2005,7 @@ function DrawerCapexPuestaAPunto({
           De dónde sale
         </p>
         <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-          {procedenciaTexto}
+          {procedenciaExtendida(hallazgo, currency, valorUF)}
         </p>
       </div>
     </div>
@@ -2097,7 +2028,7 @@ function DrawerCapRate({
   currency: "CLP" | "UF";
   valorUF: number;
 }) {
-  const { capRatePct, capRefPct, gapPts, fuente } = hallazgo.valor;
+  const { capRatePct, capRefPct, gapPts } = hallazgo.valor;
   const adverso = hallazgo.direccion === "adverso"; // rinde bajo la referencia
   const precioCLP = results.metrics?.precioCLP ?? 0;
   const arriendoActual = results.metrics?.ingresoMensual ?? 0;
@@ -2119,10 +2050,6 @@ function DrawerCapRate({
         <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
         <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes del dividendo) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
       </p>
-
-      <div className="font-body text-[13px] leading-[1.65] text-[var(--franco-text)] my-4 whitespace-pre-line">
-        {hallazgo.fraseCanonica}
-      </div>
 
       {/* Cap rate vs referencia — chips numéricos en mono */}
       <div
@@ -2164,7 +2091,24 @@ function DrawerCapRate({
           </div>
         </div>
         <p className="font-body text-[11px] text-[var(--franco-text-secondary)] m-0 mt-3">
-          Hoy: {fmt(noiAnual)} netos al año sobre un precio de {fmt(precioCLP)}. Referencia: {fuente}.
+          Hoy: {fmt(noiAnual)} netos al año sobre un precio de {fmt(precioCLP)}.
+        </p>
+      </div>
+
+      {/* Procedencia — de dónde sale el dato (builder determinístico, reemplaza el
+          eco de fraseCanonica que ya mostró la card) */}
+      <div
+        className="rounded-r-[8px] p-4 mb-4"
+        style={{
+          borderLeft: "3px solid var(--franco-text)",
+          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+        }}
+      >
+        <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
+          De dónde sale
+        </p>
+        <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
+          {procedenciaExtendida(hallazgo, currency, valorUF)}
         </p>
       </div>
 
@@ -2342,6 +2286,12 @@ export function AnalysisDrawer({
   const estructuraHallazgo = results.hallazgos?.find(
     (h): h is HallazgoEstructuraFinanciamiento => h.id === "estructura_financiamiento",
   );
+  // Hallazgo capex (motor-seeded) — .find por id, NO índice posicional (paridad con
+  // capRate/estructura). Antes se gateaba con results.hallazgos[0] y el drawer no
+  // renderizaba si otro hallazgo quedaba en [0].
+  const capexHallazgo = results.hallazgos?.find(
+    (h): h is HallazgoPuestaAPunto => h.id === "capex_puesta_a_punto",
+  );
   const section =
     activeKey === "zona"
       ? ({ pregunta: zonaTitle } as { pregunta: string })
@@ -2379,13 +2329,6 @@ export function AnalysisDrawer({
       if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
       if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
       return `¿Vale la pena a ${aniosPlazo} años?`;
-    }
-    if (activeKey === "riesgos") {
-      const score = results.score ?? 0;
-      const veredicto = readVeredicto(results) || (score >= 70 ? "COMPRAR" : score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA");
-      if (veredicto === "COMPRAR") return "¿Qué cuidar?";
-      if (veredicto === "BUSCAR OTRA") return "¿Qué te puede afectar más?";
-      return "¿Qué riesgos asume tu negociación?"; // AJUSTA
     }
     return section.pregunta;
   })();
@@ -2478,10 +2421,11 @@ export function AnalysisDrawer({
                 valorUF={valorUF}
               />
             ) : null)}
-          {activeKey === "capexPuestaAPunto" && results.hallazgos?.[0]?.id === "capex_puesta_a_punto" && (
+          {activeKey === "capexPuestaAPunto" && capexHallazgo && (
             <DrawerCapexPuestaAPunto
-              hallazgo={results.hallazgos[0]}
+              hallazgo={capexHallazgo}
               currency={currency}
+              valorUF={valorUF}
             />
           )}
           {activeKey === "capRate" && capRateHallazgo && (
@@ -2499,12 +2443,6 @@ export function AnalysisDrawer({
               results={results}
               valorUF={valorUF}
               inputData={inputData}
-            />
-          )}
-          {activeKey === "riesgos" && (
-            <DrawerRiesgos
-              data={section as AISection}
-              currency={currency}
             />
           )}
           {activeKey === "zona" && (
