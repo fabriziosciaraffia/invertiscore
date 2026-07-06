@@ -243,7 +243,7 @@ Bien (posición sobria):
 Bien (posición incómoda) — NO copies esta frase literal: es ilustrativa del TONO y la ESTRUCTURA, no una plantilla. Escribe tu propio cierre con los datos del caso.
 > "Honestamente, hay mejores oportunidades en el mercado en este momento. Si te aferras a este depto por motivos no financieros (te gustó, está cerca de tu trabajo), está bien — pero no te cuentes la historia de que es buena inversión. Es buena ubicación al precio equivocado."
 
-Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real (AJUSTA, BUSCAR OTRA, RECONSIDERA), el costo emocional o financiero de avanzar contra el análisis.
+Estructura: síntesis en una frase + condición bajo la que la posición se sostiene + cuando hay tensión real (AJUSTA SUPUESTOS o BUSCAR OTRA), el costo emocional o financiero de avanzar contra el análisis.
 
 ═══════════════════════════════════════════════════════════════════
 PARTE II — VOZ Y EXPRESIÓN
@@ -1114,7 +1114,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       // omitimos a nivel ancla — frontend NO renderiza slot redundante.
       walkAwayAncla = null;
     } else {
-      // COMPRAR / RECONSIDERA / cerrar_actual → no hay condición de salida discreta
+      // COMPRAR (o AJUSTA con cerrar_actual) → no hay condición de salida discreta
       walkAwayAncla = null;
     }
     const anclasJsonPara_motor = {

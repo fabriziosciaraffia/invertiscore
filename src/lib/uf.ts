@@ -24,7 +24,7 @@ export async function getUFValue(): Promise<number> {
     cachedUF = { value: valor, fetchedAt: Date.now() };
     return valor;
   } catch (err) {
-    console.error("Error fetching UF value:", err);
+    console.error("[UF-FALLBACK] Error fetching UF value, using cached/frozen fallback:", err);
     // Return cached even if expired, otherwise fallback
     return cachedUF?.value ?? UF_FALLBACK;
   }
