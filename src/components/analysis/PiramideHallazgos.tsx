@@ -62,6 +62,26 @@ function gatherHallazgos(
   return Array.from(byId.values());
 }
 
+// Matriz de columnas del nivel 3 según cuántos chips quedan (Familia A, aprobada por
+// Fabrizio). La estructura 1+2+resto NO cambia; solo el grid del resto se adapta para
+// que la última fila quede balanceada en todo N∈[5,9] (evita el huérfano de N=7 y el
+// 3+2 suelto de N=8). Clases ESTÁTICAS: Tailwind JIT no genera `grid-cols-${n}`
+// interpolado, así que cada string de columnas es literal. El orden de `resto` se
+// preserva (Filosofía 1): en el caso de 5, los 2 chips más decisivos ganan ancho en la
+// fila de 2 y el resto va a la de 3. Mobile (<md): todas las filas apilan a 1 columna.
+function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: string }[] {
+  const n = resto.length;
+  if (n === 2) return [{ items: resto, cols: "md:grid-cols-2" }];
+  if (n === 4) return [{ items: resto, cols: "md:grid-cols-4" }];
+  if (n === 5)
+    return [
+      { items: resto.slice(0, 2), cols: "md:grid-cols-2" },
+      { items: resto.slice(2), cols: "md:grid-cols-3" },
+    ];
+  // 1, 3, 6, >6 → grid de 3 (fallback actual): 3 = fila perfecta, 6 = 3+3 por wrap.
+  return [{ items: resto, cols: "md:grid-cols-3" }];
+}
+
 export function PiramideHallazgos({
   results,
   aiAnalysis,
@@ -147,14 +167,17 @@ export function PiramideHallazgos({
           </div>
         )}
 
-        {/* Nivel 3 — el resto, chips */}
-        {nivel3.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {nivel3.map((h) => (
-              <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
-            ))}
-          </div>
-        )}
+        {/* Nivel 3 — el resto, chips. Grid adaptativo (filasNivel3) para que la última
+            fila quede balanceada en todo N; en filas de 2 los chips solo son más anchos
+            (mismo componente/props). El orden lo fija el sort de arriba, no este render. */}
+        {nivel3.length > 0 &&
+          filasNivel3(nivel3).map((fila, i) => (
+            <div key={i} className={`grid grid-cols-1 ${fila.cols} gap-3`}>
+              {fila.items.map((h) => (
+                <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} onOpenDrawer={onOpenDrawer} />
+              ))}
+            </div>
+          ))}
       </div>
     </section>
   );
