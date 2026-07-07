@@ -680,7 +680,12 @@ export interface AIAnalysisV2 {
   // Opcional: solo presente cuando Franco recomienda Nivel 3 (skill §1.5).
   reestructuracion?: AIReestructuracionSection;
   largoPlazo: AISection;
-  riesgos: AISection;
+  // Opcional (Entrega B · Fase 2): el prompt LTR dejó de emitir `riesgos` (el
+  // drawer se retiró en Entrega A; su única función viva era alimentar el
+  // detector de fabricación, reapuntado a largoPlazo.contenido). Se conserva en
+  // el tipo para análisis viejos persistidos que sí lo traen (forward-only) y
+  // porque extractRiesgos/STR lo siguen usando en su propio flujo.
+  riesgos?: AISection;
   // Commit E.2 · 2026-05-13 — campo audit-only NO renderizado al usuario.
   // Si la IA cree que el veredicto del motor está mal calibrado, lo reporta
   // acá para revisión humana. La regla operativa post-E.2: la IA NUNCA

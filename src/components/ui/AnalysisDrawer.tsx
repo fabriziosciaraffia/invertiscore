@@ -796,6 +796,34 @@ function DrawerNegociacion({
         </div>
       </div>
 
+      {/* Aunque negocies al máximo (negociacion.contenido — Entrega B).
+          break-even del arriendo + palanca de financiamiento. Contrato reescrito
+          (:561): no repite sobreprecio/m², ni la tesis "buscar otra", ni afirma/
+          niega el valor de mercado — la tabla de arriba ya lo muestra. */}
+      {(currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim() && (
+        <div
+          style={{
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            borderRadius: "0 8px 8px 0",
+            padding: "12px 16px",
+          }}
+        >
+          <span
+            className="font-mono uppercase block mb-1.5"
+            style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
+          >
+            Aunque negocies al máximo
+          </span>
+          <p
+            className="font-body m-0 whitespace-pre-wrap"
+            style={{ fontSize: 12.5, color: "color-mix(in srgb, var(--franco-text) 75%, transparent)", lineHeight: 1.55 }}
+          >
+            {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
+          </p>
+        </div>
+      )}
+
       {/* BLOQUE C · ESTRATEGIA — wash condicional (Fase 20 PARTE 6).
           Signal Red SOLO cuando esSobreprecio (caso que requiere atención).
           Ventaja y Alineado: Ink wash neutro. Capa 1 binaria respetada. */}
@@ -1622,6 +1650,37 @@ function DrawerLargoPlazo({
           </span>
         </div>
       </div>
+
+      {/* ─── VS. OTRO INSTRUMENTO (largoPlazo.contenido — Entrega B) ─────────
+          El waterfall de arriba da el patrimonio; este bloque responde "¿vale la
+          pena vs poner la misma plata en otro lado?" (depósito UF / fondo mutuo +
+          costo de oportunidad). Contrato :570 recortado: no repite ganancia
+          neta / total aportado / pie (viven en el waterfall). */}
+      {(currency === "CLP" ? data.contenido_clp : data.contenido_uf)?.trim() && (
+        <div
+          style={{
+            background: "color-mix(in srgb, var(--franco-text) 2%, var(--franco-card))",
+            border: "0.5px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
+            borderRadius: 10,
+            padding: "18px 20px",
+          }}
+        >
+          <div className="mb-2">
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text)", fontWeight: 600 }}
+            >
+              Vs. poner la misma plata en otro lado
+            </span>
+          </div>
+          <p
+            className="font-body m-0 whitespace-pre-wrap"
+            style={{ fontSize: 13, color: "color-mix(in srgb, var(--franco-text) 78%, transparent)", lineHeight: 1.6 }}
+          >
+            {currency === "CLP" ? data.contenido_clp : data.contenido_uf}
+          </p>
+        </div>
+      )}
 
       {/* ─── La apuesta que haces (narrativa IA editorial) ─── */}
       <StateBox
