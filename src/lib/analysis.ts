@@ -14,6 +14,7 @@ import { estimarContribuciones } from "./contribuciones";
 import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
+import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
@@ -1643,6 +1644,13 @@ export function runAnalysis(
     decisividad: decisividades.estructura_financiamiento?.decisividad ?? 0,
     magnitudContinua: decisividades.estructura_financiamiento?.magnitud ?? 0,
   });
+  // Hallazgo de TIR (retorno total): 7º hallazgo, el primero SOLO-LECTURA. Envuelve
+  // exitScenario.tir (10 años, precio pedido — la que cita la prosa y tabula el drawer
+  // negociación), no la recalcula. decisividad 0 fija: la TIR es el integrador sin
+  // driver único, no pasa por calcDecisividades (no entra al ranking). Se siembra ACÁ
+  // y no como carrier de metrics porque exitScenario se computa post-calcMetrics.
+  // Guard null si la TIR no es finita → hallazgo ausente (pirámide N-1).
+  const hallazgoTIR = buildHallazgoTIR({ tirPct: exitScenario.tir, modalidad: "ltr" });
 
   return {
     score: clamp(score, 0, 100),
@@ -1679,6 +1687,7 @@ export function runAnalysis(
       ...(metrics.hallazgoPlusvalia ? [metrics.hallazgoPlusvalia] : []),
       ...(metrics.hallazgoSobreprecio ? [metrics.hallazgoSobreprecio] : []),
       ...(hallazgoEstructura ? [hallazgoEstructura] : []),
+      ...(hallazgoTIR ? [hallazgoTIR] : []),
     ],
   };
 }

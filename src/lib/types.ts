@@ -411,6 +411,45 @@ export interface HallazgoEstructuraFinanciamiento {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — TIR (retorno total del deal) para LTR. 7º hallazgo y el
+// primero SOLO-LECTURA: NO compite en el ranking de decisividad (decisividad 0 fija)
+// porque la TIR es el integrador de precio+arriendo+tasa+pie+plazo+venta y no tiene
+// un driver único que calcDecisividades pueda neutralizar sin doble conteo. El motor
+// envuelve exitScenario.tir (10 años, precio pedido — la misma que cita la prosa y
+// tabula el drawer negociación) sin recalcularla, y la compara contra el UMBRAL de 6%
+// que el motor YA usa (precio límite, bisección) y la UI ya narra ("mínimo que un deal
+// apalancado debe rendir"). magnitudContinua = |tir−6|/banda ordena entre pares de
+// igual decisividad (E4). Anti-colisión (A4): ancla al umbral, NUNCA compara pelado
+// con depósito/fondo — esa comparación rica vive en "Vs. otro instrumento" de
+// largoPlazo. Motor-seeded en runAnalysis (necesita exitScenario, post-calcMetrics) →
+// va en results.hallazgos como estructura. La IA lo narra aguas abajo. Ver tir-hallazgo.ts.
+export interface HallazgoTIR {
+  id: "tir";
+  tipo: "retorno_total";
+  valor: {
+    tirPct: number;      // exitScenario.tir — retorno anual del deal a 10 años, %
+    umbralPct: number;   // umbral fijo 6% (mínimo que un deal apalancado debe rendir)
+    gapPts: number;      // tirPct − umbralPct, en puntos (signed)
+    banda: number;       // banda de normalización de magnitudContinua, en puntos
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable si tir ≥ 6%; adverso si < 6%. La frase puede decir "justo en el filo"
+  // cuando |gap| < 0,3; la señal-máquina es binaria (favorable si tir ≥ 6).
+  direccion: "favorable" | "adverso";
+  // SOLO-LECTURA: 0 fija — la TIR NO pasa por calcDecisividades (integrador sin driver
+  // único). El kicker honesto de la corona garantiza que si el orden Filosofía 1 la
+  // corona, lleva "OJO ANTES DE FIRMAR", nunca "LO MÁS DECISIVO".
+  decisividad: number;
+  // |tir−6|/banda saturado a 1 — desempate secundario del sort entre pares de igual
+  // decisividad (E4). Único orden que la TIR aporta al ranking.
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN
+  // número. fraseCanonica es la línea larga (2 oraciones) que narra la pirámide.
+  titular: string;
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // HallazgoSobreprecio se incorporó (sobreprecio-sync): el motor lo siembra sync
 // cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
@@ -421,7 +460,8 @@ export type Hallazgo =
   | HallazgoFlujoMensual
   | HallazgoPlusvalia
   | HallazgoSobreprecio
-  | HallazgoEstructuraFinanciamiento;
+  | HallazgoEstructuraFinanciamiento
+  | HallazgoTIR;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;

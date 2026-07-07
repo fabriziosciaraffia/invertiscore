@@ -26,6 +26,7 @@ const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   plusvalia: "largoPlazo",
   capex_puesta_a_punto: "capexPuestaAPunto",
   estructura_financiamiento: "reestructuracion",
+  tir: "negociacion", // la tabla TIR-por-precio ya vive en el drawer negociación
 };
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
@@ -118,6 +119,19 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
         kpiRed: false,
         ksub: `anual · 2014-2024 · umbral real ${pct1(v.refPct)}%`,
         procedencia: v.tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital" : undefined,
+      };
+    }
+    case "tir": {
+      const v = h.valor;
+      const bajo = v.gapPts < 0;
+      return {
+        kick: "Retorno total",
+        title: "Lo que rinde puesto todo junto",
+        kpi: `${pct1(v.tirPct)}%`,
+        // false — espejo de cap_rate (el otro hallazgo de %-retorno): el KPI queda en Ink;
+        // el punto de dirección "En contra" carga la señal adversa. Sin rojo extra.
+        kpiRed: false,
+        ksub: `TIR a 10 años · ${pct1(Math.abs(v.gapPts))} pts ${bajo ? "bajo" : "sobre"} el mínimo de ${v.umbralPct}%`,
       };
     }
   }

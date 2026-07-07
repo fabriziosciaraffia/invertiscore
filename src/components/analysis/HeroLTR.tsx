@@ -626,6 +626,19 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
         kpiRed: h.direccion === "adverso",
       };
     }
+    case "tir": {
+      const v = h.valor;
+      return {
+        desc,
+        term: "TIR a 10 años",
+        // Glosa inline en el tooltip: la card de la pirámide glosa TIR en su body, pero
+        // la fila del hero es terse; el tooltip explica el concepto (skill §279).
+        tooltip: `Rentabilidad anual de toda tu inversión — integra tus aportes y la venta a 10 años. Mínimo sano: ${v.umbralPct}%.`,
+        kpi: `${pct1(v.tirPct)}%`,
+        kpiSub: `vs mínimo ${v.umbralPct}% · a 10 años`,
+        kpiRed: false, // espejo cap_rate — el punto de dirección carga la señal adversa
+      };
+    }
     default:
       return { desc: "", term: "", tooltip: "", kpi: "", kpiRed: false };
   }

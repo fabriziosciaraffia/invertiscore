@@ -77,6 +77,10 @@ export function procedenciaExtendida(
           return `Estimado según la antigüedad del depto (${v.antiguedadAnios} años) y su superficie, a unos UF ${pct1(v.ufM2)}/m². Con una cotización real, el número se ajusta.`;
       }
     }
+    case "tir": {
+      const v = h.valor;
+      return `La TIR es la rentabilidad anual de toda la operación: parte de tu inversión inicial (pie, gastos de cierre y puesta a punto), suma o resta tus aportes mensuales año a año, y cierra con la venta proyectada a 10 años neta del saldo del crédito y la comisión. La comparamos contra un mínimo de ${v.umbralPct}% —el piso bajo el cual un deal apalancado rinde menos de lo que justifica su riesgo e iliquidez—, no contra un instrumento puntual.`;
+    }
     default: {
       // Exhaustividad: si se agrega un tipo de hallazgo sin procedencia, no rompe el render.
       return "";

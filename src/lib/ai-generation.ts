@@ -1240,7 +1240,11 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       hallazgoPlusvaliaGen,
       hallazgoEstructuraGen,
     ]
-      .filter((h): h is Hallazgo => h != null)
+      // NonNullable<typeof h> (no `Hallazgo`): este gather arma la lista para el PROMPT
+      // desde los 6 builders locales — NO incluye el hallazgo TIR (read-only, narrado
+      // aparte vía lecturaTIR). Narrowar a Hallazgo (que ya incluye HallazgoTIR) haría
+      // el predicado inválido; narrowamos al propio tipo del array (los 6 sin null).
+      .filter((h): h is NonNullable<typeof h> => h != null)
       // Orden de la pirámide: decisividad DESC (el floor manda: vinculantes arriba)
       // y, DENTRO del mismo valor, magnitud continua DESC (desempate E4 — el que
       // mueve más el score va primero; el que empata por floor pero no mueve el
