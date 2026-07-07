@@ -59,9 +59,18 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
     case "sobreprecio": {
       const v = h.valor;
       const sobre = v.desviacionPct > 0;
+      // Título direction-aware (antes hardcodeaba "pagando de más" → mentía en
+      // favorable). Trío espejo del motor: borde |desv|≤2 = "a precio de zona"
+      // (EN_LINEA_UMBRAL_PCT), luego favorable (bajo mediana) vs adverso (sobre).
+      const enLinea = Math.abs(v.desviacionPct) <= 2;
+      const title = enLinea
+        ? "Pagas el metro a precio de zona"
+        : sobre
+          ? "Estás pagando de más por el metro cuadrado"
+          : "Entras barato por el metro cuadrado";
       return {
         kick: "Precio por metro",
-        title: "Estás pagando de más por el metro cuadrado",
+        title,
         kpi: `${sobre ? "+" : ""}${Math.round(v.desviacionPct)}%`,
         kpiRed: sobre, // pagar sobre la mediana = críticamente adverso (mockup)
         ksub: `${sobre ? "sobre" : "bajo"} la mediana · UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)} /m²`,
@@ -80,12 +89,17 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
     }
     case "flujo_mensual": {
       const v = h.valor;
+      // Título + ksub direction-aware (antes hardcodeaba "sale de tu bolsillo" →
+      // mentía en favorable, cuando el arriendo cubre todo y te QUEDA plata).
+      const favorable = v.flujoNetoMensualCLP >= 0;
       return {
         kick: "Flujo mensual",
-        title: "Lo que sale de tu bolsillo cada mes",
+        title: favorable ? "Lo que te queda cada mes" : "Lo que sale de tu bolsillo cada mes",
         kpi: fmtSigned(v.flujoNetoMensualCLP, currency, valorUF),
         kpiRed: v.flujoNetoMensualCLP < 0, // monetario negativo (uso Signal Red #2)
-        ksub: "cada mes · sale de tu bolsillo, no del arriendo",
+        ksub: favorable
+          ? "cada mes · te queda después de todos los costos"
+          : "cada mes · sale de tu bolsillo, no del arriendo",
       };
     }
     case "estructura_financiamiento": {

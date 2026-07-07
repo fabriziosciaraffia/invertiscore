@@ -564,7 +564,8 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
         desc,
         term: "Precio/m² vs zona",
         tooltip: `${tip}${v.n ? ` · n = ${v.n}` : ""}.`,
-        kpi: `+${Math.round(v.desviacionPct)}%`,
+        // Signo direction-aware: antes hardcodeaba "+" → "+-12%" en favorable (desv<0).
+        kpi: `${v.desviacionPct > 0 ? "+" : ""}${Math.round(v.desviacionPct)}%`,
         kpiSub: `UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)}`,
         kpiRed: false,
       };
