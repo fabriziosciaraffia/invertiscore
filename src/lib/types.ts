@@ -52,6 +52,11 @@ export interface AnalisisInput {
   // tal cual (origen='override') en lugar de la curva por antigüedad. Sin UI esta
   // sesión — el motor solo lo lee si el caller lo setea.
   costoPuestaAPuntoCLP?: number;
+  // Gate anti-drift del corretaje inicial (2% del precio, solo usados). Se setea
+  // en el payload al CREAR (true iff tipoPropiedad==="usado"); persistido en
+  // input_data. El motor lo lee una vez en calcMetrics → metrics.corretajeInicialCLP.
+  // Ausente ⇒ false ⇒ comportamiento viejo (análisis previos recomputan idéntico).
+  incluyeCorretajeInicial?: boolean;
 }
 
 export interface MonthlyCashflow {
@@ -90,7 +95,7 @@ export interface ExitScenario {
   multiplicadorCapital: number;
   tir: number;
   // Concepto "plata que realmente pusiste" a lo largo del plazo
-  inversionInicial: number;              // pie + gastos cierre (día 1)
+  inversionInicial: number;              // pie + gastos cierre + CapEx puesta a punto + corretaje (usados, día 1)
   flujoMensualAcumuladoNegativo: number; // suma absoluta de años con flujo neto negativo
   totalAportado: number;                 // inversionInicial + flujoMensualAcumuladoNegativo
   gananciaSobreTotal: number;            // gananciaNeta - totalAportado
@@ -158,6 +163,12 @@ export interface AnalysisMetrics {
   // Opcional para back-compat con metrics construidos fuera de calcMetrics
   // (enrich-legacy, mocks). Consumidores leen con `?? 0`.
   capexPuestaAPuntoCLP?: number;
+  // Corretaje inicial del comprador (2% del precio) — SOLO usados y SOLO
+  // análisis creados con el flag input.incluyeCorretajeInicial (gate anti-drift).
+  // Arch A: entra a inversionInicial del exit (TIR/retorno/día-1/patrimonio),
+  // NO a capitalInvertido (cashOnCash/gates/veredicto/score quedan intactos).
+  // Ausente/0 en análisis viejos → recomputan byte-idéntico. Consumidores `?? 0`.
+  corretajeInicialCLP?: number;
   // Proto-hallazgo tipado emitido por el motor (null si Nuevo / CapEx 0).
   hallazgoPuestaAPunto?: HallazgoPuestaAPunto | null;
   // Proto-hallazgo de cap rate (LTR). null si el cap rate no es computable

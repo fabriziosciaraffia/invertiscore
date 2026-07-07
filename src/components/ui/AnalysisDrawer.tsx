@@ -1041,6 +1041,9 @@ function DrawerLargoPlazo({
     .reduce((s, p) => s + Math.abs(p.flujoAnual), 0);
 
   const inversionInicial = exit?.inversionInicial ?? (pieCLP + Math.round(precioCLP * 0.02));
+  // Corretaje inicial (usados, análisis nuevos): ya incluido en inversionInicial
+  // vía el motor. Solo condiciona el label/tooltip del "Día 1" para itemizarlo.
+  const tieneCorretaje = (results.metrics?.corretajeInicialCLP ?? 0) > 0;
   const flujoMensualAcum = exit?.flujoMensualAcumuladoNegativo ?? flujoMensualAcumFallback;
   const totalAportado = exit?.totalAportado ?? (inversionInicial + flujoMensualAcum);
   const gananciaSobreTotal = exit?.gananciaSobreTotal ?? (gananciaNeta - totalAportado);
@@ -1516,14 +1519,16 @@ function DrawerLargoPlazo({
                 className="inline-flex items-center gap-1 font-body"
                 style={{ fontSize: 13, color: "var(--franco-text)" }}
               >
-                <span>Día 1 (pie + cierre)</span>
-                <InfoTooltip content="Pie del crédito + 2% de gastos de cierre (notario, Conservador de Bienes Raíces, timbres). CBR = oficina pública que registra la propiedad a tu nombre." />
+                <span>{tieneCorretaje ? "Día 1 (pie + cierre + corretaje)" : "Día 1 (pie + cierre)"}</span>
+                <InfoTooltip content={tieneCorretaje
+                  ? "Pie del crédito + 2% de gastos de cierre (notario, Conservador de Bienes Raíces, timbres) + 2% de corretaje del comprador, usual al comprar una propiedad usada en Chile. CBR = oficina pública que registra la propiedad a tu nombre."
+                  : "Pie del crédito + 2% de gastos de cierre (notario, Conservador de Bienes Raíces, timbres). CBR = oficina pública que registra la propiedad a tu nombre."} />
               </span>
               <span
                 className="font-heading italic"
                 style={{ fontSize: 11, color: "color-mix(in srgb, var(--franco-text) 55%, transparent)" }}
               >
-                pago al notario, CBR, timbres
+                {tieneCorretaje ? "pago al notario, CBR, timbres + corretaje" : "pago al notario, CBR, timbres"}
               </span>
             </div>
             <span

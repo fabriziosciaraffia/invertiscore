@@ -56,13 +56,14 @@ export function PatrimonioChart({
     const montoCuota = inputData.montoCuota > 0 ? inputData.montoCuota : 0;
     const enCuotasPie = totalCuotas > 0 && montoCuota > 0;
 
-    // Inversión inicial visual del chart = pieCLP + 2% gastos cierre.
-    // Atención: aporteAcum del chart sigue una semántica distinta a la del
-    // motor (capitalInvertido = pieCLP + gastosCompra, sin doble conteo de
-    // cuotas). Aquí, fix H5: las cuotas pagadas durante construcción se
-    // distribuyen año a año en aporteAcum para mostrar el avance del
-    // desembolso. No mezclar este número con capitalInvertido / cashOnCash.
-    const inversionInicial = pieCLP + gastosCierre;
+    // Inversión inicial visual del chart = pieCLP + 2% gastos cierre + corretaje
+    // inicial (usados, análisis nuevos — mismo número que inversionInicial del
+    // exit / drawer día 1). Atención: aporteAcum del chart sigue una semántica
+    // distinta a la del motor (capitalInvertido = pieCLP + gastosCompra, sin
+    // doble conteo de cuotas). Aquí, fix H5: las cuotas pagadas durante
+    // construcción se distribuyen año a año en aporteAcum para mostrar el avance
+    // del desembolso. No mezclar este número con capitalInvertido / cashOnCash.
+    const inversionInicial = pieCLP + gastosCierre + (metrics.corretajeInicialCLP ?? 0);
 
     const rows: Array<{
       anio: number;

@@ -431,6 +431,10 @@ function NuevoAnalisisV3Inner() {
       superficie: supUtil,
       superficieTotal: supUtil,
       antiguedad: antigNum,
+      // Gate anti-drift del corretaje inicial (2% del precio): true iff usado.
+      // Solo análisis creados desde este fix lo llevan; el motor lo lee en
+      // calcMetrics. Análisis viejos (sin flag) recomputan idéntico. Interno.
+      incluyeCorretajeInicial: state.tipoPropiedad === "usado",
       enConstruccion: state.estadoVenta !== "inmediata",
       piso: 0,
       estacionamiento: nEstac > 0 ? "si" : "no",

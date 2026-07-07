@@ -1037,6 +1037,10 @@ export default function NuevoAnalisisPage() {
       superficie: supUtil,
       superficieTotal: supUtil,
       antiguedad,
+      // Gate anti-drift del corretaje inicial (2% del precio): true iff usado.
+      // Solo análisis creados desde este fix lo llevan; el motor lo lee en
+      // calcMetrics. Análisis viejos (sin flag) recomputan idéntico. Interno.
+      incluyeCorretajeInicial: form.tipoPropiedad === "usado",
       enConstruccion: form.estadoVenta !== "inmediata",
       piso: 0,
       estacionamiento: Number(form.estacionamiento) > 0 ? "si" : "no",

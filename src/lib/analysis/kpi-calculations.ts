@@ -38,11 +38,13 @@ export function calculateKPIs(inp: KPIInputs): KPIResults {
   const placeholderInput: AnalisisInput = (input ?? {}) as any;
   const exit = calcExitScenario(placeholderInput, metrics, projections, effectivePlazo);
 
-  // inversionInicial = pieCLP + 2% gastos cierre. Las cuotas de pie durante
-  // construcción NO se suman aparte: ya están contenidas en pieCLP. Coherente
-  // con motor (calcMetrics + calcExitScenario). Modelo A — Item 9 auditoría.
+  // inversionInicial = pieCLP + 2% gastos cierre + corretaje inicial (usados,
+  // análisis nuevos). Las cuotas de pie durante construcción NO se suman aparte:
+  // ya están contenidas en pieCLP. Coherente con motor (calcMetrics +
+  // calcExitScenario). Modelo A — Item 9 auditoría.
   const inversionInicial =
-    metrics.pieCLP + Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
+    metrics.pieCLP + Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT) +
+    (metrics.corretajeInicialCLP ?? 0);
 
   // Cap Rate sale del motor y no depende del slider.
   const capRate = metrics.capRate ?? 0;

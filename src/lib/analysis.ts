@@ -59,6 +59,7 @@ const GGCC_INFLACION = 0.03;
 const INFLACION_UF = 0.03; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
 const COMISION_VENTA = 0.02;
 const GASTOS_CIERRE_PCT = 0.02; // ~2% of purchase price (notaría, CBR, timbres, tasación)
+const CORRETAJE_COMPRA_PCT = 0.02; // 2% corretaje del comprador — usual en usados (en nuevo va en el precio)
 
 // =========================================
 // Helpers
@@ -304,6 +305,14 @@ function calcMetrics(
     neutralize?.capexPuestaAPuntoCLP != null
       ? neutralize.capexPuestaAPuntoCLP
       : capexPuestaAPunto.montoCLP;
+  // Corretaje inicial del comprador (2% del precio) — solo usados y solo análisis
+  // creados con el flag (gate anti-drift; ausente ⇒ 0 ⇒ viejos byte-idénticos).
+  // Arch A: NO entra a capitalInvertido → cashOnCash/mesesPaybackPie/gates/veredicto/
+  // score quedan intactos. Solo lo consume inversionInicial del exit (TIR/día-1/
+  // patrimonio) y el display. Ver types.ts AnalysisMetrics.corretajeInicialCLP.
+  const corretajeInicial = input.incluyeCorretajeInicial
+    ? Math.round(precioCLP * CORRETAJE_COMPRA_PCT)
+    : 0;
   const capitalInvertido = calcInversionInicialCLP({
     pieCLP,
     gastosCierreCLP: gastosCompra,
@@ -435,6 +444,7 @@ function calcMetrics(
       return { califica, tasaConSubsidio, aplicado: califica && aplicaSubsidio(input.tasaInteres, tasaConSubsidio) };
     })(),
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+    corretajeInicialCLP: corretajeInicial,
     hallazgoPuestaAPunto,
     hallazgoCapRate,
     hallazgoFlujoMensual,
@@ -663,13 +673,16 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   const retornoTotal = proy.flujoAcumulado + gananciaNeta;
 
   // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
-  // + CapEx puesta a punto (ya computado en calcMetrics, reutilizado acá para
-  // que inversionInicial == capitalInvertido sin recomputar la curva).
+  // + CapEx puesta a punto + corretaje inicial (usados, análisis nuevos). Todo
+  // reutilizado de metrics (ya computado en calcMetrics) sin recomputar la curva.
+  // Arch A: acá inversionInicial = capitalInvertido + corretaje (el corretaje NO
+  // está en capitalInvertido a propósito, para no tocar cashOnCash/gates/veredicto).
   const gastosCompra = Math.round(metrics.precioCLP * GASTOS_CIERRE_PCT);
   const inversionInicial = calcInversionInicialCLP({
     pieCLP: metrics.pieCLP,
     gastosCierreCLP: gastosCompra,
     capexPuestaAPuntoCLP: metrics.capexPuestaAPuntoCLP ?? 0,
+    corretajeInicialCLP: metrics.corretajeInicialCLP ?? 0,
   });
 
   // "Plata que realmente pusiste" = inicial + aportes mensuales acumulados

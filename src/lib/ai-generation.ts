@@ -813,13 +813,15 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
 
     const creditoCLP = m.precioCLP * (1 - input.piePct / 100);
     const GASTOS_CIERRE_PCT = 0.02;
-    // Incluye el CapEx para que inversionTotal == capitalInvertido del motor
-    // (analysis.ts). Sin esto, la IA veía una inversión inicial más baja que la
-    // de la card y narrar el CapEx la contradeciría.
+    // Incluye el CapEx y el corretaje (usados, análisis nuevos) para que
+    // inversionTotal == inversionInicial del exit (analysis.ts). Sin esto, la IA
+    // veía una inversión inicial más baja que la de la card / drawer y narrar el
+    // día 1 la contradeciría.
     const inversionTotal = calcInversionInicialCLP({
       pieCLP: m.pieCLP,
       gastosCierreCLP: Math.round(m.precioCLP * GASTOS_CIERRE_PCT),
       capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
+      corretajeInicialCLP: m.corretajeInicialCLP ?? 0,
     });
 
     // Hallazgo CapEx con decisividad/fraseCanonica idénticos a la card: mismo
