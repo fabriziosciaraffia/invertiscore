@@ -1241,9 +1241,10 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       hallazgoEstructuraGen,
     ]
       // NonNullable<typeof h> (no `Hallazgo`): este gather arma la lista para el PROMPT
-      // desde los 6 builders locales — NO incluye el hallazgo TIR (read-only, narrado
-      // aparte vía lecturaTIR). Narrowar a Hallazgo (que ya incluye HallazgoTIR) haría
-      // el predicado inválido; narrowamos al propio tipo del array (los 6 sin null).
+      // desde los 6 builders locales — NO incluye los hallazgos SOLO-LECTURA (TIR, narrado
+      // aparte vía lecturaTIR; y SENSIBILIDAD, que solo vive en la pirámide, sin feed de
+      // prosa). Narrowar a Hallazgo (que ya incluye esos read-only) haría el predicado
+      // inválido; narrowamos al propio tipo del array (los 6 sin null).
       .filter((h): h is NonNullable<typeof h> => h != null)
       // Orden de la pirámide: decisividad DESC (el floor manda: vinculantes arriba)
       // y, DENTRO del mismo valor, magnitud continua DESC (desempate E4 — el que

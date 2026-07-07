@@ -450,6 +450,49 @@ export interface HallazgoTIR {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — SENSIBILIDAD (robustez del veredicto) para LTR. 8º hallazgo y
+// el segundo SOLO-LECTURA (tras TIR): NO compite en el ranking de decisividad (decisividad
+// 0 fija) porque la robustez es un meta-dato del conjunto (integra precio+arriendo+tasa+
+// pie+venta vía el veredicto mismo) sin un driver único que calcDecisividades pueda
+// neutralizar. El motor estresa el arriendo declarado hacia abajo por bisección [−50%,0] a
+// 0,5 punto y reporta `marginPct` = la caída máxima que el veredicto aguanta antes de
+// cambiar. Cortes 7/15: < 7% frágil (adverso) · [7,15) borde · ≥ 15% firme (ambos
+// favorables). Tres casos especiales: BUSCAR OTRA base y arriendo no computable ⇒ hallazgo
+// ausente (null); "firme" (no cambia ni a −50%) ⇒ marginPct 50, dirección favorable.
+// magnitudContinua = |margin−corteAdverso|/banda ordena entre pares de igual decisividad
+// (E4). Motor-seeded en runAnalysis (necesita el veredicto base + closure veredicto-only,
+// post-deriveVeredicto) → va en results.hallazgos como estructura. La IA lo narra aguas
+// abajo. Ver sensibilidad-hallazgo.ts.
+export interface HallazgoSensibilidad {
+  id: "sensibilidad";
+  tipo: "robustez_veredicto";
+  valor: {
+    marginPct: number;                // caída de arriendo (%) que el veredicto aguanta antes de cambiar
+    firme: boolean;                   // true si no cambia ni a −50% (aguanta ≥50%)
+    veredictoBase: Veredicto;         // veredicto al arriendo declarado
+    veredictoNuevo: Veredicto | null; // veredicto al cruzar el margen; null si firme
+    corteAdverso: number;             // 7 — bajo este margen la dirección es adversa
+    corteFavorable: number;           // 15 — sobre este margen el veredicto es firme
+    banda: number;                    // 25 — normalización de magnitudContinua
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable salvo la banda frágil (margin < corteAdverso), que es adversa. La señal-
+  // máquina es binaria; la frase distingue frágil / borde / firme.
+  direccion: "favorable" | "adverso";
+  // SOLO-LECTURA: 0 fija — la robustez NO pasa por calcDecisividades (meta-dato sin driver
+  // único). El kicker honesto de la corona garantiza que si el orden Filosofía 1 la corona,
+  // lleva "OJO ANTES DE FIRMAR", nunca "LO MÁS DECISIVO".
+  decisividad: number;
+  // |margin−corteAdverso|/banda saturado a 1 — desempate secundario del sort entre pares de
+  // igual decisividad (E4). Único orden que la sensibilidad aporta al ranking.
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN número.
+  // fraseCanonica es la línea larga (2 oraciones) que narra la pirámide.
+  titular: string;
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // HallazgoSobreprecio se incorporó (sobreprecio-sync): el motor lo siembra sync
 // cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
@@ -461,7 +504,8 @@ export type Hallazgo =
   | HallazgoPlusvalia
   | HallazgoSobreprecio
   | HallazgoEstructuraFinanciamiento
-  | HallazgoTIR;
+  | HallazgoTIR
+  | HallazgoSensibilidad;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;

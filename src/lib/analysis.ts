@@ -15,6 +15,7 @@ import { calcInversionInicialCLP } from "./inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta-a-punto";
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
+import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
@@ -1651,6 +1652,28 @@ export function runAnalysis(
   // y no como carrier de metrics porque exitScenario se computa post-calcMetrics.
   // Guard null si la TIR no es finita → hallazgo ausente (pirámide N-1).
   const hallazgoTIR = buildHallazgoTIR({ tirPct: exitScenario.tir, modalidad: "ltr" });
+  // Hallazgo de SENSIBILIDAD (robustez del veredicto): 8º hallazgo, el segundo SOLO-LECTURA.
+  // Estresa el arriendo declarado hacia abajo por bisección [−50%,0] y reporta cuánto aguanta
+  // el veredicto antes de cambiar. El closure `veredictoAt` reevalúa el veredicto sobre un
+  // clon con arriendo escalado usando EXACTAMENTE la ruta que produce `veredicto` acá arriba
+  // (calcMetrics → score → breakEven → deriveVeredicto), SIN reconstruir hallazgos → sin
+  // recursión (el hallazgo se siembra acá, no en calcMetrics). calcMetrics se llama sin
+  // `decisividades`: ese param solo alimenta los hallazgos internos, no las métricas del
+  // veredicto (por eso calcDecisividades también lo omite). decisividad 0 fija: no entra al
+  // ranking. Guard null si base = BUSCAR OTRA o el arriendo no es computable (pirámide N−1).
+  const veredictoAtFactor = (factor: number): Veredicto => {
+    const clone = { ...input, arriendo: Math.round(input.arriendo * factor) };
+    const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
+    const s = calcScoreFromMetrics(clone, m, ufClp);
+    const bet = calcBreakEvenTasa(clone, m, ufClp);
+    return deriveVeredicto(s, m, bet);
+  };
+  const hallazgoSensibilidad = buildHallazgoSensibilidad({
+    veredictoBase: veredicto,
+    arriendo: input.arriendo,
+    veredictoAt: veredictoAtFactor,
+    modalidad: "ltr",
+  });
 
   return {
     score: clamp(score, 0, 100),
@@ -1688,6 +1711,7 @@ export function runAnalysis(
       ...(metrics.hallazgoSobreprecio ? [metrics.hallazgoSobreprecio] : []),
       ...(hallazgoEstructura ? [hallazgoEstructura] : []),
       ...(hallazgoTIR ? [hallazgoTIR] : []),
+      ...(hallazgoSensibilidad ? [hallazgoSensibilidad] : []),
     ],
   };
 }

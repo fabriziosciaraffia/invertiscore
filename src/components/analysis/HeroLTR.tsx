@@ -481,6 +481,11 @@ function pct1(n: number): string {
   return n.toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 }
 
+// Margen de sensibilidad: entero sin decimal (−7%), coma chilena si no (−7,5%).
+function fmtMargin(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ",");
+}
+
 // Monto con signo explícito (− real, U+2212) respetando el toggle.
 function fmtSigned(clp: number, currency: "CLP" | "UF", valorUF: number): string {
   const s = clp < 0 ? "−" : "+";
@@ -638,6 +643,24 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
         kpi: `${pct1(v.tirPct)}%`,
         kpiSub: `vs mínimo ${v.umbralPct}% · a 10 años`,
         kpiRed: false, // espejo cap_rate — el punto de dirección carga la señal adversa
+      };
+    }
+    case "sensibilidad": {
+      const v = h.valor;
+      return {
+        desc,
+        term: "Margen del veredicto",
+        // Glosa inline (skill A11): consecuencia vivida, sin narrar la mecánica ("cruza"/
+        // "breakeven"). La fila del hero es terse; el tooltip explica el concepto.
+        tooltip: `Cuánto puede caer el arriendo real frente al que declaraste sin que cambie el veredicto — mide qué tan firme es la conclusión.`,
+        // KPI Opción A (mismo formato que findingDisplay): el verbo carga la dirección.
+        kpi: v.firme
+          ? "Aguanta −50% o más"
+          : h.direccion === "adverso"
+            ? `Se cae con −${fmtMargin(v.marginPct)}%`
+            : `Aguanta hasta −${fmtMargin(v.marginPct)}%`,
+        kpiSub: v.firme ? "veredicto firme" : `pasa a ${v.veredictoNuevo}`,
+        kpiRed: h.direccion === "adverso",
       };
     }
     default:

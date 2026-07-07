@@ -81,6 +81,9 @@ export function procedenciaExtendida(
       const v = h.valor;
       return `La TIR es la rentabilidad anual de toda la operación: parte de tu inversión inicial (pie, gastos de cierre y puesta a punto), suma o resta tus aportes mensuales año a año, y cierra con la venta proyectada a 10 años neta del saldo del crédito y la comisión. La comparamos contra un mínimo de ${v.umbralPct}% —el piso bajo el cual un deal apalancado rinde menos de lo que justifica su riesgo e iliquidez—, no contra un instrumento puntual.`;
     }
+    case "sensibilidad": {
+      return `Este margen sale de reevaluar tu inversión bajando el arriendo declarado de a poco —en pasos de medio punto— hasta ver dónde el veredicto dejaría de sostenerse. El arriendo es el número más fácil de cargar optimista al simular, por eso lo estresamos a él y no al resto: si el veredicto aguanta una caída grande, la conclusión no depende de haber achuntado el arriendo al peso; si aguanta poco, confírmalo contra publicaciones reales de la zona antes de decidir.`;
+    }
     default: {
       // Exhaustividad: si se agrega un tipo de hallazgo sin procedencia, no rompe el render.
       return "";

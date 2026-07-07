@@ -27,10 +27,13 @@ const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   capex_puesta_a_punto: "capexPuestaAPunto",
   estructura_financiamiento: "reestructuracion",
   tir: "negociacion", // la tabla TIR-por-precio ya vive en el drawer negociación
+  sensibilidad: "costoMensual", // el estrés de arriendo vive junto al flujo/costo mensual
 };
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
+// Margen de sensibilidad: entero sin decimal (−7%), coma chilena si no (−7,5%).
+const fmtMargin = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1).replace(".", ","));
 const fmtCLP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 const fmtUF = (n: number) => "UF " + Math.round(n).toLocaleString("es-CL");
 const fmtSigned = (n: number, currency: "CLP" | "UF", valorUF: number) => {
@@ -146,6 +149,39 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
         // el punto de dirección "En contra" carga la señal adversa. Sin rojo extra.
         kpiRed: false,
         ksub: `TIR a 10 años · ${pct1(Math.abs(v.gapPts))} pts ${bajo ? "bajo" : "sobre"} el mínimo de ${v.umbralPct}%`,
+      };
+    }
+    case "sensibilidad": {
+      const v = h.valor;
+      const x = fmtMargin(v.marginPct);
+      // KPI Opción A (UX · Fabrizio): el VERBO carga la dirección, no el signo — "Aguanta
+      // −X%" confundía (verbo de capacidad peleando con el signo negativo). Adversa "Se cae
+      // con −X%" (el veredicto se cae con esa caída de arriendo); favorable/borde "Aguanta
+      // hasta −X%"; nunca-cambia "Aguanta −50% o más". Mismo valor de bisección que la
+      // fraseCanonica (v.marginPct, 0,5pt) vía el mismo fmtMargin → KPI y prosa no divergen.
+      const kpi = v.firme
+        ? "Aguanta −50% o más"
+        : h.direccion === "adverso"
+          ? `Se cae con −${x}%`
+          : `Aguanta hasta −${x}%`;
+      // ksub direccional: adversa nombra la caída y el veredicto destino; favorable
+      // distingue "colchón acotado" (borde, < corteFavorable) de "colchón amplio"
+      // (firme-finito, ≥ corteFavorable) — mismo adjetivo que el body; firme (nunca
+      // cambia) dice que la conclusión no cuelga del arriendo declarado.
+      const colchon = v.marginPct >= v.corteFavorable ? "colchón amplio" : "colchón acotado";
+      const ksub = v.firme
+        ? "no depende del arriendo que declaraste"
+        : h.direccion === "adverso"
+          ? `si el arriendo real cae ${x}%, pasa a ${v.veredictoNuevo}`
+          : `antes de pasar a ${v.veredictoNuevo} · ${colchon}`;
+      return {
+        kick: "Margen del veredicto",
+        title: "Cuánto aguanta tu veredicto",
+        kpi,
+        // Signal Red solo en la banda frágil (< corteAdverso): el margen es tan fino que
+        // un error normal del arriendo daría vuelta la conclusión — señal crítica.
+        kpiRed: h.direccion === "adverso",
+        ksub,
       };
     }
   }
