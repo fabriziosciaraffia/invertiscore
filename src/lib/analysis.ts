@@ -16,6 +16,7 @@ import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "./capex-puesta
 import { getCapRefComuna, buildHallazgoCapRate, CAP_RATE_REF_NACIONAL } from "./cap-rate-hallazgo";
 import { buildHallazgoTIR } from "./tir-hallazgo";
 import { buildHallazgoSensibilidad } from "./sensibilidad-hallazgo";
+import { buildHallazgoPatrimonio } from "./patrimonio-hallazgo";
 import { buildHallazgoFlujoMensual } from "./flujo-mensual-hallazgo";
 import { getPlusvaliaRef, resolvePlusvaliaComuna, buildHallazgoPlusvalia, PLUSVALIA_REF_REAL } from "./plusvalia-hallazgo";
 import { buildPrecioVsComuna } from "./precio-vs-comuna";
@@ -1687,6 +1688,19 @@ export function runAnalysis(
     veredictoAt: veredictoAtFactor,
     modalidad: "ltr",
   });
+  // Hallazgo de PATRIMONIO (a 10 años): 9º hallazgo, el tercero SOLO-LECTURA. Envuelve
+  // exitScenario.gananciaNeta (lo que recibes al vender, neto de deuda + comisión) y
+  // exitScenario.totalAportado (todo lo que pusiste, incluido el corretaje vía metrics), SIN
+  // recomputar — misma fuente que el drawer largoPlazo y el waterfall (D1). El multiplicador
+  // (patrimonio/aportado) da la dirección; decisividad 0 fija (resultado-stock sin driver
+  // único, no entra al ranking). Guard null si totalAportado ≤ 0 (pirámide N−1, filas legacy).
+  const hallazgoPatrimonio = buildHallazgoPatrimonio({
+    patrimonioCLP: exitScenario.gananciaNeta,
+    aportadoCLP: exitScenario.totalAportado,
+    valorUF: ufClp,
+    incluyeCorretaje: (metrics.corretajeInicialCLP ?? 0) > 0,
+    modalidad: "ltr",
+  });
 
   return {
     score: clamp(score, 0, 100),
@@ -1725,6 +1739,7 @@ export function runAnalysis(
       ...(hallazgoEstructura ? [hallazgoEstructura] : []),
       ...(hallazgoTIR ? [hallazgoTIR] : []),
       ...(hallazgoSensibilidad ? [hallazgoSensibilidad] : []),
+      ...(hallazgoPatrimonio ? [hallazgoPatrimonio] : []),
     ],
   };
 }

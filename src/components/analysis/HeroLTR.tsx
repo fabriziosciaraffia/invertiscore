@@ -663,6 +663,20 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
         kpiRed: h.direccion === "adverso",
       };
     }
+    case "patrimonio": {
+      const v = h.valor;
+      const multFmt = "×" + (Math.round(v.multiplicador * 10) / 10).toFixed(1).replace(".", ",");
+      return {
+        desc,
+        term: "Patrimonio a 10 años",
+        // Glosa inline: qué es el número (lo que te queda al vender) y contra qué se lee
+        // (lo aportado). Sin narrar la mecánica ni comparar instrumentos (D5).
+        tooltip: `Lo que te queda al vender a 10 años, neto de deuda y comisión, contra todo lo que pusiste. El multiplicador dice cuántas veces recuperas lo aportado.`,
+        kpi: fmtMoney(v.patrimonioCLP, currency, valorUF),
+        kpiSub: `${multFmt} lo aportado`,
+        kpiRed: h.direccion === "adverso", // multiplicador < 1: terminas con menos
+      };
+    }
     default:
       return { desc: "", term: "", tooltip: "", kpi: "", kpiRed: false };
   }

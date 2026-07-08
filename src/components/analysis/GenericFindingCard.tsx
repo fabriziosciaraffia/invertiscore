@@ -28,6 +28,7 @@ const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   estructura_financiamiento: "reestructuracion",
   tir: "negociacion", // la tabla TIR-por-precio ya vive en el drawer negociación
   sensibilidad: "costoMensual", // el estrés de arriendo vive junto al flujo/costo mensual
+  patrimonio: "largoPlazo", // el waterfall + esfuerzo total + instrumentos explican el número (D4)
 };
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
@@ -182,6 +183,29 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
         // un error normal del arriendo daría vuelta la conclusión — señal crítica.
         kpiRed: h.direccion === "adverso",
         ksub,
+      };
+    }
+    case "patrimonio": {
+      const v = h.valor;
+      // KPI = patrimonio absoluto (D1: "KPI en UF"; togglea CLP/UF como capex). ksub = el
+      // multiplicador + lo aportado. Título direction-aware (mismas 3 bandas que la frase).
+      const multFmt = "×" + (Math.round(v.multiplicador * 10) / 10).toFixed(1).replace(".", ",");
+      const adverso = v.multiplicador < v.corteAdverso;
+      const favorable = v.multiplicador >= v.corteFavorable;
+      const patrimonioFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.patrimonioCLP / valorUF : 0) : fmtCLP(v.patrimonioCLP);
+      const aportadoFmt = currency === "UF" ? fmtUF(valorUF > 0 ? v.aportadoCLP / valorUF : 0) : fmtCLP(v.aportadoCLP);
+      return {
+        kick: "Patrimonio a 10 años",
+        title: adverso
+          ? "Terminas con menos de lo que pusiste"
+          : favorable
+            ? "Tu parte vale bastante más de lo aportado"
+            : "Tu parte vale algo más de lo aportado",
+        kpi: patrimonioFmt,
+        // Signal Red solo cuando el multiplicador < 1: terminas con menos de lo que pusiste,
+        // el único caso críticamente adverso (uso #2, monetario negativo de facto).
+        kpiRed: adverso,
+        ksub: `${multFmt} · aportaste ${aportadoFmt}`,
       };
     }
   }

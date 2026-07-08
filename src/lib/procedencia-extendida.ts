@@ -84,6 +84,13 @@ export function procedenciaExtendida(
     case "sensibilidad": {
       return `Este margen sale de reevaluar tu inversión bajando el arriendo declarado de a poco —en pasos de medio punto— hasta ver dónde el veredicto dejaría de sostenerse. El arriendo es el número más fácil de cargar optimista al simular, por eso lo estresamos a él y no al resto: si el veredicto aguanta una caída grande, la conclusión no depende de haber achuntado el arriendo al peso; si aguanta poco, confírmalo contra publicaciones reales de la zona antes de decidir.`;
     }
+    case "patrimonio": {
+      const v = h.valor;
+      const aportes = v.incluyeCorretaje
+        ? "pie, gastos de cierre, corretaje de compra y los aportes mensuales que el arriendo no cubrió"
+        : "pie, gastos de cierre y los aportes mensuales que el arriendo no cubrió";
+      return `Es tu parte a 10 años si vendieras: el valor proyectado del depto menos el saldo del crédito y la comisión de venta, contra todo lo que pusiste (${aportes}). Integra la plusvalía proyectada —4% anual— , lo que amortizas del crédito año a año y el flujo que fuiste inyectando; por eso puede ser favorable aunque el flujo mensual sea negativo, o quedarse corta aunque el depto se valorice. Es una proyección, no una promesa: cambia con la plusvalía real y el precio al que efectivamente vendas.`;
+    }
     default: {
       // Exhaustividad: si se agrega un tipo de hallazgo sin procedencia, no rompe el render.
       return "";

@@ -504,6 +504,51 @@ export interface HallazgoSensibilidad {
   fraseCanonica: string;
 }
 
+// Proto-hallazgo tipado — PATRIMONIO (a 10 años) para LTR. 9º hallazgo y el tercero
+// SOLO-LECTURA (tras TIR y sensibilidad): NO compite en el ranking de decisividad
+// (decisividad 0 fija) porque el patrimonio es el resultado-stock integrador (plusvalía +
+// amortización + flujo aportado + venta) sin un driver único que calcDecisividades pueda
+// neutralizar. Envuelve exitScenario.gananciaNeta (= valorVenta − saldoCrédito − comisión,
+// lo que el drawer largoPlazo narra como "recibes al vender" y el waterfall totaliza) y
+// exitScenario.totalAportado (lo que pusiste: pie + cierre + corretaje + aportes mensuales
+// negativos), SIN recomputar — misma fuente que el drawer (D1). El multiplicador
+// (gananciaNeta/totalAportado = 1 + porcentajeGananciaSobreTotal/100) da la dirección:
+// < 1 adverso inapelable (terminas con menos de lo que pusiste), [1,2) borde, ≥ 2 favorable.
+// Anti-colisión (D5): NO ancla a instrumentos (esa comparación es del drawer y la dirección
+// del TIR) ni recita la ganancia-neta verbatim del veredicto del drawer — dice magnitud +
+// multiplicador, el drawer explica de dónde sale. Guard null si totalAportado ≤ 0 o
+// gananciaNeta no finita (pirámide N−1 — típico de filas legacy sin el campo). Motor-seeded
+// en runAnalysis (post-exitScenario). Ver patrimonio-hallazgo.ts.
+export interface HallazgoPatrimonio {
+  id: "patrimonio";
+  tipo: "patrimonio_neto";
+  valor: {
+    patrimonioCLP: number;    // exitScenario.gananciaNeta — lo que te queda al vender a 10 años
+    aportadoCLP: number;      // exitScenario.totalAportado — todo lo que pusiste (día 1 + aportes)
+    multiplicador: number;    // patrimonioCLP / aportadoCLP (= 1 + pctSobreTotal/100)
+    corteAdverso: number;     // 1 — bajo este multiplicador terminas con menos de lo aportado
+    corteFavorable: number;   // 2 — sobre este el patrimonio supera con holgura lo aportado
+    banda: number;            // 2 — normalización de magnitudContinua
+    incluyeCorretaje: boolean;// el aportado incluye corretaje de compra (usado, análisis nuevo)
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  // favorable salvo la banda adversa (multiplicador < corteAdverso). La señal-máquina es
+  // binaria; la frase distingue adverso / borde / favorable.
+  direccion: "favorable" | "adverso";
+  // SOLO-LECTURA: 0 fija — el patrimonio NO pasa por calcDecisividades (resultado-stock sin
+  // driver único). El kicker honesto de la corona garantiza "OJO ANTES DE FIRMAR" si el orden
+  // Filosofía 1 lo coronara, nunca "LO MÁS DECISIVO".
+  decisividad: number;
+  // |multiplicador−corteAdverso|/banda saturado a 1 — desempate secundario del sort entre
+  // pares de igual decisividad (E4). Único orden que el patrimonio aporta al ranking.
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  // Titular corto para el hero TOP-3: 6-12 palabras, diagnóstico + dirección, SIN número.
+  // fraseCanonica es la línea larga (2 oraciones) que narra la pirámide.
+  titular: string;
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // HallazgoSobreprecio se incorporó (sobreprecio-sync): el motor lo siembra sync
 // cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
@@ -516,7 +561,8 @@ export type Hallazgo =
   | HallazgoSobreprecio
   | HallazgoEstructuraFinanciamiento
   | HallazgoTIR
-  | HallazgoSensibilidad;
+  | HallazgoSensibilidad
+  | HallazgoPatrimonio;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;
