@@ -1579,13 +1579,39 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     if (aiResult?.conviene && hallazgosOrdenados[0]?.fraseCanonica) {
       const apertura = String(hallazgosOrdenados[0].fraseCanonica).trim();
       const aw = apertura.toLowerCase().split(/\s+/);
+      // Detección moneda/cifra-AGNÓSTICA del eco de la apertura. Motivo: cuando el #1
+      // es flujo_mensual la apertura lleva un monto en CLP ("Tienes que poner $X…"); el
+      // LLM a veces la restata en la OTRA moneda dentro de respuestaDirecta_uf ("Tienes
+      // que poner UF Y…"). El guard de prefijo por-palabra (abajo) es ciego a esto: el
+      // token de monto rompe el match en la palabra 4 (< umbral 6) y el eco sobrevive
+      // → apertura duplicada dual-moneda. Este paso normaliza montos/% a un placeholder
+      // y compara a nivel ORACIÓN, así el eco en otra moneda se reconoce y strippea.
+      const normSent = (s: string): string =>
+        s.replace(/\$[\d.,]+/g, "«M»").replace(/UF\s?[\d.,]+/gi, "«M»").replace(/[\d.,]+\s?%/g, "«P»").replace(/\s+/g, " ").trim().toLowerCase();
+      const splitSents = (s: string): string[] => s.split(/(?<=[.;])\s+/).map((x) => x.trim()).filter(Boolean);
+      const aperturaSkeletons = new Set(splitSents(apertura).map(normSent).filter((x) => x.length >= 12));
       const armar = (cont: unknown): string => {
         const c = typeof cont === "string" ? cont.trim() : "";
         if (!c) return apertura;
-        // Sanity de no-repetición: si la continuación arranca copiando >6 palabras
-        // de la apertura fija, STRIP determinístico del prefijo duplicado y ensambla
-        // con lo que queda. Borde: si tras el strip quedan <15 palabras, no strippea
-        // (mejor duplicado que mutilado) y deja el warning.
+        // (1) Strip de ECO moneda-normalizado: descarta oraciones INICIALES de la
+        // continuación cuyo esqueleto (montos/% neutralizados) coincide con una oración
+        // de la apertura — la clase del bug dual-moneda F2. Log [PLANC-DUAL-STRIPPED].
+        const sents = splitSents(c);
+        let drop = 0;
+        while (drop < sents.length && aperturaSkeletons.has(normSent(sents[drop]))) drop++;
+        if (drop > 0) {
+          const resto = sents.slice(drop).join(" ").trim();
+          const restoWC = resto ? resto.split(/\s+/).filter(Boolean).length : 0;
+          if (restoWC >= 15) {
+            console.warn(`[PLANC-DUAL-STRIPPED] ${analysisId}: continuación restaba ${drop} oración(es) de la apertura (variante moneda/cifra) — strippeadas, quedan ${restoWC} palabras`);
+            return `${apertura} ${resto}`;
+          }
+          console.warn(`[PLANC-DUAL] ${analysisId}: continuación restaba ${drop} oración(es) de la apertura pero el resto quedaría <15 palabras (strip omitido)`);
+        }
+        // (2) Sanity de no-repetición EXACTA (comportamiento previo): si la continuación
+        // arranca copiando >6 palabras idénticas de la apertura fija, STRIP del prefijo
+        // duplicado. Borde: si tras el strip quedan <15 palabras, no strippea (mejor
+        // duplicado que mutilado) y deja el warning.
         const cw = c.toLowerCase().split(/\s+/);
         let match = 0;
         while (match < aw.length && match < cw.length && aw[match] === cw[match]) match++;
