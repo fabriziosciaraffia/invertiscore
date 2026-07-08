@@ -328,6 +328,7 @@ export interface HallazgoSobreprecio {
     sobreprecioUfM2: number;     // sujeto − mediana, en UF/m² a 1 decimal
     banda: number;               // banda de saturación de la decisividad, en %
     n: number;                   // N de ventas usadas para la mediana
+    comuna: string;              // nombre de la comuna de la mediana — nombra el nivel en el ksub (R2). "" si no disponible
   };
   // DIRECCIÓN INVERTIDA respecto a cap_rate/flujo: en o BAJO la mediana =
   // favorable (entras barato); SOBRE la mediana = adverso (pagas caro). Más caro

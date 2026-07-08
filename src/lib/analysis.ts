@@ -391,6 +391,7 @@ function calcMetrics(
     precioVsComuna,
     decisividades?.sobreprecio?.decisividad ?? 0,
     decisividades?.sobreprecio?.magnitud ?? 0,
+    input.comuna,
   );
 
   const cashOnCash = capitalInvertido > 0 ? ((flujoNetoMensual * 12) / capitalInvertido) * 100 : 0;

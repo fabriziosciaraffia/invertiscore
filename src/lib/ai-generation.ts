@@ -67,13 +67,13 @@ Distribución por sección:
 
 Activa los que sumen al caso. No son obligatorios todos en cada análisis. La regla: si el ángulo cambia o refuerza la decisión del usuario, va. Si es relleno, fuera.
 
-**Ángulo 1 — Intra-zona (precio/m² vs mediana de comuna):**
+**Ángulo 1 — Intra-comuna (precio/m² vs mediana de comuna):**
 OBLIGATORIO cuando |sobreprecioPorM2| > 10%. No opcional. Va en \`conviene.respuestaDirecta\` (si es el matiz que condiciona la decisión) o \`negociacion.contenido\`.
-Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobreprecioPorM2 del caso): "Tu precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). Por ese precio en la misma zona consigues más metros."
+Ejemplo de forma (NO uses estos números — usa SIEMPRE precioM2Zona y sobreprecioPorM2 del caso): "Tu precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). Por ese precio en la misma comuna consigues más metros."
 
-REGLA DURA — origen de las cifras de zona: los valores de precio/m² de zona, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
+REGLA DURA — origen de las cifras de la comuna: los valores de precio/m² de la comuna, mediana y sobreprecio SOLO pueden salir de las variables \`precioM2Zona\` y \`sobreprecioPorM2\` que recibes en el caso. NUNCA cites una mediana de memoria por nombre de comuna. Si el número que vas a escribir no está en los datos del caso, no lo escribas.
 
-**Ángulo 2 — Inter-zona (otras comunas):**
+**Ángulo 2 — Inter-comuna (otras comunas):**
 OBLIGATORIO cuando veredicto = "BUSCAR OTRA". Sin excepciones.
 Va en \`conviene.respuestaDirecta\`.
 
@@ -212,9 +212,9 @@ Reglas:
 
 5. **Plusvalía histórica de la comuna (cuando viene en el input):**
 OBLIGATORIO mencionarla en \`conviene.respuestaDirecta\` cuando:
-- plusvaliaHistoricaAnualizada < 2% (zona estancada)
-- plusvaliaHistoricaAnualizada negativa (zona perdiendo valor)
-- Ángulo 3 (instrumentos) sería invalidado sin contexto histórico (la comparación TIR vs depósito/fondo asume plusvalía estable o creciente; si la zona está perdiendo valor, hay que explicitarlo).
+- plusvaliaHistoricaAnualizada < 2% (comuna estancada)
+- plusvaliaHistoricaAnualizada negativa (comuna perdiendo valor)
+- Ángulo 3 (instrumentos) sería invalidado sin contexto histórico (la comparación TIR vs depósito/fondo asume plusvalía estable o creciente; si la comuna está perdiendo valor, hay que explicitarlo).
 
 Forma: diagnóstico + implicancia.
 Ejemplo: "Santiago centro creció 0,8% anualizado en la última década — apostar a recuperación de plusvalía es la apuesta central de este caso, no un colchón."
@@ -324,15 +324,15 @@ PROHIBIDO cuando tieneDiferenciaValida=false:
 
 OBLIGATORIO cuando tieneDiferenciaValida=false:
 - Usar SOLO el indicador por m² (\`sobreprecioPorM2\`).
-- Si sobreprecioPorM2 > +5% sobre mediana de zona: reconocer sobreprecio por m² aunque tipoNegociacion diga PRECIO_ALINEADO.
-- Si sobreprecioPorM2 está entre ±5%: "precio/m² alineado con la zona" (no "precio alineado" — solo el ratio).
+- Si sobreprecioPorM2 > +5% sobre mediana de la comuna: reconocer sobreprecio por m² aunque tipoNegociacion diga PRECIO_ALINEADO.
+- Si sobreprecioPorM2 está entre ±5%: "precio/m² alineado con la comuna" (no "precio alineado" — solo el ratio).
 - Si sobreprecioPorM2 < -5%: reconocer descuento por m².
 
-Caso \`sobreprecioPorM2\` = null o "sin dato" (no hay mediana de zona confiable para esta comuna):
-PROHIBIDO mencionar mediana de zona, sobreprecio por m², "X% sobre/bajo la zona" o "vale UF Y". Sin dato de zona no afirmes NADA sobre precio vs zona — el análisis se basa SOLO en flujo, TIR y plusvalía. No inventes una mediana ni la cites de memoria por nombre de comuna.
+Caso \`sobreprecioPorM2\` = null o "sin dato" (no hay mediana comunal confiable para esta comuna):
+PROHIBIDO mencionar mediana comunal, sobreprecio por m², "X% sobre/bajo la comuna" o "vale UF Y". Sin dato comunal no afirmes NADA sobre precio vs comuna — el análisis se basa SOLO en flujo, TIR y plusvalía. No inventes una mediana ni la cites de memoria por nombre de comuna.
 
 Ejemplo concreto:
-- Input: precio UF 3.208, valor de referencia UF 3.208 (= precio, sin dato de mercado), tieneDiferenciaValida=false, sobreprecioPorM2 = +18,5% vs zona.
+- Input: precio UF 3.208, valor de referencia UF 3.208 (= precio, sin dato de mercado), tieneDiferenciaValida=false, sobreprecioPorM2 = +18,5% vs la mediana comunal.
 - INCORRECTO: "El precio está alineado con el mercado."
 - CORRECTO (NO uses estos placeholders literales — usa precioM2Zona y sobreprecioPorM2 del caso): "El precio/m² (UF [precioM2 del depto]) está [sobreprecioPorM2]% sobre la mediana de tu comuna (UF [precioM2Zona]). No hay un valor de mercado total confiable para este depto, pero el ratio por m² indica sobreprecio sustantivo."
 
@@ -436,14 +436,14 @@ ENCUADRE OBLIGATORIO — el evento es CUÁNDO, no POR QUÉ:
 No sabés cuánto movió cada tramo a ESTA comuna; solo sabés que el promedio los atraviesa. Quedate en el CUÁNDO. Si algún día el prompt te da el efecto por comuna como dato, ahí sí podrás cuantificarlo.
 
 EL CAVEAT APLICA EN AMBAS DIRECCIONES — no solo cuando la histórica es baja o negativa:
-- Histórica negativa o débil (Santiago, El Bosque, Las Condes, Providencia): el número cruza el estallido y la pandemia; por eso no es techo — la zona podría recuperar.
+- Histórica negativa o débil (Santiago, El Bosque, Las Condes, Providencia): el número cruza el estallido y la pandemia; por eso no es techo — la comuna podría recuperar.
 - Histórica alta (Quilicura 5,3%, San Bernardo 4,9%, Lo Prado 4,3%): el número cruza el boom 2014-2018; por eso no es piso — ese ritmo pudo no repetirse. Una histórica positiva alta NO es predictor limpio del futuro: buena parte del rango cae en el boom y no se sabe si se repite.
 
 Ejemplos válidos (el tramo es el período que el promedio cruza, no una causa):
 - "[comuna] promedió [X]% anual 2014-2024 — pero ese número cruza el boom pre-2019, el estallido y la pandemia, así que es ruidoso: tómalo como referencia de un período atípico, no como proyección." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
 - "Santiago centro promedió -1% anual en la década — un rango que atraviesa el estallido y la pandemia, demasiado ruidoso para leerlo como tendencia."
 - "Ñuñoa promedió 3,2% anual 2014-2024, un tramo que cruza el boom 2014-2018 y lo posterior — mezcla períodos muy distintos, no proyecta limpio."
-- "Quilicura subió 5,3% anual histórico — buena parte del rango cae en el boom 2014-2018; ese ritmo no necesariamente se mantiene." (zona ganadora con caveat)
+- "Quilicura subió 5,3% anual histórico — buena parte del rango cae en el boom 2014-2018; ese ritmo no necesariamente se mantiene." (comuna ganadora con caveat)
 
 Ejemplos INVÁLIDOS:
 - "Plusvalía histórica de 3% anual" (% pelado, sin situar el período).
@@ -460,7 +460,7 @@ REGLA 10 — Plusvalía: jerarquía de la proyección base.
 La proyección base es 4% anual flat. Esa cifra es la que usan todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa.
 
 La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la apuesta del 4%, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a 4%:
-- Histórica > 4% (ej. Quilicura 5,3%): la proyección es conservadora vs lo que la zona ya mostró.
+- Histórica > 4% (ej. Quilicura 5,3%): la proyección es conservadora vs lo que la comuna ya mostró.
 - Histórica ≈ 4% (ej. Maipú 4,1%): la proyección está alineada con la trayectoria observada.
 - Histórica < 4% (ej. Providencia 3,0%, Las Condes 2,7%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
 - Histórica negativa (ej. Santiago -1,1%, El Bosque -0,7%): la proyección es una apuesta a recuperación frente a una década de pérdida.
@@ -469,18 +469,18 @@ La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la
 PROHIBIDO:
 - "la plusvalía está sobreestimada"
 - "la plusvalía real será X%" (donde X ≠ 4%)
-- "no esperes plusvalía en esta zona"
+- "no esperes plusvalía en esta comuna"
 - "la histórica indica que tu TIR caerá"
 - "la plusvalía de [comuna] no sostiene la apuesta" (afirma que la proyección no se cumplirá)
 - "la histórica no respalda la proyección" / "no apoya el 4%"
-- Cualquier construcción que sugiera al usuario una proyección distinta al 4% base, incluyendo afirmaciones genéricas tipo "la zona no da para 4%".
+- Cualquier construcción que sugiera al usuario una proyección distinta al 4% base, incluyendo afirmaciones genéricas tipo "la comuna no da para 4%".
 
-La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la zona se estanca, tu TIR cae" es válido (riesgo); "la zona no sostiene la proyección 4%" es prohibido (afirmación).
+La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la comuna se estanca, tu TIR cae" es válido (riesgo); "la comuna no sostiene la proyección 4%" es prohibido (afirmación).
 
 VÁLIDO:
-- "Santiago centro perdió 1% anual en 2014-2024 — la proyección a 4% es una apuesta a recuperación que la zona aún no muestra."
+- "Santiago centro perdió 1% anual en 2014-2024 — la proyección a 4% es una apuesta a recuperación que la comuna aún no muestra."
 - "[comuna] creció [X]% anual histórico — la proyección a 4% queda ligeramente más optimista que la trayectoria observada." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
-- "Quilicura subió 5,3% anual histórico — la proyección a 4% es conservadora versus lo que la zona ya mostró."
+- "Quilicura subió 5,3% anual histórico — la proyección a 4% es conservadora versus lo que la comuna ya mostró."
 - "Sin data histórica suficiente para esta comuna — la proyección a 4% es supuesto puro, sin verificación local."
 
 El caveat temporal de REGLA 9 (los tramos 2014-2018/2019/2020-2021 que el rango cruza) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección base (4%) e histórica (contexto de riesgo).
@@ -794,6 +794,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       pvc,
       decisividades.sobreprecio?.decisividad ?? 0,
       decisividades.sobreprecio?.magnitud ?? 0,
+      input.comuna,
     );
 
     // CapEx de puesta a punto (usados): se recomputa con los MISMOS helpers del
@@ -1334,8 +1335,8 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - Precio de compra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
 - Valor de referencia estimado: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← no es valor de mercado real (solo el precio pedido)"}
 - Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
-${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la zona, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato de zona confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs zona."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
-- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${pvc.sujetoUfM2.toFixed(1)} vs zona ${precioM2Zona.toFixed(1)})` : "sin dato"}
+${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
+- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${pvc.sujetoUfM2.toFixed(1)} vs comuna ${precioM2Zona.toFixed(1)})` : "sin dato"}
 - precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
 - Precio con 10% de descuento: ${fmtUF(precioConDescuento10)}
 - tirActual: ${tirActual.toFixed(1)}%
@@ -1364,8 +1365,8 @@ PROYECCIÓN Y ALTERNATIVAS
 
 COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de memoria)
 - Precio/m² de este depto: ${fmtUF(pvc.sujetoUfM2)}
-- Mediana de la comuna: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de zona"}
-- Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs zona (ver REGLA 0)"}
+- Mediana de la comuna: ${hallazgoSobreprecio ? fmtUF(hallazgoSobreprecio.valor.medianaComunaUfM2) : "sin dato confiable de la comuna"}
+- Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs comuna (ver REGLA 0)"}
 - Lectura canónica del hallazgo (narra ESTA idea con tus palabras; NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? `"${hallazgoSobreprecio.fraseCanonica}"` : "—"}
 - Arriendo de referencia de la zona: ${fmtCLP(arriendoZona)}
 - Yield de la zona: ${yieldZona.toFixed(1)}%

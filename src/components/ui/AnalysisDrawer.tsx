@@ -2197,7 +2197,7 @@ function DrawerCapRate({
         }}
       >
         <p className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] m-0 mb-1">
-          {adverso ? "Para rendir como la zona" : "Ya rinde sobre la zona"}
+          {adverso ? "Para rendir como el mercado" : "Ya rinde sobre el mercado"}
         </p>
         {adverso ? (
           <>
@@ -2206,12 +2206,12 @@ function DrawerCapRate({
               <span className="text-[14px] font-medium"> /mes</span>
             </p>
             <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text-secondary)] m-0 mt-1">
-              Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de la zona ({pct(capRefPct)}%) necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
+              Hoy arriendas en {fmt(arriendoActual)}. Para rendir como la referencia de mercado ({pct(capRefPct)}%) necesitarías arrendar en torno a {fmt(arriendoObjetivo)} al mes — o pagar menos por el depto.
             </p>
           </>
         ) : (
           <p className="font-body text-[12.5px] leading-[1.55] text-[var(--franco-text)] m-0">
-            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de la zona ({pct(capRefPct)}%). El activo trabaja a tu favor.
+            Tu arriendo de {fmt(arriendoActual)} al mes ya renta por sobre la referencia de mercado ({pct(capRefPct)}%). El activo trabaja a tu favor.
           </p>
         )}
       </div>

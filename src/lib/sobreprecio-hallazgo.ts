@@ -52,6 +52,9 @@ export function buildHallazgoSobreprecio(
   decisividad: number,
   // Magnitud continua pre-floor — desempate secundario del sort (E4).
   magnitudContinua: number,
+  // Nombre de la comuna de la mediana — nombra el nivel geográfico en el ksub (R2).
+  // "" cuando el caller no lo tiene: el render cae al genérico "de la comuna".
+  comuna: string = "",
   banda: number = SOBREPRECIO_BANDA_DEFAULT,
 ): HallazgoSobreprecio | null {
   if (
@@ -103,6 +106,7 @@ export function buildHallazgoSobreprecio(
       sobreprecioUfM2: pvc.sobreprecioUfM2,
       banda,
       n: pvc.n,
+      comuna: comuna.trim(),
     },
     direccion,
     decisividad,

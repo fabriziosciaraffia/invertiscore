@@ -73,12 +73,18 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
         : sobre
           ? "Estás pagando de más por el metro cuadrado"
           : "Entras barato por el metro cuadrado";
+      // R2 — nombra el nivel geográfico (la mediana es COMUNAL). Nombre propio
+      // cuando cabe; fallback genérico "de la comuna" para nombres largos que
+      // desbordarían el ksub mono (universo máx "Pedro Aguirre Cerda" = 19; el
+      // corte 16 cubre todas las comunas del corpus, incl. "Estación Central").
+      const KSUB_COMUNA_MAX = 16;
+      const geo = v.comuna && v.comuna.length <= KSUB_COMUNA_MAX ? `de ${v.comuna}` : "de la comuna";
       return {
         kick: "Precio por metro",
         title,
         kpi: `${sobre ? "+" : ""}${Math.round(v.desviacionPct)}%`,
         kpiRed: sobre, // pagar sobre la mediana = críticamente adverso (mockup)
-        ksub: `${sobre ? "sobre" : "bajo"} la mediana · UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)} /m²`,
+        ksub: `${sobre ? "sobre" : "bajo"} la mediana ${geo} · UF ${pct1(v.sujetoUfM2)} vs UF ${pct1(v.medianaComunaUfM2)} /m²`,
         procedencia: "Mediana de publicación de venta de la comuna, no transacción",
       };
     }
