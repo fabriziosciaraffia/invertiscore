@@ -172,8 +172,11 @@ export function MapaThumbnail({
     return `https://maps.googleapis.com/maps/api/staticmap?${parts.join("&")}`;
   }, [lat, lng, apiKey, theme, validComparables, origin]);
 
-  if (!lat || !lng) return null;
-
+  // Sin coords ya NO devolvemos null (dejaba una columna en blanco en el hero).
+  // Cae al Placeholder digno (pin + ubicación): url es null cuando faltan coords
+  // (ver arriba), así que showFallback ya lo cubre. El wizard monta este componente
+  // solo con coords presentes (Paso1Propiedad lo envuelve en `state.lat && state.lng`),
+  // así que este cambio afecta únicamente al hero.
   const showFallback = !url || imgFailed;
 
   // El badge muestra la cantidad de pins reales (validComparables = los que se

@@ -65,11 +65,11 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
       const v = h.valor;
       const sobre = v.desviacionPct > 0;
       // Título direction-aware (antes hardcodeaba "pagando de más" → mentía en
-      // favorable). Trío espejo del motor: borde |desv|≤2 = "a precio de zona"
+      // favorable). Trío espejo del motor: borde |desv|≤2 = "a precio de comuna"
       // (EN_LINEA_UMBRAL_PCT), luego favorable (bajo mediana) vs adverso (sobre).
       const enLinea = Math.abs(v.desviacionPct) <= 2;
       const title = enLinea
-        ? "Pagas el metro a precio de zona"
+        ? "Pagas el metro a precio de comuna"
         : sobre
           ? "Estás pagando de más por el metro cuadrado"
           : "Entras barato por el metro cuadrado";
@@ -133,7 +133,7 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
       const v = h.valor;
       return {
         kick: "Plusvalía histórica",
-        title: "Cuánto se ha valorizado la zona",
+        title: "Cuánto se ha valorizado la comuna",
         kpi: `${pct1(v.anualizadaPct)}%`,
         kpiRed: false,
         ksub: `anual · 2014-2024 · umbral real ${pct1(v.refPct)}%`,

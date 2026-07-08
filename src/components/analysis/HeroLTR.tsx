@@ -74,7 +74,7 @@ export function HeroLTR({
   };
   const precioChip = currency === "UF" ? fmtUF(precioUF) : fmtMM(precioUF * valorUF);
   // UF/m² SIEMPRE en UF: es la métrica de comparación contra la mediana de la
-  // comuna (el finding "Precio/m² vs zona" también la expresa en UF). No flipea
+  // comuna (el finding "Precio/m² vs comuna" también la expresa en UF). No flipea
   // con el toggle — en CLP el $/m² sería un número enorme e inconsistente.
   const m2Main = `UF ${(Math.round(precioM2UF * 10) / 10).toLocaleString("es-CL")}`;
   const arriendoChip = arriendoCLP > 0
@@ -85,8 +85,14 @@ export function HeroLTR({
   // Coords desde input_data (misma fuente que el resto de la página).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inputAny = inputData as any;
-  const lat = typeof inputAny?.lat === "number" ? (inputAny.lat as number) : null;
-  const lng = typeof inputAny?.lng === "number" ? (inputAny.lng as number) : null;
+  // Fallback a zonaRadio.lat/lng: el payload LTR (buildLtrPayload) persiste las
+  // coords anidadas en input_data.zonaRadio, NO top-level (a diferencia del STR,
+  // que sí las escribe top-level). Sin este fallback el mapa desaparecía en todo
+  // LTR con coords capturadas (118 filas del corpus, incluida Cerro Colorado).
+  const lat = typeof inputAny?.lat === "number" ? (inputAny.lat as number)
+    : typeof inputAny?.zonaRadio?.lat === "number" ? (inputAny.zonaRadio.lat as number) : null;
+  const lng = typeof inputAny?.lng === "number" ? (inputAny.lng as number)
+    : typeof inputAny?.zonaRadio?.lng === "number" ? (inputAny.zonaRadio.lng as number) : null;
   const mapLabel = hasDireccion ? direccion : comunaLabel;
 
   // Comparables cercanos (venta) para el mapa — mismo endpoint que el wizard.
@@ -567,7 +573,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
       const v = h.valor;
       return {
         desc,
-        term: "Precio/m² vs zona",
+        term: "Precio/m² vs comuna",
         tooltip: `${tip}${v.n ? ` · n = ${v.n}` : ""}.`,
         // Signo direction-aware: antes hardcodeaba "+" → "+-12%" en favorable (desv<0).
         kpi: `${v.desviacionPct > 0 ? "+" : ""}${Math.round(v.desviacionPct)}%`,

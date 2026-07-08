@@ -129,8 +129,13 @@ export function PiramideHallazgos({
     currency === "CLP"
       ? aiAnalysis?.conviene?.respuestaDirecta_clp
       : aiAnalysis?.conviene?.respuestaDirecta_uf;
+  // Canoniza "zona"→"comuna" antes de comparar: la fraseCanonica FRESCA dice
+  // "mediana de la comuna" (fix wording), pero la prosa PERSISTIDA legacy abre con
+  // "mediana de la zona". Sin esta normalización el eco no haría startsWith y el
+  // body de la corona reaparecería duplicado (misma idea, dos fraseos) en las filas
+  // legacy con sobreprecio coronado. Forward-only: no regeneramos la prosa vieja.
   const normEco = (s: string | null | undefined) =>
-    (s ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+    (s ?? "").replace(/\s+/g, " ").trim().toLowerCase().replace(/\bzona\b/g, "comuna");
   const fraseCorona = normEco(nivel1.fraseCanonica);
   const bodyCoronaDuplicado =
     fraseCorona.length > 0 && normEco(respuestaDirectaCorona).startsWith(fraseCorona);

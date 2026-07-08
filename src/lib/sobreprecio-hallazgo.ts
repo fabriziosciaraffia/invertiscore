@@ -77,19 +77,19 @@ export function buildHallazgoSobreprecio(
   let fraseCanonica: string;
   let titular: string;
   if (desvAbs <= EN_LINEA_UMBRAL_PCT) {
-    titular = "Pagas el metro a precio de zona, sin sobreprecio.";
+    titular = "Pagas el metro a precio de comuna, sin sobreprecio.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está en línea con la mediana de la zona (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está en línea con la mediana de la comuna (${medianaFmt}). ` +
       `Pagas lo que vale el metro en esta comuna.`;
   } else if (direccion === "favorable") {
-    titular = "Entras barato: el metro está bajo la zona.";
+    titular = "Entras barato: el metro está bajo la mediana comunal.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% bajo la mediana de la zona (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% bajo la mediana de la comuna (${medianaFmt}). ` +
       `Entras barato para esta comuna.`;
   } else {
     titular = "Estás pagando caro el metro para esta comuna.";
     fraseCanonica =
-      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% sobre la mediana de la zona (${medianaFmt}). ` +
+      `Tu precio por m² (${sujetoFmt}) está ${desvAbs}% sobre la mediana de la comuna (${medianaFmt}). ` +
       `Estás pagando caro el metro para esta comuna.`;
   }
 
