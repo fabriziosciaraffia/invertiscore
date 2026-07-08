@@ -109,12 +109,18 @@ export function buildHallazgoCapRate(p: {
 }): HallazgoCapRate | null {
   if (!Number.isFinite(p.capRatePct) || !Number.isFinite(p.ref.pct)) return null;
 
-  const gap = p.capRatePct - p.ref.pct; // signed
+  // Redondeo a 1 decimal UNA vez (precisión de display): body (fmt1), gap, dirección y
+  // valor.capRatePct leen de acá; el KPI/ksub reformatean valor.capRatePct → mismo string.
+  // Sin esto, body (fmt1 sobre el crudo) y KPI (pct1 sobre valor 2-dec) divergían en el
+  // borde .x5 (bug San Miguel 9,4 vs 9,5). Patrón round-una-vez de patrimonio-hallazgo.
+  const capRatePct = Math.round(p.capRatePct * 10) / 10;
+
+  const gap = capRatePct - p.ref.pct; // signed
   const gapRounded = Math.round(gap * 10) / 10;
   const direccion: "favorable" | "adverso" =
-    p.capRatePct >= p.ref.pct ? "favorable" : "adverso";
+    capRatePct >= p.ref.pct ? "favorable" : "adverso";
 
-  const crFmt = fmt1(p.capRatePct);
+  const crFmt = fmt1(capRatePct);
   const refFmt = fmt1(p.ref.pct);
   const gapAbs = Math.abs(gapRounded);
   const gapFmt = fmt1(gapAbs);
@@ -142,7 +148,7 @@ export function buildHallazgoCapRate(p: {
     id: "cap_rate",
     tipo: "rentabilidad_operativa",
     valor: {
-      capRatePct: Math.round(p.capRatePct * 100) / 100,
+      capRatePct, // ya redondeado a 1 decimal — mismo valor que body/gap/dirección y KPI
       capRefPct: p.ref.pct,
       gapPts: gapRounded,
       banda: p.ref.banda,

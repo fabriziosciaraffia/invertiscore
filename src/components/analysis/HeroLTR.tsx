@@ -253,7 +253,7 @@ export function HeroLTR({
             >
               <div className="px-4 py-3.5">
                 <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                  Próximo paso
+                  La posición de Franco
                 </span>
                 <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
                   {cajaAccionable}

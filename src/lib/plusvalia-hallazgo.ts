@@ -101,15 +101,21 @@ export function buildHallazgoPlusvalia(p: {
 }): HallazgoPlusvalia | null {
   if (!Number.isFinite(p.anualizadaPct) || !Number.isFinite(p.ref.pct)) return null;
 
-  const gap = p.anualizadaPct - p.ref.pct; // signed
+  // Redondeo a 1 decimal UNA vez (precisión de display): body (fmt1), gap, dirección, la
+  // rama negativa y valor.anualizadaPct leen de acá; el KPI/ksub reformatean
+  // valor.anualizadaPct → mismo string. Sin esto, body (fmt1 crudo) y KPI (pct1 sobre valor
+  // 2-dec) podían divergir en el borde .x5 (mismo linaje que cap_rate). Patrón patrimonio.
+  const anualizadaPct = Math.round(p.anualizadaPct * 10) / 10;
+
+  const gap = anualizadaPct - p.ref.pct; // signed
   const gapRounded = Math.round(gap * 10) / 10;
   // favorable si apreció ≥ umbral real (ganó valor real); adverso si < (perdió
   // valor real aunque el nominal suba). La frase puede decir "en línea" cuando el
   // gap es mínimo, pero la señal-máquina es binaria.
   const direccion: "favorable" | "adverso" =
-    p.anualizadaPct >= p.ref.pct ? "favorable" : "adverso";
+    anualizadaPct >= p.ref.pct ? "favorable" : "adverso";
 
-  const apFmt = fmt1(p.anualizadaPct);
+  const apFmt = fmt1(anualizadaPct);
   const refFmt = fmt1(p.ref.pct);
   const gapAbs = Math.abs(gapRounded);
   const sujeto = `los departamentos en ${p.comuna.trim()}`;
@@ -131,10 +137,10 @@ export function buildHallazgoPlusvalia(p: {
     fraseCanonica =
       `En la última década ${sujeto} se valorizaron ${apFmt}% anual, sobre el umbral de apreciación real (${refFmt}%). ` +
       `Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita.`;
-  } else if (p.anualizadaPct < 0) {
+  } else if (anualizadaPct < 0) {
     titular = "La zona perdió valor real en la última década.";
     fraseCanonica =
-      `En la última década ${sujeto} cayeron ${fmt1(Math.abs(p.anualizadaPct))}% anual de valor, bajo el umbral de apreciación real (${refFmt}%). ` +
+      `En la última década ${sujeto} cayeron ${fmt1(Math.abs(anualizadaPct))}% anual de valor, bajo el umbral de apreciación real (${refFmt}%). ` +
       `La historia no respalda una apuesta a plusvalía acá.`;
   } else {
     titular = "La zona no le ganó a la inflación en la década.";
@@ -151,7 +157,7 @@ export function buildHallazgoPlusvalia(p: {
     id: "plusvalia",
     tipo: "apreciacion_historica",
     valor: {
-      anualizadaPct: Math.round(p.anualizadaPct * 100) / 100,
+      anualizadaPct, // ya redondeado a 1 decimal — mismo valor que body/gap/dirección y KPI
       refPct: p.ref.pct,
       gapPts: gapRounded,
       banda: p.ref.banda,

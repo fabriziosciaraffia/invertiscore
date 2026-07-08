@@ -55,14 +55,20 @@ export function buildHallazgoTIR(p: {
 }): HallazgoTIR | null {
   if (!Number.isFinite(p.tirPct)) return null;
 
-  const gap = p.tirPct - TIR_UMBRAL_MINIMO; // signed
+  // Redondeo a 1 decimal UNA vez (precisión de display): body (fmt1), gap, dirección y
+  // valor.tirPct leen de acá; el KPI/ksub reformatean valor.tirPct → mismo string. Sin
+  // esto, body (fmt1 sobre el crudo) y KPI (pct1 sobre valor 2-dec) podían divergir en el
+  // borde .x5 (mismo linaje que el bug cap_rate). Patrón round-una-vez de patrimonio.
+  const tirPct = Math.round(p.tirPct * 10) / 10;
+
+  const gap = tirPct - TIR_UMBRAL_MINIMO; // signed
   const gapRounded = Math.round(gap * 10) / 10;
   const gapAbs = Math.abs(gapRounded);
   const direccion: "favorable" | "adverso" =
-    p.tirPct >= TIR_UMBRAL_MINIMO ? "favorable" : "adverso";
+    tirPct >= TIR_UMBRAL_MINIMO ? "favorable" : "adverso";
   const magnitudContinua = clamp01(gapAbs / TIR_BANDA_MAGNITUD);
 
-  const tirFmt = fmt1(p.tirPct);
+  const tirFmt = fmt1(tirPct);
 
   let fraseCanonica: string;
   let titular: string;
@@ -92,7 +98,7 @@ export function buildHallazgoTIR(p: {
     id: "tir",
     tipo: "retorno_total",
     valor: {
-      tirPct: Math.round(p.tirPct * 100) / 100,
+      tirPct, // ya redondeado a 1 decimal — mismo valor que body/gap/dirección y KPI
       umbralPct: TIR_UMBRAL_MINIMO,
       gapPts: gapRounded,
       banda: TIR_BANDA_MAGNITUD,

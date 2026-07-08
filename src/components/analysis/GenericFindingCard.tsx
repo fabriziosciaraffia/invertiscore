@@ -16,6 +16,7 @@
 import type { Hallazgo } from "@/lib/types";
 import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
+import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
 
 // Mapa hallazgo → drawer de detalle. Los 6 hallazgos LTR tienen drawer (cap_rate
 // se sumó en Fase 3). Sin entrada ⇒ sin affordance "Ver detalle".
@@ -211,6 +212,22 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
   }
 }
 
+// ── Body de la card: dual-moneda para flujo, verbatim para el resto ───────────
+// flujo_mensual embebe el monto en la fraseCanonica; la seed va en CLP (contrato Plan C
+// bit-idéntico), pero la CARD debe mostrarlo en la moneda activa (sin $ en modo UF). Reusa
+// la MISMA plantilla del builder (buildFraseFlujo) con el monto reformateado — misma rama,
+// mismo texto. Los otros 8 tipos no tienen monto embebido → fraseCanonica verbatim.
+function fraseCanonicaCard(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): string {
+  if (h.id === "flujo_mensual") {
+    const v = h.valor;
+    const abs = Math.abs(v.flujoNetoMensualCLP);
+    const montoFmt = currency === "UF" ? fmtUF(valorUF > 0 ? abs / valorUF : 0) : fmtCLP(abs);
+    const ratio = v.dividendoMensualCLP > 0 ? abs / v.dividendoMensualCLP : 0;
+    return buildFraseFlujo(montoFmt, h.direccion, ratio).fraseCanonica;
+  }
+  return h.fraseCanonica;
+}
+
 // ── Dirección: punto + micro-label. Ink para favorable (cero verde). ──────────
 function direccionMeta(dir: string): { color: string; label: string } {
   if (dir === "adverso") return { color: "var(--franco-v-avoid)", label: "En contra" };
@@ -341,7 +358,7 @@ export function GenericFindingCard({
           <p> tampoco queda su margen → sin hueco; el pie/procedencia toma su mt propio. */}
       {!bodyDuplicado ? (
         <p className={`font-body leading-[1.55] mt-3.5 ${resumenSize}`} style={{ color: "var(--franco-text-secondary)" }}>
-          {hallazgo.fraseCanonica}
+          {fraseCanonicaCard(hallazgo, currency, valorUF)}
         </p>
       ) : (
         // Corona sin body: la prosa ya abrió con esta misma fraseCanonica. En vez de

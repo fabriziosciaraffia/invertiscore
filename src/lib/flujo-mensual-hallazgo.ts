@@ -25,6 +25,46 @@ const fmtCLP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-C
 const UMBRAL_DECISIVO = 0.5;
 
 /**
+ * Plantilla determinística de titular + fraseCanonica de flujo, parametrizada por el monto
+ * YA formateado. Fuente ÚNICA del texto — la llaman DOS consumidores con la MISMA plantilla:
+ *   (a) el builder (abajo) con `fmtCLP(aporte)` → la fraseCanonica SEEDED en CLP, que la
+ *       apertura Plan C consume bit-idéntica (contrato de la prosa persistida).
+ *   (b) el render de la card (GenericFindingCard.fraseCanonicaCard) con el monto en la moneda
+ *       ACTIVA → body dual, sin $ en modo UF.
+ * `montoFmt` ya trae signo/símbolo; la rama (favorable / acotado / fuerte) NO depende de la
+ * moneda, solo de dirección y ratio → el texto es idéntico salvo el monto formateado.
+ */
+export function buildFraseFlujo(
+  montoFmt: string,
+  direccion: "favorable" | "adverso",
+  ratio: number,
+): { titular: string; fraseCanonica: string } {
+  if (direccion === "favorable") {
+    return {
+      titular: "El arriendo cubre la cuota y no pones nada.",
+      fraseCanonica:
+        `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
+        `La propiedad se sostiene sola desde el día uno.`,
+    };
+  }
+  if (ratio < UMBRAL_DECISIVO) {
+    return {
+      titular: "Pones algo de tu bolsillo cada mes.",
+      fraseCanonica:
+        `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
+        `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`,
+    };
+  }
+  return {
+    titular: "Pones plata de tu bolsillo todos los meses.",
+    fraseCanonica:
+      `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte fuerte respecto al dividendo. ` +
+      `Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata ` +
+      `que sale de tu bolsillo todos los meses, no del arriendo.`,
+  };
+}
+
+/**
  * Construye el proto-hallazgo de flujo mensual reusando el aporte del motor
  * (:242) y el dividendo (:224). La decisividad es `|aporte| / dividendo`
  * saturada a 1; el divisor es PARÁMETRO, nunca lo busca por su cuenta. Devuelve
@@ -54,27 +94,10 @@ export function buildHallazgoFlujoMensual(p: {
   const ratio = Math.abs(aporte) / p.dividendoMensualCLP;
   const direccion: "favorable" | "adverso" = aporte >= 0 ? "favorable" : "adverso";
 
-  const montoFmt = fmtCLP(aporte);
-
-  let fraseCanonica: string;
-  let titular: string;
-  if (direccion === "favorable") {
-    titular = "El arriendo cubre la cuota y no pones nada.";
-    fraseCanonica =
-      `Tu arriendo cubre todos los costos y te deja ${montoFmt} al mes en el bolsillo. ` +
-      `La propiedad se sostiene sola desde el día uno.`;
-  } else if (ratio < UMBRAL_DECISIVO) {
-    titular = "Pones algo de tu bolsillo cada mes.";
-    fraseCanonica =
-      `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte acotado frente al dividendo. ` +
-      `Sostenible si tu flujo es estable; la plusvalía puede compensarlo.`;
-  } else {
-    titular = "Pones plata de tu bolsillo todos los meses.";
-    fraseCanonica =
-      `Tienes que poner ${montoFmt} al mes de tu bolsillo — un aporte fuerte respecto al dividendo. ` +
-      `Antes de avanzar, confirma que puedes sostenerlo de forma estable mes a mes: es plata ` +
-      `que sale de tu bolsillo todos los meses, no del arriendo.`;
-  }
+  // Frase SEEDED en CLP (contrato Plan C bit-idéntico): el monto va en CLP vía fmtCLP. El
+  // render de la card reusa la MISMA plantilla (buildFraseFlujo) con el monto en la moneda
+  // activa — misma rama, mismo texto, solo cambia el formato del monto.
+  const { titular, fraseCanonica } = buildFraseFlujo(fmtCLP(aporte), direccion, ratio);
 
   return {
     id: "flujo_mensual",
