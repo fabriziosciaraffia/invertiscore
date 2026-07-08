@@ -535,6 +535,14 @@ function DrawerNegociacion({
   const maxPrecio = Math.max(precioCLP, vmFrancoCLP, precioSugeridoCLP, precioLimiteCLP ?? 0) * 1.05;
   const barW = (v: number) => (maxPrecio > 0 ? (v / maxPrecio) * 100 : 0);
 
+  // Confianza del VM: cuando vmFranco ≈ precio no hay un valor de mercado total
+  // independiente (cayó al precio pedido por falta de comparables directos). Es la
+  // MISMA señal que condiciona el caveat de negociacion.contenido en la prosa
+  // (ai-generation.ts:980, tieneDiferenciaValida = |vmFranco − precio| > $1M ≈ UF 25):
+  // así la fila de la tabla baja a la honestidad de la prosa en vez de mostrar el
+  // precio pedido como un "valor estimado" a secas. VM sólido → fila intacta.
+  const vmDebil = Math.abs(vmFrancoCLP - precioCLP) <= 1_000_000;
+
   const filas = [
     {
       key: "tu",
@@ -549,12 +557,16 @@ function DrawerNegociacion({
     {
       key: "vm",
       nombre: "Valor estimado de mercado",
-      sub: "estimado según comparables de zona",
+      sub: vmDebil
+        ? "pocos comparables directos · referencia firme: precio/m²"
+        : "estimado según comparables de zona",
       precio: vmFrancoCLP,
       tir: tirAlVmFranco ?? tirActual,
       barColor: "var(--ink-400)",
       highlight: false,
-      tooltip: "Valor estimado de mercado calculado por Franco según comparables de la zona, no según el precio publicado.",
+      tooltip: vmDebil
+        ? "No hay comparables directos suficientes para un valor de mercado total confiable de este depto. La referencia sólida es el precio por m² de la zona, no este valor total."
+        : "Valor estimado de mercado calculado por Franco según comparables de la zona, no según el precio publicado.",
     },
     {
       key: "sug",
