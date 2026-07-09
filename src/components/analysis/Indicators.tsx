@@ -4,22 +4,27 @@ import { useMemo } from "react";
 import {
   calculateKPIs,
   tonoTIR,
-  tonoCapRate,
   tonoCashOnCash,
   tonoPayback,
   tonoMultiplo,
+  type Tone,
 } from "@/lib/analysis/kpi-calculations";
-import KPICard from "@/components/analysis/KPICard";
+import { InfoTooltip } from "@/components/ui/tooltip";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 
 /**
- * Sub-sección 08 · INDICADORES (Patrón 7.B.2). Renderea 5 KPIs:
- * TIR, CAP Rate, Cash-on-Cash, Payback (con venta), Múltiplo.
+ * Strip de indicadores simulados (rediseño extras · D3/D4). Resumen técnico
+ * SUBORDINADO que va DEBAJO de las dos columnas protagonistas (patrimonio +
+ * venta/refi). Muestra los 4 KPIs que reaccionan a los sliders — TIR,
+ * Cash-on-Cash, Payback, Múltiplo — en un strip horizontal recesivo.
  *
- * Move verbatim desde results-client.tsx LTR (Ronda 4a.2). Lee plazo y
- * plusvalía del SimulationContext — el componente padre debe envolverse en
- * <SimulationProvider>.
+ * El Cap Rate queda en una fila FIJA aparte (D4): no varía con los sliders y
+ * ya vive como hallazgo en la pirámide, así que no compite con los que sí
+ * simulan. Numeración 08 eliminada (D5).
+ *
+ * Lee plazo y plusvalía del SimulationContext — el componente padre debe
+ * envolverse en <SimulationProvider>.
  */
 export function Indicators({
   projections,
@@ -48,63 +53,130 @@ export function Indicators({
     : tirTooltipBase;
 
   // P1 Fase 24 — guard NaN/Infinity en KPIs derivados de cálculos iterativos.
-  // calcTIR puede no converger en escenarios extremos; resto puede dar NaN
-  // por divisiones inesperadas.
-  const fmtPct = (v: number) =>
-    Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
-  const fmtMultiplo = (v: number) =>
-    Number.isFinite(v) ? `${v.toFixed(2)}x` : "—";
-  const subSafe = (v: number, normal: string) =>
-    Number.isFinite(v) ? normal : "No converge";
+  const fmtPct = (v: number) => (Number.isFinite(v) ? `${v.toFixed(1)}%` : "—");
+  const fmtMultiplo = (v: number) => (Number.isFinite(v) ? `${v.toFixed(2)}x` : "—");
+
+  // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
+  // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
+  const cells: Array<{ label: string; value: string; tone: Tone; tooltip: string }> = [
+    {
+      label: `TIR @ ${plazoLabel}`,
+      value: fmtPct(kpis.tir),
+      tone: tonoTIR(kpis.tir),
+      tooltip: tirTooltip,
+    },
+    {
+      label: `Cash-on-Cash @ ${plazoLabel}`,
+      value: fmtPct(kpis.cashOnCash),
+      tone: tonoCashOnCash(kpis.cashOnCash),
+      tooltip:
+        "Flujo neto anual sobre lo que aportaste de tu bolsillo (pie + cierre + flujos negativos acumulados).",
+    },
+    {
+      label: "Payback (con venta)",
+      value: paybackValue,
+      tone: tonoPayback(kpis.paybackAnios),
+      tooltip:
+        "Año desde la compra en que el patrimonio neto acumulado iguala lo que aportaste, contando la venta del depto.",
+    },
+    {
+      label: `Múltiplo @ ${plazoLabel}`,
+      value: fmtMultiplo(kpis.multiplo),
+      tone: tonoMultiplo(kpis.multiplo),
+      tooltip:
+        "Cuánto recibes al final por cada peso aportado. Múltiplo 2x = recibes el doble de lo que pusiste.",
+    },
+  ];
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {/* 2 hero KPIs arriba */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <KPICard
-          label={`TIR @ ${plazoLabel}`}
-          value={fmtPct(kpis.tir)}
-          sub={subSafe(kpis.tir, "Retorno total anualizado")}
-          tone={tonoTIR(kpis.tir)}
-          size="hero"
-          tooltip={tirTooltip}
+    <div
+      style={{
+        background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+        border: "0.5px solid var(--franco-border)",
+        borderRadius: 12,
+        padding: "16px 18px",
+      }}
+    >
+      {/* Rótulo del strip: dot "vivo" + leyenda de que reaccionan a los sliders */}
+      <div className="flex items-center gap-2 mb-3.5">
+        <span
+          aria-hidden
+          className="inline-block rounded-full shrink-0"
+          style={{
+            width: 6,
+            height: 6,
+            background: "var(--franco-text)",
+            boxShadow: "0 0 0 3px color-mix(in srgb, var(--franco-text) 12%, transparent)",
+          }}
         />
-        <KPICard
-          label="CAP Rate"
-          value={fmtPct(kpis.capRate)}
-          sub={subSafe(kpis.capRate, "Rendimiento bruto sobre precio")}
-          tone={tonoCapRate(kpis.capRate)}
-          size="hero"
-          tooltip="Rendimiento bruto anual del arriendo sobre el precio del depto, sin considerar financiamiento ni costos."
-        />
+        <span
+          className="font-mono uppercase"
+          style={{ fontSize: 9, letterSpacing: "0.1em", color: "var(--franco-text-tertiary)" }}
+        >
+          Escenario simulado · reaccionan a los sliders
+        </span>
       </div>
 
-      {/* 3 secundarios abajo */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-        <KPICard
-          label={`Cash-on-Cash @ ${plazoLabel}`}
-          value={fmtPct(kpis.cashOnCash)}
-          sub={subSafe(kpis.cashOnCash, "Flujo / inversión")}
-          tone={tonoCashOnCash(kpis.cashOnCash)}
-          size="small"
-          tooltip="Flujo neto anual sobre lo que aportaste de tu bolsillo (pie + cierre + flujos negativos acumulados)."
-        />
-        <KPICard
-          label="Payback (con venta)"
-          value={paybackValue}
-          sub="Año en que recuperas toda la inversión"
-          tone={tonoPayback(kpis.paybackAnios)}
-          size="small"
-          tooltip="Año desde la compra en que el patrimonio neto acumulado iguala lo que aportaste, contando la venta del depto."
-        />
-        <KPICard
-          label={`Múltiplo @ ${plazoLabel}`}
-          value={fmtMultiplo(kpis.multiplo)}
-          sub={subSafe(kpis.multiplo, "Retorno total / inversión")}
-          tone={tonoMultiplo(kpis.multiplo)}
-          size="small"
-          tooltip="Cuánto recibes al final por cada peso aportado. Múltiplo 2x = recibes el doble de lo que pusiste."
-        />
+      {/* Los 4 que simulan */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-5">
+        {cells.map((c) => (
+          <div key={c.label} className="flex flex-col min-w-0">
+            <span
+              className="inline-flex items-center gap-1 font-mono uppercase"
+              style={{ fontSize: 9, letterSpacing: "0.05em", color: "var(--franco-text-tertiary)" }}
+            >
+              <span>{c.label}</span>
+              <InfoTooltip content={c.tooltip} />
+            </span>
+            <span
+              className="font-mono font-bold whitespace-nowrap"
+              style={{
+                fontSize: 24,
+                lineHeight: 1,
+                marginTop: 7,
+                color: c.tone === "bad" ? "var(--signal-red)" : "var(--franco-text)",
+              }}
+            >
+              {c.value}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Cap Rate: fila FIJA (D4) — no varía con los sliders */}
+      <div
+        className="flex items-center flex-wrap gap-x-3 gap-y-1.5"
+        style={{ marginTop: 16, paddingTop: 14, borderTop: "0.5px dashed var(--franco-border)" }}
+      >
+        <span
+          className="inline-flex items-center gap-1 font-mono uppercase"
+          style={{ fontSize: 9, letterSpacing: "0.05em", color: "var(--franco-text-tertiary)" }}
+        >
+          <span>Cap Rate</span>
+          <InfoTooltip content="Rendimiento bruto anual del arriendo sobre el precio del depto, sin considerar financiamiento ni costos." />
+        </span>
+        <span className="font-mono font-bold" style={{ fontSize: 18, color: "var(--franco-text)" }}>
+          {fmtPct(kpis.capRate)}
+        </span>
+        <span
+          className="font-mono uppercase"
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.08em",
+            color: "var(--franco-text-muted)",
+            border: "0.5px solid var(--franco-border-hover)",
+            borderRadius: 4,
+            padding: "2px 7px",
+          }}
+        >
+          Fijo
+        </span>
+        <span
+          className="font-body"
+          style={{ fontSize: 11, color: "var(--franco-text-muted)", marginLeft: "auto" }}
+        >
+          No cambia con los sliders — ya vive como hallazgo del análisis.
+        </span>
       </div>
     </div>
   );

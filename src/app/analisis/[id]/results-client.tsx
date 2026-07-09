@@ -928,7 +928,6 @@ export function PremiumResults({
                 inputData={inputData}
                 currency={currency}
                 valorUF={ufValue}
-                forceOpen={printMode}
               />
             )}
           </SimulationProvider>

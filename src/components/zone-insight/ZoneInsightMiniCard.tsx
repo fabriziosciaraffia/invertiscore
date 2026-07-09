@@ -46,21 +46,18 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
       type="button"
       onClick={onClick}
       disabled={loading && !data}
-      className="w-full text-left transition-colors disabled:cursor-wait group relative overflow-hidden"
+      className="w-full text-left transition-colors disabled:cursor-wait"
       style={{
-        background: "linear-gradient(135deg, color-mix(in srgb, var(--ink-400) 6%, transparent) 0%, transparent 60%), var(--franco-card)",
-        border: "1px solid var(--franco-border)",
+        // Superficie recesiva (rediseño extras · D1): panel hundido bajo los
+        // hallazgos sólidos de la pirámide. Murió la franja 3px + el degradé;
+        // la seña es la omisión (sin acento, sin kicker de sección).
+        background: "color-mix(in srgb, var(--franco-text) 2.5%, transparent)",
+        border: "0.5px solid var(--franco-border)",
         borderRadius: 16,
-        padding: "16px 18px",
-        minHeight: 120,
+        padding: "18px 20px",
+        boxShadow: "inset 0 1px 0 color-mix(in srgb, var(--franco-text) 3%, transparent)",
       }}
     >
-      {/* Top-border horizontal de 3px — reemplaza el border-left para evitar artefactos con radius-2xl */}
-      <span
-        aria-hidden="true"
-        className="absolute left-0 right-0 top-0 pointer-events-none"
-        style={{ height: 3, background: "var(--ink-400)" }}
-      />
       <div className="grid items-center gap-3.5 md:gap-4" style={{ gridTemplateColumns: "44px 1fr auto" }}>
         {/* Icono: radar / círculos concéntricos */}
         <div
@@ -79,14 +76,8 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
           </svg>
         </div>
 
-        {/* Body */}
+        {/* Body — sin kicker "06 · ZONA" (D5): la numeración muere */}
         <div className="min-w-0 flex flex-col gap-1">
-          <span
-            className="font-mono text-[9px] uppercase tracking-[1.5px] font-medium"
-            style={{ color: "var(--ink-400)" }}
-          >
-            06 · ZONA
-          </span>
           <h3 className="font-heading font-bold text-[15px] md:text-[16px] leading-[1.2] text-[var(--franco-text)] m-0">
             Lo que no ves a simple vista
           </h3>
