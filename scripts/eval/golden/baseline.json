@@ -1,0 +1,218 @@
+{
+  "uf": 38800,
+  "note": "Esperados clase (a) congelados. Re-baseline solo con OK de Fabrizio.",
+  "seeds": {
+    "GS-1": {
+      "veredicto": "COMPRAR",
+      "score": 82,
+      "N": 8,
+      "corona": "cap_rate",
+      "hallazgoIds": [
+        "cap_rate",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 8.73,
+      "sobreprecioPct": -10,
+      "flujoNetoMensual": 188115,
+      "tirPct": 20.84,
+      "patrimonioMult": 3.95
+    },
+    "GS-2": {
+      "veredicto": "COMPRAR",
+      "score": 70,
+      "N": 8,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 4.58,
+      "sobreprecioPct": 33,
+      "flujoNetoMensual": -18161,
+      "tirPct": 15.97,
+      "patrimonioMult": 3.97
+    },
+    "GS-3": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 67,
+      "N": 9,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 5.62,
+      "sobreprecioPct": 70,
+      "flujoNetoMensual": -127728,
+      "tirPct": 9.03,
+      "patrimonioMult": 2
+    },
+    "GS-4": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 36,
+      "N": 8,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 2.09,
+      "sobreprecioPct": 78,
+      "flujoNetoMensual": -475855,
+      "tirPct": -2.49,
+      "patrimonioMult": 0.86
+    },
+    "GS-5": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 54,
+      "N": 8,
+      "corona": "flujo_mensual",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "tir"
+      ],
+      "capRatePct": 4.26,
+      "sobreprecioPct": null,
+      "flujoNetoMensual": -169223,
+      "tirPct": 7.27,
+      "patrimonioMult": 1.73
+    },
+    "GS-6": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 36,
+      "N": 8,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 2,
+      "sobreprecioPct": 90,
+      "flujoNetoMensual": -789313,
+      "tirPct": 2.77,
+      "patrimonioMult": 1.17
+    },
+    "GS-7": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 36,
+      "N": 7,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 2.85,
+      "sobreprecioPct": 59,
+      "flujoNetoMensual": -329290,
+      "tirPct": 4.2,
+      "patrimonioMult": 1.25
+    },
+    "BE-caprate": {
+      "veredicto": "COMPRAR",
+      "score": 76,
+      "N": 9,
+      "corona": "plusvalia",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 9.5,
+      "sobreprecioPct": 11,
+      "flujoNetoMensual": 242968,
+      "tirPct": 21.54,
+      "patrimonioMult": 3.53
+    },
+    "BE-patrimonio": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 32,
+      "N": 8,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 2.19,
+      "sobreprecioPct": 91,
+      "flujoNetoMensual": -490799,
+      "tirPct": 3.95,
+      "patrimonioMult": 1.29
+    },
+    "BE-sensibilidad": {
+      "veredicto": "COMPRAR",
+      "score": 71,
+      "N": 9,
+      "corona": "sobreprecio",
+      "hallazgoIds": [
+        "cap_rate",
+        "capex_puesta_a_punto",
+        "estructura_financiamiento",
+        "flujo_mensual",
+        "patrimonio",
+        "plusvalia",
+        "sensibilidad",
+        "sobreprecio",
+        "tir"
+      ],
+      "capRatePct": 6.12,
+      "sobreprecioPct": 67,
+      "flujoNetoMensual": -6347,
+      "tirPct": 12.7,
+      "patrimonioMult": 3.09
+    }
+  }
+}
