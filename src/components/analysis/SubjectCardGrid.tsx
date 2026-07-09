@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult } from "@/lib/types";
 import { AnalysisDrawer, type DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
@@ -36,6 +36,7 @@ export function SubjectCardGrid({
   analysisId,
   comuna,
   createdAt,
+  simulationSlot,
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
@@ -54,6 +55,11 @@ export function SubjectCardGrid({
   analysisId?: string;
   comuna?: string;
   createdAt?: string;
+  /** A1 — sección Simulación (AdvancedSection). Se renderiza ENTRE la pirámide y la
+   *  card Zona para lograr el orden "drawers → simulación → zona". El estado del
+   *  drawer y el hook de zona viven acá, así que la card zona no se puede sacar afuera
+   *  sin levantar ese estado; en cambio la simulación entra como slot. */
+  simulationSlot?: ReactNode;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
@@ -146,6 +152,10 @@ export function SubjectCardGrid({
           se retiraron: ya son hallazgos DENTRO de la pirámide de arriba; dejarlas
           duplicaba el dato. Sus drawers siguen existiendo y se reconectan desde la
           pirámide en el paso siguiente. */}
+
+      {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
+          drawers → simulación → zona. */}
+      {simulationSlot}
 
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (

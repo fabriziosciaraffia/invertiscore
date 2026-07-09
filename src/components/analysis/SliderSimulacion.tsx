@@ -58,8 +58,11 @@ export default function SliderSimulacion({
         </p>
       )}
 
+      {/* A2 — Sliders lado a lado en desktop (md+), apilados en mobile (375px no da
+          para 2 usables). Cada slider mantiene su layout horizontal interno. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
       {/* Plazo */}
-      <div className="mb-4">
+      <div>
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="inline-flex items-center gap-1 font-body" style={{ fontSize: 14, color: "var(--franco-text)" }}>
             <span>Plazo de análisis</span>
@@ -146,6 +149,7 @@ export default function SliderSimulacion({
             ● Plusvalía sobre 8% anual no es realista en proyecciones de largo plazo. Promedio histórico Chile: 3-5%.
           </p>
         )}
+      </div>
       </div>
     </div>
   );

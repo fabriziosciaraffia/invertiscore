@@ -910,27 +910,29 @@ export function PremiumResults({
             analysisId={analysisId}
             comuna={comuna}
             createdAt={createdAt}
+            simulationSlot={
+              /* ═══ CAPA 3 · SIMULACIÓN — A1: la renderiza SubjectCardGrid ENTRE la
+                 pirámide y la card zona (drawers → simulación → zona → footer) ═══ */
+              <SimulationProvider
+                plazoAnios={horizonYears}
+                plusvaliaAnual={plusvaliaRate}
+                setPlazoAnios={setHorizonYears}
+                setPlusvaliaAnual={setPlusvaliaRate}
+                plazoBase={10}
+                plusvaliaBase={PLUSVALIA_HISTORICA[comuna ?? ""]?.anualizada ?? PLUSVALIA_DEFAULT.anualizada}
+              >
+                {m && inputData && (
+                  <AdvancedSection
+                    projections={dynamicProjections}
+                    metrics={m}
+                    inputData={inputData}
+                    currency={currency}
+                    valorUF={ufValue}
+                  />
+                )}
+              </SimulationProvider>
+            }
           />
-
-          {/* ═══ CAPA 3 · SIMULACIÓN (acordeón unificado) ═══ */}
-          <SimulationProvider
-            plazoAnios={horizonYears}
-            plusvaliaAnual={plusvaliaRate}
-            setPlazoAnios={setHorizonYears}
-            setPlusvaliaAnual={setPlusvaliaRate}
-            plazoBase={10}
-            plusvaliaBase={PLUSVALIA_HISTORICA[comuna ?? ""]?.anualizada ?? PLUSVALIA_DEFAULT.anualizada}
-          >
-            {m && inputData && (
-              <AdvancedSection
-                projections={dynamicProjections}
-                metrics={m}
-                inputData={inputData}
-                currency={currency}
-                valorUF={ufValue}
-              />
-            )}
-          </SimulationProvider>
         </>
       )}
 

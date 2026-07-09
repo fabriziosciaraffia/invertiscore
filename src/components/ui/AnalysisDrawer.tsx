@@ -57,10 +57,12 @@ const DRAWER_META: Record<
   // aiAnalysis.reestructuracion existe.
   reestructuracion: { num: "03+", label: "Reestructuración", prev: "negociacion", next: "largoPlazo" },
   largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "zona" },
-  // 05 · Riesgos retirado (Entrega A): drawer huérfano, ninguna card lo abría.
-  // largoPlazo ↔ zona se recablean entre sí. Zona mantiene "06" (consistente con la
-  // card "06 · ZONA"); el 05 simplemente ya no existe.
-  zona: { num: "06", label: "Zona", prev: "largoPlazo", next: undefined },
+  // 05 · Riesgos retirado (Entrega A): drawer huérfano, ninguna card lo abría. Su card
+  // también perdió el kicker "06 · ZONA" (ZoneInsightMiniCard, D5 — la numeración de la
+  // card muere). Con la razón del "06" ya muerta, la secuencia se renumera CONTIGUA:
+  // zona toma "05" (el hueco que dejó Riesgos). 01·Veredicto (HeroLTR) sigue vivo, así
+  // que el inicio en 02 se mantiene. Header interno + flechas prev/next leen de acá.
+  zona: { num: "05", label: "Zona", prev: "largoPlazo", next: undefined },
   // Hoja: no se interpone en la cadena 02-06 (es un hallazgo del motor, no una
   // sección IA). Sin prev/next → solo cierra.
   capexPuestaAPunto: { num: "+", label: "Puesta a punto", prev: undefined, next: undefined },
