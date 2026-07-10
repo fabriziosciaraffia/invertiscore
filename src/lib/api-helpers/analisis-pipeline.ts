@@ -282,7 +282,9 @@ function isDirectData(
 // mensuales). "calculator_direct" trae percentiles de AirROI; "comparables" los
 // sintetiza desde los tiers premium/standard. Movido verbatim desde
 // /api/analisis/short-term/route.ts (único consumer).
-function buildAirbnbData(
+// Exportado (E.1b): el golden STR (str-recompute) lo reusa para recomputar con la MISMA
+// transformación raw→airbnbData que producción, sin una réplica que pueda driftar.
+export function buildAirbnbData(
   raw: AirbnbEstimateData | AirbnbEstimateDirectData,
   ufValue: number,
 ): AirbnbData {

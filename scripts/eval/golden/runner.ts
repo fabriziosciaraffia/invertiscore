@@ -4,7 +4,9 @@
 // Fase 2.0 del sistema. Corre el eval de regresión y reporta matriz pasa/falla.
 //
 //   node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts [flags]
-//     --quick        (default) solo recompute determinístico (0 tokens)
+//     --quick        (default) solo recompute determinístico LTR (0 tokens)
+//     --str          agrega el tier STR (GS-STR, BS1-BS8, 0 tokens)
+//     --all          LTR quick + STR (0 tokens)
 //     --full         recompute + generación fresca (AUTO) + semántico
 //     --no-semantic  con --full, salta el juez Opus (solo AUTO)
 //     --k=N          generaciones frescas por caso (default 2)
@@ -20,6 +22,7 @@ import { runRecomputeTier, type SeedReport } from "./recompute";
 import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
+import { runStrTier } from "./str-recompute";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -62,6 +65,11 @@ function printSeed(r: SeedReport) {
   quick.forEach(printSeed);
   totalHard += quick.reduce((n, r) => n + r.hardFail, 0);
   totalDrift += quick.reduce((n, r) => n + r.rebaseline, 0);
+
+  // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
+  if (has("--str") || has("--all") || MODE_FULL) {
+    totalHard += runStrTier();
+  }
 
   // ── Tier FULL (opcional) ────────────────────────────────────────────────
   if (MODE_FULL) {
