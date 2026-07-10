@@ -18,7 +18,7 @@ import {
 } from "./str-universo-santiago";
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
-import type { HallazgoPuestaAPunto } from "../types";
+import type { Hallazgo } from "../types";
 
 // =========================================
 // Types
@@ -236,9 +236,10 @@ export interface ShortTermResult {
   dividendoMensual: number;
   capitalInvertido: number;
 
-  // Proto-hallazgos del motor (hoy solo CapEx puesta a punto, modalidad 'str').
-  // Vacío/omitido si Nuevo o CapEx 0. Sin ordenamiento ni rendering.
-  hallazgos?: HallazgoPuestaAPunto[];
+  // Proto-hallazgos. calcShortTerm siembra solo el CapEx puesta a punto; el pipeline
+  // (buildStrHallazgos) reemplaza este array con la pirámide STR completa antes de persistir.
+  // Tipado Hallazgo[] para reflejar el shape persistido que lee el render. Sin orden/rendering acá.
+  hallazgos?: Hallazgo[];
 
   // Escenarios
   escenarios: {
@@ -865,10 +866,10 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     superficieUtilM2: input.superficie,
     modalidad: "str",
     inversionInicialCLP: capitalInvertido,
-    // STR no usa la máquina de score/veredicto LTR (calcDecisividades es LTR-only);
-    // conserva su decisividad histórica = fracción capex/inversión inicial. E2.
-    // magnitudContinua == decisividad (STR no tiene floor ni empates de pirámide). E4.
-    decisividad: Math.max(0, Math.min(1, capitalInvertido > 0 ? capexPuestaAPunto.montoCLP / capitalInvertido : 0)),
+    // FORWARD-ONLY E.1b: en STR el capex NO mueve las 4 dims del score (capitalInvertido no
+    // entra a rentabilidad/sostenibilidad/ventaja/factibilidad) → SOLO-LECTURA, decisividad 0.
+    // La fracción capex/inversión pasa a magnitudContinua (desempate del sort de la pirámide).
+    decisividad: 0,
     magnitudContinua: Math.max(0, Math.min(1, capitalInvertido > 0 ? capexPuestaAPunto.montoCLP / capitalInvertido : 0)),
     // Honestidad de la procedencia: 'baja' solo si la antigüedad nació de un
     // fallback del borde (el caller lo marca). Si vino real del payload, 'media'.

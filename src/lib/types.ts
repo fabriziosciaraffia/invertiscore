@@ -550,10 +550,147 @@ export interface HallazgoPatrimonio {
   fraseCanonica: string;
 }
 
+// ============================================================================
+// PIRÁMIDE STR (E.1b) — 6 proto-hallazgos PROPIOS del corto. Diseño congelado en
+// of-e1a-piramide-str.md. Los 6 heredados (capex/sobreprecio/financiamiento/
+// plusvalia/tir/patrimonio) REUSAN los tipos LTR de arriba con modalidad:"str".
+// DECISIVIDAD STR: decisividad>0 solo en los 4 que son 1:1 con una dim del score
+// de 4 dimensiones (decisividad_dim = |dimScore−50|/50). Los demás = 0 (solo-lectura).
+// ============================================================================
+
+// 1 · RENTABILIDAD_STR (DECISIVO — dim rentabilidad). Envuelve escenarios.base.capRate
+// contra el umbral STR nacional (5%). Ancla al umbral (regla A4/D4): la frase NUNCA
+// compara el CAP con un instrumento. Ver rentabilidad-str-hallazgo.ts.
+export interface HallazgoRentabilidadStr {
+  id: "rentabilidad_str";
+  tipo: "rentabilidad_operativa_str";
+  valor: {
+    capRatePct: number;   // CAP rate STR del sujeto, % NETO (NOI) — reusado de base.capRate
+    umbralPct: number;    // umbral STR nacional (5,0%)
+    gapPts: number;       // capRatePct − umbralPct, en puntos (signed)
+    banda: number;        // banda de saturación de magnitudContinua, en puntos
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // favorable si capRate ≥ umbral
+  decisividad: number;                // dim rentabilidad: |dimScore−50|/50
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
+// 2 · FLUJO_STR (DECISIVO — dim sostenibilidad). Envuelve escenarios.base.flujoCajaMensual
+// (estabilizado, ocupación observada). Corte 0. Molde de flujo_mensual LTR con texto STR.
+// Ver flujo-str-hallazgo.ts.
+export interface HallazgoFlujoStr {
+  id: "flujo_str";
+  tipo: "flujo_estabilizado";
+  valor: {
+    flujoMensualCLP: number;  // flujo de caja mensual estabilizado, CLP signed — base.flujoCajaMensual
+    banda: number;            // banda de magnitud, CLP (250k = umbral Gate-1 STR)
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // favorable si flujo ≥ 0
+  decisividad: number;                // dim sostenibilidad: |dimScore−50|/50
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
+// 3 · OCUPACION_VS_BANDA (DECISIVO — dim factibilidad). Compara base.ocupacionReferencia
+// contra la banda comunal (STR_UNIVERSO_OCC). Rama fallback (occ no observada, dominante)
+// declara SIN eufemismo el supuesto conservador 45%. Ver ocupacion-vs-banda-hallazgo.ts.
+export interface HallazgoOcupacionVsBanda {
+  id: "ocupacion_vs_banda";
+  tipo: "ocupacion_vs_banda";
+  valor: {
+    ocupacionPct: number;      // ocupación del escenario base, % (base.ocupacionReferencia×100)
+    bandaComunalPct: number;   // ocupación estabilizada de la comuna, % (STR_UNIVERSO_OCC)
+    gapPts: number;            // ocupacionPct − bandaComunalPct, en puntos (signed)
+    esFallback: boolean;       // true si occ no observada (fallback 0,45) → confianza baja
+    comuna: string;            // nombra el nivel en el ksub; "" si no disponible
+    banda: number;             // banda de saturación de magnitudContinua, en puntos
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // favorable si occ ≥ banda comunal
+  decisividad: number;                // dim factibilidad: |dimScore−50|/50
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
+// 4 · VENTAJA_VS_LTR (DECISIVO — dim ventaja) · el hallazgo estrella. Envuelve
+// comparativa.sobreRentaPct/sobreRenta (sobre NOI). Corte 0, borde [0,+15%). Rama
+// LTR-negativo (ltr_noiMensual ≤ 0): KPI en CLP, cero %. La favorable lleva la cláusula
+// estabilizado-vs-contractual. Ver ventaja-vs-ltr-hallazgo.ts.
+export interface HallazgoVentajaVsLtr {
+  id: "ventaja_vs_ltr";
+  tipo: "ventaja_vs_ltr";
+  valor: {
+    sobreRentaPct: number;    // (NOI_str − NOI_ltr)/NOI_ltr — reusado de comparativa.sobreRentaPct
+    sobreRentaCLP: number;    // NOI_str − NOI_ltr, CLP/mes — comparativa.sobreRenta
+    ltrNoiMensual: number;    // NOI LTR mensual (para detectar el denominador ≤ 0)
+    ltrNegativo: boolean;     // true si ltr_noiMensual ≤ 0 → % ilegible, usar CLP
+    bordePct: number;         // umbral de borde (+15%): bajo esto la ventaja no paga el esfuerzo
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // favorable si sobreRenta ≥ 0
+  decisividad: number;                // dim ventaja: |dimScore−50|/50
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
+// 5 · SENSIBILIDAD_STR (SOLO-LECTURA, decisividad 0). Robustez del veredicto vía
+// breakEvenPctDelMercado (atajo determinístico). Cortes 1,00/1,10 (alineados a Gate-2 STR).
+// Ver sensibilidad-str-hallazgo.ts.
+export interface HallazgoSensibilidadStr {
+  id: "sensibilidad_str";
+  tipo: "robustez_veredicto_str";
+  valor: {
+    beRatioPct: number;      // break-even como % del revenue de mercado (breakEvenPctDelMercado×100)
+    corteFavorable: number;  // 100 — al o bajo el mercado (holgado)
+    corteFragil: number;     // 110 — sobre esto el margen operativo es frágil (Gate-2)
+    banda: number;           // normalización de magnitudContinua, en puntos
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // adverso solo en la banda frágil (>110%)
+  decisividad: number;                // 0 fija (solo-lectura)
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
+// 6 · ESTRUCTURA_COSTOS_STR (SOLO-LECTURA, decisividad 0). Cost-stack como % del bruto
+// (costosOperativos+comisión)/ingresoBruto, contra la banda típica 30/40%. Descomposición
+// de rentabilidad/sostenibilidad, no un eje propio. Ver estructura-costos-str-hallazgo.ts.
+export interface HallazgoEstructuraCostosStr {
+  id: "estructura_costos_str";
+  tipo: "cost_stack";
+  valor: {
+    costStackPct: number;    // (costosOperativos+comisión)/ingresoBrutoMensual, %
+    bandaFavPct: number;     // 30 — bajo esto, cost-stack sano
+    bandaAdvPct: number;     // 40 — sobre esto, se come más de 4 de cada 10 pesos brutos
+    banda: number;           // normalización de magnitudContinua, en puntos
+    modalidad: "ltr" | "str" | "ambas";
+  };
+  direccion: "favorable" | "adverso"; // adverso solo sobre la banda alta (>40%)
+  decisividad: number;                // 0 fija (solo-lectura)
+  magnitudContinua?: number;
+  procedencia: { base: string; confianza: "alta" | "media" | "baja" };
+  titular: string;
+  fraseCanonica: string;
+}
+
 // Unión de proto-hallazgos que el motor puede sembrar en results.hallazgos.
 // HallazgoSobreprecio se incorporó (sobreprecio-sync): el motor lo siembra sync
 // cuando recibe la mediana comunal inyectada (prefetchMedianaComunaVenta). Sigue
 // persistiéndose en ai_analysis por ahora (limpieza del viejo = paso aparte).
+// Los 6 STR PROPIOS (E.1b) se suman al final; los 6 heredados reusan los tipos LTR.
 export type Hallazgo =
   | HallazgoPuestaAPunto
   | HallazgoCapRate
@@ -563,7 +700,13 @@ export type Hallazgo =
   | HallazgoEstructuraFinanciamiento
   | HallazgoTIR
   | HallazgoSensibilidad
-  | HallazgoPatrimonio;
+  | HallazgoPatrimonio
+  | HallazgoRentabilidadStr
+  | HallazgoFlujoStr
+  | HallazgoOcupacionVsBanda
+  | HallazgoVentajaVsLtr
+  | HallazgoSensibilidadStr
+  | HallazgoEstructuraCostosStr;
 
 export interface NegociacionScenario {
   precioSugeridoUF: number;

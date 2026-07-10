@@ -112,7 +112,12 @@ export async function POST(request: Request) {
       const ufBoth = await getUFValue();
       // STR primero: puede fallar (AirROI caído / sin datos) con su propio
       // contrato HTTP. Si falla, abortamos sin haber insertado el LTR.
-      const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth);
+      const medianaStrBoth = await prefetchMedianaComunaVenta(
+        supabase,
+        { comuna: strPayload.comuna ?? "", superficie: strPayload.superficieUtil, dormitorios: strPayload.dormitorios },
+        ufBoth,
+      );
+      const builtStr = await buildShortTermAnalysisRow(strPayload, ufBoth, medianaStrBoth);
       if (!builtStr.ok) return builtStr.response;
 
       // Mediana comunal pre-fetcheada para inyectar al motor LTR (patrón cap_rate).
@@ -163,10 +168,13 @@ export async function POST(request: Request) {
     // ─── Rama STR: motor compartido (incluye AirROI), fila bloqueada ───
     if (isStr) {
       const ufStr = await getUFValue();
-      const built = await buildShortTermAnalysisRow(
-        body as unknown as ShortTermAnalysisBody,
+      const bodyStr = body as unknown as ShortTermAnalysisBody;
+      const medianaStr = await prefetchMedianaComunaVenta(
+        supabase,
+        { comuna: bodyStr.comuna ?? "", superficie: bodyStr.superficieUtil, dormitorios: bodyStr.dormitorios },
         ufStr,
       );
+      const built = await buildShortTermAnalysisRow(bodyStr, ufStr, medianaStr);
       if (!built.ok) return built.response;
 
       const { data: strData, error: strError } = await supabase

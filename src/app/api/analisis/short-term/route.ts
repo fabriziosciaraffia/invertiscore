@@ -6,6 +6,7 @@ import {
   ensureCreditCharged,
   markPremiumAndClaimPrepaid,
   buildShortTermAnalysisRow,
+  prefetchMedianaComunaVenta,
 } from "@/lib/api-helpers/analisis-pipeline";
 
 // ─── POST handler ──────────────────────────────────────
@@ -31,7 +32,14 @@ export async function POST(request: Request) {
     // /api/analisis/locked vía buildShortTermAnalysisRow — un solo call-site de
     // getAirbnbEstimate (key AirROI sin drift de hash). Devuelve { ok:false,
     // response } con el mismo contrato HTTP (502 AirROI down / 400 sin datos).
-    const built = await buildShortTermAnalysisRow(body, ufValue);
+    // Mediana comunal pre-fetcheada para el hallazgo de sobreprecio de la pirámide STR
+    // (patrón LTR). No bloquea: cae a { mediana:null } y sobreprecio se omite.
+    const medianaComuna = await prefetchMedianaComunaVenta(
+      supabase,
+      { comuna: body.comuna, superficie: body.superficieUtil, dormitorios: body.dormitorios },
+      ufValue,
+    );
+    const built = await buildShortTermAnalysisRow(body, ufValue, medianaComuna);
     if (!built.ok) return built.response;
 
     // 7. Insert en Supabase (misma tabla que LTR). El row computado viene del

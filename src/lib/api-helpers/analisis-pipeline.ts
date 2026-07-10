@@ -27,6 +27,7 @@ import {
   type HabilitacionSTR,
 } from "@/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
+import { buildStrHallazgos } from "@/lib/str-hallazgos";
 import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
 import type { AirbnbEstimateData, AirbnbEstimateDirectData } from "@/lib/airbnb/types";
 
@@ -436,6 +437,9 @@ export type BuildShortTermRowResult =
 export async function buildShortTermAnalysisRow(
   body: ShortTermAnalysisBody,
   ufValue: number,
+  /** Mediana comunal de venta UF/m² pre-fetcheada (sobreprecio de la pirámide STR). Si el
+   *  caller no la resuelve, el hallazgo de sobreprecio se omite (N−1) — patrón LTR. */
+  medianaComuna?: { mediana: number | null; n: number },
 ): Promise<BuildShortTermRowResult> {
   // AirROI directo (sin sub-fetch HTTP). Único call-site de getAirbnbEstimate.
   let airbnbResult;
@@ -542,6 +546,24 @@ export async function buildShortTermAnalysisRow(
 
   const francoScore = calcFrancoScoreSTR(scoreInputs);
 
+  // Pirámide STR (E.1b): ensambla los hallazgos con decisividad de las 4 dims del score y los
+  // concatena con el capex ya sembrado por calcShortTerm (result.hallazgos). Persistido en
+  // results.hallazgos; el render STR lee lo persistido (no recomputa como LTR).
+  const strHallazgos = buildStrHallazgos({
+    result,
+    francoScore,
+    comuna: typeof body.comuna === "string" ? body.comuna : "",
+    precioUF: body.precioCompraUF,
+    superficieM2: body.superficieUtil,
+    piePct: body.piePct,
+    tasaPct: body.tasaInteres,
+    plazoAnios: body.plazoCredito,
+    mediana: medianaComuna ?? { mediana: null, n: 0 },
+    valorUF: ufValue,
+    incluyeCorretaje: false, // STR: capitalInvertido = pie + cierre + amoblamiento + capex, sin corretaje
+  });
+  const hallazgosSTR = [...(result.hallazgos ?? []), ...strHallazgos];
+
   const nombre = `Renta Corta - ${body.direccion || body.comuna}`;
 
   return {
@@ -572,6 +594,7 @@ export async function buildShortTermAnalysisRow(
       // (analisis/locked) lo persistan por igual.
       results: {
         ...result,
+        hallazgos: hallazgosSTR, // pirámide STR completa (capex + 11 propios/heredados)
         tipoAnalisis: "short-term",
         veredicto: francoScore.veredicto,
         francoScore,
