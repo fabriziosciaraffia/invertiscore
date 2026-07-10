@@ -20,11 +20,12 @@ import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { GenericFindingCard } from "./GenericFindingCard";
 
 // Comparador de dos niveles: decisividad DESC, luego magnitud continua DESC.
-const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>
+// Exportado (E.1b): lo reusa PiramideHallazgosSTR para el mismo orden Filosofía 1.
+export const cmpDecisividad = (a: Hallazgo, b: Hallazgo) =>
   b.decisividad - a.decisividad || ((b.magnitudContinua ?? 0) - (a.magnitudContinua ?? 0));
 
 // Filosofía 1: adverso (o neutral/leve) va en el grupo de arriba; favorable abajo.
-const esAdverso = (h: Hallazgo) => h.direccion !== "favorable";
+export const esAdverso = (h: Hallazgo) => h.direccion !== "favorable";
 
 function gatherHallazgos(
   results: FullAnalysisResult | null | undefined,
@@ -69,7 +70,7 @@ function gatherHallazgos(
 // interpolado, así que cada string de columnas es literal. El orden de `resto` se
 // preserva (Filosofía 1): en el caso de 5, los 2 chips más decisivos ganan ancho en la
 // fila de 2 y el resto va a la de 3. Mobile (<md): todas las filas apilan a 1 columna.
-function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: string }[] {
+export function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: string }[] {
   const n = resto.length;
   if (n === 2) return [{ items: resto, cols: "md:grid-cols-2" }];
   if (n === 4) return [{ items: resto, cols: "md:grid-cols-4" }];
@@ -78,7 +79,18 @@ function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: string }[] {
       { items: resto.slice(0, 2), cols: "md:grid-cols-2" },
       { items: resto.slice(2), cols: "md:grid-cols-3" },
     ];
-  // 1, 3, 6, >6 → grid de 3 (fallback actual): 3 = fila perfecta, 6 = 3+3 por wrap.
+  // E.1b — pirámide STR llega a N=10/11 (resto 7/8). Balanceo sin huérfano:
+  if (n === 7)
+    return [
+      { items: resto.slice(0, 4), cols: "md:grid-cols-4" },
+      { items: resto.slice(4), cols: "md:grid-cols-3" },
+    ];
+  if (n === 8)
+    return [
+      { items: resto.slice(0, 4), cols: "md:grid-cols-4" },
+      { items: resto.slice(4), cols: "md:grid-cols-4" },
+    ];
+  // 1, 3, 6, 9, >8 → grid de 3 (fallback): 3/6/9 = filas perfectas por wrap.
   return [{ items: resto, cols: "md:grid-cols-3" }];
 }
 
@@ -113,8 +125,11 @@ export function PiramideHallazgos({
   // los adversos), la card muestra "Ojo antes de firmar" — así no contradice al
   // TOP-3 del hero, que sí ordena por decisividad. Tolerancia float por si dos
   // hallazgos empatan en el máximo.
+  // E.1b — guard de corona honesta: si NINGÚN hallazgo mueve el score (maxDecisividad≈0,
+  // posible en STR con adversos todos solo-lectura), la corona NO dice "Lo más decisivo".
+  // Para LTR es no-op (siempre hay decisivos > 0). Verificado en of-e1b-verify-piramide.
   const maxDecisividad = Math.max(...gathered.map((h) => h.decisividad));
-  const esElMasDecisivo = nivel1.decisividad >= maxDecisividad - 1e-9;
+  const esElMasDecisivo = maxDecisividad > 1e-9 && nivel1.decisividad >= maxDecisividad - 1e-9;
 
   // Eco literal apertura↔corona: la prosa (respuestaDirecta, Plan C) SIEMPRE abre con
   // la fraseCanonica del hallazgo #1 por decisividad (ai-generation.ts:1567-1592). Cuando

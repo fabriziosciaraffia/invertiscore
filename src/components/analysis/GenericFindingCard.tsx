@@ -215,6 +215,77 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
         ksub: `${multFmt} · aportaste ${aportadoFmt}`,
       };
     }
+    // ── PIRÁMIDE STR (E.1b) — los 6 propios. Los heredados (sobreprecio/plusvalia/tir/
+    // patrimonio/capex/estructura_financiamiento) reusan los casos LTR de arriba. ──
+    case "rentabilidad_str": {
+      const v = h.valor;
+      return {
+        kick: "Rentabilidad operativa",
+        title: h.titular,
+        kpi: `${pct1(v.capRatePct)}%`,
+        kpiRed: v.capRatePct < v.umbralPct,
+        ksub: `CAP STR · umbral ${pct1(v.umbralPct)}%`,
+        procedencia: "Umbral STR nacional, sin comparable comunal",
+      };
+    }
+    case "flujo_str": {
+      const v = h.valor;
+      return {
+        kick: "Flujo mensual",
+        title: h.titular,
+        kpi: fmtSigned(v.flujoMensualCLP, currency, valorUF),
+        kpiRed: v.flujoMensualCLP < 0,
+        ksub: "Estabilizado · ocupación base",
+      };
+    }
+    case "ocupacion_vs_banda": {
+      const v = h.valor;
+      return {
+        kick: "Ocupación vs zona",
+        title: h.titular,
+        kpi: `${v.ocupacionPct}%`,
+        kpiRed: false, // la ocupación no es un negativo monetario; la dirección la da el dot
+        ksub: v.esFallback ? "Supuesto conservador · sin dato propio" : `Banda comuna ${v.bandaComunalPct}%`,
+        procedencia: v.esFallback ? "Sin ocupación observada · supuesto 45%" : undefined,
+      };
+    }
+    case "ventaja_vs_ltr": {
+      const v = h.valor;
+      return {
+        kick: "Ventaja vs arriendo largo",
+        title: h.titular,
+        // LTR negativo ⇒ % ilegible: KPI en CLP absoluto (dual-moneda). Si no, %.
+        kpi: v.ltrNegativo
+          ? fmtSigned(v.sobreRentaCLP, currency, valorUF)
+          : `${v.sobreRentaPct >= 0 ? "+" : "−"}${Math.abs(Math.round(v.sobreRentaPct))}%`,
+        kpiRed: false,
+        ksub: v.ltrNegativo ? "Corto vs largo · ambos negativos" : "Sobre-renta neta · vs LTR",
+      };
+    }
+    case "sensibilidad_str": {
+      const v = h.valor;
+      return {
+        kick: "Robustez del veredicto",
+        title: h.titular,
+        kpi: `${v.beRatioPct}%`,
+        kpiRed: v.beRatioPct > v.corteFragil,
+        ksub: "Break-even · % del mercado",
+      };
+    }
+    case "estructura_costos_str": {
+      const v = h.valor;
+      return {
+        kick: "Estructura de costos",
+        title: h.titular,
+        kpi: `${v.costStackPct}%`,
+        kpiRed: v.costStackPct > v.bandaAdvPct,
+        ksub: "% del bruto · típico 30-40%",
+      };
+    }
+    default: {
+      // Exhaustividad defensiva (no debería alcanzarse: todos los ids tienen caso).
+      return { kick: "", title: (h as { titular?: string }).titular ?? "", kpi: "", kpiRed: false, ksub: "" };
+    }
   }
 }
 

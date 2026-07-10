@@ -34,6 +34,7 @@ import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
+import { PiramideHallazgosSTR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -269,6 +270,15 @@ export function STRResultsClient({
             <div style={{ height: 24 }} />
           </>
         )}
+
+        {/* Pirámide de hallazgos STR (E.1b) — "Empezando por lo adverso". Orden
+            Filosofía 1 sobre results.hallazgos (motor-seeded en el pipeline). */}
+        <PiramideHallazgosSTR
+          hallazgos={results.hallazgos}
+          currency={currency}
+          valorUF={ufValue}
+        />
+        <div style={{ height: 24 }} />
 
         {/* 02-07 · DIMENSIONES — Subject Card Grid.
             Cada drawer embebe la narrativa IA correspondiente.
