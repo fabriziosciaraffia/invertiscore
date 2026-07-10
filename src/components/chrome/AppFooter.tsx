@@ -41,7 +41,7 @@ export function AppFooter({
                 color: "var(--franco-text-secondary)",
               }}
             >
-              Re franco con tu inversión
+              Real estate en su estado más franco
             </p>
           </div>
         )}
