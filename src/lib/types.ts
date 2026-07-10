@@ -609,6 +609,10 @@ export interface HallazgoOcupacionVsBanda {
     bandaComunalPct: number;   // ocupación estabilizada de la comuna, % (STR_UNIVERSO_OCC)
     gapPts: number;            // ocupacionPct − bandaComunalPct, en puntos (signed)
     esFallback: boolean;       // true si occ no observada (fallback 0,45) → confianza baja
+    // fix-occfuente-override 2026-07 — el usuario definió la ocupación a mano.
+    // `ocupacionPct` es entonces su supuesto; `occObservadaPct` es el dato de mercado real.
+    esOverride?: boolean;
+    occObservadaPct?: number;  // ocupación observada real de la zona, % (para mostrar ambos)
     comuna: string;            // nombra el nivel en el ksub; "" si no disponible
     banda: number;             // banda de saturación de magnitudContinua, en puntos
     modalidad: "ltr" | "str" | "ambas";

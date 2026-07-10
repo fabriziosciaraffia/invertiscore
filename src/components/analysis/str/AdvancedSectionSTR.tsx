@@ -34,6 +34,12 @@ export function AdvancedSectionSTR({
 }) {
   const [open, setOpen] = useState(forceOpen);
 
+  // fix-occfuente-override 2026-07 — si el usuario definió la ocupación a mano, los rótulos
+  // del bloque de escenarios NO la llaman "mediana observada": declaran procedencia.
+  const occEsOverride = results.occFuente === "override";
+  const occBasePct = Math.round(results.escenarios.base.ocupacionReferencia * 100);
+  const occObsPct = Math.round((typeof results.occObservada === "number" ? results.occObservada : results.escenarios.base.ocupacionReferencia) * 100);
+
   const sectionHeader = (num: string, label: string, title: string) => (
     <div style={{ marginBottom: 14 }}>
       <span
@@ -135,11 +141,13 @@ export function AdvancedSectionSTR({
       <div className="px-5 md:px-7 py-6">
         {sectionHeader("07", "ESCENARIOS", "Cómo varía con la ocupación del mercado")}
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-4 leading-[1.6]">
-          La base es la mediana de ocupación observada de la zona (percentil 50), la operación esperable; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación.
+          {occEsOverride
+            ? `La base usa la ocupación que definiste (${occBasePct}%), no la observada de la zona (${occObsPct}%) — es un supuesto tuyo, no un dato de mercado; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación.`
+            : "La base es la mediana de ocupación observada de la zona (percentil 50), la operación esperable; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación."}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <EscenarioCard escenario={results.escenarios.conservador} subtitle="Cuarta parte más baja del mercado (p25) — caída de demanda" currency={currency} valorUF={valorUF} />
-          <EscenarioCard escenario={results.escenarios.base} subtitle="Mediana observada de la zona (p50) — operación esperable" currency={currency} valorUF={valorUF} featured />
+          <EscenarioCard escenario={results.escenarios.base} subtitle={occEsOverride ? `Ocupación definida por ti (${occBasePct}%) — la observada es ${occObsPct}%` : "Mediana observada de la zona (p50) — operación esperable"} currency={currency} valorUF={valorUF} featured />
           <EscenarioCard escenario={results.escenarios.agresivo} label="Potencial (gestión pro)" subtitle="Potencial con gestión profesional, estabilizado" currency={currency} valorUF={valorUF} />
         </div>
       </div>

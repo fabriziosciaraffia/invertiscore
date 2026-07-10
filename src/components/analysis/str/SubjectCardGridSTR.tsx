@@ -505,6 +505,12 @@ function DrawerContent({
   const ltr = results.comparativa.ltr;
   const regulacion = inputData?.edificioPermiteAirbnb ?? "no_seguro";
 
+  // fix-occfuente-override 2026-07 — cuando el usuario definió la ocupación a mano, el drawer
+  // NO la presenta como "mediana observada": declara procedencia y muestra ambos valores.
+  const occEsOverride = results.occFuente === "override";
+  const occBasePct = Math.round(base.ocupacionReferencia * 100);
+  const occObsPct = Math.round((typeof results.occObservada === "number" ? results.occObservada : base.ocupacionReferencia) * 100);
+
   // Drawer 06 Tipo de huésped — Commit 2c · 2026-05-12.
   // Delega rendering a DrawerTipoHuesped (lazy fetch del endpoint guest-insight
   // via useGuestInsight hook).
@@ -517,13 +523,22 @@ function DrawerContent({
     return (
       <>
         <NarrativeIA text={seccion?.contenido} />
-        <DrawerSection label="Escenario base (mediana observada de la zona · P50)">
+        <DrawerSection label={occEsOverride ? "Escenario base (ocupación definida por ti)" : "Escenario base (mediana observada de la zona · P50)"}>
           {results.occFuente && (
             <DataRow
-              label="Ocupación observada de la zona"
-              value={`${Math.round(base.ocupacionReferencia * 100)}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}% (+${Math.round((agresivo.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts)`}
-              tooltip="Ocupación mediana efectivamente observada en la zona — el caso central esperable. El potencial es el techo alcanzable con gestión profesional ya estabilizada; depende de la operación, no del mercado."
+              label={occEsOverride ? "Ocupación (definida por ti)" : "Ocupación observada de la zona"}
+              value={occEsOverride
+                ? `${occBasePct}% · Observada de la zona ${occObsPct}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}%`
+                : `${occBasePct}% · Potencial con gestión pro ${Math.round(agresivo.ocupacionReferencia * 100)}% (+${Math.round((agresivo.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts)`}
+              tooltip={occEsOverride
+                ? "Ocupación que definiste tú, no un dato observado. El cálculo usa tu supuesto; la observada de la zona se muestra al lado como referencia de mercado."
+                : "Ocupación mediana efectivamente observada en la zona — el caso central esperable. El potencial es el techo alcanzable con gestión profesional ya estabilizada; depende de la operación, no del mercado."}
             />
+          )}
+          {occEsOverride && (
+            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 mb-3 m-0 italic leading-[1.5]">
+              Definiste la ocupación a mano ({occBasePct}%). No es un dato observado de la zona (donde se observa {occObsPct}%); trátalo como un supuesto que confirmas recién operando.
+            </p>
           )}
           {results.occFuente === "fallback_mercado" && (
             <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 mb-3 m-0 italic leading-[1.5]">
@@ -533,7 +548,9 @@ function DrawerContent({
           <DataRow
             label="Ingresos brutos anuales"
             value={fmtMoney(base.revenueAnual, currency, valorUF)}
-            tooltip="Total de ingresos del año asumiendo la mediana observada de la zona. Sin descontar costos."
+            tooltip={occEsOverride
+              ? "Total de ingresos del año asumiendo la ocupación que definiste. Sin descontar costos."
+              : "Total de ingresos del año asumiendo la mediana observada de la zona. Sin descontar costos."}
           />
           <DataRow
             label="NOI mensual (ingreso neto operativo)"
@@ -571,7 +588,9 @@ function DrawerContent({
           <DataRow
             label="Base"
             value={fmtMoney(base.noiMensual, currency, valorUF) + "/mes NOI"}
-            tooltip="Escenario más probable: ocupación = mediana observada de la zona (no ajustada por los ejes ni por la gestión). Solo el ADR lleva uplift por tipo de edificio + habilitación."
+            tooltip={occEsOverride
+              ? "Escenario base con la ocupación que definiste tú (no la observada de la zona). Solo el ADR lleva uplift por tipo de edificio + habilitación."
+              : "Escenario más probable: ocupación = mediana observada de la zona (no ajustada por los ejes ni por la gestión). Solo el ADR lleva uplift por tipo de edificio + habilitación."}
           />
           <DataRow
             label="Optimista"

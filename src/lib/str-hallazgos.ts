@@ -66,20 +66,31 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
       modalidad: "str",
     }),
   );
+  // fix-occfuente-override 2026-07 — procedencia real de la ocupación del base.
+  const occEsOverride = r.occFuente === "override";
+  const occObservadaPct = (typeof r.occObservada === "number" ? r.occObservada : base.ocupacionReferencia) * 100;
+  const occObservadaEsFallback = r.occObservadaFuente === "fallback_mercado";
   out.push(
     buildHallazgoFlujoStr({
       flujoMensualCLP: base.flujoCajaMensual,
       decisividad: decisividadDim(fs.desglose.sostenibilidad.score),
       modalidad: "str",
+      occEsOverride,
+      occDefinidaPct: base.ocupacionReferencia * 100,
+      occObservadaPct,
     }),
   );
   {
     const bandaComunal = STR_UNIVERSO_OCC[ctx.comuna];
     out.push(
       buildHallazgoOcupacionVsBanda({
-        ocupacionPct: base.ocupacionReferencia * 100,
+        ocupacionPct: base.ocupacionReferencia * 100, // = override cuando lo hay (consistente con el score, que factura ocupacionFinal)
         bandaComunalPct: typeof bandaComunal === "number" ? bandaComunal * 100 : NaN,
-        esFallback: r.occFuente !== "observada", // fallback = dominante; undefined→fallback
+        // fallback SOLO cuando es fallback real; 'override' NO es fallback; undefined (legacy)→fallback (default dominante).
+        esFallback: r.occFuente === "fallback_mercado" || r.occFuente == null,
+        esOverride: occEsOverride,
+        occObservadaPct,
+        occObservadaEsFallback,
         comuna: ctx.comuna || "",
         decisividad: decisividadDim(fs.desglose.factibilidad.score),
         modalidad: "str",

@@ -249,6 +249,32 @@ export async function POST(request: Request) {
     const projY10 = r.projections && r.projections.length >= 10 ? r.projections[9] : null;
     const exit = r.exitScenario;
 
+    // --- fix-occfuente-override 2026-07 — procedencia de occ/ADR del escenario base ---
+    // Cuando el usuario definió ocupación o tarifa a mano, el prompt lo DECLARA sin
+    // eufemismo y muestra ambos valores (su supuesto + el dato de mercado real). Nunca se
+    // presenta un override como "mediana observada".
+    const occEsOverride = r.occFuente === "override";
+    const adrEsOverride = r.adrFuente === "override";
+    const occBasePct = Math.round(base.ocupacionReferencia * 100);
+    const occObsPct = Math.round((typeof r.occObservada === "number" ? r.occObservada : base.ocupacionReferencia) * 100);
+    const adrModelo = typeof r.adrModelo === "number" ? r.adrModelo : base.adrReferencia;
+    const bloqueBaseHeader = occEsOverride
+      ? "=== ESCENARIO BASE (ocupación DEFINIDA POR EL USUARIO — no es dato de mercado) ==="
+      : "=== ESCENARIO BASE (ocupación en la mediana observada de la zona) ===";
+    const lineaADR = adrEsOverride
+      ? `ADR: ${fmtCLP(base.adrReferencia)}/noche (⚠ definido por ti; el ADR de mercado ajustado sería ${fmtCLP(adrModelo)}/noche)`
+      : `ADR: ${fmtCLP(base.adrReferencia)}/noche`;
+    const lineaOcc = occEsOverride
+      ? `Ocupación: ${occBasePct}% (⚠ definida por ti, NO observada — la observada de la zona es ${occObsPct}%)`
+      : `Ocupación: ${occBasePct}% (mediana observada de la zona)`;
+    const gapOccTag = occEsOverride ? "(tu supuesto → potencial)" : "(observada → potencial)";
+    const lineaFuenteOcc = occEsOverride
+      ? `Fuente ocupación base: override (usuario) · Observada real de la zona: ${occObsPct}%`
+      : `Fuente ocupación base: ${r.occFuente ?? "—"}`;
+    const labelBaseEscenario = occEsOverride
+      ? "Base (ocupación definida por ti)"
+      : "Base (ocupación en la mediana observada)";
+
     const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplica doctrina §1-§13 del system prompt y devuelve el JSON v2.
 
 === DATOS DE LA PROPIEDAD ===
@@ -273,12 +299,12 @@ Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sosten
 Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
 Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail}` : "(desglose no disponible)"}
 
-=== ESCENARIO BASE (ocupación en la mediana observada de la zona) ===
+${bloqueBaseHeader}
 Revenue anual: ${fmtCLP(base.revenueAnual)}
-ADR: ${fmtCLP(base.adrReferencia)}/noche, Ocupación: ${Math.round(base.ocupacionReferencia * 100)}% (mediana observada de la zona)
+${lineaADR}, ${lineaOcc}
 Ocupación upside (potencial con gestión profesional, estabilizado): ${Math.round(agr.ocupacionReferencia * 100)}%
-Gap ocupación: +${Math.round((agr.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts (observada -> potencial)
-Fuente ocupación base: ${r.occFuente ?? "—"}
+Gap ocupación: ${(() => { const g = Math.round((agr.ocupacionReferencia - base.ocupacionReferencia) * 100); return `${g >= 0 ? "+" : ""}${g}`; })()} pts ${gapOccTag}
+${lineaFuenteOcc}
 Ingreso bruto mensual: ${fmtCLP(base.ingresoBrutoMensual)}
 Comisión (${comisionPct}%): -${fmtCLP(base.comisionMensual)}/mes
 Costos operativos (electricidad ${fmtCLP(elec)} + agua ${fmtCLP(agua)} + wifi ${fmtCLP(wifi)} + insumos ${fmtCLP(insumos)} + mantención ${fmtCLP(mant)} + GC ${fmtCLP(gc)} + contrib ${fmtCLP(contribMensual)}): -${fmtCLP(base.costosOperativos)}/mes
@@ -290,7 +316,7 @@ Cash-on-Cash: ${(base.cashOnCash * 100).toFixed(1)}%
 
 === ESCENARIOS (conservador / base / upside) ===
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
-Base (ocupación en la mediana observada): NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
+${labelBaseEscenario}: NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
 Upside (gestión profesional): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
 
 === COMPARATIVA STR vs LTR ===

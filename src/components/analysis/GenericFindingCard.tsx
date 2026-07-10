@@ -240,6 +240,17 @@ function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): F
     }
     case "ocupacion_vs_banda": {
       const v = h.valor;
+      // fix-occfuente-override — KPI dual: el supuesto del usuario + el dato observado real.
+      if (v.esOverride) {
+        return {
+          kick: "Ocupación vs zona",
+          title: h.titular,
+          kpi: `${v.ocupacionPct}%`,
+          kpiRed: false,
+          ksub: v.occObservadaPct != null ? `Definida por ti · observada ${v.occObservadaPct}%` : "Definida por ti",
+          procedencia: "Ocupación definida por ti, no observada",
+        };
+      }
       return {
         kick: "Ocupación vs zona",
         title: h.titular,

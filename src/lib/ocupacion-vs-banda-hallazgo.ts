@@ -23,12 +23,18 @@ const pct0 = (n: number) => Math.round(n).toString();
  * computable. Voz: tuteo neutro chileno. §4: nunca "ramp-up" → "primeros meses de operación".
  */
 export function buildHallazgoOcupacionVsBanda(p: {
-  /** Ocupación del escenario base, en % (base.ocupacionReferencia × 100). */
+  /** Ocupación del escenario base, en % (base.ocupacionReferencia × 100). Con override = el supuesto del usuario. */
   ocupacionPct: number;
   /** Ocupación estabilizada de la comuna, en % (STR_UNIVERSO_OCC[comuna] × 100). */
   bandaComunalPct: number;
   /** true si la ocupación es fallback de mercado (no observada) — el caso dominante. */
   esFallback: boolean;
+  /** fix-occfuente-override — true si el usuario definió la ocupación a mano. */
+  esOverride?: boolean;
+  /** fix-occfuente-override — ocupación OBSERVADA real de la zona, en % (para mostrar ambos). */
+  occObservadaPct?: number;
+  /** fix-occfuente-override — true si esa observada vino del fallback de mercado (sin dato propio). */
+  occObservadaEsFallback?: boolean;
   /** Nombre de la comuna para el ksub; "" si no disponible. */
   comuna: string;
   /** Decisividad de la dim factibilidad (0..1), inyectada por el assembler STR. */
@@ -49,7 +55,29 @@ export function buildHallazgoOcupacionVsBanda(p: {
 
   let titular: string;
   let fraseCanonica: string;
-  if (p.esFallback) {
+  if (p.esOverride) {
+    // fix-occfuente-override 2026-07 — el usuario definió la ocupación a mano. La procedencia
+    // se declara sin eufemismo: NO es dato observado, es su supuesto. El titular conserva la
+    // señal direccional (occ override vs banda, consistente con el score, que factura
+    // ocupacionFinal=override) y la frase ancla contra la observada real de la zona.
+    const occObs = Math.round(Number.isFinite(p.occObservadaPct as number) ? (p.occObservadaPct as number) : occ);
+    const gapObs = occ - occObs;
+    const anclaObs = p.occObservadaEsFallback
+      ? `la zona no tiene ocupación observada para esta dirección (referencia de mercado ~${pct0(occObs)}%)`
+      : `la observada de la zona es ${pct0(occObs)}%`;
+    const relObs = Math.abs(gapObs) <= EN_LINEA_PTS
+      ? `en línea con lo que hoy se ve en la zona`
+      : `${pct0(Math.abs(gapObs))} puntos ${gapObs > 0 ? "sobre" : "bajo"} lo que hoy se ve en la zona`;
+    // El titular refiere a la BANDA comunal (contra lo que clasifica `direccion`); la frase
+    // ancla contra la OBSERVADA. Cada referente con su nombre para no cruzarlos.
+    titular = direccion === "favorable"
+      ? "Tu supuesto va sobre la banda típica de la comuna."
+      : "Tu supuesto va bajo la banda típica de la comuna.";
+    fraseCanonica =
+      `El cálculo usa la ocupación que definiste (${pct0(occ)}%), no un dato observado: ${anclaObs}. ` +
+      `Con tu supuesto necesitas llenar ${nochesMes} noches al mes — ${relObs}. ` +
+      `Trátalo como meta operativa a validar, no como el caso base: el número real recién lo confirmas operando.`;
+  } else if (p.esFallback) {
     // Rama dominante — sin eufemismo. El supuesto conservador es el 45%.
     titular = direccion === "favorable" ? "Con el supuesto base ya llenas la zona." : "Necesitas llenar más que la zona típica.";
     fraseCanonica =
@@ -81,6 +109,8 @@ export function buildHallazgoOcupacionVsBanda(p: {
       bandaComunalPct: Math.round(banda),
       gapPts: Math.round(gap),
       esFallback: p.esFallback,
+      esOverride: p.esOverride === true,
+      occObservadaPct: Number.isFinite(p.occObservadaPct as number) ? Math.round(p.occObservadaPct as number) : undefined,
       comuna: p.comuna,
       banda: OCC_BANDA_PTS,
       modalidad: p.modalidad,
@@ -89,10 +119,12 @@ export function buildHallazgoOcupacionVsBanda(p: {
     decisividad: p.decisividad,
     magnitudContinua,
     procedencia: {
-      base: p.esFallback
+      base: p.esOverride
+        ? `ocupación definida por ti (${pct0(occ)}%); ${p.occObservadaEsFallback ? "sin dato observado de la zona, referencia de mercado" : "la observada de la zona es"} ${pct0(Number.isFinite(p.occObservadaPct as number) ? (p.occObservadaPct as number) : occ)}%. El cálculo usa tu supuesto, no el dato de mercado`
+        : p.esFallback
         ? "sin datos observados de ocupación de esta propiedad; supuesto conservador 45% (fallback de mercado). Se confirma recién operando"
         : "ocupación observada del listing (AirROI), p50 de la comuna",
-      confianza: p.esFallback ? "baja" : "media",
+      confianza: (p.esOverride || p.esFallback) ? "baja" : "media",
     },
     titular,
     fraseCanonica,

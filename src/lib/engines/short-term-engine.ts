@@ -315,8 +315,22 @@ export interface ShortTermResult {
   // 'observada'        = percentiles.occupancy.p50 (o estimated_occupancy) de AirROI.
   // 'fallback_mercado' = no había occ observada; se usó la mediana pooled Santiago
   //                      (OCC_FALLBACK_MERCADO). UI/IA deben mostrar caveat en este caso.
+  // 'override'         = fix-occfuente-override 2026-07: el usuario definió la ocupación
+  //                      a mano (occOverride). NUNCA se presenta como dato observado.
   // Opcional para back-compat con análisis persistidos pre-remediación.
   occFuente?: OccFuenteSTR;
+
+  // fix-occfuente-override 2026-07 — el DATO OBSERVADO real de la zona, siempre presente
+  // aunque el usuario haya puesto un override. Permite mostrar AMBOS valores (su supuesto +
+  // el dato de mercado) sin esconder la evidencia. `occObservadaFuente` dice si ese dato
+  // observado vino de AirROI ('observada') o del fallback pooled Santiago ('fallback_mercado').
+  occObservada?: number;
+  occObservadaFuente?: OccFuenteObservadaSTR;
+
+  // fix-occfuente-override 2026-07 — fuente del ADR que factura el base y el ADR del modelo
+  // (p50 ajustado por ejes) para poder mostrar ambos cuando hay override de tarifa.
+  adrFuente?: AdrFuenteSTR;
+  adrModelo?: number;
 
   // Transparencia 2026-06 — DISPLAY-ONLY. Mediana de la ocupación REALIZADA de
   // la pool de comparables AirROI (ttm_occupancy). `calcShortTerm` NUNCA lo
@@ -534,7 +548,15 @@ export function determinarBandaOcupacion(input: {
 }
 
 // Remediación 2026-06 — fuente de la ocupación que factura el escenario base.
-export type OccFuenteSTR = 'observada' | 'fallback_mercado';
+// Fuente del DATO OBSERVADO (nunca es override): p50/estimated o fallback de mercado.
+export type OccFuenteObservadaSTR = 'observada' | 'fallback_mercado';
+// fix-occfuente-override 2026-07 — fuente de la ocupación que EFECTIVAMENTE factura
+// el base. 'override' cuando el usuario definió el valor a mano: la procedencia se
+// declara sin eufemismo, nunca se disfraza de dato observado.
+export type OccFuenteSTR = 'override' | OccFuenteObservadaSTR;
+// Fuente del ADR que factura el base. 'modelo' = p50 de AirROI ajustado por los ejes
+// (edificio × habilitación); nunca es raw observado. 'override' = tarifa definida por el usuario.
+export type AdrFuenteSTR = 'override' | 'modelo';
 
 // Mediana pooled de ocupación STR Santiago (Lastarria/Providencia/Las Condes,
 // n=149). Ver docs/str-benchmarks-from-airroi-2026-05.md §1. Fallback honesto
@@ -548,11 +570,11 @@ const OCC_FALLBACK_MERCADO = 0.45;
  *   b) si no, estimated_occupancy si > 0           → 'observada'
  *   c) si no, OCC_FALLBACK_MERCADO (0.45)          → 'fallback_mercado'
  */
-function resolveOccObservada(airbnbData: AirbnbData): { occObs: number; occFuente: OccFuenteSTR } {
+function resolveOccObservada(airbnbData: AirbnbData): { occObs: number; occFuente: OccFuenteObservadaSTR } {
   const p50 = airbnbData.percentiles?.occupancy?.p50;
   const est = airbnbData.estimated_occupancy;
   let occRaw: number;
-  let occFuente: OccFuenteSTR;
+  let occFuente: OccFuenteObservadaSTR;
   if (typeof p50 === 'number' && p50 > 0) {
     occRaw = p50;
     occFuente = 'observada';
@@ -908,7 +930,13 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
   // AirROI (occObs, vía ejes.ocupacionFinal) o el override manual; ya NO el
   // occ_target. El occ_target se mueve al escenario upside (`agresivo`). El ADR
   // y sus uplifts no se tocan.
-  const { occFuente } = resolveOccObservada(airbnbData);
+  // fix-occfuente-override 2026-07 — la fuente se deriva de DÓNDE salió el valor, no de
+  // un flag paralelo. Si el usuario puso override, `occFuente='override'`; si no, la fuente
+  // real del dato observado. `occObservada` guarda el dato de mercado SIEMPRE (aunque haya
+  // override) para poder declarar ambos valores sin esconder la evidencia.
+  const { occObs, occFuente: occObservadaFuente } = resolveOccObservada(airbnbData);
+  const occFuente: OccFuenteSTR = ejes.occOverride != null ? 'override' : occObservadaFuente;
+  const adrFuente: AdrFuenteSTR = ejes.adrOverride != null ? 'override' : 'modelo';
   const adrBase = ejes.adrFinal;
   const occBase = ejes.ocupacionFinal;  // override manual, o la ocupación OBSERVADA
   const revenueBase = Math.round(adrBase * occBase * 365);
@@ -1126,6 +1154,10 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     zonaSTR,
     recomendacionModalidad,
     occFuente,
+    occObservada: occObs,
+    occObservadaFuente,
+    adrFuente,
+    adrModelo: ejes.adrAjustado,
   };
 }
 

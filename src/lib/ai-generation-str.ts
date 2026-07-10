@@ -108,6 +108,7 @@ Reglas de framing:
 2. Presenta el upside como condicional ("si logras gestión profesional y el listing se estabiliza, podrías acercarte a ese nivel de ocupación"), nunca como lo que va a pasar. Respeta §4: no afirmes plazos como certeza. PROHIBIDO "ramp-up" — usa "estabilización" o "los primeros meses de operación".
 3. El \`Gap ocupación\` (en puntos, observada → potencial) es la magnitud de la apuesta operativa: cuantifícalo cuando sume, dejando claro que cerrarlo depende de la gestión, no del mercado.
 4. Si el input trae \`Fuente ocupación base: fallback_mercado\`, CAVEAT OBLIGATORIO: no hubo ocupación observada para esta dirección; se usó la mediana de Santiago (~45%). El número base es referencial — dilo explícitamente en \`rentabilidad.contenido\` o \`riesgos.contenido\`.
+5. Si el input trae \`Fuente ocupación base: override (usuario)\`, CAVEAT OBLIGATORIO Y PRIORITARIO: la ocupación base NO es dato observado, la definió el usuario. PROHIBIDO llamarla "mediana observada", "dato de mercado" o "lo que se observa en la zona". Preséntala SIEMPRE junto a la observada real que trae el input ("estás asumiendo 74% de ocupación, sobre el 46% que hoy se observa en la zona") y trátala como supuesto a validar, no como evidencia — el veredicto se apoya en un número que pusiste tú, no en el mercado. Mismo trato para el ADR si la línea de ADR viene marcada como "definido por ti": declara que es tu tarifa, no la de mercado, y menciona la de mercado ajustada que trae el input.
 
 ## 4. Disciplina sobre afirmaciones
 
