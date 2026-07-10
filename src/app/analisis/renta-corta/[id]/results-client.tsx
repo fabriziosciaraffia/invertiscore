@@ -3,15 +3,14 @@
 /**
  * Results client (Renta Corta).
  *
- * Render del módulo STR usando los patrones del design-system-franco:
- *   • Patrón 0   UnifiedNav variant="app"
- *   • Patrón 1   HeroVerdictBlockSTR (veredicto + score + KPIs hero)
- *   • Patrón 2   SubjectCardGridSTR (4 dimensiones: rentabilidad / sostenibilidad
- *                / ventaja vs LTR / factibilidad)
- *   • Patrón 3   DrawerSTR (detalle por dimensión)
- *   • Patrón 4   AIInsightSTR (cursiva editorial)
- *   • Patrón 7   AdvancedSectionSTR (07 escenarios · 08 indicadores ·
- *                09 patrimonio · 10 venta — sin sliders)
+ * Render del módulo STR (E.2 · orden LTR: la pirámide ES el detalle):
+ *   • UnifiedNav variant="app"
+ *   • HeroVerdictBlockSTR (veredicto + score + KPIs + conviene IA)
+ *   • EjesAplicadosSTR — panel "¿Cómo llegamos?" (colapsable)
+ *   • PiramideHallazgosSTR — el detalle; sus cards abren DrawerContentSTR
+ *   • AdvancedSectionSTR (07-10 · simulación; ai.largoPlazo en 09)
+ *   • ZonaCardSTR — destino zona, abre el drawer tipoHuesped
+ *   • DrawerSTR + DrawerContentSTR — overlay de detalle (estado acá)
  *
  * Gating: el render completo se muestra siempre. Los CTAs (WalletStatusCTA +
  * ProCTABanner) gestionan el upgrade.
@@ -32,10 +31,13 @@ import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { HeroVerdictBlockSTR } from "@/components/analysis/str/HeroVerdictBlockSTR";
 import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
-import { SubjectCardGridSTR } from "@/components/analysis/str/SubjectCardGridSTR";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
 import { PiramideHallazgosSTR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
+import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
+import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
+import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
+import type { AIAnalysisSTRv2 } from "@/lib/types";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
 // "7 de junio 2026". Usado en el header público de la vista guest.
@@ -82,6 +84,9 @@ export function STRResultsClient({
   printMode = false,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
+  // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
+  // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
+  const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
 
   // ─── AI state ─────────────────────────────────────
   const initialAi =
@@ -271,38 +276,37 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* Pirámide de hallazgos STR (E.1b) — "Empezando por lo adverso". Orden
-            Filosofía 1 sobre results.hallazgos (motor-seeded en el pipeline). */}
+        {/* EL DETALLE — Pirámide de hallazgos STR. Orden Filosofía 1 sobre
+            results.hallazgos. E.2: la pirámide ES el detalle; sus cards abren los
+            drawers (HALLAZGO_DRAWER_STR) que antes colgaban del grid muerto. */}
         <PiramideHallazgosSTR
           hallazgos={results.hallazgos}
           currency={currency}
           valorUF={ufValue}
+          onOpenDrawer={setActiveDrawer}
         />
         <div style={{ height: 24 }} />
 
-        {/* 02-07 · DIMENSIONES — Subject Card Grid.
-            Cada drawer embebe la narrativa IA correspondiente.
-            Commit 2c (2026-05-12): drawer 06 Tipo de huésped agregado, drawer
-            Factibilidad y riesgos renumerado a 07. */}
-        <SubjectCardGridSTR
-          analysisId={analysisId}
-          results={results}
-          inputData={inputData as never}
-          comuna={comuna}
-          currency={currency}
-          valorUF={ufValue}
-          ai={aiAnalysis as never}
-        />
-
-        {/* gap mayor 40px — Cards → Advanced */}
-        <div style={{ height: 24 }} />
-
-        {/* 07-10 · SIMULACIÓN INTERACTIVA */}
+        {/* SIMULACIÓN INTERACTIVA (07-10). E.2: la prosa ai.largoPlazo (horizonte
+            10 años) migró acá como lead de 09 · Patrimonio, su hogar temático. */}
         <AdvancedSectionSTR
           results={results}
           currency={currency}
           valorUF={ufValue}
           forceOpen={printMode}
+          aiLargoPlazo={(aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo ?? null}
+        />
+
+        {/* gap — Simulación → Zona */}
+        <div style={{ height: 24 }} />
+
+        {/* ZONA (destino) — card recesiva. E.2: la ex-card 06 "Tipo de huésped"
+            se reancla acá (E.1a), abre el drawer tipoHuesped. */}
+        <ZonaCardSTR
+          lat={(inputData?.lat as number) ?? ((inputData?.zonaRadio as { lat?: number } | undefined)?.lat) ?? null}
+          lng={(inputData?.lng as number) ?? ((inputData?.zonaRadio as { lng?: number } | undefined)?.lng) ?? null}
+          comuna={comuna}
+          onOpen={() => setActiveDrawer("tipoHuesped")}
         />
 
         {/* CTAs de dueño/wallet — ocultos en print mode */}
@@ -363,6 +367,28 @@ export function STRResultsClient({
         >
           Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
         </p>
+
+        {/* Drawer de detalle (overlay) — abierto desde la pirámide o la card zona.
+            E.2: estado levantado acá; el contenido vive en DrawerContentSTR. */}
+        {!printMode && activeDrawer && (
+          <DrawerSTR
+            activeKey={activeDrawer}
+            titulo={DRAWER_TITULOS_STR[activeDrawer]}
+            onClose={() => setActiveDrawer(null)}
+            onNavigate={(k) => setActiveDrawer(k)}
+          >
+            <DrawerContentSTR
+              activeKey={activeDrawer}
+              analysisId={analysisId}
+              results={results}
+              inputData={inputData as never}
+              comuna={comuna}
+              currency={currency}
+              valorUF={ufValue}
+              ai={aiAnalysis as never}
+            />
+          </DrawerSTR>
+        )}
       </main>
 
       {/* Footer del sitio — oculto en print mode (chrome, no cuerpo del análisis) */}
