@@ -324,7 +324,11 @@ function direccionMeta(dir: string): { color: string; label: string } {
 }
 
 // ── Componente ────────────────────────────────────────────────────────────────
-export function GenericFindingCard({
+// Genérico sobre el tipo de drawer key `K` (E.2): LTR usa `DrawerKey` (default,
+// vía HALLAZGO_DRAWER); la pirámide STR pasa su propio `drawerMap` con claves
+// `DrawerKeySTR` + un `onOpenDrawer` tipado a esas claves. Sin `drawerMap`, cae
+// al mapa LTR — backward-compat total con los callers existentes.
+export function GenericFindingCard<K extends string = DrawerKey>({
   hallazgo,
   nivel,
   currency = "CLP",
@@ -333,6 +337,7 @@ export function GenericFindingCard({
   esElMasDecisivo = true,
   bodyDuplicado = false,
   onOpenDrawer,
+  drawerMap,
 }: {
   hallazgo: Hallazgo;
   /** 1 = decisivo (grande) · 2 = segundo plano (mediano) · 3 = revisado (chip). */
@@ -354,7 +359,10 @@ export function GenericFindingCard({
    *  (backward-compat con todos los demás callers y con niveles 2/3). */
   bodyDuplicado?: boolean;
   /** Abre el drawer de detalle del hallazgo. Sin este callback, no hay affordance. */
-  onOpenDrawer?: (key: DrawerKey) => void;
+  onOpenDrawer?: (key: K) => void;
+  /** Mapa hallazgo → drawer key. Default: HALLAZGO_DRAWER (LTR). La pirámide STR
+   *  pasa el suyo (claves DrawerKeySTR). */
+  drawerMap?: Partial<Record<Hallazgo["id"], K>>;
 }) {
   const d = findingDisplay(hallazgo, currency, valorUF);
   const dir = direccionMeta(hallazgo.direccion);
@@ -364,7 +372,8 @@ export function GenericFindingCard({
   const kpiColor = d.kpiRed ? "text-signal-red" : "";
 
   // Affordance de detalle: solo cuando el hallazgo mapea a un drawer Y hay handler.
-  const drawerKey = HALLAZGO_DRAWER[hallazgo.id];
+  const effectiveMap = (drawerMap ?? HALLAZGO_DRAWER) as Partial<Record<Hallazgo["id"], K>>;
+  const drawerKey = effectiveMap[hallazgo.id];
   const hasDetalle = !!drawerKey && !!onOpenDrawer;
   const openDetalle = () => {
     if (drawerKey && onOpenDrawer) onOpenDrawer(drawerKey);

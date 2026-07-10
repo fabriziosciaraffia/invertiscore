@@ -7,12 +7,26 @@
 //
 // A diferencia de la LTR, lee results.hallazgos directamente (el pipeline lo persistió con
 // la pirámide completa) — no gathera de carriers del motor ni suprime eco de prosa (la
-// pirámide STR vive como sección propia, separada de la prosa IA). Sin drawer affordance por
-// ahora (los drawers STR viven en SubjectCardGridSTR).
+// pirámide STR vive como sección propia, separada de la prosa IA). E.2: las cards abren
+// drawer vía onOpenDrawer + HALLAZGO_DRAWER_STR (el detalle ya no vive en un grid paralelo).
 
 import type { Hallazgo } from "@/lib/types";
 import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
 import { cmpDecisividad, esAdverso, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import type { DrawerKeySTR } from "./DrawerSTR";
+
+// Mapa hallazgo → drawer STR (E.2 · censo of-e2-censo.md). 6 de los ~11 hallazgos
+// abren detalle; los heredados (financiamiento/sobreprecio/plusvalia/tir/patrimonio/
+// capex) son chips solo-lectura sin drawer en STR. estructura_costos_str comparte el
+// drawer de rentabilidad (su desglose vive en el CostosBreakdown de ese drawer).
+const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> = {
+  rentabilidad_str: "rentabilidad",
+  flujo_str: "sostenibilidad",
+  sensibilidad_str: "sensibilidad",
+  ventaja_vs_ltr: "ventajaLtr",
+  ocupacion_vs_banda: "factibilidad",
+  estructura_costos_str: "rentabilidad",
+};
 
 /** Dedup por id: el hallazgo CON titular gana; entre iguales, mayor decisividad. */
 function dedup(hallazgos: Hallazgo[]): Hallazgo[] {
@@ -31,10 +45,14 @@ export function PiramideHallazgosSTR({
   hallazgos,
   currency,
   valorUF,
+  onOpenDrawer,
 }: {
   hallazgos: Hallazgo[] | null | undefined;
   currency: "CLP" | "UF";
   valorUF: number;
+  /** Abre el drawer de detalle de un hallazgo. Sin este callback, la pirámide
+   *  renderiza sin affordance "Ver detalle" (estado E.1b). */
+  onOpenDrawer?: (key: DrawerKeySTR) => void;
 }) {
   const gathered = dedup(Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : []);
   if (gathered.length === 0) return null;
@@ -71,13 +89,13 @@ export function PiramideHallazgosSTR({
 
       <div className="flex flex-col gap-3">
         {/* Nivel 1 — decisivo, ancho completo */}
-        <GenericFindingCard hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} currency={currency} valorUF={valorUF} />
+        <GenericFindingCard<DrawerKeySTR> hallazgo={nivel1} nivel={1} esElMasDecisivo={esElMasDecisivo} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {nivel2.map((h) => (
-              <GenericFindingCard key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} />
+              <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={2} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
             ))}
           </div>
         )}
@@ -87,7 +105,7 @@ export function PiramideHallazgosSTR({
           filasNivel3(nivel3).map((fila, i) => (
             <div key={i} className={`grid grid-cols-1 ${fila.cols} gap-3`}>
               {fila.items.map((h) => (
-                <GenericFindingCard key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} />
+                <GenericFindingCard<DrawerKeySTR> key={h.id} hallazgo={h} nivel={3} currency={currency} valorUF={valorUF} drawerMap={HALLAZGO_DRAWER_STR} onOpenDrawer={onOpenDrawer} />
               ))}
             </div>
           ))}

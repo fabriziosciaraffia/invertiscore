@@ -25,12 +25,17 @@ export function AdvancedSectionSTR({
   currency,
   valorUF,
   forceOpen = false,
+  aiLargoPlazo,
 }: {
   results: ShortTermResult;
   currency: "CLP" | "UF";
   valorUF: number;
   // forceOpen: arranca expandida (modo print/PDF) — override del colapso default.
   forceOpen?: boolean;
+  /** E.2 — prosa IA "¿Cuánto se gana a 10 años?" (ai.largoPlazo). Migró desde el
+   *  drawer flujo (mismatch temático) a su hogar: lead narrativo de 09 · Patrimonio.
+   *  Null/undefined (free/guest/legacy) → solo el chart, sin prosa. */
+  aiLargoPlazo?: { contenido?: string | null; cajaAccionable?: string | null } | null;
 }) {
   const [open, setOpen] = useState(forceOpen);
 
@@ -165,7 +170,44 @@ export function AdvancedSectionSTR({
       {/* 09 PATRIMONIO */}
       <div className="px-5 md:px-7 py-6">
         {sectionHeader("09", "PATRIMONIO", `Tu patrimonio a lo largo de ${results.exitScenario?.yearVenta ?? 10} años`)}
+        {/* E.2 — lead narrativo ai.largoPlazo (migrado del drawer flujo). El
+            horizonte 10 años (TIR, multiplicador, plusvalía vs alternativas) es su
+            hogar temático, junto al chart de patrimonio. */}
+        {aiLargoPlazo?.contenido?.trim() && (
+          <>
+            <p
+              className="font-mono uppercase mb-2 m-0"
+              style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-tertiary)" }}
+            >
+              ★ Análisis Franco IA · horizonte {results.exitScenario?.yearVenta ?? 10} años
+            </p>
+            <p className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] m-0 mb-4 whitespace-pre-wrap">
+              {aiLargoPlazo.contenido}
+            </p>
+          </>
+        )}
         <PatrimonioChartSTR results={results} currency={currency} valorUF={valorUF} />
+        {aiLargoPlazo?.cajaAccionable?.trim() && (
+          <div
+            className="mt-4"
+            style={{
+              borderLeft: "3px solid var(--franco-text-secondary)",
+              background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
+              borderRadius: "0 8px 8px 0",
+              padding: "12px 15px",
+            }}
+          >
+            <p
+              className="font-mono uppercase mb-1.5 m-0"
+              style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-tertiary)", fontWeight: 600 }}
+            >
+              Antes de comprometer una década:
+            </p>
+            <p className="font-body text-[13.5px] text-[var(--franco-text)] m-0 leading-[1.55] whitespace-pre-wrap">
+              {aiLargoPlazo.cajaAccionable}
+            </p>
+          </div>
+        )}
       </div>
 
       <div style={{ borderTop: "0.5px solid var(--franco-border)" }} />

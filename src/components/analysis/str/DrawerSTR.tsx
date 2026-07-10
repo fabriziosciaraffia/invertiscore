@@ -111,6 +111,8 @@ export function DrawerSTR({
           style={{ borderBottom: "0.5px solid var(--franco-border)" }}
         >
           <div className="min-w-0">
+            {/* E.2 — numeración heredada del grid muerto retirada. Las cards ya no
+                están numeradas; el drawer se abre desde la pirámide. Queda el label. */}
             <span
               className="font-mono uppercase block mb-1.5"
               style={{
@@ -119,7 +121,7 @@ export function DrawerSTR({
                 color: "var(--franco-text-tertiary)",
               }}
             >
-              {meta.numero} · {meta.label}
+              {meta.label}
             </span>
             <h3 className="font-heading font-bold text-[22px] md:text-[24px] text-[var(--franco-text)] m-0 leading-[1.25]">
               {titulo}
@@ -152,7 +154,7 @@ export function DrawerSTR({
                 onClick={() => onNavigate(prev)}
                 className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
               >
-                ← {DRAWER_META[prev].numero} {DRAWER_META[prev].label}
+                ← {DRAWER_META[prev].label}
               </button>
             ) : (
               <span />
@@ -163,7 +165,7 @@ export function DrawerSTR({
                 onClick={() => onNavigate(next)}
                 className="font-mono text-[10px] uppercase tracking-[1.5px] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
               >
-                {DRAWER_META[next].numero} {DRAWER_META[next].label} →
+                {DRAWER_META[next].label} →
               </button>
             ) : (
               <span />
