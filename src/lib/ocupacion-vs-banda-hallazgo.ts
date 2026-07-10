@@ -37,8 +37,10 @@ export function buildHallazgoOcupacionVsBanda(p: {
 }): HallazgoOcupacionVsBanda | null {
   if (!Number.isFinite(p.ocupacionPct)) return null;
 
-  const occ = p.ocupacionPct;
-  const banda = Number.isFinite(p.bandaComunalPct) ? p.bandaComunalPct : occ;
+  // Redondeo de display (enteros) ANTES de decidir dirección: occ y banda que muestra el
+  // ksub son los que deciden favorable/adverso (coherencia KPI-dirección).
+  const occ = Math.round(p.ocupacionPct);
+  const banda = Math.round(Number.isFinite(p.bandaComunalPct) ? p.bandaComunalPct : p.ocupacionPct);
   const gap = occ - banda;
   const gapAbs = Math.abs(gap);
   const direccion: "favorable" | "adverso" = occ >= banda ? "favorable" : "adverso";

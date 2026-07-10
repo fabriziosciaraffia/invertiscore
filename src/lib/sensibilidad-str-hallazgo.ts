@@ -28,7 +28,9 @@ export function buildHallazgoSensibilidadStr(p: {
 }): HallazgoSensibilidadStr | null {
   if (!Number.isFinite(p.breakEvenPctDelMercado)) return null;
 
-  const be = p.breakEvenPctDelMercado * 100;
+  // Redondeo de display ANTES de decidir dirección/banda: KPI (Math.round(be)) y dirección
+  // deben coincidir siempre (evita el borde float 1,10*100=110,0000001 > 110 → adverso).
+  const be = Math.round(p.breakEvenPctDelMercado * 100);
   const fragil = be > BE_STR_CORTE_FRAGIL;
   const holgado = be < BE_STR_CORTE_FAVORABLE;
   const direccion: "favorable" | "adverso" = fragil ? "adverso" : "favorable";
@@ -59,7 +61,7 @@ export function buildHallazgoSensibilidadStr(p: {
     id: "sensibilidad_str",
     tipo: "robustez_veredicto_str",
     valor: {
-      beRatioPct: Math.round(be),
+      beRatioPct: be,
       corteFavorable: BE_STR_CORTE_FAVORABLE,
       corteFragil: BE_STR_CORTE_FRAGIL,
       banda: BE_STR_BANDA_PTS,
@@ -69,7 +71,7 @@ export function buildHallazgoSensibilidadStr(p: {
     decisividad: 0, // SOLO-LECTURA
     magnitudContinua,
     procedencia: {
-      base: "break-even como % del revenue de mercado de la zona; recálculo determinístico sobre tus costos y la cuota",
+      base: "break-even como % de los ingresos brutos de mercado de la zona; recálculo determinístico sobre tus costos y la cuota",
       confianza: "alta",
     },
     titular,

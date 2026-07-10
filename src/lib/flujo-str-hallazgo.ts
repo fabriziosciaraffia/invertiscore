@@ -31,7 +31,8 @@ export function buildHallazgoFlujoStr(p: {
 }): HallazgoFlujoStr | null {
   if (!Number.isFinite(p.flujoMensualCLP)) return null;
 
-  const flujo = p.flujoMensualCLP;
+  // Redondeo a CLP entero (el que muestra el KPI) ANTES del signo: dirección y KPI coinciden.
+  const flujo = Math.round(p.flujoMensualCLP);
   const direccion: "favorable" | "adverso" = flujo >= 0 ? "favorable" : "adverso";
   const magnitudContinua = clamp01(Math.abs(flujo) / FLUJO_STR_BANDA_CLP);
   const fuerte = Math.abs(flujo) >= FLUJO_STR_BANDA_CLP;

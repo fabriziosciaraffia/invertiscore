@@ -39,10 +39,12 @@ export function buildHallazgoVentajaVsLtr(p: {
   if (!Number.isFinite(p.sobreRentaCLP)) return null;
 
   const ltrNegativo = !Number.isFinite(p.ltrNoiMensual) || p.ltrNoiMensual <= 0;
-  const pct = Number.isFinite(p.sobreRentaPct) ? p.sobreRentaPct * 100 : 0;
+  // Redondeo de display (% entero, CLP entero) ANTES de dirección: KPI y dirección coinciden.
+  const pct = Math.round(Number.isFinite(p.sobreRentaPct) ? p.sobreRentaPct * 100 : 0);
+  const sobreRentaCLP = Math.round(p.sobreRentaCLP);
   // Dirección robusta: por CLP cuando el % es ilegible (LTR ≤ 0), por % en el caso normal.
   const direccion: "favorable" | "adverso" = ltrNegativo
-    ? (p.sobreRentaCLP >= 0 ? "favorable" : "adverso")
+    ? (sobreRentaCLP >= 0 ? "favorable" : "adverso")
     : (pct >= 0 ? "favorable" : "adverso");
   const magnitudContinua = clamp01(Math.abs(pct) / VENTAJA_BANDA_PTS);
   const acotada = direccion === "favorable" && pct < VENTAJA_BORDE_PCT;
@@ -52,8 +54,8 @@ export function buildHallazgoVentajaVsLtr(p: {
   if (ltrNegativo) {
     titular = direccion === "favorable" ? "En corto pones menos de tu bolsillo que en largo." : "Ni corto ni largo cubren la cuota.";
     fraseCanonica =
-      `El arriendo largo tampoco cubre los costos de este depto; en corto pones ${fmtAbs(p.sobreRentaCLP)} ` +
-      `${p.sobreRentaCLP >= 0 ? "menos" : "más"} de tu bolsillo al mes. La comparación en porcentaje no dice ` +
+      `El arriendo largo tampoco cubre los costos de este depto; en corto pones ${fmtAbs(sobreRentaCLP)} ` +
+      `${sobreRentaCLP >= 0 ? "menos" : "más"} de tu bolsillo al mes. La comparación en porcentaje no dice ` +
       `nada acá porque ninguna de las dos modalidades llega a cubrir la cuota.`;
   } else if (direccion === "adverso") {
     titular = "El arriendo largo te rendiría más.";
@@ -79,7 +81,7 @@ export function buildHallazgoVentajaVsLtr(p: {
     tipo: "ventaja_vs_ltr",
     valor: {
       sobreRentaPct: Math.round(pct * 10) / 10,
-      sobreRentaCLP: Math.round(p.sobreRentaCLP),
+      sobreRentaCLP,
       ltrNoiMensual: Math.round(p.ltrNoiMensual),
       ltrNegativo,
       bordePct: VENTAJA_BORDE_PCT,

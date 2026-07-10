@@ -25,7 +25,9 @@ export function buildHallazgoEstructuraCostosStr(p: {
 }): HallazgoEstructuraCostosStr | null {
   if (!Number.isFinite(p.costStackPct)) return null;
 
-  const cs = p.costStackPct * 100;
+  // Redondeo de display ANTES de decidir dirección/banda: el KPI (Math.round(cs)) y la
+  // dirección deben coincidir siempre (evita cs=40,0x que muestra "40%" pero da adverso).
+  const cs = Math.round(p.costStackPct * 100);
   const alto = cs > COSTOS_STR_BANDA_ADV_PCT;
   const sano = cs < COSTOS_STR_BANDA_FAV_PCT;
   const direccion: "favorable" | "adverso" = alto ? "adverso" : "favorable";
@@ -55,7 +57,7 @@ export function buildHallazgoEstructuraCostosStr(p: {
     id: "estructura_costos_str",
     tipo: "cost_stack",
     valor: {
-      costStackPct: Math.round(cs),
+      costStackPct: cs,
       bandaFavPct: COSTOS_STR_BANDA_FAV_PCT,
       bandaAdvPct: COSTOS_STR_BANDA_ADV_PCT,
       banda: COSTOS_STR_BANDA_PTS,

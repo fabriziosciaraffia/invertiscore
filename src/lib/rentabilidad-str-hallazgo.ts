@@ -34,7 +34,9 @@ export function buildHallazgoRentabilidadStr(p: {
 }): HallazgoRentabilidadStr | null {
   if (!Number.isFinite(p.capRatePct)) return null;
 
-  const cap = p.capRatePct;
+  // Redondeo de display (1 decimal) ANTES de decidir dirección: el KPI y el body usan el
+  // MISMO número (evita el bug KPI-vs-body del cap_rate LTR: 9,4 KPI vs 9,5 body en el borde).
+  const cap = Math.round(p.capRatePct * 10) / 10;
   const gap = cap - CAP_STR_UMBRAL_PCT;
   const gapAbs = Math.abs(gap);
   const direccion: "favorable" | "adverso" = cap >= CAP_STR_UMBRAL_PCT ? "favorable" : "adverso";
@@ -64,7 +66,7 @@ export function buildHallazgoRentabilidadStr(p: {
     id: "rentabilidad_str",
     tipo: "rentabilidad_operativa_str",
     valor: {
-      capRatePct: Math.round(cap * 10) / 10,
+      capRatePct: cap,
       umbralPct: CAP_STR_UMBRAL_PCT,
       gapPts: Math.round(gap * 10) / 10,
       banda: CAP_STR_BANDA_PTS,
