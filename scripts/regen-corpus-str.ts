@@ -29,10 +29,7 @@ import type { FrancoScoreSTR } from "../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../src/lib/str-hallazgos";
 import { buildAirbnbData } from "../src/lib/api-helpers/analisis-pipeline";
 import { getComunaMedianaVentaUF } from "../src/lib/comuna-stats";
-import { CLAUDE_MODEL } from "../src/lib/ai-config";
-import { SYSTEM_PROMPT_STR } from "../src/lib/ai-generation-str";
-import { findNearestStation } from "../src/lib/metro-stations";
-import { CLINICAS, ZONAS_NEGOCIOS, ZONAS_TURISTICAS, ACCESO_SKI, distanciaMinima } from "../src/lib/data/str-attractors";
+import { generateStrProse } from "../src/lib/ai-generation-str";
 import type { AIAnalysisSTRv2 } from "../src/lib/types";
 config({ path: path.resolve(process.cwd(), ".env.local") });
 
@@ -45,9 +42,6 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const CANONICOS = new Set<STRVerdict>(["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"]);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const fmtCLP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
-const fmtUF = (n: number) => "UF " + (Math.round(n * 10) / 10).toLocaleString("es-CL");
-const fmtCLPSigned = (n: number) => { if (n === 0) return "$0"; const abs = Math.abs(Math.round(n)); const f = "$" + abs.toLocaleString("es-CL"); return n < 0 ? "-" + f : f; };
 
 // ── buildInputs: idéntico al pipeline (analisis-pipeline.ts:496-526) y golden str-recompute ──
 function buildInputs(d: any, airbnbData: any, uf: number) {
@@ -99,210 +93,13 @@ async function recompute(d: any, oldResults: any, comuna: string): Promise<Recom
   return { rec, score, hallazgos, newResults, uf };
 }
 
-// ── buildUserPrompt: VERBATIM de of-regen-revenue-str.ts / route.ts, pero sobre el motor RECOMPUTADO ──
-function buildUserPrompt(inp: any, r: any, comuna: string): { userPrompt: string; veredictoMotor: STRVerdict } {
-  const base = r.escenarios.base, cons = r.escenarios.conservador, agr = r.escenarios.agresivo, comp = r.comparativa;
-  const precioCompraCLP = (inp.precioCompra as number) ?? 0;
-  const precioCompraUF = (inp.precioCompraUF as number) ?? 0;
-  const superficie = (inp.superficie as number) ?? (inp.superficieUtil as number) ?? 0;
-  const dormitorios = (inp.dormitorios as number) ?? 0;
-  const banos = (inp.banos as number) ?? 0;
-  const direccion = (inp.direccion as string) ?? "";
-  const piePct = Math.round(((inp.piePct as number) ?? 20));
-  const tasa = ((inp.tasaInteres as number) ?? 4.5);
-  const plazo = (inp.plazoCredito as number) ?? 25;
-  const modoGestion = (inp.modoGestion as string) ?? "auto";
-  const comisionPct = modoGestion === "auto" ? 3 : Math.round(((inp.comisionAdministrador as number) ?? 0.2) * 100);
-  const regulacion = (inp.edificioPermiteAirbnb as string) ?? (inp.regulacionEdificio as string) ?? "no_seguro";
-  const costoAmoblamiento = inp.estaAmoblado ? 0 : ((inp.costoAmoblamiento as number) ?? 0);
-  const amoblado = costoAmoblamiento > 0 ? "Sí" : "No";
-  const elec = (inp.costoElectricidad as number) ?? 0, agua = (inp.costoAgua as number) ?? 0, wifi = (inp.costoWifi as number) ?? 0;
-  const insumos = (inp.costoInsumos as number) ?? 0, mant = (inp.mantencion as number) ?? 0, gc = (inp.gastosComunes as number) ?? 0;
-  const contribTrim = (inp.contribuciones as number) ?? 0, contribMensual = Math.round(contribTrim / 3);
-  const lat = (inp.lat as number) ?? 0, lng = (inp.lng as number) ?? 0;
-  let distMetro = 0, metroName = "—";
-  if (lat && lng) { const n = findNearestStation(lat, lng, "active"); if (n) { distMetro = Math.round(n.distance); metroName = n.station.name; } }
-  const clinica = lat && lng ? distanciaMinima(lat, lng, CLINICAS) : { distancia: Infinity, nombre: "—" };
-  const zonaNT = lat && lng ? distanciaMinima(lat, lng, [...ZONAS_NEGOCIOS, ...ZONAS_TURISTICAS]) : { distancia: Infinity, nombre: "—" };
-  const ski = lat && lng ? distanciaMinima(lat, lng, ACCESO_SKI) : { distancia: Infinity, nombre: "—" };
-  const distClinicaTxt = isFinite(clinica.distancia) ? `${Math.round(clinica.distancia)}m` : "—";
-  const distZonaTxt = isFinite(zonaNT.distancia) ? `${Math.round(zonaNT.distancia)}m` : "—";
-  const distSkiTxt = isFinite(ski.distancia) ? `${(ski.distancia / 1000).toFixed(1)}km` : "—";
-  const tipoPropiedad = (inp.tipoPropiedad as string) ?? "";
-  const strAuto = comp.str_auto, strAdmin = comp.str_admin, difAutoAdmin = strAuto.flujoCajaMensual - strAdmin.flujoCajaMensual;
-  const anomalias: string[] = [];
-  if (r.breakEvenPctDelMercado > 1) anomalias.push(`BREAK-EVEN SOBRE MERCADO: necesitas ${Math.round(r.breakEvenPctDelMercado * 100)}% del revenue P50 solo para cubrir costos.`);
-  if (regulacion === "no") anomalias.push(`REGULACIÓN BLOQUEA AIRBNB: el edificio NO permite arriendo corto plazo. Operar es riesgo de multa o cancelación del reglamento.`);
-  if (regulacion === "no_seguro" || regulacion === "no_estoy_seguro") anomalias.push(`REGULACIÓN NO CONFIRMADA: el usuario no sabe si el edificio permite Airbnb. DEBE verificar el reglamento antes de invertir en amoblamiento.`);
-  const minM = r.flujoEstacional.length ? Math.min(...r.flujoEstacional.map((m: any) => m.ingresoBruto)) : 0;
-  const maxM = r.flujoEstacional.length ? Math.max(...r.flujoEstacional.map((m: any) => m.ingresoBruto)) : 0;
-  const estabRatio = maxM > 0 ? minM / maxM : 1;
-  if (estabRatio < 0.5 && maxM > 0) anomalias.push(`ESTACIONALIDAD EXTREMA: el mes más bajo genera ${Math.round(estabRatio * 100)}% del peak. Caja fluctúa fuerte.`);
-  if (comp.sobreRentaPct < 0) anomalias.push(`LTR GANA: arriendo tradicional genera ${Math.abs(Math.round(comp.sobreRentaPct * 100))}% más que STR. La estrategia STR no compensa.`);
-  if (base.capRate < 0.03) anomalias.push(`CAP RATE BAJO: ${(base.capRate * 100).toFixed(1)}% — el NOI apenas justifica el precio de compra.`);
-  if (base.flujoCajaMensual < -200000) anomalias.push(`FLUJO MUY NEGATIVO: ${fmtCLPSigned(base.flujoCajaMensual)}/mes incluso operando STR.`);
-  const ingresoBrutoBase = base.ingresoBrutoMensual, costosOpTotal = base.costosOperativos + base.comisionMensual;
-  if (ingresoBrutoBase > 0 && costosOpTotal / ingresoBrutoBase > 0.25) anomalias.push(`COSTOS OPERATIVOS ALTOS: ${Math.round((costosOpTotal / ingresoBrutoBase) * 100)}% del ingreso bruto se va en costos + comisión.`);
-  const anomaliasTexto = anomalias.length > 0 ? `\n\n=== ANOMALÍAS DETECTADAS POR EL MOTOR ===\n${anomalias.map((a, i) => `${i + 1}. ${a}`).join("\n")}\n\nMENCIÓN OBLIGATORIA en \`riesgos.contenido\` o sección que más aplique.` : "";
-  const fs = r.francoScore, score = fs?.score ?? 50;
-  const veredictoMotor: STRVerdict = (fs?.veredicto as STRVerdict) ?? r.veredicto;
-  const mesPeak = r.flujoEstacional.length ? r.flujoEstacional.reduce((a: any, b: any) => (b.factor > a.factor ? b : a)) : null;
-  const mesLow = r.flujoEstacional.length ? r.flujoEstacional.reduce((a: any, b: any) => (b.factor < a.factor ? b : a)) : null;
-  const pieCLP = Math.round(precioCompraCLP * (piePct / 100));
-  const dividendo = r.dividendoMensual, capitalInv = r.capitalInvertido;
-  const projY10 = r.projections && r.projections.length >= 10 ? r.projections[9] : null;
-  const exit = r.exitScenario;
-
-  const userPrompt = `Analiza esta inversión inmobiliaria en renta corta (Airbnb). Aplica doctrina §1-§13 del system prompt y devuelve el JSON v2.
-
-=== DATOS DE LA PROPIEDAD ===
-Dirección: ${direccion || "—"}
-Comuna: ${comuna}
-Superficie: ${superficie} m²
-Dormitorios: ${dormitorios}, Baños: ${banos}
-Tipo: ${tipoPropiedad || "—"}
-Precio compra: ${fmtUF(precioCompraUF)} (${fmtCLP(precioCompraCLP)})
-Pie: ${piePct}% = ${fmtCLP(pieCLP)}
-Tasa crédito: ${tasa.toFixed(1)}%, Plazo: ${plazo} años
-Dividendo: ${fmtCLP(dividendo)}/mes
-Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)
-Modo gestión seleccionado: ${modoGestion} (comisión: ${comisionPct}%)
-Edificio permite Airbnb: ${regulacion}
-Amoblado: ${amoblado} (costo amoblamiento: ${fmtCLP(costoAmoblamiento)})
-
-=== FRANCO SCORE STR: ${score}/100 ===
-veredicto del motor (úsalo como dado, no lo contradigas — §7): ${veredictoMotor}
-${fs ? `Rentabilidad: ${fs.desglose.rentabilidad.score}/100 — ${fs.desglose.rentabilidad.detail}
-Sostenibilidad: ${fs.desglose.sostenibilidad.score}/100 — ${fs.desglose.sostenibilidad.detail}
-Ventaja vs LTR: ${fs.desglose.ventaja.score}/100 — ${fs.desglose.ventaja.detail}
-Factibilidad: ${fs.desglose.factibilidad.score}/100 — ${fs.desglose.factibilidad.detail}` : "(desglose no disponible)"}
-
-=== ESCENARIO BASE (ocupación en la mediana observada de la zona) ===
-Revenue anual: ${fmtCLP(base.revenueAnual)}
-ADR: ${fmtCLP(base.adrReferencia)}/noche, Ocupación: ${Math.round(base.ocupacionReferencia * 100)}% (mediana observada de la zona)
-Ocupación upside (potencial con gestión profesional, estabilizado): ${Math.round(agr.ocupacionReferencia * 100)}%
-Gap ocupación: +${Math.round((agr.ocupacionReferencia - base.ocupacionReferencia) * 100)} pts (observada -> potencial)
-Fuente ocupación base: ${r.occFuente ?? "—"}
-Ingreso bruto mensual: ${fmtCLP(base.ingresoBrutoMensual)}
-Comisión (${comisionPct}%): -${fmtCLP(base.comisionMensual)}/mes
-Costos operativos (electricidad ${fmtCLP(elec)} + agua ${fmtCLP(agua)} + wifi ${fmtCLP(wifi)} + insumos ${fmtCLP(insumos)} + mantención ${fmtCLP(mant)} + GC ${fmtCLP(gc)} + contrib ${fmtCLP(contribMensual)}): -${fmtCLP(base.costosOperativos)}/mes
-NOI mensual: ${fmtCLPSigned(base.noiMensual)}
-Dividendo: -${fmtCLP(dividendo)}/mes
-FLUJO DE CAJA MENSUAL: ${fmtCLPSigned(base.flujoCajaMensual)}
-CAP rate: ${(base.capRate * 100).toFixed(2)}%
-Cash-on-Cash: ${(base.cashOnCash * 100).toFixed(1)}%
-
-=== ESCENARIOS (conservador / base / upside) ===
-Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
-Base (ocupación en la mediana observada): NOI ${fmtCLPSigned(base.noiMensual)}/mes, Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
-Upside (gestión profesional): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${fmtCLPSigned(agr.flujoCajaMensual)}/mes
-
-=== COMPARATIVA STR vs LTR ===
-Arriendo largo (LTR):
-  Ingreso bruto: ${fmtCLP(comp.ltr.ingresoBruto)}/mes
-  NOI: ${fmtCLPSigned(comp.ltr.noiMensual)}/mes
-  Flujo: ${fmtCLPSigned(comp.ltr.flujoCaja)}/mes
-
-STR (modo seleccionado: ${modoGestion}, escenario base):
-  NOI: ${fmtCLPSigned(base.noiMensual)}/mes
-  Flujo: ${fmtCLPSigned(base.flujoCajaMensual)}/mes
-
-DIFERENCIA STR vs LTR:
-  Sobre-renta NOI: ${fmtCLPSigned(comp.sobreRenta)}/mes (${comp.sobreRentaPct >= 0 ? "+" : ""}${Math.round(comp.sobreRentaPct * 100)}%)
-  STR ${base.flujoCajaMensual > comp.ltr.flujoCaja ? "GANA" : "PIERDE"} en flujo
-  Payback amoblamiento: ${comp.paybackMeses > 0 ? comp.paybackMeses + " meses" : comp.paybackMeses === 0 ? "sin amoblamiento" : "no se recupera con sobre-renta"}
-
-=== AUTO-GESTIÓN vs ADMINISTRADOR ===
-Auto (comisión 3% Airbnb): NOI ${fmtCLPSigned(strAuto.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAuto.flujoCajaMensual)}/mes — requiere ~8-12 hrs/semana del usuario.
-Admin (comisión ${Math.round(((inp.comisionAdministrador as number) ?? 0.2) * 100)}%): NOI ${fmtCLPSigned(strAdmin.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAdmin.flujoCajaMensual)}/mes — inversión 100% pasiva.
-Diferencia: auto-gestión genera ${fmtCLPSigned(difAutoAdmin)}/mes ${difAutoAdmin > 0 ? "más" : "menos"} que con administrador.
-
-(NUNCA recomiendes administradores específicos por nombre. Cerrar con: "Franco pronto te conectará con operadores verificados.")
-
-=== ESTACIONALIDAD ===
-${mesPeak ? `Peak: ${mesPeak.mes} (factor ${(mesPeak.factor * 12).toFixed(2)}× vs promedio)` : ""}
-${mesLow ? `Low: ${mesLow.mes} (factor ${(mesLow.factor * 12).toFixed(2)}× vs promedio)` : ""}
-Estacionalidad Santiago general: julio peak (vacaciones invierno + ski), febrero low (todos en la costa).
-
-=== BREAK-EVEN + RAMP-UP ===
-Revenue anual necesario para cubrir costos: ${fmtCLP(r.breakEvenRevenueAnual)} (${Math.round(r.breakEvenPctDelMercado * 100)}% del P50)
-Pérdida estimada primeros 5 meses parciales (ramp-up al 50%/60%/70%/80%/90% del target estabilizado): ${fmtCLP(r.perdidaRampUp)}
-
-=== PROYECCIÓN LARGO PLAZO ===
-${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)} + flujos acumulados ${fmtCLPSigned(projY10.flujoAcumulado)})
-Ganancia neta al vender año ${exit.yearVenta}: ${fmtCLPSigned(exit.gananciaNeta)} (valor venta - saldo - cierre + flujos - capital inicial)
-TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}%
-Multiplicador capital: ${exit.multiplicadorCapital.toFixed(2)}x` : "(proyecciones long-term no disponibles)"}
-
-=== ATRACTORES DE DEMANDA EN LA ZONA ===
-Metro más cercano: ${metroName} a ${distMetro}m
-Clínica/hospital más cercano: ${clinica.nombre} a ${distClinicaTxt} (demanda médica internacional captura estadías 3-15 días)
-Zona negocios/turismo: ${zonaNT.nombre} a ${distZonaTxt} (demanda corporativa)
-Acceso ski (junio-septiembre): ${distSkiTxt} (peak julio coincide con peak STR Santiago, +34% vs promedio)
-
-=== VIABILIDAD STR POR ZONA (Commit 4 · honestidad de modalidad) ===
-${r.zonaSTR ? `Tier zona: ${r.zonaSTR.tierZona} (score ${r.zonaSTR.score}/100)
-ADR percentil vs Santiago: p${r.zonaSTR.percentilADR}
-Ocupación percentil vs Santiago: p${r.zonaSTR.percentilOcupacion}
-Revenue percentil vs Santiago: p${r.zonaSTR.percentilRevenue}
-${r.zonaSTR.comunaNoListada ? "(comuna no incluida en universo benchmark V1 — usar caveat al mencionar percentiles)" : ""}` : "(motor pre-Commit 4 · sin zonaSTR)"}
-
-Recomendación modalidad motor: ${r.recomendacionModalidad ?? "(no disponible)"}
-${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.contenido\` o \`vsLTR.estrategiaSugerida\`: decir explícitamente que en esta zona, LTR rinde mejor neto que STR. La complejidad operativa del STR no se justifica acá. NO endulces — la doctrina §1.1 exige asesor honesto.` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica la magnitud del upside STR sobre LTR (sobre-renta clara > +15%). El esfuerzo operativo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: decir "está parejo". La decisión depende del esfuerzo operativo que el usuario quiera asumir y su perfil de riesgo.` : ""}
-
-=== SUBSIDIO LEY 21.748 (palanca financiera ajena al motor) ===
-${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${r.subsidioTasa.tasaConSubsidio.toFixed(1)}%
-${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar (Ángulo 4): el user puede pedir tasa subsidiada al banco (~0,6 pp menos). Esto BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo (la tasa actual no es la subsidiada).` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya está aplicado (la tasa ingresada coincide con la subsidiada). No menciones como mejora — solo si suma contexto.` : `→ No califica. NO mencionar el subsidio.`}` : "(motor pre-3a · subsidio no calculado)"}
-
-=== SENSIBILIDAD DE PRECIO (Ángulo 4) ===
-${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s: any) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${(s.capRate * 100).toFixed(2)}%, CoC ${(s.cashOnCash * 100).toFixed(1)}%, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(motor pre-3a · sin sensibilidad de precio)"}${anomaliasTexto}
-
-═══════════════════════════════════════════════════════════════════
-INSTRUCCIÓN FINAL
-═══════════════════════════════════════════════════════════════════
-
-1. Aplica la doctrina §1-§13 sin excepción. El test del §1 (¿se puede reemplazar por una tabla?) es real.
-2. \`veredicto\` = "${veredictoMotor}" — cópialo EXACTO al JSON output. No lo modifiques.
-3. Si crees que el motor está mal calibrado para este caso, NO lo contradigas en ningún campo visible. Usa \`francoCaveat\` opcional (audit-only, NO renderizado al usuario) con 1-2 frases. Si concuerdas con el motor, omite el campo.
-4. Cada anomalía detectada por el motor debe aparecer en el output (§8).
-5. Cierre obligatorio en \`riesgos.cajaAccionable\` con posición personal (§9), NO checklist.
-6. Voz tuteo neutro chileno (§10). Auto-chequeo final: ningún verbo voseo (terminado en -ás/-és/-ís acentuado).
-7. \`riesgos.contenido\`: 3 riesgos en prosa, separados por \\n\\n. Sin bullets, sin **bold**.
-8. JSON válido y completo. Sin texto fuera del JSON, sin backticks.
-
-Responde SOLO con el JSON.`;
-  return { userPrompt, veredictoMotor };
-}
-
-const REVENUE_RE = /\brevenue\b/i;
-function collectStrings(node: any, out: string[]) { if (typeof node === "string") { out.push(node); return; } if (Array.isArray(node)) { for (const n of node) collectStrings(n, out); return; } if (node && typeof node === "object") for (const v of Object.values(node)) collectStrings(v, out); }
-function revenueLeaks(ai: any): string[] { const s: string[] = []; collectStrings(ai, s); return s.filter((x) => REVENUE_RE.test(x)); }
-
-async function generarProsaOnce(inp: any, newResults: any, comuna: string): Promise<AIAnalysisSTRv2> {
-  const { userPrompt, veredictoMotor } = buildUserPrompt(inp, newResults, comuna);
-  const msg = await anthropic.messages.create({ model: CLAUDE_MODEL, max_tokens: 8000, messages: [{ role: "user", content: userPrompt }], system: SYSTEM_PROMPT_STR });
-  const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
-  let clean = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "");
-  const f = clean.indexOf("{"), l = clean.lastIndexOf("}");
-  if (f !== -1 && l !== -1) clean = clean.substring(f, l + 1);
-  clean = clean.replace(/,(\s*[}\]])/g, "$1");
-  const ai = JSON.parse(clean) as AIAnalysisSTRv2;
-  if (!ai.veredicto) ai.veredicto = veredictoMotor;
-  return ai;
-}
-
-// Guard REGLA ESPEJO: regenera si la prosa filtra "revenue" en CUALQUIER campo (incl. francoCaveat
-// audit-only). Hasta `tries` intentos; devuelve la más limpia y el nº de leaks residual.
-async function generarProsa(inp: any, newResults: any, comuna: string, tries = 3): Promise<{ ai: AIAnalysisSTRv2; leaks: number }> {
-  let best: AIAnalysisSTRv2 | null = null; let bestLeaks = Infinity;
-  for (let t = 0; t < tries; t++) {
-    const ai = await generarProsaOnce(inp, newResults, comuna);
-    const leaks = revenueLeaks(ai).length;
-    if (leaks < bestLeaks) { best = ai; bestLeaks = leaks; }
-    if (leaks === 0) break;
-    if (t < tries - 1) await sleep(800);
-  }
-  return { ai: best!, leaks: bestLeaks };
+// ── generarProsa: usa el orquestador compartido (mismo prompt v3 + guards que
+// producción, vía generateStrProse). `leaks` = HARD drift residual (revenue /
+// ramp-up / "el|del motor"); si >0 la prosa NO se persiste (invariante del regen).
+// Los engine-isms SOFT son detección-only y NO bloquean persistencia (paridad LTR). ──
+async function generarProsa(inp: any, newResults: any, comuna: string): Promise<{ ai: AIAnalysisSTRv2; leaks: number }> {
+  const gen = await generateStrProse({ anthropic, inp, r: newResults, comuna });
+  return { ai: gen.ai, leaks: gen.hardDriftHits.length };
 }
 
 async function main() {
@@ -362,7 +159,7 @@ async function main() {
   if (muestra) {
     const outPath = path.resolve(process.cwd(), "regen-corpus-str-muestra.md");
     const jsonPath = path.resolve(process.cwd(), "scripts/output/regen-str-muestra-full-20260710.json");
-    const parts: string[] = [`# Muestra semántica — regen STR (prosa fresca, source-determinism)\n`, `> Generada con motor RECOMPUTADO desde airbnbRaw persistido. ${conProsa.length} filas con prosa previa. NO persistido. Guard anti-"revenue" activo (3 intentos).\n`];
+    const parts: string[] = [`# Muestra semántica — regen STR v3 (prosa fresca, drawer-profundiza)\n`, `> Generada con motor RECOMPUTADO desde airbnbRaw persistido. ${conProsa.length} filas con prosa previa. NO persistido. Prompt v3 + guards (strip eco card↔drawer, drift, presupuestos) vía generateStrProse.\n`];
     const fullDump: any[] = [];
     let i = 0;
     for (const r of conProsa) {
@@ -374,13 +171,12 @@ async function main() {
         const { ai, leaks } = await generarProsa(r.input_data, newResults, r.comuna as string);
         const a = ai as any;
         fullDump.push({ id: r.id, comuna: r.comuna, oldVer, newVer: score.veredicto, leaks, ai });
-        parts.push(`\n---\n\n## ${r.id.slice(0, 8)} · ${r.comuna} · veredicto ${oldVer} → **${score.veredicto}**${leaks ? ` · ⚠️ REVENUE(${leaks})` : ""}\n`);
-        parts.push(`**headline (UF):** ${a.siendoFrancoHeadline_uf ?? "—"}\n`);
-        if (a.conviene) { parts.push(`**conviene · respuestaDirecta:** ${a.conviene.respuestaDirecta ?? "—"}\n`); parts.push(`**conviene · veredictoFrase:** ${a.conviene.veredictoFrase ?? "—"}\n`); parts.push(`**conviene · reencuadre:** ${a.conviene.reencuadre ?? "—"}\n`); }
-        if (a.rentabilidad?.contenido) parts.push(`**rentabilidad:** ${a.rentabilidad.contenido}\n`);
-        if (a.vsLTR?.contenido) parts.push(`**vsLTR:** ${a.vsLTR.contenido}${a.vsLTR.estrategiaSugerida ? `\n_estrategia:_ ${a.vsLTR.estrategiaSugerida}` : ""}\n`);
+        parts.push(`\n---\n\n## ${r.id.slice(0, 8)} · ${r.comuna} · veredicto ${oldVer} → **${score.veredicto}**${leaks ? ` · ⚠️ DRIFT(${leaks})` : ""}\n`);
+        if (a.conviene) { parts.push(`**conviene · respuestaDirecta:** ${a.conviene.respuestaDirecta ?? "—"}\n`); parts.push(`**conviene · veredictoFrase:** ${a.conviene.veredictoFrase ?? "—"}\n`); parts.push(`**conviene · reencuadre:** ${a.conviene.reencuadre ?? "—"}\n`); parts.push(`**conviene · cajaAccionable:** ${a.conviene.cajaAccionable ?? "—"}\n`); }
+        if (a.rentabilidad?.contenido) parts.push(`**rentabilidad:** ${a.rentabilidad.contenido}${a.rentabilidad.cajaAccionable ? `\n_caja:_ ${a.rentabilidad.cajaAccionable}` : ""}\n`);
+        if (a.vsLTR?.contenido) parts.push(`**vsLTR:** ${a.vsLTR.contenido}${a.vsLTR.estrategiaSugerida ? `\n_estrategia:_ ${a.vsLTR.estrategiaSugerida}` : ""}${a.vsLTR.cajaAccionable ? `\n_caja:_ ${a.vsLTR.cajaAccionable}` : ""}\n`);
         if (a.operacion?.contenido) parts.push(`**operacion:** ${a.operacion.contenido}\n`);
-        if (a.largoPlazo?.contenido) parts.push(`**largoPlazo:** ${a.largoPlazo.contenido}\n`);
+        if (a.largoPlazo?.contenido) parts.push(`**largoPlazo:** ${a.largoPlazo.contenido}${a.largoPlazo.cajaAccionable ? `\n_caja:_ ${a.largoPlazo.cajaAccionable}` : ""}\n`);
         if (a.riesgos?.contenido) parts.push(`**riesgos:** ${a.riesgos.contenido}\n`);
         if (a.riesgos?.cajaAccionable) parts.push(`**cajaAccionable (§9):** ${a.riesgos.cajaAccionable}\n`);
         if (a.francoCaveat) parts.push(`_francoCaveat (audit-only, no render):_ ${a.francoCaveat}\n`);
