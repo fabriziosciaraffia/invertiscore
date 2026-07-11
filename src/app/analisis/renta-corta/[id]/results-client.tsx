@@ -28,7 +28,7 @@ import { ProCTABanner } from "@/components/chrome/ProCTABanner";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
-import { HeroVerdictBlockSTR } from "@/components/analysis/str/HeroVerdictBlockSTR";
+import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
@@ -75,7 +75,7 @@ export function STRResultsClient({
   ufValue,
   nombre,
   comuna,
-  superficie,
+  ciudad,
   createdAt,
   isSharedView,
   userCredits,
@@ -141,37 +141,10 @@ export function STRResultsClient({
   const veredicto: STRVerdict =
     (francoScore?.veredicto as STRVerdict) ?? results.veredicto;
 
-  const precioCompra = (inputData?.precioCompra as number) ?? 0;
-  const dormitorios = (inputData?.dormitorios as number) ?? 0;
-  const banos = (inputData?.banos as number) ?? 0;
-  const piePct = ((inputData?.piePercent as number) ?? 0) * 100;
-
+  // E.5 — el HeroSTR lee los chips (dorm/baño/m²/precio/pie/gestión) directamente
+  // de input_data; ya no se arma metadataItems/subtitle acá. propiedadTitle queda
+  // porque lo usa el ShareButton.
   const propiedadTitle = nombre || `Depto en ${comuna}`;
-  const propiedadSubtitle =
-    [dormitorios && `${dormitorios}D`, banos && `${banos}B`, superficie && `${superficie}m²`, comuna]
-      .filter(Boolean)
-      .join(" · ");
-
-  const fmtPrecioMetadata =
-    currency === "UF"
-      ? `UF ${Math.round(precioCompra / ufValue).toLocaleString("es-CL")}`
-      : `$${(precioCompra / 1_000_000).toFixed(1).replace(".", ",")}M`;
-
-  const fmtPrecioM2 =
-    superficie > 0
-      ? currency === "UF"
-        ? `UF ${(precioCompra / ufValue / superficie).toFixed(1).replace(".", ",")}/m²`
-        : `$${Math.round(precioCompra / superficie / 1000).toLocaleString("es-CL")}K/m²`
-      : "—";
-
-  const metadataItems = [
-    { label: "SUPERFICIE", value: `${superficie} m²` },
-    { label: "PRECIO", value: fmtPrecioMetadata },
-    { label: "$/m²", value: fmtPrecioM2 },
-    { label: "PIE", value: `${Math.round(piePct)}%` },
-    { label: "DORMS", value: `${dormitorios}D ${banos}B` },
-    { label: "MODO", value: (inputData?.modoGestion as string) === "auto" ? "Auto-gestión" : "Administrador" },
-  ];
 
   const isSubscriber = accessLevel === "subscriber";
   const isAdmin = false; // El page.tsx ya resuelve admin a "subscriber"
@@ -220,23 +193,23 @@ export function STRResultsClient({
           </div>
         )}
 
-        {/* 01 · VEREDICTO — Hero con narrativa IA inline (Commit C · 2026-05-12).
-            Embebe ai.conviene.{respuestaDirecta, veredictoFrase, reencuadre,
-            cajaAccionable} cuando hay análisis IA. Fallback elegante a alert
-            hardcoded si análisis legacy sin IA o IA con campos faltantes.
-            Reemplaza el flujo previo Hero + AIInsightSTR-debajo por paridad
-            estructural con HeroVerdictBlock LTR (audit H1.1). */}
-        <HeroVerdictBlockSTR
+        {/* 01 · VEREDICTO — HeroSTR (E.5 · port del patrón HeroLTR). Superficie
+            continua: identidad + score/gauge/chips + mapa · veredicto (prosa IA
+            conviene.{respuestaDirecta, reencuadre, cajaAccionable}) · TOP-3 hallazgos
+            con puente a la pirámide. veredictoFrase ya no se renderiza; título por
+            conviene.pregunta ?? hardcode (v3 podó el campo). */}
+        <HeroSTR
+          ai={aiAnalysis as unknown as AIAnalysisSTRv2 | null}
           results={results}
-          ai={aiAnalysis as never}
           veredicto={veredicto}
           score={score}
-          propiedadTitle={propiedadTitle}
-          propiedadSubtitle={propiedadSubtitle}
-          metadataItems={metadataItems}
+          inputData={inputData}
+          comuna={comuna}
+          ciudad={ciudad}
           currency={currency}
           onCurrencyChange={setCurrency}
           valorUF={ufValue}
+          createdAt={createdAt}
         />
 
         {/* Indicador de loading IA — un pelo abajo del Hero cuando el análisis

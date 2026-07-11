@@ -47,7 +47,7 @@ const fmtSigned = (n: number, currency: "CLP" | "UF", valorUF: number) => {
 // ── Mapper hallazgo → campos display (kick/title/kpi/ksub) ─────────────────────
 // Espejo determinístico de describeHallazgo (HeroLTR) + fraseo del mockup. Aislado
 // acá a propósito (ladrillo self-contained; la unificación es un paso posterior).
-interface FindingDisplay {
+export interface FindingDisplay {
   kick: string;      // categoría (mono uppercase)
   title: string;     // headline (serif)
   kpi: string;       // dato dominante (mono)
@@ -59,7 +59,10 @@ interface FindingDisplay {
   procedencia?: string;
 }
 
-function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): FindingDisplay {
+// Exportado (E.5) — el HeroSTR reusa este mapper para su TOP-3 de hallazgos, así
+// las filas del hero quedan bit-consistentes con las cards de la pirámide (mismo
+// kpi/ksub/dirección; sin builder paralelo que pueda driftar).
+export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: number): FindingDisplay {
   switch (h.id) {
     case "sobreprecio": {
       const v = h.valor;
