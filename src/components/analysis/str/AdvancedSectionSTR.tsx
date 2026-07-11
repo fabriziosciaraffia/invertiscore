@@ -150,6 +150,11 @@ export function AdvancedSectionSTR({
             ? `La base usa la ocupación que definiste (${occBasePct}%), no la observada de la zona (${occObsPct}%) — es un supuesto tuyo, no un dato de mercado; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación.`
             : "La base es la mediana de ocupación observada de la zona (percentil 50), la operación esperable; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación."}
         </p>
+        {/* E.5 caveat (b) — procedencia de los percentiles de mercado (texto-solo;
+            plumbing de `source` en backlog str-source-procedencia). */}
+        <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mb-4 leading-[1.5] italic">
+          Estimación de mercado (AirROI), no transacciones cerradas.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <EscenarioCard escenario={results.escenarios.conservador} subtitle="Cuarta parte más baja del mercado (p25) — caída de demanda" currency={currency} valorUF={valorUF} />
           <EscenarioCard escenario={results.escenarios.base} subtitle={occEsOverride ? `Ocupación definida por ti (${occBasePct}%) — la observada es ${occObsPct}%` : "Mediana observada de la zona (p50) — operación esperable"} currency={currency} valorUF={valorUF} featured />

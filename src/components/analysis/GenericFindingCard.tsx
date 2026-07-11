@@ -260,7 +260,12 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         kpi: `${v.ocupacionPct}%`,
         kpiRed: false, // la ocupación no es un negativo monetario; la dirección la da el dot
         ksub: v.esFallback ? "Supuesto conservador · sin dato propio" : `Banda comuna ${v.bandaComunalPct}%`,
-        procedencia: v.esFallback ? "Sin ocupación observada · supuesto 45%" : undefined,
+        // E.5 caveat (a) — la banda comunal sale de STR_UNIVERSO_OCC (tabla fija por
+        // comuna), NO de un dato observado de esta dirección. Antes se mostraba
+        // "Banda comuna X%" sin procedencia → se leía como cifra viva de la zona.
+        procedencia: v.esFallback
+          ? "Sin ocupación observada · supuesto 45%"
+          : "Banda comunal de referencia (valor fijo por comuna), no medida en esta dirección",
       };
     }
     case "ventaja_vs_ltr": {

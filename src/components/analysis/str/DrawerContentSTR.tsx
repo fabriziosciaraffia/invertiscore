@@ -479,6 +479,12 @@ export function DrawerContentSTR({
             ya aplica el factor de tu edificio y nivel de amoblamiento sobre
             la base.
           </p>
+          {/* E.5 caveat (b) — procedencia de los percentiles narrados como "del
+              mercado" (texto-solo; el plumbing de `source` comparables vs
+              calculator_direct queda en backlog str-source-procedencia). */}
+          <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5] italic">
+            Estimación de mercado (AirROI), no transacciones cerradas.
+          </p>
           <div className="grid grid-cols-1 gap-0">
             <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
               <span className="flex-1">Escenario</span>
