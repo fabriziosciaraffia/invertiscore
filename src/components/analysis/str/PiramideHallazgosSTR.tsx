@@ -15,16 +15,21 @@ import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
 import { cmpDecisividad, esAdverso, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
 import type { DrawerKeySTR } from "./DrawerSTR";
 
-// Mapa hallazgo → drawer STR (E.2 · censo of-e2-censo.md). 6 de los ~11 hallazgos
-// abren detalle; los heredados (financiamiento/sobreprecio/plusvalia/tir/patrimonio/
-// capex) son chips solo-lectura sin drawer en STR. estructura_costos_str comparte el
-// drawer de rentabilidad (su desglose vive en el CostosBreakdown de ese drawer).
-const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> = {
+// Mapa hallazgo → drawer STR (E.2). Cada card abre un drawer cuyo título calza con
+// ella, SALVO estructura_costos_str, que comparte el drawer rentabilidad a propósito
+// (ver abajo). Los heredados (financiamiento/sobreprecio/plusvalia/tir/patrimonio/capex)
+// son chips solo-lectura sin drawer. Exportado (fix-drawers): la navegación prev/next
+// deriva de este mapa + el orden de la pirámide (un solo orden de verdad); la secuencia
+// dedup-a los drawers repetidos (rentabilidad aparece una sola vez en las flechas).
+export const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> = {
   rentabilidad_str: "rentabilidad",
   flujo_str: "sostenibilidad",
   sensibilidad_str: "sensibilidad",
   ventaja_vs_ltr: "ventajaLtr",
   ocupacion_vs_banda: "factibilidad",
+  // A PROPÓSITO comparte rentabilidad: el desglose de costos de este hallazgo vive en
+  // el CostosBreakdown de ese drawer, así que el contenido SÍ está (comparte header).
+  // rama-2 evaluará darle título/drawer propio.
   estructura_costos_str: "rentabilidad",
 };
 
@@ -41,6 +46,16 @@ function dedup(hallazgos: Hallazgo[]): Hallazgo[] {
   return Array.from(byId.values());
 }
 
+// Orden EXACTO que renderiza la pirámide STR (Filosofía 1). Exportado (fix-drawers):
+// la navegación prev/next de los drawers se deriva de ESTE mismo array — un solo orden
+// de verdad. El componente lo consume tal cual; results-client lo usa para la secuencia.
+export function ordenarHallazgosPiramideSTR(hallazgos: Hallazgo[] | null | undefined): Hallazgo[] {
+  const gathered = dedup(Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : []);
+  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
+  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
+  return [...adversos, ...favorables];
+}
+
 export function PiramideHallazgosSTR({
   hallazgos,
   currency,
@@ -54,12 +69,9 @@ export function PiramideHallazgosSTR({
    *  renderiza sin affordance "Ver detalle" (estado E.1b). */
   onOpenDrawer?: (key: DrawerKeySTR) => void;
 }) {
-  const gathered = dedup(Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : []);
-  if (gathered.length === 0) return null;
-
-  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  const ordered = [...adversos, ...favorables];
+  const ordered = ordenarHallazgosPiramideSTR(hallazgos);
+  if (ordered.length === 0) return null;
+  const gathered = ordered; // mismo set (dedup); alias para el guard de corona
 
   const nivel1 = ordered[0];
   const nivel2 = ordered.slice(1, 3);

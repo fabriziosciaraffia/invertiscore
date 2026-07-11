@@ -33,6 +33,11 @@ interface DrawerProps {
   valorUF: number;
   onClose: () => void;
   onNavigate: (newKey: DrawerKey) => void;
+  /** Secuencia de drawers en el ORDEN VISUAL de la pirámide (la arma el orquestador
+   *  desde ordenarHallazgosPiramide + HALLAZGO_DRAWER). prev/next se derivan de acá:
+   *  un solo orden de verdad. Un drawer fuera de la secuencia (ej. `zona`) no tiene
+   *  flechas — se abre solo desde su punto de entrada propio. */
+  sequence: DrawerKey[];
   // Zone-insight (sección 06) — opcional, solo se usa cuando activeKey === "zona"
   zoneInsight?: ZoneInsightData | null;
   zoneLoading?: boolean;
@@ -42,30 +47,20 @@ interface DrawerProps {
   arriendoUsuarioCLP?: number;
 }
 
-const DRAWER_META: Record<
-  DrawerKey,
-  { num: string; label: string; prev?: DrawerKey; next?: DrawerKey }
-> = {
-  costoMensual: { num: "02", label: "Costo mensual", prev: undefined, next: "negociacion" },
-  // "02+" indica complemento — cap rate es la cara de rentabilidad operativa del
-  // mismo bloque de costo/flujo. Se interpone entre costoMensual y negociacion
-  // solo cuando el hallazgo cap_rate existe (mismo mecanismo que reestructuracion).
-  capRate: { num: "02+", label: "Cap rate", prev: "costoMensual", next: "negociacion" },
-  negociacion: { num: "03", label: "Negociación", prev: "costoMensual", next: "largoPlazo" },
-  // "03+" indica complementariedad — reestructuracion es alternativa a negociar
-  // cuando el problema es financiamiento, no precio. Solo aparece cuando
-  // aiAnalysis.reestructuracion existe.
-  reestructuracion: { num: "03+", label: "Reestructuración", prev: "negociacion", next: "largoPlazo" },
-  largoPlazo: { num: "04", label: "Largo plazo", prev: "negociacion", next: "zona" },
-  // 05 · Riesgos retirado (Entrega A): drawer huérfano, ninguna card lo abría. Su card
-  // también perdió el kicker "06 · ZONA" (ZoneInsightMiniCard, D5 — la numeración de la
-  // card muere). Con la razón del "06" ya muerta, la secuencia se renumera CONTIGUA:
-  // zona toma "05" (el hueco que dejó Riesgos). 01·Veredicto (HeroLTR) sigue vivo, así
-  // que el inicio en 02 se mantiene. Header interno + flechas prev/next leen de acá.
-  zona: { num: "05", label: "Zona", prev: "largoPlazo", next: undefined },
-  // Hoja: no se interpone en la cadena 02-06 (es un hallazgo del motor, no una
-  // sección IA). Sin prev/next → solo cierra.
-  capexPuestaAPunto: { num: "+", label: "Puesta a punto", prev: undefined, next: undefined },
+// Presentación por drawer (número + label del header y de los botones prev/next).
+// El ORDEN de navegación ya NO vive acá: prev/next se derivan de `sequence` (orden
+// de la pirámide). Los números son etiquetas de sección estables, no un recorrido.
+// rama-2: revisar el label de nav — quitar la numeración vieja (02/02+/03+) y evitar
+// la jerga pelada ("Reestructuración", "Costo mensual"); el botón prev/next debería
+// nombrar la card de destino en lenguaje humano, no con el rótulo de sección.
+const DRAWER_META: Record<DrawerKey, { num: string; label: string }> = {
+  costoMensual: { num: "02", label: "Costo mensual" },
+  capRate: { num: "02+", label: "Cap rate" },
+  negociacion: { num: "03", label: "Negociación" },
+  reestructuracion: { num: "03+", label: "Reestructuración" },
+  largoPlazo: { num: "04", label: "Largo plazo" },
+  zona: { num: "05", label: "Zona" },
+  capexPuestaAPunto: { num: "+", label: "Puesta a punto" },
 };
 
 function fmtCLP(n: number): string {
@@ -2318,6 +2313,7 @@ export function AnalysisDrawer({
   valorUF,
   onClose,
   onNavigate,
+  sequence,
   zoneInsight,
   zoneLoading,
   zoneError,
@@ -2325,29 +2321,25 @@ export function AnalysisDrawer({
   comuna,
   arriendoUsuarioCLP,
 }: DrawerProps) {
-  // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer
-  // capRate y define si se interpone en la cadena de navegación.
+  // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer capRate.
   const capRateHallazgo =
     results.hallazgos?.find((h): h is HallazgoCapRate => h.id === "cap_rate") ??
     results.metrics?.hallazgoCapRate ??
     undefined;
 
-  // Navegación dinámica: capRate se interpone entre costoMensual y negociacion
-  // cuando el hallazgo existe; reestructuracion entre negociacion y largoPlazo
-  // cuando la sección IA existe. Ambos con el mismo mecanismo; sin ellos la
-  // cadena salta directo. (Los dos pueden aplicar a negociacion a la vez.)
-  const meta = useMemo(() => {
-    const m = { ...DRAWER_META[activeKey] };
-    if (capRateHallazgo) {
-      if (activeKey === "costoMensual") m.next = "capRate";
-      if (activeKey === "negociacion") m.prev = "capRate";
-    }
-    if (aiAnalysis.reestructuracion) {
-      if (activeKey === "negociacion") m.next = "reestructuracion";
-      if (activeKey === "largoPlazo") m.prev = "reestructuracion";
-    }
-    return m;
-  }, [activeKey, aiAnalysis.reestructuracion, capRateHallazgo]);
+  const meta = DRAWER_META[activeKey];
+
+  // prev/next = vecinos en la secuencia de la pirámide (un solo orden de verdad).
+  // Un drawer fuera de la secuencia (ej. `zona`, que se abre desde su MiniCard)
+  // tiene idx = -1 → sin flechas, solo cierra. Sin dead-ends por construcción: si
+  // está en la secuencia tiene vecinos; si no, no es alcanzable por flechas.
+  const { prevKey, nextKey } = useMemo(() => {
+    const idx = sequence.indexOf(activeKey);
+    return {
+      prevKey: idx > 0 ? sequence[idx - 1] : undefined,
+      nextKey: idx >= 0 && idx < sequence.length - 1 ? sequence[idx + 1] : undefined,
+    };
+  }, [sequence, activeKey]);
 
   // Zone y reestructuracion no encajan con AISection — placeholder pregunta.
   const zonaTitle = "Lo que no ves a simple vista";
@@ -2414,12 +2406,12 @@ export function AnalysisDrawer({
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
-      if (e.key === "ArrowRight" && meta.next) onNavigate(meta.next);
-      if (e.key === "ArrowLeft" && meta.prev) onNavigate(meta.prev);
+      if (e.key === "ArrowRight" && nextKey) onNavigate(nextKey);
+      if (e.key === "ArrowLeft" && prevKey) onNavigate(prevKey);
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose, onNavigate, meta]);
+  }, [onClose, onNavigate, nextKey, prevKey]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -2537,25 +2529,25 @@ export function AnalysisDrawer({
           )}
 
           <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--franco-border)]">
-            {meta.prev ? (
+            {prevKey ? (
               <button
                 type="button"
-                onClick={() => onNavigate(meta.prev!)}
+                onClick={() => onNavigate(prevKey)}
                 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
-                ← {DRAWER_META[meta.prev].num} {DRAWER_META[meta.prev].label}
+                ← {DRAWER_META[prevKey].num} {DRAWER_META[prevKey].label}
               </button>
             ) : (
               <span />
             )}
 
-            {meta.next ? (
+            {nextKey ? (
               <button
                 type="button"
-                onClick={() => onNavigate(meta.next!)}
+                onClick={() => onNavigate(nextKey)}
                 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
-                {DRAWER_META[meta.next].num} {DRAWER_META[meta.next].label} →
+                {DRAWER_META[nextKey].num} {DRAWER_META[nextKey].label} →
               </button>
             ) : (
               <button

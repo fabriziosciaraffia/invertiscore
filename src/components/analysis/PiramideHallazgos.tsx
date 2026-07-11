@@ -63,6 +63,21 @@ function gatherHallazgos(
   return Array.from(byId.values());
 }
 
+// Orden EXACTO que renderiza la pirámide (Filosofía 1: adversos por decisividad,
+// luego favorables). Exportado (fix-drawers): la navegación prev/next de los drawers
+// se deriva de ESTE mismo array — un solo orden de verdad. gather + dedup + sort viven
+// acá; el componente lo consume tal cual (sin recomputar), y el orquestador (SubjectCardGrid)
+// lo usa para armar la secuencia de drawers.
+export function ordenarHallazgosPiramide(
+  results: FullAnalysisResult | null | undefined,
+  aiAnalysis: AIAnalysisV2 | null | undefined,
+): Hallazgo[] {
+  const gathered = gatherHallazgos(results, aiAnalysis);
+  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
+  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
+  return [...adversos, ...favorables];
+}
+
 // Matriz de columnas del nivel 3 según cuántos chips quedan (Familia A, aprobada por
 // Fabrizio). La estructura 1+2+resto NO cambia; solo el grid del resto se adapta para
 // que la última fila quede balanceada en todo N∈[5,9] (evita el huérfano de N=7 y el
@@ -108,12 +123,9 @@ export function PiramideHallazgos({
   /** Abre el drawer de detalle de un hallazgo (threadeado a cada card). */
   onOpenDrawer: (key: DrawerKey) => void;
 }) {
-  const gathered = gatherHallazgos(results, aiAnalysis);
-  if (gathered.length === 0) return null;
-
-  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  const ordered = [...adversos, ...favorables];
+  const ordered = ordenarHallazgosPiramide(results, aiAnalysis);
+  if (ordered.length === 0) return null;
+  const gathered = ordered; // mismo set (gather+dedup); alias para el guard de corona
 
   const nivel1 = ordered[0];
   const nivel2 = ordered.slice(1, 3);

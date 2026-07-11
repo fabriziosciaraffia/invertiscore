@@ -32,7 +32,7 @@ import { HeroSTR } from "@/components/analysis/str/HeroSTR";
 import { StateBox } from "@/components/ui/StateBox";
 import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { AdvancedSectionSTR } from "@/components/analysis/str/AdvancedSectionSTR";
-import { PiramideHallazgosSTR } from "@/components/analysis/str/PiramideHallazgosSTR";
+import { PiramideHallazgosSTR, ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
 import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
@@ -87,6 +87,15 @@ export function STRResultsClient({
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
   // SubjectCardGrid): lo abre la pirámide (hallazgos) y la card zona (tipoHuesped).
   const [activeDrawer, setActiveDrawer] = useState<DrawerKeySTR | null>(null);
+
+  // Secuencia de drawers = orden VISUAL de la pirámide STR (mismo array que renderiza),
+  // filtrando las cards con drawer y dedup. La navegación prev/next se deriva de acá.
+  // `tipoHuesped` NO entra (se abre solo desde ZonaCardSTR) → queda fuera de las flechas.
+  const drawerSequenceSTR: DrawerKeySTR[] = [];
+  for (const h of ordenarHallazgosPiramideSTR(results?.hallazgos)) {
+    const key = HALLAZGO_DRAWER_STR[h.id];
+    if (key && !drawerSequenceSTR.includes(key)) drawerSequenceSTR.push(key);
+  }
 
   // ─── AI state ─────────────────────────────────────
   const initialAi =
@@ -347,6 +356,7 @@ export function STRResultsClient({
           <DrawerSTR
             activeKey={activeDrawer}
             titulo={DRAWER_TITULOS_STR[activeDrawer]}
+            sequence={drawerSequenceSTR}
             onClose={() => setActiveDrawer(null)}
             onNavigate={(k) => setActiveDrawer(k)}
           >

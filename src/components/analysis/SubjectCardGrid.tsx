@@ -7,7 +7,8 @@ import { LoadingEditorial } from "@/components/analysis/LoadingEditorial";
 import { useZoneInsight } from "@/hooks/useZoneInsight";
 import { ZoneInsightMiniCard } from "@/components/zone-insight/ZoneInsightMiniCard";
 import { HeroLTR } from "./HeroLTR";
-import { PiramideHallazgos } from "./PiramideHallazgos";
+import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
+import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
 
 /**
@@ -62,6 +63,17 @@ export function SubjectCardGrid({
   simulationSlot?: ReactNode;
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
+
+  // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
+  // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
+  // navegación prev/next del drawer se deriva de acá: "siguiente" = card siguiente
+  // de la pirámide. Un solo orden de verdad. `zona` NO entra (se abre solo desde su
+  // MiniCard) → queda fuera de las flechas.
+  const drawerSequence: DrawerKey[] = [];
+  for (const h of ordenarHallazgosPiramide(results, aiAnalysis)) {
+    const key = HALLAZGO_DRAWER[h.id];
+    if (key && !drawerSequence.includes(key)) drawerSequence.push(key);
+  }
 
   // Preload zone-insight at dashboard mount (non-blocking).
   // Only fires if we have an analysisId and the analysis has coords (checked server-side).
@@ -183,6 +195,7 @@ export function SubjectCardGrid({
           valorUF={valorUF}
           onClose={() => setActiveDrawer(null)}
           onNavigate={(key) => setActiveDrawer(key)}
+          sequence={drawerSequence}
           zoneInsight={zoneInsight}
           zoneLoading={zoneLoading}
           zoneError={zoneError}

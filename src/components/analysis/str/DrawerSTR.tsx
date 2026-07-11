@@ -26,6 +26,8 @@ export type DrawerKeySTR =
   | "tipoHuesped"
   | "factibilidad";
 
+// rama-2: revisar el label de nav — quitar la numeración vieja (02..07) y evitar la
+// jerga pelada; el botón prev/next debería nombrar la card destino en lenguaje humano.
 const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
   rentabilidad: { numero: "02", label: "RENTABILIDAD" },
   sostenibilidad: { numero: "03", label: "SOSTENIBILIDAD" },
@@ -35,24 +37,21 @@ const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
   factibilidad: { numero: "07", label: "FACTIBILIDAD Y RIESGOS" },
 };
 
-const DRAWER_NAV_ORDER: DrawerKeySTR[] = [
-  "rentabilidad",
-  "sostenibilidad",
-  "sensibilidad",
-  "ventajaLtr",
-  "tipoHuesped",
-  "factibilidad",
-];
-
 export function DrawerSTR({
   activeKey,
   titulo,
+  sequence = [],
   onClose,
   onNavigate,
   children,
 }: {
   activeKey: DrawerKeySTR | null;
   titulo: string;
+  /** Secuencia de drawers en el ORDEN VISUAL de la pirámide STR (la arma results-client
+   *  desde ordenarHallazgosPiramideSTR + HALLAZGO_DRAWER_STR). prev/next se derivan de
+   *  acá — un solo orden de verdad. Un drawer fuera de la secuencia (ej. `tipoHuesped`,
+   *  que se abre desde ZonaCardSTR) no tiene flechas: solo cierra. */
+  sequence?: DrawerKeySTR[];
   onClose: () => void;
   onNavigate?: (key: DrawerKeySTR) => void;
   children: React.ReactNode;
@@ -80,9 +79,11 @@ export function DrawerSTR({
   if (!activeKey) return null;
 
   const meta = DRAWER_META[activeKey];
-  const idx = DRAWER_NAV_ORDER.indexOf(activeKey);
-  const prev = idx > 0 ? DRAWER_NAV_ORDER[idx - 1] : null;
-  const next = idx < DRAWER_NAV_ORDER.length - 1 ? DRAWER_NAV_ORDER[idx + 1] : null;
+  // prev/next = vecinos en la secuencia de la pirámide (un solo orden de verdad).
+  // Fuera de la secuencia (idx = -1, ej. tipoHuesped) → sin flechas, solo cierra.
+  const idx = sequence.indexOf(activeKey);
+  const prev = idx > 0 ? sequence[idx - 1] : null;
+  const next = idx >= 0 && idx < sequence.length - 1 ? sequence[idx + 1] : null;
 
   return (
     <>
