@@ -988,20 +988,21 @@ export interface AIAnalysisV2 {
   hallazgoSobreprecio?: HallazgoSobreprecio | null;
 }
 
-// ─── STR — IA Análisis v2 (Ronda 4d) ──────────────────────────────
-// Schema canónico STR alineado con doctrina analysis-voice-franco. La duplicación
-// CLP/UF (§2.7) solo aplica a `siendoFrancoHeadline` que típicamente lleva la
-// cifra dominante. El resto de campos son strings únicos: la IA formatea cifras
-// inline ("aporte de $262K mensuales" / "ventaja de UF 880") sin necesidad de
-// toggle CLP↔UF en el render.
+// ─── STR — IA Análisis v2/v3 ──────────────────────────────────────
+// Schema canónico STR alineado con doctrina analysis-voice-franco.
+// E.3 (v3): el prompt podó los campos que la página post-E.2 NO renderiza
+// (`siendoFrancoHeadline_*` — nadie lo mostraba — y los `pregunta` de sección —
+// títulos de drawer hardcodeados). Esos campos quedan OPCIONALES para leer prosa
+// v2 persistida sin romper (back-compat de lectura); la generación v3 los omite.
+// El resto son strings únicos: la IA formatea cifras inline sin toggle CLP↔UF.
 export interface AISectionSTRv2 {
-  pregunta: string;
+  pregunta?: string;        // v2 legacy · v3 no lo emite (título de drawer hardcodeado)
   contenido: string;
   cajaAccionable: string;
 }
 
 export interface AIConvieneSTRv2 {
-  pregunta: string;
+  pregunta?: string;            // opcional · fallback del título del hero
   respuestaDirecta: string;
   veredictoFrase: string;
   reencuadre: string;
@@ -1009,7 +1010,7 @@ export interface AIConvieneSTRv2 {
 }
 
 export interface AIVsLtrSTRv2 {
-  pregunta: string;
+  pregunta?: string;            // v2 legacy · v3 no lo emite (título de drawer hardcodeado)
   contenido: string;
   estrategiaSugerida: string;   // recomendación con número
   cajaAccionable: string;
@@ -1022,8 +1023,10 @@ import type { STRVerdict as STRVerdictEngine } from "./engines/short-term-engine
 export type STRVerdict = STRVerdictEngine;
 
 export interface AIAnalysisSTRv2 {
-  siendoFrancoHeadline_clp: string;
-  siendoFrancoHeadline_uf: string;
+  // v2 legacy · v3 NO lo emite (nunca se renderizó — solo mock en /demo). Opcional
+  // para leer prosa v2 persistida sin romper.
+  siendoFrancoHeadline_clp?: string;
+  siendoFrancoHeadline_uf?: string;
   conviene: AIConvieneSTRv2;
   rentabilidad: AISectionSTRv2;
   vsLTR: AIVsLtrSTRv2;
