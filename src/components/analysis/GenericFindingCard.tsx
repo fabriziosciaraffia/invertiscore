@@ -18,18 +18,24 @@ import type { DrawerKey } from "@/components/ui/AnalysisDrawer";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { buildFraseFlujo } from "@/lib/flujo-mensual-hallazgo";
 
-// Mapa hallazgo → drawer de detalle. Los 6 hallazgos LTR tienen drawer (cap_rate
-// se sumó en Fase 3). Sin entrada ⇒ sin affordance "Ver detalle".
-const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
+// Mapa hallazgo → drawer de detalle. INYECTIVO: cada card abre un drawer cuyo
+// título calza con ella. Sin entrada ⇒ sin affordance "Ver detalle" (mejor puerta
+// ausente que puerta equivocada). Exportado (fix-drawers): la navegación prev/next
+// deriva de este mapa + el orden de la pirámide (un solo orden de verdad).
+export const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   flujo_mensual: "costoMensual",
   cap_rate: "capRate",
   sobreprecio: "negociacion",
-  plusvalia: "largoPlazo",
   capex_puesta_a_punto: "capexPuestaAPunto",
   estructura_financiamiento: "reestructuracion",
-  tir: "negociacion", // la tabla TIR-por-precio ya vive en el drawer negociación
-  sensibilidad: "costoMensual", // el estrés de arriendo vive junto al flujo/costo mensual
-  patrimonio: "largoPlazo", // el waterfall + esfuerzo total + instrumentos explican el número (D4)
+  // rama-2: drawer propio pendiente. Se DESCONECTARON los cableados a drawers
+  // hermanos cuyo título no calza con la card (el usuario entraba a la pieza
+  // equivocada): tir→"Negociación", sensibilidad→"Costo mensual",
+  // patrimonio→"Largo plazo", plusvalia→"Largo plazo" ("Plusvalía histórica" no es
+  // "¿cuánto ganas a 10 años?"). Sin drawer propio, la card queda como chip
+  // solo-lectura (conserva KPI/dirección/frase, sin "Ver detalle").
+  // Consecuencia: con plusvalia+patrimonio desconectados, el drawer largoPlazo queda
+  // sin card que lo abra (inalcanzable hasta que rama-2 le dé dueño propio).
 };
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────
