@@ -28,14 +28,12 @@ export const HALLAZGO_DRAWER: Partial<Record<Hallazgo["id"], DrawerKey>> = {
   sobreprecio: "negociacion",
   capex_puesta_a_punto: "capexPuestaAPunto",
   estructura_financiamiento: "reestructuracion",
-  // rama-2: drawer propio pendiente. Se DESCONECTARON los cableados a drawers
-  // hermanos cuyo título no calza con la card (el usuario entraba a la pieza
-  // equivocada): tir→"Negociación", sensibilidad→"Costo mensual",
-  // patrimonio→"Largo plazo", plusvalia→"Largo plazo" ("Plusvalía histórica" no es
-  // "¿cuánto ganas a 10 años?"). Sin drawer propio, la card queda como chip
-  // solo-lectura (conserva KPI/dirección/frase, sin "Ver detalle").
-  // Consecuencia: con plusvalia+patrimonio desconectados, el drawer largoPlazo queda
-  // sin card que lo abra (inalcanzable hasta que rama-2 le dé dueño propio).
+  // rama drawers-propios (F2): los 4 que en rama-1 quedaron desconectados (por cablear
+  // a un hermano cuyo título no calzaba) ahora abren su DRAWER PROPIO, motor-templated.
+  tir: "tir",
+  sensibilidad: "sensibilidad",
+  patrimonio: "patrimonio",
+  plusvalia: "plusvalia",
 };
 
 // ── Formato (tuteo neutro, coma decimal chilena) ──────────────────────────────

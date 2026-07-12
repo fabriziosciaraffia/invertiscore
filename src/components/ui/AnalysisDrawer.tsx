@@ -16,13 +16,37 @@ import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
+import {
+  DrawerTIRLtr,
+  DrawerSensibilidadLtr,
+  DrawerPatrimonioLtr,
+  DrawerPlusvaliaLtr,
+} from "@/components/analysis/drawers/DrawersPropios";
+import type {
+  HallazgoTIR,
+  HallazgoSensibilidad,
+  HallazgoPatrimonio,
+  HallazgoPlusvalia,
+} from "@/lib/types";
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { ZoneStatsCards } from "@/components/zone-insight/ZoneStatsCards";
 import { ZoneMap } from "@/components/zone-insight/ZoneMap";
 import { ZonePOIsList } from "@/components/zone-insight/ZonePOIsList";
 import { ZoneInsightAI } from "@/components/zone-insight/ZoneInsightAI";
 
-export type DrawerKey = "costoMensual" | "capRate" | "negociacion" | "reestructuracion" | "largoPlazo" | "zona" | "capexPuestaAPunto";
+export type DrawerKey =
+  | "costoMensual"
+  | "capRate"
+  | "negociacion"
+  | "reestructuracion"
+  | "largoPlazo"
+  | "zona"
+  | "capexPuestaAPunto"
+  // rama drawers-propios (F2) — 4 drawers propios LTR (dejan de cablear a hermanos).
+  | "tir"
+  | "sensibilidad"
+  | "patrimonio"
+  | "plusvalia";
 
 interface DrawerProps {
   activeKey: DrawerKey;
@@ -47,20 +71,22 @@ interface DrawerProps {
   arriendoUsuarioCLP?: number;
 }
 
-// Presentación por drawer (número + label del header y de los botones prev/next).
-// El ORDEN de navegación ya NO vive acá: prev/next se derivan de `sequence` (orden
-// de la pirámide). Los números son etiquetas de sección estables, no un recorrido.
-// rama-2: revisar el label de nav — quitar la numeración vieja (02/02+/03+) y evitar
-// la jerga pelada ("Reestructuración", "Costo mensual"); el botón prev/next debería
-// nombrar la card de destino en lenguaje humano, no con el rótulo de sección.
-const DRAWER_META: Record<DrawerKey, { num: string; label: string }> = {
-  costoMensual: { num: "02", label: "Costo mensual" },
-  capRate: { num: "02+", label: "Cap rate" },
-  negociacion: { num: "03", label: "Negociación" },
-  reestructuracion: { num: "03+", label: "Reestructuración" },
-  largoPlazo: { num: "04", label: "Largo plazo" },
-  zona: { num: "05", label: "Zona" },
-  capexPuestaAPunto: { num: "+", label: "Puesta a punto" },
+// Label humano del header y de los botones prev/next — nombra la card de destino en
+// lenguaje humano, sin numeración (rama drawers-propios: la vieja num 02/02+/03+ se
+// retiró; el orden ya lo dan la pirámide y las flechas, no un rótulo). El ORDEN de
+// navegación vive en `sequence` (orden de la pirámide), no acá.
+const DRAWER_META: Record<DrawerKey, { label: string }> = {
+  costoMensual: { label: "Flujo mensual" },
+  capRate: { label: "Lo que renta hoy" },
+  negociacion: { label: "El precio" },
+  reestructuracion: { label: "Tu estructura" },
+  largoPlazo: { label: "A 10 años" },
+  zona: { label: "La zona" },
+  capexPuestaAPunto: { label: "Puesta a punto" },
+  tir: { label: "Retorno total" },
+  sensibilidad: { label: "Margen del veredicto" },
+  patrimonio: { label: "Patrimonio a 10 años" },
+  plusvalia: { label: "Plusvalía de la comuna" },
 };
 
 function fmtCLP(n: number): string {
@@ -2327,6 +2353,29 @@ export function AnalysisDrawer({
     results.metrics?.hallazgoCapRate ??
     undefined;
 
+  // Hallazgos de los 4 drawers propios LTR (motor-seeded en results.hallazgos; plusvalía
+  // también puede venir del carrier de métricas). Alimentan plantillas determinísticas.
+  const tirHallazgo = results.hallazgos?.find((h): h is HallazgoTIR => h.id === "tir");
+  const sensibilidadHallazgo = results.hallazgos?.find(
+    (h): h is HallazgoSensibilidad => h.id === "sensibilidad",
+  );
+  const patrimonioHallazgo = results.hallazgos?.find(
+    (h): h is HallazgoPatrimonio => h.id === "patrimonio",
+  );
+  const plusvaliaHallazgo =
+    results.hallazgos?.find((h): h is HallazgoPlusvalia => h.id === "plusvalia") ??
+    results.metrics?.hallazgoPlusvalia ??
+    undefined;
+
+  // Fallback simétrico al de STR (DrawerContentSTR): si la card abrió un drawer propio
+  // pero el hallazgo no está (fila legacy), se muestra una constatación honesta, no un
+  // cuerpo vacío. En el flujo normal es inalcanzable (la card solo existe con su hallazgo).
+  const faltaHallazgoLtr = (
+    <p className="font-body italic text-[13px] text-[var(--franco-text-secondary)] leading-[1.6] m-0">
+      Este detalle no está disponible para este análisis.
+    </p>
+  );
+
   const meta = DRAWER_META[activeKey];
 
   // prev/next = vecinos en la secuencia de la pirámide (un solo orden de verdad).
@@ -2350,6 +2399,12 @@ export function AnalysisDrawer({
     : "¿Cómo está tu estructura?";
   const capexTitle = "Dejarlo listo para arrendar";
   const capRateTitle = "Lo que renta hoy vs lo que debería";
+  // Preguntas de los 4 drawers propios LTR (deterministas, cero IA). La de TIR se
+  // completa con el % real más abajo (drawerPregunta); las otras son estables.
+  const sensibilidadTitle = "¿Cuánto aguanta tu veredicto?";
+  const patrimonioTitle = "¿Cuánto es tuyo a 10 años?";
+  const plusvaliaTitle = "¿Cuánto se ha valorizado la comuna?";
+  const tirTitle = "¿Por qué tu retorno no es el de un depósito?";
 
   // Hallazgo estructura (motor-seeded, siempre presente en LTR) — alimenta el
   // fallback del drawer de reestructuración cuando no hay sección IA.
@@ -2371,7 +2426,15 @@ export function AnalysisDrawer({
           ? ({ pregunta: capexTitle } as { pregunta: string })
           : activeKey === "capRate"
             ? ({ pregunta: capRateTitle } as { pregunta: string })
-            : aiAnalysis[activeKey];
+            : activeKey === "tir"
+              ? ({ pregunta: tirTitle } as { pregunta: string })
+              : activeKey === "sensibilidad"
+                ? ({ pregunta: sensibilidadTitle } as { pregunta: string })
+                : activeKey === "patrimonio"
+                  ? ({ pregunta: patrimonioTitle } as { pregunta: string })
+                  : activeKey === "plusvalia"
+                    ? ({ pregunta: plusvaliaTitle } as { pregunta: string })
+                    : aiAnalysis[activeKey];
 
   // Override de pregunta por drawer + estado. La pregunta IA es genérica;
   // hardcoded varía según el "veredicto numérico" del bloque para evitar
@@ -2399,6 +2462,10 @@ export function AnalysisDrawer({
       if (gananciaSobreTotal < -1000) return `¿Cuánto pierdes a ${aniosPlazo} años?`;
       if (gananciaSobreTotal > 1000) return `¿Cuánto ganas a ${aniosPlazo} años?`;
       return `¿Vale la pena a ${aniosPlazo} años?`;
+    }
+    if (activeKey === "tir" && tirHallazgo) {
+      const tp = tirHallazgo.valor.tirPct.toFixed(1).replace(".", ",");
+      return `¿Por qué tu ${tp}% no es el ${tp}% de un depósito?`;
     }
     return section.pregunta;
   })();
@@ -2441,7 +2508,7 @@ export function AnalysisDrawer({
           <div className="flex justify-between items-start mb-4 pb-4 border-b border-[var(--franco-border)]">
             <div>
               <p className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mb-1 m-0">
-                {meta.num} · {meta.label}
+                {meta.label}
               </p>
               <h2 className="font-heading font-bold text-[20px] md:text-[24px] leading-[1.25] text-[var(--franco-text)] m-0">
                 {drawerPregunta}
@@ -2527,6 +2594,35 @@ export function AnalysisDrawer({
               valorUF={valorUF}
             />
           )}
+          {activeKey === "tir" &&
+            (tirHallazgo ? (
+              <DrawerTIRLtr hallazgo={tirHallazgo} results={results} currency={currency} valorUF={valorUF} />
+            ) : (
+              faltaHallazgoLtr
+            ))}
+          {activeKey === "sensibilidad" &&
+            (sensibilidadHallazgo ? (
+              <DrawerSensibilidadLtr hallazgo={sensibilidadHallazgo} results={results} currency={currency} valorUF={valorUF} />
+            ) : (
+              faltaHallazgoLtr
+            ))}
+          {activeKey === "patrimonio" &&
+            (patrimonioHallazgo ? (
+              <DrawerPatrimonioLtr hallazgo={patrimonioHallazgo} results={results} currency={currency} valorUF={valorUF} />
+            ) : (
+              faltaHallazgoLtr
+            ))}
+          {activeKey === "plusvalia" &&
+            (plusvaliaHallazgo ? (
+              <DrawerPlusvaliaLtr
+                hallazgo={plusvaliaHallazgo}
+                results={results}
+                valorUF={valorUF}
+                comuna={comuna ?? (inputData.comuna || "la comuna")}
+              />
+            ) : (
+              faltaHallazgoLtr
+            ))}
 
           <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--franco-border)]">
             {prevKey ? (
@@ -2535,7 +2631,7 @@ export function AnalysisDrawer({
                 onClick={() => onNavigate(prevKey)}
                 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
-                ← {DRAWER_META[prevKey].num} {DRAWER_META[prevKey].label}
+                ← {DRAWER_META[prevKey].label}
               </button>
             ) : (
               <span />
@@ -2547,7 +2643,7 @@ export function AnalysisDrawer({
                 onClick={() => onNavigate(nextKey)}
                 className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
               >
-                {DRAWER_META[nextKey].num} {DRAWER_META[nextKey].label} →
+                {DRAWER_META[nextKey].label} →
               </button>
             ) : (
               <button
