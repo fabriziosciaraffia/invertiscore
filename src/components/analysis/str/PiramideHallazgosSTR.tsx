@@ -15,22 +15,24 @@ import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
 import { cmpDecisividad, esAdverso, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
 import type { DrawerKeySTR } from "./DrawerSTR";
 
-// Mapa hallazgo → drawer STR (E.2). Cada card abre un drawer cuyo título calza con
-// ella, SALVO estructura_costos_str, que comparte el drawer rentabilidad a propósito
-// (ver abajo). Los heredados (financiamiento/sobreprecio/plusvalia/tir/patrimonio/capex)
-// son chips solo-lectura sin drawer. Exportado (fix-drawers): la navegación prev/next
-// deriva de este mapa + el orden de la pirámide (un solo orden de verdad); la secuencia
-// dedup-a los drawers repetidos (rentabilidad aparece una sola vez en las flechas).
+// Mapa hallazgo → drawer STR. Cada card abre un drawer cuyo título calza con ella.
+// rama drawers-propios (F2): los 6 que en E.2 eran chips solo-lectura o compartían
+// drawer ahora tienen el suyo propio, motor-templated. estructura_costos_str deja de
+// compartir `rentabilidad` y estrena `estructuraCostos`. Exportado: la navegación
+// prev/next deriva de este mapa + el orden de la pirámide (un solo orden de verdad).
 export const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> = {
   rentabilidad_str: "rentabilidad",
   flujo_str: "sostenibilidad",
   sensibilidad_str: "sensibilidad",
   ventaja_vs_ltr: "ventajaLtr",
   ocupacion_vs_banda: "factibilidad",
-  // A PROPÓSITO comparte rentabilidad: el desglose de costos de este hallazgo vive en
-  // el CostosBreakdown de ese drawer, así que el contenido SÍ está (comparte header).
-  // rama-2 evaluará darle título/drawer propio.
-  estructura_costos_str: "rentabilidad",
+  // Drawers propios F2 (antes heredados solo-lectura / compartido):
+  estructura_financiamiento: "financiamiento",
+  sobreprecio: "precio",
+  tir: "retorno",
+  patrimonio: "patrimonio",
+  plusvalia: "plusvalia",
+  estructura_costos_str: "estructuraCostos",
 };
 
 /** Dedup por id: el hallazgo CON titular gana; entre iguales, mayor decisividad. */

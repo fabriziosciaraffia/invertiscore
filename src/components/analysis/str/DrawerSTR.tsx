@@ -24,17 +24,32 @@ export type DrawerKeySTR =
   | "sensibilidad"
   | "ventajaLtr"
   | "tipoHuesped"
-  | "factibilidad";
+  | "factibilidad"
+  // rama drawers-propios (F2) — 6 drawers propios STR (dejan de ser chips solo-lectura
+  // / de compartir rentabilidad). estructura_costos_str estrena drawer propio.
+  | "financiamiento"
+  | "precio"
+  | "retorno"
+  | "patrimonio"
+  | "plusvalia"
+  | "estructuraCostos";
 
-// rama-2: revisar el label de nav — quitar la numeración vieja (02..07) y evitar la
-// jerga pelada; el botón prev/next debería nombrar la card destino en lenguaje humano.
-const DRAWER_META: Record<DrawerKeySTR, { numero: string; label: string }> = {
-  rentabilidad: { numero: "02", label: "RENTABILIDAD" },
-  sostenibilidad: { numero: "03", label: "SOSTENIBILIDAD" },
-  sensibilidad: { numero: "04", label: "SENSIBILIDAD" },
-  ventajaLtr: { numero: "05", label: "VENTAJA vs LTR" },
-  tipoHuesped: { numero: "06", label: "TIPO DE HUÉSPED" },
-  factibilidad: { numero: "07", label: "FACTIBILIDAD Y RIESGOS" },
+// Label humano del header y de las flechas prev/next — nombra la card destino en
+// lenguaje humano, sin numeración (rama drawers-propios: la vieja num 02..07 se
+// retiró; el orden lo dan la pirámide y las flechas). El ORDEN vive en `sequence`.
+const DRAWER_META: Record<DrawerKeySTR, { label: string }> = {
+  rentabilidad: { label: "Rentabilidad" },
+  sostenibilidad: { label: "Flujo mensual" },
+  sensibilidad: { label: "Sensibilidad" },
+  ventajaLtr: { label: "Ventaja vs arriendo largo" },
+  tipoHuesped: { label: "Tipo de huésped" },
+  factibilidad: { label: "Regulación y riesgos" },
+  financiamiento: { label: "Cómo estás financiando" },
+  precio: { label: "El precio por metro" },
+  retorno: { label: "Retorno total" },
+  patrimonio: { label: "Patrimonio a 10 años" },
+  plusvalia: { label: "Plusvalía de la comuna" },
+  estructuraCostos: { label: "Estructura de costos" },
 };
 
 export function DrawerSTR({

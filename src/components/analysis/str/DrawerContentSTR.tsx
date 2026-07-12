@@ -21,11 +21,27 @@
 import { useMemo, useState } from "react";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { AMOBLAMIENTO_FACTOR_HABILITACION } from "@/lib/engines/short-term-engine";
-import type { AIAnalysisSTRv2 } from "@/lib/types";
+import type {
+  AIAnalysisSTRv2,
+  HallazgoTIR,
+  HallazgoPatrimonio,
+  HallazgoPlusvalia,
+  HallazgoSobreprecio,
+  HallazgoEstructuraFinanciamiento,
+  HallazgoEstructuraCostosStr,
+} from "@/lib/types";
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import { extractRiesgos } from "@/components/ui/AnalysisDrawer";
 import { DrawerKeySTR } from "./DrawerSTR";
+import {
+  DrawerFinanciamientoStr,
+  DrawerPrecioStr,
+  DrawerTIRStr,
+  DrawerPatrimonioStr,
+  DrawerPlusvaliaStr,
+  DrawerEstructuraCostosStr,
+} from "@/components/analysis/drawers/DrawersPropios";
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
 import { fmtMoney, fmtPct } from "../utils";
@@ -52,6 +68,13 @@ export const DRAWER_TITULOS_STR: Record<DrawerKeySTR, string> = {
   ventajaLtr: "STR vs arriendo largo",
   tipoHuesped: "Quién va a alojarse y cómo amoblar para él",
   factibilidad: "Regulación, zona y riesgos",
+  // Drawers propios (F2) — preguntas deterministas (el % de retorno vive en el body).
+  financiamiento: "¿Cómo estás financiando?",
+  precio: "¿Estás pagando caro?",
+  retorno: "¿Por qué tu retorno no es el de un depósito?",
+  patrimonio: "¿Cuánto es tuyo a 10 años?",
+  plusvalia: "¿Cuánto se ha valorizado la comuna?",
+  estructuraCostos: "¿En qué se va cada peso?",
 };
 
 /* ─── Helpers de presentación ─────────────────────────── */
@@ -322,6 +345,41 @@ export function DrawerContentSTR({
   // Drawer Tipo de huésped — delega a DrawerTipoHuesped (lazy fetch guest-insight).
   if (activeKey === "tipoHuesped") {
     return <DrawerTipoHuesped analysisId={analysisId} />;
+  }
+
+  // ── Drawers propios STR (F2) — plantillas deterministas motor-templated ──
+  // El hallazgo persistido en results.hallazgos alimenta cada plantilla. Sin él
+  // (fila legacy), fallback breve — la card no debería abrir sin su hallazgo.
+  const hById = <T,>(id: string): T | undefined =>
+    (results.hallazgos?.find((h) => h.id === id) as T | undefined);
+  const faltaHallazgo = (
+    <p className="font-body italic text-[13px] text-[var(--franco-text-secondary)] leading-[1.6] m-0">
+      Este detalle no está disponible para este análisis.
+    </p>
+  );
+  if (activeKey === "financiamiento") {
+    const h = hById<HallazgoEstructuraFinanciamiento>("estructura_financiamiento");
+    return h ? <DrawerFinanciamientoStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "precio") {
+    const h = hById<HallazgoSobreprecio>("sobreprecio");
+    return h ? <DrawerPrecioStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "retorno") {
+    const h = hById<HallazgoTIR>("tir");
+    return h ? <DrawerTIRStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "patrimonio") {
+    const h = hById<HallazgoPatrimonio>("patrimonio");
+    return h ? <DrawerPatrimonioStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+  if (activeKey === "plusvalia") {
+    const h = hById<HallazgoPlusvalia>("plusvalia");
+    return h ? <DrawerPlusvaliaStr hallazgo={h} results={results} comuna={comuna} /> : faltaHallazgo;
+  }
+  if (activeKey === "estructuraCostos") {
+    const h = hById<HallazgoEstructuraCostosStr>("estructura_costos_str");
+    return h ? <DrawerEstructuraCostosStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
   }
 
   if (activeKey === "rentabilidad") {
