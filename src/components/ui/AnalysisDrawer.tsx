@@ -14,6 +14,10 @@ import type {
 } from "@/lib/types";
 import { calcFlujoDesglose, tirForPrice } from "@/lib/analysis";
 import { procedenciaExtendida } from "@/lib/procedencia-extendida";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+
+// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
+const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { InfoTooltip } from "@/components/ui/tooltip";
 import { StateBox } from "@/components/ui/StateBox";
 import {
@@ -1191,7 +1195,7 @@ function DrawerLargoPlazo({
     b3Rows.push({
       key: "plusvalia",
       label: `+ Plusvalía ${aniosPlazo} años`,
-      sub: "+4% anual sobre valor estimado",
+      sub: `+${PROY_PCT} anual sobre valor estimado`,
       value: plusvaliaCalc,
       fmtValue: "+" + fmtPrecio(plusvaliaCalc),
       fillLeft: pctB3(vmFrancoCLP),
@@ -1201,8 +1205,8 @@ function DrawerLargoPlazo({
       valueColor: "var(--franco-text)",
       isNeg: false,
       tooltip: entregaFutura
-        ? "Franco asume 4% anual sobre el valor estimado de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna. En depto en construcción, la plusvalía cuenta solo desde la entrega."
-        : "Franco asume 4% anual sobre el valor estimado de mercado de la zona. Supuesto conservador — verifica el histórico real de la comuna.",
+        ? `Franco asume ${PROY_PCT} anual parejo (la proyección estándar Franco a futuro) sobre el valor estimado de mercado de la zona. El histórico real de la comuna es el contexto de riesgo sobre ese supuesto. En depto en construcción, la plusvalía cuenta solo desde la entrega.`
+        : `Franco asume ${PROY_PCT} anual parejo (la proyección estándar Franco a futuro) sobre el valor estimado de mercado de la zona. El histórico real de la comuna es el contexto de riesgo sobre ese supuesto.`,
     });
   }
 
@@ -1518,7 +1522,7 @@ function DrawerLargoPlazo({
 
       {/* Mensaje educativo dot Fase 4.8 — supuesto plusvalía */}
       <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● Franco proyecta plusvalía conservadora de 4% anual sobre el valor estimado de mercado de la zona. Verifica si la comuna ha rendido históricamente más o menos para ajustar tus expectativas.
+        ● Franco proyecta plusvalía de {PROY_PCT} anual parejo (la proyección estándar Franco) sobre el valor estimado de mercado de la zona. El histórico de la comuna —arriba o abajo de ese supuesto— es el contexto de riesgo sobre esa apuesta.
       </p>
 
       {/* ─── BLOQUE 2 · TU ESFUERZO TOTAL ─────────────── */}
@@ -2308,7 +2312,7 @@ function DrawerZona({
           (esta sección) vs proyectada (Drawer 04 Largo Plazo). Resuelve
           confusión potencial cuando los números no coinciden. */}
       <p className="font-mono text-[11px] m-0 leading-[1.5] text-[var(--franco-text-secondary)]">
-        ● La plusvalía histórica de la comuna refleja el pasado real. Para proyectar tu venta a 10 años, Franco usa un supuesto conservador del 4% anual.
+        ● La plusvalía histórica de la comuna refleja el pasado real. Para proyectar tu venta a 10 años, Franco usa la proyección estándar Franco: {PROY_PCT} anual parejo, distinta de ese histórico.
       </p>
 
       <ZoneStatsCards
