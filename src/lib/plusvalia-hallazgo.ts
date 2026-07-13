@@ -153,6 +153,15 @@ export function buildHallazgoPlusvalia(p: {
     ? "apreciación histórica de la comuna 2014-2024 (Arenas & Cayo, Tinsa, Propital), no garantía de apreciación futura"
     : "promedio histórico del Gran Santiago, sin datos propios de la comuna — no garantía futura";
 
+  // v.fuente ahora carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el
+  // umbral. Es la fuente única de verdad que los drawers leen (con fallback defensivo al
+  // literal para filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral).
+  // Atribución = la establecida en render (3 fuentes); "Activo Más" del header del dataset
+  // queda fuera hasta confirmar provenance (declarado en el gate F4).
+  const fuenteHistorica = p.tieneData
+    ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital"
+    : "Promedio histórico Gran Santiago 2014-2024";
+
   return {
     id: "plusvalia",
     tipo: "apreciacion_historica",
@@ -161,7 +170,7 @@ export function buildHallazgoPlusvalia(p: {
       refPct: p.ref.pct,
       gapPts: gapRounded,
       banda: p.ref.banda,
-      fuente: p.ref.fuente,
+      fuente: fuenteHistorica,
       scope: p.ref.scope,
       tieneData: p.tieneData,
       modalidad: p.modalidad,

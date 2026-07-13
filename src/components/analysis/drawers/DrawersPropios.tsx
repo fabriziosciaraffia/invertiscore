@@ -21,7 +21,11 @@ import type {
   HallazgoEstructuraCostosStr,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { InfoTooltip } from "@/components/ui/tooltip";
+
+// Proyección estándar Franco a futuro, como texto ("3%") — desde la constante, nunca literal.
+const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 // ── Formato (coma decimal chilena, UTF-8 directo) ──────────────────────────────
 type Currency = "CLP" | "UF";
@@ -677,9 +681,13 @@ export function DrawerPlusvaliaLtr({
   // GRUPO C anti-no-op: si el contrafáctico no mueve el multiplicador a 1 decimal, NO se
   // narra "cae de X a Y" — se reemplaza por la constatación de que el retorno no descansa ahí.
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
-  // FIX-3 — la fuente REAL del histórico está en procedencia.base, NO en v.fuente (que es el
-  // umbral). tieneData distingue dato comunal propio vs fallback (promedio Gran Santiago).
+  // v.fuente ahora carga la PROCEDENCIA HISTÓRICA REAL (F4), fuente única de verdad. Fallback
+  // defensivo para filas persistidas pre-regen (cuya v.fuente aún trae el texto del umbral): si
+  // falta o dice "umbral", cae al literal — idéntico entre la card y ambos drawers (LTR/STR).
   const tieneData = v.tieneData;
+  const fuenteHist = (v.fuente && !/umbral/i.test(v.fuente))
+    ? v.fuente
+    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital" : "Promedio histórico Gran Santiago 2014-2024");
 
   return (
     <div>
@@ -707,7 +715,7 @@ export function DrawerPlusvaliaLtr({
       <Box label="De dónde sale">
         {tieneData ? (
           <>
-            Histórico 2014-2024 de {comunaLabel} · Arenas &amp; Cayo, Tinsa, Propital. Es una{" "}
+            {fuenteHist} (de {comunaLabel}). Es una{" "}
             <b>referencia histórica, no una garantía a futuro</b>: {comunaLabel}{" "}
             {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"} la última década, y nada
             asegura que {historicoNegativo ? "revierta la tendencia" : "lo repita"} los próximos diez años.
@@ -717,7 +725,10 @@ export function DrawerPlusvaliaLtr({
             No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
             real) como referencia — supuesto conservador, sin dato comunal.
           </>
-        )}
+        )}{" "}
+        Hacia adelante es otra cosa: la proyección de patrimonio y TIR usa{" "}
+        <b>{PROYECCION_FRANCO_PCT} anual parejo</b> (la proyección estándar Franco a futuro), no este histórico —
+        el histórico es el contexto de riesgo sobre esa apuesta.
       </Box>
 
       {historicoNegativo ? (
@@ -1153,7 +1164,12 @@ export function DrawerPlusvaliaStr({
   const multSinPlus = pat.valor.aportadoCLP > 0 ? (pat.valor.patrimonioCLP - plusvaliaProj) / pat.valor.aportadoCLP : 0; // escenario derivado (misma base cruda)
   // GRUPO C anti-no-op: round1(hallazgo) vs round1(derivado).
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
-  const tieneData = v.tieneData; // FIX-3 — fuente real del histórico en procedencia.base, no v.fuente
+  const tieneData = v.tieneData;
+  // v.fuente = procedencia histórica real (F4), fuente única de verdad; fallback defensivo al
+  // literal para filas pre-regen (v.fuente con texto del umbral). Idéntico al drawer LTR.
+  const fuenteHist = (v.fuente && !/umbral/i.test(v.fuente))
+    ? v.fuente
+    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital" : "Promedio histórico Gran Santiago 2014-2024");
   // FIX-7 — cierre de caja negativa ramificado por caso: "la historia no respalda" solo es cierto
   // con histórico negativo. Con histórico que sí respalda (positivo) o sin dato comunal, cambia.
   const cierreCaja = !cajaNegativa
@@ -1198,8 +1214,8 @@ export function DrawerPlusvaliaStr({
       <Box label="De dónde sale">
         {tieneData ? (
           <>
-            Histórico 2014-2024 de {comunaLabel} · Arenas &amp; Cayo, Tinsa, Propital. <b>Referencia histórica, no
-            garantía futura.</b> {comunaLabel} {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"}{" "}
+            {fuenteHist} (de {comunaLabel}). <b>Referencia histórica, no garantía futura.</b>{" "}
+            {comunaLabel} {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"}{" "}
             la última década; el modelo asume que {historicoNegativo ? "se revierte" : "lo repite"}, pero es un supuesto.
           </>
         ) : (
@@ -1207,7 +1223,9 @@ export function DrawerPlusvaliaStr({
             No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
             real) como referencia — supuesto conservador, sin dato comunal.
           </>
-        )}
+        )}{" "}
+        Hacia adelante, la proyección de patrimonio y TIR usa <b>{PROYECCION_FRANCO_PCT} anual parejo</b> (la
+        proyección estándar Franco a futuro), no este histórico — el histórico es el contexto de riesgo sobre esa apuesta.
       </Box>
 
       {historicoNegativo ? (

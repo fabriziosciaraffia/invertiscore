@@ -17,6 +17,10 @@
 // cifras, no el método.
 
 import type { Hallazgo } from "@/lib/types";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+
+// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
+const PROYECCION_FRANCO_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 // Formato — espejo de GenericFindingCard (coma decimal chilena, separador de miles punto).
 const pct1 = (n: number) => n.toFixed(1).replace(".", ",");
@@ -89,7 +93,7 @@ export function procedenciaExtendida(
       const aportes = v.incluyeCorretaje
         ? "pie, gastos de cierre, corretaje de compra y los aportes mensuales que el arriendo no cubrió"
         : "pie, gastos de cierre y los aportes mensuales que el arriendo no cubrió";
-      return `Es tu parte a 10 años si vendieras: el valor proyectado del depto menos el saldo del crédito y la comisión de venta, contra todo lo que pusiste (${aportes}). Integra la plusvalía proyectada —4% anual— , lo que amortizas del crédito año a año y el flujo que fuiste inyectando; por eso puede ser favorable aunque el flujo mensual sea negativo, o quedarse corta aunque el depto se valorice. Es una proyección, no una promesa: cambia con la plusvalía real y el precio al que efectivamente vendas.`;
+      return `Es tu parte a 10 años si vendieras: el valor proyectado del depto menos el saldo del crédito y la comisión de venta, contra todo lo que pusiste (${aportes}). Integra la plusvalía proyectada —${PROYECCION_FRANCO_PCT} anual, la proyección estándar Franco— , lo que amortizas del crédito año a año y el flujo que fuiste inyectando; por eso puede ser favorable aunque el flujo mensual sea negativo, o quedarse corta aunque el depto se valorice. Es una proyección, no una promesa: cambia con la plusvalía real y el precio al que efectivamente vendas.`;
     }
     default: {
       // Exhaustividad: si se agrega un tipo de hallazgo sin procedencia, no rompe el render.
