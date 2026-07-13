@@ -1,17 +1,24 @@
 // ============================================================================
-// GOLDEN SET STR (E.1b) — RECOMPUTE + INVARIANTES BS1-BS8
+// GOLDEN SET STR (E.1b) — RECOMPUTE + INVARIANTES BS1-BS8 + BASELINE CLASE (a)
 // ============================================================================
 // Capa 1 (0 tokens): recompute determinístico de los 6 GE (frozen airbnbRaw) + 3 BE
 // (razor-edge a nivel de builder). Corre calcShortTerm → calcFrancoScoreSTR →
 // buildStrHallazgos y verifica los invariantes estructurales BS1-BS8 (of-e1a §Fase 5).
-// No usa baseline exacto (clase a): STR aún no lo tiene — prioridad a los estructurales.
+//
+// F0.5 (rama motor-supuestos): AHORA sí tiene baseline exacto (clase a) — str-baseline.json,
+// la PRE-FOTO de los números que el cambio de semántica del multiplicador (F2) va a mover.
+// checkClassAStr compara el recompute vs esa pre-foto: veredicto/N duros; las cifras
+// (tirPct, multiplicadorCapital, gananciaNeta, valorVenta, capitalInvertido, patrimonio)
+// son drift → candidatas a re-baseline (no bloquean), igual que el tier LTR.
 // Uso: node --env-file=.env.local --import tsx scripts/eval/golden/str-recompute.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import fs from "fs";
+import path from "path";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { calcFrancoScoreSTR } from "../../../src/lib/engines/short-term-score";
 import { buildStrHallazgos } from "../../../src/lib/str-hallazgos";
 import type { Hallazgo } from "../../../src/lib/types";
-import { STR_GE_SEEDS, loadFrozen, type FrozenFixture, type Sintesis } from "./str-seeds";
+import { STR_GE_SEEDS, loadFrozen, type FrozenFixture, type Sintesis, type StrGeSeed } from "./str-seeds";
 import { buildHallazgoRentabilidadStr } from "../../../src/lib/rentabilidad-str-hallazgo";
 import { buildHallazgoSensibilidadStr } from "../../../src/lib/sensibilidad-str-hallazgo";
 import { buildHallazgoEstructuraCostosStr } from "../../../src/lib/estructura-costos-str-hallazgo";
@@ -92,35 +99,119 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   return out;
 }
 
-export function runStrTier(): number {
+// ── F0.5 · Baseline numérico STR (pre-foto para verificar el flip equity) ────
+// Congela por seed GS-STR los números del exit + card que el cambio de semántica del
+// multiplicador (rama motor-supuestos F2) va a mover. En F0.5 los valores son la
+// semántica GANANCIA vigente (STR resta capitalInicial). Sirve de ancla para el gate
+// de F2: mult_equity − mult_ganancia = 1,000 y patrimonio_equity − ganancia = aportado.
+export interface StrBaseline {
+  veredicto: string;
+  score: number;
+  N: number;
+  tirPct: number | null;
+  multiplicadorCapital: number | null;  // exit.multiplicadorCapital (semántica GANANCIA en F0.5)
+  gananciaNeta: number | null;          // exit.gananciaNeta
+  valorVenta: number | null;            // exit.valorVenta
+  capitalInvertido: number | null;      // result.capitalInvertido (= aportado de la card)
+  patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.gananciaNeta en F0.5)
+  patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
+}
+
+export interface StrRecompute { rec: any; score: any; hz: Hallazgo[]; mediana: { mediana: number; n: number } }
+
+// Recompute determinístico de UN seed GE (reusado por el tier de checks y por str-accept).
+export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenFixture>): StrRecompute | null {
+  const fx = frozen[seed.key];
+  if (!fx) return null;
+  const { d, raw, reg } = synth(fx, seed.sintesis);
+  const airbnbData = buildAirbnbData(raw as any, fx.uf);
+  const rec = calcShortTerm(buildInputs(d, airbnbData, fx.uf) as any);
+  const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios,
+    superficie: d.superficieUtil, regulacionEdificio: reg, lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
+    revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
+  // mediana fake confiable para ejercitar sobreprecio: comuna típica.
+  const mediana = { mediana: 3200, n: 12 };
+  const hz = [...(rec.hallazgos ?? []), ...buildStrHallazgos({ result: rec, francoScore: score, comuna: d.comuna || "",
+    precioUF: d.precioCompraUF, superficieM2: d.superficieUtil, piePct: d.piePct, tasaPct: d.tasaInteres,
+    plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false })];
+  return { rec, score, hz, mediana };
+}
+
+// Extrae los HECHOS numéricos STR de un recompute (para congelar o comparar).
+export function strFactsFromSeed(r: StrRecompute): StrBaseline {
+  const exit = r.rec.exitScenario;
+  const patr = r.hz.find((h) => h.id === "patrimonio") as any;
+  return {
+    veredicto: r.score.veredicto,
+    score: r.score.score,
+    N: r.hz.length,
+    tirPct: exit?.tirAnual ?? null,
+    multiplicadorCapital: exit?.multiplicadorCapital ?? null,
+    gananciaNeta: exit?.gananciaNeta ?? null,
+    valorVenta: exit?.valorVenta ?? null,
+    capitalInvertido: r.rec.capitalInvertido ?? null,
+    patrimonioCLP: patr?.valor?.patrimonioCLP ?? null,
+    patrimonioMult: patr?.valor?.multiplicador ?? null,
+  };
+}
+
+function loadStrBaseline(): Record<string, StrBaseline> | null {
+  const p = path.resolve(process.cwd(), "scripts/eval/golden/str-baseline.json");
+  if (!fs.existsSync(p)) return null;
+  return JSON.parse(fs.readFileSync(p, "utf8")).seeds;
+}
+
+function nearStr(a: number | null, b: number | null, tol: number): boolean {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return Math.abs(a - b) <= tol + 1e-9;
+}
+
+// Clase (a) STR vs pre-foto: veredicto/N duros; cifras → drift (candidato re-baseline).
+function checkClassAStr(f: StrBaseline, base: StrBaseline): { hard: number; drift: number; lines: string[] } {
+  const lines: string[] = [];
+  let hard = 0, drift = 0;
+  const hardChk = (rule: string, pass: boolean, detail: string) => { if (!pass) { hard++; lines.push(`         ✗ ${rule}: ${detail}`); } };
+  const numChk = (rule: string, a: number | null, b: number | null, tol: number) => {
+    if (!nearStr(a, b, tol)) { drift++; lines.push(`         ~ ${rule}: ${a} vs ${b}`); }
+  };
+  hardChk("aStr.veredicto", f.veredicto === base.veredicto, `${f.veredicto} vs ${base.veredicto}`);
+  hardChk("aStr.N", f.N === base.N, `N=${f.N} vs ${base.N}`);
+  numChk("aStr.score", f.score, base.score, 0);
+  numChk("aStr.tirPct", f.tirPct, base.tirPct, 0.1);
+  numChk("aStr.multiplicadorCapital", f.multiplicadorCapital, base.multiplicadorCapital, 0.02);
+  numChk("aStr.gananciaNeta", f.gananciaNeta, base.gananciaNeta, 1);
+  numChk("aStr.valorVenta", f.valorVenta, base.valorVenta, 1);
+  numChk("aStr.capitalInvertido", f.capitalInvertido, base.capitalInvertido, 1);
+  numChk("aStr.patrimonioCLP", f.patrimonioCLP, base.patrimonioCLP, 1);
+  numChk("aStr.patrimonioMult", f.patrimonioMult, base.patrimonioMult, 0.02);
+  return { hard, drift, lines };
+}
+
+export function runStrTier(): { hard: number; drift: number } {
   const frozen = loadFrozen();
-  let fallas = 0;
-  console.log("\n─── TIER STR (recompute BS1-BS8, 0 tokens) ───\n");
+  const baseline = loadStrBaseline();
+  let hard = 0, drift = 0;
+  console.log(`\n─── TIER STR (recompute BS1-BS8${baseline ? " + baseline clase a" : ""}, 0 tokens) ───\n`);
 
   for (const seed of STR_GE_SEEDS) {
-    const fx = frozen[seed.key];
-    if (!fx) { console.log(`  ⚠️  ${seed.key}  sin fixture frozen`); fallas++; continue; }
-    const { d, raw, reg } = synth(fx, seed.sintesis);
-    const airbnbData = buildAirbnbData(raw as any, fx.uf);
-    const rec = calcShortTerm(buildInputs(d, airbnbData, fx.uf) as any);
-    const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios,
-      superficie: d.superficieUtil, regulacionEdificio: reg, lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
-      revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);
-    // mediana fake confiable para ejercitar sobreprecio (salvo que no se quiera): usamos una comuna típica.
-    const mediana = { mediana: 3200, n: 12 };
-    const hz = [...(rec.hallazgos ?? []), ...buildStrHallazgos({ result: rec, francoScore: score, comuna: d.comuna || "",
-      precioUF: d.precioCompraUF, superficieM2: d.superficieUtil, piePct: d.piePct, tasaPct: d.tasaInteres,
-      plazoAnios: d.plazoCredito, mediana, valorUF: fx.uf, incluyeCorretaje: false })];
-    const checks = invariantes(hz, score, rec, mediana.mediana != null);
-    const bad = checks.filter((c) => !c.pass);
-    fallas += bad.length;
-    console.log(`  ${bad.length === 0 ? "✓ PASS" : "✗ FAIL"}  ${seed.key}  ${score.veredicto} · N=${hz.length} · ${seed.label}`);
+    const r = recomputeStrSeed(seed, frozen);
+    if (!r) { console.log(`  ⚠️  ${seed.key}  sin fixture frozen`); hard++; continue; }
+    const bad = invariantes(r.hz, r.score, r.rec, r.mediana.mediana != null).filter((c) => !c.pass);
+    let a = { hard: 0, drift: 0, lines: [] as string[] };
+    if (baseline && baseline[seed.key]) a = checkClassAStr(strFactsFromSeed(r), baseline[seed.key]);
+    const seedHard = bad.length + a.hard;
+    hard += seedHard; drift += a.drift;
+    const status = seedHard > 0 ? "✗ FAIL" : a.drift > 0 ? "~ DRIFT" : "✓ PASS";
+    console.log(`  ${status}  ${seed.key}  ${r.score.veredicto} · N=${r.hz.length} · ${seed.label}`);
     for (const b of bad) console.log(`         ✗ ${b.rule}: ${b.detail}`);
+    for (const l of a.lines) console.log(l);
+    if (!baseline) console.log(`         (sin str-baseline.json — corré str-accept.ts para congelar la pre-foto)`);
   }
 
   // ── BE razor-edges (frontera exacta a nivel de builder) ──
   console.log("\n  ── razor-edges (builder) ──");
-  const be = (key: string, cond: boolean, detail: string) => { const ok = cond; if (!ok) fallas++; console.log(`  ${ok ? "✓" : "✗"}  ${key}: ${detail}`); };
+  const be = (key: string, cond: boolean, detail: string) => { const ok = cond; if (!ok) hard++; console.log(`  ${ok ? "✓" : "✗"}  ${key}: ${detail}`); };
   const rFav = buildHallazgoRentabilidadStr({ capRatePct: 5.0, decisividad: 0.5, modalidad: "str" })!;
   const rAdv = buildHallazgoRentabilidadStr({ capRatePct: 4.9, decisividad: 0.5, modalidad: "str" })!;
   be("BE-caprate-str", rFav.direccion === "favorable" && rAdv.direccion === "adverso", `5,0→${rFav.direccion} · 4,9→${rAdv.direccion}`);
@@ -131,12 +222,12 @@ export function runStrTier(): number {
   const cAdv = buildHallazgoEstructuraCostosStr({ costStackPct: 0.41, modalidad: "str" })!;
   be("BE-costos-str", cFav.direccion === "favorable" && cAdv.direccion === "adverso", `40→${cFav.direccion} · 41→${cAdv.direccion}`);
 
-  console.log(`\n  ${fallas === 0 ? "✓ VERDE — GS-STR sin violaciones (BS1-BS8)" : `✗ ${fallas} fallas`}`);
-  return fallas;
+  console.log(`\n  ${hard === 0 ? `✓ VERDE — GS-STR sin violaciones (BS1-BS8${baseline ? " + baseline clase a" : ""})` : `✗ ${hard} fallas`}${drift ? ` · ${drift} drift clase (a) (candidatos a re-baseline)` : ""}`);
+  return { hard, drift };
 }
 
 // Ejecución directa (standalone). El runner lo importa vía runStrTier() sin auto-ejecutar.
 if (process.argv[1] && /str-recompute\.ts$/.test(process.argv[1])) {
-  const f = runStrTier();
-  process.exit(f === 0 ? 0 : 1);
+  const { hard } = runStrTier();
+  process.exit(hard === 0 ? 0 : 1);
 }

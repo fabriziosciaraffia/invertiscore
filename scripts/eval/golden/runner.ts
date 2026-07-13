@@ -68,7 +68,9 @@ function printSeed(r: SeedReport) {
 
   // ── Tier STR (E.1b · GS-STR, 0 tokens). Corre con --str o --all/--full. ──
   if (has("--str") || has("--all") || MODE_FULL) {
-    totalHard += runStrTier();
+    const str = runStrTier();
+    totalHard += str.hard;
+    totalDrift += str.drift;
   }
 
   // ── Tier FULL (opcional) ────────────────────────────────────────────────

@@ -1,0 +1,77 @@
+{
+  "note": "PRE-FOTO clase (a) STR (F0.5, semántica GANANCIA vigente). Re-baseline solo con OK de Fabrizio.",
+  "seeds": {
+    "GE-1": {
+      "veredicto": "COMPRAR",
+      "score": 78,
+      "N": 11,
+      "tirPct": 10.85,
+      "multiplicadorCapital": 1.83,
+      "gananciaNeta": 70442078,
+      "valorVenta": 213425210,
+      "capitalInvertido": 38437848,
+      "patrimonioCLP": 70442078,
+      "patrimonioMult": 1.83
+    },
+    "GE-2": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 60,
+      "N": 12,
+      "tirPct": 7.03,
+      "multiplicadorCapital": 1.12,
+      "gananciaNeta": 41887135,
+      "valorVenta": 166860658,
+      "capitalInvertido": 37284200,
+      "patrimonioCLP": 41887135,
+      "patrimonioMult": 1.12
+    },
+    "GE-3": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 48,
+      "N": 12,
+      "tirPct": 10.43,
+      "multiplicadorCapital": 1.69,
+      "gananciaNeta": 75854013,
+      "valorVenta": 227556222,
+      "capitalInvertido": 45002104,
+      "patrimonioCLP": 75854013,
+      "patrimonioMult": 1.69
+    },
+    "GE-4": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 55,
+      "N": 12,
+      "tirPct": 12.64,
+      "multiplicadorCapital": 2.09,
+      "gananciaNeta": 75365074,
+      "valorVenta": 182451700,
+      "capitalInvertido": 35986464,
+      "patrimonioCLP": 75365074,
+      "patrimonioMult": 2.09
+    },
+    "GE-5": {
+      "veredicto": "AJUSTA SUPUESTOS",
+      "score": 54,
+      "N": 12,
+      "tirPct": 8.09,
+      "multiplicadorCapital": 1.37,
+      "gananciaNeta": 46292799,
+      "valorVenta": 171569741,
+      "capitalInvertido": 33680568,
+      "patrimonioCLP": 46292799,
+      "patrimonioMult": 1.37
+    },
+    "GE-6": {
+      "veredicto": "BUSCAR OTRA",
+      "score": 37,
+      "N": 11,
+      "tirPct": 4.86,
+      "multiplicadorCapital": 0.83,
+      "gananciaNeta": 33468314,
+      "valorVenta": 213008058,
+      "capitalInvertido": 40119560,
+      "patrimonioCLP": 33468314,
+      "patrimonioMult": 0.83
+    }
+  }
+}
