@@ -350,14 +350,18 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // negativo, COMPRAR solo se sostiene si el horizonte cierra favorablemente
   // (equity + plusvalía compensan el aporte mensual). Doctrina: "flujo negativo
   // != mala inversión; mala es cuando flujo neg + plusvalía + equity no cierran".
-  // tir en PORCENTAJE nominal a 10 años (9.16 = 9,16%); multCap ratio crudo (1.51).
+  // tir en PORCENTAJE nominal a 10 años (9.16 = 9,16%); multCap ratio crudo.
+  // El umbral es 2,8 (NO 1,8) desde F2: `multiplicadorCapital` pasó de semántica GANANCIA
+  // (ganancia/capital, break-even 0) a EQUITY (equity/capital, break-even 1). Misma vara,
+  // escala corrida +1: multCap_equity = multCap_ganancia + 1, así que 1,8 → 2,8. El gate
+  // decide EXACTAMENTE lo mismo que antes (preserva veredictos); solo cambió la escala.
   const exit = inputs.results.exitScenario;
   const tir = exit?.tirAnual;
   const multCap = exit?.multiplicadorCapital;
   const horizonteCierraFavorable =
     exit != null &&
     typeof tir === "number" && Number.isFinite(tir) && tir !== 0 &&
-    ((tir >= 10) || (typeof multCap === "number" && multCap >= 1.8));
+    ((tir >= 10) || (typeof multCap === "number" && multCap >= 2.8));
 
   // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
   if (inputs.regulacionEdificio === 'no') {
@@ -387,7 +391,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
       overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
     } else if (base.flujoCajaMensual < 0 && !horizonteCierraFavorable) {
       veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador <1,8x)';
+      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador <2,8x equity)';
     } else if (beRatio > 1.10) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'Break-even >110% del mercado — margen operativo apretado';

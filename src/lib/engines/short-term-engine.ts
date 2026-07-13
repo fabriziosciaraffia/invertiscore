@@ -183,8 +183,14 @@ export interface ExitScenarioSTR {
   saldoCreditoAlVender: number;
   gastosCierre: number;              // 2% del precio venta
   flujoAcumuladoAlVender: number;
-  gananciaNeta: number;              // valorVenta - saldo - cierre + flujoAcum - capitalInicial
-  multiplicadorCapital: number;      // gananciaNeta / capitalInicial
+  // EQUITY al vender (rama motor-supuestos F2): valorVenta - saldo - cierre + flujoAcum.
+  // Ya NO resta capitalInicial → semántica unificada con LTR: es "lo que te queda en la
+  // mano al liquidar", no "la ganancia encima del capital". El nombre `gananciaNeta` se
+  // CONSERVA (no se renombra) para no romper los consumidores que leen filas STR
+  // persistidas pre-regen (SaleBlockSTR, etc.); el rename honesto va en F6, junto al
+  // regen del corpus, cuando ningún consumidor lea el campo con la semántica vieja.
+  gananciaNeta: number;              // = EQUITY: valorVenta - saldo - cierre + flujoAcum
+  multiplicadorCapital: number;      // EQUITY / capitalInicial → ×1 = break-even (antes: ganancia/capital → 0)
   tirAnual: number;                  // TIR % del cashflow año 0 → año N
 }
 
@@ -830,10 +836,13 @@ function buildExitScenario(
   const saldoCreditoAlVender = proy.saldoCredito;
   const gastosCierre = Math.round(valorVenta * GASTOS_CIERRE_VENTA);
   const flujoAcumuladoAlVender = proy.flujoAcumulado;
-  const gananciaNeta = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender - capitalInicial;
-  // Multiplicador CRUDO (rama motor-supuestos): sin redondear; el render/hallazgo
-  // redondea una sola vez. En F1 la semántica sigue siendo GANANCIA (resta capital);
-  // el paso a EQUITY y la re-derivación del gate (1,8→2,8) van en F2.
+  // EQUITY (rama motor-supuestos F2): lo que te queda al vender, SIN restar el capital.
+  // Antes restaba capitalInicial (semántica GANANCIA, break-even 0), lo que hacía que la
+  // card de patrimonio dijera "menos de lo que pusiste" en falso para 0<mult<1. Ahora es
+  // equity/aportado → ×1 = break-even, coherente con la plantilla de la card (compartida
+  // con LTR). El delta exacto vs la semántica vieja es +capitalInicial (patrimonio) y +1
+  // (multiplicador). El multiplicador se emite CRUDO (F1); el render/hallazgo redondea.
+  const gananciaNeta = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender;
   const multiplicadorCapital = capitalInicial > 0
     ? gananciaNeta / capitalInicial
     : 0;
