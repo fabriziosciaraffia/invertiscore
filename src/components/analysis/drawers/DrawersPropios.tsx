@@ -687,7 +687,7 @@ export function DrawerPlusvaliaLtr({
   const tieneData = v.tieneData;
   const fuenteHist = (v.fuente && !/umbral/i.test(v.fuente))
     ? v.fuente
-    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital" : "Promedio histórico Gran Santiago 2014-2024");
+    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más" : "Promedio histórico Gran Santiago 2014-2024");
 
   return (
     <div>
@@ -1169,7 +1169,7 @@ export function DrawerPlusvaliaStr({
   // literal para filas pre-regen (v.fuente con texto del umbral). Idéntico al drawer LTR.
   const fuenteHist = (v.fuente && !/umbral/i.test(v.fuente))
     ? v.fuente
-    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital" : "Promedio histórico Gran Santiago 2014-2024");
+    : (tieneData ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más" : "Promedio histórico Gran Santiago 2014-2024");
   // FIX-7 — cierre de caja negativa ramificado por caso: "la historia no respalda" solo es cierto
   // con histórico negativo. Con histórico que sí respalda (positivo) o sin dato comunal, cambia.
   const cierreCaja = !cajaNegativa

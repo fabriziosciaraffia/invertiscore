@@ -150,16 +150,17 @@ export function buildHallazgoPlusvalia(p: {
   }
 
   const base = p.tieneData
-    ? "apreciación histórica de la comuna 2014-2024 (Arenas & Cayo, Tinsa, Propital), no garantía de apreciación futura"
+    ? "apreciación histórica de la comuna 2014-2024 (Arenas & Cayo, Tinsa, Propital, Activo Más), no garantía de apreciación futura"
     : "promedio histórico del Gran Santiago, sin datos propios de la comuna — no garantía futura";
 
-  // v.fuente ahora carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el
-  // umbral. Es la fuente única de verdad que los drawers leen (con fallback defensivo al
-  // literal para filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral).
-  // Atribución = la establecida en render (3 fuentes); "Activo Más" del header del dataset
-  // queda fuera hasta confirmar provenance (declarado en el gate F4).
+  // v.fuente carga la PROCEDENCIA HISTÓRICA REAL (rama motor-supuestos F4), no el umbral. Es
+  // la fuente única de verdad que los drawers leen (con fallback defensivo al literal para
+  // filas persistidas pre-regen, cuya v.fuente aún trae el texto del umbral). Atribución = las
+  // 4 fuentes que el header del dataset declara (plusvalia-historica.ts: "Arenas & Cayo,
+  // Propital, Tinsa, Activo Más Inversiones"). Los 3 literales de fallback (drawers LTR/STR +
+  // card) son idénticos a este string.
   const fuenteHistorica = p.tieneData
-    ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital"
+    ? "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más"
     : "Promedio histórico Gran Santiago 2014-2024";
 
   return {

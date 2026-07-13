@@ -153,7 +153,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         // F4 — lee v.fuente (procedencia histórica real, fuente única) con fallback defensivo al
         // literal para filas pre-regen (v.fuente con texto del umbral). Fallback GS → sin footer.
         procedencia: v.tieneData
-          ? ((v.fuente && !/umbral/i.test(v.fuente)) ? v.fuente : "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital")
+          ? ((v.fuente && !/umbral/i.test(v.fuente)) ? v.fuente : "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital, Activo Más")
           : undefined,
       };
     }
