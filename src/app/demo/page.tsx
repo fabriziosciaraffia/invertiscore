@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import FrancoLogo from "@/components/franco-logo";
 import { PremiumResults } from "@/app/analisis/[id]/results-client";
 import type { FullAnalysisResult, AnalisisInput, AIAnalysisV2 } from "@/lib/types";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 // ─── Hardcoded demo data ────────────────────────────
 const UF_CLP = 38800;
@@ -61,7 +62,9 @@ function generateProjections() {
   const creditoCLP = PRECIO_CLP * (1 - PIE_PCT / 100);
   const tasaMes = TASA_INTERES / 100 / 12;
   const n = PLAZO * 12;
-  const plusvalia = 0.04;
+  // Unificado a la proyección estándar Franco (rama motor-supuestos): el demo es la
+  // promesa pública y no puede proyectar con vara más optimista que el motor.
+  const plusvalia = PLUSVALIA_PROYECCION_ANUAL;
   const arriendoGr = 0.035;
 
   const calcSaldo = (m: number) => {
