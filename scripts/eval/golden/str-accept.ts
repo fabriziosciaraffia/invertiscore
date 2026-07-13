@@ -29,7 +29,10 @@ for (const s of STR_GE_SEEDS) {
 }
 
 const payload = {
-  note: "PRE-FOTO clase (a) STR (F0.5, semántica GANANCIA vigente). Re-baseline solo con OK de Fabrizio.",
+  note: "POST-FOTO clase (a) STR — semántica EQUITY (rama motor-supuestos F2). El multiplicador " +
+    "y gananciaNeta/patrimonioCLP ya NO restan capitalInicial; vs la pre-foto F0.5 (ganancia) el " +
+    "patrimonio subió +capital y el multiplicador +1 (flip verificado exacto por of-f2-flip-preseed/" +
+    "corpus-verify; las 11 filas testigo 0<mult<1 voltearon a >1). Re-baseline solo con OK de Fabrizio.",
   seeds,
 };
 const path = join(__dirname, "str-baseline.json");

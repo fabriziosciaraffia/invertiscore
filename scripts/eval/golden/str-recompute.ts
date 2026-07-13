@@ -99,21 +99,22 @@ function invariantes(hz: Hallazgo[], score: any, rec: any, medianaConfiable: boo
   return out;
 }
 
-// ── F0.5 · Baseline numérico STR (pre-foto para verificar el flip equity) ────
-// Congela por seed GS-STR los números del exit + card que el cambio de semántica del
-// multiplicador (rama motor-supuestos F2) va a mover. En F0.5 los valores son la
-// semántica GANANCIA vigente (STR resta capitalInicial). Sirve de ancla para el gate
-// de F2: mult_equity − mult_ganancia = 1,000 y patrimonio_equity − ganancia = aportado.
+// ── Baseline numérico STR (clase a) ─────────────────────────────────────────
+// Congela por seed GS-STR los números del exit + card. Historia:
+//   · F0.5 (commit ec78e5f): pre-foto en semántica GANANCIA (STR restaba capitalInicial).
+//   · F2 (re-baseline): post-foto en semántica EQUITY (ya NO resta capital). Vs la pre-foto,
+//     el patrimonio subió +capital y el multiplicador +1 (flip verificado exacto).
+// checkClassAStr compara el recompute vigente contra esta baseline: veredicto/N duros, cifras drift.
 export interface StrBaseline {
   veredicto: string;
   score: number;
   N: number;
   tirPct: number | null;
-  multiplicadorCapital: number | null;  // exit.multiplicadorCapital (semántica GANANCIA en F0.5)
-  gananciaNeta: number | null;          // exit.gananciaNeta
+  multiplicadorCapital: number | null;  // exit.multiplicadorCapital (EQUITY desde F2; ganancia en F0.5)
+  gananciaNeta: number | null;          // exit.gananciaNeta (= equity desde F2)
   valorVenta: number | null;            // exit.valorVenta
   capitalInvertido: number | null;      // result.capitalInvertido (= aportado de la card)
-  patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.gananciaNeta en F0.5)
+  patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.gananciaNeta)
   patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
 }
 
