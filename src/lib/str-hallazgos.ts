@@ -187,7 +187,7 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     out.push(buildHallazgoTIR({ tirPct: exit.tirAnual, modalidad: "str" }));
     out.push(
       buildHallazgoPatrimonio({
-        patrimonioCLP: exit.gananciaNeta,
+        patrimonioCLP: exit.equityCLP,
         aportadoCLP: r.capitalInvertido,
         valorUF: ctx.valorUF,
         incluyeCorretaje: ctx.incluyeCorretaje,

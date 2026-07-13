@@ -183,13 +183,11 @@ export interface ExitScenarioSTR {
   saldoCreditoAlVender: number;
   gastosCierre: number;              // 2% del precio venta
   flujoAcumuladoAlVender: number;
-  // EQUITY al vender (rama motor-supuestos F2): valorVenta - saldo - cierre + flujoAcum.
-  // Ya NO resta capitalInicial → semántica unificada con LTR: es "lo que te queda en la
-  // mano al liquidar", no "la ganancia encima del capital". El nombre `gananciaNeta` se
-  // CONSERVA (no se renombra) para no romper los consumidores que leen filas STR
-  // persistidas pre-regen (SaleBlockSTR, etc.); el rename honesto va en F6, junto al
-  // regen del corpus, cuando ningún consumidor lea el campo con la semántica vieja.
-  gananciaNeta: number;              // = EQUITY: valorVenta - saldo - cierre + flujoAcum
+  // EQUITY al vender: valorVenta - saldo - cierre + flujoAcum. NO resta capitalInicial —
+  // "lo que te queda en la mano al liquidar", semántica unificada con LTR. Renombrado de
+  // `gananciaNeta` (F2) a `equityCLP` (F6, junto al regen del corpus); los lectores de filas
+  // persistidas pre-regen usan fallback `equityCLP ?? gananciaNeta` (ver SaleBlockSTR).
+  equityCLP: number;                 // = EQUITY: valorVenta - saldo - cierre + flujoAcum
   multiplicadorCapital: number;      // EQUITY / capitalInicial → ×1 = break-even (antes: ganancia/capital → 0)
   tirAnual: number;                  // TIR % del cashflow año 0 → año N
 }
@@ -828,7 +826,7 @@ function buildExitScenario(
   if (!proy) {
     return {
       yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
-      flujoAcumuladoAlVender: 0, gananciaNeta: 0, multiplicadorCapital: 0, tirAnual: 0,
+      flujoAcumuladoAlVender: 0, equityCLP: 0, multiplicadorCapital: 0, tirAnual: 0,
     };
   }
 
@@ -842,9 +840,9 @@ function buildExitScenario(
   // equity/aportado → ×1 = break-even, coherente con la plantilla de la card (compartida
   // con LTR). El delta exacto vs la semántica vieja es +capitalInicial (patrimonio) y +1
   // (multiplicador). El multiplicador se emite CRUDO (F1); el render/hallazgo redondea.
-  const gananciaNeta = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender;
+  const equityCLP = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender;
   const multiplicadorCapital = capitalInicial > 0
-    ? gananciaNeta / capitalInicial
+    ? equityCLP / capitalInicial
     : 0;
 
   // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
@@ -865,7 +863,7 @@ function buildExitScenario(
     saldoCreditoAlVender: Math.round(saldoCreditoAlVender),
     gastosCierre,
     flujoAcumuladoAlVender: Math.round(flujoAcumuladoAlVender),
-    gananciaNeta: Math.round(gananciaNeta),
+    equityCLP: Math.round(equityCLP),
     multiplicadorCapital,
     tirAnual,
   };

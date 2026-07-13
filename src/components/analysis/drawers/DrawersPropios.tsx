@@ -1071,7 +1071,7 @@ export function DrawerPatrimonioStr({
     return <SinDatos>Datos insuficientes para el patrimonio a 10 años (falta el escenario de salida).</SinDatos>;
   }
   const anios = exit.yearVenta ?? 10; // GRUPO D — horizonte del exit STR, no un 10 hardcoded
-  // EQUITY (rama motor-supuestos F2): `patrimonioCLP` (= exit.gananciaNeta) ya es EQUITY final —
+  // EQUITY (rama motor-supuestos F2): `patrimonioCLP` (= exit.equityCLP) ya es EQUITY final —
   // lo que te queda en la mano al vender (neto de deuda y comisión, más flujo acumulado), NO la
   // ganancia encima del capital. El multiplicador es equity/aportado → ×1 = break-even, misma vara
   // que LTR. Copy y umbrales alineados a la card (patrimonio-hallazgo): <1 adverso · [1,2) borde ·

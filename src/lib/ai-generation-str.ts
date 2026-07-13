@@ -575,7 +575,7 @@ Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana r
 
 === PROYECCIÓN LARGO PLAZO (plusvalía proyectada: ${PROY_PCT} anual flat, proyección estándar Franco) ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)} + flujos acumulados ${fmtCLPSigned(projY10.flujoAcumulado)})
-Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano, neto de deuda y comisión; NO "ganancia neta"): ${fmtCLPSigned(exit.gananciaNeta)}
+Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano, neto de deuda y comisión; NO "ganancia neta"): ${fmtCLPSigned(exit.equityCLP)}
 TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${exit.multiplicadorCapital.toFixed(2)}x` : "(proyecciones long-term no disponibles)"}
 
 === ATRACTORES DE DEMANDA EN LA ZONA ===

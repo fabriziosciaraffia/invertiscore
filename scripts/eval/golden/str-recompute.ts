@@ -8,7 +8,7 @@
 // F0.5 (rama motor-supuestos): AHORA sí tiene baseline exacto (clase a) — str-baseline.json,
 // la PRE-FOTO de los números que el cambio de semántica del multiplicador (F2) va a mover.
 // checkClassAStr compara el recompute vs esa pre-foto: veredicto/N duros; las cifras
-// (tirPct, multiplicadorCapital, gananciaNeta, valorVenta, capitalInvertido, patrimonio)
+// (tirPct, multiplicadorCapital, equityCLP, valorVenta, capitalInvertido, patrimonio)
 // son drift → candidatas a re-baseline (no bloquean), igual que el tier LTR.
 // Uso: node --env-file=.env.local --import tsx scripts/eval/golden/str-recompute.ts
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -111,10 +111,10 @@ export interface StrBaseline {
   N: number;
   tirPct: number | null;
   multiplicadorCapital: number | null;  // exit.multiplicadorCapital (EQUITY desde F2; ganancia en F0.5)
-  gananciaNeta: number | null;          // exit.gananciaNeta (= equity desde F2)
+  equityCLP: number | null;             // exit.equityCLP (= equity al vender)
   valorVenta: number | null;            // exit.valorVenta
   capitalInvertido: number | null;      // result.capitalInvertido (= aportado de la card)
-  patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.gananciaNeta)
+  patrimonioCLP: number | null;         // hallazgo patrimonio valor.patrimonioCLP (= exit.equityCLP)
   patrimonioMult: number | null;        // hallazgo patrimonio valor.multiplicador (card; redondeado 2 dec)
 }
 
@@ -148,7 +148,7 @@ export function strFactsFromSeed(r: StrRecompute): StrBaseline {
     N: r.hz.length,
     tirPct: exit?.tirAnual ?? null,
     multiplicadorCapital: exit?.multiplicadorCapital ?? null,
-    gananciaNeta: exit?.gananciaNeta ?? null,
+    equityCLP: exit?.equityCLP ?? null,
     valorVenta: exit?.valorVenta ?? null,
     capitalInvertido: r.rec.capitalInvertido ?? null,
     patrimonioCLP: patr?.valor?.patrimonioCLP ?? null,
@@ -181,7 +181,7 @@ function checkClassAStr(f: StrBaseline, base: StrBaseline): { hard: number; drif
   numChk("aStr.score", f.score, base.score, 0);
   numChk("aStr.tirPct", f.tirPct, base.tirPct, 0.1);
   numChk("aStr.multiplicadorCapital", f.multiplicadorCapital, base.multiplicadorCapital, 0.02);
-  numChk("aStr.gananciaNeta", f.gananciaNeta, base.gananciaNeta, 1);
+  numChk("aStr.equityCLP", f.equityCLP, base.equityCLP, 1);
   numChk("aStr.valorVenta", f.valorVenta, base.valorVenta, 1);
   numChk("aStr.capitalInvertido", f.capitalInvertido, base.capitalInvertido, 1);
   numChk("aStr.patrimonioCLP", f.patrimonioCLP, base.patrimonioCLP, 1);

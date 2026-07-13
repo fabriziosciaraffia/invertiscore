@@ -27,10 +27,11 @@ export function SaleBlockSTR({
     );
   }
 
-  // EQUITY (rama motor-supuestos F2): `gananciaNeta` ya es equity (lo que te queda al vender,
-  // sin restar el capital). "Crítico" = terminas con menos de lo que pusiste (equity < capital,
-  // ×mult < 1), coherente con la card de patrimonio (tramo adverso).
-  const tuParte = ex.gananciaNeta;
+  // EQUITY: `equityCLP` es lo que te queda al vender (sin restar el capital). "Crítico" =
+  // terminas con menos de lo que pusiste (equity < capital, ×mult < 1), coherente con la card.
+  // FALLBACK de lectura: filas STR persistidas ANTES del regen F6 traen el nombre viejo
+  // `gananciaNeta` (mismo valor equity desde F2); el `??` las cubre hasta que el regen las reescriba.
+  const tuParte = ex.equityCLP ?? (ex as unknown as { gananciaNeta: number }).gananciaNeta;
   const capital = results.capitalInvertido;
   const bajoLoPuesto = tuParte < capital;
   const mult = ex.multiplicadorCapital;
