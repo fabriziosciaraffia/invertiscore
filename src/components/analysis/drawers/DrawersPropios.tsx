@@ -50,21 +50,13 @@ function cmpMostrado(a: number, b: number): "sobre" | "en" | "bajo" {
   return ra > rb ? "sobre" : ra < rb ? "bajo" : "en";
 }
 // Consecuencia del multiplicador tras el stress "0% plano", por round1(mult) — tres salidas.
-// DOS helpers nombrados por SEMÁNTICA porque los motores difieren y NO se pueden cruzar
-// (of-gate2c HUECO-A · TODO backlog motor: unificar a una sola semántica de multiplicador):
-//   · EQUITY (LTR): gananciaNeta = equity final; multiplicador = equity/aportado → ×1 = break-even.
-//   · GANANCIA (STR): gananciaNeta resta el capital; multiplicador = ganancia/capital → 0 = break-even.
+// UNA sola semántica desde F2 (motor-supuestos): EQUITY para LTR y STR. multiplicador =
+// equity/aportado → ×1 = break-even (recuperas lo puesto), <1 terminas con menos, <0 en rojo.
 function consecuenciaMultEquity(m: number): string {
   const r = round1(m);
   if (r >= 1) return "seguirías cerrando a favor, pero buena parte de la ganancia se apoya en ese supuesto";
   if (r >= 0) return "terminarías con menos de lo que pusiste";
   return "no recuperarías ni lo aportado: el resultado neto queda en rojo";
-}
-function consecuenciaMultGanancia(m: number): string {
-  const r = round1(m);
-  if (r >= 0) return "seguirías cerrando a favor: recuperas lo puesto y te llevas ganancia encima";
-  if (r > -1) return "recuperarías solo parte de lo que pusiste";
-  return "perderías todo lo aportado, y más";
 }
 
 // Monto completo respetando toggle CLP/UF.
@@ -954,8 +946,8 @@ export function DrawerTIRStr({
 }) {
   const v = hallazgo.valor;
   const exit = results.exitScenario;
-  // HUECO-B — multiplicador de ESTADO desde el hallazgo patrimonio (única fuente); sin él,
-  // el guard decide. ⚠ STR: patrimonioCLP = ganancia neta de capital (of-gate2c HUECO-A).
+  // Multiplicador de ESTADO desde el hallazgo patrimonio (única fuente); sin él, el guard
+  // decide. Desde F2: STR patrimonioCLP = EQUITY (equity/aportado → ×1 break-even), como LTR.
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
   if (!exit || !pat) return <SinDatos>Datos insuficientes para el detalle de retorno (falta el escenario de salida).</SinDatos>;
 
@@ -971,7 +963,7 @@ export function DrawerTIRStr({
   const bruto = brutoSinFlujo + flujo;
 
   // Estado desde el hallazgo; contrafáctico "sin la resta" derivado de la MISMA base cruda.
-  const net = pat.valor.patrimonioCLP; // ganancia neta (STR)
+  const net = pat.valor.patrimonioCLP; // equity (STR, desde F2): lo que te queda al vender
   const aportado = pat.valor.aportadoCLP;
   const multActual = pat.valor.multiplicador;
   const netSinResta = net - flujo; // flujo<0 ⇒ suma |flujo|
@@ -1028,8 +1020,8 @@ export function DrawerTIRStr({
             y la amortización ({fmtCompact(amort, currency, valorUF)}): juntas suman {fmtCompact(brutoSinFlujo, currency, valorUF)},
             y recién después baja a {fmtCompact(bruto, currency, valorUF)} cuando le restas la caja. El {pctStr(tirPct)} es la
             tasa sobre lo que queda al final —tras esa resta y los costos de vender—, no antes. Sin la resta de la
-            caja, tu ganancia pasaría de <b>~{fmtCompact(net, currency, valorUF)} a ~{fmtCompact(netSinResta, currency, valorUF)}</b> — de{" "}
-            {multStr(multActual)} a {multStr(multSinResta)} sobre lo aportado.
+            caja, lo que terminas teniendo pasaría de <b>~{fmtCompact(net, currency, valorUF)} a ~{fmtCompact(netSinResta, currency, valorUF)}</b> — de{" "}
+            {multStr(multActual)} a {multStr(multSinResta)} sobre lo que pusiste.
           </>
         ) : (
           <>
@@ -1044,7 +1036,7 @@ export function DrawerTIRStr({
         diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle
         con los ojos abiertos.
       </Box>
-      <Note>No repite el drawer de patrimonio: acá se explica la TASA (por qué {pctStr(tirPct)}); allá, la GANANCIA total (cuánto te queda encima).</Note>
+      <Note>No repite el drawer de patrimonio: acá se explica la TASA (por qué {pctStr(tirPct)}); allá, el STOCK (cuánto es tuyo al final).</Note>
     </div>
   );
 }
@@ -1068,14 +1060,14 @@ export function DrawerPatrimonioStr({
     return <SinDatos>Datos insuficientes para el patrimonio a 10 años (falta el escenario de salida).</SinDatos>;
   }
   const anios = exit.yearVenta ?? 10; // GRUPO D — horizonte del exit STR, no un 10 hardcoded
-  // HUECO-A — en STR `patrimonioCLP` (= exit.gananciaNeta) es GANANCIA neta de capital, no equity
-  // final: la ganancia que te llevas ENCIMA de lo aportado (te llevas aportado + ganancia). El
-  // multiplicador es ganancia/capital → break-even = 0. Copy y tonos calibrados a esa semántica.
-  // (Desviación declarada del mockup, aprobada por verdad. TODO backlog motor: unificar semántica.)
-  const ganancia = v.patrimonioCLP;
+  // EQUITY (rama motor-supuestos F2): `patrimonioCLP` (= exit.gananciaNeta) ya es EQUITY final —
+  // lo que te queda en la mano al vender (neto de deuda y comisión, más flujo acumulado), NO la
+  // ganancia encima del capital. El multiplicador es equity/aportado → ×1 = break-even, misma vara
+  // que LTR. Copy y umbrales alineados a la card (patrimonio-hallazgo): <1 adverso · [1,2) borde ·
+  // ≥2 favorable → la fraseCanonica de la card y este drawer dicen lo mismo.
+  const patrimonio = v.patrimonioCLP;
   const aportado = v.aportadoCLP;
   const mult = v.multiplicador;
-  const mR = round1(mult);
   const amort = Math.max(results.montoCredito - exit.saldoCreditoAlVender, 0);
   const flujoAcum = exit.flujoAcumuladoAlVender;
   const selfLiquidating = flujoAcum >= 0;
@@ -1086,22 +1078,19 @@ export function DrawerPatrimonioStr({
   return (
     <div>
       <Lead>
-        A {anios} años, tras vender, saldar el crédito y descontar todo lo que fuiste poniendo, esta es la
-        ganancia que te queda encima — y de dónde sale.
+        El depto vale una cosa; lo tuyo es esa cifra menos la deuda que aún le debes al banco. A {anios}{" "}
+        años, tras vender y saldar el crédito, esto es lo que te queda en la mano frente a lo que fuiste
+        poniendo.
       </Lead>
 
       <Chips
-        label="Ganancia vs lo que pusiste"
+        label="Lo tuyo vs lo que pusiste"
         cells={[
-          { k: "Ganancia neta", v: fmtMoney(ganancia, currency, valorUF), tone: mR >= 0 ? "plain" : "red" },
+          { k: "Tu parte", v: fmtMoney(patrimonio, currency, valorUF) },
           { k: "Aportaste", v: fmtMoney(aportado, currency, valorUF) },
-          { k: "Multiplicador", v: multStr(mult), tone: mR >= 1 ? "pos" : mR >= 0 ? "plain" : "red" },
+          { k: "Multiplicador", v: multStr(mult), tone: mult >= 2 ? "pos" : mult < 1 ? "red" : "plain" },
         ]}
-        foot={
-          mR >= 0
-            ? `${multStr(mult)} = por cada peso aportado, ${dec1(mult)} de ganancia encima — recuperas lo puesto y te llevas eso además.`
-            : `${multStr(mult)} = por cada peso aportado pierdes ${dec1(Math.abs(mult))} — te llevas menos de lo que pusiste.`
-        }
+        foot={`${fmtMoney(patrimonio, currency, valorUF)} contra los ${fmtMoney(aportado, currency, valorUF)} que pusiste entre pie, gastos y aportes del camino.`}
       />
 
       {selfLiquidating ? (
@@ -1118,14 +1107,14 @@ export function DrawerPatrimonioStr({
         </Box>
       )}
       <Box label="Qué significa">
-        {mR >= 1
-          ? `Un ${multStr(mult)}: ganas más de lo que pusiste, apoyado en la deuda que el arriendo amortiza y la plusvalía proyectada. `
-          : mR >= 0
-            ? `Un ${multStr(mult)}: cierras a favor pero la ganancia es acotada — recuperas lo puesto y algo encima. Buena parte se apoya en que la plusvalía proyectada se cumpla (la ves en el drawer de plusvalía). `
-            : `Un ${multStr(mult)}: la operación cierra en rojo — no recuperas todo lo aportado. El resultado depende de que la plusvalía proyectada se cumpla, y aun así no alcanza. `}
+        {mult >= 2
+          ? `Multiplicas por ${dec1(mult).replace(",0", "")} lo que pusiste, apalancado por dos motores: la deuda que el arriendo amortiza y la plusvalía proyectada. `
+          : mult >= 1
+            ? `Terminas con más de lo que pusiste (${multStr(mult)}), pero el margen es acotado y buena parte se apoya en la plusvalía proyectada (la ves en el drawer de plusvalía). `
+            : `Terminas con menos de lo que pusiste (${multStr(mult)}): ni lo que amortizas ni la plusvalía proyectada alcanzan a devolverte lo que fuiste aportando. `}
         {selfLiquidating
-          ? "El patrimonio se construye con caja a favor, que es lo más firme."
-          : "Además el flujo es negativo: la ganancia se construye a pesar de la caja, no gracias a ella."}
+          ? "Tu parte se construye con caja a favor, que es lo más firme."
+          : "Además el flujo es negativo: tu parte se construye a pesar de la caja, no gracias a ella."}
       </Box>
     </div>
   );
@@ -1143,9 +1132,9 @@ export function DrawerPlusvaliaStr({
 }) {
   const v = hallazgo.valor;
   const exit = results.exitScenario;
-  // HUECO-B — multiplicador de ESTADO desde el hallazgo patrimonio (única fuente de verdad).
-  // Si falta el hallazgo, el guard decide (SinDatos), sin fallback a recompute. ⚠ En STR el
-  // multiplicador es ganancia/capital (of-gate2c HUECO-A): break-even = 0, no 1.
+  // Multiplicador de ESTADO desde el hallazgo patrimonio (única fuente de verdad). Si falta
+  // el hallazgo, el guard decide (SinDatos), sin fallback a recompute. Desde F2: STR es
+  // EQUITY (equity/aportado → ×1 break-even), misma vara que LTR.
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
   // GRUPO B — guard: el stress y la lectura de la caja necesitan exit; el estado, el hallazgo.
   if (!exit || !pat) {
@@ -1227,7 +1216,7 @@ export function DrawerPlusvaliaStr({
             <>
               Pese al retroceso histórico, la proyección a 10 años igual valoriza el depto — es un supuesto del
               modelo, no el histórico de {comunaLabel}. Si la comuna solo se queda plana (0% real), tu
-              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultGanancia(multSinPlus)}.
+              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}.
               Y quedarse plana ya sería mejor que su tendencia real. No compres asumiendo que la comuna se da vuelta.
               {cierreCaja}
             </>
@@ -1240,7 +1229,7 @@ export function DrawerPlusvaliaStr({
           {contrafactualVisible ? (
             <>
               {cajaNegativa ? "Acá está el nervio del deal: si" : "Si"} la comuna no se aprecia (0% real), tu
-              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultGanancia(multSinPlus)}.
+              multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultEquity(multSinPlus)}.
               {cierreCaja}
             </>
           ) : (

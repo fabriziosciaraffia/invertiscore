@@ -27,7 +27,13 @@ export function SaleBlockSTR({
     );
   }
 
-  const isCriticalGain = ex.gananciaNeta < 0;
+  // EQUITY (rama motor-supuestos F2): `gananciaNeta` ya es equity (lo que te queda al vender,
+  // sin restar el capital). "Crítico" = terminas con menos de lo que pusiste (equity < capital,
+  // ×mult < 1), coherente con la card de patrimonio (tramo adverso).
+  const tuParte = ex.gananciaNeta;
+  const capital = results.capitalInvertido;
+  const bajoLoPuesto = tuParte < capital;
+  const mult = ex.multiplicadorCapital;
 
   return (
     <div>
@@ -44,34 +50,33 @@ export function SaleBlockSTR({
           className="font-mono uppercase mb-2"
           style={{ fontSize: 10, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          AL VENDER EN EL AÑO {ex.yearVenta} TE QUEDA
+          AL VENDER EN EL AÑO {ex.yearVenta}, TU PARTE ES
         </p>
         <p
           className="font-mono font-bold m-0"
           style={{
             fontSize: 28,
-            color: isCriticalGain ? "var(--signal-red)" : "var(--franco-text)",
+            color: bajoLoPuesto ? "var(--signal-red)" : "var(--franco-text)",
             lineHeight: 1,
           }}
         >
-          {(ex.gananciaNeta >= 0 ? "+" : "") + fmtMoney(ex.gananciaNeta, currency, valorUF)}
+          {fmtMoney(tuParte, currency, valorUF)}
         </p>
         <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-2 m-0">
-          Ganancia neta sobre tu capital inicial · TIR {fmtPct(ex.tirAnual, 1)} · {ex.multiplicadorCapital.toFixed(2).replace(".", ",")}x del capital
+          Lo que te queda neto de deuda y comisión · TIR {fmtPct(ex.tirAnual, 1)} · ×{mult.toFixed(2).replace(".", ",")} sobre el capital de {fmtMoney(capital, currency, valorUF)}
         </p>
       </div>
 
-      {/* Tabla breakdown */}
+      {/* Tabla breakdown — cómo se arma tu parte (equity), sin restar el capital */}
       <div>
         <Row label="Valor de venta estimado" value={fmtMoney(ex.valorVenta, currency, valorUF)} />
         <Row label="Saldo crédito al vender" value={"-" + fmtMoney(ex.saldoCreditoAlVender, currency, valorUF)} />
         <Row label="Comisión venta + cierre (2%)" value={"-" + fmtMoney(ex.gastosCierre, currency, valorUF)} />
         <Row label="Flujo acumulado a fecha" value={(ex.flujoAcumuladoAlVender >= 0 ? "+" : "") + fmtMoney(ex.flujoAcumuladoAlVender, currency, valorUF)} />
-        <Row label="Capital inicial puesto" value={"-" + fmtMoney(results.capitalInvertido, currency, valorUF)} />
         <RowTotal
-          label="Ganancia neta"
-          value={(ex.gananciaNeta >= 0 ? "+" : "") + fmtMoney(ex.gananciaNeta, currency, valorUF)}
-          isCritical={isCriticalGain}
+          label="Tu parte al vender"
+          value={fmtMoney(tuParte, currency, valorUF)}
+          isCritical={bajoLoPuesto}
         />
       </div>
 
@@ -80,9 +85,9 @@ export function SaleBlockSTR({
         className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-4 pt-4 leading-[1.6]"
         style={{ borderTop: "0.5px dashed var(--franco-border)" }}
       >
-        {isCriticalGain
-          ? `La venta no recupera el capital + flujos. Para que la operación cierre, la plusvalía debe superar el supuesto del 3% anual o tu horizonte debe extenderse más allá del año ${ex.yearVenta}.`
-          : `Sostener la operación ${ex.yearVenta} años convierte el capital de ${fmtMoney(results.capitalInvertido, currency, valorUF)} en una ganancia neta de ${fmtMoney(ex.gananciaNeta, currency, valorUF)} — equivalente a una TIR anualizada del ${fmtPct(ex.tirAnual, 1)} considerando flujos + venta.`}
+        {bajoLoPuesto
+          ? `Al vender terminas con menos de lo que pusiste (×${mult.toFixed(2).replace(".", ",")} sobre el capital). Para que cierre a favor, la plusvalía debe superar el supuesto del 3% anual o tu horizonte debe extenderse más allá del año ${ex.yearVenta}.`
+          : `Sostener la operación ${ex.yearVenta} años deja tu parte en ${fmtMoney(tuParte, currency, valorUF)} sobre el capital de ${fmtMoney(capital, currency, valorUF)} que pusiste — ×${mult.toFixed(2).replace(".", ",")}, equivalente a una TIR anualizada del ${fmtPct(ex.tirAnual, 1)} considerando flujos + venta.`}
       </p>
     </div>
   );
