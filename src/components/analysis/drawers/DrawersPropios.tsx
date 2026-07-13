@@ -94,6 +94,10 @@ function fmtCompact(n: number, currency: Currency, valorUF: number): string {
 }
 const signCompact = (n: number, currency: Currency, valorUF: number) =>
   (n < 0 ? "−" : "+") + fmtCompact(n, currency, valorUF);
+// Monto completo con SIGNO explícito (− tipográfico / + ) — para valores de flujo en prosa
+// que pueden ser negativos (FIX-2). Cuando la frase NO declara dirección, la cifra la lleva.
+const fmtMoneySigned = (n: number, currency: Currency, valorUF: number) =>
+  (n < 0 ? "−" : "+") + fmtMoney(n, currency, valorUF);
 
 // ── Primitivas de presentación ─────────────────────────────────────────────────
 export function Lead({ children }: { children: ReactNode }) {
@@ -681,7 +685,9 @@ export function DrawerPlusvaliaLtr({
   // GRUPO C anti-no-op: si el contrafáctico no mueve el multiplicador a 1 decimal, NO se
   // narra "cae de X a Y" — se reemplaza por la constatación de que el retorno no descansa ahí.
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
-  const procedencia = v.tieneData ? (v.fuente || "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital") : v.fuente;
+  // FIX-3 — la fuente REAL del histórico está en procedencia.base, NO en v.fuente (que es el
+  // umbral). tieneData distingue dato comunal propio vs fallback (promedio Gran Santiago).
+  const tieneData = v.tieneData;
 
   return (
     <div>
@@ -698,17 +704,28 @@ export function DrawerPlusvaliaLtr({
       </Lead>
 
       <Chips
-        label={`Histórico de ${comunaLabel}`}
+        label={tieneData ? `Histórico de ${comunaLabel}` : "Apreciación de referencia"}
         cells={[
-          { k: "Se valorizó", v: pctStr(anual), small: "anual" },
+          { k: tieneData ? "Se valorizó" : "Referencia (GS)", v: pctStr(anual), small: "anual" },
           { k: "Umbral real", v: pctStr(umbral), small: "anual" },
         ]}
         foot={`${pctStr(anual)} anual — ${cmp} el ${pctStr(umbral)} que marca la apreciación real (valor por sobre inflación).`}
       />
 
       <Box label="De dónde sale">
-        {procedencia}. Es una <b>referencia histórica, no una garantía a futuro</b>: la comuna se movió con ese
-        ritmo la última década, pero nada asegura que lo repita los próximos diez años.
+        {tieneData ? (
+          <>
+            Histórico 2014-2024 de {comunaLabel} · Arenas &amp; Cayo, Tinsa, Propital. Es una{" "}
+            <b>referencia histórica, no una garantía a futuro</b>: {comunaLabel}{" "}
+            {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"} la última década, y nada
+            asegura que {historicoNegativo ? "revierta la tendencia" : "lo repita"} los próximos diez años.
+          </>
+        ) : (
+          <>
+            No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
+            real) como referencia — supuesto conservador, sin dato comunal.
+          </>
+        )}
       </Box>
 
       {historicoNegativo ? (
@@ -777,6 +794,8 @@ export function DrawerFinanciamientoStr({
   const creditoRatio = (1 - newPieFrac) / (1 - oldPieFrac);
   const deltaCuota = Math.max(cuota - cuota * creditoRatio, 0);
   const newFlujo = flujo + deltaCuota;
+  // FIX-5 — adjetivo → número: qué % de la sangría recorta el ahorro de cuota.
+  const recorte = flujo < 0 ? Math.round((deltaCuota / Math.abs(flujo)) * 100) : 0;
 
   const spread = v.spreadBps;
   const tasaMsg =
@@ -830,8 +849,8 @@ export function DrawerFinanciamientoStr({
             <p className="font-body m-0" style={{ fontSize: 12.5, lineHeight: 1.55, color: "var(--franco-text)" }}>
               Un solo movimiento, tres efectos encadenados: pones ~{fmtCompact(extraPie, currency, valorUF)} más de
               pie el día uno, la cuota baja ~{fmtMoney(deltaCuota, currency, valorUF)} al mes, y con eso tu flujo
-              mejora de {fmtMoney(flujo, currency, valorUF)} a {fmtMoney(newFlujo, currency, valorUF)} mensuales.
-              {newFlujo < 0 ? " No lo deja neutro, pero le saca una parte grande a la sangría" : " Con eso el flujo se da vuelta"}{" "}
+              mejora de {fmtMoneySigned(flujo, currency, valorUF)} a {fmtMoneySigned(newFlujo, currency, valorUF)} mensuales.
+              {newFlujo < 0 ? ` No lo deja neutro, pero le recorta un ~${recorte}% a la sangría` : " Con eso el flujo se da vuelta"}{" "}
               — y es lo único que no depende del mercado ni de la ocupación, solo de cuánto pones día uno.
             </p>
           </div>
@@ -903,7 +922,7 @@ export function DrawerPrecioStr({
           { k: "Valor estimado", v: fmtUF(valorEstimadoUF) },
           { k: "Margen", v: signCompact(margenCLP, currency, valorUF), tone: margenCLP >= 0 ? "pos" : "red" },
         ]}
-        foot={`Sobre tus ${Math.round(superficie)} m² a mediana comunal, el mercado estimaría ~${fmtUF(valorEstimadoUF)}. ${margenCLP >= 0 ? "Pagas" : "Pagas de más"} ~${fmtCompact(margenCLP, currency, valorUF)} ${margenCLP >= 0 ? "menos" : ""}.`}
+        foot={`Sobre tus ${Math.round(superficie)} m² a mediana comunal, el mercado estimaría ~${fmtUF(valorEstimadoUF)}. ${margenCLP >= 0 ? `Pagas ~${fmtCompact(margenCLP, currency, valorUF)} menos` : `Pagas ~${fmtCompact(margenCLP, currency, valorUF)} de más`}.`}
       />
 
       <Box label="De dónde sale (sin adornos)">
@@ -975,7 +994,8 @@ export function DrawerTIRStr({
           gloss="la rentabilidad anual de toda tu inversión"
           tip="TIR = rentabilidad anual de toda tu inversión, juntando caja, amortización y venta."
         />{" "}
-        es {pctStr(tirPct)}, sobre el piso de {pctStr(umbral)}.{" "}
+        es {pctStr(tirPct)}
+        {margen.tone === "red" ? ` — bajo el piso de ${pctStr(umbral)}. ` : `, sobre el piso de ${pctStr(umbral)}. `}
         {flujoResta
           ? "Pero acá hay una vuelta importante: uno de los tres motores del retorno no suma, resta — y ese porcentaje ya lo trae descontado."
           : "Se arma de tres motores; vale ver cuál lo carga."}
@@ -1024,7 +1044,7 @@ export function DrawerTIRStr({
         diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle
         con los ojos abiertos.
       </Box>
-      <Note>No repite el drawer de patrimonio: acá se explica la TASA (por qué {pctStr(tirPct)}); allá, el STOCK (cuánto es tuyo).</Note>
+      <Note>No repite el drawer de patrimonio: acá se explica la TASA (por qué {pctStr(tirPct)}); allá, la GANANCIA total (cuánto te queda encima).</Note>
     </div>
   );
 }
@@ -1066,8 +1086,8 @@ export function DrawerPatrimonioStr({
   return (
     <div>
       <Lead>
-        El depto vale una cosa y a 10 años lo tuyo es esa cifra menos la deuda. A {anios} años, tras vender,
-        saldar el crédito y descontar lo que pusiste, esto es la ganancia que te queda encima.
+        A {anios} años, tras vender, saldar el crédito y descontar todo lo que fuiste poniendo, esta es la
+        ganancia que te queda encima — y de dónde sale.
       </Lead>
 
       <Chips
@@ -1144,7 +1164,7 @@ export function DrawerPlusvaliaStr({
   const multSinPlus = pat.valor.aportadoCLP > 0 ? (pat.valor.patrimonioCLP - plusvaliaProj) / pat.valor.aportadoCLP : 0; // escenario derivado (misma base cruda)
   // GRUPO C anti-no-op: round1(hallazgo) vs round1(derivado).
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
-  const procedencia = v.tieneData ? (v.fuente || "Histórico 2014-2024 · Arenas & Cayo, Tinsa, Propital") : v.fuente;
+  const tieneData = v.tieneData; // FIX-3 — fuente real del histórico en procedencia.base, no v.fuente
 
   return (
     <div>
@@ -1169,17 +1189,27 @@ export function DrawerPlusvaliaStr({
       </Lead>
 
       <Chips
-        label={`Histórico de ${comunaLabel}`}
+        label={tieneData ? `Histórico de ${comunaLabel}` : "Apreciación de referencia"}
         cells={[
-          { k: "Se valorizó", v: pctStr(anual), small: "anual" },
+          { k: tieneData ? "Se valorizó" : "Referencia (GS)", v: pctStr(anual), small: "anual" },
           { k: "Umbral real", v: pctStr(umbral), small: "anual" },
         ]}
         foot={`${pctStr(anual)} anual — ${cmp} el ${pctStr(umbral)} que marca la apreciación real (valor por sobre inflación).`}
       />
 
       <Box label="De dónde sale">
-        {procedencia}. <b>Referencia histórica, no garantía futura.</b> La comuna se movió con ese ritmo la
-        última década; el modelo asume que lo repite, pero es un supuesto.
+        {tieneData ? (
+          <>
+            Histórico 2014-2024 de {comunaLabel} · Arenas &amp; Cayo, Tinsa, Propital. <b>Referencia histórica, no
+            garantía futura.</b> {comunaLabel} {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"}{" "}
+            la última década; el modelo asume que {historicoNegativo ? "revierta" : "lo repita"}, pero es un supuesto.
+          </>
+        ) : (
+          <>
+            No hay histórico propio de {comunaLabel}: usamos el <b>promedio del Gran Santiago</b> (~{pctStr(anual)}{" "}
+            real) como referencia — supuesto conservador, sin dato comunal.
+          </>
+        )}
       </Box>
 
       {historicoNegativo ? (
@@ -1267,17 +1297,22 @@ export function DrawerEstructuraCostosStr({
 
       <Box label="Qué significa">
         {seVa}% está {dentroDeVara ? "dentro de lo típico" : "sobre la vara típica"} para una renta corta — {dentroDeVara ? "no es acá donde se rompe el deal" : "acá sí hay grasa que recortar"}.
+        {/* FIX-4 · matriz 2×2 (vara × flujo) */}
         {flujoHoy < 0
-          ? " El problema del flujo negativo viene de la ocupación y la cuota, no de costos inflados. Cada punto que bajes de comisión o servicios va directo a tu bolsillo, pero no esperes que un recorte de costos dé vuelta el mes."
-          : " Cada punto que bajes de comisión o servicios va directo a tu bolsillo."}
+          ? dentroDeVara
+            ? " El problema del flujo negativo viene de la ocupación y la cuota, no de costos inflados. Cada punto que bajes de comisión o servicios va directo a tu bolsillo, pero no esperes que un recorte de costos dé vuelta el mes."
+            : " Acá los costos inflados son parte del problema: recortarlos ayuda de verdad. Pero con esta cuota y esta ocupación, no esperes que solo ese recorte dé vuelta el mes."
+          : dentroDeVara
+            ? " Cada punto que bajes de comisión o servicios va directo a tu bolsillo."
+            : " Los costos están sobre la vara: recortarlos mejora directo tu bolsillo — es la palanca más limpia acá."}
       </Box>
       {gestionComparable && (
         <Box label="La única palanca real: cómo lo gestionas">
           La diferencia grande no está en los insumos, está en quién administra. Gestionándolo tú, el flujo es{" "}
-          <b>{fmtMoney(strAuto.flujoCajaMensual, currency, valorUF)}/mes</b>. Con administrador profesional, la
+          <b>{fmtMoneySigned(strAuto.flujoCajaMensual, currency, valorUF)}/mes</b>. Con administrador profesional, la
           comisión sube de {fmtMoney(strAuto.comisionMensual, currency, valorUF)} a{" "}
           {fmtMoney(strAdmin.comisionMensual, currency, valorUF)} y el flujo cae a{" "}
-          <b>{fmtMoney(strAdmin.flujoCajaMensual, currency, valorUF)}/mes</b>. En un corto tan apretado, tercerizar
+          <b>{fmtMoneySigned(strAdmin.flujoCajaMensual, currency, valorUF)}/mes</b>. En un corto tan apretado, tercerizar
           la gestión se come la operación: si no vas a administrarlo tú, los números no dan.
         </Box>
       )}
