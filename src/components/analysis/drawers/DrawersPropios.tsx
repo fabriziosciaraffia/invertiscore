@@ -1165,6 +1165,15 @@ export function DrawerPlusvaliaStr({
   // GRUPO C anti-no-op: round1(hallazgo) vs round1(derivado).
   const contrafactualVisible = round1(multActual) !== round1(multSinPlus);
   const tieneData = v.tieneData; // FIX-3 — fuente real del histórico en procedencia.base, no v.fuente
+  // FIX-7 — cierre de caja negativa ramificado por caso: "la historia no respalda" solo es cierto
+  // con histórico negativo. Con histórico que sí respalda (positivo) o sin dato comunal, cambia.
+  const cierreCaja = !cajaNegativa
+    ? ""
+    : historicoNegativo
+      ? " Con la caja también negativa, el deal descansa completo en un supuesto que la historia de la comuna no respalda."
+      : tieneData
+        ? " Con la caja también negativa, el deal descansa completo en que esa valorización se sostenga los próximos diez años."
+        : " Con la caja también negativa, el deal descansa completo en ese supuesto de referencia — sin dato comunal que lo respalde.";
 
   return (
     <div>
@@ -1202,7 +1211,7 @@ export function DrawerPlusvaliaStr({
           <>
             Histórico 2014-2024 de {comunaLabel} · Arenas &amp; Cayo, Tinsa, Propital. <b>Referencia histórica, no
             garantía futura.</b> {comunaLabel} {historicoNegativo ? "venía cayendo a ese ritmo" : "se movió con ese ritmo"}{" "}
-            la última década; el modelo asume que {historicoNegativo ? "revierta" : "lo repita"}, pero es un supuesto.
+            la última década; el modelo asume que {historicoNegativo ? "se revierte" : "lo repite"}, pero es un supuesto.
           </>
         ) : (
           <>
@@ -1220,7 +1229,7 @@ export function DrawerPlusvaliaStr({
               modelo, no el histórico de {comunaLabel}. Si la comuna solo se queda plana (0% real), tu
               multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultGanancia(multSinPlus)}.
               Y quedarse plana ya sería mejor que su tendencia real. No compres asumiendo que la comuna se da vuelta.
-              {cajaNegativa ? " Con la caja también negativa, el deal descansa completo en un supuesto que la historia de la comuna no respalda." : ""}
+              {cierreCaja}
             </>
           ) : (
             <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
@@ -1232,7 +1241,7 @@ export function DrawerPlusvaliaStr({
             <>
               {cajaNegativa ? "Acá está el nervio del deal: si" : "Si"} la comuna no se aprecia (0% real), tu
               multiplicador cae de <b>{multStr(multActual)} a {multStr(multSinPlus)}</b>: {consecuenciaMultGanancia(multSinPlus)}.
-              {cajaNegativa ? " Con la caja también negativa, el deal descansa completo en un supuesto que la historia de la comuna no respalda." : ""}
+              {cierreCaja}
             </>
           ) : (
             <>La proyección no le carga retorno relevante a la valorización: lo que ves en TIR y patrimonio se sostiene del arriendo y la amortización.</>
