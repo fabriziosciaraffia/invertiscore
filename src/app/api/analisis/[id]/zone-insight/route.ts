@@ -456,6 +456,7 @@ interface InsightAIContext {
   arriendoCLP: number;
   valorUF: number;
   plusvaliaAnual?: number;
+  plusvaliaFallback?: boolean;
   precioM2?: { tuDepto: number; medianaComuna: number; diffPct: number } | null;
   oferta?: { rangoArriendoMin: number; rangoArriendoMax: number; percentilTuDepto: number } | null;
 }
@@ -507,7 +508,9 @@ async function generateInsightAI(
     // años de la misma comuna sería ~37% — no confundir un valor con el otro.
     // La tasa de proyección de los umbrales (REGLA 1/8, hoy 3%) es la PROYECCIÓN
     // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
-    finLines.push(`- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}% (cifra ANUAL, no acumulada 10 años).`);
+    finLines.push(ctx.plusvaliaFallback
+      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
+      : `- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}% (cifra ANUAL, no acumulada 10 años).`);
   }
 
   const finBlock = finLines.length > 0 ? `\n\nContexto financiero del depto (usar solo montos presentes acá):\n${finLines.join("\n")}` : "";
@@ -708,6 +711,7 @@ export async function GET(
       arriendoCLP: arriendoEstimadoCLP,
       valorUF: ufValue,
       plusvaliaAnual: plusvaliaHistorica.anualizada,
+      plusvaliaFallback: !histo, // sin dato propio de la comuna → referencia Gran Santiago
       precioM2: precioM2,
       oferta: ofertaComparable
         ? {

@@ -470,7 +470,7 @@ La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la
 - Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%, Huechuraba 3,0%): la proyección está alineada con la trayectoria observada.
 - Histórica < ${PROY_PCT} pero positiva (ej. Las Condes 2,7%, San Miguel 2,2%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
 - Histórica negativa (ej. Santiago -1,1%, El Bosque -0,7%): la proyección es una apuesta a recuperación frente a una década de pérdida.
-- Sin data histórica para la comuna: la proyección es supuesto puro, sin ancla observable.
+- Sin data histórica para la comuna (fallback Gran Santiago): la proyección es supuesto puro, sin ancla observable. Y NUNCA atribuyas el promedio Gran Santiago a la comuna ("X promedió/subió/creció Y%") — decí explícito "sin dato histórico propio de la comuna, usamos el promedio del Gran Santiago como referencia".
 
 PROHIBIDO:
 - "la plusvalía está sobreestimada"
@@ -1062,7 +1062,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += " Comuna con plusvalía BAJA.";
       else plusvaliaHistoricaInfo += " Comuna con plusvalía MUY BAJA o NEGATIVA — cuidado.";
     } else {
-      plusvaliaHistoricaInfo = `Sin datos históricos de plusvalía para ${comunaNorm}. Se usa promedio Gran Santiago (${PLUSVALIA_DEFAULT.anualizada}% anual).`;
+      plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Decilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${PLUSVALIA_DEFAULT.anualizada}% anual) como referencia".`;
     }
 
     const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
