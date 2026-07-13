@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 import type { FullAnalysisResult } from "@/lib/types";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import type { ShortTermResult, SensibilidadPrecioRow } from "@/lib/engines/short-term-engine";
 import { fmtMoney, fmtPct } from "@/components/analysis/utils";
 
@@ -391,7 +392,7 @@ export function DrawerRiesgos({
           },
           {
             titulo: "Plusvalía ajustada por mercado",
-            descripcion: "El supuesto de 3-4% anual no aplica en todas las comunas. Si la zona está estancada, el patrimonio Y10 sufre.",
+            descripcion: `El supuesto de ${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}% anual (la proyección estándar Franco) no aplica igual en todas las comunas. Si la zona está estancada, el patrimonio Y10 sufre.`,
           },
         ]}
       />
