@@ -23,6 +23,7 @@ import { buildPrecioVsComuna } from "./precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "./sobreprecio-hallazgo";
 import { findNearestStation } from "./metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "./plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "./plusvalia-proyeccion";
 import {
   TASA_MERCADO_FALLBACK,
   calcTasaConSubsidio,
@@ -54,7 +55,9 @@ export function getMantencionRate(antiguedad: number): number {
 // histórica per-comuna que sí usa el scoring (:823-824) y el hallazgo de plusvalía.
 // Es incoherente: infla/depila el patrimonio proyectado respecto del score. Pendiente
 // de unificar (reusar PLUSVALIA_HISTORICA[comuna].anualizada como default del proyector).
-const PLUSVALIA_ANUAL = 0.04;
+// Tasa de proyección de plusvalía a futuro — fuente única en plusvalia-proyeccion.ts (3%).
+// Unificada LTR+STR en la rama motor-supuestos (antes 0.04 acá, 0.03 en STR).
+const PLUSVALIA_ANUAL = PLUSVALIA_PROYECCION_ANUAL;
 const ARRIENDO_INFLACION = 0.035;
 const GGCC_INFLACION = 0.03;
 const INFLACION_UF = 0.03; // UF tracks inflation ~3%/yr — dividendo in CLP grows at this rate
@@ -551,7 +554,7 @@ export function calcProjections(args: {
   metrics: AnalysisMetrics;
   ufClp: number;            // valor de la UF en CLP usado para precioCLP/valor mercado
   plazoVenta?: number;      // años a proyectar (default 20, motor histórico)
-  plusvaliaAnual?: number;  // decimal: 0.04 = 4%/año (default PLUSVALIA_ANUAL)
+  plusvaliaAnual?: number;  // decimal (default PLUSVALIA_ANUAL = PLUSVALIA_PROYECCION_ANUAL, 3%/año)
 }): YearProjection[] {
   const { input, metrics, ufClp } = args;
   const plazoVenta = args.plazoVenta ?? 20;
@@ -701,8 +704,10 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     ? Math.round((gananciaSobreTotal / totalAportado) * 10000) / 100
     : 0;
 
+  // Multiplicador CRUDO (rama motor-supuestos): el motor emite sin redondear; el
+  // render/hallazgo redondea una sola vez (todos los consumidores usan .toFixed/fmt).
   const multiplicadorCapital = totalAportado > 0
-    ? Math.round((retornoTotal / totalAportado) * 100) / 100
+    ? retornoTotal / totalAportado
     : 0;
 
   // TIR: T0 = -inversionInicial. No se modifica aquí: los aportes mensuales
@@ -1352,7 +1357,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   if (input.estadoVenta !== "inmediata") {
     const mesesEspera = calcMesesHastaEntrega(input);
     if (mesesEspera > 0) {
-      pros.push(`Comprando con entrega futura, acumulas ${mesesEspera} meses de plusvalía (4%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1.04, mesesEspera / 12))} UF.`);
+      pros.push(`Comprando con entrega futura, acumulas ${mesesEspera} meses de plusvalía (${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, mesesEspera / 12))} UF.`);
     }
   }
   if (pros.length === 0)

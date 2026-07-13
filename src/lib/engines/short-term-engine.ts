@@ -17,6 +17,7 @@ import {
   type RecomendacionModalidadSTR,
 } from "./str-universo-santiago";
 import { calcInversionInicialCLP } from "../inversion-inicial";
+import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "../capex-puesta-a-punto";
 import type { Hallazgo } from "../types";
 
@@ -460,7 +461,8 @@ export const STR_ADR_FACTOR = {
 } as const;
 
 // Ronda 4b — paridad estructural con LTR.
-const PLUSVALIA_ANUAL_DEFAULT = 0.03;   // 3% nominal anual.
+// Tasa de proyección de plusvalía a futuro — fuente única en plusvalia-proyeccion.ts (3%).
+const PLUSVALIA_ANUAL_DEFAULT = PLUSVALIA_PROYECCION_ANUAL;   // 3% nominal anual (unificado LTR+STR).
 const HORIZONTE_DEFAULT = 10;           // años proyectados.
 const GASTOS_CIERRE_VENTA = 0.02;       // 2% comisión + costos al vender.
 
@@ -829,8 +831,11 @@ function buildExitScenario(
   const gastosCierre = Math.round(valorVenta * GASTOS_CIERRE_VENTA);
   const flujoAcumuladoAlVender = proy.flujoAcumulado;
   const gananciaNeta = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender - capitalInicial;
+  // Multiplicador CRUDO (rama motor-supuestos): sin redondear; el render/hallazgo
+  // redondea una sola vez. En F1 la semántica sigue siendo GANANCIA (resta capital);
+  // el paso a EQUITY y la re-derivación del gate (1,8→2,8) van en F2.
   const multiplicadorCapital = capitalInicial > 0
-    ? Math.round((gananciaNeta / capitalInicial) * 100) / 100
+    ? gananciaNeta / capitalInicial
     : 0;
 
   // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
