@@ -132,8 +132,9 @@ export function buildHallazgoPatrimonio(p: {
     magnitudContinua,
     procedencia: {
       base: "Patrimonio a 10 años sobre lo que aportaste, del escenario de venta",
-      // media: integra una proyección de venta a 10 años (plusvalía 4%/año), no es un dato
-      // firme como el flujo declarado, pero tampoco tan especulativo como para ser baja.
+      // media: integra una proyección de venta a 10 años (plusvalía estándar Franco, ver
+      // plusvalia-proyeccion.ts), no es un dato firme como el flujo declarado, pero tampoco
+      // tan especulativo como para ser baja.
       confianza: "media",
     },
     titular,
