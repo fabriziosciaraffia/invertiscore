@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 // ============================================================
 // Constants
@@ -195,7 +196,9 @@ const step3MobileYears = data10.filter((d) => [1, 3, 5, 7, 10].includes(d.y));
 // ============================================================
 export default function LeverageSection() {
   const [horizon, setHorizon] = useState(10);
-  const [plusvalia, setPlusvalia] = useState(4);
+  // Default = tasa de proyección estándar Franco (PLUSVALIA_PROYECCION_ANUAL, 3%), no un
+  // literal suelto. Math.round evita el float de 0.03*100. Rango del slider [0,8] step 0,5.
+  const [plusvalia, setPlusvalia] = useState(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100));
   const dynamicData = useMemo(
     () => calcLeverageData(horizon, plusvalia),
     [horizon, plusvalia]

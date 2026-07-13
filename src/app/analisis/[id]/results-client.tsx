@@ -20,6 +20,7 @@ import { SubjectCardGrid } from "@/components/analysis/SubjectCardGrid";
 import { hasAiV2 } from "@/components/analysis/AIInsightSection";
 import { SimulationProvider } from "@/contexts/SimulationContext";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 
 // El valor de la UF llega siempre como prop desde el server (`ufValue`) y se
@@ -122,7 +123,10 @@ export function PremiumResults({
   const posthog = usePostHog();
   const [horizonYears, setHorizonYears] = useState(10);
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
-  const [plusvaliaRate, setPlusvaliaRate] = useState(4.0);
+  // Default del slider = la MISMA tasa que proyecta el motor (PLUSVALIA_PROYECCION_ANUAL,
+  // 3%). Así la simulación abre coincidiendo con el análisis estático de arriba; mover el
+  // slider es explorar, no corregir. Math.round evita el float de 0.03*100.
+  const [plusvaliaRate, setPlusvaliaRate] = useState(Math.round(PLUSVALIA_PROYECCION_ANUAL * 100));
   // P5 Fase 24 — Sliders huérfanos eliminados (Opción A). Estos valores
   // afectan dynamicProjections pero el user nunca pudo modificarlos. Si se
   // expone en el futuro, rehacer limpio en SliderSimulacion bajo "Avanzado".
