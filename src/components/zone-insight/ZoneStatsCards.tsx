@@ -2,6 +2,7 @@
 
 import type { ZoneInsightData } from "@/hooks/useZoneInsight";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 
 function fmtCLP(v: number): string {
   return "$" + Math.round(v).toLocaleString("es-CL");
@@ -153,7 +154,7 @@ export function ZoneStatsCards({
           value={`+${plus.valor}%`}
           sub={plusSub}
           tone={plusTone}
-          tooltip="Rendimiento histórico real de la comuna en los últimos 10 años. Distinto del supuesto conservador (4% anual) que Franco usa para proyectar la venta a futuro."
+          tooltip={`Rendimiento histórico real de la comuna en los últimos 10 años. Distinto de la proyección estándar Franco (${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}% anual parejo) que se usa para proyectar la venta a futuro — el histórico es el contexto de riesgo sobre ese supuesto.`}
         />
 
         {precioM2 ? (

@@ -36,6 +36,11 @@ import {
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+
+// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
+// que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
+const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
@@ -112,6 +117,10 @@ Activa los que sumen al caso. Si el ángulo cambia o refuerza la decisión, va. 
 **Ángulo 2 — Costos operativos vs ingreso bruto.** Si el input marca que costos+comisión superan el rango sano que el motor reporta, menciónalo en \`rentabilidad.contenido\`. Usa el rango que trae el input, no uno inventado.
 
 **Ángulo 3 — Instrumentos alternativos.** ACTIVAR en \`largoPlazo.contenido\` casi siempre. Comparar TIR vs depósito UF / fondo / arriendo largo SIN contextualizar esfuerzo es trampa: STR exige gestión activa u operador; el depósito UF no exige nada; el arriendo largo es 1/10 del esfuerzo.
+
+**Plusvalía proyectada (jerarquía) — en \`largoPlazo.contenido\`.** La proyección de patrimonio usa ${PROY_PCT} anual flat: la proyección estándar Franco a futuro, la misma que muestra el drawer de plusvalía. La histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre esa apuesta, NO una proyección sustituta: histórica > ${PROY_PCT} → la proyección es conservadora vs lo que la comuna ya mostró; ≈ ${PROY_PCT} → alineada; < ${PROY_PCT} positiva → descansa en un cambio de zona; negativa (ej. Santiago -1,1%) → es una apuesta a recuperación que la comuna aún no muestra; sin data comunal → supuesto puro. PROHIBIDO: "tu comuna se aprecia ${PROY_PCT}", "la histórica no respalda la proyección", o sugerir una proyección distinta al ${PROY_PCT}. VÁLIDO como riesgo condicional: "si la comuna se estanca (0% real), tu multiplicador y TIR caen".
+
+**Patrimonio = EQUITY (no ganancia).** El "patrimonio a 10 años" / "tu parte al vender" es lo que te queda en la mano al liquidar (valor de venta − deuda − comisión + flujos acumulados), NO la ganancia por encima del capital. El multiplicador es equity/aportado → ×1 = recuperas lo puesto, ≥2 = doblas. NUNCA lo llames "ganancia neta" ni digas "recuperas el capital y te llevas ganancia encima": di "tu parte", "lo que es tuyo a la venta", coherente con la card y el drawer de patrimonio (SaleBlockSTR dice lo mismo).
 
 **Ángulo 4 — Negociación del precio y subsidio.** Si la rentabilidad es marginal y el precio tiene grasa, sugiere un descuento concreto (usa la tabla de sensibilidad de precio del input) en \`vsLTR.estrategiaSugerida\`. Subsidio Ley 21.748: si el input trae \`subsidioTasa.califica=true\` Y \`aplicado=false\`, OBLIGATORIO mencionar la palanca en \`vsLTR.estrategiaSugerida\` u \`operacion.contenido\` ("califica para el subsidio MINVU: la tasa baja ~0,6 pp, el dividendo baja unos $X, el flujo mejora en la misma magnitud"). Sin inventar montos exactos.
 
@@ -564,10 +573,10 @@ Para no poner plata de tu bolsillo, este depto necesita ingresos brutos de ${fmt
 === ESTABILIZACIÓN INICIAL (no "ramp-up" en el output) ===
 Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana reseñas; pérdida estimada acumulada de ese período: ${fmtCLP(r.perdidaRampUp)}.
 
-=== PROYECCIÓN LARGO PLAZO ===
+=== PROYECCIÓN LARGO PLAZO (plusvalía proyectada: ${PROY_PCT} anual flat, proyección estándar Franco) ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)} + flujos acumulados ${fmtCLPSigned(projY10.flujoAcumulado)})
-Ganancia neta al vender año ${exit.yearVenta}: ${fmtCLPSigned(exit.gananciaNeta)}
-TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}% · Multiplicador capital: ${exit.multiplicadorCapital.toFixed(2)}x` : "(proyecciones long-term no disponibles)"}
+Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano, neto de deuda y comisión; NO "ganancia neta"): ${fmtCLPSigned(exit.gananciaNeta)}
+TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${exit.multiplicadorCapital.toFixed(2)}x` : "(proyecciones long-term no disponibles)"}
 
 === ATRACTORES DE DEMANDA EN LA ZONA ===
 Metro más cercano: ${metroName} a ${distMetro}m

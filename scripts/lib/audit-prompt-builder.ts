@@ -15,6 +15,7 @@
 import { SYSTEM_PROMPT } from "../../src/lib/ai-generation";
 import { findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "../../src/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "../../src/lib/contribuciones";
 import {
   TASA_MERCADO_FALLBACK,
@@ -97,8 +98,9 @@ export async function buildLtrPrompts(
     : m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
   const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
   const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
-  const valorProp5 = Math.round(m.precioCLP * Math.pow(1.04, 5));
-  const valorProp10 = Math.round(m.precioCLP * Math.pow(1.04, 10));
+  // Espejo del prod (ai-generation.ts): misma constante → no puede driftar en la tasa.
+  const valorProp5 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 5));
+  const valorProp10 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 10));
   const dividendoSiTasaSube1 = creditoCLP > 0
     ? Math.round((creditoCLP * ((input.tasaInteres + 1) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 1) / 100 / 12, -(input.plazoCredito * 12))))
     : 0;
@@ -339,7 +341,7 @@ VARIABLES DE NEGOCIACIÓN
 PROYECCIÓN Y ALTERNATIVAS
 - flujoNegativoAcumulado5anios: ${fmtCLP(flujoNegAcum5)}
 - flujoNegativoAcumulado10anios: ${fmtCLP(flujoNegAcum10)}
-- valorPropiedadProyectado10anios (4%): ${fmtCLP(valorProp10)}
+- valorPropiedadProyectado10anios (${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%): ${fmtCLP(valorProp10)}
 - gananciaNetaAlVender10anios: ${fmtCLP(exit.gananciaNeta)}
 - depositoUFAl5pct10anios: ${fmtCLP(datoDP)}
 - fondoMutuoAl7pct10anios: ${fmtCLP(datoFM)}

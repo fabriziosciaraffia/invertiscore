@@ -5,6 +5,11 @@ import { createClient } from "@/lib/supabase/server";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { getNearbyAttractors, type AttractorTipo } from "@/lib/data/attractors";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+
+// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, mismo framing
+// que el render y REGLA 10 del prompt LTR. Nunca literal tipeado.
+const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 
 const anthropic = new Anthropic();
@@ -347,11 +352,11 @@ percentilTuDepto (percentil del arriendo dentro del rango local):
   > P90 → "muy caro para la zona"
 
 plusvaliaAnual (histórica anualizada 2014-2024 de la comuna):
-  < 3% → "débil vs la proyección de plusvalía a futuro de 4% — la histórica observada de Gran Santiago promedia 3% anual"
-  3–5% → "alineada con la proyección de plusvalía a futuro de 4%"
-  > 5% → "fuerte vs la proyección de plusvalía a futuro de 4%"
+  < ${PROY_PCT} → "débil vs la proyección de plusvalía a futuro de ${PROY_PCT} (la proyección estándar Franco)"
+  ${PROY_PCT}–5% → "alineada o sobre la proyección de plusvalía a futuro de ${PROY_PCT}"
+  > 5% → "fuerte vs la proyección de plusvalía a futuro de ${PROY_PCT}"
 
-CRÍTICO: el "4%" en estos umbrales es la PROYECCIÓN del motor (supuesto canónico para todos los cálculos), NO una observación histórica. El promedio histórico observado de Gran Santiago es 3% anual, distinto del 4% proyectado. Cuando el narrative cite "4%", debe quedar claro al usuario que es una proyección a futuro, no un dato observado.
+CRÍTICO: el "${PROY_PCT}" de estos umbrales es la PROYECCIÓN estándar Franco a futuro (supuesto parejo del modelo para todos los cálculos), NO una afirmación de que la comuna se aprecia ${PROY_PCT}. Coincide numéricamente con el promedio histórico observado del Gran Santiago (~3%), pero son cosas distintas: una es supuesto a futuro, la otra dato del pasado. Cuando el narrative cite "${PROY_PCT}", debe quedar claro al usuario que es una proyección a futuro, no un dato observado ni una promesa sobre la comuna.
 
 Prohibido recitar el número sin interpretarlo. Si el narrative menciona "+8.2%" o "P81", debe seguir con la lectura cualitativa. Si los datos contradicen un cierre optimista, escribe el cierre que dice la verdad — no el que vende.
 
@@ -401,25 +406,25 @@ REGLA 7 — \`headline\` Y \`preview\` SIGUEN LA MISMA DOCTRINA
 
 REGLA 8 — Plusvalía: jerarquía canónica IA ↔ motor
 
-La proyección del motor es 4% anual flat. Es canónica para los cálculos del análisis (TIR, Cash-on-Cash, valor venta, patrimonio proyectado). La histórica de la comuna que recibís en el contexto es CONTEXTO DE RIESGO sobre esa apuesta, no proyección alternativa.
+La proyección base es ${PROY_PCT} anual flat — la proyección estándar Franco a futuro. Es canónica para los cálculos del análisis (TIR, Cash-on-Cash, valor venta, patrimonio proyectado). La histórica de la comuna que recibís en el contexto es CONTEXTO DE RIESGO sobre esa apuesta, no proyección alternativa. NUNCA digas "la comuna se aprecia ${PROY_PCT}": es un supuesto parejo del modelo, no una afirmación sobre la comuna.
 
-Cuando interpretes la histórica vs la proyección 4%:
-- Histórica > 4%: la proyección es conservadora vs lo observado.
-- Histórica ≈ 4%: la proyección está alineada con la trayectoria.
-- Histórica < 4%: la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
+Cuando interpretes la histórica vs la proyección ${PROY_PCT}:
+- Histórica > ${PROY_PCT}: la proyección es conservadora vs lo observado.
+- Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%): la proyección está alineada con la trayectoria.
+- Histórica < ${PROY_PCT} positiva: la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
 - Histórica negativa: la proyección es una apuesta a recuperación frente a una década de pérdida.
 - Sin data histórica: la proyección es supuesto puro, sin verificación local.
 
 PROHIBIDO:
-- "el motor sobreestima la plusvalía"
-- "la plusvalía real será X%" (X ≠ 4%)
+- "la proyección sobreestima la plusvalía"
+- "la plusvalía real será X%" (X ≠ ${PROY_PCT})
 - "no esperes plusvalía aquí"
-- Cualquier sugerencia de una proyección distinta al 4%.
+- Cualquier sugerencia de una proyección distinta al ${PROY_PCT}.
 
 VÁLIDO:
-- "Santiago perdió 1% anual histórico — la proyección a futuro de 4% es una apuesta a recuperación."
-- "Providencia subió 3% anual; proyección 4% queda ligeramente optimista vs trayectoria."
-- "Sin data histórica para esta comuna; proyección 4% es supuesto sin ancla local."
+- "Santiago perdió 1% anual histórico — la proyección a futuro de ${PROY_PCT} es una apuesta a recuperación."
+- "Providencia subió 3% anual; la proyección a ${PROY_PCT} queda alineada con esa trayectoria."
+- "Sin data histórica para esta comuna; la proyección ${PROY_PCT} es supuesto sin ancla local."
 
 Esta REGLA 8 NO sustituye los umbrales cualitativos de REGLA 1 (que clasifican la histórica como "fuerte/en línea/débil" vs el promedio histórico Gran Santiago). Disciplina la JERARQUÍA entre proyección motor y histórica al hablarle al usuario.
 
@@ -500,8 +505,8 @@ async function generateInsightAI(
   if (typeof ctx.plusvaliaAnual === "number") {
     // B4-2: el número es ANUALIZADO (ej. 3.2 = 3,2% anual). El acumulado 10
     // años de la misma comuna sería ~37% — no confundir un valor con el otro.
-    // Cualquier mención al "4%" de los umbrales en REGLA 1 es la PROYECCIÓN
-    // del motor, no la histórica observada.
+    // La tasa de proyección de los umbrales (REGLA 1/8, hoy 3%) es la PROYECCIÓN
+    // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
     finLines.push(`- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}% (cifra ANUAL, no acumulada 10 años).`);
   }
 

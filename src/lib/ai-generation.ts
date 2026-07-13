@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { findNearestStation } from "@/lib/metro-stations";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "@/lib/plusvalia-historica";
+import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "@/lib/capex-puesta-a-punto";
@@ -26,6 +27,11 @@ import { calcDecisividades } from "@/lib/analysis";
 import type { Hallazgo } from "@/lib/types";
 
 const anthropic = new Anthropic();
+
+// Proyección estándar Franco a futuro como texto ("3%") — desde la constante, nunca literal.
+// El prompt debe decir lo mismo que el render (drawer de plusvalía): proyección base parejo,
+// histórica como contexto de riesgo. Si cambia la constante, cambian prompt y render juntos.
+const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce TIR, plusvalía, flujo neto, dividendo, sin que se los expliques.
 
@@ -457,33 +463,33 @@ PROHIBIDO INVENTAR: el tramo es CUÁNDO, no CUÁNTO. No atribuyas un efecto cuan
 
 REGLA 10 — Plusvalía: jerarquía de la proyección base.
 
-La proyección base es 4% anual flat. Esa cifra es la que usan todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa.
+La proyección base es ${PROY_PCT} anual flat — la proyección estándar Franco a futuro. Esa cifra es la que usan todos los cálculos: TIR, Cash-on-Cash, Múltiplo, valor venta a N años, payback. Tu trabajo es interpretar esa proyección, no contradecirla ni ofrecer una proyección alternativa. NUNCA digas "tu comuna se aprecia ${PROY_PCT}": es un supuesto parejo del modelo, no una afirmación sobre la comuna.
 
-La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la apuesta del 4%, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a 4%:
-- Histórica > 4% (ej. Quilicura 5,3%): la proyección es conservadora vs lo que la comuna ya mostró.
-- Histórica ≈ 4% (ej. Maipú 4,1%): la proyección está alineada con la trayectoria observada.
-- Histórica < 4% (ej. Providencia 3,0%, Las Condes 2,7%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
+La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la apuesta del ${PROY_PCT}, no una proyección sustituta. Sirve para explicar al usuario qué está aceptando cuando proyecta a ${PROY_PCT}:
+- Histórica > ${PROY_PCT} (ej. Quilicura 5,3%, Maipú 4,1%): la proyección es conservadora vs lo que la comuna ya mostró.
+- Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%, Huechuraba 3,0%): la proyección está alineada con la trayectoria observada.
+- Histórica < ${PROY_PCT} pero positiva (ej. Las Condes 2,7%, San Miguel 2,2%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
 - Histórica negativa (ej. Santiago -1,1%, El Bosque -0,7%): la proyección es una apuesta a recuperación frente a una década de pérdida.
 - Sin data histórica para la comuna: la proyección es supuesto puro, sin ancla observable.
 
 PROHIBIDO:
 - "la plusvalía está sobreestimada"
-- "la plusvalía real será X%" (donde X ≠ 4%)
+- "la plusvalía real será X%" (donde X ≠ ${PROY_PCT})
 - "no esperes plusvalía en esta comuna"
 - "la histórica indica que tu TIR caerá"
 - "la plusvalía de [comuna] no sostiene la apuesta" (afirma que la proyección no se cumplirá)
-- "la histórica no respalda la proyección" / "no apoya el 4%"
-- Cualquier construcción que sugiera al usuario una proyección distinta al 4% base, incluyendo afirmaciones genéricas tipo "la comuna no da para 4%".
+- "la histórica no respalda la proyección" / "no apoya el ${PROY_PCT}"
+- Cualquier construcción que sugiera al usuario una proyección distinta al ${PROY_PCT} base, incluyendo afirmaciones genéricas tipo "la comuna no da para ${PROY_PCT}".
 
-La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la comuna se estanca, tu TIR cae" es válido (riesgo); "la comuna no sostiene la proyección 4%" es prohibido (afirmación).
+La diferencia entre RIESGO (válido) y CONTRADICCIÓN (prohibido) es escenario condicional vs afirmación: "si la comuna se estanca, tu TIR cae" es válido (riesgo); "la comuna no sostiene la proyección ${PROY_PCT}" es prohibido (afirmación).
 
 VÁLIDO:
-- "Santiago centro perdió 1% anual en 2014-2024 — la proyección a 4% es una apuesta a recuperación que la comuna aún no muestra."
-- "[comuna] creció [X]% anual histórico — la proyección a 4% queda ligeramente más optimista que la trayectoria observada." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
-- "Quilicura subió 5,3% anual histórico — la proyección a 4% es conservadora versus lo que la comuna ya mostró."
-- "Sin data histórica suficiente para esta comuna — la proyección a 4% es supuesto puro, sin verificación local."
+- "Santiago centro perdió 1% anual en 2014-2024 — la proyección a ${PROY_PCT} es una apuesta a recuperación que la comuna aún no muestra."
+- "[comuna] creció [X]% anual histórico — la proyección a ${PROY_PCT} queda ligeramente más optimista que la trayectoria observada." (usa el dato real de plusvaliaHistoricaInfo del caso, no estos placeholders)
+- "Quilicura subió 5,3% anual histórico — la proyección a ${PROY_PCT} es conservadora versus lo que la comuna ya mostró."
+- "Sin data histórica suficiente para esta comuna — la proyección a ${PROY_PCT} es supuesto puro, sin verificación local."
 
-El caveat temporal de REGLA 9 (los tramos 2014-2018/2019/2020-2021 que el rango cruza) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección base (4%) e histórica (contexto de riesgo).
+El caveat temporal de REGLA 9 (los tramos 2014-2018/2019/2020-2021 que el rango cruza) sigue aplicando cuando cites la histórica. Esta REGLA 10 disciplina la JERARQUÍA entre proyección base (${PROY_PCT}) e histórica (contexto de riesgo).
 
 ## 13. Schema JSON de output
 
@@ -850,8 +856,8 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       : m.flujoNetoMensual < 0 ? Math.round(Math.abs(m.flujoNetoMensual) * 12 * 10) : 0;
     const datoDP = Math.round(inversionTotal * Math.pow(1.05, 10));
     const datoFM = Math.round(inversionTotal * Math.pow(1.07, 10));
-    const valorProp5 = Math.round(m.precioCLP * Math.pow(1.04, 5));
-    const valorProp10 = Math.round(m.precioCLP * Math.pow(1.04, 10));
+    const valorProp5 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 5));
+    const valorProp10 = Math.round(m.precioCLP * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, 10));
     const dividendoSiTasaSube1 = creditoCLP > 0
       ? Math.round((creditoCLP * ((input.tasaInteres + 1) / 100 / 12)) / (1 - Math.pow(1 + (input.tasaInteres + 1) / 100 / 12, -(input.plazoCredito * 12))))
       : 0;
@@ -1353,9 +1359,9 @@ PROYECCIÓN Y ALTERNATIVAS
 - Aporte de tu bolsillo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
 - Aporte de tu bolsillo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
 - lecturaPatrimonio (narrá esta idea con tus palabras): en 10 años ponés ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendés, la ganancia neta es ${fmtUF(exit.gananciaNeta/UF_CLP)}
-- Valor proyectado de la propiedad a 5 años (plusvalía a futuro: 4%): ${fmtCLP(valorProp5)}
-- Valor proyectado de la propiedad a 10 años (plusvalía a futuro: 4%): ${fmtCLP(valorProp10)}
-- lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de 4% anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
+- Valor proyectado de la propiedad a 5 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp5)}
+- Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
+- lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
 - Ganancia neta si vendés a 10 años: ${fmtCLP(exit.gananciaNeta)}
 - Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}
 - Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}
