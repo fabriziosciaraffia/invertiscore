@@ -19,6 +19,9 @@ import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/
 import { ordenarHallazgosPiramideSTR, HALLAZGO_DRAWER_STR } from "@/components/analysis/str/PiramideHallazgosSTR";
 import fixtures from "./fixtures.json";
 
+// `bajoStr`: fixture SINTÉTICO (equity < capital, mult ≈ 0,70) — el tramo <1 "terminas con
+// menos de lo que pusiste" no tiene fila REAL en el corpus post-flip (F2: 0 STR pierde plata),
+// así que se valida sintético, como los razor-edges del golden. El resto son filas reales.
 type FixKey =
   | "santiagoLtr" | "qaLtr" | "fallbackLtr"
   | "santiagoStr" | "qaStr" | "selfLiqStr" | "fallbackStr" | "costosAltosStr" | "bajoStr";
