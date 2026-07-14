@@ -31,15 +31,22 @@ function pickPreview(data: ZoneInsightData | null, currency: "CLP" | "UF"): stri
 interface Props {
   data: ZoneInsightData | null;
   loading: boolean;
+  error?: string | null;
   onClick: () => void;
   currency: "CLP" | "UF";
 }
 
-export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props) {
+export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }: Props) {
   const totalPOIs = countPOIs(data);
-  const preview = loading && !data
-    ? "Analizando transporte, servicios y demanda de la zona…"
-    : pickPreview(data, currency) || "Explora el entorno del depto y los drivers de demanda.";
+  // Degradación DECLARADA: si la zona no cargó (típico: dirección sin coordenadas),
+  // la card lo dice en vez de mostrar "0 lugares" + preview genérico. Sigue clickeable —
+  // el drawer amplía con ZoneErrorState + reintentar. Mismo lenguaje card↔drawer.
+  const hasError = !!error && !data;
+  const preview = hasError
+    ? "Zona no disponible para esta dirección."
+    : loading && !data
+      ? "Analizando transporte, servicios y demanda de la zona…"
+      : pickPreview(data, currency) || "Explora el entorno del depto y los drivers de demanda.";
 
   return (
     <button
@@ -91,7 +98,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
               overflow: "hidden",
             }}
           >
-            {preview.startsWith("\"") ? preview : `"${preview}"`}
+            {hasError || preview.startsWith("\"") ? preview : `"${preview}"`}
           </p>
         </div>
 
@@ -106,7 +113,7 @@ export function ZoneInsightMiniCard({ data, loading, onClick, currency }: Props)
               fontWeight: 500,
             }}
           >
-            {loading && !data ? "—" : `${totalPOIs} lugares`}
+            {hasError || (loading && !data) ? "—" : `${totalPOIs} lugares`}
           </span>
           <span
             className="font-mono text-[9px] uppercase tracking-[1.3px] hidden md:inline"

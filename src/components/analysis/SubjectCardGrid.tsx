@@ -175,6 +175,7 @@ export function SubjectCardGrid({
           <ZoneInsightMiniCard
             data={zoneInsight}
             loading={zoneLoading}
+            error={zoneError}
             onClick={() => setActiveDrawer("zona")}
             currency={currency}
           />

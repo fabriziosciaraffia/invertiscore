@@ -2268,7 +2268,7 @@ function ZoneErrorState({ message }: { message: string | null }) {
       }}
     >
       <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 mb-3">
-        No pudimos cargar el análisis de la zona.{message ? ` (${message})` : ""}
+        Zona no disponible para esta dirección.{message ? ` (${message})` : ""}
       </p>
       <button
         type="button"
