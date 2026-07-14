@@ -336,8 +336,11 @@ export function PremiumResults({
       plazoVenta: 30,
       plusvaliaAnual: plusvaliaRate / 100,
       ufClp: ufValue,
+      // Fecha congelada a created_at (no la viva del navegador): el simulador de
+      // sliders no debe driftar meses-hasta-entrega. of-datedrift-design.md.
+      asOf: createdAt ? new Date(createdAt) : new Date(),
     });
-  }, [results, m, inputData, plusvaliaRate, ufValue]);
+  }, [results, m, inputData, plusvaliaRate, ufValue, createdAt]);
 
   // dynamicRefi removed — refi section now calculates directly from projData
 

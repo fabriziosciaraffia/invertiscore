@@ -1,11 +1,11 @@
 // Hallazgo tipado de PATRIMONIO (a 10 años) para LTR — motor determinístico. 9º hallazgo
 // y el tercero SOLO-LECTURA (tras TIR y sensibilidad). Espejo estructural de
-// `tir-hallazgo.ts`: envuelve números que el motor YA calcula (exitScenario.gananciaNeta y
+// `tir-hallazgo.ts`: envuelve números que el motor YA calcula (exitScenario.equityCLP y
 // exitScenario.totalAportado), NO los recalcula. Es LA MISMA fuente que el drawer largoPlazo
 // narra ("los UF X que recibes al vender" / "las UF Y que aportaste") y que el waterfall
 // totaliza — cero recompute paralelo (D1, lección drift).
 //
-// PATRIMONIO = gananciaNeta = valorVenta − saldoCrédito − comisión de venta = lo que te
+// PATRIMONIO = equityCLP = valorVenta − saldoCrédito − comisión de venta = lo que te
 // queda en el bolsillo al liquidar a 10 años (incluye lo amortizado, neto de deuda y
 // comisión). APORTADO = totalAportado = todo lo que pusiste (pie + cierre + corretaje si es
 // usado + los aportes mensuales que el arriendo no cubrió). El MULTIPLICADOR = patrimonio /
@@ -24,7 +24,7 @@
 // recita la ganancia-neta verbatim del veredicto del drawer. Dice magnitud + multiplicador;
 // el drawer explica de dónde sale.
 //
-// GUARD: null si totalAportado ≤ 0 o gananciaNeta no finita (pirámide N−1 — típico de filas
+// GUARD: null si totalAportado ≤ 0 o equityCLP no finita (pirámide N−1 — típico de filas
 // legacy sin totalAportado en el exit persistido).
 
 import type { HallazgoPatrimonio } from "./types";
@@ -49,7 +49,7 @@ const fmtUF = (clp: number, valorUF: number) =>
   valorUF > 0 ? Math.round(clp / valorUF).toLocaleString("es-CL") : "0";
 
 /**
- * Construye el proto-hallazgo de PATRIMONIO reusando exitScenario.gananciaNeta y
+ * Construye el proto-hallazgo de PATRIMONIO reusando exitScenario.equityCLP y
  * exitScenario.totalAportado (no los recalcula). SOLO-LECTURA: decisividad 0 fija;
  * magnitudContinua = |mult−1|/2 (desempate del sort).
  *
@@ -60,7 +60,7 @@ const fmtUF = (clp: number, valorUF: number) =>
  * fijados al sembrar con `valorUF` — el toggle CLP/UF reformatea el KPI del card, no el body.
  */
 export function buildHallazgoPatrimonio(p: {
-  /** exitScenario.gananciaNeta — lo que te queda al vender a 10 años (neto de deuda + comisión). */
+  /** exitScenario.equityCLP — lo que te queda al vender a 10 años (neto de deuda + comisión). */
   patrimonioCLP: number;
   /** exitScenario.totalAportado — todo lo que pusiste (día 1 + aportes mensuales negativos). */
   aportadoCLP: number;

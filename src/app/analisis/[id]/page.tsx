@@ -144,8 +144,13 @@ export default async function AnalisisDetallePage({
         ? { mediana: medianaSnapshot.mediana, n: medianaSnapshot.n ?? 0 }
         : await prefetchMedianaComunaVenta(supabase, inputDataRaw, ufFrozen))
     : undefined;
+  // Fecha de análisis CONGELADA a created_at (espejo de ufFrozen): el recompute
+  // usa la fecha de creación de la fila, no la viva, para que meses-hasta-entrega,
+  // plusvalía proyectada, penalty del score y prosa NO deriven entre recargas.
+  // Ver of-datedrift-design.md.
+  const asOfFrozen = new Date(analisis.created_at);
   const results: FullAnalysisResult | null = inputDataRaw
-    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna)
+    ? recomputeResultsForLegacy(inputDataRaw, ufFrozen, medianaComuna, asOfFrozen)
     : (rawResults && rawResults.metrics
       ? { ...rawResults, metrics: enrichMetricsLegacy(rawResults.metrics, {} as AnalisisInput) }
       : rawResults);

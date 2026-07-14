@@ -73,6 +73,10 @@ interface DrawerProps {
   zoneCenter?: { lat: number; lng: number } | null;
   comuna?: string;
   arriendoUsuarioCLP?: number;
+  /** created_at de la fila (ISO). Fecha de análisis CONGELADA para el recompute
+   *  cliente de TIR en negociación (tirForPrice) — no la fecha viva del navegador.
+   *  Ver of-datedrift-design.md. */
+  createdAt?: string;
 }
 
 // Label humano del header y de los botones prev/next — nombra la card de destino en
@@ -412,12 +416,14 @@ function DrawerNegociacion({
   inputData,
   results,
   valorUF,
+  createdAt,
 }: {
   data: AINegociacionSection;
   currency: "CLP" | "UF";
   inputData: AnalisisInput;
   results: FullAnalysisResult;
   valorUF: number;
+  createdAt?: string;
 }) {
   const precioCLP = (inputData.precio || 0) * valorUF;
   const vmFrancoUF = results.metrics?.valorMercadoFrancoUF ?? (inputData.precio || 0);
@@ -435,10 +441,13 @@ function DrawerNegociacion({
   // cliente con el mismo helper del motor (fuente única de verdad).
   const negData = useMemo(() => {
     if (neg) return neg;
+    // Fecha de análisis congelada (created_at, no la viva) para el recompute de TIR
+    // del fallback de negociación. of-datedrift-design.md.
+    const asOf = createdAt ? new Date(createdAt) : new Date();
     const baseSugerido = Math.min(inputData.precio, vmFrancoUF);
     const precioSugUF = Math.round(baseSugerido * 0.97 * 10) / 10;
-    const tirSug = tirForPrice(inputData, precioSugUF, valorUF);
-    const tirVm = tirForPrice(inputData, vmFrancoUF, valorUF);
+    const tirSug = tirForPrice(inputData, precioSugUF, valorUF, asOf);
+    const tirVm = tirForPrice(inputData, vmFrancoUF, valorUF, asOf);
     // Precio límite por bisección simple solo si la TIR actual es > 6
     let precioLimUF: number | null = null;
     let tirLim: number | null = null;
@@ -449,7 +458,7 @@ function DrawerNegociacion({
       let hi = Math.max(inputData.precio * 1.5, vmFrancoUF * 1.5);
       for (let i = 0; i < 18; i++) {
         const mid = (lo + hi) / 2;
-        const t = tirForPrice(inputData, mid, valorUF);
+        const t = tirForPrice(inputData, mid, valorUF, asOf);
         if (t > 6) lo = mid; else hi = mid;
         if (Math.abs(t - 6) < 0.1) {
           precioLimUF = Math.round(mid * 10) / 10;
@@ -471,7 +480,7 @@ function DrawerNegociacion({
       tirAlLimite: tirLim,
       tirAlVmFranco: tirVm,
     };
-  }, [neg, inputData, vmFrancoUF, valorUF, tirActual]);
+  }, [neg, inputData, vmFrancoUF, valorUF, tirActual, createdAt]);
 
   // Guard P3: data corrupta o legacy sin precio válido — el resto del drawer
   // produciría barras NaN y veredicto sin sentido. Después de hooks por
@@ -1069,7 +1078,9 @@ function DrawerLargoPlazo({
   const precioCLP = results.metrics?.precioCLP ?? 0;
   const saldoCredito = exit?.saldoCredito ?? 0;
   const comisionVenta = exit?.comisionVenta ?? 0;
-  const gananciaNeta = exit?.gananciaNeta ?? 0; // valorVenta − saldoCredito − comisionVenta
+  // Rename gananciaNeta→equityCLP (paridad STR): fallback compat-on-read para filas
+  // persistidas pre-rename. El var local queda con nombre corto (equity conceptual).
+  const gananciaNeta = exit?.equityCLP ?? (exit as unknown as { gananciaNeta?: number }).gananciaNeta ?? 0; // valorVenta − saldoCredito − comisionVenta
 
   // Fallbacks para análisis guardados antes del cambio del motor.
   const aniosPlazo = exit?.anios ?? 10;
@@ -2357,6 +2368,7 @@ export function AnalysisDrawer({
   zoneCenter,
   comuna,
   arriendoUsuarioCLP,
+  createdAt,
 }: DrawerProps) {
   // Hallazgo cap_rate (carrier del motor o persistido) — alimenta el drawer capRate.
   const capRateHallazgo =
@@ -2551,6 +2563,7 @@ export function AnalysisDrawer({
               inputData={inputData}
               results={results}
               valorUF={valorUF}
+              createdAt={createdAt}
             />
           )}
           {activeKey === "reestructuracion" &&

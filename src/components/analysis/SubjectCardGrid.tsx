@@ -203,6 +203,7 @@ export function SubjectCardGrid({
           zoneCenter={zoneCenter}
           comuna={comuna ?? inputData.comuna}
           arriendoUsuarioCLP={Number(inputData.arriendo) || 0}
+          createdAt={createdAt}
         />
       )}
     </div>

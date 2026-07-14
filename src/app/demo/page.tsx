@@ -169,7 +169,7 @@ const DEMO_RESULTS: FullAnalysisResult = {
       valorVenta,
       saldoCredito,
       comisionVenta,
-      gananciaNeta,
+      equityCLP: gananciaNeta, // rename honesto gananciaNeta→equityCLP (campo del tipo)
       flujoAcumulado,
       retornoTotal,
       multiplicadorCapital,

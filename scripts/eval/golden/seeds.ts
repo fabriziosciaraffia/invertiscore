@@ -18,6 +18,16 @@ import { ltr, AUDIT_UF } from "../fixtures";
 /** UF congelada de todo el golden set (== UF_FALLBACK). Drift eliminado por construcción. */
 export const GOLDEN_UF = AUDIT_UF; // 38800
 
+/**
+ * Fecha de análisis CONGELADA del golden set (espejo de GOLDEN_UF). El recompute
+ * la pasa como `asOf` para que meses-hasta-entrega de los seeds en verde (GS-2,
+ * GS-7) sea determinístico, desacoplado de cuándo se seedeó la fila. Producción
+ * usa created_at; el golden usa esta constante. Fijada al día real de seed-db
+ * (2026-07-09, local) → reproduce el baseline vigente (GS-7 mesesEspera=22, GS-2=0)
+ * con delta cero. Ver of-datedrift-design.md §3.3.
+ */
+export const GOLDEN_ASOF = new Date(2026, 6, 9); // 2026-07-09 local
+
 export type MedianaSnapshot = { mediana: number | null; n: number };
 
 export interface GoldenSeed {

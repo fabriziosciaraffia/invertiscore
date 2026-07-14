@@ -37,6 +37,10 @@ export function recomputeResultsForLegacy(
   input: AnalisisInput,
   ufClp: number,
   medianaComuna?: { mediana: number | null; n: number },
+  // Fecha de análisis CONGELADA (espejo de ufClp). El render la re-deriva de
+  // created_at para que la proyección/score/prosa de deptos en verde no deriven
+  // entre recomputes. Ausente ⇒ new Date() (compat). Ver of-datedrift-design.md.
+  asOf?: Date,
 ): FullAnalysisResult {
-  return runAnalysis(input, ufClp, medianaComuna);
+  return runAnalysis(input, ufClp, medianaComuna, asOf);
 }

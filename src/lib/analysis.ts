@@ -173,13 +173,17 @@ export function calcFlujoDesglose(datos: {
 // Core Metrics
 // =========================================
 
-function calcMesesHastaEntrega(input: AnalisisInput): number {
+// `asOf` es la fecha "de análisis" CONGELADA (espejo de ufFrozen): el render la
+// re-deriva de created_at, la creación pasa new Date(). Nunca se lee `new Date()`
+// vivo acá dentro → el mismo análisis recomputado en fechas distintas ya no deriva.
+// asOf es REQUERIDO en todo el árbol interno (default solo en runAnalysis) para que
+// el compilador impida reintroducir drift por olvido. Ver of-datedrift-design.md.
+function calcMesesHastaEntrega(input: AnalisisInput, asOf: Date): number {
   if (input.estadoVenta === "inmediata" || !input.fechaEntrega) return 0;
   const [anio, mes] = input.fechaEntrega.split("-").map(Number);
   if (!anio || !mes) return 0;
-  const now = new Date();
   const entrega = new Date(anio, mes - 1);
-  return Math.max(0, Math.round((entrega.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  return Math.max(0, Math.round((entrega.getTime() - asOf.getTime()) / (1000 * 60 * 60 * 24 * 30)));
 }
 
 /**
@@ -463,11 +467,11 @@ function calcMetrics(
 // Cashflow Year 1 (month by month)
 // =========================================
 
-function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics): MonthlyCashflow[] {
+function calcCashflowYear1(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date): MonthlyCashflow[] {
   const mantencion = metrics.provisionMantencionAjustada;
 
   // Determine months until delivery (entrega futura)
-  const mesesPreEntrega = calcMesesHastaEntrega(input);
+  const mesesPreEntrega = calcMesesHastaEntrega(input, asOf);
 
   const meses: MonthlyCashflow[] = [];
 
@@ -553,17 +557,18 @@ export function calcProjections(args: {
   input: AnalisisInput;
   metrics: AnalysisMetrics;
   ufClp: number;            // valor de la UF en CLP usado para precioCLP/valor mercado
+  asOf: Date;               // fecha de análisis congelada (entrega futura → mesesPreEntrega)
   plazoVenta?: number;      // años a proyectar (default 20, motor histórico)
   plusvaliaAnual?: number;  // decimal (default PLUSVALIA_ANUAL = PLUSVALIA_PROYECCION_ANUAL, 3%/año)
 }): YearProjection[] {
-  const { input, metrics, ufClp } = args;
+  const { input, metrics, ufClp, asOf } = args;
   const plazoVenta = args.plazoVenta ?? 20;
   const plusvaliaAnual = args.plusvaliaAnual ?? PLUSVALIA_ANUAL;
 
   const precioCLP = input.precio * ufClp;
   const creditoCLP = precioCLP * (1 - input.piePct / 100);
 
-  const mesesPreEntrega = calcMesesHastaEntrega(input);
+  const mesesPreEntrega = calcMesesHastaEntrega(input, asOf);
 
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = metrics.gastos;
@@ -665,7 +670,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     return {
       anios,
       valorVenta: 0, saldoCredito: 0, comisionVenta: 0,
-      gananciaNeta: 0, flujoAcumulado: 0, retornoTotal: 0,
+      equityCLP: 0, flujoAcumulado: 0, retornoTotal: 0,
       multiplicadorCapital: 0, tir: 0,
       inversionInicial: 0, flujoMensualAcumuladoNegativo: 0,
       totalAportado: 0, gananciaSobreTotal: 0, porcentajeGananciaSobreTotal: 0,
@@ -674,8 +679,8 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
 
   const valorVenta = proy.valorPropiedad;
   const comisionVenta = Math.round(valorVenta * COMISION_VENTA);
-  const gananciaNeta = valorVenta - proy.saldoCredito - comisionVenta;
-  const retornoTotal = proy.flujoAcumulado + gananciaNeta;
+  const equityCLP = valorVenta - proy.saldoCredito - comisionVenta;
+  const retornoTotal = proy.flujoAcumulado + equityCLP;
 
   // Inversión inicial = pie + gastos de cierre (notaría, CBR, timbres, tasación)
   // + CapEx puesta a punto + corretaje inicial (usados, análisis nuevos). Todo
@@ -699,17 +704,17 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   const totalAportado = inversionInicial + flujoMensualAcumuladoNegativo;
 
   // Ganancia sobre lo que realmente pusiste (no sobre pie + cierre solamente)
-  const gananciaSobreTotal = gananciaNeta - totalAportado;
+  const gananciaSobreTotal = equityCLP - totalAportado;
   const porcentajeGananciaSobreTotal = totalAportado > 0
     ? Math.round((gananciaSobreTotal / totalAportado) * 10000) / 100
     : 0;
 
-  // Multiplicador de capital = EQUITY sobre lo aportado (gananciaNeta/totalAportado),
+  // Multiplicador de capital = EQUITY sobre lo aportado (equityCLP/totalAportado),
   // idéntico al que calcula el card de patrimonio (patrimonio-hallazgo). Un solo valor
   // de verdad.
   //
   // MUERE el doble conteo (rama fix-multiplo-doble-conteo): antes era retornoTotal/
-  // totalAportado, con retornoTotal = flujoAcumulado + gananciaNeta. Como flujoAcumulado
+  // totalAportado, con retornoTotal = flujoAcumulado + equityCLP. Como flujoAcumulado
   // ya trae los aportes mensuales negativos, esos aportes se RESTABAN en el numerador Y se
   // SUMABAN en el denominador (totalAportado = inicial + Σ|flujoAnual<0|) — el mismo doble
   // conteo que la TIR evita a propósito (ver comentario en el bloque de TIR abajo, líneas
@@ -720,7 +725,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
   // comparar, OG image (og/veredicto) y la prosa IA (ai-generation). Todas quedan ahora
   // alineadas al card. CRUDO: el render/hallazgo redondea una sola vez (usan .toFixed/fmt).
   const multiplicadorCapital = totalAportado > 0
-    ? gananciaNeta / totalAportado
+    ? equityCLP / totalAportado
     : 0;
 
   // TIR: T0 = -inversionInicial. No se modifica aquí: los aportes mensuales
@@ -741,7 +746,7 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     valorVenta: Math.round(valorVenta),
     saldoCredito: Math.round(proy.saldoCredito),
     comisionVenta,
-    gananciaNeta: Math.round(gananciaNeta),
+    equityCLP: Math.round(equityCLP),
     flujoAcumulado: proy.flujoAcumulado,
     retornoTotal: Math.round(retornoTotal),
     multiplicadorCapital,
@@ -790,7 +795,7 @@ function calcRefinanceScenario(input: AnalisisInput, metrics: AnalysisMetrics, p
 // =========================================
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: AnalysisMetrics, ufClp: number): SensitivityRow[] {
+function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: AnalysisMetrics, ufClp: number, asOf: Date): SensitivityRow[] {
   const rows: SensitivityRow[] = [];
 
   const variations: { variable: string; field: keyof AnalisisInput; delta: number; label: string }[] = [
@@ -813,7 +818,7 @@ function calcSensitivity(input: AnalisisInput, baseScore: number, _baseMetrics: 
     }
 
     const newMetrics = calcMetrics(modified, ufClp);
-    const newScore = calcScoreFromMetrics(modified, newMetrics, ufClp);
+    const newScore = calcScoreFromMetrics(modified, newMetrics, ufClp, asOf);
 
     rows.push({
       variable: v.variable,
@@ -985,6 +990,8 @@ function calcScoreFromMetrics(
   input: AnalisisInput,
   metrics: AnalysisMetrics,
   ufClp: number,
+  // Fecha de análisis congelada (penalty entrega futura, línea ~1047). Requerido.
+  asOf: Date,
   // Overrides de neutralización contrafactual (E2 · calibración de decisividades).
   // historicaOverride reemplaza la tasa histórica de la comuna en la dimensión
   // Plusvalía (sub-componente 30%). Ausente ⇒ comportamiento idéntico.
@@ -1041,7 +1048,7 @@ function calcScoreFromMetrics(
   );
 
   // Penalize entrega futura for months without return
-  const mesesEspera = calcMesesHastaEntrega(input);
+  const mesesEspera = calcMesesHastaEntrega(input, asOf);
   if (mesesEspera > 0) {
     const penalty = Math.min(5, Math.round(mesesEspera / 6));
     score -= penalty;
@@ -1244,9 +1251,15 @@ export function calcDecisividades(
   input: AnalisisInput,
   ufClp: number,
   medianaComuna?: { mediana: number | null; n: number },
+  // asOf con default (excepción a "requerido"): este boundary exportado tiene callers
+  // externos (ai-generation) y su OUTPUT es date-invariante — el penalty de entrega
+  // futura afecta base y neutralizado por igual, se cancela en la resta base−neu → la
+  // decisividad no deriva. runAnalysis igual pasa el asOf congelado para que el baseScore
+  // interno calce con el score principal. Ver of-datedrift-design.md.
+  asOf: Date = new Date(),
 ): Decisividades {
   const baseMetrics = calcMetrics(input, ufClp, medianaComuna);
-  const baseScore = calcScoreFromMetrics(input, baseMetrics, ufClp);
+  const baseScore = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf);
   const baseBreakEven = calcBreakEvenTasa(input, baseMetrics, ufClp);
   const base = evalVeredicto(baseScore, baseMetrics, baseBreakEven);
 
@@ -1265,7 +1278,7 @@ export function calcDecisividades(
   });
   if (capexBase.montoCLP > 0) {
     const mNeu = calcMetrics(input, ufClp, medianaComuna, { capexPuestaAPuntoCLP: 0 });
-    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp);
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf);
     out.capex_puesta_a_punto = fin(sNeu, evalVeredicto(sNeu, mNeu, baseBreakEven));
   }
 
@@ -1275,7 +1288,7 @@ export function calcDecisividades(
     const arriendoNeu = solveArriendoForCapRate(input, ufClp, medianaComuna, CAP_RATE_REF_NACIONAL);
     const inputNeu = { ...input, arriendo: arriendoNeu };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.cap_rate = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1285,7 +1298,7 @@ export function calcDecisividades(
   //    coherencia. Con flujo 0 el break-even ya no es -1 (no es negativo). ──
   if (baseMetrics.dividendo > 0) {
     const mNeu = { ...baseMetrics, flujoNetoMensual: 0, cashOnCash: 0 };
-    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp);
+    const sNeu = calcScoreFromMetrics(input, mNeu, ufClp, asOf);
     const beNeu = baseBreakEven === -1 ? input.tasaInteres : baseBreakEven;
     out.flujo_mensual = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1297,7 +1310,7 @@ export function calcDecisividades(
     const precioNeuUF = medianaComuna.mediana * input.superficie;
     const inputNeu = { ...input, precio: precioNeuUF };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.sobreprecio = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1306,7 +1319,7 @@ export function calcDecisividades(
   //    apreciación real (3%) vía override de score. No toca métricas ni flujo →
   //    reusa base metrics y break-even. Mueve solo la dimensión Plusvalía. ──
   {
-    const sNeu = calcScoreFromMetrics(input, baseMetrics, ufClp, { historicaOverride: PLUSVALIA_REF_REAL });
+    const sNeu = calcScoreFromMetrics(input, baseMetrics, ufClp, asOf, { historicaOverride: PLUSVALIA_REF_REAL });
     out.plusvalia = fin(sNeu, evalVeredicto(sNeu, baseMetrics, baseBreakEven));
   }
 
@@ -1319,7 +1332,7 @@ export function calcDecisividades(
       tasaInteres: Math.min(input.tasaInteres, MARKET_AVG_TASA_UF),
     };
     const mNeu = calcMetrics(inputNeu, ufClp, medianaComuna);
-    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp);
+    const sNeu = calcScoreFromMetrics(inputNeu, mNeu, ufClp, asOf);
     const beNeu = calcBreakEvenTasa(inputNeu, mNeu, ufClp);
     out.estructura_financiamiento = fin(sNeu, evalVeredicto(sNeu, mNeu, beNeu));
   }
@@ -1331,7 +1344,7 @@ export function calcDecisividades(
 // Pros & Contras
 // =========================================
 
-function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] {
+function generatePros(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date): string[] {
   const pros: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(n).toLocaleString("es-CL");
 
@@ -1368,7 +1381,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
     pros.push("Incluye estacionamiento, un plus que facilita arrendar y permite cobrar un adicional mensual.");
   }
   if (input.estadoVenta !== "inmediata") {
-    const mesesEspera = calcMesesHastaEntrega(input);
+    const mesesEspera = calcMesesHastaEntrega(input, asOf);
     if (mesesEspera > 0) {
       pros.push(`Comprando con entrega futura, acumulas ${mesesEspera} meses de plusvalía (${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%/año) antes de la entrega. El valor estimado al recibir sería ${Math.round(input.precio * Math.pow(1 + PLUSVALIA_PROYECCION_ANUAL, mesesEspera / 12))} UF.`);
     }
@@ -1378,7 +1391,7 @@ function generatePros(input: AnalisisInput, metrics: AnalysisMetrics): string[] 
   return pros;
 }
 
-function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string[] {
+function generateContras(input: AnalisisInput, metrics: AnalysisMetrics, asOf: Date): string[] {
   const contras: string[] = [];
   const fmtP = (n: number) => "$" + Math.round(Math.abs(n)).toLocaleString("es-CL");
 
@@ -1402,7 +1415,7 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
   if (metrics.precioM2 > 80)
     contras.push(`El precio por m² (${metrics.precioM2.toFixed(1)} UF) es elevado para la zona. El margen de plusvalía es menor. Compara con propiedades similares antes de decidir.`);
   if (input.estadoVenta !== "inmediata") {
-    const mesesEspera = calcMesesHastaEntrega(input);
+    const mesesEspera = calcMesesHastaEntrega(input, asOf);
     if (mesesEspera > 12) {
       contras.push(`Tendrás ${mesesEspera} meses pagando cuotas del pie sin generar arriendo. Asegúrate de tener liquidez para cubrir esas cuotas.`);
     } else if (mesesEspera > 0) {
@@ -1421,10 +1434,10 @@ function generateContras(input: AnalisisInput, metrics: AnalysisMetrics): string
 export { calcMetrics, calcScoreFromMetrics };
 
 // TIR para un precio alternativo (UF). Recomputa métricas/proyecciones/exit.
-export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: number): number {
+export function tirForPrice(input: AnalisisInput, precioUF: number, ufClp: number, asOf: Date): number {
   const clone: AnalisisInput = { ...input, precio: precioUF };
   const m = calcMetrics(clone, ufClp);
-  const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp });
+  const projs = calcProjections({ input: clone, metrics: m, plazoVenta: 20, ufClp, asOf });
   const ex = calcExitScenario(clone, m, projs, 10);
   return ex.tir;
 }
@@ -1468,6 +1481,7 @@ function calcNegociacionScenario(
   tirActual: number,
   metrics: { flujoNetoMensual: number },
   ufClp: number,
+  asOf: Date,
 ): NegociacionScenario {
   const vmFrancoUF = input.valorMercadoFranco || input.precio;
   const arriendo = input.arriendo || 0;
@@ -1510,8 +1524,8 @@ function calcNegociacionScenario(
     razon = "Pagas sobre el valor estimado de mercado de la zona. Este precio te alinea con comparables y mejora la matemática.";
   }
 
-  const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp);
-  const tirAlVmFranco = tirForPrice(input, vmFrancoUF, ufClp);
+  const tirAlSugerido = tirForPrice(input, precioSugeridoUF, ufClp, asOf);
+  const tirAlVmFranco = tirForPrice(input, vmFrancoUF, ufClp, asOf);
 
   // Precio límite: buscar por bisección el precio donde TIR cae a 6%.
   let precioLimiteUF: number | null = null;
@@ -1523,7 +1537,7 @@ function calcNegociacionScenario(
     let hi = Math.max(input.precio * 1.5, vmFrancoUF * 1.5);
     for (let i = 0; i < 18; i++) {
       const mid = (lo + hi) / 2;
-      const tir = tirForPrice(input, mid, ufClp);
+      const tir = tirForPrice(input, mid, ufClp, asOf);
       if (tir > 6) lo = mid;
       else hi = mid;
       if (Math.abs(tir - 6) < 0.1) {
@@ -1556,23 +1570,28 @@ export function runAnalysis(
   ufClp: number,
   // Mediana comunal de venta UF/m² ya resuelta (pre-fetch del pipeline). Se
   // propaga tal cual a calcMetrics. Opcional para no romper callers existentes.
-  medianaComunaVentaUF?: { mediana: number | null; n: number }
+  medianaComunaVentaUF?: { mediana: number | null; n: number },
+  // Fecha de análisis CONGELADA (espejo de ufFrozen). Default new Date() = momento
+  // de creación (≈ el created_at que se persistirá). El render la pasa re-derivada
+  // de created_at para que la proyección/score/prosa no deriven en recomputes
+  // futuros. Único punto con default; todo el árbol interno la exige. of-datedrift-design.md.
+  asOf: Date = new Date(),
 ): FullAnalysisResult {
   // Decisividades calibradas (E2): se computan ANTES de calcMetrics para
   // inyectarlas en los hallazgos que este construye (escala común "Δdecisión").
-  const decisividades = calcDecisividades(input, ufClp, medianaComunaVentaUF);
+  const decisividades = calcDecisividades(input, ufClp, medianaComunaVentaUF, asOf);
   const metrics = calcMetrics(input, ufClp, medianaComunaVentaUF, undefined, decisividades);
-  const cashflowYear1 = calcCashflowYear1(input, metrics);
-  const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp });
+  const cashflowYear1 = calcCashflowYear1(input, metrics, asOf);
+  const projections = calcProjections({ input, metrics, plazoVenta: 20, ufClp, asOf });
   const exitScenario = calcExitScenario(input, metrics, projections, 10);
-  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics, ufClp);
+  const negociacion = calcNegociacionScenario(input, exitScenario.tir, metrics, ufClp, asOf);
   const refinanceScenario = calcRefinanceScenario(input, metrics, projections, 5);
-  const score = calcScoreFromMetrics(input, metrics, ufClp);
-  const sensitivity = calcSensitivity(input, score, metrics, ufClp);
+  const score = calcScoreFromMetrics(input, metrics, ufClp, asOf);
+  const sensitivity = calcSensitivity(input, score, metrics, ufClp, asOf);
   const breakEvenTasa = calcBreakEvenTasa(input, metrics, ufClp);
   const valorMaximoCompra = calcValorMaximoCompra(input, metrics, ufClp);
-  const pros = generatePros(input, metrics);
-  const contras = generateContras(input, metrics);
+  const pros = generatePros(input, metrics, asOf);
+  const contras = generateContras(input, metrics, asOf);
 
   // Score breakdown by dimension (mirrors calcScoreFromMetrics)
 
@@ -1697,7 +1716,7 @@ export function runAnalysis(
   const veredictoAtFactor = (factor: number): Veredicto => {
     const clone = { ...input, arriendo: Math.round(input.arriendo * factor) };
     const m = calcMetrics(clone, ufClp, medianaComunaVentaUF);
-    const s = calcScoreFromMetrics(clone, m, ufClp);
+    const s = calcScoreFromMetrics(clone, m, ufClp, asOf);
     const bet = calcBreakEvenTasa(clone, m, ufClp);
     return deriveVeredicto(s, m, bet);
   };
@@ -1708,13 +1727,13 @@ export function runAnalysis(
     modalidad: "ltr",
   });
   // Hallazgo de PATRIMONIO (a 10 años): 9º hallazgo, el tercero SOLO-LECTURA. Envuelve
-  // exitScenario.gananciaNeta (lo que recibes al vender, neto de deuda + comisión) y
+  // exitScenario.equityCLP (lo que recibes al vender, neto de deuda + comisión) y
   // exitScenario.totalAportado (todo lo que pusiste, incluido el corretaje vía metrics), SIN
   // recomputar — misma fuente que el drawer largoPlazo y el waterfall (D1). El multiplicador
   // (patrimonio/aportado) da la dirección; decisividad 0 fija (resultado-stock sin driver
   // único, no entra al ranking). Guard null si totalAportado ≤ 0 (pirámide N−1, filas legacy).
   const hallazgoPatrimonio = buildHallazgoPatrimonio({
-    patrimonioCLP: exitScenario.gananciaNeta,
+    patrimonioCLP: exitScenario.equityCLP,
     aportadoCLP: exitScenario.totalAportado,
     valorUF: ufClp,
     incluyeCorretaje: (metrics.corretajeInicialCLP ?? 0) > 0,

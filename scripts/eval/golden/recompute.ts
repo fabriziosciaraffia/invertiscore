@@ -12,7 +12,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { recomputeResultsForLegacy } from "../../../src/lib/analysis/recompute-results-for-legacy";
-import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF } from "./seeds";
+import { GOLDEN_SEEDS, BORDE_SEEDS, GOLDEN_UF, GOLDEN_ASOF } from "./seeds";
 import { extractFacts } from "./extract";
 import { checkClassA, checkClassB, type Baseline, type Check } from "./invariants";
 import { BE_UUID } from "./ids";
@@ -60,7 +60,7 @@ export async function runRecomputeTier(sb: SupabaseClient): Promise<SeedReport[]
     checks.push({ rule: "uf.congelada", pass: uf === GOLDEN_UF, detail: `UF=${uf}` });
 
     // Path del render: recompute con UF congelada (no getUFValue viva).
-    const recomputed = recomputeResultsForLegacy(input, uf, mediana);
+    const recomputed = recomputeResultsForLegacy(input, uf, mediana, GOLDEN_ASOF);
     const facts = extractFacts(recomputed, input.precio);
 
     // Clase (a) vs baseline congelado.

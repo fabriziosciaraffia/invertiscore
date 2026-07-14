@@ -89,7 +89,10 @@ export interface ExitScenario {
   valorVenta: number;
   saldoCredito: number;
   comisionVenta: number;
-  gananciaNeta: number;
+  // Rename honesto (paridad STR · b931831): EQUITY = lo que te queda al vender
+  // (valorVenta − saldoCrédito − comisión), NO "ganancia neta". Lectores de filas
+  // persistidas pre-rename usan fallback `equityCLP ?? gananciaNeta`.
+  equityCLP: number;
   flujoAcumulado: number;
   retornoTotal: number;
   multiplicadorCapital: number;
@@ -98,7 +101,7 @@ export interface ExitScenario {
   inversionInicial: number;              // pie + gastos cierre + CapEx puesta a punto + corretaje (usados, día 1)
   flujoMensualAcumuladoNegativo: number; // suma absoluta de años con flujo neto negativo
   totalAportado: number;                 // inversionInicial + flujoMensualAcumuladoNegativo
-  gananciaSobreTotal: number;            // gananciaNeta - totalAportado
+  gananciaSobreTotal: number;            // equityCLP - totalAportado
   porcentajeGananciaSobreTotal: number;  // (gananciaSobreTotal / totalAportado) * 100
 }
 
@@ -509,22 +512,22 @@ export interface HallazgoSensibilidad {
 // SOLO-LECTURA (tras TIR y sensibilidad): NO compite en el ranking de decisividad
 // (decisividad 0 fija) porque el patrimonio es el resultado-stock integrador (plusvalía +
 // amortización + flujo aportado + venta) sin un driver único que calcDecisividades pueda
-// neutralizar. Envuelve exitScenario.gananciaNeta (= valorVenta − saldoCrédito − comisión,
+// neutralizar. Envuelve exitScenario.equityCLP (= valorVenta − saldoCrédito − comisión,
 // lo que el drawer largoPlazo narra como "recibes al vender" y el waterfall totaliza) y
 // exitScenario.totalAportado (lo que pusiste: pie + cierre + corretaje + aportes mensuales
 // negativos), SIN recomputar — misma fuente que el drawer (D1). El multiplicador
-// (gananciaNeta/totalAportado = 1 + porcentajeGananciaSobreTotal/100) da la dirección:
+// (equityCLP/totalAportado = 1 + porcentajeGananciaSobreTotal/100) da la dirección:
 // < 1 adverso inapelable (terminas con menos de lo que pusiste), [1,2) borde, ≥ 2 favorable.
 // Anti-colisión (D5): NO ancla a instrumentos (esa comparación es del drawer y la dirección
 // del TIR) ni recita la ganancia-neta verbatim del veredicto del drawer — dice magnitud +
 // multiplicador, el drawer explica de dónde sale. Guard null si totalAportado ≤ 0 o
-// gananciaNeta no finita (pirámide N−1 — típico de filas legacy sin el campo). Motor-seeded
+// equityCLP no finita (pirámide N−1 — típico de filas legacy sin el campo). Motor-seeded
 // en runAnalysis (post-exitScenario). Ver patrimonio-hallazgo.ts.
 export interface HallazgoPatrimonio {
   id: "patrimonio";
   tipo: "patrimonio_neto";
   valor: {
-    patrimonioCLP: number;    // exitScenario.gananciaNeta — lo que te queda al vender a 10 años
+    patrimonioCLP: number;    // exitScenario.equityCLP — lo que te queda al vender a 10 años
     aportadoCLP: number;      // exitScenario.totalAportado — todo lo que pusiste (día 1 + aportes)
     multiplicador: number;    // patrimonioCLP / aportadoCLP (= 1 + pctSobreTotal/100)
     corteAdverso: number;     // 1 — bajo este multiplicador terminas con menos de lo aportado
