@@ -419,7 +419,7 @@ export function DrawerContentSTR({
           <DataRow
             label="NOI mensual (ingreso neto operativo)"
             value={fmtMoney(base.noiMensual, currency, valorUF)}
-            tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo."
+            tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes de la cuota del crédito."
           />
           <DataRow
             label="CAP Rate (rendimiento neto sobre precio)"
@@ -430,7 +430,7 @@ export function DrawerContentSTR({
             label="Cash-on-Cash (retorno sobre capital invertido)"
             value={fmtPct(base.cashOnCash * 100, 1)}
             isCritical={base.cashOnCash < 0}
-            tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos cierre + amoblamiento). Si es negativo, pones plata extra cada mes."
+            tooltip="Retorno anual sobre el capital efectivamente invertido (pie + gastos de cierre + amoblamiento + puesta a punto). Si es negativo, pones plata extra cada mes."
           />
           <DataRow
             label="Rentabilidad bruta"
@@ -476,7 +476,7 @@ export function DrawerContentSTR({
           <DataRow
             label="Ingreso bruto mensual"
             value={fmtMoney(base.ingresoBrutoMensual, currency, valorUF)}
-            tooltip="ADR × ocupación × días del mes. Lo que entra antes de comisiones y costos operativos."
+            tooltip="Tarifa diaria × ocupación × días del mes. Lo que entra antes de comisiones y costos operativos."
           />
           <DataRow
             label="Comisión gestión"
@@ -489,7 +489,7 @@ export function DrawerContentSTR({
             tooltip="Suma mensual de electricidad, agua, wifi, insumos (sábanas/amenidades), mantención, gastos comunes y contribuciones."
           />
           <DataRow
-            label="Dividendo"
+            label="Cuota del crédito"
             value={"-" + fmtMoney(results.dividendoMensual, currency, valorUF)}
             tooltip="Cuota mensual del crédito hipotecario. Lo que pagas al banco hasta terminar el plazo."
           />
@@ -589,7 +589,7 @@ export function DrawerContentSTR({
           <DataRow
             label="Ingresos brutos anuales de equilibrio"
             value={fmtMoney(breakEvenAnual, currency, valorUF)}
-            tooltip="Ingresos brutos mínimos anuales que cubren costos operativos + dividendo. Por debajo de este número, pones plata cada mes."
+            tooltip="Ingresos brutos mínimos anuales que cubren costos operativos + cuota del crédito. Por debajo de este número, pones plata cada mes."
           />
           <DataRow
             label="% de los ingresos brutos medianos (p50)"
@@ -604,7 +604,7 @@ export function DrawerContentSTR({
             <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-3 m-0 leading-[1.5]">
               Cuánto mejoran CAP, Cash-on-Cash y flujo si rebajas el precio
               de compra. El ingreso del Airbnb no cambia; lo que baja es el
-              crédito + dividendo + capital invertido.
+              crédito + la cuota + capital invertido.
             </p>
             <div className="grid grid-cols-1 gap-0">
               <div className="flex items-center font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] py-1.5 border-b-[0.5px] border-[var(--franco-border)]">
@@ -652,7 +652,7 @@ export function DrawerContentSTR({
             <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mb-0 m-0 leading-[1.55] italic">
               No está reflejado en este cálculo — la tasa que ingresaste no
               corresponde a la subsidiada. Si la negocias con el banco, el
-              flujo mensual mejora porque baja el dividendo. Pídela como
+              flujo mensual mejora porque baja la cuota. Pídela como
               “subsidio al crédito hipotecario Ley 21.748”.
             </p>
           </DrawerSection>

@@ -82,7 +82,7 @@ export function ViabilidadSTRBanner({ results }: { results: ShortTermResult }) {
         >
           ● {zonaTexto}
           {results.zonaSTR && !results.zonaSTR.comunaNoListada
-            ? ` · ADR p${results.zonaSTR.percentilADR} · Ocupación p${results.zonaSTR.percentilOcupacion}`
+            ? ` · tarifa diaria por encima del ${results.zonaSTR.percentilADR}% de la zona · ocupación por encima del ${results.zonaSTR.percentilOcupacion}%`
             : ""}
           .
         </p>

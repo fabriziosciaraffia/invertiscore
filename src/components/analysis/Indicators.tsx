@@ -61,13 +61,13 @@ export function Indicators({
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.
   const cells: Array<{ label: string; value: string; tone: Tone; tooltip: string }> = [
     {
-      label: `TIR @ ${plazoLabel}`,
+      label: `TIR a ${plazoLabel}`,
       value: fmtPct(kpis.tir),
       tone: tonoTIR(kpis.tir),
       tooltip: tirTooltip,
     },
     {
-      label: `Cash-on-Cash @ ${plazoLabel}`,
+      label: `Cash-on-Cash a ${plazoLabel}`,
       value: fmtPct(kpis.cashOnCash),
       tone: tonoCashOnCash(kpis.cashOnCash),
       tooltip:
@@ -78,14 +78,14 @@ export function Indicators({
       value: paybackValue,
       tone: tonoPayback(kpis.paybackAnios),
       tooltip:
-        "Año desde la compra en que el patrimonio neto acumulado iguala lo que aportaste, contando la venta del depto.",
+        "Año desde la compra en que el patrimonio neto acumulado iguala tu inversión inicial del día uno (pie + gastos de cierre + corretaje), contando la venta del depto.",
     },
     {
-      label: `Múltiplo @ ${plazoLabel}`,
+      label: `Múltiplo a ${plazoLabel}`,
       value: fmtMultiplo(kpis.multiplo),
       tone: tonoMultiplo(kpis.multiplo),
       tooltip:
-        "Cuánto recibes al final por cada peso aportado. Múltiplo 2x = recibes el doble de lo que pusiste.",
+        "Cuánto recibes al final por cada peso que pusiste en total — el pie más los aportes que fuiste haciendo por el camino. Múltiplo 2x = recibes el doble.",
     },
   ];
 
@@ -154,7 +154,7 @@ export function Indicators({
           style={{ fontSize: 9, letterSpacing: "0.05em", color: "var(--franco-text-tertiary)" }}
         >
           <span>Cap Rate</span>
-          <InfoTooltip content="Rendimiento bruto anual del arriendo sobre el precio del depto, sin considerar financiamiento ni costos." />
+          <InfoTooltip content="Rendimiento neto de operación: lo que deja el arriendo tras los gastos de operarlo (NOI), sobre el precio, sin contar el crédito." />
         </span>
         <span className="font-mono font-bold" style={{ fontSize: 18, color: "var(--franco-text)" }}>
           {fmtPct(kpis.capRate)}

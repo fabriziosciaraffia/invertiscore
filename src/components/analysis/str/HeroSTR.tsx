@@ -223,7 +223,7 @@ export function HeroSTR({
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,52fr)_minmax(0,48fr)] gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]">
         <div>
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
-            01 · Veredicto
+            Veredicto
           </p>
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
             {pregunta}
@@ -422,6 +422,55 @@ function renderProsaMono(texto: string): ReactNode {
   ));
 }
 
+// Glosa canónica por tipo de hallazgo para el TOP-3 del hero (D-A · paridad con
+// HeroLTR, que glosa cada término con tooltip). Una línea llana por tipo, alineada
+// al glosario. Cubre los 6 hallazgos STR propios + los heredados que pueden coronar.
+const GLOSA_TOP3: Partial<Record<Hallazgo["id"], string>> = {
+  rentabilidad_str: "Cuánto renta la operación —el cap rate: lo que deja el arriendo tras los gastos de operarlo (NOI), sobre el precio— frente al umbral STR de referencia.",
+  flujo_str: "Lo que te queda cada mes después de todos los costos, incluida la cuota del crédito.",
+  ocupacion_vs_banda: "Qué porcentaje de las noches esperas ocupar, comparado con la banda de la comuna.",
+  ventaja_vs_ltr: "Cuánto más (o menos) deja la renta corta frente a arrendar a un solo inquilino todo el año.",
+  sensibilidad_str: "Cuánto puede caer el ingreso antes de llegar al punto de equilibrio (donde no ganas ni pones plata).",
+  estructura_costos_str: "Qué parte del ingreso bruto se va en costos de operar el Airbnb.",
+  sobreprecio: "Cuánto pagas por metro cuadrado frente a la mediana de publicación de la comuna.",
+  plusvalia: "Cuánto se ha valorizado la comuna al año en la última década.",
+  tir: "La rentabilidad anual de toda tu inversión (TIR), juntando flujo, plusvalía y venta al cierre.",
+  patrimonio: "Cuánto vale tu parte al final del horizonte, frente a lo que pusiste.",
+  capex_puesta_a_punto: "Lo que cuesta dejar el depto listo para operar, además del amoblamiento.",
+  estructura_financiamiento: "Cómo financias la compra: cuánto de pie y a qué tasa, frente al óptimo.",
+};
+
+// Término técnico con tooltip on-hover — espejo del `Tooltip` local de HeroLTR (D-A).
+// Self-contained a propósito (no toca el InfoTooltip compartido); paridad de affordance.
+function FindingTooltip({ term, tip }: { term: string; tip: string }) {
+  return (
+    <span className="relative group inline-flex items-center gap-1 mt-1.5">
+      <span className={`font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] ${tip ? "border-b border-dotted border-[var(--franco-border-strong)] cursor-help" : ""}`}>
+        {term}
+      </span>
+      {tip && (
+        <>
+          <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-[var(--franco-border-strong)] text-[8px] font-mono text-[var(--franco-text-muted)]">
+            i
+          </span>
+          <span
+            className="pointer-events-none absolute bottom-[135%] left-0 z-10 w-[236px] rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
+            style={{
+              background: "var(--franco-card)",
+              border: "0.5px solid var(--franco-border-strong)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            }}
+          >
+            <span className="font-body text-[11px] leading-[1.45] text-[var(--franco-text-secondary)]">
+              {tip}
+            </span>
+          </span>
+        </>
+      )}
+    </span>
+  );
+}
+
 // ── Fila de finding: rank + titular + término + KPI (reusa findingDisplay) ──
 function FindingRow({ rank, h, currency, valorUF }: { rank: string; h: Hallazgo; currency: "CLP" | "UF"; valorUF: number }) {
   const d = findingDisplay(h, currency, valorUF);
@@ -431,7 +480,7 @@ function FindingRow({ rank, h, currency, valorUF }: { rank: string; h: Hallazgo;
       <div className="font-mono text-[12px] font-bold text-[var(--franco-text-tertiary)] pt-0.5">{rank}</div>
       <div className="min-w-0">
         <div className="font-body text-[12.5px] leading-[1.4] text-[var(--franco-text)]">{desc}</div>
-        <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] mt-1.5 inline-block">{d.kick}</span>
+        <FindingTooltip term={d.kick} tip={GLOSA_TOP3[h.id] ?? ""} />
       </div>
       <div className="text-right whitespace-nowrap">
         <div className="font-mono text-[17px] font-bold leading-none" style={{ color: d.kpiRed ? "var(--signal-red)" : "var(--franco-text)" }}>{d.kpi}</div>

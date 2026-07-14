@@ -296,7 +296,7 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
         title: h.titular,
         kpi: `${v.beRatioPct}%`,
         kpiRed: v.beRatioPct > v.corteFragil,
-        ksub: "Break-even · % del mercado",
+        ksub: "Punto de equilibrio · % del mercado",
       };
     }
     case "estructura_costos_str": {

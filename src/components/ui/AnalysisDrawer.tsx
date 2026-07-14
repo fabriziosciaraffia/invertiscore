@@ -160,7 +160,7 @@ function DrawerCostoMensual({
   // Ítems del grupo "Sale" en orden de magnitud de los fijos primero, variables después.
   const saleItems: Array<{ name: string; value: number; tooltip: string }> = [
     {
-      name: "Dividendo hipotecario",
+      name: "Cuota del crédito",
       value: desglose.dividendo,
       tooltip: "Cuota mensual del crédito hipotecario (capital + interés).",
     },
@@ -2151,7 +2151,7 @@ function DrawerCapRate({
     <div>
       <p className="inline-flex items-center gap-1 font-body text-[13px] leading-[1.6] text-[var(--franco-text)] mb-3 m-0">
         <span>El cap rate es lo que el depto renta al año, como % del precio, antes de la deuda.</span>
-        <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes del dividendo) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
+        <InfoTooltip content="Cap rate = arriendo anual neto (tras gastos operativos, antes de la cuota del crédito) ÷ precio. Mide la rentabilidad del activo, sin el efecto del crédito." />
       </p>
 
       {/* Cap rate vs referencia — chips numéricos en mono */}
@@ -2259,6 +2259,13 @@ function ZoneSkeleton() {
 }
 
 function ZoneErrorState({ message }: { message: string | null }) {
+  // Ramifica por señal de error (D-D): el 400 sin coordenadas es una condición de la
+  // dirección (atribuible); un transitorio (red/500) no lo es → no culpar a la dirección
+  // y ofrecer un reintento honesto. La señal viene del hook useZoneInsight.
+  const esCoords = !!message && (/\b400\b/.test(message) || /coordenada/i.test(message));
+  const texto = esCoords
+    ? "Zona no disponible para esta dirección — no pudimos ubicarla en el mapa."
+    : "No pudimos cargar la zona ahora. Reintenta.";
   return (
     <div
       className="rounded-[8px] p-8 text-center"
@@ -2268,7 +2275,7 @@ function ZoneErrorState({ message }: { message: string | null }) {
       }}
     >
       <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 mb-3">
-        Zona no disponible para esta dirección.{message ? ` (${message})` : ""}
+        {texto}
       </p>
       <button
         type="button"

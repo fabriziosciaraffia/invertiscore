@@ -45,13 +45,13 @@ export function AdvancedSectionSTR({
   const occBasePct = Math.round(results.escenarios.base.ocupacionReferencia * 100);
   const occObsPct = Math.round((typeof results.occObservada === "number" ? results.occObservada : results.escenarios.base.ocupacionReferencia) * 100);
 
-  const sectionHeader = (num: string, label: string, title: string) => (
+  const sectionHeader = (label: string, title: string) => (
     <div style={{ marginBottom: 14 }}>
       <span
         className="font-mono uppercase block mb-1.5"
         style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-tertiary)" }}
       >
-        {num} · {label}
+        {label}
       </span>
       <h3 className="font-heading font-bold m-0" style={{ fontSize: 20, lineHeight: 1.25, color: "var(--franco-text)" }}>
         {title}
@@ -144,7 +144,7 @@ export function AdvancedSectionSTR({
 
       {/* 07 ESCENARIOS */}
       <div className="px-5 md:px-7 py-6">
-        {sectionHeader("07", "ESCENARIOS", "Cómo varía con la ocupación del mercado")}
+        {sectionHeader("ESCENARIOS", "Cómo varía con la ocupación del mercado")}
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mb-4 leading-[1.6]">
           {occEsOverride
             ? `La base usa la ocupación que definiste (${occBasePct}%), no la observada de la zona (${occObsPct}%) — es un supuesto tuyo, no un dato de mercado; conservador es la cuarta parte más baja del mercado (p25), un escenario de caída de demanda. El potencial NO es el percentil 75 del mercado: es el techo alcanzable con gestión profesional una vez estabilizada la operación.`
@@ -166,7 +166,7 @@ export function AdvancedSectionSTR({
 
       {/* 08 INDICADORES */}
       <div className="px-5 md:px-7 py-6">
-        {sectionHeader("08", "INDICADORES", "Métricas clave de retorno")}
+        {sectionHeader("INDICADORES", "Métricas clave de retorno")}
         <IndicatorsSTR results={results} currency={currency} valorUF={valorUF} />
       </div>
 
@@ -174,7 +174,7 @@ export function AdvancedSectionSTR({
 
       {/* 09 PATRIMONIO */}
       <div className="px-5 md:px-7 py-6">
-        {sectionHeader("09", "PATRIMONIO", `Tu patrimonio a lo largo de ${results.exitScenario?.yearVenta ?? 10} años`)}
+        {sectionHeader("PATRIMONIO", `Tu patrimonio a lo largo de ${results.exitScenario?.yearVenta ?? 10} años`)}
         {/* E.2 — lead narrativo ai.largoPlazo (migrado del drawer flujo). El
             horizonte 10 años (TIR, multiplicador, plusvalía vs alternativas) es su
             hogar temático, junto al chart de patrimonio. */}
@@ -219,7 +219,7 @@ export function AdvancedSectionSTR({
 
       {/* 10 VENTA */}
       <div className="px-5 md:px-7 py-6">
-        {sectionHeader("10", "VENTA", "Si decides salir del activo")}
+        {sectionHeader("VENTA", "Si decides salir del activo")}
         <SaleBlockSTR results={results} currency={currency} valorUF={valorUF} />
       </div>
     </div>

@@ -238,7 +238,7 @@ export function HeroLTR({
         {/* Veredicto */}
         <div>
           <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
-            01 · Veredicto
+            Veredicto
           </p>
           <h2 className="font-heading font-bold text-[21px] md:text-[23px] leading-[1.22] tracking-[-0.01em] text-[var(--franco-text)] mb-3.5 m-0">
             {pregunta}
@@ -599,7 +599,7 @@ function describeHallazgo(h: Hallazgo, currency: "CLP" | "UF", valorUF: number):
         term: "Aporte mensual",
         tooltip: tip
           ? `${tip}.`
-          : "Flujo neto tras dividendo y gastos. Negativo = sale de tu bolsillo.",
+          : "Flujo neto tras la cuota del crédito y gastos. Negativo = sale de tu bolsillo.",
         kpi: fmtSigned(v.flujoNetoMensualCLP, currency, valorUF),
         kpiSub: "cada mes · toda la proyección",
         kpiRed: v.flujoNetoMensualCLP < 0,

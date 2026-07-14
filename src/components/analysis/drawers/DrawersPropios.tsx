@@ -362,7 +362,7 @@ export function DrawerTIRLtr({
   // dónde salir; el multiplicador de estado sale del hallazgo patrimonio (única fuente).
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
   if (!((exit?.valorVenta ?? 0) > 0) || !pat) {
-    return <SinDatos>Datos insuficientes para el detalle de retorno (falta el escenario de salida).</SinDatos>;
+    return <SinDatos>Datos insuficientes para el detalle de retorno (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
   }
   const tirPct = v.tirPct;
   const umbral = v.umbralPct;
@@ -417,8 +417,8 @@ export function DrawerTIRLtr({
         />{" "}
         es {pctStr(tirPct)}.{" "}
         {flujoResta
-          ? "Pero acá hay una vuelta importante: uno de los tres motores del retorno no suma, resta — y ese porcentaje ya lo trae descontado."
-          : `Un depósito te paga su tasa y listo; tu ${pctStr(tirPct)} se arma de tres motores distintos, y cada uno tiene su propio riesgo. Vale saber cuál lo carga.`}
+          ? "Pero acá hay una vuelta importante: uno de los tres motores del retorno —la caja, la plusvalía y la amortización— no suma, resta, y ese porcentaje ya lo trae descontado."
+          : `Un depósito te paga su tasa y listo; tu ${pctStr(tirPct)} se arma de tres motores distintos —la caja, la plusvalía y la amortización—, y cada uno tiene su propio riesgo. Vale saber cuál lo carga.`}
       </Lead>
 
       <Chips
@@ -483,8 +483,8 @@ export function DrawerTIRLtr({
         </Box>
       )}
       <Note>
-        Montos en {currency} · togglean con el switch de la página · los tres motores salen del escenario de
-        salida a 10 años, no se recalculan aparte.
+        Montos en {currency} · togglean con el switch de la página · los tres motores salen del mismo
+        cálculo de la venta a 10 años, no se recalculan aparte.
       </Note>
     </div>
   );
@@ -580,7 +580,7 @@ export function DrawerPatrimonioLtr({
   // GRUPO B — guard por dato crítico: sin escenario de salida válido, `amortizacion`
   // caería al CRÉDITO COMPLETO (cifra falsa). Se corta antes de mostrar nada.
   if (!((exit?.valorVenta ?? 0) > 0)) {
-    return <SinDatos>Datos insuficientes para el patrimonio a 10 años (falta el escenario de salida).</SinDatos>;
+    return <SinDatos>Datos insuficientes para el patrimonio a 10 años (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
   }
   const patrimonio = v.patrimonioCLP;
   const aportado = v.aportadoCLP;
@@ -664,7 +664,7 @@ export function DrawerPlusvaliaLtr({
   // falta, el guard decide (SinDatos), NO un fallback a recompute.
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
   if (!((exit?.valorVenta ?? 0) > 0) || !pat) {
-    return <SinDatos>Datos insuficientes para el detalle de plusvalía (falta el escenario de salida).</SinDatos>;
+    return <SinDatos>Datos insuficientes para el detalle de plusvalía (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
   }
   const anual = v.anualizadaPct;
   const umbral = v.refPct;
@@ -960,7 +960,7 @@ export function DrawerTIRStr({
   // Multiplicador de ESTADO desde el hallazgo patrimonio (única fuente); sin él, el guard
   // decide. Desde F2: STR patrimonioCLP = EQUITY (equity/aportado → ×1 break-even), como LTR.
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
-  if (!exit || !pat) return <SinDatos>Datos insuficientes para el detalle de retorno (falta el escenario de salida).</SinDatos>;
+  if (!exit || !pat) return <SinDatos>Datos insuficientes para el detalle de retorno (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
 
   const tirPct = v.tirPct;
   const umbral = v.umbralPct;
@@ -1000,8 +1000,8 @@ export function DrawerTIRStr({
         es {pctStr(tirPct)}
         {margen.tone === "red" ? ` — bajo el piso de ${pctStr(umbral)}. ` : `, sobre el piso de ${pctStr(umbral)}. `}
         {flujoResta
-          ? "Pero acá hay una vuelta importante: uno de los tres motores del retorno no suma, resta — y ese porcentaje ya lo trae descontado."
-          : "Se arma de tres motores; vale ver cuál lo carga."}
+          ? "Pero acá hay una vuelta importante: uno de los tres motores del retorno —la caja, la plusvalía y la amortización— no suma, resta, y ese porcentaje ya lo trae descontado."
+          : "Se arma de tres motores —la caja, la plusvalía y la amortización—; vale ver cuál lo carga."}
       </Lead>
 
       <Chips
@@ -1017,7 +1017,7 @@ export function DrawerTIRStr({
             ? margen.tone === "red"
               ? `Quedas ${dec1(Math.abs(round1(margenPts)))} pts bajo el piso de ${pctStr(umbral)} — y eso ya con la caja negativa descontada, no antes.`
               : `Ese ${margen.display} es sobre el piso de ${pctStr(umbral)} — y está medido después de descontar la caja negativa, no antes. El ${pctStr(tirPct)} no es un retorno bruto que luego baja.`
-            : undefined
+            : `${pctStr(umbral)} es el mínimo que un crédito apalancado debe rendir para pagar el esfuerzo y la iliquidez de tener un depto.`
         }
       />
 
@@ -1047,7 +1047,7 @@ export function DrawerTIRStr({
         diferencia de una renta larga sana, este retorno depende fuerte de un supuesto a futuro — vale entrarle
         con los ojos abiertos.
       </Box>
-      <Note>No repite el drawer de patrimonio: acá se explica la TASA (por qué {pctStr(tirPct)}); allá, el STOCK (cuánto es tuyo al final).</Note>
+      <Note>No repite el drawer de patrimonio: acá se explica el ritmo del retorno (por qué {pctStr(tirPct)} al año); allá, cuánto es tuyo al final.</Note>
     </div>
   );
 }
@@ -1068,7 +1068,7 @@ export function DrawerPatrimonioStr({
   const exit = results.exitScenario;
   // GRUPO B — guard: sin escenario de salida no hay amortización ni bolsillo que mostrar.
   if (!exit) {
-    return <SinDatos>Datos insuficientes para el patrimonio a 10 años (falta el escenario de salida).</SinDatos>;
+    return <SinDatos>Datos insuficientes para el patrimonio a 10 años (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
   }
   const anios = exit.yearVenta ?? 10; // GRUPO D — horizonte del exit STR, no un 10 hardcoded
   // EQUITY (rama motor-supuestos F2): `patrimonioCLP` (= exit.equityCLP) ya es EQUITY final —
@@ -1149,7 +1149,7 @@ export function DrawerPlusvaliaStr({
   const pat = results.hallazgos?.find((h): h is HallazgoPatrimonio => h.id === "patrimonio");
   // GRUPO B — guard: el stress y la lectura de la caja necesitan exit; el estado, el hallazgo.
   if (!exit || !pat) {
-    return <SinDatos>Datos insuficientes para el detalle de plusvalía (falta el escenario de salida).</SinDatos>;
+    return <SinDatos>Datos insuficientes para el detalle de plusvalía (aún no calculamos la venta a futuro de este análisis).</SinDatos>;
   }
   const anual = v.anualizadaPct;
   const umbral = v.refPct;

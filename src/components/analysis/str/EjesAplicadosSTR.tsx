@@ -117,7 +117,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
       {/* Cerrado — strip resumen (los números clave en una línea) */}
       {!open && (
         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1.5 font-mono text-[11.5px] text-[var(--franco-text-secondary)]">
-          <span>ADR <span className="text-[var(--franco-text)] font-medium">{fmtMoney(adrFinal, currency, valorUF)}</span></span>
+          <span>Tarifa diaria <span className="text-[var(--franco-text)] font-medium">{fmtMoney(adrFinal, currency, valorUF)}</span></span>
           <span>{occFuente ? "Ocupación observada" : "Ocupación"} <span className="text-[var(--franco-text)] font-medium">{occFinalPct}%</span></span>
           {occFuente && <span>Potencial <span className="text-[var(--franco-text)] font-medium">{occPct}%</span></span>}
           <span>Bruto <span className="text-[var(--franco-text)] font-medium">{fmtMoney(revenueMensualBase, currency, valorUF)}</span></span>
@@ -142,7 +142,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                   </div>
                 </div>
                 <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-                  ADR ×{fmtDec(ejes.factorEdificio, 2)}
+                  Tarifa ×{fmtDec(ejes.factorEdificio, 2)}
                 </div>
               </div>
             )}
@@ -161,7 +161,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                   </div>
                 </div>
                 <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-                  ADR ×{fmtDec(ejes.factorHabilitacion, 2)}
+                  Tarifa ×{fmtDec(ejes.factorHabilitacion, 2)}
                 </div>
               </div>
             )}
@@ -177,7 +177,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                 </div>
               </div>
               <div className="font-mono text-[12px] text-[var(--franco-text-secondary)] shrink-0">
-                Occ target {occPct}%
+                Ocupación objetivo {occPct}%
               </div>
             </div>
           </div>

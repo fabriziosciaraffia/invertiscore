@@ -42,8 +42,12 @@ export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }:
   // la card lo dice en vez de mostrar "0 lugares" + preview genérico. Sigue clickeable —
   // el drawer amplía con ZoneErrorState + reintentar. Mismo lenguaje card↔drawer.
   const hasError = !!error && !data;
+  // Ramifica por señal (D-D): coords/400 → atribuible a la dirección; transitorio → no.
+  const esCoords = !!error && (/\b400\b/.test(error) || /coordenada/i.test(error));
   const preview = hasError
-    ? "Zona no disponible para esta dirección."
+    ? esCoords
+      ? "Zona no disponible para esta dirección."
+      : "No pudimos cargar la zona ahora."
     : loading && !data
       ? "Analizando transporte, servicios y demanda de la zona…"
       : pickPreview(data, currency) || "Explora el entorno del depto y los drivers de demanda.";
