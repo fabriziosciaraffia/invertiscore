@@ -422,7 +422,7 @@ export function DrawerContentSTR({
             tooltip="Ingresos del Airbnb menos costos operativos (limpieza, comisiones, suministros, administrador), antes del dividendo."
           />
           <DataRow
-            label="CAP Rate (rentabilidad bruta sobre precio)"
+            label="CAP Rate (rendimiento neto sobre precio)"
             value={fmtPct(base.capRate * 100, 2)}
             tooltip="NOI anual dividido por precio de compra. En STR saludable: 6-8%. Bajo 5% indica precio alto vs lo que el activo genera."
           />

@@ -70,7 +70,7 @@ export function Indicators({
       value: fmtPct(kpis.cashOnCash),
       tone: tonoCashOnCash(kpis.cashOnCash),
       tooltip:
-        "Flujo neto anual sobre lo que aportaste de tu bolsillo (pie + cierre + flujos negativos acumulados).",
+        "Flujo anual promedio sobre tu inversión inicial del día uno (pie + gastos de cierre + corretaje).",
     },
     {
       label: "Payback (con venta)",
