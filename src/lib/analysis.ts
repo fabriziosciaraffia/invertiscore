@@ -704,10 +704,23 @@ export function calcExitScenario(input: AnalisisInput, metrics: AnalysisMetrics,
     ? Math.round((gananciaSobreTotal / totalAportado) * 10000) / 100
     : 0;
 
-  // Multiplicador CRUDO (rama motor-supuestos): el motor emite sin redondear; el
-  // render/hallazgo redondea una sola vez (todos los consumidores usan .toFixed/fmt).
+  // Multiplicador de capital = EQUITY sobre lo aportado (gananciaNeta/totalAportado),
+  // idéntico al que calcula el card de patrimonio (patrimonio-hallazgo). Un solo valor
+  // de verdad.
+  //
+  // MUERE el doble conteo (rama fix-multiplo-doble-conteo): antes era retornoTotal/
+  // totalAportado, con retornoTotal = flujoAcumulado + gananciaNeta. Como flujoAcumulado
+  // ya trae los aportes mensuales negativos, esos aportes se RESTABAN en el numerador Y se
+  // SUMABAN en el denominador (totalAportado = inicial + Σ|flujoAnual<0|) — el mismo doble
+  // conteo que la TIR evita a propósito (ver comentario en el bloque de TIR abajo, líneas
+  // ~713-715). Efecto viejo: en deals de flujo negativo el múltiplo caía <1 aunque el equity
+  // del card fuera >1 (ej. b046a7d7: sim 0,55x vs card ×1,16).
+  //
+  // Este campo alimenta 5 superficies LTR: simulador (kpi-calculations), dashboard,
+  // comparar, OG image (og/veredicto) y la prosa IA (ai-generation). Todas quedan ahora
+  // alineadas al card. CRUDO: el render/hallazgo redondea una sola vez (usan .toFixed/fmt).
   const multiplicadorCapital = totalAportado > 0
-    ? retornoTotal / totalAportado
+    ? gananciaNeta / totalAportado
     : 0;
 
   // TIR: T0 = -inversionInicial. No se modifica aquí: los aportes mensuales
