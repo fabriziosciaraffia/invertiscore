@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, DollarSign } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis, Desglose } from "@/lib/types";
+import { fmtM, fmtMult } from "@/components/analysis/utils";
 
 const CHART_COLORS = ["#B0BEC5", "#3b82f6", "#f59e0b"];
 const UF_CLP = 38800;
@@ -31,9 +32,7 @@ function getScoreLabel(score: number) {
 // `?? 0` crasheaba el render entero de /comparar al combinar tipos.
 function formatCLP(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "—";
-  if (Math.abs(n) >= 1_000_000) return `${n >= 0 ? "" : "-"}$${(Math.abs(n) / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${n >= 0 ? "" : "-"}$${Math.round(Math.abs(n) / 1000).toLocaleString("es-CL")}K`;
-  return `$${Math.round(n).toLocaleString("es-CL")}`;
+  return (n < 0 ? "-" : "") + fmtM(Math.abs(n));
 }
 
 function formatPct(n: number | null | undefined): string {
@@ -161,7 +160,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         label: "ROI Total",
         values: analisis.map((a) => {
           const m = a.results?.exitScenario?.multiplicadorCapital;
-          return Number.isFinite(m) ? `${(m as number).toFixed(2)}x` : "—";
+          return Number.isFinite(m) ? fmtMult(m as number, 2) : "—";
         }),
         raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,
@@ -176,7 +175,7 @@ function getMetricRows(analisis: Analisis[], currency: "CLP" | "UF"): { section:
         label: "Multiplicador capital",
         values: analisis.map((a) => {
           const m = a.results?.exitScenario?.multiplicadorCapital;
-          return Number.isFinite(m) ? `${(m as number).toFixed(1)}x` : "—";
+          return Number.isFinite(m) ? fmtMult(m as number, 1) : "—";
         }),
         raw: analisis.map((a) => a.results?.exitScenario?.multiplicadorCapital ?? 0),
         higherIsBetter: true,

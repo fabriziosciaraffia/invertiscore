@@ -6,7 +6,7 @@ import {
   Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, ReferenceLine, Cell,
 } from "recharts";
 import type { FlujoEstacionalMes } from "@/lib/engines/short-term-engine";
-import { fmtAxisMoney, fmtMoney } from "../utils";
+import { fmtAxisMoney, fmtMoney, fmtDec } from "../utils";
 
 /**
  * Flujo Estacional STR — 12 meses (Commit 2b · 2026-05-11).
@@ -84,7 +84,7 @@ export function FlujoEstacionalChartSTR({
                 const v = typeof value === "number" ? value : Number(value) || 0;
                 if (name === "flujo") return [fmtMoney(v, currency, valorUF), "Flujo neto"];
                 if (name === "ingresoBruto") return [fmtMoney(v, currency, valorUF), "Ingreso bruto"];
-                if (name === "factor") return [`×${Number(item?.payload?.factor ?? 1).toFixed(2)}`, "Factor"];
+                if (name === "factor") return [`×${fmtDec(Number(item?.payload?.factor ?? 1), 2)}`, "Factor"];
                 return [fmtMoney(v, currency, valorUF), String(name)];
               }}
               labelFormatter={(mes) => String(mes)}
@@ -166,7 +166,7 @@ function PeakValleCard({
         {isFlujoNegativo ? "−" : "+"}{fmtMoney(Math.abs(flujo), currency, valorUF)}
       </p>
       <p className="font-mono text-[10px] text-[var(--franco-text-secondary)] m-0 mt-0.5">
-        factor ×{factor.toFixed(2)}
+        factor ×{fmtDec(factor, 2)}
       </p>
     </div>
   );

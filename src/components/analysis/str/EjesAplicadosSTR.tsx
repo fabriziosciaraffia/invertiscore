@@ -21,6 +21,7 @@
 import { useState } from "react";
 import type { EjesAplicadosSTR as EjesType, OccFuenteSTR } from "@/lib/engines/short-term-engine";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { fmtDec } from "@/components/analysis/utils";
 
 // Mínimo de comparables válidos para mostrar la ocupación realizada. Bajo este
 // umbral la mediana es ruido — no se muestra la fila.
@@ -141,7 +142,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                   </div>
                 </div>
                 <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-                  ADR ×{ejes.factorEdificio.toFixed(2)}
+                  ADR ×{fmtDec(ejes.factorEdificio, 2)}
                 </div>
               </div>
             )}
@@ -160,7 +161,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
                   </div>
                 </div>
                 <div className="font-mono text-[12px] text-[var(--franco-text-secondary)]">
-                  ADR ×{ejes.factorHabilitacion.toFixed(2)}
+                  ADR ×{fmtDec(ejes.factorHabilitacion, 2)}
                 </div>
               </div>
             )}
@@ -188,7 +189,7 @@ export function EjesAplicadosSTR({ ejes, revenueMensualBase, currency, valorUF, 
               <span className="text-[var(--franco-text-secondary)]">{fmtMoney(ejes.adrBaselineP50, currency, valorUF)}</span>
             </div>
             <div className="flex justify-between font-mono text-[12px]">
-              <span className="text-[var(--franco-text-muted)]">Tu tarifa diaria estimada{ejes.factorADRTotal.toFixed(2) !== "1.00" ? ` (×${ejes.factorADRTotal.toFixed(2)})` : ""}</span>
+              <span className="text-[var(--franco-text-muted)]">Tu tarifa diaria estimada{ejes.factorADRTotal.toFixed(2) !== "1.00" ? ` (×${fmtDec(ejes.factorADRTotal, 2)})` : ""}</span>
               {adrEsOverride ? (
                 <span className="flex items-center gap-2">
                   <span className="text-[var(--franco-text-muted)] line-through">{fmtMoney(ejes.adrAjustado, currency, valorUF)}</span>

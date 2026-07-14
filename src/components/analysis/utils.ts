@@ -79,6 +79,16 @@ export function fmtPct(n: number, decimals: number = 1): string {
   return n.toFixed(decimals).replace(".", ",") + "%";
 }
 
+/** Decimal con coma chilena, sin unidad. Para km, meses, factores con prefijo ×. */
+export function fmtDec(n: number, decimals: number = 1): string {
+  return n.toFixed(decimals).replace(".", ",");
+}
+
+/** Multiplicador con sufijo "x" y coma chilena (2,3x). Cada caller fija sus decimales. */
+export function fmtMult(n: number, decimals: number = 1): string {
+  return fmtDec(n, decimals) + "x";
+}
+
 /** Parse UF string ("UF 4.664" / "UF 3,200") → numeric value in UF. */
 export function parseUFString(s: string | undefined | null): number {
   if (!s) return 0;

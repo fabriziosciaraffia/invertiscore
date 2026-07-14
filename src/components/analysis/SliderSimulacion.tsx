@@ -2,6 +2,7 @@
 
 import { useSimulation } from "@/contexts/SimulationContext";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { fmtPct } from "@/components/analysis/utils";
 
 export default function SliderSimulacion({
   variant = "card",
@@ -118,7 +119,7 @@ export default function SliderSimulacion({
               color: legacy ? "color-mix(in srgb, var(--franco-text) 50%, transparent)" : "var(--franco-text)",
             }}
           >
-            {plusvaliaAnual.toFixed(1)}%
+            {fmtPct(plusvaliaAnual, 1)}
           </span>
         </div>
         <input

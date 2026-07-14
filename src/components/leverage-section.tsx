@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import Link from "next/link";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { fmtM, fmtMult } from "@/components/analysis/utils";
 
 // ============================================================
 // Constants
@@ -47,9 +48,7 @@ function calcLeverageData(horizon: number, plusvaliaPct: number) {
 }
 
 function fmtMonto(n: number) {
-  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `$${Math.round(n / 1_000)}K`;
-  return `$${Math.round(n)}`;
+  return fmtM(n);
 }
 
 function fmtChart(n: number) {
@@ -264,7 +263,7 @@ export default function LeverageSection() {
                 {/* 20% block */}
                 <div className="z-10 -mr-1.5 text-center">
                   <p className="mb-1.5 font-mono text-xs font-semibold text-[var(--franco-bg)]">
-                    $24.0M
+                    $24,0M
                   </p>
                   <div className="flex h-[72px] w-[72px] items-center justify-center rounded-[10px] border-2 border-white/90 bg-[#C8323C] shadow-[0_2px_12px_rgba(200,50,60,0.2)] md:h-20 md:w-20">
                     <span className="font-mono text-[11px] font-bold text-white md:text-[13px]">
@@ -284,7 +283,7 @@ export default function LeverageSection() {
                 {/* 100% block */}
                 <div className="text-center">
                   <p className="mb-1.5 font-mono text-xs font-semibold text-[var(--franco-bg)]">
-                    $120.0M
+                    $120,0M
                   </p>
                   <div
                     className="flex h-[140px] w-[140px] flex-col justify-between rounded-xl p-2.5 md:h-[170px] md:w-[170px] md:p-3"
@@ -324,9 +323,9 @@ export default function LeverageSection() {
             {/* Explanation */}
             <div className="mt-5 rounded-[10px] bg-[var(--franco-text)] p-4 px-5">
               <p className="font-body text-sm leading-relaxed text-[var(--franco-bg)]">
-                Con <strong>$24.0M</strong> de pie controlas un activo de{" "}
-                <strong>$120.0M</strong>. Si la propiedad sube 4% en un año, eso
-                son <strong>$4.8M</strong> de plusvalía — un 20% sobre tu pie.
+                Con <strong>$24,0M</strong> de pie controlas un activo de{" "}
+                <strong>$120,0M</strong>. Si la propiedad sube 4% en un año, eso
+                son <strong>$4,8M</strong> de plusvalía — un 20% sobre tu pie.
                 Eso es apalancamiento.
               </p>
             </div>
@@ -483,7 +482,7 @@ export default function LeverageSection() {
                   La brecha entre ambas es tu patrimonio, y crece
                   aceleradamente.
                 </strong>{" "}
-                En 10 años pasas de $24.0M a {fmtMonto(last10.patrimonio)} de
+                En 10 años pasas de $24,0M a {fmtMonto(last10.patrimonio)} de
                 patrimonio neto.
               </p>
             </div>
@@ -568,7 +567,7 @@ export default function LeverageSection() {
               </div>
               <div className="text-center">
                 <p className="font-heading text-[44px] font-bold leading-none text-white">
-                  {last10.retorno.toFixed(1)}x
+                  {fmtMult(last10.retorno, 1)}
                 </p>
                 <p className="mt-1 font-mono text-[9px] uppercase tracking-wide text-[#C8323C]">
                   RETORNO
@@ -805,7 +804,7 @@ export default function LeverageSection() {
               >
                 <p className="mb-1 font-body text-[9px] uppercase text-white/35">RETORNO</p>
                 <p className="font-heading text-[24px] font-bold text-white md:text-[28px]">
-                  {last.retorno.toFixed(1)}x
+                  {fmtMult(last.retorno, 1)}
                 </p>
                 <p className="mt-0.5 font-body text-[9px] text-white/35">sobre tu inversión</p>
               </div>
@@ -818,18 +817,18 @@ export default function LeverageSection() {
                 {last.retorno >= 2.5 ? (
                   <>
                     Con {plusvalia}% de plusvalía y {horizon} años, este depto
-                    multiplica tu inversión {last.retorno.toFixed(1)}x. El flujo
+                    multiplica tu inversión {fmtMult(last.retorno, 1)}. El flujo
                     negativo se paga solo.
                   </>
                 ) : last.retorno >= 1.5 ? (
                   <>
-                    Retorno de {last.retorno.toFixed(1)}x en {horizon} años.
+                    Retorno de {fmtMult(last.retorno, 1)} en {horizon} años.
                     Positivo, pero ajustado. Si puedes negociar mejor precio,
                     mejora bastante.
                   </>
                 ) : last.retorno >= 1 ? (
                   <>
-                    Apenas {last.retorno.toFixed(1)}x en {horizon} años.{" "}
+                    Apenas {fmtMult(last.retorno, 1)} en {horizon} años.{" "}
                     <span className="font-semibold text-[#C8323C]">
                       Mucho riesgo para poco retorno.
                     </span>{" "}

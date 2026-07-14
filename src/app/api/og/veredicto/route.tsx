@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
 import { readVeredicto } from "@/lib/results-helpers";
+import { fmtPct, fmtMult } from "@/components/analysis/utils";
 import type {
   FullAnalysisResult,
   AnalisisInput,
@@ -229,7 +230,7 @@ export async function GET(request: Request) {
   if (typeof mult === "number" && mult > 0) {
     kpis.push({
       label: "04 · LARGO PLAZO",
-      value: `${mult.toFixed(1)}x`,
+      value: fmtMult(mult, 1),
       sub: "RETORNO 10 AÑOS",
     });
   }
@@ -237,7 +238,7 @@ export async function GET(request: Request) {
   if (typeof rentBruta === "number") {
     kpis.push({
       label: "05 · RENTABILIDAD",
-      value: `${rentBruta.toFixed(1)}%`,
+      value: fmtPct(rentBruta, 1),
       sub: "BRUTA ANUAL",
     });
   }

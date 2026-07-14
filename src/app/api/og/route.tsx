@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { createClient } from "@supabase/supabase-js";
+import { fmtPct } from "@/components/analysis/utils";
 
 export const runtime = "edge";
 
@@ -86,7 +87,7 @@ export async function GET(request: Request) {
             </div>
           ) : null}
           {rent != null ? (
-            <div style={{ display: "flex", fontSize: "18px" }}>Rent: {rent.toFixed(1)}%</div>
+            <div style={{ display: "flex", fontSize: "18px" }}>Rent: {fmtPct(rent, 1)}</div>
           ) : null}
           <div style={{ display: "flex", fontSize: "18px" }}>{data.comuna}</div>
         </div>

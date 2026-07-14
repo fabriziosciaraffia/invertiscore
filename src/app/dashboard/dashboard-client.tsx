@@ -10,6 +10,7 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { normalizeLegacyVerdict } from "@/lib/types";
+import { fmtM, fmtPct, fmtMult } from "@/components/analysis/utils";
 
 // Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11). Análisis legacy
 // con strings antiguos (VIABLE / AJUSTA ESTRATEGIA / NO RECOMENDADO / AJUSTA
@@ -85,7 +86,7 @@ function getMetrics(item: Analisis): CardMetrics {
     return {
       isSTR: true,
       flujoMensual: flujo,
-      primary: { label: "CAP RATE", value: `${capRatePct.toFixed(1)}%` },
+      primary: { label: "CAP RATE", value: fmtPct(capRatePct, 1) },
       secondary: {
         label: "VS LTR",
         value: sobreRentaPct === 0 ? "—" : `${sobreRentaPct > 0 ? "+" : ""}${sobreRentaPct.toFixed(0)}%`,
@@ -102,8 +103,8 @@ function getMetrics(item: Analisis): CardMetrics {
     return {
       isSTR: false,
       flujoMensual,
-      primary: { label: "RENT.", value: `${rentabilidadBruta.toFixed(1)}%` },
-      secondary: { label: "RETORNO", value: multiplicador > 0 ? `${multiplicador.toFixed(1)}x` : "—" },
+      primary: { label: "RENT.", value: fmtPct(rentabilidadBruta, 1) },
+      secondary: { label: "RETORNO", value: multiplicador > 0 ? fmtMult(multiplicador, 1) : "—" },
     };
   }
 
@@ -113,15 +114,13 @@ function getMetrics(item: Analisis): CardMetrics {
   return {
     isSTR: false,
     flujoMensual,
-    primary: { label: "RENT.", value: `${rentabilidadBruta.toFixed(1)}%` },
+    primary: { label: "RENT.", value: fmtPct(rentabilidadBruta, 1) },
     secondary: { label: "RETORNO", value: "—" },
   };
 }
 
 function formatCLP(n: number) {
-  if (Math.abs(n) >= 1_000_000) return `${n >= 0 ? "" : "-"}$${(Math.abs(n) / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(n) >= 1_000) return `${n >= 0 ? "" : "-"}$${Math.round(Math.abs(n) / 1000)}K`;
-  return `$${Math.round(n)}`;
+  return (n < 0 ? "-" : "") + fmtM(Math.abs(n));
 }
 
 function formatDate(dateStr: string) {

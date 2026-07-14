@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import type { ZoneInsightData, ZonePOI } from "@/hooks/useZoneInsight";
 import { francoMapStyleForTheme } from "@/lib/map-styles";
+import { fmtDec } from "@/components/analysis/utils";
 
 type CategoryKey = keyof ZoneInsightData["pois"];
 
@@ -233,7 +234,7 @@ export function ZoneMap({ centerLat, centerLng, pois }: Props) {
           title: poi.nombre,
           icon: buildMarkerIcon(spec),
         });
-        const distTxt = poi.distancia < 1000 ? `${poi.distancia} m` : `${(poi.distancia / 1000).toFixed(1)} km`;
+        const distTxt = poi.distancia < 1000 ? `${poi.distancia} m` : `${fmtDec(poi.distancia / 1000, 1)} km`;
         const extra = poi.linea ? ` · ${poi.linea}` : poi.comuna ? ` · ${poi.comuna}` : "";
         const infoWindow = new google.maps.InfoWindow({
           content:

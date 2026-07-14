@@ -11,6 +11,7 @@ import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { createClient } from "@/lib/supabase/client";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { fmtDec } from "@/components/analysis/utils";
 
 const UF_CLP_FALLBACK = 38800;
 
@@ -1967,7 +1968,7 @@ export default function NuevoAnalisisPage() {
                 onChange={(e) => setField("vacanciaPct", e.target.value)}
                 className="w-full accent-[#C8323C]"
               />
-              <p className="mt-1 font-body text-[10px] text-[var(--franco-text-muted)]">{`≈ ${(parseFloat(form.vacanciaPct) * 12 / 100).toFixed(1)} meses/año`}</p>
+              <p className="mt-1 font-body text-[10px] text-[var(--franco-text-muted)]">{`≈ ${fmtDec(parseFloat(form.vacanciaPct) * 12 / 100, 1)} meses/año`}</p>
             </div>
             <div>
               <FieldLabel tip="Comisión si contratas administrador de arriendo. En 0% se desactiva.">Administración: {form.adminPct}%</FieldLabel>

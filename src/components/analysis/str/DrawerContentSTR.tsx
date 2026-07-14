@@ -44,7 +44,7 @@ import {
 } from "@/components/analysis/drawers/DrawersPropios";
 import { FlujoEstacionalChartSTR } from "./FlujoEstacionalChartSTR";
 import { DrawerTipoHuesped } from "./DrawerTipoHuesped";
-import { fmtMoney, fmtPct } from "../utils";
+import { fmtMoney, fmtPct, fmtDec } from "../utils";
 
 export interface InputDataSTR {
   edificioPermiteAirbnb?: "si" | "no" | "no_seguro";
@@ -297,7 +297,7 @@ function HabilitacionContext({ ejes }: { ejes: ShortTermResult["ejesAplicados"] 
   const factor = AMOBLAMIENTO_FACTOR_HABILITACION[hab] ?? 1;
   const label = LABEL_HAB[hab] ?? hab;
   const efecto = factor > 1
-    ? `escala tu amoblamiento inicial ×${factor.toFixed(factor % 1 === 0 ? 0 : 1)} sobre el nivel básico`
+    ? `escala tu amoblamiento inicial ×${fmtDec(factor, factor % 1 === 0 ? 0 : 1)} sobre el nivel básico`
     : "usa el amoblamiento base, sin recargo";
   return (
     <DrawerSection label="Nivel de habilitación">

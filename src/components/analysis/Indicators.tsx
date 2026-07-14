@@ -10,6 +10,7 @@ import {
   type Tone,
 } from "@/lib/analysis/kpi-calculations";
 import { InfoTooltip } from "@/components/ui/tooltip";
+import { fmtPct as fmtPctCL, fmtMult } from "@/components/analysis/utils";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
 
@@ -53,8 +54,8 @@ export function Indicators({
     : tirTooltipBase;
 
   // P1 Fase 24 — guard NaN/Infinity en KPIs derivados de cálculos iterativos.
-  const fmtPct = (v: number) => (Number.isFinite(v) ? `${v.toFixed(1)}%` : "—");
-  const fmtMultiplo = (v: number) => (Number.isFinite(v) ? `${v.toFixed(2)}x` : "—");
+  const fmtPct = (v: number) => (Number.isFinite(v) ? fmtPctCL(v, 1) : "—");
+  const fmtMultiplo = (v: number) => (Number.isFinite(v) ? fmtMult(v, 2) : "—");
 
   // Los 4 que reaccionan a los sliders. tono === "bad" → Signal Red (uso #2
   // valores críticos): Cash-on-Cash negativo, TIR/Múltiplo bajo umbral.

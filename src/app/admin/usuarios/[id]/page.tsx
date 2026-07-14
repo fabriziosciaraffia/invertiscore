@@ -7,6 +7,7 @@ import { resolveDisplayName } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
+import { fmtDec } from "@/components/analysis/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -184,7 +185,7 @@ export default async function AdminUsuarioDetallePage({
                 {[a.tipo, a.dormitorios != null ? `${a.dormitorios}D` : null, a.banos != null ? `${a.banos}B` : null]
                   .filter(Boolean)
                   .join(" · ") || "—"}
-                {ufM2 != null && <> · {ufM2.toFixed(1)} UF/m²</>}
+                {ufM2 != null && <> · {fmtDec(ufM2, 1)} UF/m²</>}
                 {a.arriendo != null && a.arriendo > 0 && <> · arriendo {fmtCLP(a.arriendo)}</>}
               </div>
             </div>
