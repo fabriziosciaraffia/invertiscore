@@ -206,7 +206,7 @@ Anglicismos PROHIBIDOS en el output:
 - "ramp-up" → "estabilización inicial" o "los primeros meses de operación".
 - "pricing" → "tarifa" o "tarifas dinámicas por temporada". "yield" → "rendimiento". "occupancy rate" → "ocupación".
 - "uplift" → "incremento sobre la tarifa base". "amenities" → glosado la primera vez: "amenidades (toallas, sábanas, café, jabones)".
-- "ADR" → primera mención glosada: "tarifa diaria promedio (ADR)"; después pelado. "Cash-on-Cash"/"CAP rate"/"TIR"/"NOI" → asumidos, no glosar. "Booking" (plataforma) OK; "booking" concepto → "reserva".
+- "ADR" → primera mención glosada: "tarifa diaria promedio (ADR)"; "TIR" → primera mención glosada: "TIR (la rentabilidad anual de tu inversión)"; después pelados (regla única, coherente con LTR). "Cash-on-Cash"/"CAP rate"/"NOI" → asumidos, no glosar. "Booking" (plataforma) OK; "booking" concepto → "reserva".
 
 Verbos conjugados en inglés — PROHIBIDOS (el output es solo español). Nunca "Generates", "Returns", "Provides", "Includes", "Renders", "Tracks", "Calculates", "Yields".
 
@@ -304,6 +304,11 @@ function fmtCLP(n: number): string {
 }
 function fmtUF(n: number): string {
   return "UF " + (Math.round(n * 10) / 10).toLocaleString("es-CL");
+}
+// Decimal en coma chilena para las CIFRAS INYECTADAS al LLM (%/x). Espejo del helper
+// de ai-generation.ts — el prompt no debe recitar punto decimal. Sufijo afuera.
+function pct(n: number, decimals = 1): string {
+  return n.toFixed(decimals).replace(".", ",");
 }
 function fmtCLPSigned(n: number): string {
   if (n === 0) return "$0";
@@ -441,7 +446,7 @@ export function buildUserPromptSTR(
     anomalias.push(`LTR GANA: arriendo tradicional genera ${Math.abs(Math.round(comp.sobreRentaPct * 100))}% más neto que STR. La estrategia STR no compensa.`);
   }
   if (base.capRate < 0.03) {
-    anomalias.push(`CAP RATE BAJO: ${(base.capRate * 100).toFixed(1)}% — el NOI apenas justifica el precio de compra.`);
+    anomalias.push(`CAP RATE BAJO: ${pct(base.capRate * 100)}% — el NOI apenas justifica el precio de compra.`);
   }
   if (base.flujoCajaMensual < -200000) {
     anomalias.push(`FLUJO MUY NEGATIVO: ${fmtCLPSigned(base.flujoCajaMensual)}/mes incluso operando STR.`);
@@ -519,7 +524,7 @@ Dormitorios: ${dormitorios}, Baños: ${banos}
 Tipo: ${tipoPropiedad || "—"}
 Precio compra: ${fmtUF(precioCompraUF)} (${fmtCLP(precioCompraCLP)})
 Pie: ${piePct}% = ${fmtCLP(pieCLP)}
-Tasa crédito: ${tasa.toFixed(1)}%, Plazo: ${plazo} años
+Tasa crédito: ${pct(tasa)}%, Plazo: ${plazo} años
 Dividendo: ${fmtCLP(dividendo)}/mes
 Capital invertido inicial: ${fmtCLP(capitalInv)} (pie + amoblamiento + gastos cierre)
 Modo gestión seleccionado: ${modoGestion} (comisión: ${comisionPct}%)
@@ -545,8 +550,8 @@ Costos operativos (electricidad ${fmtCLP(elec)} + agua ${fmtCLP(agua)} + wifi ${
 NOI mensual: ${fmtCLPSigned(base.noiMensual)}
 Dividendo: -${fmtCLP(dividendo)}/mes
 FLUJO DE CAJA MENSUAL: ${fmtCLPSigned(base.flujoCajaMensual)}
-CAP rate: ${(base.capRate * 100).toFixed(2)}% (umbral STR de referencia: 5%)
-Cash-on-Cash: ${(base.cashOnCash * 100).toFixed(1)}%
+CAP rate: ${pct(base.capRate * 100, 2)}% (umbral STR de referencia: 5%)
+Cash-on-Cash: ${pct(base.cashOnCash * 100)}%
 
 === ESCENARIOS (conservador / base / upside) ===
 Conservador (ocupación en el cuartil bajo observado): NOI ${fmtCLPSigned(cons.noiMensual)}/mes, Flujo ${fmtCLPSigned(cons.flujoCajaMensual)}/mes
@@ -576,7 +581,7 @@ Los primeros ~6 meses el listing opera bajo su ocupación normal mientras gana r
 === PROYECCIÓN LARGO PLAZO (plusvalía proyectada: ${PROY_PCT} anual flat, proyección estándar Franco) ===
 ${projY10 && exit ? `Patrimonio neto al año ${exit.yearVenta}: ${fmtCLP(projY10.patrimonioNeto)} (valor depto ${fmtCLP(projY10.valorDepto)} - saldo crédito ${fmtCLP(projY10.saldoCredito)} + flujos acumulados ${fmtCLPSigned(projY10.flujoAcumulado)})
 Tu parte al vender año ${exit.yearVenta} (EQUITY = lo que te queda en la mano, neto de deuda y comisión; NO "ganancia neta"): ${fmtCLPSigned(exit.equityCLP)}
-TIR @ ${exit.yearVenta} años: ${exit.tirAnual.toFixed(1)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${exit.multiplicadorCapital.toFixed(2)}x` : "(proyecciones long-term no disponibles)"}
+TIR @ ${exit.yearVenta} años: ${pct(exit.tirAnual)}% · Multiplicador de capital (equity/aportado, ×1 = recuperas lo puesto): ${pct(exit.multiplicadorCapital, 2)}x` : "(proyecciones long-term no disponibles)"}
 
 === ATRACTORES DE DEMANDA EN LA ZONA ===
 Metro más cercano: ${metroName} a ${distMetro}m
@@ -592,11 +597,11 @@ Recomendación de modalidad: ${r.recomendacionModalidad ?? "(no disponible)"}
 ${r.recomendacionModalidad === "LTR_PREFERIDO" ? `→ OBLIGATORIO en \`vsLTR.contenido\`: decir explícitamente que en esta zona LTR rinde mejor neto que STR y que la complejidad operativa del corto no se justifica. NO endulces (§1.1). Pero arranca del NOI absoluto, no re-enunciando la dirección que la card ya mostró (§1.bis).` : r.recomendacionModalidad === "STR_VENTAJA_CLARA" ? `→ En \`vsLTR.contenido\`: cuantifica el upside STR sobre LTR (sobre-renta > +15%); el esfuerzo se justifica.` : r.recomendacionModalidad === "INDIFERENTE" ? `→ En \`vsLTR.contenido\`: di "está parejo"; la decisión depende del esfuerzo operativo y el perfil de riesgo.` : ""}
 
 === SUBSIDIO LEY 21.748 (palanca financiera externa · Ángulo 4) ===
-${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${r.subsidioTasa.tasaConSubsidio.toFixed(1)}%
+${r.subsidioTasa ? `califica=${r.subsidioTasa.califica} | aplicado=${r.subsidioTasa.aplicado} | tasaConSubsidio=${pct(r.subsidioTasa.tasaConSubsidio)}%
 ${r.subsidioTasa.califica && !r.subsidioTasa.aplicado ? `→ DEBES mencionar: el usuario puede pedir tasa subsidiada al banco (~0,6 pp menos). BAJA el dividendo y MEJORA el flujo. No está reflejado en este cálculo.` : r.subsidioTasa.califica && r.subsidioTasa.aplicado ? `→ Ya aplicado (la tasa ingresada coincide con la subsidiada). No lo menciones como mejora.` : `→ No califica. NO mencionar el subsidio.`}` : "(subsidio no calculado)"}
 
 === SENSIBILIDAD DE PRECIO (Ángulo 4 — la tabla vive en su propio drawer de datos) ===
-${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${(s.capRate * 100).toFixed(2)}%, CoC ${(s.cashOnCash * 100).toFixed(1)}%, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
+${r.sensibilidadPrecio ? r.sensibilidadPrecio.map((s) => `${s.label === "actual" ? "Precio actual" : `${s.label} → ${fmtCLP(s.precioCLP)}`}: CAP ${pct(s.capRate * 100, 2)}%, CoC ${pct(s.cashOnCash * 100)}%, Flujo ${fmtCLPSigned(s.flujoCajaMensual)}/mes`).join("\n") : "(sin sensibilidad de precio)"}${bloqueCards}${bloqueCoronado}${anomaliasTexto}
 
 ═══════════════════════════════════════════════════════════════════
 INSTRUCCIÓN FINAL

@@ -402,7 +402,7 @@ REGLA 7 — \`headline\` Y \`preview\` SIGUEN LA MISMA DOCTRINA
   OK: "Pagas prima por El Golf, no por el depto."
 - preview_clp: 12-18 palabras (máximo 2 líneas). Frase analítica que explica el POR QUÉ, no lista datos.
   NO: "Metro a 180m, Bustamante a 410m, Costanera a 850m."
-  OK: "La mezcla Metro + El Golf valida el percentil 78 de arriendo, pero no garantiza retorno."
+  OK: "La mezcla Metro + El Golf valida un arriendo en el tramo alto de la zona, pero no garantiza retorno." (traduce los percentiles a lenguaje llano — "en el tramo alto", "entre los más altos" — nunca "percentil 78"/"p78")
 
 REGLA 8 — Plusvalía: jerarquía canónica IA ↔ motor
 
@@ -509,8 +509,8 @@ async function generateInsightAI(
     // La tasa de proyección de los umbrales (REGLA 1/8, hoy 3%) es la PROYECCIÓN
     // estándar Franco a futuro, no la histórica observada — aunque coincidan en el número.
     finLines.push(ctx.plusvaliaFallback
-      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
-      : `- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual}% (cifra ANUAL, no acumulada 10 años).`);
+      ? `- Sin histórico propio de ${comuna}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% anual. PROHIBIDO atribuir ese % a ${comuna} ("${comuna} promedió/subió X%") — es referencia regional, no la historia de la comuna.`
+      : `- Plusvalía histórica anualizada ${comuna}: ${ctx.plusvaliaAnual.toFixed(1).replace(".", ",")}% (cifra ANUAL, no acumulada 10 años).`);
   }
 
   const finBlock = finLines.length > 0 ? `\n\nContexto financiero del depto (usar solo montos presentes acá):\n${finLines.join("\n")}` : "";

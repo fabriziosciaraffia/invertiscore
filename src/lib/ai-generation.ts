@@ -33,7 +33,7 @@ const anthropic = new Anthropic();
 // histórica como contexto de riesgo. Si cambia la constante, cambian prompt y render juntos.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
-export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce TIR, plusvalía, flujo neto, dividendo, sin que se los expliques.
+export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
 Respondes SOLO con el JSON solicitado al final del user prompt. Sin texto fuera del JSON, sin backticks, sin markdown más allá del que el contrato del campo permita.
 
@@ -158,7 +158,7 @@ Forma: una sola frase integrada en \`conviene.respuestaDirecta\` o en \`largoPla
 NIVEL 2 — Observación táctica.
 Cuándo: \`overall\` === "mejorable".
 Forma: una observación corta + el impacto cuantificado, en \`conviene.respuestaDirecta\` (si condiciona la decisión) o como nota en \`negociacion.contenido\`. Sin sección dedicada. Sin \`reestructuracion\`. Usá el \`impact_message\` que viene en \`financingHealth.pie\` o \`financingHealth.tasa\`. Ejemplo:
-> "Tu tasa al 4,5% está ~40 bps sobre el mercado. Cotiza en 2-3 bancos antes de firmar — bajar a 4,1% reduce la cuota mensual ~$48K."
+> "Tu tasa al 4,5% está ~0,4 puntos porcentuales sobre el mercado. Cotiza en 2-3 bancos antes de firmar — bajar a 4,1% reduce la cuota mensual ~$48K."
 
 NIVEL 3 — Reestructuración recomendada.
 Cuándo (cualquiera de estos disparadores):
@@ -372,7 +372,7 @@ REGLA 4 — Cierre cajaAccionable con tiempo realista.
 - Si flujo no cruza: "¿Puedes sostener $X al mes sin tope claro en la proyección? El retorno depende solo de la venta."
 
 REGLA 5 — negociacion.estrategiaSugerida y los 3 precios discretos (v10).
-La IA NO calcula precios. Tenés 3 anclas en el bloque "ANCLAS DE NEGOCIACIÓN":
+La IA NO calcula precios. Tienes 3 anclas en el bloque "ANCLAS DE NEGOCIACIÓN":
 - \`primeraOferta_uf\`: con qué número partir (puede ser igual al techo si el modo es "cerrar_actual")
 - \`techo_uf\`: hasta dónde subir si rechazan
 - \`walkAway\`: null cuando techo ya cumple esa función. Si NO null y \`precio_uf === null\`, la salida es "buscar otra propiedad" (veredicto BUSCAR OTRA)
@@ -427,6 +427,7 @@ Términos prohibidos sin glosa al primer uso:
 - "bps" PROHIBIDO. Usa "puntos porcentuales" o "puntos sobre mercado" (ej: "tu tasa está 0,4 puntos porcentuales sobre mercado", no "40 bps sobre mercado").
 - "no cruza a positivo" / "flujo no cruza" PROHIBIDO. Usa "sigues aportando de tu bolsillo todos los meses de la proyección" o "el arriendo nunca alcanza a cubrir el dividendo dentro de los X años proyectados".
 - Otros prohibidos sin definición: VAN, cap rate, LTV, yield bruto, yield neto, breakeven literal, amortización pelada.
+- "ganancia neta" PROHIBIDO para el patrimonio/equity a la venta. "Tu parte al vender" (valor de venta − deuda − comisión + flujos acumulados) es lo que te QUEDA en la mano al liquidar, NO la ganancia por encima de lo que pusiste. Nombrarlo "ganancia neta" miente: incluye recuperar tu propio capital. Di "tu parte", "lo que te queda a la venta", "lo tuyo al liquidar" — coherente con la card y el drawer de patrimonio. Si necesitas hablar de la ganancia real (por encima de lo aportado), es otra cifra y otra palabra; nunca uses "ganancia" para el equity total.
 
 REGLA 9 — Plusvalía histórica: caveat temporal obligatorio (v13 — evento como período, no como causa).
 El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos que lo vuelven un promedio ruidoso — no un predictor limpio. Son el marco temporal del dato (CUÁNDO ocurrió), NO causas cuantificables (CUÁNTO movió la cifra):
@@ -434,12 +435,12 @@ El dataset de plusvalía cubre 2014-2024. Ese rango CRUZA tres tramos atípicos 
 - Estallido social, octubre 2019.
 - Pandemia, 2020-2021.
 
-REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene.respuestaDirecta\`, \`largoPlazo\`), debes situar el número en su período: nombrá ≥1 de los tres tramos que el rango cruza y decí que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
+REGLA DURA: en el PRIMER uso de la plusvalía histórica dentro de cualquier campo (\`conviene.respuestaDirecta\`, \`largoPlazo\`), debes situar el número en su período: nombra ≥1 de los tres tramos que el rango cruza y di que por eso es ruidoso / no es proyección. Después del primer uso puedes citar el número pelado.
 
 ENCUADRE OBLIGATORIO — el evento es CUÁNDO, no POR QUÉ:
 - Correcto (el rango CRUZA el período): "ese número cruza el estallido y la pandemia, así que es ruidoso".
 - Incorrecto (atribuir un efecto sin dato): "el estallido deprimió la cifra" / "la pandemia bajó el valor un X%".
-No sabés cuánto movió cada tramo a ESTA comuna; solo sabés que el promedio los atraviesa. Quedate en el CUÁNDO. Si algún día el prompt te da el efecto por comuna como dato, ahí sí podrás cuantificarlo.
+No sabes cuánto movió cada tramo a ESTA comuna; solo sabes que el promedio los atraviesa. Quedate en el CUÁNDO. Si algún día el prompt te da el efecto por comuna como dato, ahí sí podrás cuantificarlo.
 
 EL CAVEAT APLICA EN AMBAS DIRECCIONES — no solo cuando la histórica es baja o negativa:
 - Histórica negativa o débil (Santiago, El Bosque, Las Condes, Providencia): el número cruza el estallido y la pandemia; por eso no es techo — la comuna podría recuperar.
@@ -455,7 +456,7 @@ Ejemplos INVÁLIDOS:
 - "Plusvalía histórica de 3% anual" (% pelado, sin situar el período).
 - "Las Condes creció 2,7% en la década" (cita rango pero no nombra ningún tramo).
 - "el estallido deprimió la plusvalía de la comuna" (atribuye un efecto sin dato — causa inventada).
-- "la pandemia bajó el valor un X%" (cuantifica un efecto que no tenés).
+- "la pandemia bajó el valor un X%" (cuantifica un efecto que no tienes).
 
 PROHIBIDO presentar el % como tendencia limpia o predictor estructural. La frase "histórico no garantiza futuro" no basta — debes situar el número nombrando ≥1 de los tramos que el rango cruza (boom 2014-2018 / estallido / pandemia). Aplica igual cuando la histórica es positiva alta: nombrar el boom y advertir que el ritmo puede no replicarse.
 
@@ -470,7 +471,7 @@ La plusvalía histórica de la comuna (2014-2024) es CONTEXTO DE RIESGO sobre la
 - Histórica ≈ ${PROY_PCT} (ej. Providencia 3,0%, Huechuraba 3,0%): la proyección está alineada con la trayectoria observada.
 - Histórica < ${PROY_PCT} pero positiva (ej. Las Condes 2,7%, San Miguel 2,2%): la proyección descansa en una densificación o cambio de zona distinto a la década pasada.
 - Histórica negativa (ej. Santiago -1,1%, El Bosque -0,7%): la proyección es una apuesta a recuperación frente a una década de pérdida.
-- Sin data histórica para la comuna (fallback Gran Santiago): la proyección es supuesto puro, sin ancla observable. Y NUNCA atribuyas el promedio Gran Santiago a la comuna ("X promedió/subió/creció Y%") — decí explícito "sin dato histórico propio de la comuna, usamos el promedio del Gran Santiago como referencia".
+- Sin data histórica para la comuna (fallback Gran Santiago): la proyección es supuesto puro, sin ancla observable. Y NUNCA atribuyas el promedio Gran Santiago a la comuna ("X promedió/subió/creció Y%") — di explícito "sin dato histórico propio de la comuna, usamos el promedio del Gran Santiago como referencia".
 
 PROHIBIDO:
 - "la plusvalía está sobreestimada"
@@ -493,7 +494,7 @@ El caveat temporal de REGLA 9 (los tramos 2014-2018/2019/2020-2021 que el rango 
 
 ## 13. Schema JSON de output
 
-Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen duplicados (uno con montos en CLP, otro con montos en UF). Campos sin sufijo son únicos.
+Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen duplicados (uno con montos en CLP, otro con montos en UF). Campos sin sufijo son únicos.
 
 \`\`\`
 {
@@ -545,12 +546,12 @@ Devolvé un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 
 Largos por campo:
 - conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN — la PRIMERA oración la pone el motor (la "PRIMERA ORACIÓN FIJA", que narra el #1) y se antepone sola; NO la escribas ni la repitas. Tu continuación:
-  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Terminá en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
+  (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
   (2) PRESUPUESTO: la continuación tiene un MÁXIMO por caso que se te indica en el bloque de hallazgos ("MÁXIMO N palabras", = 85 − las palabras de la apertura fija). El TOTAL ensamblado (apertura + continuación) debe quedar ≤85. Un guard lo mide y puede pedirte recortar.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones imprecisas ("casi el doble" solo si ≥90%); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
-- conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cerrá con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
+- conviene.cajaAccionable: 1-2 frases — la POSICIÓN PERSONAL de Franco que cierra el análisis (§9): síntesis + condición bajo la que se sostiene + costo de avanzar contra el análisis si aplica. Cierra con un próximo paso concreto. NO checklist genérica, NO pregunta retórica sin respuesta.
 - costoMensual.contenido: 2-3 frases — interpretación, no recitación de números.
-- negociacion.contenido: 2-3 frases, y contiene SOLO dos cosas — nada más entra a este campo. (1) TU PRIMERA FRASE es el break-even del arriendo, SIN preámbulo: a qué precio el arriendo cubriría exacto el dividendo y el % de descuento sobre el precio pedido que implica; traducí a consecuencia (A11): "el arriendo recién cubriría la cuota si el precio bajara a UF X, un Y% menos". (2) Solo si el pie es muy bajo o la tasa está sobre la referencia: que la palanca de mayor impacto es la estructura de financiamiento, no el precio — se trabaja con el banco, en paralelo (§1.5). El sobreprecio/m² y el veredicto ya se narran en la tabla, el apex y estrategiaSugerida; este campo aporta lo que ninguno de esos dice — el break-even y la palanca — y arranca directo por ahí.
+- negociacion.contenido: 2-3 frases, y contiene SOLO dos cosas — nada más entra a este campo. (1) TU PRIMERA FRASE es el break-even del arriendo, SIN preámbulo: a qué precio el arriendo cubriría exacto el dividendo y el % de descuento sobre el precio pedido que implica; traduce a consecuencia (A11): "el arriendo recién cubriría la cuota si el precio bajara a UF X, un Y% menos". (2) Solo si el pie es muy bajo o la tasa está sobre la referencia: que la palanca de mayor impacto es la estructura de financiamiento, no el precio — se trabaja con el banco, en paralelo (§1.5). El sobreprecio/m² y el veredicto ya se narran en la tabla, el apex y estrategiaSugerida; este campo aporta lo que ninguno de esos dice — el break-even y la palanca — y arranca directo por ahí.
 - negociacion.estrategiaSugerida: 1-3 frases, máx 60 palabras. Es la ESTRATEGIA DE NEGOCIACIÓN CONCRETA: con qué precio abrir, hasta qué techo subir y con qué argumento (el sobreprecio/m² documentado es el ancla válida). Todo con número específico — arrancá por la jugada, no por el contexto de precios.
 - negociacion.cajaAccionable: 1 frase con guión de contraoferta CONCRETO. DEBE incluir el monto de \`negociacion.precioSugerido\` como referencia citable (no pregunta retórica abstracta).
   Ejemplos correctos:
@@ -559,7 +560,7 @@ Largos por campo:
   - "Empieza en UF 4.300, cierra hasta UF 4.500."
   Ejemplo INCORRECTO (pregunta retórica sin número): "¿Hasta dónde estás dispuesto a llegar?"
 - reestructuracion.contenido: 3-5 frases.
-- largoPlazo.contenido: 3-4 frases. ENTRÁ DIRECTO a la comparación con instrumentos (Ángulo 3, §1.3): un depósito a plazo en UF y un fondo mutuo, cada uno con su cifra a 10 años sobre el MISMO capital inicial, y el costo de oportunidad honesto (esos instrumentos no exigen aporte mensual, no tienen vacancia y son líquidos). Cerrá con el caveat de plusvalía histórica de la comuna situado en su período (ver REGLA plusvalía): nombrá el tramo que el promedio cruza y si la proyección a futuro queda por encima o por debajo del histórico observado. PODÉS citar la ganancia neta del depto UNA vez, como el número que comparás contra los instrumentos ("el depto proyecta $X a 10 años frente a $Y del fondo"). Lo que NO va: desglosar de dónde sale esa ganancia (pie, total aportado, aportes acumulados mes a mes) — ese desglose ya vive en el waterfall de arriba. Abrí por los instrumentos, no recitando el valor proyectado del depto. Comparación honesta, nunca TIR pelada vs tasa (A4).
+- largoPlazo.contenido: 3-4 frases. ENTRA DIRECTO a la comparación con instrumentos (Ángulo 3, §1.3): un depósito a plazo en UF y un fondo mutuo, cada uno con su cifra a 10 años sobre el MISMO capital inicial, y el costo de oportunidad honesto (esos instrumentos no exigen aporte mensual, no tienen vacancia y son líquidos). Cierra con el caveat de plusvalía histórica de la comuna situado en su período (ver REGLA plusvalía): nombra el tramo que el promedio cruza y si la proyección a futuro queda por encima o por debajo del histórico observado. Puedes citar tu parte al vender del depto (lo que te queda a la venta) UNA vez, como el número que comparas contra los instrumentos ("el depto proyecta $X a 10 años frente a $Y del fondo") — nunca la llames "ganancia neta". Lo que NO va: desglosar de dónde sale esa cifra (pie, total aportado, aportes acumulados mes a mes) — ese desglose ya vive en el waterfall de arriba. Abre por los instrumentos, no recitando el valor proyectado del depto. Comparación honesta, nunca TIR pelada vs tasa (A4).
 
 CLP/UF — cuándo duplicar:
 - Campo con cifras concretas que cambian con la moneda → duplicar (un texto con $X y otro con UF Y).
@@ -600,6 +601,13 @@ function fmtCLP(n: number): string {
 
 function fmtUF(n: number): string {
   return "UF " + (Math.round(n * 10) / 10).toLocaleString("es-CL");
+}
+
+// Número decimal en coma chilena para las CIFRAS INYECTADAS al LLM (%/x). Un solo
+// helper — el prompt no debe recitar punto decimal (rama claridad-prompts-verdad).
+// El sufijo (% / x / pp) va afuera: `${pct(m.capRate)}%`.
+function pct(n: number, decimals = 1): string {
+  return n.toFixed(decimals).replace(".", ",");
 }
 
 /**
@@ -1062,7 +1070,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
       else if (historica.anualizada >= 1.5) plusvaliaHistoricaInfo += " Comuna con plusvalía BAJA.";
       else plusvaliaHistoricaInfo += " Comuna con plusvalía MUY BAJA o NEGATIVA — cuidado.";
     } else {
-      plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Decilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${PLUSVALIA_DEFAULT.anualizada}% anual) como referencia".`;
+      plusvaliaHistoricaInfo = `Sin histórico propio de ${comunaNorm}: la comuna NO está en la serie 2014-2024. Referencia usada: promedio del Gran Santiago, ${PLUSVALIA_DEFAULT.anualizada}% anual. IMPORTANTE: ese ${PLUSVALIA_DEFAULT.anualizada}% NO es la historia de ${comunaNorm} — PROHIBIDO escribir "${comunaNorm} promedió/subió/creció X%". Dilo como fallback honesto: "sin dato histórico propio de ${comunaNorm}, usamos el promedio del Gran Santiago (${pct(PLUSVALIA_DEFAULT.anualizada)}% anual) como referencia".`;
     }
 
     const COMUNAS_GRAN_SANTIAGO = ["Santiago","Providencia","Las Condes","Ñuñoa","La Florida","Vitacura","Lo Barnechea","San Miguel","Macul","Maipú","La Reina","Puente Alto","Estación Central","Independencia","Recoleta","Quinta Normal","San Joaquín","Cerrillos","La Cisterna","Huechuraba","Conchalí","Lo Prado","Pudahuel","San Bernardo","El Bosque","Pedro Aguirre Cerda","Quilicura","Peñalolén","Renca","Cerro Navia","San Ramón","La Granja","La Pintana","Lo Espejo","Colina","Lampa"];
@@ -1184,7 +1192,7 @@ CAPEX PUESTA A PUNTO (depto usado de ${hallazgoCapex.valor.antiguedadAnios} año
 financingHealth:
 - overall: ${fh.overall}
 - pie: ${fh.pie.level} (actual ${fh.pie.actual_pct}%, recomendado ${fh.pie.recommended_pct}%)${fh.pie.impact_message ? ` — ${fh.pie.impact_message}` : ""}
-- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${fh.tasa.spread_bps} bps)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}${reestructuracionFinanciera ? `
+- tasa: ${fh.tasa.level} (actual ${fh.tasa.actual_pct}%, mercado ${fh.tasa.market_avg_pct}%, spread ${fh.tasa.spread_bps >= 0 ? "+" : ""}${(fh.tasa.spread_bps / 100).toFixed(2).replace(".", ",")} puntos porcentuales)${fh.tasa.impact_message ? ` — ${fh.tasa.impact_message}` : ""}${reestructuracionFinanciera ? `
 estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS EXACTOS — NO los inventes ni recalcules; se sobrescriben con estos de todas formas):
 - pieSugerido: ${reestructuracionFinanciera.pieSugerido_pct}%
 - tasaObjetivo: ${reestructuracionFinanciera.tasaObjetivo_pct}%
@@ -1289,7 +1297,7 @@ ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
-CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. "casi el doble" SOLO si el ratio es ≥90% (para 76% u 83% decí "+76%"/"+83% sobre"). Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
+CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. "casi el doble" SOLO si el ratio es ≥90% (para 76% u 83% di "+76%"/"+83% sobre"). Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
     const userPrompt = `Caso a analizar. Aplica la doctrina del system prompt. Devuelve SOLO el JSON con el schema definido en §13.
@@ -1326,12 +1334,12 @@ INDICADORES CALCULADOS
 - Franco Score: ${results.score}/100
 - veredicto (dado — úsalo como tal, no lo contradigas — §7): ${veredictoMotor}
 - subscores (referenciar como "sub-score de X" si los mencionas; el score total es ${results.score}, único): rentabilidad ${Math.round(d.rentabilidad)}/100 · flujo caja ${Math.round(d.flujoCaja)}/100 · plusvalia ${Math.round(d.plusvalia)}/100 · eficiencia ${Math.round(d.eficiencia)}/100
-- Rentabilidad bruta: ${m.rentabilidadBruta.toFixed(1)}%
-- Cap rate: ${m.capRate.toFixed(1)}%
-- Rentabilidad neta: ${m.rentabilidadNeta.toFixed(1)}%
-- Cash-on-Cash: ${m.cashOnCash.toFixed(1)}%
-- TIR a 10 años: ${exit.tir.toFixed(1)}%
-- Multiplicador de capital (10 años): ${exit.multiplicadorCapital.toFixed(2)}x
+- Rentabilidad bruta: ${pct(m.rentabilidadBruta)}%
+- Cap rate: ${pct(m.capRate)}%
+- Rentabilidad neta: ${pct(m.rentabilidadNeta)}%
+- Cash-on-Cash: ${pct(m.cashOnCash)}%
+- TIR a 10 años: ${pct(exit.tir)}%
+- Multiplicador de capital (10 años): ${pct(exit.multiplicadorCapital, 2)}x
 - Inversión inicial total: ${fmtCLP(inversionTotal)} (${fmtUF(inversionTotal / UF_CLP)})
 - Precio máximo de compra para flujo positivo: ${fmtUF(results.valorMaximoCompra)}
 ${hallazgosBloque}
@@ -1340,29 +1348,29 @@ VARIABLES DE NEGOCIACIÓN (insumos para REGLAS 0-6 del system §12)
 - tipoNegociacion: ${tieneDiferenciaValida ? tipoNegociacion : "INDETERMINADO (NO usar — no hay valor de mercado de referencia, solo el precio pedido; aplica REGLA 0 §12 con SOLO el indicador por m²)"}
 - Precio de compra: ${fmtUF(input.precio)} (${fmtCLP(precioCompraCLP)})
 - Valor de referencia estimado: ${fmtUF(vmFrancoUF)} (${fmtCLP(vmFrancoCLP)})${tieneDiferenciaValida ? "" : " ← no es valor de mercado real (solo el precio pedido)"}
-- Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pctDiferencia.toFixed(1)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
+- Diferencia vs referencia: ${diferenciaCLP >= 0 ? "+" : "-"}${fmtCLP(Math.abs(diferenciaCLP))} (${pct(pctDiferencia)}%)${tieneDiferenciaValida ? "" : " ← INVÁLIDO: no hay valor de mercado de referencia"}
 ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus palabras, NO nombres ninguna maquinaria): ${sobreprecioPorM2UF !== null ? "no hay comparables directos suficientes para fijar un valor de mercado total de este depto; la lectura de precio se apoya solo en el ratio por m² frente a la mediana de la comuna, y la decisión en el flujo, la TIR y la plusvalía." : "no hay un valor de mercado ni un dato comunal confiable para este depto; la decisión se apoya solo en el flujo, la TIR y la plusvalía — no afirmes nada sobre precio vs comuna."}\n` : ""}- tieneDiferenciaValida: ${tieneDiferenciaValida}
-- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${sobreprecioPorM2UF.toFixed(1)} UF/m² (tu ${pvc.sujetoUfM2.toFixed(1)} vs comuna ${precioM2Zona.toFixed(1)})` : "sin dato"}
+- sobreprecioPorM2: ${sobreprecioPorM2UF !== null ? `${sobreprecioPorM2UF > 0 ? "+" : ""}${pct(sobreprecioPorM2UF)} UF/m² (tu ${pct(pvc.sujetoUfM2)} vs comuna ${pct(precioM2Zona)})` : "sin dato"}
 - precioSugerido: ${fmtUF(precioSugeridoUF)} (${fmtCLP(precioSugeridoCLPNeg)})
 - Precio con 10% de descuento: ${fmtUF(precioConDescuento10)}
-- tirActual: ${tirActual.toFixed(1)}%
+- tirActual: ${pct(tirActual)}%
 - tirAlSugerido: ${tirAlSugeridoNeg !== null ? tirAlSugeridoNeg.toFixed(1) + "%" : "sin dato"}
 - Cambio de TIR si negociás: ${deltaTirSugerido !== null ? (deltaTirSugerido >= 0 ? "+" : "") + deltaTirSugerido.toFixed(1) + " pp" : "sin dato"}
 - lecturaTIR (narrá esta idea con tus palabras): ${tirAlSugeridoNeg !== null && deltaTirSugerido !== null ? `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido; al precio sugerido sería ${tirAlSugeridoNeg.toFixed(1)}% (${deltaTirSugerido >= 0 ? "+" : ""}${deltaTirSugerido.toFixed(1)} pp)` : `tu retorno anualizado es ${tirActual.toFixed(1)}% al precio pedido`}
 - Precio límite (TIR baja a 6%): ${precioLimiteCLPNeg !== null ? fmtCLP(precioLimiteCLPNeg) : "sin dato / TIR actual ya ≤ 6%"}
 - Precio al que el arriendo cubre exacto la cuota: ${precioFlujoNeutroUF > 0 ? fmtUF(precioFlujoNeutroUF) + ` (descuento ${descuentoParaNeutro.toFixed(1)}%)` : "no existe — arriendo no cubre gastos fijos con esta estructura"}
-- Plusvalía inmediata estimada: ${plusvaliaFrancoPct.toFixed(1)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
+- Plusvalía inmediata estimada: ${pct(plusvaliaFrancoPct)}% (${plusvaliaFranco >= 0 ? "+" : ""}${fmtCLP(plusvaliaFranco)})
 - lecturaFlujo (narrá esta idea con tus palabras): ${m.flujoNetoMensual >= 0 ? "el arriendo ya cubre la cuota desde el inicio" : flujoCruzaEnHorizonte ? `el arriendo recién alcanza a cubrir la cuota alrededor del año ${Math.round(mesesDeFlujoNegativo/12)+1}; hasta entonces aportas de tu bolsillo` : `el arriendo no llega a cubrir la cuota en todo el horizonte de ${projYears.length} años — el aporte mensual es permanente`}
 - Plazo del crédito: ${input.plazoCredito} años (NO confundir con mesesDeFlujoNegativo)
 
 PROYECCIÓN Y ALTERNATIVAS
 - Aporte de tu bolsillo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
 - Aporte de tu bolsillo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
-- lecturaPatrimonio (narrá esta idea con tus palabras): en 10 años ponés ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendés, la ganancia neta es ${fmtUF(exit.gananciaNeta/UF_CLP)}
+- lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión, lo que te queda en la mano) es ${fmtUF(exit.gananciaNeta/UF_CLP)} — NO la llames "ganancia neta", incluye recuperar lo que pusiste
 - Valor proyectado de la propiedad a 5 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp5)}
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
 - lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
-- Ganancia neta si vendés a 10 años: ${fmtCLP(exit.gananciaNeta)}
+- Tu parte al vender a 10 años (equity: valor de venta − deuda − comisión, lo que te queda): ${fmtCLP(exit.gananciaNeta)}
 - Depósito a plazo (UF+5%) a 10 años: ${fmtCLP(datoDP)}
 - Fondo mutuo (7%) a 10 años: ${fmtCLP(datoFM)}
 - Dividendo si la tasa sube 1 punto: ${fmtCLP(dividendoSiTasaSube1)} (vs actual ${fmtCLP(m.dividendo)})
@@ -1375,7 +1383,7 @@ COMPARACIÓN DE PRECIO POR M² (fuente única — NO recalcules ni estimes de me
 - Desviación vs mediana: ${hallazgoSobreprecio ? (hallazgoSobreprecio.valor.desviacionPct >= 0 ? "+" : "") + hallazgoSobreprecio.valor.desviacionPct + "% (USA ESTE NÚMERO EXACTO — la mediana y el % salen del hallazgo, no los recalcules)" : "sin dato — no afirmes nada sobre precio vs comuna (ver REGLA 0)"}
 - Lectura canónica del hallazgo (narra ESTA idea con tus palabras; NO inventes otra mediana ni otro %): ${hallazgoSobreprecio ? `"${hallazgoSobreprecio.fraseCanonica}"` : "—"}
 - Arriendo de referencia de la zona: ${fmtCLP(arriendoZona)}
-- Yield de la zona: ${yieldZona.toFixed(1)}%
+- Yield de la zona: ${pct(yieldZona)}%
 
 UBICACIÓN Y PLUSVALÍA
 ${metroInfo}
