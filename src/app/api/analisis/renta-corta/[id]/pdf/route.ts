@@ -38,11 +38,30 @@ export async function GET(
     const supabase = createClient();
     const { data: row } = await supabase
       .from("analisis")
-      .select("id, comuna, direccion, ai_analysis")
+      .select("id, comuna, direccion, ai_analysis, ambas_role, ambas_group_id")
       .eq("id", id)
       .single();
     if (!row) {
       return NextResponse.json({ error: "Análisis no encontrado" }, { status: 404 });
+    }
+
+    // Subordinación AMBAS (migración 20260715): hijo STR de un comparativo → sin
+    // PDF propio. Guard en la API, con confirmación del hermano (huérfano → suelto).
+    const ambasRole = (row as Record<string, unknown>).ambas_role as string | null;
+    const ambasGroupId = (row as Record<string, unknown>).ambas_group_id as string | null;
+    if (ambasRole === "str" && ambasGroupId) {
+      const { data: sibling } = await supabase
+        .from("analisis")
+        .select("id")
+        .eq("ambas_group_id", ambasGroupId)
+        .eq("ambas_role", "ltr")
+        .maybeSingle();
+      if (sibling?.id) {
+        return NextResponse.json(
+          { error: "Este análisis es parte de una comparativa. Descarga el PDF desde el comparativo." },
+          { status: 403 },
+        );
+      }
     }
 
     // Guard: la narrativa IA debe estar cacheada (columna SQL `ai_analysis`)

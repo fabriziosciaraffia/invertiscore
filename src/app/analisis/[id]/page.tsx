@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import type { Analisis, FullAnalysisResult, AnalisisInput } from "@/lib/types";
 import { AnalysisNav } from "./analysis-nav";
+import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import { PremiumResults } from "./results-client";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
@@ -106,6 +107,25 @@ export default async function AnalisisDetallePage({
   }
 
   const analisis = data as Analisis;
+
+  // Subordinación AMBAS (migración 20260715): si esta fila es hijo de un par,
+  // resolvemos el hermano por group_id para armar el link al comparativo y
+  // ocultar share/PDF/delete propios. Si el hermano no existe (grupo huérfano
+  // por fallo parcial de creación), degradamos a análisis suelto normal.
+  let subordinatedHref: string | null = null;
+  if (analisis.ambas_role === "ltr" && analisis.ambas_group_id) {
+    const { data: sibling } = await supabase
+      .from("analisis")
+      .select("id")
+      .eq("ambas_group_id", analisis.ambas_group_id)
+      .eq("ambas_role", "str")
+      .maybeSingle();
+    if (sibling?.id) {
+      subordinatedHref = `/analisis/comparativa?ltr=${analisis.id}&str=${sibling.id}`;
+    }
+  }
+  const isSubordinated = !!subordinatedHref;
+
   const rawResults: FullAnalysisResult | null = analisis.results || null;
   const inputDataRaw = analisis.input_data as AnalisisInput | undefined;
   // Fix drift UF prosa↔KPI (Opción 3): el render recomputa con la UF CONGELADA al
@@ -246,10 +266,14 @@ export default async function AnalisisDetallePage({
           nombre={analisis.nombre}
           comuna={analisis.comuna}
           isSharedView={isSharedView}
+          subordinated={isSubordinated}
         />
       ))}
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
+        {isSubordinated && !printMode && (
+          <SubordinatedBanner href={subordinatedHref!} modalidad="LTR" />
+        )}
         <PremiumResults
           results={results}
           accessLevel={accessLevel}

@@ -21,6 +21,7 @@ export function AnalysisNav({
   nombre,
   comuna,
   isSharedView = false,
+  subordinated = false,
 }: {
   userId?: string | null;
   analysisId: string;
@@ -28,11 +29,15 @@ export function AnalysisNav({
   nombre: string;
   comuna?: string;
   isSharedView?: boolean;
+  /** Hijo subordinado de un AMBAS: sin Compartir/PDF/Eliminar propios — el share
+   * y el delete viven en el comparativo (subordinación, migración 20260715). */
+  subordinated?: boolean;
 }) {
   const isGuest = !userId;
 
-  // Guest: sin acciones (UnifiedNav ya ofrece el CTA de registro).
-  const actions = isGuest ? null : (
+  // Guest o hijo subordinado: sin acciones propias (share/delete). UnifiedNav
+  // conserva la navegación general.
+  const actions = (isGuest || subordinated) ? null : (
     <div className="flex items-center gap-2">
       <ShareButton
         path={`/analisis/${analysisId}`}

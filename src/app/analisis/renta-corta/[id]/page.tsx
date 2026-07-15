@@ -157,6 +157,24 @@ export default async function STRResultPage({
     accessLevel = isPremium ? "premium" : "free";
   }
 
+  // Subordinación AMBAS (migración 20260715): si esta fila STR es hijo de un
+  // par, resolvemos el hermano LTR por group_id para el link al comparativo y
+  // ocultar el share propio. Hermano ausente (huérfano) → análisis suelto.
+  let subordinatedHref: string | null = null;
+  const strRole = (data as Record<string, unknown>).ambas_role as string | null | undefined;
+  const strGroupId = (data as Record<string, unknown>).ambas_group_id as string | null | undefined;
+  if (strRole === "str" && strGroupId) {
+    const { data: sibling } = await supabase
+      .from("analisis")
+      .select("id")
+      .eq("ambas_group_id", strGroupId)
+      .eq("ambas_role", "ltr")
+      .maybeSingle();
+    if (sibling?.id) {
+      subordinatedHref = `/analisis/comparativa?ltr=${sibling.id}&str=${data.id}`;
+    }
+  }
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -174,6 +192,7 @@ export default async function STRResultPage({
     welcomeAvailable,
     aiAnalysisInitial: data.ai_analysis ?? null,
     printMode,
+    subordinatedHref,
   };
 
   return <STRResultsClient {...sharedProps} />;

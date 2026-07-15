@@ -37,6 +37,7 @@ import { EjesAplicadosSTR } from "@/components/analysis/str/EjesAplicadosSTR";
 import { DrawerSTR, type DrawerKeySTR } from "@/components/analysis/str/DrawerSTR";
 import { DrawerContentSTR, DRAWER_TITULOS_STR } from "@/components/analysis/str/DrawerContentSTR";
 import { ZonaCardSTR } from "@/components/analysis/str/ZonaCardSTR";
+import { SubordinatedBanner } from "@/components/analysis/SubordinatedBanner";
 import type { AIAnalysisSTRv2 } from "@/lib/types";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -65,6 +66,9 @@ interface STRResultsProps {
   welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
   printMode?: boolean;
+  /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
+   * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
+  subordinatedHref?: string | null;
 }
 
 export function STRResultsClient({
@@ -82,6 +86,7 @@ export function STRResultsClient({
   welcomeAvailable = true,
   aiAnalysisInitial,
   printMode = false,
+  subordinatedHref = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   // E.2 — estado del drawer de detalle, levantado al orquestador (patrón LTR
@@ -166,23 +171,32 @@ export function STRResultsClient({
       ) : (
         <UnifiedNav
           variant="app"
+          // Hijo subordinado de un AMBAS: sin Compartir propio (el share vive en
+          // el comparativo). Nav general se conserva.
           actionsSlot={
-            <ShareButton
-              path={`/analisis/renta-corta/${analysisId}`}
-              pdfUrl={`/api/analisis/renta-corta/${analysisId}/pdf`}
-              analysisId={analysisId}
-              modalidad="STR"
-              title={`Análisis Franco: ${propiedadTitle}`}
-              text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
-              score={score ?? undefined}
-              nombre={propiedadTitle}
-              comuna={comuna}
-            />
+            subordinatedHref ? undefined : (
+              <ShareButton
+                path={`/analisis/renta-corta/${analysisId}`}
+                pdfUrl={`/api/analisis/renta-corta/${analysisId}/pdf`}
+                analysisId={analysisId}
+                modalidad="STR"
+                title={`Análisis Franco: ${propiedadTitle}`}
+                text={`Mira el análisis de este depto. Score: ${score ?? "—"}/100`}
+                score={score ?? undefined}
+                nombre={propiedadTitle}
+                comuna={comuna}
+              />
+            )
           }
         />
       ))}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
+        {/* Banner de subordinación AMBAS — hijo STR de un comparativo. */}
+        {subordinatedHref && !printMode && (
+          <SubordinatedBanner href={subordinatedHref} modalidad="STR" />
+        )}
+
         {/* CTA conversión — anzuelo (superficie Ink) · solo guest, no en print */}
         {accessLevel === "guest" && !printMode && (
           <div className="mb-5">
