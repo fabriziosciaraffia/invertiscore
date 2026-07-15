@@ -21,7 +21,13 @@ import { fmtMoney, fmtPct } from "../utils";
  * vienen por percentil del mercado AirROI (p25/p50/p75), no por sliders
  * interactivos. El bloque ESCENARIOS muestra los 3 como cards.
  *
- * Copy "SIMULACIÓN INTERACTIVA" sin sliders (S6): diferido — se conserva verbatim.
+ * str-paridad2 (decisión Fabrizio, render-only):
+ *   - Kicker honesto "ESCENARIOS Y PROYECCIÓN" (antes "SIMULACIÓN INTERACTIVA":
+ *     STR no tiene sliders, la etiqueta prometía interacción inexistente).
+ *   - `largoPlazo.cajaAccionable` YA NO se renderiza (era el bloque "Antes de
+ *     comprometer una década"): redundante con el footer de SaleBlockSTR y con la
+ *     comparación-instrumentos de `largoPlazo.contenido`. La prosa sigue generada y
+ *     persistida — solo se deja de mostrar. `contenido` se conserva tal cual.
  */
 export function AdvancedSectionSTR({
   results,
@@ -37,10 +43,11 @@ export function AdvancedSectionSTR({
   // forceOpen: legacy del colapso (alcance B: la sección ya no colapsa, siempre
   // visible). Se mantiene en la firma para no tocar el caller.
   forceOpen?: boolean;
-  /** E.2 — prosa IA "¿Cuánto se gana a 10 años?" (ai.largoPlazo). Migró desde el
-   *  drawer flujo (mismatch temático) a su hogar: lead narrativo de Patrimonio.
-   *  Null/undefined (free/guest/legacy) → solo el chart, sin prosa. */
-  aiLargoPlazo?: { contenido?: string | null; cajaAccionable?: string | null } | null;
+  /** E.2 — prosa IA "¿Cuánto se gana a 10 años?" (ai.largoPlazo.contenido). Migró
+   *  desde el drawer flujo (mismatch temático) a su hogar: lead narrativo de
+   *  Patrimonio. Null/undefined (free/guest/legacy) → solo el chart, sin prosa.
+   *  str-paridad2: solo `contenido` se renderiza; `cajaAccionable` se retiró. */
+  aiLargoPlazo?: { contenido?: string | null } | null;
 }) {
   // fix-occfuente-override 2026-07 — si el usuario definió la ocupación a mano, los rótulos
   // del bloque de escenarios NO la llaman "mediana observada": declaran procedencia.
@@ -81,7 +88,7 @@ export function AdvancedSectionSTR({
           className="font-mono uppercase block mb-1"
           style={{ fontSize: 10, letterSpacing: "1.5px", color: "var(--franco-text-secondary)", fontWeight: 500 }}
         >
-          SIMULACIÓN INTERACTIVA
+          ESCENARIOS Y PROYECCIÓN
         </span>
         <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
           Indicadores avanzados · Patrimonio · Venta
@@ -129,27 +136,9 @@ export function AdvancedSectionSTR({
             </>
           )}
           <PatrimonioChartSTR results={results} currency={currency} valorUF={valorUF} />
-          {aiLargoPlazo?.cajaAccionable?.trim() && (
-            <div
-              className="mt-4"
-              style={{
-                borderLeft: "3px solid var(--franco-text-secondary)",
-                background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-                borderRadius: "0 8px 8px 0",
-                padding: "12px 15px",
-              }}
-            >
-              <p
-                className="font-mono uppercase mb-1.5 m-0"
-                style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-tertiary)", fontWeight: 600 }}
-              >
-                Antes de comprometer una década:
-              </p>
-              <p className="font-body text-[13.5px] text-[var(--franco-text)] m-0 leading-[1.55] whitespace-pre-wrap">
-                {aiLargoPlazo.cajaAccionable}
-              </p>
-            </div>
-          )}
+          {/* str-paridad2: el bloque "Antes de comprometer una década"
+              (largoPlazo.cajaAccionable) se retiró — redundante con el footer de
+              SaleBlockSTR y la comparación-instrumentos de largoPlazo.contenido. */}
         </div>
         <div className="min-w-0">
           {subhead("Venta", "Si decides salir del activo")}
