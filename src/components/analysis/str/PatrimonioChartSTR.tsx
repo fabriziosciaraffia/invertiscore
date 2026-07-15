@@ -62,8 +62,6 @@ export function PatrimonioChartSTR({
   }, [rawProjections, capitalInicial]);
 
   const last = chartData[chartData.length - 1];
-  const ganancia = last ? last.patrimonioNeto - last.aporteAcum : 0;
-  const gananciaPct = last && last.aporteAcum > 0 ? (ganancia / last.aporteAcum) * 100 : 0;
   const tickFormatter = (v: number) => fmtAxisMoney(v, currency, valorUF);
   const barSize = Math.max(8, Math.floor(280 / Math.max(chartData.length, 1)));
 
@@ -201,17 +199,17 @@ export function PatrimonioChartSTR({
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5 shrink-0">
+            {/* str-paridad2: SIN delta ±% (a diferencia del canon LTR). El delta
+                del canon es patrimonioNeto − aporteAcum; en STR patrimonioNeto YA
+                incluye flujoAcumulado (motor) y aporteAcum también suma los
+                subsidios → el delta doble-contaría los flujos y choca de signo con
+                la "Ganancia neta" de SaleBlockSTR (base capital). Se muestra solo el
+                valor. Backlog: "coherencia de base para delta chart STR" (modelo). */}
             <span
               className="font-mono font-bold whitespace-nowrap"
               style={{ fontSize: 22, color: "var(--franco-text)", lineHeight: 1 }}
             >
               {fmtMoney(last.patrimonioNeto, currency, valorUF)}
-            </span>
-            <span
-              className="font-mono whitespace-nowrap"
-              style={{ fontSize: 11, color: ganancia >= 0 ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
-            >
-              {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency, valorUF)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
             </span>
           </div>
         </div>
