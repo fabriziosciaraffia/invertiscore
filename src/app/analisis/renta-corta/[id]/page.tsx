@@ -8,6 +8,8 @@ import { isAdminUser } from "@/lib/admin";
 import { STRResultsClient } from "./results-client";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -71,22 +73,53 @@ export default async function STRResultPage({
     redirect(user ? "/dashboard" : "/");
   }
 
-  const results = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;
+  const persistedResults = data.results as (ShortTermResult & { tipoAnalisis?: string }) | null;
 
   // Commit E.1 · 2026-05-13 — guard simétrico LTR↔STR.
   // Antes solo se chequeaba results.tipoAnalisis (jsonb). Ahora se valida
   // PRIMERO la columna SQL `tipo_analisis` (más confiable) y luego el flag
   // jsonb para back-compat con análisis pre-migration 20260510.
   const tipoCol = (data as Record<string, unknown>).tipo_analisis;
-  if (tipoCol === "long-term" || (tipoCol == null && results?.tipoAnalisis !== "short-term")) {
+  if (tipoCol === "long-term" || (tipoCol == null && persistedResults?.tipoAnalisis !== "short-term")) {
     redirect(`/analisis/${params.id}`);
   }
 
   // Salvavidas: si quedamos en la rama STR pero `results` es null (registro
   // corrupto), mandamos al dashboard antes de pasar null al client component.
-  if (!results) {
+  if (!persistedResults) {
     redirect(user ? "/dashboard" : "/");
   }
+
+  // Recompute-on-load (espejo LTR, rama comparabilidad-motores). El motor STR
+  // evolucionó (patrimonio sin flujo, equity/multiplicador homologados, inflación);
+  // recomputamos desde input_data + airbnbRaw congelado para que las filas persistidas
+  // reflejen la verdad actual SIN escribir la DB. UF y fecha CONGELADAS a la creación
+  // (precioCompra/precioCompraUF + created_at) → idempotente. Si falta airbnbRaw (legacy
+  // irreconstruible), `recompute` es null y caemos al persistido tal cual.
+  const inputDataStr = data.input_data as Record<string, unknown> | null;
+  const precioCompraUF = Number(inputDataStr?.precioCompraUF) || 0;
+  const precioCompraCLP = Number(inputDataStr?.precioCompra) || 0;
+  const ufFrozen = precioCompraUF > 0 ? precioCompraCLP / precioCompraUF : ufValue;
+  const asOfFrozen = new Date(data.created_at ?? new Date().toISOString());
+  const medianaStr = inputDataStr
+    ? await prefetchMedianaComunaVenta(
+        supabase,
+        {
+          comuna: (inputDataStr.comuna as string) ?? "",
+          superficie: Number(inputDataStr.superficieUtil) || 0,
+          dormitorios: Number(inputDataStr.dormitorios) || 0,
+        },
+        ufFrozen,
+      )
+    : { mediana: null, n: 0 };
+  const recomputed = recomputeShortTermForLegacy(
+    inputDataStr,
+    persistedResults,
+    ufFrozen,
+    asOfFrozen,
+    medianaStr,
+  );
+  const results = (recomputed ?? persistedResults) as ShortTermResult & { tipoAnalisis?: string };
 
   // Access level determination (same pattern as LTR)
   const isAdmin = isAdminUser(user?.email);
@@ -129,7 +162,7 @@ export default async function STRResultPage({
     results,
     inputData: data.input_data,
     accessLevel,
-    ufValue,
+    ufValue: ufFrozen,
     nombre: data.nombre ?? "",
     comuna: data.comuna ?? "",
     ciudad: data.ciudad ?? "",

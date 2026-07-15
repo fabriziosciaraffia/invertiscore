@@ -9,6 +9,8 @@ import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { encodeShareToken } from "@/lib/share-token";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -72,7 +74,7 @@ export default async function ComparativaPage({
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
   const ltrResults = (ltr.results ?? null) as LTRResultsWithCache | null;
-  const strResults = (str.results ?? null) as STRResultsWithScore | null;
+  const strResultsPersisted = (str.results ?? null) as STRResultsWithScore | null;
 
   const isAdmin = isAdminUser(user?.email);
   const isLoggedIn = !!user;
@@ -106,6 +108,35 @@ export default async function ComparativaPage({
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
+
+  // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Sin esto la
+  // comparativa mostraría el patrimonio STR viejo (con flujo) contra el LTR (sin flujo) →
+  // incomparable. Recomputa desde input_data + airbnbRaw congelado, UF y fecha congeladas a
+  // la creación de la fila STR. Idempotente, cero DB writes. El lado LTR queda persistido
+  // (su motor no cambió en esta rama; su patrimonio ya era sin-flujo). Fallback al persistido
+  // si falta airbnbRaw.
+  const strPrecioUF = Number(strInput?.precioCompraUF) || 0;
+  const strPrecioCLP = Number(strInput?.precioCompra) || 0;
+  const strUfFrozen = strPrecioUF > 0 ? strPrecioCLP / strPrecioUF : ufValue;
+  const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
+  const strMediana = strInput
+    ? await prefetchMedianaComunaVenta(
+        supabase,
+        {
+          comuna: (strInput.comuna as string) ?? str.comuna ?? "",
+          superficie: Number(strInput.superficieUtil) || 0,
+          dormitorios: Number(strInput.dormitorios) || 0,
+        },
+        strUfFrozen,
+      )
+    : { mediana: null, n: 0 };
+  const strResults = (recomputeShortTermForLegacy(
+    strInput,
+    strResultsPersisted,
+    strUfFrozen,
+    strAsOfFrozen,
+    strMediana,
+  ) ?? strResultsPersisted) as STRResultsWithScore | null;
 
   // Share token determinístico (Commit 3c) — sin DB column. Permite generar
   // URLs públicas `/share/comparativa/[token]` que decoderán al par (LTR, STR).

@@ -6,6 +6,8 @@ import { decodeShareToken } from "@/lib/share-token";
 import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { SharedComparativaClient } from "./shared-client";
 
 export const metadata: Metadata = {
@@ -64,9 +66,9 @@ export default async function ShareComparativaPage({
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
   const ltrResults = (ltr.results ?? null) as LTRResultsWithCache | null;
-  const strResults = (str.results ?? null) as STRResultsWithScore | null;
+  const strResultsPersisted = (str.results ?? null) as STRResultsWithScore | null;
 
-  if (!ltrResults || !strResults) {
+  if (!ltrResults || !strResultsPersisted) {
     notFound();
   }
 
@@ -75,6 +77,32 @@ export default async function ShareComparativaPage({
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
+
+  // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Igual que la
+  // vista privada: patrimonio STR comparable con LTR. UF y fecha congeladas a la creación.
+  // Idempotente, cero DB writes. Fallback al persistido si falta airbnbRaw.
+  const strPrecioUF = Number(strInput?.precioCompraUF) || 0;
+  const strPrecioCLP = Number(strInput?.precioCompra) || 0;
+  const strUfFrozen = strPrecioUF > 0 ? strPrecioCLP / strPrecioUF : ufValue;
+  const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
+  const strMediana = strInput
+    ? await prefetchMedianaComunaVenta(
+        supabase,
+        {
+          comuna: (strInput.comuna as string) ?? str.comuna ?? "",
+          superficie: Number(strInput.superficieUtil) || 0,
+          dormitorios: Number(strInput.dormitorios) || 0,
+        },
+        strUfFrozen,
+      )
+    : { mediana: null, n: 0 };
+  const strResults = (recomputeShortTermForLegacy(
+    strInput,
+    strResultsPersisted,
+    strUfFrozen,
+    strAsOfFrozen,
+    strMediana,
+  ) ?? strResultsPersisted) as STRResultsWithScore;
 
   const printMode = searchParams.print === "true";
 
