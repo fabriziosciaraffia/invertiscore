@@ -173,7 +173,7 @@ export interface YearProjectionSTR {
   flujoOperacionalAnual: number;     // NOI*12 - dividendo*12 (con ramp-up año 1)
   flujoAcumulado: number;
   aporteMensualPromedio: number;     // si flujo<0, lo que aporta el dueño /12
-  patrimonioNeto: number;            // valorDepto - saldoCredito + flujoAcumulado
+  patrimonioNeto: number;            // valorDepto - saldoCredito (SIN flujo — homologación LTR)
 }
 
 // Escenario "si vendes en año N". Ronda 4b.
@@ -183,12 +183,15 @@ export interface ExitScenarioSTR {
   saldoCreditoAlVender: number;
   gastosCierre: number;              // 2% del precio venta
   flujoAcumuladoAlVender: number;
-  // EQUITY al vender: valorVenta - saldo - cierre + flujoAcum. NO resta capitalInicial —
-  // "lo que te queda en la mano al liquidar", semántica unificada con LTR. Renombrado de
-  // `gananciaNeta` (F2) a `equityCLP` (F6, junto al regen del corpus); los lectores de filas
-  // persistidas pre-regen usan fallback `equityCLP ?? gananciaNeta` (ver SaleBlockSTR).
-  equityCLP: number;                 // = EQUITY: valorVenta - saldo - cierre + flujoAcum
-  multiplicadorCapital: number;      // EQUITY / capitalInicial → ×1 = break-even (antes: ganancia/capital → 0)
+  // EQUITY al vender: valorVenta - saldo - cierre, SIN flujo acumulado — homologación EXACTA
+  // con LTR (analysis.ts:682). "Lo que te queda en la mano al liquidar el activo", neto de
+  // deuda y comisión; el flujo operativo ya lo embolsaste durante los años y vive aparte
+  // (`flujoAcumuladoAlVender` + SaleBlock). Renombrado de `gananciaNeta` (F2) a `equityCLP`
+  // (F6); lectores pre-regen usan fallback `equityCLP ?? gananciaNeta` (ver SaleBlockSTR).
+  equityCLP: number;                 // = EQUITY: valorVenta - saldo - cierre (sin flujo)
+  retornoTotal: number;              // = flujoAcumulado + equityCLP (con flujo; espejo analysis.ts:683)
+  totalAportado: number;             // = capitalInicial + Σ aportes mensuales negativos (espejo analysis.ts:704)
+  multiplicadorCapital: number;      // EQUITY(sin flujo) / totalAportado → ×1 = break-even (espejo analysis.ts:727)
   tirAnual: number;                  // TIR % del cashflow año 0 → año N
 }
 
@@ -469,6 +472,12 @@ export const STR_ADR_FACTOR = {
 const PLUSVALIA_ANUAL_DEFAULT = PLUSVALIA_PROYECCION_ANUAL;   // 3% nominal anual (unificado LTR+STR).
 const HORIZONTE_DEFAULT = 10;           // años proyectados.
 const GASTOS_CIERRE_VENTA = 0.02;       // 2% comisión + costos al vender.
+// Inflación de flujos — homologación EXACTA con LTR (rama comparabilidad-motores). Antes STR
+// proyectaba flat nominal; ahora espeja analysis.ts: ingreso 3,5% (ARRIENDO_INFLACION),
+// costos 3% (GGCC_INFLACION), dividendo CLP 3% (INFLACION_UF, la UF ≈ inflación).
+const REVENUE_INFLACION = 0.035;        // ingreso Airbnb — espejo arriendo LTR.
+const COSTOS_INFLACION = 0.03;          // costos operativos — espejo ggcc/contribuciones/mantención LTR.
+const DIVIDENDO_INFLACION = 0.03;       // dividendo en CLP — espejo INFLACION_UF LTR.
 
 /** Costos mensuales por tipología: [electricidad, agua, wifi, insumos, mantencion] */
 export const COSTOS_DEFAULT: Record<string, [number, number, number, number, number]> = {
@@ -762,17 +771,24 @@ function buildProjections(
   input: ShortTermInputs,
   capitalInvertido: number,
   dividendoMensual: number,
-  noiMensualBase: number,
+  revenueBaseAnual: number,
+  comisionRate: number,
+  costosOperativosMensual: number,
   perdidaRampUp: number,
+  asOf: Date,
   horizonte: number = HORIZONTE_DEFAULT,
   plusvaliaAnual: number = PLUSVALIA_ANUAL_DEFAULT,
 ): YearProjectionSTR[] {
   void capitalInvertido;
+  // asOf threadeado para paridad de firma con LTR (calcProjections) y estabilidad del
+  // recompute-on-load. El modelo pre-entrega (mesesHastaEntrega/aniosEntrega) se difiere
+  // a su rama propia; hoy STR compone desde año 1 (entrega inmediata). Ver of-ambas-rama0.
+  void asOf;
   const precioCompra = input.precioCompra;
   const pie = Math.round(precioCompra * input.piePercent);
   const montoCredito = precioCompra - pie;
-  const dividendoAnual = dividendoMensual * 12;
-  const noiAnualBase = noiMensualBase * 12;
+  const dividendoAnualBase = dividendoMensual * 12;
+  const costosOperativosAnualBase = costosOperativosMensual * 12;
 
   const projections: YearProjectionSTR[] = [];
   let flujoAcumulado = 0;
@@ -783,12 +799,21 @@ function buildProjections(
     const mesActual = Math.min(year * 12, input.plazoCredito * 12);
     const saldo = Math.max(0, saldoCreditoSTR(montoCredito, input.tasaCredito, input.plazoCredito, mesActual));
 
+    // Inflación homologada a LTR (antes flat). El NOI se recompone año a año: ingreso 3,5%,
+    // costos 3%, dividendo 3%. La comisión escala con el revenue inflado. En año 1 el NOI
+    // recompuesto == noiAnualBase (revenueBase - comisiónBase - costosBase), sin regresión.
+    const revenueAnual = revenueBaseAnual * Math.pow(1 + REVENUE_INFLACION, year - 1);
+    const comisionAnual = revenueAnual * comisionRate;
+    const costosAnual = costosOperativosAnualBase * Math.pow(1 + COSTOS_INFLACION, year - 1);
+    const noiAnual = revenueAnual - comisionAnual - costosAnual;
+    const dividendoAnual = dividendoAnualBase * Math.pow(1 + DIVIDENDO_INFLACION, year - 1);
+
     // Ramp-up solo año 1: 3 meses parciales restan ingreso bruto
     // (ya están en perdidaRampUp). Comisión sobre lo perdido también
     // se ahorra, pero el efecto neto es conservador → restar el bruto.
     const flujoOperacionalAnual = year === 1
-      ? noiAnualBase - dividendoAnual - perdidaRampUp
-      : noiAnualBase - dividendoAnual;
+      ? noiAnual - dividendoAnual - perdidaRampUp
+      : noiAnual - dividendoAnual;
 
     flujoAcumulado += flujoOperacionalAnual;
 
@@ -796,7 +821,10 @@ function buildProjections(
       ? Math.round(Math.abs(flujoOperacionalAnual) / 12)
       : 0;
 
-    const patrimonioNeto = valorDepto - saldo + flujoAcumulado;
+    // Patrimonio neto = valor activo − deuda, SIN flujo acumulado (homologación LTR,
+    // analysis.ts:640). El flujo acumulado se preserva como campo propio (proyección +
+    // SaleBlock) pero NO entra al patrimonio: eso lo hacía incomparable con LTR.
+    const patrimonioNeto = valorDepto - saldo;
 
     projections.push({
       year,
@@ -826,7 +854,8 @@ function buildExitScenario(
   if (!proy) {
     return {
       yearVenta, valorVenta: 0, saldoCreditoAlVender: 0, gastosCierre: 0,
-      flujoAcumuladoAlVender: 0, equityCLP: 0, multiplicadorCapital: 0, tirAnual: 0,
+      flujoAcumuladoAlVender: 0, equityCLP: 0, retornoTotal: 0, totalAportado: 0,
+      multiplicadorCapital: 0, tirAnual: 0,
     };
   }
 
@@ -834,15 +863,24 @@ function buildExitScenario(
   const saldoCreditoAlVender = proy.saldoCredito;
   const gastosCierre = Math.round(valorVenta * GASTOS_CIERRE_VENTA);
   const flujoAcumuladoAlVender = proy.flujoAcumulado;
-  // EQUITY (rama motor-supuestos F2): lo que te queda al vender, SIN restar el capital.
-  // Antes restaba capitalInicial (semántica GANANCIA, break-even 0), lo que hacía que la
-  // card de patrimonio dijera "menos de lo que pusiste" en falso para 0<mult<1. Ahora es
-  // equity/aportado → ×1 = break-even, coherente con la plantilla de la card (compartida
-  // con LTR). El delta exacto vs la semántica vieja es +capitalInicial (patrimonio) y +1
-  // (multiplicador). El multiplicador se emite CRUDO (F1); el render/hallazgo redondea.
-  const equityCLP = valorVenta - saldoCreditoAlVender - gastosCierre + flujoAcumuladoAlVender;
-  const multiplicadorCapital = capitalInicial > 0
-    ? equityCLP / capitalInicial
+  // EQUITY al vender = valor − deuda − cierre, SIN flujo acumulado. Homologación EXACTA con
+  // LTR (analysis.ts:682): "lo que te queda en la mano al liquidar el activo". El flujo
+  // operativo ya lo recibiste durante los años → vive aparte en `retornoTotal` (espejo
+  // analysis.ts:683), no dentro del equity/patrimonio.
+  const equityCLP = valorVenta - saldoCreditoAlVender - gastosCierre;
+  const retornoTotal = flujoAcumuladoAlVender + equityCLP;
+  // Multiplicador = EQUITY(sin flujo) / total aportado, con totalAportado = capital inicial
+  // + Σ aportes mensuales negativos. Espejo EXACTO de analysis.ts:704,727-729: mata el
+  // doble-conteo latente (antes equity-con-flujo/capitalInicial subestimaba el múltiplo en
+  // deals de flujo negativo — el flujo negativo se restaba en el numerador sin compensarse
+  // en el denominador). CRUDO: el render/hallazgo redondea.
+  const aportesNegativos = projections
+    .slice(0, yearVenta)
+    .filter((p) => p.flujoOperacionalAnual < 0)
+    .reduce((sum, p) => sum + Math.abs(p.flujoOperacionalAnual), 0);
+  const totalAportado = capitalInicial + aportesNegativos;
+  const multiplicadorCapital = totalAportado > 0
+    ? equityCLP / totalAportado
     : 0;
 
   // TIR: T0 = -capitalInicial; T1..T_{n-1} = flujoOperacional anual;
@@ -864,6 +902,8 @@ function buildExitScenario(
     gastosCierre,
     flujoAcumuladoAlVender: Math.round(flujoAcumuladoAlVender),
     equityCLP: Math.round(equityCLP),
+    retornoTotal: Math.round(retornoTotal),
+    totalAportado: Math.round(totalAportado),
     multiplicadorCapital,
     tirAnual,
   };
@@ -873,7 +913,7 @@ function buildExitScenario(
 // Motor principal
 // =========================================
 
-export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
+export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): ShortTermResult {
   const { precioCompra, airbnbData, modoGestion, comisionAdministrador } = input;
 
   // --- 1. Cálculos base ---
@@ -1083,8 +1123,11 @@ export function calcShortTerm(input: ShortTermInputs): ShortTermResult {
     input,
     capitalInvertido,
     dividendoMensual,
-    base.noiMensual,
+    base.revenueAnual,
+    comisionRate,
+    costosOperativosTotales,
     perdidaRampUp,
+    asOf,
   );
   const exitScenario = buildExitScenario(projections, capitalInvertido);
 

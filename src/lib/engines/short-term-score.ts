@@ -351,17 +351,22 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
   // (equity + plusvalía compensan el aporte mensual). Doctrina: "flujo negativo
   // != mala inversión; mala es cuando flujo neg + plusvalía + equity no cierran".
   // tir en PORCENTAJE nominal a 10 años (9.16 = 9,16%); multCap ratio crudo.
-  // El umbral es 2,8 (NO 1,8) desde F2: `multiplicadorCapital` pasó de semántica GANANCIA
-  // (ganancia/capital, break-even 0) a EQUITY (equity/capital, break-even 1). Misma vara,
-  // escala corrida +1: multCap_equity = multCap_ganancia + 1, así que 1,8 → 2,8. El gate
-  // decide EXACTAMENTE lo mismo que antes (preserva veredictos); solo cambió la escala.
+  // Umbral RE-DERIVADO en la rama comparabilidad-motores. `multiplicadorCapital` pasó a la
+  // semántica EXACTA de LTR — equity(SIN flujo) / totalAportado(inicial + Σ aportes<0),
+  // matando el doble-conteo latente. Bajo la nueva aritmética el multiplicador baja; el
+  // corte se re-deriva para PRESERVAR los veredictos del corpus (sweep read-only, N=46:
+  // rango cero-flips [2,52 · 4,0]; el brazo-mult está inactivo hoy — todo horizonte
+  // favorable viene por TIR≥10 — así que 2,65 preserva 46/46 con headroom sobre el máximo
+  // observado 2,514). Ver of-ambas-rama0-design §Deliverable 4.
+  const HORIZONTE_TIR_MINIMO = 10;        // TIR nominal % a 10 años.
+  const HORIZONTE_MULT_MINIMO = 2.65;     // equity(sin flujo)/totalAportado (re-derivado).
   const exit = inputs.results.exitScenario;
   const tir = exit?.tirAnual;
   const multCap = exit?.multiplicadorCapital;
   const horizonteCierraFavorable =
     exit != null &&
     typeof tir === "number" && Number.isFinite(tir) && tir !== 0 &&
-    ((tir >= 10) || (typeof multCap === "number" && multCap >= 2.8));
+    ((tir >= HORIZONTE_TIR_MINIMO) || (typeof multCap === "number" && multCap >= HORIZONTE_MULT_MINIMO));
 
   // GATE 1 — fuerza BUSCAR OTRA (señales estructurales severas).
   if (inputs.regulacionEdificio === 'no') {
@@ -391,7 +396,7 @@ export function calcFrancoScoreSTR(inputs: ScoreSTRInputs): FrancoScoreSTR {
       overrideApplied = 'Cash-on-Cash <-10% — esfuerzo mensual significativo';
     } else if (base.flujoCajaMensual < 0 && !horizonteCierraFavorable) {
       veredicto = 'AJUSTA SUPUESTOS';
-      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador <2,8x equity)';
+      overrideApplied = 'Flujo mensual negativo sin retorno de horizonte que lo compense (TIR <10% y multiplicador de equity insuficiente)';
     } else if (beRatio > 1.10) {
       veredicto = 'AJUSTA SUPUESTOS';
       overrideApplied = 'Break-even >110% del mercado — margen operativo apretado';
