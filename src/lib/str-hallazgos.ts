@@ -188,7 +188,10 @@ export function buildStrHallazgos(ctx: BuildStrHallazgosCtx): Hallazgo[] {
     out.push(
       buildHallazgoPatrimonio({
         patrimonioCLP: exit.equityCLP,
-        aportadoCLP: r.capitalInvertido,
+        // Base = totalAportado (inicial + Σ aportes<0), espejo EXACTO del card LTR
+        // (analysis.ts:1737). Antes usaba capitalInvertido → el multiplicador del card no
+        // calzaba con el del exit/SaleBlock/score. Homologación rama comparabilidad-motores.
+        aportadoCLP: exit.totalAportado,
         valorUF: ctx.valorUF,
         incluyeCorretaje: ctx.incluyeCorretaje,
         modalidad: "str",

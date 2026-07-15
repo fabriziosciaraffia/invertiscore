@@ -25,7 +25,8 @@ import { fmtAxisMoney, fmtMoney } from "../utils";
  * Capa Cromática:
  *   • Aporte acumulado (barra inferior) — Signal Red (uso permitido #8)
  *   • Valor depto (barra superior apilada) — Ink 100 opacity 50%
- *   • Línea Patrimonio neto — Ink sólido (resultado neto = valor − deuda + flujo)
+ *   • Línea Patrimonio neto — Ink sólido (resultado neto = valor − deuda, SIN flujo —
+ *     homologación LTR, rama comparabilidad-motores; el flujo vive aparte)
  */
 export function PatrimonioChartSTR({
   results,
@@ -199,12 +200,12 @@ export function PatrimonioChartSTR({
             </span>
           </div>
           <div className="flex flex-col items-end gap-0.5 shrink-0">
-            {/* str-paridad2: SIN delta ±% (a diferencia del canon LTR). El delta
-                del canon es patrimonioNeto − aporteAcum; en STR patrimonioNeto YA
-                incluye flujoAcumulado (motor) y aporteAcum también suma los
-                subsidios → el delta doble-contaría los flujos y choca de signo con
-                la "Ganancia neta" de SaleBlockSTR (base capital). Se muestra solo el
-                valor. Backlog: "coherencia de base para delta chart STR" (modelo). */}
+            {/* str-paridad2: SIN delta ±% (a diferencia del canon LTR). Tras la
+                homologación Rama 0, patrimonioNeto = valor − deuda (ya NO incluye
+                flujoAcumulado), pero aporteAcum aún suma subsidios → el delta
+                patrimonioNeto − aporteAcum quedaría con base heterogénea. La
+                "Ganancia neta" coherente vive en SaleBlockSTR (equity − capital).
+                Se muestra solo el valor. */}
             <span
               className="font-mono font-bold whitespace-nowrap"
               style={{ fontSize: 22, color: "var(--franco-text)", lineHeight: 1 }}

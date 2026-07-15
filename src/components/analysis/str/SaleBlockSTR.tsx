@@ -39,23 +39,24 @@ export function SaleBlockSTR({
   // EQUITY: `equityCLP` es lo que te queda al vender (neto de deuda y comisión, más
   // flujos). FALLBACK de lectura: filas STR persistidas pre-regen F6 traen el nombre
   // viejo `gananciaNeta` (mismo valor equity desde F2); el `??` las cubre.
+  // "Tu parte" = EQUITY al liquidar (valor − deuda − comisión), SIN flujo — homologado al
+  // canon LTR (SaleRefiBlock: `teQueda`). El flujo operativo NO suma acá: ya lo recibiste
+  // durante los años y se muestra como fila informativa aparte + retorno total.
   const tuParte = ex.equityCLP ?? (ex as unknown as { gananciaNeta: number }).gananciaNeta;
-  const capital = results.capitalInvertido;
+  // Base de la ganancia = total aportado (inicial + aportes mensuales negativos), MISMA base
+  // que el canon LTR (`aporteAcum`). Fallback a capitalInvertido para filas pre-recompute.
+  const capital = ex.totalAportado ?? results.capitalInvertido;
   const gananciaNeta = tuParte - capital;
   const gananciaPct = capital > 0 ? (gananciaNeta / capital) * 100 : 0;
   const flujo = ex.flujoAcumuladoAlVender;
+  const retornoTotal = ex.retornoTotal ?? (tuParte + flujo);
   const fmt = (n: number) => fmtMoney(n, currency, valorUF);
 
+  // La tabla SUMA solo hacia el equity: valor − deuda − comisión = tu parte. El flujo va aparte.
   const rows: Array<{ label: string; value: number; color: string; sign: "+" | "−" }> = [
     { label: "Valor de venta estimado", value: ex.valorVenta, color: "var(--franco-text)", sign: "+" },
     { label: "− Saldo crédito al vender", value: ex.saldoCreditoAlVender, color: "var(--signal-red)", sign: "−" },
     { label: "− Comisión venta + cierre (2%)", value: ex.gastosCierre, color: "var(--signal-red)", sign: "−" },
-    {
-      label: "Flujo acumulado a fecha",
-      value: Math.abs(flujo),
-      color: flujo >= 0 ? "var(--franco-text)" : "var(--signal-red)",
-      sign: flujo >= 0 ? "+" : "−",
-    },
   ];
 
   return (
@@ -119,6 +120,33 @@ export function SaleBlockSTR({
           </span>
           <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 16, color: "var(--franco-text)" }}>
             {fmt(tuParte)}
+          </span>
+        </div>
+      </div>
+
+      {/* Flujo operativo acumulado — APARTE del equity (ya lo recibiste durante los años,
+          NO suma a "tu parte"). Junto al equity forma el retorno total. Homologación LTR. */}
+      <div
+        className="rounded-lg px-4 py-3 flex flex-col gap-1.5"
+        style={{
+          background: "color-mix(in srgb, var(--franco-text) 2%, transparent)",
+          border: "0.5px solid color-mix(in srgb, var(--franco-text) 8%, transparent)",
+        }}
+      >
+        <div className="flex items-baseline justify-between">
+          <span className="font-body" style={{ fontSize: 12, color: "color-mix(in srgb, var(--franco-text) 70%, transparent)" }}>
+            Flujo operativo acumulado <span style={{ fontSize: 11, color: "var(--franco-text-secondary)" }}>(ya recibido, aparte)</span>
+          </span>
+          <span className="font-mono font-semibold whitespace-nowrap" style={{ fontSize: 13, color: flujo >= 0 ? "var(--franco-text)" : "var(--signal-red)" }}>
+            {flujo >= 0 ? "+" : "−"}{fmt(Math.abs(flujo))}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between" style={{ borderTop: "0.5px dashed color-mix(in srgb, var(--franco-text) 12%, transparent)", paddingTop: 6 }}>
+          <span className="font-mono uppercase" style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}>
+            Retorno total (tu parte + flujo)
+          </span>
+          <span className="font-mono font-bold whitespace-nowrap" style={{ fontSize: 13, color: "var(--franco-text)" }}>
+            {fmt(retornoTotal)}
           </span>
         </div>
       </div>
