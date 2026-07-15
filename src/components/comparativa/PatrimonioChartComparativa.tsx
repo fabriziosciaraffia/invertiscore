@@ -70,6 +70,20 @@ export function PatrimonioChartComparativa(p: Props) {
   const delta = lastSTR - lastLTR;
   const ganadora = delta >= 0 ? "STR" : "LTR";
 
+  // Rama 0b: el patrimonio (valor − deuda) depende de precio + financiamiento + plusvalía,
+  // NO de la modalidad de renta. Para una misma propiedad las dos curvas coinciden y el delta
+  // es ~0. El copy honesto no es "STR gana por $X" (ruido de redondeo) sino educar: el
+  // patrimonio es igual, lo que cambia es el FLUJO por el camino. Fallback al copy con delta
+  // solo si por algún motivo (pre-entrega, inputs distintos) el patrimonio difiere de verdad.
+  const idxFlujo = Math.min(
+    p.ltrResults.projections?.length ?? 0,
+    p.strResults.projections?.length ?? 0,
+    10,
+  ) - 1;
+  const ltrFlujoAcum = idxFlujo >= 0 ? (p.ltrResults.projections?.[idxFlujo]?.flujoAcumulado ?? 0) : 0;
+  const strFlujoAcum = idxFlujo >= 0 ? (p.strResults.projections?.[idxFlujo]?.flujoAcumulado ?? 0) : 0;
+  const patrimonioIgual = Math.abs(delta) < Math.max(1, Math.abs(lastLTR) * 0.005);
+
   return (
     <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 mb-6">
       <p className="font-mono text-[9px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mb-1">
@@ -164,11 +178,24 @@ export function PatrimonioChartComparativa(p: Props) {
           className="font-mono uppercase mb-1"
           style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          PATRIMONIO AL AÑO {lastYear} · {ganadora} GANA POR {fmtMoney(Math.abs(delta), p.currency, p.ufValue)}
+          {patrimonioIgual
+            ? `PATRIMONIO AL AÑO ${lastYear} · IDÉNTICO EN AMBAS MODALIDADES`
+            : `PATRIMONIO AL AÑO ${lastYear} · ${ganadora} GANA POR ${fmtMoney(Math.abs(delta), p.currency, p.ufValue)}`}
         </p>
         <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
-          LTR llega a {fmtMoney(lastLTR, p.currency, p.ufValue)} · STR llega a {fmtMoney(lastSTR, p.currency, p.ufValue)}.
-          La diferencia es el costo de oportunidad de elegir la modalidad menos eficiente para esta propiedad.
+          {patrimonioIgual ? (
+            <>
+              Tu patrimonio a {lastYear} años es el mismo en las dos modalidades ({fmtMoney(lastLTR, p.currency, p.ufValue)}):
+              el depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo. La modalidad no cambia tu
+              patrimonio — cambia el flujo que embolsas por el camino: {fmtMoney(ltrFlujoAcum, p.currency, p.ufValue)} acumulado
+              en renta larga vs {fmtMoney(strFlujoAcum, p.currency, p.ufValue)} en renta corta.
+            </>
+          ) : (
+            <>
+              LTR llega a {fmtMoney(lastLTR, p.currency, p.ufValue)} · STR llega a {fmtMoney(lastSTR, p.currency, p.ufValue)}.
+              La diferencia es el costo de oportunidad de elegir la modalidad menos eficiente para esta propiedad.
+            </>
+          )}
         </p>
       </div>
     </div>

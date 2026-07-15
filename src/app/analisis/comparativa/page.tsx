@@ -1,15 +1,16 @@
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getUFValue } from "@/lib/uf";
+import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { getUserAccessLevel } from "@/lib/access";
 import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
-import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
+import type { Analisis, FullAnalysisResult, AIAnalysisComparativa, AnalisisInput } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { encodeShareToken } from "@/lib/share-token";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { ComparativaClient } from "./comparativa-client";
 
@@ -73,7 +74,7 @@ export default async function ComparativaPage({
 
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
-  const ltrResults = (ltr.results ?? null) as LTRResultsWithCache | null;
+  const ltrResultsPersisted = (ltr.results ?? null) as LTRResultsWithCache | null;
   const strResultsPersisted = (str.results ?? null) as STRResultsWithScore | null;
 
   const isAdmin = isAdminUser(user?.email);
@@ -115,9 +116,35 @@ export default async function ComparativaPage({
   // la creación de la fila STR. Idempotente, cero DB writes. El lado LTR queda persistido
   // (su motor no cambió en esta rama; su patrimonio ya era sin-flujo). Fallback al persistido
   // si falta airbnbRaw.
-  const strPrecioUF = Number(strInput?.precioCompraUF) || 0;
-  const strPrecioCLP = Number(strInput?.precioCompra) || 0;
-  const strUfFrozen = strPrecioUF > 0 ? strPrecioCLP / strPrecioUF : ufValue;
+  // P2 (Rama 0b): el lado STR adopta la UF real reconstruida del lado LTR del par
+  // (resolveUfForAnalysis = precioCLP/precio, byte-idéntica a la prosa LTR) en vez de su
+  // propia UF congelada (fallback ~38.800). El recompute STR re-escala precio+revenue a esta
+  // UF (TIR-neutral), homologando la base CLP de ambos motores para el hero comparativo. Es
+  // el mismo par-propiedad entrado ~al mismo tiempo, así que la UF real de LTR es la del día.
+  // La UF se reconstruye del PERSISTIDO (precioCLP no lo toca la evolución del motor).
+  const ltrUfFrozen = resolveUfForAnalysis(
+    ltrResultsPersisted as { metrics?: { precioCLP?: number | null } | null } | null,
+    ltr.input_data as { precio?: number | null } | null,
+    ufValue,
+    ltr.id,
+  );
+  const ltrAsOfFrozen = new Date(ltr.created_at ?? new Date().toISOString());
+
+  // P1-C (Rama 0b): recompute LTR con el motor nuevo (base precioCLP en vez de vmFranco), para
+  // que el hero mida MODALIDAD y no ruido de base — antes la comparativa mostraba el patrimonio
+  // LTR persistido (base vieja) contra el STR recomputado. Espejo del results-page LTR. El cache
+  // de prosa `comparativaAI` (columna results) se preserva sobre el recompute (runAnalysis no lo
+  // produce). Fallback al persistido si falta input_data.
+  const ltrInput = (ltr.input_data ?? null) as AnalisisInput | null;
+  const ltrMediana = ltrInput
+    ? await prefetchMedianaComunaVenta(supabase, ltrInput, ltrUfFrozen)
+    : { mediana: null, n: 0 };
+  const ltrResults = (
+    ltrInput
+      ? { ...recomputeResultsForLegacy(ltrInput, ltrUfFrozen, ltrMediana, ltrAsOfFrozen), comparativaAI: ltrResultsPersisted?.comparativaAI }
+      : ltrResultsPersisted
+  ) as LTRResultsWithCache | null;
+
   const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
   const strMediana = strInput
     ? await prefetchMedianaComunaVenta(
@@ -127,13 +154,13 @@ export default async function ComparativaPage({
           superficie: Number(strInput.superficieUtil) || 0,
           dormitorios: Number(strInput.dormitorios) || 0,
         },
-        strUfFrozen,
+        ltrUfFrozen,
       )
     : { mediana: null, n: 0 };
   const strResults = (recomputeShortTermForLegacy(
     strInput,
     strResultsPersisted,
-    strUfFrozen,
+    ltrUfFrozen,
     strAsOfFrozen,
     strMediana,
   ) ?? strResultsPersisted) as STRResultsWithScore | null;

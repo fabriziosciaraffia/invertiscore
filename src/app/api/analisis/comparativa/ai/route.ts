@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isAdminUser } from "@/lib/admin";
 import { CLAUDE_MODEL } from "@/lib/ai-config";
-import type { FullAnalysisResult, AIAnalysisComparativa, RecomendacionModalidadAmbas } from "@/lib/types";
+import type { FullAnalysisResult, AIAnalysisComparativa, RecomendacionModalidadAmbas, AnalisisInput } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
   SYSTEM_PROMPT_AMBAS,
@@ -14,6 +14,10 @@ import {
   sanitizeComparativaAI,
 } from "@/lib/ai-generation-ambas";
 import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
+import { resolveUfForAnalysis } from "@/lib/uf";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
 const anthropic = new Anthropic();
 
@@ -82,20 +86,57 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
-    const ltrResults = (ltrRow.results ?? null) as LTRResultsWithCache | null;
-    const strResults = (strRow.results ?? null) as STRResultsExtended | null;
+    const ltrResultsPersisted = (ltrRow.results ?? null) as LTRResultsWithCache | null;
+    const strResultsPersisted = (strRow.results ?? null) as STRResultsExtended | null;
 
-    if (!ltrResults || !strResults) {
+    if (!ltrResultsPersisted || !strResultsPersisted) {
       return NextResponse.json({ error: "Datos insuficientes" }, { status: 400 });
     }
 
     // ─── Cache (persistente en ltr.results.comparativaAI) ───────────────
-    if (ltrResults.comparativaAI && typeof ltrResults.comparativaAI === "object") {
-      return NextResponse.json(ltrResults.comparativaAI);
+    if (ltrResultsPersisted.comparativaAI && typeof ltrResultsPersisted.comparativaAI === "object") {
+      return NextResponse.json(ltrResultsPersisted.comparativaAI);
     }
 
     // ─── Contexto para el prompt ────────────────────────────────────────
     const strInput = strRow.input_data as Record<string, unknown> | null;
+
+    // P1-C + P2 (Rama 0b): recompute ambos lados con el motor nuevo antes de generar la prosa,
+    // para que las cifras que narra la IA (patrimonio Y10, delta, sobre-renta) sean las MISMAS
+    // que muestra el hero. LTR base precioCLP; STR con la UF real de LTR (base homologada).
+    // Espejo de comparativa/page.tsx. Solo corre en generación fresca (el cache ya cortó arriba).
+    const ltrUf = resolveUfForAnalysis(
+      ltrResultsPersisted as { metrics?: { precioCLP?: number | null } | null },
+      ltrRow.input_data as { precio?: number | null } | null,
+      38800,
+      ltrRow.id as string,
+    );
+    const ltrInputRc = (ltrRow.input_data ?? null) as AnalisisInput | null;
+    const ltrAsOfRc = new Date((ltrRow.created_at as string) ?? new Date().toISOString());
+    const ltrMedianaRc = ltrInputRc
+      ? await prefetchMedianaComunaVenta(supabase, ltrInputRc, ltrUf)
+      : { mediana: null, n: 0 };
+    const ltrResults = (
+      ltrInputRc
+        ? { ...recomputeResultsForLegacy(ltrInputRc, ltrUf, ltrMedianaRc, ltrAsOfRc), comparativaAI: ltrResultsPersisted.comparativaAI }
+        : ltrResultsPersisted
+    ) as LTRResultsWithCache;
+
+    const strAsOfRc = new Date((strRow.created_at as string) ?? new Date().toISOString());
+    const strMedianaRc = strInput
+      ? await prefetchMedianaComunaVenta(
+          supabase,
+          {
+            comuna: (strInput.comuna as string) ?? (strRow.comuna as string) ?? "",
+            superficie: Number(strInput.superficieUtil) || 0,
+            dormitorios: Number(strInput.dormitorios) || 0,
+          },
+          ltrUf,
+        )
+      : { mediana: null, n: 0 };
+    const strResults = (
+      recomputeShortTermForLegacy(strInput, strResultsPersisted, ltrUf, strAsOfRc, strMedianaRc) ?? strResultsPersisted
+    ) as STRResultsExtended;
 
     const comuna = (ltrRow.comuna as string) ?? (strRow.comuna as string) ?? "—";
     const superficie = (ltrRow.superficie as number) ?? (strRow.superficie as number) ?? 0;
@@ -128,10 +169,17 @@ export async function POST(request: Request) {
     // Zona STR + recomendación (con fallback para análisis pre-Commit 4)
     const zona = strResults.zonaSTR;
     const sobreRentaPct = strResults.comparativa?.sobreRentaPct ?? 0;
+    // P3 (Rama 0b): el % de sobre-renta no es confiable cuando el NOI-LTR es ≤0 o ínfimo (ratio
+    // explotado). En ese caso la prosa narra la sobre-renta ABSOLUTA (CLP), nunca un % absurdo.
+    const sobreRentaPctConfiable = strResults.comparativa?.sobreRentaPctConfiable ?? true;
+    const sobreRentaCLP = strResults.comparativa?.sobreRenta ?? 0;
     const reco = deriveRecomendacionModalidad({
       recomendacionModalidad: strResults.recomendacionModalidad,
       zonaSTR: zona,
       sobreRentaPct,
+      ltrNoiMensual: strResults.comparativa?.ltr?.noiMensual,
+      sobreRenta: sobreRentaCLP,
+      strNoiMensual: strResults.comparativa?.str_auto?.noiMensual,
     });
 
     // Modo gestión + comisión administrador
@@ -145,7 +193,7 @@ ${dormitorios}D${banos}B en ${comuna} · ${superficie} m² · ${fmtUFAmbas(preci
 
 === RECOMENDACIÓN MOTOR ===
 recomendacionModalidad: ${reco}
-sobreRentaPct STR vs LTR: ${(sobreRentaPct * 100).toFixed(1).replace(".", ",")}%
+sobreRentaPct STR vs LTR: ${sobreRentaPctConfiable ? `${(sobreRentaPct * 100).toFixed(1).replace(".", ",")}%` : `N/D — el arriendo largo rinde ≈0 o negativo, el porcentaje no informa; usá la sobre-renta ABSOLUTA (${fmtCLPAmbas(sobreRentaCLP)}/mes) y nunca cites un %`}
 ${zona ? `Zona tier: ${zona.tierZona} (score ${zona.score}/100)
 ADR percentil vs Santiago: p${zona.percentilADR}
 Ocupación percentil vs Santiago: p${zona.percentilOcupacion}
@@ -176,7 +224,7 @@ Delta Flujo caja mensual: ${fmtCLPAmbas(deltaFlujoMensual)} (${deltaFlujoMensual
 Delta Patrimonio Y10: ${fmtCLPAmbas(deltaPatY10)} (${deltaPatY10 >= 0 ? "STR gana" : "LTR gana"})
 Pérdida primeros meses STR (estabilización inicial): ${fmtCLPAmbas(strResults.perdidaRampUp)}
 Capital extra requerido para STR: ${fmtCLPAmbas(strCapital - ltrCapital)}
-Sobre-renta % STR vs LTR neto: ${fmtPctAmbas(sobreRentaPct, 1)}
+Sobre-renta STR vs LTR neto: ${sobreRentaPctConfiable ? fmtPctAmbas(sobreRentaPct, 1) : `${fmtCLPAmbas(sobreRentaCLP)}/mes (porcentaje N/D — NOI-LTR ≈0/negativo)`}
 
 === ANCLAS DE COSTO/ESFUERZO ===
 LTR: ~0,5 hrs/semana. Operación pasiva una vez firmado contrato anual.

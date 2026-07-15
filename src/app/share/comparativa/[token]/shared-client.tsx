@@ -62,6 +62,10 @@ function deriveRecomendacionFallback(
     recomendacionModalidad: strResults.recomendacionModalidad,
     zonaSTR: strResults.zonaSTR,
     sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
+    // P3 (Rama 0b): contexto para clasificar por absoluto cuando el ratio degenera.
+    ltrNoiMensual: strResults.comparativa?.ltr?.noiMensual,
+    sobreRenta: strResults.comparativa?.sobreRenta,
+    strNoiMensual: strResults.comparativa?.str_auto?.noiMensual,
   });
 }
 

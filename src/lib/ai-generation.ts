@@ -939,7 +939,7 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     let anomaliaValorMercado = "";
     if (Math.abs(valorMercadoUsuarioUF - valorMercadoFrancoUF) / (valorMercadoFrancoUF || 1) > 0.05) {
       anomaliaValorMercado = valorMercadoUsuarioUF > valorMercadoFrancoUF
-        ? `El usuario estima que vale ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible sobreestimación. Los cálculos usan el valor de Franco.`
+        ? `El usuario estima que vale ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible sobreestimación. La ventaja o sobreprecio de entrada se mide con el valor estimado de Franco, no con la estimación del usuario; la proyección de patrimonio parte del precio de compra.`
         : `El usuario estima ${fmtUF(valorMercadoUsuarioUF)} pero los datos indican ${fmtUF(valorMercadoFrancoUF)}. Posible subvaloración o información adicional del usuario.`;
     }
 

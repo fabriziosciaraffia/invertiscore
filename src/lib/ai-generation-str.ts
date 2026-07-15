@@ -34,6 +34,7 @@ import {
   distanciaMinima,
 } from "@/lib/data/str-attractors";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
+import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { AIAnalysisSTRv2, Hallazgo } from "@/lib/types";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
@@ -442,8 +443,13 @@ export function buildUserPromptSTR(
   if (estabRatio < 0.5 && maxM > 0) {
     anomalias.push(`ESTACIONALIDAD EXTREMA: el mes más bajo genera ${Math.round(estabRatio * 100)}% del peak. Caja fluctúa fuerte.`);
   }
-  if (comp.sobreRentaPct < 0) {
-    anomalias.push(`LTR GANA: arriendo tradicional genera ${Math.abs(Math.round(comp.sobreRentaPct * 100))}% más neto que STR. La estrategia STR no compensa.`);
+  // P3 (Rama 0b): gatear por sobre-renta ABSOLUTA, no por el signo del pct — con NOI-LTR ≤0 el
+  // ratio se invierte y "LTR gana" dispararía falso (ej. sobreRenta +$696K pero pct −3483%).
+  if (comp.sobreRenta < 0) {
+    const conf = sobreRentaPctEsConfiable(comp.ltr.noiMensual, comp.sobreRentaPct);
+    anomalias.push(conf
+      ? `LTR GANA: arriendo tradicional genera ${Math.abs(Math.round(comp.sobreRentaPct * 100))}% más neto que STR. La estrategia STR no compensa.`
+      : `LTR GANA: arriendo tradicional genera ${fmtCLP(Math.abs(comp.sobreRenta))}/mes más neto que STR (el NOI-LTR ≈0 hace ilegible el porcentaje). La estrategia STR no compensa.`);
   }
   if (base.capRate < 0.03) {
     anomalias.push(`CAP RATE BAJO: ${pct(base.capRate * 100)}% — el NOI apenas justifica el precio de compra.`);
@@ -561,7 +567,7 @@ Upside (gestión profesional): NOI ${fmtCLPSigned(agr.noiMensual)}/mes, Flujo ${
 === COMPARATIVA STR vs LTR ===
 Arriendo largo (LTR): Ingreso bruto ${fmtCLP(comp.ltr.ingresoBruto)}/mes · NOI ${fmtCLPSigned(comp.ltr.noiMensual)}/mes · Flujo ${fmtCLPSigned(comp.ltr.flujoCaja)}/mes
 STR (modo ${modoGestion}, base): NOI ${fmtCLPSigned(base.noiMensual)}/mes · Flujo ${fmtCLPSigned(base.flujoCajaMensual)}/mes
-DIFERENCIA: Sobre-renta NOI ${fmtCLPSigned(comp.sobreRenta)}/mes (${comp.sobreRentaPct >= 0 ? "+" : ""}${Math.round(comp.sobreRentaPct * 100)}%) · STR ${base.flujoCajaMensual > comp.ltr.flujoCaja ? "GANA" : "PIERDE"} en flujo · Payback amoblamiento: ${comp.paybackMeses > 0 ? comp.paybackMeses + " meses" : comp.paybackMeses === 0 ? "sin amoblamiento" : "no se recupera con sobre-renta"}
+DIFERENCIA: Sobre-renta NOI ${fmtCLPSigned(comp.sobreRenta)}/mes${sobreRentaPctEsConfiable(comp.ltr.noiMensual, comp.sobreRentaPct) ? ` (${comp.sobreRentaPct >= 0 ? "+" : ""}${Math.round(comp.sobreRentaPct * 100)}%)` : ` (porcentaje N/D — NOI-LTR ≈0; usá el monto, nunca un %)`} · STR ${base.flujoCajaMensual > comp.ltr.flujoCaja ? "GANA" : "PIERDE"} en flujo · Payback amoblamiento: ${comp.paybackMeses > 0 ? comp.paybackMeses + " meses" : comp.paybackMeses === 0 ? "sin amoblamiento" : "no se recupera con sobre-renta"}
 
 === AUTO-GESTIÓN vs ADMINISTRADOR ===
 Auto (comisión 3% Airbnb): NOI ${fmtCLPSigned(strAuto.noiMensual)}/mes, Flujo ${fmtCLPSigned(strAuto.flujoCajaMensual)}/mes — requiere ~8-12 hrs/semana del usuario.

@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getUFValue } from "@/lib/uf";
+import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { decodeShareToken } from "@/lib/share-token";
-import type { Analisis, FullAnalysisResult, AIAnalysisComparativa } from "@/lib/types";
+import type { Analisis, FullAnalysisResult, AIAnalysisComparativa, AnalisisInput } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { SharedComparativaClient } from "./shared-client";
 
@@ -65,10 +66,10 @@ export default async function ShareComparativaPage({
 
   const ltr = ltrRow as Analisis;
   const str = strRow as Analisis & { results?: STRResultsWithScore };
-  const ltrResults = (ltr.results ?? null) as LTRResultsWithCache | null;
+  const ltrResultsPersisted = (ltr.results ?? null) as LTRResultsWithCache | null;
   const strResultsPersisted = (str.results ?? null) as STRResultsWithScore | null;
 
-  if (!ltrResults || !strResultsPersisted) {
+  if (!ltrResultsPersisted || !strResultsPersisted) {
     notFound();
   }
 
@@ -81,9 +82,27 @@ export default async function ShareComparativaPage({
   // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Igual que la
   // vista privada: patrimonio STR comparable con LTR. UF y fecha congeladas a la creación.
   // Idempotente, cero DB writes. Fallback al persistido si falta airbnbRaw.
-  const strPrecioUF = Number(strInput?.precioCompraUF) || 0;
-  const strPrecioCLP = Number(strInput?.precioCompra) || 0;
-  const strUfFrozen = strPrecioUF > 0 ? strPrecioCLP / strPrecioUF : ufValue;
+  // P2 (Rama 0b): el lado STR adopta la UF real reconstruida del lado LTR del par (espejo de
+  // la vista privada). El recompute STR re-escala precio+revenue a esta UF (TIR-neutral),
+  // homologando la base CLP de ambos motores.
+  const ltrUfFrozen = resolveUfForAnalysis(
+    ltrResultsPersisted as { metrics?: { precioCLP?: number | null } | null } | null,
+    ltr.input_data as { precio?: number | null } | null,
+    ufValue,
+    ltr.id,
+  );
+  // P1-C (Rama 0b): recompute LTR con el motor nuevo (base precioCLP), espejo de la vista
+  // privada. Preserva el cache de prosa `comparativaAI`. Fallback al persistido si falta input.
+  const ltrInput = (ltr.input_data ?? null) as AnalisisInput | null;
+  const ltrAsOfFrozen = new Date(ltr.created_at ?? new Date().toISOString());
+  const ltrMediana = ltrInput
+    ? await prefetchMedianaComunaVenta(supabase, ltrInput, ltrUfFrozen)
+    : { mediana: null, n: 0 };
+  const ltrResults = (
+    ltrInput
+      ? { ...recomputeResultsForLegacy(ltrInput, ltrUfFrozen, ltrMediana, ltrAsOfFrozen), comparativaAI: ltrResultsPersisted?.comparativaAI }
+      : ltrResultsPersisted
+  ) as LTRResultsWithCache;
   const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
   const strMediana = strInput
     ? await prefetchMedianaComunaVenta(
@@ -93,13 +112,13 @@ export default async function ShareComparativaPage({
           superficie: Number(strInput.superficieUtil) || 0,
           dormitorios: Number(strInput.dormitorios) || 0,
         },
-        strUfFrozen,
+        ltrUfFrozen,
       )
     : { mediana: null, n: 0 };
   const strResults = (recomputeShortTermForLegacy(
     strInput,
     strResultsPersisted,
-    strUfFrozen,
+    ltrUfFrozen,
     strAsOfFrozen,
     strMediana,
   ) ?? strResultsPersisted) as STRResultsWithScore;
