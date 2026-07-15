@@ -10,13 +10,22 @@ import { fmtAxisMoney, fmtMoney } from "../utils";
 
 /**
  * Sub-sección 09 · PATRIMONIO — variante STR (Patrón 7.B.3 Chart Block).
- * Mismo lenguaje visual que el LTR pero consume `YearProjectionSTR[]`
- * directamente — no requiere mocking de shape.
+ *
+ * str-paridad2: armonizado al canon LTR (`PatrimonioChart.tsx`, post-8c08517)
+ * en las 13 divergencias render-only — altura 320, headroom top:28, grid "3 3",
+ * XAxis `a${v}`, YAxis por margin (no width), tooltip rico (Valor depto · −Deuda
+ * en color muted propio · Aporte acum · =Patrimonio neto), Valor depto Ink 50%,
+ * barSize dinámico, línea 2.5 con dot fill-card, leyenda canon (Patrimonio como
+ * línea, labels normal case), checkpoint "Patrimonio teórico al año N" + delta ±%.
+ *
+ * Divergencia intrínseca conservada: NO hay ReferenceLine "📦 Entrega" — el motor
+ * STR no modela entrega futura (compoundéa desde año 1). Los datos empiezan en el
+ * año 1 (sin fila a0 "día de cierre" del canon LTR).
  *
  * Capa Cromática:
  *   • Aporte acumulado (barra inferior) — Signal Red (uso permitido #8)
- *   • Valor depto (barra superior apilada) — Ink 100 con opacity 50%
- *   • Línea Patrimonio neto — Ink sólido (resultado neto)
+ *   • Valor depto (barra superior apilada) — Ink 100 opacity 50%
+ *   • Línea Patrimonio neto — Ink sólido (resultado neto = valor − deuda + flujo)
  */
 export function PatrimonioChartSTR({
   results,
@@ -27,16 +36,15 @@ export function PatrimonioChartSTR({
   currency: "CLP" | "UF";
   valorUF: number;
 }) {
-  const projections = results.projections ?? [];
+  const rawProjections = results.projections;
   const capitalInicial = results.capitalInvertido;
 
   const chartData = useMemo(() => {
+    const projections = rawProjections ?? [];
     if (projections.length === 0) return [];
 
     return projections.map((p) => {
       // Aporte acumulado: capital inicial + |suma de flujos negativos hasta el año|.
-      // Para STR usamos aporteMensualPromedio*12 = abs(flujoOperacionalAnual<0)
-      // ya está en projections. Aquí calculamos acumulado.
       const aportesNegativos = projections
         .slice(0, p.year)
         .filter((q) => q.flujoOperacionalAnual < 0)
@@ -44,14 +52,20 @@ export function PatrimonioChartSTR({
       const aporteAcum = capitalInicial + aportesNegativos;
 
       return {
-        year: p.year,
+        anio: p.year,
         aporteAcum,
         valorDepto: p.valorDepto,
-        saldoCredito: p.saldoCredito,
+        deudaPendiente: p.saldoCredito,
         patrimonioNeto: p.patrimonioNeto,
       };
     });
-  }, [projections, capitalInicial]);
+  }, [rawProjections, capitalInicial]);
+
+  const last = chartData[chartData.length - 1];
+  const ganancia = last ? last.patrimonioNeto - last.aporteAcum : 0;
+  const gananciaPct = last && last.aporteAcum > 0 ? (ganancia / last.aporteAcum) * 100 : 0;
+  const tickFormatter = (v: number) => fmtAxisMoney(v, currency, valorUF);
+  const barSize = Math.max(8, Math.floor(280 / Math.max(chartData.length, 1)));
 
   if (chartData.length === 0) {
     return (
@@ -61,110 +75,147 @@ export function PatrimonioChartSTR({
     );
   }
 
-  const ultimo = chartData[chartData.length - 1];
-
   return (
-    <div>
-      <div style={{ width: "100%", height: 280 }}>
+    <div className="flex flex-col gap-4">
+      <div style={{ width: "100%", height: 320 }}>
         <ResponsiveContainer>
-          <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid stroke="var(--franco-border)" strokeDasharray="2 2" vertical={false} />
+          <ComposedChart data={chartData} margin={{ top: 28, right: 16, left: currency === "UF" ? 20 : 10, bottom: 8 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" vertical={false} />
             <XAxis
-              dataKey="year"
-              tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: "var(--franco-text-secondary)" }}
-              axisLine={{ stroke: "var(--franco-border)" }}
-              tickLine={false}
+              dataKey="anio"
+              tick={{ fontSize: 11, fill: "var(--franco-text-secondary)" }}
+              tickFormatter={(v) => `a${v}`}
             />
             <YAxis
-              tickFormatter={(v) => fmtAxisMoney(Number(v), currency, valorUF)}
-              tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: "var(--franco-text-secondary)" }}
-              axisLine={{ stroke: "var(--franco-border)" }}
-              tickLine={false}
-              width={70}
+              tick={{ fontSize: 10, fill: "var(--franco-text-secondary)" }}
+              tickFormatter={tickFormatter}
             />
             <RechartsTooltip
-              contentStyle={{
-                background: "var(--franco-card)",
-                border: "0.5px solid var(--franco-border)",
-                borderRadius: 8,
-                fontSize: 12,
-                fontFamily: "var(--font-mono)",
+              content={({ active, payload }) => {
+                if (!active || !payload || payload.length === 0) return null;
+                const row = payload[0]?.payload as (typeof chartData)[number] | undefined;
+                if (!row) return null;
+                const fmt = (n: number) => fmtMoney(n, currency, valorUF);
+                return (
+                  <div
+                    className="rounded-lg px-3 py-2.5 shadow-lg"
+                    style={{
+                      border: "0.5px solid var(--franco-border-hover)",
+                      background: "var(--franco-card)",
+                      fontSize: 12,
+                      color: "var(--franco-text)",
+                    }}
+                  >
+                    <div className="mb-1.5 font-medium">Año {row.anio}</div>
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }} />
+                      Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
+                    </div>
+                    {/* −Deuda: color propio (muted) — NO es serie graficada (fuera de
+                        la leyenda de 3), pero necesita identidad distinta del rojo de
+                        "Aporte acum" para no leerse como lo mismo. */}
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--franco-text-muted)" }} />
+                      − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--franco-text-muted)" }}>−{fmt(row.deudaPendiente)}</span>
+                    </div>
+                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
+                      Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
+                    </div>
+                    <div className="mt-1.5 pt-1.5 flex items-center gap-2" style={{ borderTop: "0.5px dashed var(--franco-border)" }}>
+                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--franco-text)" }} />
+                      <span className="font-medium" style={{ color: "var(--franco-text)" }}>= Patrimonio neto</span>
+                      <span className="ml-auto font-mono font-bold" style={{ color: "var(--franco-text)" }}>{fmt(row.patrimonioNeto)}</span>
+                    </div>
+                  </div>
+                );
               }}
-              formatter={(value, name) => {
-                const labels: Record<string, string> = {
-                  aporteAcum: "Aporte acumulado",
-                  valorDepto: "Valor depto",
-                  patrimonioNeto: "Patrimonio neto",
-                };
-                const v = typeof value === "number" ? value : Number(value) || 0;
-                const n = typeof name === "string" ? name : String(name);
-                return [fmtMoney(v, currency, valorUF), labels[n] ?? n];
-              }}
-              labelFormatter={(year) => `Año ${year}`}
             />
-            <Bar dataKey="aporteAcum" stackId="a" fill="var(--signal-red)" name="aporteAcum" />
+            {/* Aporte acumulado en Signal Red — uso #8 (dinero que pones) */}
+            <Bar
+              dataKey="aporteAcum"
+              stackId="composicion"
+              fill="var(--signal-red)"
+              name="Aporte acumulado"
+              barSize={barSize}
+            />
+            {/* Valor depto en Ink primary opacity 50% — proyección de valor */}
             <Bar
               dataKey="valorDepto"
-              stackId="a"
-              fill="color-mix(in srgb, var(--franco-text) 30%, transparent)"
-              name="valorDepto"
+              stackId="composicion"
+              fill="var(--franco-text)"
+              fillOpacity={0.5}
+              name="Valor depto"
+              barSize={barSize}
             />
+            {/* Patrimonio neto en Ink primary sólido — el resultado neto */}
             <Line
               type="monotone"
               dataKey="patrimonioNeto"
               stroke="var(--franco-text)"
-              strokeWidth={2}
-              dot={{ r: 3, fill: "var(--franco-text)" }}
-              name="patrimonioNeto"
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: "var(--franco-card)", stroke: "var(--franco-text)", strokeWidth: 1.5 }}
+              name="Patrimonio neto"
             />
           </ComposedChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Leyenda */}
-      <div className="flex flex-wrap items-center justify-center gap-4 mt-3">
-        <LegendDot color="var(--signal-red)" label="Aporte acumulado" />
-        <LegendDot color="color-mix(in srgb, var(--franco-text) 30%, transparent)" label="Valor depto" />
-        <LegendDot color="var(--franco-text)" label="Patrimonio neto" />
+      {/* Leyenda — molde canon: dots rounded-sm, Patrimonio como línea, normal case */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 justify-center font-mono" style={{ fontSize: 10, color: "var(--franco-text-secondary)" }}>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--signal-red)" }} />
+          Aporte acumulado
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: "var(--franco-text)", opacity: 0.5 }} />
+          Valor depto
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 rounded" style={{ background: "var(--franco-text)", height: 2 }} />
+          Patrimonio neto
+        </span>
       </div>
 
-      {/* Bloque conclusivo */}
-      <div
-        className="mt-5 p-4"
-        style={{
-          background: "color-mix(in srgb, var(--franco-text) 4%, transparent)",
-          borderLeft: "3px solid var(--franco-text-secondary)",
-          borderRadius: "0 8px 8px 0",
-        }}
-      >
-        <div className="flex items-center justify-between gap-4 flex-wrap">
-          <div>
-            <p
-              className="font-mono uppercase mb-1"
-              style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
+      {/* Checkpoint final — molde canon: label + "vs X aportados" + valor + delta ±% */}
+      {last && (
+        <div
+          className="flex justify-between items-start gap-3"
+          style={{
+            background: "color-mix(in srgb, var(--franco-text) 3%, transparent)",
+            borderLeft: "3px solid var(--franco-text-secondary)",
+            borderRadius: "0 8px 8px 0",
+            padding: "12px 16px",
+            marginTop: "1.25rem",
+          }}
+        >
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <span
+              className="font-mono uppercase"
+              style={{ fontSize: 10, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}
             >
-              PATRIMONIO AL AÑO {ultimo.year}
-            </p>
-            <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0">
-              Valor del activo menos deuda, más flujos acumulados.
-            </p>
+              Patrimonio teórico al año {last.anio}
+            </span>
+            <span className="font-body" style={{ fontSize: 12, color: "var(--franco-text-secondary)" }}>
+              vs {fmtMoney(last.aporteAcum, currency, valorUF)} aportados
+            </span>
           </div>
-          <p className="font-mono text-[28px] font-bold m-0 text-[var(--franco-text)]">
-            {fmtMoney(ultimo.patrimonioNeto, currency, valorUF)}
-          </p>
+          <div className="flex flex-col items-end gap-0.5 shrink-0">
+            <span
+              className="font-mono font-bold whitespace-nowrap"
+              style={{ fontSize: 22, color: "var(--franco-text)", lineHeight: 1 }}
+            >
+              {fmtMoney(last.patrimonioNeto, currency, valorUF)}
+            </span>
+            <span
+              className="font-mono whitespace-nowrap"
+              style={{ fontSize: 11, color: ganancia >= 0 ? "var(--franco-text-secondary)" : "var(--signal-red)" }}
+            >
+              {ganancia >= 0 ? "+" : "−"}{fmtMoney(Math.abs(ganancia), currency, valorUF)} ({ganancia >= 0 ? "+" : "−"}{Math.round(Math.abs(gananciaPct))}%)
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
-  );
-}
-
-function LegendDot({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      <span style={{ width: 10, height: 10, borderRadius: 999, background: color, display: "inline-block" }} />
-      <span className="font-mono uppercase" style={{ fontSize: 9, letterSpacing: "0.06em", color: "var(--franco-text-secondary)" }}>
-        {label}
-      </span>
-    </span>
   );
 }
