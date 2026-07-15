@@ -23,8 +23,18 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response;
     const { user } = auth;
 
-    const body: AnalisisInput & { prepaidChargeId?: string } = await request.json();
+    const body: AnalisisInput & { prepaidChargeId?: string; ambasGroupId?: string } = await request.json();
     const prepaidChargeId = body.prepaidChargeId;
+    // Enlace AMBAS (flujo crédito/welcome): el wizard genera el group_id y lo
+    // pasa a los dos POSTs (LTR + STR). Acá es el lado LTR → rol 'ltr'. Se valida
+    // como uuid; junk se ignora (fila queda suelta). El hermano se resuelve por
+    // group_id en el dashboard y las páginas hijas — un fallo parcial (STR no se
+    // crea) deja este group_id sin hermano y esas lecturas lo degradan a suelto.
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ambasGroupId =
+      typeof body.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
+        ? body.ambasGroupId
+        : null;
 
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
@@ -71,6 +81,8 @@ export async function POST(request: Request) {
         // sobreprecio/hero/prosa/zona. Nadie lo lee aún (Fase B cablea lecturas).
         mediana_comuna_snapshot: buildMedianaSnapshot(medianaComuna),
         creator_name: user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
+        // Enlace AMBAS: solo cuando el wizard pasó un group_id válido (lado LTR).
+        ...(ambasGroupId ? { ambas_group_id: ambasGroupId, ambas_role: "ltr" } : {}),
       })
       .select()
       .single();

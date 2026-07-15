@@ -21,6 +21,13 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const prepaidChargeId: string | undefined = body?.prepaidChargeId;
+    // Enlace AMBAS (flujo crédito/welcome): lado STR → rol 'str'. Ver comentario
+    // gemelo en /api/analisis (LTR). uuid válido o se ignora (fila suelta).
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const ambasGroupId =
+      typeof body?.ambasGroupId === "string" && UUID_RE.test(body.ambasGroupId)
+        ? body.ambasGroupId
+        : null;
 
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
@@ -57,6 +64,8 @@ export async function POST(request: Request) {
           user?.user_metadata?.full_name ||
           'Anónimo',
         is_premium: false,
+        // Enlace AMBAS: solo cuando el wizard pasó un group_id válido (lado STR).
+        ...(ambasGroupId ? { ambas_group_id: ambasGroupId, ambas_role: "str" } : {}),
       })
       .select()
       .single();

@@ -665,9 +665,16 @@ function NuevoAnalisisV3Inner() {
       // chargeId opcional: para flujo AMBAS el wizard pre-cobra UNA vez vía
       // /api/credits/charge y pasa el id a ambos endpoints. Para flujo single
       // (LTR sólo o STR sólo) no se pasa y el endpoint cobra él mismo.
+      // chargeId: pre-cobro AMBAS. ambasGroupId: enlace de subordinación — el
+      // mismo uuid se pasa a los dos POSTs para que las filas nazcan pareadas
+      // (migración 20260715). Ambos opcionales; en flujo single no se envían.
       type AnalisisRow = { id: string };
-      const postLTR = async (chargeId?: string): Promise<AnalisisRow> => {
-        const payload = chargeId ? { ...ltrPayload, prepaidChargeId: chargeId } : ltrPayload;
+      const postLTR = async (chargeId?: string, ambasGroupId?: string): Promise<AnalisisRow> => {
+        const payload = {
+          ...ltrPayload,
+          ...(chargeId ? { prepaidChargeId: chargeId } : {}),
+          ...(ambasGroupId ? { ambasGroupId } : {}),
+        };
         const res = await fetch("/api/analisis", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -679,8 +686,12 @@ function NuevoAnalisisV3Inner() {
         }
         return res.json();
       };
-      const postSTR = async (chargeId?: string): Promise<AnalisisRow> => {
-        const payload = chargeId ? { ...strPayload, prepaidChargeId: chargeId } : strPayload;
+      const postSTR = async (chargeId?: string, ambasGroupId?: string): Promise<AnalisisRow> => {
+        const payload = {
+          ...strPayload,
+          ...(chargeId ? { prepaidChargeId: chargeId } : {}),
+          ...(ambasGroupId ? { ambasGroupId } : {}),
+        };
         const res = await fetch("/api/analisis/short-term", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -742,7 +753,16 @@ function NuevoAnalisisV3Inner() {
       }
       const { chargeId } = (await chargeRes.json()) as { chargeId: string };
 
-      const [ltrRes, strRes] = await Promise.allSettled([postLTR(chargeId), postSTR(chargeId)]);
+      // group_id del par AMBAS: nace acá y viaja a ambos POSTs. Si un lado falla
+      // (allSettled), el sobreviviente queda con group_id sin hermano → el
+      // dashboard y la página hija lo degradan a análisis suelto (resuelven el
+      // hermano por group_id y no lo encuentran).
+      const ambasGroupId = crypto.randomUUID();
+
+      const [ltrRes, strRes] = await Promise.allSettled([
+        postLTR(chargeId, ambasGroupId),
+        postSTR(chargeId, ambasGroupId),
+      ]);
       const ltrOk = ltrRes.status === "fulfilled";
       const strOk = strRes.status === "fulfilled";
 

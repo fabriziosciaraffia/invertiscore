@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
@@ -126,6 +127,13 @@ export async function POST(request: Request) {
       const creatorName =
         user?.user_metadata?.nombre || user?.user_metadata?.full_name || "Anónimo";
 
+      // Enlace de subordinación AMBAS (migración 20260715): el group_id nace acá,
+      // compartido por las dos filas del par; cada una lleva su rol. El dashboard
+      // colapsa el par en una card comparativa y las páginas hijas resuelven el
+      // hermano por este group_id. Insert atómico-por-par: ambas filas se crean
+      // en el mismo request, así que no hay ventana de huérfano en el flujo locked.
+      const ambasGroupId = randomUUID();
+
       const { data: ltrData, error: ltrErr } = await supabase
         .from("analisis")
         .insert({
@@ -134,6 +142,8 @@ export async function POST(request: Request) {
           creator_name:
             user?.user_metadata?.nombre || user?.user_metadata?.full_name || null,
           is_premium: false,
+          ambas_group_id: ambasGroupId,
+          ambas_role: "ltr",
         })
         .select("id")
         .single();
@@ -150,6 +160,8 @@ export async function POST(request: Request) {
           creator_name: creatorName,
           is_premium: false,
           pending_payment: true,
+          ambas_group_id: ambasGroupId,
+          ambas_role: "str",
         })
         .select("id")
         .single();

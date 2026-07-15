@@ -1101,4 +1101,11 @@ export interface Analisis {
   input_data?: AnalisisInput;
   is_premium?: boolean;
   created_at: string;
+  // Discriminador LTR/STR (columna SQL, migración 20260510). Presente en las
+  // filas reales; opcional en el tipo por back-compat con lecturas legacy.
+  tipo_analisis?: "long-term" | "short-term" | null;
+  // Enlace de subordinación AMBAS (migración 20260715). Ambas filas del par
+  // comparten `ambas_group_id`; `ambas_role` marca el lado. NULL = suelto.
+  ambas_group_id?: string | null;
+  ambas_role?: "ltr" | "str" | null;
 }
