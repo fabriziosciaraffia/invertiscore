@@ -29,10 +29,12 @@ for (const s of STR_GE_SEEDS) {
 }
 
 const payload = {
-  note: "POST-FOTO clase (a) STR — semántica EQUITY (rama motor-supuestos F2). El multiplicador " +
-    "y equityCLP/patrimonioCLP ya NO restan capitalInicial; vs la pre-foto F0.5 (ganancia) el " +
-    "patrimonio subió +capital y el multiplicador +1 (flip verificado exacto por of-f2-flip-preseed/" +
-    "corpus-verify; las 11 filas testigo 0<mult<1 voltearon a >1). Re-baseline solo con OK de Fabrizio.",
+  note: "POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y " +
+    "equityCLP ya NO incluyen flujo acumulado (= valor − deuda [− comisión]); multiplicadorCapital = " +
+    "equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el " +
+    "doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la " +
+    "pre-foto F2, veredicto/N preservados (gate re-derivado a 2,65); drift en tirPct (inflación) + " +
+    "equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A).",
   seeds,
 };
 const path = join(__dirname, "str-baseline.json");

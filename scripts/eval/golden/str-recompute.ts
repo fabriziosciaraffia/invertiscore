@@ -126,7 +126,10 @@ export function recomputeStrSeed(seed: StrGeSeed, frozen: Record<string, FrozenF
   if (!fx) return null;
   const { d, raw, reg } = synth(fx, seed.sintesis);
   const airbnbData = buildAirbnbData(raw as any, fx.uf);
-  const rec = calcShortTerm(buildInputs(d, airbnbData, fx.uf) as any);
+  // asOf constante fija (determinismo golden). Hoy es no-op en la aritmética (pre-entrega
+  // diferido; buildProjections la void-ea) pero fija la firma para cuando el modelo de
+  // entrega futura aterrice en su rama.
+  const rec = calcShortTerm(buildInputs(d, airbnbData, fx.uf) as any, new Date("2026-01-01T00:00:00Z"));
   const score = calcFrancoScoreSTR({ results: rec, precioCompra: d.precioCompra, dormitorios: d.dormitorios,
     superficie: d.superficieUtil, regulacionEdificio: reg, lat: d.lat ?? -33.4378, lng: d.lng ?? -70.6504,
     revenueP50: airbnbData.percentiles.revenue.p50, monthlyRevenue: airbnbData.monthly_revenue } as any);

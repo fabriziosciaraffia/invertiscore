@@ -1,77 +1,77 @@
 {
-  "note": "POST-FOTO clase (a) STR — semántica EQUITY (rama motor-supuestos F2). El multiplicador y equityCLP/patrimonioCLP ya NO restan capitalInicial; vs la pre-foto F0.5 (ganancia) el patrimonio subió +capital y el multiplicador +1 (flip verificado exacto por of-f2-flip-preseed/corpus-verify; las 11 filas testigo 0<mult<1 voltearon a >1). Re-baseline solo con OK de Fabrizio.",
+  "note": "POST-FOTO clase (a) STR — homologación LTR (rama comparabilidad-motores). patrimonioNeto y equityCLP ya NO incluyen flujo acumulado (= valor − deuda [− comisión]); multiplicadorCapital = equity(sin flujo) / totalAportado(inicial + Σ aportes<0), espejo exacto de analysis.ts:727 (mata el doble-conteo). Inflación de flujos homologada a LTR (revenue 3,5% · costos 3% · dividendo 3%). Vs la pre-foto F2, veredicto/N preservados (gate re-derivado a 2,65); drift en tirPct (inflación) + equityCLP/patrimonioCLP/multiplicador (re-semántica). Re-baseline con OK de Fabrizio (⛔#A).",
   "seeds": {
     "GE-1": {
       "veredicto": "COMPRAR",
       "score": 78,
       "N": 11,
-      "tirPct": 10.85,
-      "multiplicadorCapital": 2.832622835700896,
-      "equityCLP": 108879926,
+      "tirPct": 11.24,
+      "multiplicadorCapital": 2.7279613806694285,
+      "equityCLP": 108693698,
       "valorVenta": 213425210,
       "capitalInvertido": 38437848,
-      "patrimonioCLP": 108879926,
-      "patrimonioMult": 2.83
+      "patrimonioCLP": 108693698,
+      "patrimonioMult": 2.73
     },
     "GE-2": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 60,
       "N": 12,
-      "tirPct": 7.03,
-      "multiplicadorCapital": 2.1234553778812475,
-      "equityCLP": 79171335,
+      "tirPct": 7.09,
+      "multiplicadorCapital": 1.8442319190335588,
+      "equityCLP": 92356962,
       "valorVenta": 166860658,
       "capitalInvertido": 37284200,
-      "patrimonioCLP": 79171335,
-      "patrimonioMult": 2.12
+      "patrimonioCLP": 92356962,
+      "patrimonioMult": 1.84
     },
     "GE-3": {
       "veredicto": "BUSCAR OTRA",
       "score": 48,
       "N": 12,
-      "tirPct": 10.43,
-      "multiplicadorCapital": 2.6855659237621423,
-      "equityCLP": 120856117,
+      "tirPct": 10.87,
+      "multiplicadorCapital": 2.565602805878918,
+      "equityCLP": 118123768,
       "valorVenta": 227556222,
       "capitalInvertido": 45002104,
-      "patrimonioCLP": 120856117,
-      "patrimonioMult": 2.69
+      "patrimonioCLP": 118123768,
+      "patrimonioMult": 2.57
     },
     "GE-4": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 55,
       "N": 12,
-      "tirPct": 12.64,
-      "multiplicadorCapital": 3.094261720184567,
-      "equityCLP": 111351538,
+      "tirPct": 13.25,
+      "multiplicadorCapital": 2.7994235580433884,
+      "equityCLP": 100986565,
       "valorVenta": 182451700,
       "capitalInvertido": 35986464,
-      "patrimonioCLP": 111351538,
-      "patrimonioMult": 3.09
+      "patrimonioCLP": 100986565,
+      "patrimonioMult": 2.8
     },
     "GE-5": {
       "veredicto": "AJUSTA SUPUESTOS",
       "score": 54,
       "N": 12,
-      "tirPct": 8.09,
-      "multiplicadorCapital": 2.374466101640566,
-      "equityCLP": 79973367,
+      "tirPct": 8.13,
+      "multiplicadorCapital": 1.993810164363924,
+      "equityCLP": 93358211,
       "valorVenta": 171569741,
       "capitalInvertido": 33680568,
-      "patrimonioCLP": 79973367,
-      "patrimonioMult": 2.37
+      "patrimonioCLP": 93358211,
+      "patrimonioMult": 1.99
     },
     "GE-6": {
       "veredicto": "BUSCAR OTRA",
       "score": 37,
       "N": 11,
-      "tirPct": 4.86,
-      "multiplicadorCapital": 1.8342143832085895,
-      "equityCLP": 73587874,
+      "tirPct": 4.41,
+      "multiplicadorCapital": 1.3834430593221396,
+      "equityCLP": 108851097,
       "valorVenta": 213008058,
       "capitalInvertido": 40119560,
-      "patrimonioCLP": 73587874,
-      "patrimonioMult": 1.83
+      "patrimonioCLP": 108851097,
+      "patrimonioMult": 1.38
     }
   }
 }
