@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
@@ -148,9 +151,23 @@ function deriveVerdictUnificado(
 
 // ─── Componente principal ───────────────────────────────────────────────
 export function ComparativaClient(p: Props) {
+  const router = useRouter();
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [drawer, setDrawer] = useState<DrawerKey>(null);
+  const [deleting, setDeleting] = useState(false);
   const uf = p.ufValue;
+
+  // Delete group-aware: el comparativo es el producto — borrarlo elimina las DOS
+  // filas hijas (LTR + STR). Confirm explícito con el alcance real. Solo owner.
+  const handleDeleteGroup = async () => {
+    if (deleting) return;
+    if (!confirm("Esto elimina la comparativa y sus dos análisis (renta larga y renta corta). ¿Continuar?")) return;
+    setDeleting(true);
+    const supabase = createClient();
+    await supabase.from("analisis").delete().in("id", [p.ltrId, p.strId]);
+    router.push("/dashboard");
+    router.refresh();
+  };
 
   // Recomendación driver
   const recomendacion = useMemo(
@@ -222,15 +239,31 @@ export function ComparativaClient(p: Props) {
       <UnifiedNav
         variant="app"
         actionsSlot={
-          <ShareButton
-            path={`/share/comparativa/${p.shareToken}`}
-            analysisId={p.shareToken}
-            modalidad="AMBAS"
-            pdfUrl={`/api/share/comparativa/${p.shareToken}/pdf`}
-            title={`Comparativa Franco: ${p.nombre || `Depto en ${p.comuna}`}`}
-            text="¿Arriendo tradicional o Airbnb? Franco comparó las dos modalidades de este depto con datos reales."
-            comuna={p.comuna}
-          />
+          <div className="flex items-center gap-2">
+            <ShareButton
+              path={`/share/comparativa/${p.shareToken}`}
+              analysisId={p.shareToken}
+              modalidad="AMBAS"
+              pdfUrl={`/api/share/comparativa/${p.shareToken}/pdf`}
+              title={`Comparativa Franco: ${p.nombre || `Depto en ${p.comuna}`}`}
+              text="¿Arriendo tradicional o Airbnb? Franco comparó las dos modalidades de este depto con datos reales."
+              comuna={p.comuna}
+            />
+            {/* Delete group-aware — solo owner (subordinación: el comparativo es
+                el producto; borrarlo elimina ambos hijos). */}
+            {p.isOwner && (
+              <button
+                type="button"
+                onClick={handleDeleteGroup}
+                disabled={deleting}
+                className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-body text-[13px] text-[var(--franco-text-secondary)] transition-colors hover:text-signal-red disabled:opacity-50"
+                title="Eliminar comparativa (borra ambos análisis)"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Eliminar</span>
+              </button>
+            )}
+          </div>
         }
       />
 
