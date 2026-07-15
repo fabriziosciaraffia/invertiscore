@@ -166,8 +166,11 @@ export function SubjectCardGrid({
           pirámide en el paso siguiente. */}
 
       {/* A1 — Simulación (AdvancedSection) va ENTRE la pirámide y la card zona:
-          drawers → simulación → zona. */}
-      {simulationSlot}
+          drawers → simulación → zona. El wrapper mt-6 da el respiro que faltaba
+          entre la última fila de la pirámide y la card "Simula plazo y plusvalía"
+          (paridad con el spacer de 24px que STR usa en la misma frontera; ni la
+          pirámide ni el root de AdvancedSection aportan ese margen). */}
+      {simulationSlot && <div className="mt-6">{simulationSlot}</div>}
 
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (

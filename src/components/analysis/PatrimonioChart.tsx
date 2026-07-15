@@ -68,10 +68,16 @@ export function PatrimonioChart({
     const rows: Array<{
       anio: number;
       aporteAcum: number;
-      valorDepto: number;
+      // null pre-entrega: el activo aún no está en el patrimonio del comprador,
+      // así que el bar "Valor depto" no se dibuja (Recharts salta null en un stack).
+      // Rescata la intención del projData muerto de results-client.tsx, que ya
+      // anulaba el valor pre-escritura; la LÍNEA de patrimonio ya es honesta
+      // (= aporteAcum pre-entrega), el bar debe serlo también.
+      valorDepto: number | null;
       patrimonioNeto: number;
       flujoAcumulado: number;
       deudaPendiente: number;
+      isPreEntrega: boolean;
     }> = [];
 
     // Año 0 — día de cierre. Patrimonio teórico = vmFranco − deuda activa.
@@ -97,15 +103,18 @@ export function PatrimonioChart({
     })();
     const aniosEntregaInternal = Math.ceil(mesesPreEntregaCalc / 12);
 
+    const a0PreEntrega = 0 < aniosEntregaInternal;
     rows.push({
       anio: 0,
       aporteAcum: inversionInicial,
-      valorDepto: vmFrancoCLP,
-      patrimonioNeto: 0 < aniosEntregaInternal
+      // pre-entrega: sin activo recibido → bar Valor depto oculto (null)
+      valorDepto: a0PreEntrega ? null : vmFrancoCLP,
+      patrimonioNeto: a0PreEntrega
         ? inversionInicial               // pre-entrega: lo que pusiste
         : vmFrancoCLP - deudaA0,         // entrega inmediata: equity en activo
       flujoAcumulado: 0,
       deudaPendiente: deudaA0,
+      isPreEntrega: a0PreEntrega,
     });
 
     // Años 1..plazoAnios
@@ -122,12 +131,14 @@ export function PatrimonioChart({
       rows.push({
         anio: i,
         aporteAcum,
-        valorDepto: p.valorPropiedad,
+        // pre-entrega: activo aún no recibido → bar Valor depto oculto (null)
+        valorDepto: isPreEntrega ? null : p.valorPropiedad,
         patrimonioNeto: isPreEntrega
           ? aporteAcum                          // pre-entrega: lo que pusiste
           : p.valorPropiedad - p.saldoCredito,  // post-entrega: equity
         flujoAcumulado: p.flujoAcumulado,
         deudaPendiente: p.saldoCredito,
+        isPreEntrega,
       });
     }
     return rows;
@@ -154,7 +165,10 @@ export function PatrimonioChart({
     <div className="flex flex-col gap-4">
       <div style={{ width: "100%", height: 320 }}>
         <ResponsiveContainer>
-          <ComposedChart data={chartData} margin={{ top: 10, right: 16, left: currency === "UF" ? 20 : 10, bottom: 8 }}>
+          {/* top: 28 da headroom al label "📦 Entrega" (position:"top" de la
+              ReferenceLine); con top:10 el label se dibujaba en la banda del
+              margen y quedaba clipeado arriba del chart. */}
+          <ComposedChart data={chartData} margin={{ top: 28, right: 16, left: currency === "UF" ? 20 : 10, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--franco-border)" vertical={false} />
             <XAxis
               dataKey="anio"
@@ -182,14 +196,26 @@ export function PatrimonioChart({
                     }}
                   >
                     <div className="mb-1.5 font-medium">Año {row.anio}</div>
-                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }} />
-                      Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
-                    </div>
-                    <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
-                      <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
-                      − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--signal-red)" }}>−{fmt(row.deudaPendiente)}</span>
-                    </div>
+                    {/* Pre-entrega: el activo aún no existe en tu patrimonio →
+                        se omiten Valor depto y −Deuda (paridad con el bar oculto);
+                        el tooltip muestra solo lo aportado = patrimonio. Post-entrega
+                        aparece la ecuación Valor − Deuda = Patrimonio. */}
+                    {!row.isPreEntrega && row.valorDepto !== null && (
+                      <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: "color-mix(in srgb, var(--franco-text) 50%, transparent)" }} />
+                        Valor depto: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.valorDepto)}</span>
+                      </div>
+                    )}
+                    {!row.isPreEntrega && (
+                      // −Deuda: color propio (muted) — NO es una serie graficada
+                      // (por eso queda fuera de la leyenda de 3), pero necesita
+                      // identidad distinta del rojo de "Aporte acum" para no leerse
+                      // como lo mismo.
+                      <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
+                        <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--franco-text-muted)" }} />
+                        − Deuda: <span className="ml-auto font-mono" style={{ color: "var(--franco-text-muted)" }}>−{fmt(row.deudaPendiente)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center gap-2" style={{ color: "var(--franco-text-secondary)" }}>
                       <span className="inline-block h-2 w-2 rounded-full" style={{ background: "var(--signal-red)" }} />
                       Aporte acum: <span className="ml-auto font-mono" style={{ color: "var(--franco-text)" }}>{fmt(row.aporteAcum)}</span>
