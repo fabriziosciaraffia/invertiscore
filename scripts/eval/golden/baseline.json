@@ -41,8 +41,8 @@
       "capRatePct": 4.58,
       "sobreprecioPct": 33,
       "flujoNetoMensual": -18161,
-      "tirPct": 14.06,
-      "patrimonioMult": 3.39
+      "tirPct": 11.17,
+      "patrimonioMult": 2.65
     },
     "GS-3": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -84,8 +84,8 @@
       "capRatePct": 2.09,
       "sobreprecioPct": 78,
       "flujoNetoMensual": -475855,
-      "tirPct": -5.77,
-      "patrimonioMult": 0.7
+      "tirPct": 0.37,
+      "patrimonioMult": 1.02
     },
     "GS-5": {
       "veredicto": "AJUSTA SUPUESTOS",
@@ -146,8 +146,8 @@
       "capRatePct": 2.85,
       "sobreprecioPct": 59,
       "flujoNetoMensual": -329290,
-      "tirPct": 0.78,
-      "patrimonioMult": 1.04
+      "tirPct": 2.91,
+      "patrimonioMult": 1.16
     },
     "BE-caprate": {
       "veredicto": "COMPRAR",
