@@ -573,12 +573,15 @@ export function calcProjections(args: {
   let arriendoActual = metrics.ingresoMensual;
   let gastosActual = metrics.gastos;
   let contribucionesActual = metrics.contribuciones;
-  // Plusvalía base: valor de mercado Franco (no precio de compra) — captura
-  // "la pasada" cuando el usuario compra bajo mercado. Modelo B3 (sesión
-  // B3-fix H3): pre-entrega no compoundéa plusvalía ni acumula deuda. Recién
-  // a partir del año de entrega arranca el reloj: en a_entrega exponente=0;
-  // en a_entrega+1 exponente=1.
-  const vmFrancoCLP = (input.valorMercadoFranco || input.precio) * ufClp;
+  // P1-C (Rama 0b): la plusvalía se compone desde el PRECIO DE COMPRA (`precioCLP`), no
+  // desde el valor de mercado Franco. La plusvalía es atributo de la propiedad y del hecho
+  // de transacción — componer la diferencia vm−precio ("la pasada") desde el año 0 bookea
+  // ganancias NO realizadas (optimismo estructural) y hacía divergir la curva LTR de la STR
+  // para la misma propiedad. "La pasada" se reporta APARTE, sin componer, como
+  // `metrics.plusvaliaInmediataFranco` (delta one-time). Homologa la base con STR
+  // (short-term-engine.ts:797, que ya ancla a precioCompra). Modelo B3 (sesión B3-fix H3):
+  // pre-entrega no compoundéa plusvalía ni acumula deuda. Recién a partir del año de entrega
+  // arranca el reloj: en a_entrega exponente=0; en a_entrega+1 exponente=1.
   const aniosEntrega = Math.ceil(mesesPreEntrega / 12);
   // Flujo operativo: no incluye inversión inicial (pie) ni cuotas pre-entrega
   let flujoAcumulado = 0;
@@ -621,9 +624,10 @@ export function calcProjections(args: {
     flujoAcumulado += flujoAnual;
 
     // Modelo B3 liquidable: plusvalía solo desde entrega. Antes de escritura
-    // el comprador no puede liquidar — el "valor" honesto es vmFranco fijo.
+    // el comprador no puede liquidar — el "valor" honesto es el precio pagado fijo
+    // (P1-C: base = precioCLP, no vmFranco).
     const aniosPostEntrega = Math.max(0, anio - aniosEntrega);
-    const valorPropiedad = vmFrancoCLP * Math.pow(1 + plusvaliaAnual, aniosPostEntrega);
+    const valorPropiedad = precioCLP * Math.pow(1 + plusvaliaAnual, aniosPostEntrega);
 
     // Crédito: el banco no disbursa hasta escritura. Pre-entrega → deuda 0.
     // Año que termina exactamente en escritura → crédito recién entregado,
