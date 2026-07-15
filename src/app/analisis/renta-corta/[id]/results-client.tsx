@@ -8,7 +8,7 @@
  *   • HeroVerdictBlockSTR (veredicto + score + KPIs + conviene IA)
  *   • EjesAplicadosSTR — panel "¿Cómo llegamos?" (colapsable)
  *   • PiramideHallazgosSTR — el detalle; sus cards abren DrawerContentSTR
- *   • AdvancedSectionSTR (07-10 · simulación; ai.largoPlazo en 09)
+ *   • AdvancedSectionSTR (07-10 · escenarios · patrimonio · venta)
  *   • ZonaCardSTR — destino zona, abre el drawer tipoHuesped
  *   • DrawerSTR + DrawerContentSTR — overlay de detalle (estado acá)
  *
@@ -269,14 +269,14 @@ export function STRResultsClient({
         />
         <div style={{ height: 24 }} />
 
-        {/* SIMULACIÓN INTERACTIVA (07-10). E.2: la prosa ai.largoPlazo (horizonte
-            10 años) migró acá como lead de 09 · Patrimonio, su hogar temático. */}
+        {/* ESCENARIOS Y PROYECCIÓN (07-10). str-paridad2: la prosa ai.largoPlazo se
+            retiró del render (sigue generada/persistida) — la sección es escenarios,
+            chart de patrimonio y venta, sin lead narrativo inline. */}
         <AdvancedSectionSTR
           results={results}
           currency={currency}
           valorUF={ufValue}
           forceOpen={printMode}
-          aiLargoPlazo={(aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo ?? null}
         />
 
         {/* gap — Simulación → Zona */}

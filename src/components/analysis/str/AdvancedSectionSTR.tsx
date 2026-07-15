@@ -24,10 +24,12 @@ import { fmtMoney, fmtPct } from "../utils";
  * str-paridad2 (decisión Fabrizio, render-only):
  *   - Kicker honesto "ESCENARIOS Y PROYECCIÓN" (antes "SIMULACIÓN INTERACTIVA":
  *     STR no tiene sliders, la etiqueta prometía interacción inexistente).
- *   - `largoPlazo.cajaAccionable` YA NO se renderiza (era el bloque "Antes de
- *     comprometer una década"): redundante con el footer de SaleBlockSTR y con la
- *     comparación-instrumentos de `largoPlazo.contenido`. La prosa sigue generada y
- *     persistida — solo se deja de mostrar. `contenido` se conserva tal cual.
+ *   - La prosa IA `largoPlazo` (contenido + cajaAccionable) YA NO se renderiza:
+ *     el "★ Análisis Franco IA · horizonte 10 años" desaparece completo de la
+ *     columna Patrimonio. El mensaje central (TIR insuficiente) ya llega por el
+ *     finding de Retorno total, y en el canon LTR esa prosa vive en drawer, no
+ *     inline. Sigue generada y persistida — cero cambio a generación. El prop
+ *     `aiLargoPlazo` se desconectó (sin consumidor) hasta el caller.
  */
 export function AdvancedSectionSTR({
   results,
@@ -35,7 +37,6 @@ export function AdvancedSectionSTR({
   valorUF,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   forceOpen = false,
-  aiLargoPlazo,
 }: {
   results: ShortTermResult;
   currency: "CLP" | "UF";
@@ -43,11 +44,6 @@ export function AdvancedSectionSTR({
   // forceOpen: legacy del colapso (alcance B: la sección ya no colapsa, siempre
   // visible). Se mantiene en la firma para no tocar el caller.
   forceOpen?: boolean;
-  /** E.2 — prosa IA "¿Cuánto se gana a 10 años?" (ai.largoPlazo.contenido). Migró
-   *  desde el drawer flujo (mismatch temático) a su hogar: lead narrativo de
-   *  Patrimonio. Null/undefined (free/guest/legacy) → solo el chart, sin prosa.
-   *  str-paridad2: solo `contenido` se renderiza; `cajaAccionable` se retiró. */
-  aiLargoPlazo?: { contenido?: string | null } | null;
 }) {
   // fix-occfuente-override 2026-07 — si el usuario definió la ocupación a mano, los rótulos
   // del bloque de escenarios NO la llaman "mediana observada": declaran procedencia.
@@ -119,26 +115,12 @@ export function AdvancedSectionSTR({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5" style={{ marginTop: 22 }}>
         <div className="min-w-0">
           {subhead("Patrimonio", `Tu patrimonio a lo largo de ${results.exitScenario?.yearVenta ?? 10} años`)}
-          {/* E.2 — lead narrativo ai.largoPlazo (migrado del drawer flujo). El
-              horizonte 10 años (TIR, multiplicador, plusvalía vs alternativas) es su
-              hogar temático, junto al chart de patrimonio. */}
-          {aiLargoPlazo?.contenido?.trim() && (
-            <>
-              <p
-                className="font-mono uppercase mb-2 m-0"
-                style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-tertiary)" }}
-              >
-                ★ Análisis Franco IA · horizonte {results.exitScenario?.yearVenta ?? 10} años
-              </p>
-              <p className="font-body text-[14px] text-[var(--franco-text)] leading-[1.65] m-0 mb-4 whitespace-pre-wrap">
-                {aiLargoPlazo.contenido}
-              </p>
-            </>
-          )}
+          {/* str-paridad2: la columna Patrimonio es subhead → chart → checkpoint,
+              sin prosa IA inline. La prosa `largoPlazo` (contenido + cajaAccionable)
+              se retiró del render — el mensaje central (TIR insuficiente) ya llega
+              por el finding de Retorno total, y en el canon LTR esa prosa vive en
+              drawer, no inline. Sigue generada/persistida (cero cambio a generación). */}
           <PatrimonioChartSTR results={results} currency={currency} valorUF={valorUF} />
-          {/* str-paridad2: el bloque "Antes de comprometer una década"
-              (largoPlazo.cajaAccionable) se retiró — redundante con el footer de
-              SaleBlockSTR y la comparación-instrumentos de largoPlazo.contenido. */}
         </div>
         <div className="min-w-0">
           {subhead("Venta", "Si decides salir del activo")}
