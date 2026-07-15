@@ -239,6 +239,133 @@ function ScoreCircle({ score }: { score: number }) {
   );
 }
 
+// ─── Subordinación AMBAS (migración 20260715) ────────────────────────────
+// Un AMBAS son DOS filas `analisis` (LTR + STR) con el mismo `ambas_group_id`.
+// En "Mis análisis" el par se colapsa en UNA card comparativa; las filas hijas
+// nunca aparecen sueltas. Un grupo incompleto (huérfano por fallo parcial de
+// creación: un lado no se creó) degrada a card suelta — el hermano no existe.
+type DisplayItem =
+  | { kind: "single"; row: Analisis }
+  | { kind: "ambas"; groupId: string; ltr: Analisis; str: Analisis; created_at: string };
+
+function buildDisplayItems(analisis: Analisis[]): DisplayItem[] {
+  const groups = new Map<string, Analisis[]>();
+  const items: DisplayItem[] = [];
+  for (const a of analisis) {
+    const gid = a.ambas_group_id;
+    if (gid) {
+      const arr = groups.get(gid);
+      if (arr) arr.push(a);
+      else groups.set(gid, [a]);
+    } else {
+      items.push({ kind: "single", row: a });
+    }
+  }
+  groups.forEach((members, groupId) => {
+    const ltr = members.find((m) => m.ambas_role === "ltr") ?? members.find((m) => !isShortTerm(m));
+    const str = members.find((m) => m.ambas_role === "str") ?? members.find((m) => isShortTerm(m));
+    if (ltr && str && ltr.id !== str.id) {
+      const created_at = ltr.created_at > str.created_at ? ltr.created_at : str.created_at;
+      items.push({ kind: "ambas", groupId, ltr, str, created_at });
+    } else {
+      // Grupo incompleto → degradar cada miembro a card suelta.
+      members.forEach((m) => items.push({ kind: "single", row: m }));
+    }
+  });
+  // Reordenar por fecha desc tras agrupar (la lista entra ya ordenada, pero el
+  // colapso del par altera el orden).
+  items.sort((a, b) => {
+    const da = a.kind === "single" ? a.row.created_at : a.created_at;
+    const db = b.kind === "single" ? b.row.created_at : b.created_at;
+    return db.localeCompare(da);
+  });
+  return items;
+}
+
+function itemVerdicts(item: DisplayItem): AnyVerdict[] {
+  if (item.kind === "single") return [getAnyVerdict(item.row)];
+  return [getAnyVerdict(item.ltr), getAnyVerdict(item.str)];
+}
+
+// ─── Card comparativa (AMBAS) para "Mis análisis" ────────────────────────
+// Una sola card por par: abre la comparativa (/analisis/comparativa?ltr=&str=).
+// El delete es group-aware (borra las dos filas), con confirm explícito.
+function AmbasCard({
+  item, onOpen, onDelete, isDeleting,
+}: {
+  item: Extract<DisplayItem, { kind: "ambas" }>;
+  onOpen: () => void;
+  onDelete: (e: React.MouseEvent) => void;
+  isDeleting: boolean;
+}) {
+  const { ltr, str } = item;
+  const ltrVerdict = getVerdict(ltr.score, readVeredicto(ltr.results));
+  const strVerdict = getSTRVerdict(str);
+  const strScore = getSTRScore(str) ?? str.score;
+  const premium = ltr.is_premium || str.is_premium;
+
+  return (
+    <div
+      onClick={onOpen}
+      className={`cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 transition-all hover:border-[var(--franco-border-hover)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] border-[var(--franco-border)] ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
+    >
+      <div className="flex items-center gap-3.5">
+        <ScoreCircle score={ltr.score} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className="font-body text-sm font-medium text-[var(--franco-text)]">{ltr.nombre}</span>
+            <span className="text-[var(--franco-text-secondary)]">·</span>
+            <span className="font-body text-xs text-[var(--franco-text-secondary)]">{ltr.comuna}</span>
+            <span
+              className="rounded font-mono text-[7px] font-bold tracking-wide"
+              style={{ padding: "2px 6px", background: "color-mix(in srgb, var(--franco-text) 10%, transparent)", color: "var(--franco-text)" }}
+            >
+              AMBAS
+            </span>
+            {premium && (
+              <span className="rounded bg-signal-red/10 px-1.5 py-0.5 font-mono text-[7px] font-bold text-signal-red">✓</span>
+            )}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5">
+            <VerdictBadge verdict={ltrVerdict} />
+            <span className="text-[var(--franco-text-secondary)]">·</span>
+            <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{formatDate(item.created_at)}</span>
+          </div>
+        </div>
+
+        {/* Mini-scores de cada lado (oculto en mobile) */}
+        <div className="hidden items-center gap-4 sm:flex">
+          <div className="min-w-[70px] text-right">
+            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RENTA LARGA</div>
+            <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">{ltr.score} · {ltrVerdict === "BUSCAR OTRA" ? "✗" : ltrVerdict === "COMPRAR" ? "✓" : "⚠"}</div>
+          </div>
+          <div className="min-w-[70px] text-right">
+            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">RENTA CORTA</div>
+            <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">{strScore} · {strVerdict === "BUSCAR OTRA" ? "✗" : strVerdict === "COMPRAR" ? "✓" : "⚠"}</div>
+          </div>
+        </div>
+
+        {/* Delete group-aware */}
+        <button
+          onClick={onDelete}
+          className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-signal-red"
+          title="Eliminar comparativa (borra ambos análisis)"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="mt-2.5 border-t border-[var(--franco-border)] pt-2.5 flex items-center justify-between">
+        <p className="font-body text-xs leading-snug text-[var(--franco-text-secondary)]">
+          <span className="font-medium text-[var(--franco-text)]">Comparativa:</span>{" "}
+          renta larga vs renta corta para esta propiedad.
+        </p>
+        <span className="font-mono text-[10px] uppercase tracking-[1px] text-signal-red shrink-0 ml-3">Ver comparativa →</span>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardClient({ analisis, firstName = "" }: { analisis: Analisis[]; firstName?: string }) {
   const router = useRouter();
   const [activeFilter, setActiveFilter] = useState<VerdictFilter>("todos");
@@ -257,43 +384,64 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Summary stats
+  // Colapsa los pares AMBAS en una card comparativa (subordinación). Todo lo de
+  // abajo opera sobre displayItems, no sobre `analisis` crudo.
+  const displayItems = useMemo(() => buildDisplayItems(analisis), [analisis]);
+
+  // Summary stats — cada item cuenta como UNA propiedad. Para un AMBAS se toma
+  // el mejor de los dos lados como su representante.
   const summaryData = useMemo(() => {
-    if (analisis.length < 3) return null;
-    const best = analisis.reduce((a, b) => (a.score > b.score ? a : b));
-    const avgScore = Math.round(analisis.reduce((sum, a) => sum + a.score, 0) / analisis.length);
-    const positiveFlowCount = analisis.filter((a) => getMetrics(a).flujoMensual >= 0).length;
-    return { best, avgScore, positiveFlowCount, total: analisis.length };
-  }, [analisis]);
+    if (displayItems.length < 3) return null;
+    const units = displayItems.map((i) => {
+      if (i.kind === "single") {
+        return { nombre: i.row.nombre, comuna: i.row.comuna, score: i.row.score, flujo: getMetrics(i.row).flujoMensual };
+      }
+      const best = i.ltr.score >= i.str.score ? i.ltr : i.str;
+      const flujoL = getMetrics(i.ltr).flujoMensual;
+      const flujoS = getMetrics(i.str).flujoMensual;
+      return { nombre: best.nombre, comuna: best.comuna, score: Math.max(i.ltr.score, i.str.score), flujo: Math.max(flujoL, flujoS) };
+    });
+    const best = units.reduce((a, b) => (a.score > b.score ? a : b));
+    const avgScore = Math.round(units.reduce((sum, u) => sum + u.score, 0) / units.length);
+    const positiveFlowCount = units.filter((u) => u.flujo >= 0).length;
+    return { best, avgScore, positiveFlowCount, total: units.length };
+  }, [displayItems]);
 
-  // Type-filtered base list (applied before verdict filter)
+  // Type-filtered base list (applied before verdict filter). Los AMBAS solo
+  // aparecen bajo "todos" — no son de una modalidad única.
   const typeFiltered = useMemo(() => {
-    if (typeFilter === "todos") return analisis;
-    if (typeFilter === "str") return analisis.filter((a) => isShortTerm(a));
-    return analisis.filter((a) => !isShortTerm(a));
-  }, [analisis, typeFilter]);
+    if (typeFilter === "todos") return displayItems;
+    if (typeFilter === "str") return displayItems.filter((i) => i.kind === "single" && isShortTerm(i.row));
+    return displayItems.filter((i) => i.kind === "single" && !isShortTerm(i.row));
+  }, [displayItems, typeFilter]);
 
-  // Type counts
+  // Type counts (single-only para ltr/str; ambas como su propia categoría).
   const typeCounts = useMemo(() => {
-    let str = 0;
-    analisis.forEach((a) => { if (isShortTerm(a)) str++; });
-    return { str, ltr: analisis.length - str, total: analisis.length };
-  }, [analisis]);
+    let str = 0, ltr = 0, ambas = 0;
+    displayItems.forEach((i) => {
+      if (i.kind === "ambas") ambas++;
+      else if (isShortTerm(i.row)) str++;
+      else ltr++;
+    });
+    return { str, ltr, ambas, total: displayItems.length };
+  }, [displayItems]);
 
-  // Verdict counts (within type-filtered set). Vocabulario unificado tras
-  // Commit 1 · 2026-05-11: 3 categorías para LTR + STR.
+  // Verdict counts (within type-filtered set). Un AMBAS aporta los veredictos
+  // de sus dos lados (Set → no duplica si coinciden).
   const verdictCounts = useMemo(() => {
     const counts: Record<string, number> = {
       COMPRAR: 0, "AJUSTA SUPUESTOS": 0, "BUSCAR OTRA": 0,
     };
-    typeFiltered.forEach((a) => { counts[getAnyVerdict(a)]++; });
+    typeFiltered.forEach((i) => {
+      new Set(itemVerdicts(i)).forEach((v) => { counts[v]++; });
+    });
     return counts;
   }, [typeFiltered]);
 
-  // Filtered list
+  // Filtered list — un AMBAS matchea si CUALQUIERA de sus lados tiene el veredicto.
   const filtered = useMemo(() => {
     if (activeFilter === "todos") return typeFiltered;
-    return typeFiltered.filter((a) => getAnyVerdict(a) === activeFilter);
+    return typeFiltered.filter((i) => itemVerdicts(i).includes(activeFilter));
   }, [typeFiltered, activeFilter]);
 
   const toggleSelect = (id: string) => {
@@ -317,6 +465,18 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
       next.delete(id);
       return next;
     });
+    setDeletingId(null);
+    router.refresh();
+  };
+
+  // Delete group-aware: borra las DOS filas del par por ambas_group_id. Confirm
+  // explícito con el alcance real (elimina la comparativa + ambos análisis).
+  const handleGroupDelete = async (e: React.MouseEvent, groupId: string) => {
+    e.stopPropagation();
+    if (!confirm("Esto elimina la comparativa y sus dos análisis (renta larga y renta corta). ¿Continuar?")) return;
+    setDeletingId(groupId);
+    const supabase = createClient();
+    await supabase.from("analisis").delete().eq("ambas_group_id", groupId);
     setDeletingId(null);
     router.refresh();
   };
@@ -382,7 +542,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               <div>
                 <h1 className="font-heading text-2xl font-bold text-[var(--franco-text)]">{firstName ? `${firstName}, estas son tus inversiones` : "Tus inversiones"}</h1>
                 <p className="mt-0.5 font-body text-[13px] text-[var(--franco-text-secondary)]">
-                  {analisis.length} propiedad{analisis.length !== 1 ? "es" : ""} analizada{analisis.length !== 1 ? "s" : ""}
+                  {displayItems.length} propiedad{displayItems.length !== 1 ? "es" : ""} analizada{displayItems.length !== 1 ? "s" : ""}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
@@ -488,7 +648,21 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
               </div>
             ) : (
               <div className="flex flex-col gap-2.5">
-                {filtered.map((item) => {
+                {filtered.map((disp) => {
+                  // AMBAS → una card comparativa (subordinación). Nunca renderiza
+                  // sus filas hijas por separado.
+                  if (disp.kind === "ambas") {
+                    return (
+                      <AmbasCard
+                        key={disp.groupId}
+                        item={disp}
+                        onOpen={() => router.push(`/analisis/comparativa?ltr=${disp.ltr.id}&str=${disp.str.id}`)}
+                        onDelete={(e) => handleGroupDelete(e, disp.groupId)}
+                        isDeleting={deletingId === disp.groupId}
+                      />
+                    );
+                  }
+                  const item = disp.row;
                   const m = getMetrics(item);
                   const verdict: AnyVerdict = getAnyVerdict(item);
                   const isDeleting = deletingId === item.id;
