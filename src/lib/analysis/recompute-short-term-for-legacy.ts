@@ -40,11 +40,26 @@ export function recomputeShortTermForLegacy(
 
   const airbnbData = buildAirbnbData(airbnbRaw as any, ufClp);
 
+  // P2 (Rama 0b): base CLP re-escalada al MISMO `ufClp` que convierte el revenue
+  // (buildAirbnbData arriba) → precio y revenue quedan en la misma UF, de modo que los
+  // ratios (TIR, multiplicador de capital) son INVARIANTES al cambio de UF: solo re-escalan
+  // las magnitudes CLP absolutas (patrimonio, saldo). precioCompra se deriva de
+  // `precioCompraUF × ufClp`. Con la UF congelada propia (standalone) es no-op; en el
+  // comparativo AMBAS el caller inyecta la UF real reconstruida del lado LTR, homologando la
+  // base de ambos motores sin mover el veredicto STR. Fallback al precioCompra persistido si
+  // no hay `precioCompraUF` reconstruible (fila legacy).
+  const precioCompraUF =
+    typeof inputData.precioCompraUF === "number" && inputData.precioCompraUF > 0
+      ? inputData.precioCompraUF
+      : null;
+  const precioCompraBase =
+    precioCompraUF != null ? Math.round(precioCompraUF * ufClp) : inputData.precioCompra;
+
   // Reconstrucción idéntica a buildShortTermAnalysisRow (analisis-pipeline.ts:496-526).
   const antiguedadEsFallback = inputData.antiguedad == null;
   const antiguedadResuelta = inputData.antiguedad ?? (inputData.tipoPropiedad === "nuevo" ? 0 : 5);
   const inputs: ShortTermInputs = {
-    precioCompra: inputData.precioCompra,
+    precioCompra: precioCompraBase,
     superficie: inputData.superficieUtil,
     dormitorios: inputData.dormitorios,
     banos: inputData.banos,
@@ -84,7 +99,7 @@ export function recomputeShortTermForLegacy(
 
   const francoScore = calcFrancoScoreSTR({
     results: result,
-    precioCompra: inputData.precioCompra,
+    precioCompra: precioCompraBase,
     dormitorios: inputData.dormitorios,
     superficie: inputData.superficieUtil,
     regulacionEdificio: inputData.edificioPermiteAirbnb || "no_seguro",

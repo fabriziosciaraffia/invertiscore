@@ -605,7 +605,13 @@ export async function buildShortTermAnalysisRow(
           ? { ocupacionRealizadaComparables: airbnbResult.realizedOccupancy }
           : {}),
       },
-      input_data: { ...body, tipoAnalisis: "short-term" },
+      // P2 snapshot (Rama 0b): congelamos la UF viva del server al crear. Hoy las filas STR
+      // no guardan la UF real del día (a diferencia de LTR, reconstruible vía precioCLP/precio),
+      // así que precioCompra/precioCompraUF puede venir del fallback cliente (~38.800). `ufCongelada`
+      // deja el dato registrado para reconstrucción futura y para homologar la base CLP con LTR en
+      // el comparativo. Aditivo: no toca precioCompra/precioCompraUF (el ancla UF-vs-CLP del wizard
+      // es ambiguo server-side), así que no distorsiona precios entrados en CLP.
+      input_data: { ...body, tipoAnalisis: "short-term", ufCongelada: ufValue },
     },
   };
 }
