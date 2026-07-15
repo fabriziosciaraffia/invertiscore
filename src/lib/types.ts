@@ -640,6 +640,7 @@ export interface HallazgoVentajaVsLtr {
     sobreRentaCLP: number;    // NOI_str − NOI_ltr, CLP/mes — comparativa.sobreRenta
     ltrNoiMensual: number;    // NOI LTR mensual (para detectar el denominador ≤ 0)
     ltrNegativo: boolean;     // true si ltr_noiMensual ≤ 0 → % ilegible, usar CLP
+    pctConfiable: boolean;    // P3 (Rama 0b): false si NOI-LTR ≤0 o ratio explotado → KPI en CLP, no %
     bordePct: number;         // umbral de borde (+15%): bajo esto la ventaja no paga el esfuerzo
     modalidad: "ltr" | "str" | "ambas";
   };

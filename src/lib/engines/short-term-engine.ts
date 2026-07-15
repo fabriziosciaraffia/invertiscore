@@ -13,6 +13,7 @@ import {
 import {
   calcZonaSTR,
   calcRecomendacionModalidad,
+  sobreRentaPctEsConfiable,
   type ZonaSTRScore,
   type RecomendacionModalidadSTR,
 } from "./str-universo-santiago";
@@ -155,6 +156,7 @@ export interface SensibilidadRow {
   noiMensual: number;
   sobreRenta: number;
   sobreRentaPct: number;
+  sobreRentaPctConfiable: boolean;   // P3: false ⇒ mostrar "N/D" + sobreRenta absoluto (CLP)
 }
 
 // Vocabulario unificado de veredictos (Commit 1 · 2026-05-11). STR comparte
@@ -267,6 +269,7 @@ export interface ShortTermResult {
     str_admin: EscenarioSTR;
     sobreRenta: number;
     sobreRentaPct: number;
+    sobreRentaPctConfiable: boolean;   // P3: false ⇒ mostrar "N/D" + sobreRenta absoluto (CLP)
     paybackMeses: number;
   };
 
@@ -1040,6 +1043,11 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   // Sobre-renta del modo actualmente seleccionado (escenario base)
   const sobreRenta = base.noiMensual - ltr_noiMensual;
   const sobreRentaPct = ltr_noiMensual !== 0 ? sobreRenta / ltr_noiMensual : 0;
+  // P3 (Rama 0b): el pct solo es confiable con NOI-LTR materialmente positivo. Con NOI-LTR
+  // ≤0 o ratio explotado, la superficie muestra "N/D" + `sobreRenta` absoluto y la banda
+  // clasifica por absoluto. No mutamos `sobreRentaPct` (audit/legibilidad); la señal viaja
+  // en el flag.
+  const sobreRentaPctConfiable = sobreRentaPctEsConfiable(ltr_noiMensual, sobreRentaPct);
 
   // Payback amoblamiento
   let paybackMeses: number;
@@ -1089,12 +1097,14 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     const comision = Math.round(mensual * comisionRate);
     const noi = mensual - comision - costosOperativosTotales;
     const sr = noi - ltr_noiMensual;
+    const srPct = ltr_noiMensual !== 0 ? sr / ltr_noiMensual : 0;
     return {
       label,
       revenueAnual: revenue,
       noiMensual: noi,
       sobreRenta: sr,
-      sobreRentaPct: ltr_noiMensual !== 0 ? sr / ltr_noiMensual : 0,
+      sobreRentaPct: srPct,
+      sobreRentaPctConfiable: sobreRentaPctEsConfiable(ltr_noiMensual, srPct),
     };
   });
 
@@ -1170,6 +1180,8 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const recomendacionModalidad = calcRecomendacionModalidad(
     sobreRentaPct,
     zonaSTR.tierZona,
+    // P3: cuando el ratio degenera, la banda ordena por sobre-renta ABSOLUTA en vez del pct.
+    { confiable: sobreRentaPctConfiable, sobreRenta, strNoiMensual: base.noiMensual },
   );
 
   return {
@@ -1191,6 +1203,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
       str_admin,
       sobreRenta,
       sobreRentaPct,
+      sobreRentaPctConfiable,
       paybackMeses,
     },
     flujoEstacional,

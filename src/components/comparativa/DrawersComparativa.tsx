@@ -141,11 +141,15 @@ export function DrawerZona({
           SOBRE-RENTA STR vs LTR
         </p>
         <p className="font-mono text-[24px] font-bold text-[var(--franco-text)]">
-          {comp.sobreRentaPct >= 0 ? "+" : ""}{fmtPct(comp.sobreRentaPct * 100, 0)}
+          {comp.sobreRentaPctConfiable
+            ? `${comp.sobreRentaPct >= 0 ? "+" : ""}${fmtPct(comp.sobreRentaPct * 100, 0)}`
+            : "N/D"}
         </p>
         <p className="font-body text-[12px] text-[var(--franco-text-secondary)] mt-1">
+          {/* P3 (Rama 0b): con NOI-LTR ≤0 o ínfimo el % no informa; el monto absoluto es la señal honesta. */}
           NOI mensual de STR vs LTR · ventaja {comp.sobreRenta >= 0 ? "a favor de STR" : "a favor de LTR"} de{" "}
-          <span className="font-mono">{fmtMoney(Math.abs(comp.sobreRenta), currency, ufValue)}</span>/mes.
+          <span className="font-mono">{fmtMoney(Math.abs(comp.sobreRenta), currency, ufValue)}</span>/mes
+          {comp.sobreRentaPctConfiable ? "." : " (el arriendo largo rinde ≈0, así que el porcentaje no aplica)."}
         </p>
       </div>
 

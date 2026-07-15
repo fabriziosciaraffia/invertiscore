@@ -199,13 +199,39 @@ export type RecomendacionModalidadSTR =
  *  - INDIFERENTE: sobre-renta entre +5% y +15%, o STR > +15% pero tier "baja"
  *    (data conflictiva).
  */
+// P3 (Rama 0b): umbral sobre el cual el % de sobre-renta deja de ser confiable. El pct es
+// `sobreRenta / ltr_noiMensual`; cuando el NOI-LTR (denominador) es ≤0 o ínfimo, el ratio
+// explota (+321%, +632%, −3483% en el corpus de calibración) y deja de ordenar bien. Por
+// encima de este techo, o con NOI-LTR ≤0, la superficie muestra "N/D" + la sobre-renta
+// ABSOLUTA (CLP) y la banda clasifica por signo/magnitud absolutos, no por el ratio.
+// Doctrina Franco: número honesto o ninguno — nunca un % absurdo ni un clamp inventado.
+export const SOBRE_RENTA_PCT_MAX_CONFIABLE = 3.0; // ±300%
+
+export function sobreRentaPctEsConfiable(
+  ltrNoiMensual: number,
+  sobreRentaPct: number,
+): boolean {
+  return ltrNoiMensual > 0 && Math.abs(sobreRentaPct) <= SOBRE_RENTA_PCT_MAX_CONFIABLE;
+}
+
 export function calcRecomendacionModalidad(
   sobreRentaPct: number,         // decimal (0.15 = +15% sobre LTR)
-  tierZona: ZonaSTRScore["tierZona"],
+  tierZona: ZonaSTRScore["tierZona"] | undefined,
+  // P3: contexto para clasificar por ABSOLUTO cuando el ratio degenera. Ausente ⇒ ruta clásica.
+  degen?: { confiable: boolean; sobreRenta: number; strNoiMensual: number },
 ): RecomendacionModalidadSTR {
   // Zona baja → casi siempre LTR_PREFERIDO. La operación STR no se sostiene
   // con poca demanda; el riesgo operativo + ramp-up no se compensa.
   if (tierZona === "baja") return "LTR_PREFERIDO";
+
+  // P3: ratio degenerado (NOI-LTR ≤0 o pct explotado). El % no ordena: −3483% caía en
+  // LTR_PREFERIDO (< 0.05) aunque STR generaba MÁS NOI que LTR (bug 4ea0b582). Clasificamos
+  // por la sobre-renta absoluta: si STR no supera a LTR → LTR_PREFERIDO; si supera, ventaja
+  // clara solo cuando el propio NOI STR es positivo (si no, ambos flojos → INDIFERENTE).
+  if (degen && !degen.confiable) {
+    if (degen.sobreRenta <= 0) return "LTR_PREFERIDO";
+    return degen.strNoiMensual > 0 ? "STR_VENTAJA_CLARA" : "INDIFERENTE";
+  }
 
   if (sobreRentaPct < 0.05) return "LTR_PREFERIDO";
   if (sobreRentaPct >= 0.15) return "STR_VENTAJA_CLARA";
@@ -230,12 +256,22 @@ export function deriveRecomendacionModalidad(input: {
   recomendacionModalidad?: RecomendacionModalidadSTR;
   zonaSTR?: { tierZona?: ZonaSTRScore["tierZona"] };
   sobreRentaPct?: number;
+  // P3: contexto opcional para clasificar por absoluto cuando el ratio degenera. Ausente ⇒
+  // se asume confiable (comportamiento previo).
+  ltrNoiMensual?: number;
+  sobreRenta?: number;
+  strNoiMensual?: number;
 }): RecomendacionModalidadSTR {
   if (input.recomendacionModalidad) return input.recomendacionModalidad;
   const sobre = input.sobreRentaPct ?? 0;
   const tier = input.zonaSTR?.tierZona;
-  if (tier === "baja") return "LTR_PREFERIDO";
-  if (sobre < 0.05) return "LTR_PREFERIDO";
-  if (sobre >= 0.15) return "STR_VENTAJA_CLARA";
-  return "INDIFERENTE";
+  const confiable =
+    typeof input.ltrNoiMensual === "number"
+      ? sobreRentaPctEsConfiable(input.ltrNoiMensual, sobre)
+      : true;
+  return calcRecomendacionModalidad(sobre, tier, {
+    confiable,
+    sobreRenta: input.sobreRenta ?? 0,
+    strNoiMensual: input.strNoiMensual ?? 0,
+  });
 }

@@ -281,12 +281,15 @@ export function findingDisplay(h: Hallazgo, currency: "CLP" | "UF", valorUF: num
       return {
         kick: "Ventaja vs arriendo largo",
         title: h.titular,
-        // LTR negativo ⇒ % ilegible: KPI en CLP absoluto (dual-moneda). Si no, %.
-        kpi: v.ltrNegativo
+        // P3 (Rama 0b): % no confiable (NOI-LTR ≤0 o ratio explotado) ⇒ KPI en CLP absoluto
+        // (dual-moneda). Si es confiable, %.
+        kpi: !v.pctConfiable
           ? fmtSigned(v.sobreRentaCLP, currency, valorUF)
           : `${v.sobreRentaPct >= 0 ? "+" : "−"}${Math.abs(Math.round(v.sobreRentaPct))}%`,
         kpiRed: false,
-        ksub: v.ltrNegativo ? "Corto vs largo · ambos negativos" : "Sobre-renta neta · vs LTR",
+        ksub: !v.pctConfiable
+          ? (v.ltrNegativo ? "Corto vs largo · ambos negativos" : "Sobre-renta en pesos · % no informa")
+          : "Sobre-renta neta · vs LTR",
       };
     }
     case "sensibilidad_str": {

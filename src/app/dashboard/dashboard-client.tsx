@@ -11,6 +11,7 @@ import type { Analisis } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { fmtM, fmtPct, fmtMult } from "@/components/analysis/utils";
+import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
 
 // Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11). Análisis legacy
 // con strings antiguos (VIABLE / AJUSTA ESTRATEGIA / NO RECOMENDADO / AJUSTA
@@ -82,14 +83,18 @@ function getMetrics(item: Analisis): CardMetrics {
     const base = str?.escenarios?.base;
     const flujo = base?.flujoCajaMensual ?? 0;
     const capRatePct = (base?.capRate ?? 0) * 100;
-    const sobreRentaPct = (str?.comparativa?.sobreRentaPct ?? 0) * 100;
+    const sobreRentaPctRaw = str?.comparativa?.sobreRentaPct ?? 0;
+    const sobreRentaPct = sobreRentaPctRaw * 100;
+    // P3 (Rama 0b): % no confiable (NOI-LTR ≤0 o ratio explotado) → "N/D" en vez de un % absurdo.
+    // El flag no vive en filas persistidas viejas: lo derivamos inline con el mismo predicado.
+    const vsLtrConfiable = sobreRentaPctEsConfiable(str?.comparativa?.ltr?.noiMensual ?? 0, sobreRentaPctRaw);
     return {
       isSTR: true,
       flujoMensual: flujo,
       primary: { label: "CAP RATE", value: fmtPct(capRatePct, 1) },
       secondary: {
         label: "VS LTR",
-        value: sobreRentaPct === 0 ? "—" : `${sobreRentaPct > 0 ? "+" : ""}${sobreRentaPct.toFixed(0)}%`,
+        value: !vsLtrConfiable ? "N/D" : sobreRentaPct === 0 ? "—" : `${sobreRentaPct > 0 ? "+" : ""}${sobreRentaPct.toFixed(0)}%`,
       },
     };
   }
@@ -139,13 +144,21 @@ function getSTRSiendoFranco(item: Analisis): string {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const r = item.results as any;
   const sobreRenta = r?.comparativa?.sobreRenta ?? 0;
-  const sobreRentaPct = Math.round((r?.comparativa?.sobreRentaPct ?? 0) * 100);
+  const sobreRentaPctRaw = r?.comparativa?.sobreRentaPct ?? 0;
+  const sobreRentaPct = Math.round(sobreRentaPctRaw * 100);
+  // P3 (Rama 0b): con NOI-LTR ≤0 o ínfimo el % no informa → narrar el monto absoluto, nunca el %.
+  const confiable = sobreRentaPctEsConfiable(r?.comparativa?.ltr?.noiMensual ?? 0, sobreRentaPctRaw);
+  const sobreRentaAbs = `$${Math.abs(Math.round(sobreRenta)).toLocaleString("es-CL")}/mes`;
   const veredicto = getSTRVerdict(item);
   if (veredicto === "COMPRAR") {
-    return `Airbnb genera +${sobreRentaPct}% más que arriendo largo. Sobre-renta de $${Math.abs(Math.round(sobreRenta)).toLocaleString("es-CL")}/mes.`;
+    return confiable
+      ? `Airbnb genera +${sobreRentaPct}% más que arriendo largo. Sobre-renta de ${sobreRentaAbs}.`
+      : `Airbnb genera ${sobreRentaAbs} más que arriendo largo (el arriendo largo apenas cubre costos, así que el porcentaje no aplica).`;
   }
   if (veredicto === "AJUSTA SUPUESTOS") {
-    return `Airbnb genera levemente más que arriendo largo (+${sobreRentaPct}%). Evalúa si el esfuerzo operativo vale la pena.`;
+    return confiable
+      ? `Airbnb genera levemente más que arriendo largo (+${sobreRentaPct}%). Evalúa si el esfuerzo operativo vale la pena.`
+      : `Airbnb genera ${sobreRentaAbs} más que arriendo largo. Evalúa si el esfuerzo operativo vale la pena.`;
   }
   return "El arriendo tradicional es más rentable para esta propiedad. La renta corta no cubre los costos operativos adicionales.";
 }
