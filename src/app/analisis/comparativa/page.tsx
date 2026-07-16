@@ -178,6 +178,7 @@ export default async function ComparativaPage({
       nombre={ltr.nombre ?? str.nombre ?? ""}
       comuna={ltr.comuna ?? str.comuna ?? ""}
       ciudad={ltr.ciudad ?? str.ciudad ?? ""}
+      direccion={ltr.direccion ?? str.direccion ?? undefined}
       dormitorios={ltr.dormitorios ?? str.dormitorios ?? 0}
       banos={ltr.banos ?? str.banos ?? 0}
       superficie={ltr.superficie ?? str.superficie ?? 0}

@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
 import FrancoLogo from "@/components/franco-logo";
-import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
@@ -15,7 +14,6 @@ import { PiramideComparativa } from "@/components/comparativa/PiramideComparativ
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
   FullAnalysisResult,
-  Veredicto,
   AIAnalysisComparativa,
   RecomendacionModalidadAmbas,
 } from "@/lib/types";
@@ -66,33 +64,6 @@ function deriveRecomendacionFallback(
   });
 }
 
-function deriveVerdictUnificado(
-  reco: RecomendacionModalidadAmbas,
-  ltrVerdict: Veredicto | null,
-  strVerdict: STRVerdict | null,
-): STRVerdict {
-  if (reco === "LTR_PREFERIDO") {
-    if (ltrVerdict === "BUSCAR OTRA") return "BUSCAR OTRA";
-    if (ltrVerdict === "COMPRAR") return "COMPRAR";
-    return "AJUSTA SUPUESTOS";
-  }
-  if (reco === "STR_VENTAJA_CLARA") {
-    return strVerdict ?? "COMPRAR";
-  }
-  const rank: Record<STRVerdict, number> = {
-    "COMPRAR": 3,
-    "AJUSTA SUPUESTOS": 2,
-    "BUSCAR OTRA": 1,
-  };
-  const lCoerced: STRVerdict =
-    ltrVerdict === "BUSCAR OTRA" ? "BUSCAR OTRA" :
-    ltrVerdict === "COMPRAR" ? "COMPRAR" :
-    "AJUSTA SUPUESTOS";
-  const l = rank[lCoerced];
-  const s = strVerdict ? rank[strVerdict] : 3;
-  return l <= s ? lCoerced : (strVerdict ?? "COMPRAR");
-}
-
 function formatFechaCorta(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -128,13 +99,7 @@ export function SharedComparativaClient(p: Props) {
     () => (normalizeLegacyVerdict(p.strResults?.veredicto) as STRVerdict) ?? null,
     [p.strResults],
   );
-  const verdictUnificado = useMemo(
-    () => deriveVerdictUnificado(recomendacion, ltrVerdict, strVerdict),
-    [recomendacion, ltrVerdict, strVerdict],
-  );
-
   // KPIs derivados
-  const ltrFlujoMensual = p.ltrResults?.metrics?.flujoNetoMensual ?? 0;
   const ltrNOIMensual = (p.ltrResults?.metrics?.noi ?? 0) / 12;
   const ltrNOIAnualY1 = ltrNOIMensual * 12;
   const ltrY5 = p.ltrResults?.projections?.[4];
@@ -155,7 +120,6 @@ export function SharedComparativaClient(p: Props) {
   const strNOIAnualY5 = strY5
     ? (strY5.flujoOperacionalAnual + (p.strResults?.dividendoMensual ?? 0) * 12)
     : strNOIMensual * 12 * Math.pow(1.03, 4);
-  const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
   const strCapital = p.strResults?.capitalInvertido ?? 0;
   const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
 
@@ -230,79 +194,72 @@ export function SharedComparativaClient(p: Props) {
             </div>
           )}
 
-          {/* Hero único */}
+          {/* ── ACTO 1 · Hero — veredicto de modalidad protagonista ── */}
           <HeroComparativa
             recomendacion={recomendacion}
-            verdictUnificado={verdictUnificado}
+            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
             nombre={p.nombre}
             comuna={p.comuna}
+            direccion={p.direccion}
             superficie={p.superficie}
             precioUF={p.precioUF}
             dormitorios={p.dormitorios}
             banos={p.banos}
             deltaNOIMensual={deltaNOIMensual}
-            ltrFlujoMensual={ltrFlujoMensual}
-            strFlujoMensual={strFlujoMensual}
-            zona={p.strResults?.zonaSTR}
-            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
-            breakEvenPct={p.strResults?.veredictoComparativo?.breakEvenPctDelMercado}
-            currency={currency}
-            ufValue={uf}
-          />
-
-          {p.strResults && <ViabilidadSTRBanner results={p.strResults} />}
-
-          {/* Pirámide diferencial (D3) + drawers puente (D4) */}
-          {findings.length > 0 && (
-            <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
-          )}
-
-          {/* Tabla línea-por-línea — detalle completo, después de la pirámide */}
-          <TablaSideBySide
-            ltrNOIMensual={ltrNOIMensual}
-            strNOIMensual={strNOIMensual}
-            ltrNOIAnualY1={ltrNOIAnualY1}
-            strNOIAnualY1={strNOIAnualY1}
-            ltrNOIAnualY5={ltrNOIAnualY5}
-            strNOIAnualY5={strNOIAnualY5}
-            ltrCapital={ltrCapital}
-            strCapital={strCapital}
-            costoAmoblamiento={p.costoAmoblamiento}
-            modoGestion={p.modoGestion}
-            comisionAdministrador={p.comisionAdministrador}
+            findings={findings}
+            ltrId={p.ltrId}
+            strId={p.strId}
+            ltrScore={p.ltrScore}
             ltrVerdict={ltrVerdict}
+            strScore={p.strScore}
             strVerdict={strVerdict}
             currency={currency}
             ufValue={uf}
           />
 
-          {p.ltrResults && p.strResults && (
-            <PatrimonioChartComparativa
-              ltrResults={p.ltrResults}
-              strResults={p.strResults}
+          {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}
+          {findings.length > 0 && (
+            <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
+          )}
+
+          {/* ── ACTO 3 · La evidencia ── */}
+          <div className="mb-8">
+            <div className="mb-4">
+              <p className="font-mono text-[10px] uppercase tracking-[3px] mb-1" style={{ color: "var(--franco-text-secondary)" }}>
+                03 · LA EVIDENCIA
+              </p>
+              <h2 className="font-heading text-[19px] sm:text-[22px] font-bold leading-tight" style={{ color: "var(--franco-text)" }}>
+                El destino es el mismo; el camino, distinto
+              </h2>
+            </div>
+
+            <TablaSideBySide
+              ltrNOIMensual={ltrNOIMensual}
+              strNOIMensual={strNOIMensual}
+              ltrNOIAnualY1={ltrNOIAnualY1}
+              strNOIAnualY1={strNOIAnualY1}
+              ltrNOIAnualY5={ltrNOIAnualY5}
+              strNOIAnualY5={strNOIAnualY5}
+              ltrCapital={ltrCapital}
+              strCapital={strCapital}
+              costoAmoblamiento={p.costoAmoblamiento}
+              modoGestion={p.modoGestion}
+              comisionAdministrador={p.comisionAdministrador}
               currency={currency}
               ufValue={uf}
             />
-          )}
 
-          {p.ltrResults && p.strResults && (
-            <FlujoMensualChart
-              ltrResults={p.ltrResults}
-              strResults={p.strResults}
-              currency={currency}
-              ufValue={uf}
-            />
-          )}
+            {p.ltrResults && p.strResults && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                <PatrimonioChartComparativa ltrResults={p.ltrResults} strResults={p.strResults} currency={currency} ufValue={uf} />
+                <FlujoMensualChart ltrResults={p.ltrResults} strResults={p.strResults} currency={currency} ufValue={uf} />
+              </div>
+            )}
 
-          {/* Narrativa IA — usa cache (Commit 3b) */}
-          <NarrativaIAComparativa
-            ltrId={p.ltrId}
-            strId={p.strId}
-            cached={p.cachedAI}
-          />
-
-          {/* Drawers viejos reclasificados: Zona → F4 · Riesgos → F5 · Sensibilidad → hijos ·
-              Subsidio → detalle en los análisis individuales. La pirámide diferencial los absorbe. */}
+            <div className="mt-4">
+              <NarrativaIAComparativa ltrId={p.ltrId} strId={p.strId} cached={p.cachedAI} />
+            </div>
+          </div>
 
           {/* CTA conversión — cierre (campo Signal Red) · solo en vista web */}
           {!p.printMode && (

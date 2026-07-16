@@ -4,8 +4,6 @@ import { useState } from "react";
 import { Info } from "lucide-react";
 import { fmtMoney } from "@/components/analysis/utils";
 
-type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
-
 interface Props {
   // NOI mensual (año 1)
   ltrNOIMensual: number;
@@ -23,9 +21,6 @@ interface Props {
   // Esfuerzo
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
-  // Veredicto financiero por modalidad (engineSignal)
-  ltrVerdict: Verdict | null;
-  strVerdict: Verdict | null;
   // UI
   currency: "CLP" | "UF";
   ufValue: number;
@@ -37,28 +32,28 @@ interface Props {
 export function TablaSideBySide(p: Props) {
   const rows: TableRow[] = [
     {
-      label: "NOI mensual",
-      tooltip: "Net Operating Income mensual estabilizado. STR usa escenario base (P50 ADR + ocupación P50 mensual). LTR usa arriendo declarado neto de gastos operativos.",
+      label: "Lo que renta al mes (neto de gastos)",
+      tooltip: "Lo que deja la operación cada mes después de gastos, antes del dividendo del crédito. Renta corta usa el escenario base (tarifa y ocupación medianas de la zona); renta larga usa el arriendo declarado neto de gastos.",
       ltr: { kind: "money", value: p.ltrNOIMensual },
       str: { kind: "money", value: p.strNOIMensual },
       mejorAlto: true,
     },
     {
-      label: "NOI anual año 1",
-      tooltip: "STR descuenta los primeros ~6 meses de estabilización inicial (ocupación 50/60/70/80/90% antes de llegar a target). LTR puede tener 1-2 meses de vacancia inicial.",
+      label: "Lo que renta el año 1",
+      tooltip: "Renta corta descuenta los primeros ~6 meses de arranque (ocupación subiendo hasta el objetivo). Renta larga puede tener 1-2 meses de vacancia inicial.",
       ltr: { kind: "money", value: p.ltrNOIAnualY1 },
       str: { kind: "money", value: p.strNOIAnualY1 },
       mejorAlto: true,
     },
     {
-      label: "NOI anual año 5",
-      tooltip: "Año estabilizado con ajustes inflacionarios. Útil para ver el patrimonio que se construye más allá del año 1.",
+      label: "Lo que renta el año 5",
+      tooltip: "Año ya estabilizado, con ajustes por inflación. Útil para ver el ritmo más allá del primer año.",
       ltr: { kind: "money", value: p.ltrNOIAnualY5 },
       str: { kind: "money", value: p.strNOIAnualY5 },
       mejorAlto: true,
     },
     {
-      label: "Capital requerido inicial",
+      label: "Capital de entrada",
       tooltip: `Pie + gastos de cierre (notaría, conservador, comisión corredor). STR suma amoblamiento adicional${p.costoAmoblamiento > 0 ? ` (${fmtMoney(p.costoAmoblamiento, p.currency, p.ufValue)})` : ""}.`,
       ltr: { kind: "money", value: p.ltrCapital },
       str: { kind: "money", value: p.strCapital },
@@ -79,14 +74,6 @@ export function TablaSideBySide(p: Props) {
       str: { kind: "text", value: "Estacionalidad + ocupación" },
       mejorAlto: false,
       mejorOverride: "LTR",
-    },
-    {
-      label: "Veredicto financiero motor",
-      tooltip: "Veredicto matemático puro del motor para cada modalidad por separado. COMPRAR = números cierran. AJUSTA SUPUESTOS = revisa precio o supuestos. BUSCAR OTRA = no se sostiene.",
-      ltr: { kind: "verdict", value: p.ltrVerdict ?? "—" },
-      str: { kind: "verdict", value: p.strVerdict ?? "—" },
-      mejorAlto: false,
-      mejorOverride: pickMejorVerdict(p.ltrVerdict, p.strVerdict),
     },
   ];
 
@@ -202,18 +189,6 @@ function computeGanador(r: TableRow): "LTR" | "STR" | "—" {
   if (r.ltr.value === r.str.value) return "—";
   const strGana = r.mejorAlto ? r.str.value > r.ltr.value : r.str.value < r.ltr.value;
   return strGana ? "STR" : "LTR";
-}
-
-function pickMejorVerdict(ltr: Verdict | null, str: Verdict | null): "LTR" | "STR" | "—" {
-  const rank: Record<Verdict, number> = {
-    "COMPRAR": 3,
-    "AJUSTA SUPUESTOS": 2,
-    "BUSCAR OTRA": 1,
-  };
-  const l = ltr ? rank[ltr] : 0;
-  const s = str ? rank[str] : 0;
-  if (l === s) return "—";
-  return l > s ? "LTR" : "STR";
 }
 
 function Tooltip({ text }: { text: string }) {

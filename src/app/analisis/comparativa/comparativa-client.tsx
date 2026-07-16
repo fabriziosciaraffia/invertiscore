@@ -9,11 +9,7 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { ShareButton } from "@/components/chrome/ShareButton";
 import { AppFooter } from "@/components/chrome/AppFooter";
 import { WalletStatusCTA } from "@/components/chrome/WalletStatusCTA";
-import { ViabilidadSTRBanner } from "@/components/analysis/str/ViabilidadSTRBanner";
-import {
-  HeroComparativa,
-} from "@/components/comparativa/HeroComparativa";
-import { ResumenCards } from "@/components/comparativa/ResumenCards";
+import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
@@ -22,7 +18,6 @@ import { PiramideComparativa } from "@/components/comparativa/PiramideComparativ
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
   FullAnalysisResult,
-  Veredicto,
   AIAnalysisComparativa,
   RecomendacionModalidadAmbas,
 } from "@/lib/types";
@@ -43,6 +38,7 @@ interface Props {
   nombre: string;
   comuna: string;
   ciudad: string;
+  direccion?: string;
   dormitorios: number;
   banos: number;
   superficie: number;
@@ -118,37 +114,6 @@ function deriveRecomendacionFallback(
   });
 }
 
-// ─── Veredicto unificado de la modalidad recomendada ─────────────────────
-function deriveVerdictUnificado(
-  reco: RecomendacionModalidadAmbas,
-  ltrVerdict: Veredicto | null,
-  strVerdict: STRVerdict | null,
-): STRVerdict {
-  if (reco === "LTR_PREFERIDO") {
-    // LTR Veredicto y STRVerdict comparten los 3 valores canónicos desde E.3.
-    if (ltrVerdict === "BUSCAR OTRA") return "BUSCAR OTRA";
-    if (ltrVerdict === "COMPRAR") return "COMPRAR";
-    return "AJUSTA SUPUESTOS";
-  }
-  if (reco === "STR_VENTAJA_CLARA") {
-    return strVerdict ?? "COMPRAR";
-  }
-  // INDIFERENTE → toma el "peor" de los dos (la decisión es por esfuerzo,
-  // pero el cliente debe ver el techo real de riesgo).
-  const rank: Record<STRVerdict, number> = {
-    "COMPRAR": 3,
-    "AJUSTA SUPUESTOS": 2,
-    "BUSCAR OTRA": 1,
-  };
-  const lCoerced: STRVerdict =
-    ltrVerdict === "BUSCAR OTRA" ? "BUSCAR OTRA" :
-    ltrVerdict === "COMPRAR" ? "COMPRAR" :
-    "AJUSTA SUPUESTOS";
-  const l = rank[lCoerced];
-  const s = strVerdict ? rank[strVerdict] : 3;
-  return l <= s ? lCoerced : (strVerdict ?? "COMPRAR");
-}
-
 // ─── Componente principal ───────────────────────────────────────────────
 export function ComparativaClient(p: Props) {
   const router = useRouter();
@@ -200,14 +165,7 @@ export function ComparativaClient(p: Props) {
     [p.strResults],
   );
 
-  // Veredicto unificado para Hero
-  const verdictUnificado = useMemo(
-    () => deriveVerdictUnificado(recomendacion, ltrVerdict, strVerdict),
-    [recomendacion, ltrVerdict, strVerdict],
-  );
-
-  // KPIs derivados
-  const ltrFlujoMensual = p.ltrResults?.metrics?.flujoNetoMensual ?? 0;
+  // KPIs derivados para la tabla (Acto 3) + el delta del hero.
   const ltrNOIMensual = (p.ltrResults?.metrics?.noi ?? 0) / 12;
   const ltrNOIAnualY1 = ltrNOIMensual * 12;
   // Año 5 — usar projection si existe; fallback al año 1 con ajuste inflación 3%.
@@ -219,9 +177,6 @@ export function ComparativaClient(p: Props) {
   const ltrRetorno = p.ltrResults as unknown as { retorno?: { inversionInicial?: number }; exitScenario?: { inversionInicial?: number } } | null;
   const ltrCapital =
     ltrRetorno?.retorno?.inversionInicial ?? ltrRetorno?.exitScenario?.inversionInicial ?? p.ltrResults?.metrics?.pieCLP ?? 0;
-  const ltrRentBruta = p.ltrResults?.metrics?.rentabilidadBruta ?? 0;
-  const precioCLP = p.precioUF * uf;
-  const ltrCapRate = precioCLP > 0 ? (ltrNOIMensual * 12) / precioCLP : 0;
 
   const strBase = p.strResults?.escenarios?.base;
   const strNOIMensual = strBase?.noiMensual ?? 0;
@@ -231,11 +186,7 @@ export function ComparativaClient(p: Props) {
   const strNOIAnualY5 = strY5
     ? (strY5.flujoOperacionalAnual + (p.strResults?.dividendoMensual ?? 0) * 12)
     : strNOIMensual * 12 * Math.pow(1.03, 4);
-  const strFlujoMensual = strBase?.flujoCajaMensual ?? 0;
   const strCapital = p.strResults?.capitalInvertido ?? 0;
-  const strIngresoBruto = strBase?.ingresoBrutoMensual ?? 0;
-  const strRentBruta = precioCLP > 0 ? (strIngresoBruto * 12) / precioCLP : 0;
-  const strCapRate = strBase?.capRate ?? 0;
 
   const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
 
@@ -298,99 +249,75 @@ export function ComparativaClient(p: Props) {
             />
           </div>
 
-          {/* Hero único · driver = recomendacionModalidad */}
+          {/* ── ACTO 1 · Hero — veredicto de modalidad protagonista + TOP-3 + minis + posición ── */}
           <HeroComparativa
             recomendacion={recomendacion}
-            verdictUnificado={verdictUnificado}
+            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
             nombre={p.nombre}
             comuna={p.comuna}
+            direccion={p.direccion}
             superficie={p.superficie}
             precioUF={p.precioUF}
             dormitorios={p.dormitorios}
             banos={p.banos}
             deltaNOIMensual={deltaNOIMensual}
-            ltrFlujoMensual={ltrFlujoMensual}
-            strFlujoMensual={strFlujoMensual}
-            zona={p.strResults?.zonaSTR}
-            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
-            breakEvenPct={p.strResults?.veredictoComparativo?.breakEvenPctDelMercado}
-            currency={currency}
-            ufValue={uf}
-          />
-
-          {/* ViabilidadSTRBanner — visible cuando LTR_PREFERIDO o zona tier "baja" */}
-          {p.strResults && (
-            <ViabilidadSTRBanner results={p.strResults} />
-          )}
-
-          {/* Resúmenes LTR + STR (cards compactas con link al análisis completo) */}
-          <ResumenCards
+            findings={findings}
             ltrId={p.ltrId}
             strId={p.strId}
             ltrScore={p.ltrScore}
             ltrVerdict={ltrVerdict}
-            ltrFlujoMensual={ltrFlujoMensual}
-            ltrRentBruta={ltrRentBruta}
-            ltrCapRate={ltrCapRate}
             strScore={p.strScore}
             strVerdict={strVerdict}
-            strFlujoMensual={strFlujoMensual}
-            strRentBruta={strRentBruta}
-            strCapRate={strCapRate}
             currency={currency}
             ufValue={uf}
           />
 
-          {/* Pirámide diferencial (D3) — los findings que deciden entre las dos + drawers puente (D4) */}
+          {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}
           {findings.length > 0 && (
             <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
           )}
 
-          {/* Tabla línea-por-línea — detalle completo, reubicada DESPUÉS de la pirámide */}
-          <TablaSideBySide
-            ltrNOIMensual={ltrNOIMensual}
-            strNOIMensual={strNOIMensual}
-            ltrNOIAnualY1={ltrNOIAnualY1}
-            strNOIAnualY1={strNOIAnualY1}
-            ltrNOIAnualY5={ltrNOIAnualY5}
-            strNOIAnualY5={strNOIAnualY5}
-            ltrCapital={ltrCapital}
-            strCapital={strCapital}
-            costoAmoblamiento={p.costoAmoblamiento}
-            modoGestion={p.modoGestion}
-            comisionAdministrador={p.comisionAdministrador}
-            ltrVerdict={ltrVerdict}
-            strVerdict={strVerdict}
-            currency={currency}
-            ufValue={uf}
-          />
+          {/* ── ACTO 3 · La evidencia — superficie recesiva que respalda la pirámide ── */}
+          <div className="mb-8">
+            <div className="mb-4">
+              <p className="font-mono text-[10px] uppercase tracking-[3px] mb-1" style={{ color: "var(--franco-text-secondary)" }}>
+                03 · LA EVIDENCIA
+              </p>
+              <h2 className="font-heading text-[19px] sm:text-[22px] font-bold leading-tight" style={{ color: "var(--franco-text)" }}>
+                El destino es el mismo; el camino, distinto
+              </h2>
+            </div>
 
-          {/* Gráfica 1 — Patrimonio LTR vs STR 10 años */}
-          {p.ltrResults && p.strResults && (
-            <PatrimonioChartComparativa
-              ltrResults={p.ltrResults}
-              strResults={p.strResults}
+            {/* Tabla línea-por-línea (podada: sin fila veredicto motor) */}
+            <TablaSideBySide
+              ltrNOIMensual={ltrNOIMensual}
+              strNOIMensual={strNOIMensual}
+              ltrNOIAnualY1={ltrNOIAnualY1}
+              strNOIAnualY1={strNOIAnualY1}
+              ltrNOIAnualY5={ltrNOIAnualY5}
+              strNOIAnualY5={strNOIAnualY5}
+              ltrCapital={ltrCapital}
+              strCapital={strCapital}
+              costoAmoblamiento={p.costoAmoblamiento}
+              modoGestion={p.modoGestion}
+              comisionAdministrador={p.comisionAdministrador}
               currency={currency}
               ufValue={uf}
             />
-          )}
 
-          {/* Gráfica 2 — Flujo mensual 12 meses */}
-          {p.ltrResults && p.strResults && (
-            <FlujoMensualChart
-              ltrResults={p.ltrResults}
-              strResults={p.strResults}
-              currency={currency}
-              ufValue={uf}
-            />
-          )}
+            {/* Dos columnas: Patrimonio (destino igual) | Volatilidad (camino distinto) */}
+            {p.ltrResults && p.strResults && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+                <PatrimonioChartComparativa ltrResults={p.ltrResults} strResults={p.strResults} currency={currency} ufValue={uf} />
+                <FlujoMensualChart ltrResults={p.ltrResults} strResults={p.strResults} currency={currency} ufValue={uf} />
+              </div>
+            )}
 
-          {/* Narrativa IA "Cuál te conviene" — 4 ángulos doctrinales */}
-          <NarrativaIAComparativa
-            ltrId={p.ltrId}
-            strId={p.strId}
-            cached={p.cachedAI}
-          />
+            {/* Slot de prosa IA (la vieja hasta Fase C, mismo lugar) */}
+            <div className="mt-4">
+              <NarrativaIAComparativa ltrId={p.ltrId} strId={p.strId} cached={p.cachedAI} />
+            </div>
+          </div>
 
           {/* Reclasificación de drawers viejos: Zona → F4 · Riesgos → F5 · Sensibilidad → hijos.
               Subsidio 21.748 → mini-línea (idéntico en ambas modalidades, no es diferencial;
