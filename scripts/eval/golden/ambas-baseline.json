@@ -1,0 +1,82 @@
+{
+  "note": "Baseline GOLDEN COMPARATIVO (AMBAS · D1+D2). Congela veredicto+banda+señales de 7 pares reales, uno por banda: STR_FRAGIL(be 90-110), conflictiva(>110, caso Moneda), N/D degenerado (break-even NO lo toca), LTR_PREFERIDO, INDIFERENTE(5-15). recomendacion/banda/fragil/porAbsoluto/flip son DUROS; break-even% y sobre-renta% son drift. Re-baseline SOLO con cambio legítimo del veredicto + OK de Fabrizio.",
+  "seeds": {
+    "AG-1-fragil-flip": {
+      "recomendacion": "INDIFERENTE",
+      "banda": "STR_FRAGIL",
+      "fragil": true,
+      "porAbsoluto": false,
+      "bePct": 99.8,
+      "sobrePct": 20.4,
+      "flipCambia": true,
+      "flipAuto": "INDIFERENTE",
+      "flipAdmin": "LTR_PREFERIDO"
+    },
+    "AG-2-fragil-borde": {
+      "recomendacion": "INDIFERENTE",
+      "banda": "STR_FRAGIL",
+      "fragil": true,
+      "porAbsoluto": false,
+      "bePct": 91.6,
+      "sobrePct": 47,
+      "flipCambia": true,
+      "flipAuto": "STR_VENTAJA_CLARA",
+      "flipAdmin": "INDIFERENTE"
+    },
+    "AG-3-conflictiva-moneda": {
+      "recomendacion": "INDIFERENTE",
+      "banda": "INDIFERENTE",
+      "fragil": false,
+      "porAbsoluto": false,
+      "bePct": 131.3,
+      "sobrePct": 26.6,
+      "flipCambia": true,
+      "flipAuto": "INDIFERENTE",
+      "flipAdmin": "LTR_PREFERIDO"
+    },
+    "AG-4-nd-degenerado-clara": {
+      "recomendacion": "STR_VENTAJA_CLARA",
+      "banda": "STR_VENTAJA_CLARA",
+      "fragil": false,
+      "porAbsoluto": true,
+      "bePct": 113,
+      "sobrePct": 321.5,
+      "flipCambia": true,
+      "flipAuto": "STR_VENTAJA_CLARA",
+      "flipAdmin": "INDIFERENTE"
+    },
+    "AG-5-nd-degenerado-4ea0": {
+      "recomendacion": "STR_VENTAJA_CLARA",
+      "banda": "STR_VENTAJA_CLARA",
+      "fragil": false,
+      "porAbsoluto": true,
+      "bePct": 88,
+      "sobrePct": -3483.4,
+      "flipCambia": false,
+      "flipAuto": "STR_VENTAJA_CLARA",
+      "flipAdmin": "STR_VENTAJA_CLARA"
+    },
+    "AG-6-ltr-preferido": {
+      "recomendacion": "LTR_PREFERIDO",
+      "banda": "LTR_PREFERIDO",
+      "fragil": false,
+      "porAbsoluto": false,
+      "bePct": 197.2,
+      "sobrePct": -53.2,
+      "flipCambia": false,
+      "flipAuto": "LTR_PREFERIDO",
+      "flipAdmin": "LTR_PREFERIDO"
+    },
+    "AG-7-indiferente-5-15": {
+      "recomendacion": "INDIFERENTE",
+      "banda": "INDIFERENTE",
+      "fragil": false,
+      "porAbsoluto": false,
+      "bePct": 113.1,
+      "sobrePct": 12.2,
+      "flipCambia": true,
+      "flipAuto": "INDIFERENTE",
+      "flipAdmin": "LTR_PREFERIDO"
+    }
+  }
+}

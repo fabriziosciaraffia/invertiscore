@@ -6,7 +6,8 @@
 //   node --env-file=.env.local --import tsx scripts/eval/golden/runner.ts [flags]
 //     --quick        (default) solo recompute determinístico LTR (0 tokens)
 //     --str          agrega el tier STR (GS-STR, BS1-BS8, 0 tokens)
-//     --all          LTR quick + STR (0 tokens)
+//     --ambas        agrega el tier AMBAS (GS-AMBAS veredicto comparativo D1+D2, 0 tokens)
+//     --all          LTR quick + STR + AMBAS (0 tokens)
 //     --full         recompute + generación fresca (AUTO) + semántico
 //     --no-semantic  con --full, salta el juez Opus (solo AUTO)
 //     --k=N          generaciones frescas por caso (default 2)
@@ -23,6 +24,7 @@ import { runCatchTest } from "./catch-test";
 import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
+import { runAmbasTier } from "./ambas-recompute";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -71,6 +73,13 @@ function printSeed(r: SeedReport) {
     const str = runStrTier();
     totalHard += str.hard;
     totalDrift += str.drift;
+  }
+
+  // ── Tier AMBAS (D1+D2 · GS-AMBAS veredicto comparativo, 0 tokens). --ambas o --all/--full. ──
+  if (has("--ambas") || has("--all") || MODE_FULL) {
+    const ambas = runAmbasTier();
+    totalHard += ambas.hard;
+    totalDrift += ambas.drift;
   }
 
   // ── Tier FULL (opcional) ────────────────────────────────────────────────
