@@ -182,9 +182,9 @@ function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingC
         className="fixed z-50 overflow-y-auto
           md:top-0 md:right-0 md:bottom-0 md:w-[75vw] lg:w-[70vw] xl:w-[min(960px,65vw)] md:border-l md:border-[var(--franco-border)] md:animate-slideInRight
           max-md:bottom-0 max-md:left-0 max-md:right-0 max-md:h-[85vh] max-md:rounded-t-2xl max-md:border-t max-md:border-[var(--franco-border)] max-md:animate-slideInUp"
-        style={{ background: "var(--franco-bg)" }}
+        style={{ background: "var(--franco-card)" }}
       >
-        <div className="sticky top-0 z-10 px-5 md:px-6 py-5" style={{ background: "var(--franco-bg)", borderBottom: "0.5px solid var(--franco-border)" }}>
+        <div className="sticky top-0 z-10 px-5 md:px-6 py-5" style={{ background: "var(--franco-card)", borderBottom: "0.5px solid var(--franco-border)" }}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <p className="font-mono text-[10px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mb-1.5">
@@ -198,7 +198,7 @@ function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingC
           </div>
         </div>
 
-        <div className="px-5 md:px-6 py-5 max-w-[720px]">
+        <div className="px-5 md:px-6 py-5">
           {/* Lead: planta QUÉ se compara antes de la aritmética (C2) */}
           <p className="font-body text-[13.5px] leading-[1.6] mb-4" style={{ color: "var(--franco-text-secondary)" }}>
             {f.puente.lead}
@@ -212,7 +212,7 @@ function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingC
                 <div
                   key={i}
                   className="flex items-baseline justify-between gap-3 px-4 py-3"
-                  style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--franco-border)", background: "var(--franco-card)" }}
+                  style={{ borderTop: i === 0 ? "none" : "0.5px solid var(--franco-border)", background: "var(--franco-bg)" }}
                 >
                   <span className="font-body text-[12.5px] text-[var(--franco-text)]">{fila.label}</span>
                   <span className="font-mono text-[13px] font-medium shrink-0" style={{ color: "var(--franco-text)" }}>{fila.str ?? "—"}</span>
@@ -243,7 +243,7 @@ function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingC
               <Link
                 key={i}
                 href={hrefHijo(l)}
-                className="inline-flex items-center justify-between gap-2 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3 hover:border-[var(--franco-text-secondary)] transition-colors"
+                className="inline-flex items-center justify-between gap-2 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-bg)] px-4 py-3 hover:border-[var(--franco-text-secondary)] transition-colors"
               >
                 <span className="font-body text-[13px] font-medium text-[var(--franco-text)]">{l.label}</span>
                 <span className="font-mono text-[11px] uppercase tracking-[1px] text-signal-red">
@@ -262,7 +262,7 @@ function Cell({ children, head, right }: { children: React.ReactNode; head?: boo
   return (
     <div
       className={`px-3 py-2.5 ${right ? "text-right" : ""} ${head ? "font-mono text-[9px] uppercase tracking-[1.5px]" : ""}`}
-      style={{ background: "var(--franco-card)", color: head ? "var(--franco-text-tertiary)" : "var(--franco-text)" }}
+      style={{ background: "var(--franco-bg)", color: head ? "var(--franco-text-tertiary)" : "var(--franco-text)" }}
     >
       {children}
     </div>
@@ -272,12 +272,12 @@ function Cell({ children, head, right }: { children: React.ReactNode; head?: boo
 function FilaRow({ label, ltr, str, delta }: { label: string; ltr?: string; str?: string; delta?: string }) {
   return (
     <>
-      <div className="px-3 py-2.5" style={{ background: "var(--franco-card)" }}>
+      <div className="px-3 py-2.5" style={{ background: "var(--franco-bg)" }}>
         <span className="font-body text-[12.5px] text-[var(--franco-text)]">{label}</span>
         {delta && <span className="font-mono text-[10px] ml-2" style={{ color: "var(--franco-text-tertiary)" }}>Δ {delta}</span>}
       </div>
-      <div className="px-3 py-2.5 text-right font-mono text-[12.5px]" style={{ background: "var(--franco-card)", color: "var(--franco-text)" }}>{ltr ?? "—"}</div>
-      <div className="px-3 py-2.5 text-right font-mono text-[12.5px]" style={{ background: "var(--franco-card)", color: "var(--franco-text)" }}>{str ?? "—"}</div>
+      <div className="px-3 py-2.5 text-right font-mono text-[12.5px]" style={{ background: "var(--franco-bg)", color: "var(--franco-text)" }}>{ltr ?? "—"}</div>
+      <div className="px-3 py-2.5 text-right font-mono text-[12.5px]" style={{ background: "var(--franco-bg)", color: "var(--franco-text)" }}>{str ?? "—"}</div>
     </>
   );
 }
