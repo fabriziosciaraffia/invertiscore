@@ -109,6 +109,7 @@ export default async function ComparativaPage({
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
+  const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
   // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Sin esto la
   // comparativa mostraría el patrimonio STR viejo (con flujo) contra el LTR (sin flujo) →
@@ -189,6 +190,7 @@ export default async function ComparativaPage({
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
+      edificioPermiteAirbnb={edificioPermiteAirbnb}
       ufValue={ufValue}
       accessLevel={accessLevel}
       isOwner={isOwner}

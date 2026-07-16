@@ -18,13 +18,8 @@ import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
 import { NarrativaIAComparativa } from "@/components/comparativa/NarrativaIAComparativa";
-import {
-  DrawerZona,
-  DrawerSensibilidad,
-  DrawerSubsidio,
-  DrawerRiesgos,
-  type DrawerKey,
-} from "@/components/comparativa/DrawersComparativa";
+import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
+import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
   FullAnalysisResult,
   Veredicto,
@@ -58,10 +53,11 @@ interface Props {
   ltrResults: FullAnalysisResult | null;
   strResults: ShortTermResult | null;
   cachedAI: AIAnalysisComparativa | null;
-  // Inputs específicos (necesarios para tabla)
+  // Inputs específicos (necesarios para tabla + pirámide)
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
+  edificioPermiteAirbnb: string;
   // UI
   ufValue: number;
   accessLevel: AccessLevel;
@@ -157,9 +153,24 @@ function deriveVerdictUnificado(
 export function ComparativaClient(p: Props) {
   const router = useRouter();
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
-  const [drawer, setDrawer] = useState<DrawerKey>(null);
   const [deleting, setDeleting] = useState(false);
   const uf = p.ufValue;
+
+  // Pirámide diferencial (D3) — findings motor-templated, recomputados por moneda.
+  const findings = useMemo(() => {
+    const ctx = ctxFromResults(p.ltrResults, p.strResults, {
+      modoGestion: p.modoGestion,
+      comisionAdministrador: p.comisionAdministrador,
+      costoAmoblamiento: p.costoAmoblamiento,
+      edificioPermiteAirbnb: p.edificioPermiteAirbnb,
+    });
+    return ctx ? buildFindingsComparativa(ctx, currency, uf) : [];
+  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, p.edificioPermiteAirbnb, currency, uf]);
+
+  // Subsidio: mini-línea solo si califica de un lado (idéntico en ambas modalidades).
+  const subsidioCalifica =
+    (p.ltrResults?.metrics?.subsidioTasa?.califica ?? false) ||
+    (p.strResults?.subsidioTasa?.califica ?? false);
 
   // Delete group-aware: el comparativo es el producto — borrarlo elimina las DOS
   // filas hijas (LTR + STR). Confirm explícito con el alcance real. Solo owner.
@@ -202,7 +213,12 @@ export function ComparativaClient(p: Props) {
   // Año 5 — usar projection si existe; fallback al año 1 con ajuste inflación 3%.
   const ltrY5 = p.ltrResults?.projections?.[4];
   const ltrNOIAnualY5 = ltrY5 ? ltrY5.flujoAnual + (p.ltrResults?.metrics?.dividendo ?? 0) * 12 : ltrNOIAnualY1 * Math.pow(1.03, 4);
-  const ltrCapital = p.ltrResults?.metrics?.pieCLP ?? 0;
+  // Capital inicial simétrico vs STR.capitalInvertido: LTR inversionInicial (pie+cierre+
+  // CapEx+corretaje) del objeto retorno/exit; fallback a pieCLP si no llega. Coherente con
+  // el finding de capital de la pirámide (evita la contradicción pieCLP vs capitalInvertido).
+  const ltrRetorno = p.ltrResults as unknown as { retorno?: { inversionInicial?: number }; exitScenario?: { inversionInicial?: number } } | null;
+  const ltrCapital =
+    ltrRetorno?.retorno?.inversionInicial ?? ltrRetorno?.exitScenario?.inversionInicial ?? p.ltrResults?.metrics?.pieCLP ?? 0;
   const ltrRentBruta = p.ltrResults?.metrics?.rentabilidadBruta ?? 0;
   const precioCLP = p.precioUF * uf;
   const ltrCapRate = precioCLP > 0 ? (ltrNOIMensual * 12) / precioCLP : 0;
@@ -272,7 +288,7 @@ export function ComparativaClient(p: Props) {
       />
 
       <main className="flex-1">
-        <div className="container mx-auto max-w-[900px] px-4 py-8">
+        <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-8">
           {/* Toggle moneda */}
           <div className="mb-5">
             <CurrencyToggle
@@ -325,7 +341,12 @@ export function ComparativaClient(p: Props) {
             ufValue={uf}
           />
 
-          {/* Tabla side-by-side ampliada con tooltips */}
+          {/* Pirámide diferencial (D3) — los findings que deciden entre las dos + drawers puente (D4) */}
+          {findings.length > 0 && (
+            <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
+          )}
+
+          {/* Tabla línea-por-línea — detalle completo, reubicada DESPUÉS de la pirámide */}
           <TablaSideBySide
             ltrNOIMensual={ltrNOIMensual}
             strNOIMensual={strNOIMensual}
@@ -371,29 +392,20 @@ export function ComparativaClient(p: Props) {
             cached={p.cachedAI}
           />
 
-          {/* Drawers compartidos — accesos en grid de tiles */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-            <DrawerTrigger
-              numero="03"
-              label="Sensibilidad precio"
-              onClick={() => setDrawer("sensibilidad")}
-            />
-            <DrawerTrigger
-              numero="04"
-              label="Subsidio 21.748"
-              onClick={() => setDrawer("subsidio")}
-            />
-            <DrawerTrigger
-              numero="05"
-              label="Riesgos"
-              onClick={() => setDrawer("riesgos")}
-            />
-            <DrawerTrigger
-              numero="06"
-              label="Zona STR"
-              onClick={() => setDrawer("zona")}
-            />
-          </div>
+          {/* Reclasificación de drawers viejos: Zona → F4 · Riesgos → F5 · Sensibilidad → hijos.
+              Subsidio 21.748 → mini-línea (idéntico en ambas modalidades, no es diferencial;
+              solo se muestra si califica de un lado). */}
+          {subsidioCalifica && (
+            <div className="mb-8 rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] px-4 py-3">
+              <p className="font-mono text-[9px] uppercase tracking-[2px] text-[var(--franco-text-muted)] mb-1">
+                Subsidio Ley 21.748
+              </p>
+              <p className="font-body text-[12.5px] text-[var(--franco-text-secondary)] leading-snug">
+                Esta propiedad podría calificar al subsidio a la tasa (misma palanca para ambas modalidades).
+                El detalle está en cada análisis individual.
+              </p>
+            </div>
+          )}
 
           {/* WalletStatusCTA */}
           <div className="mb-6">
@@ -429,63 +441,6 @@ export function ComparativaClient(p: Props) {
       </main>
 
       <AppFooter variant="minimal" linksSlot={footerLinks} />
-
-      {/* Drawers controlados */}
-      {p.strResults && (
-        <DrawerZona
-          open={drawer === "zona"}
-          onClose={() => setDrawer(null)}
-          strResults={p.strResults}
-          currency={currency}
-          ufValue={uf}
-        />
-      )}
-      {p.ltrResults && p.strResults && (
-        <>
-          <DrawerSensibilidad
-            open={drawer === "sensibilidad"}
-            onClose={() => setDrawer(null)}
-            ltrResults={p.ltrResults}
-            strResults={p.strResults}
-            currency={currency}
-            ufValue={uf}
-          />
-          <DrawerSubsidio
-            open={drawer === "subsidio"}
-            onClose={() => setDrawer(null)}
-            ltrResults={p.ltrResults}
-            strResults={p.strResults}
-          />
-          <DrawerRiesgos
-            open={drawer === "riesgos"}
-            onClose={() => setDrawer(null)}
-            ltrResults={p.ltrResults}
-            strResults={p.strResults}
-          />
-        </>
-      )}
     </div>
-  );
-}
-
-function DrawerTrigger({
-  numero, label, onClick,
-}: { numero: string; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 text-left hover:border-[var(--franco-text-secondary)] transition-colors"
-    >
-      <p className="font-mono text-[9px] uppercase tracking-[2px] text-[var(--franco-text-muted)] mb-1">
-        {numero}
-      </p>
-      <p className="font-body text-[12px] font-medium text-[var(--franco-text)] leading-tight">
-        {label}
-      </p>
-      <p className="font-mono text-[10px] uppercase tracking-[1px] text-[var(--franco-text-tertiary)] mt-2">
-        Abrir →
-      </p>
-    </button>
   );
 }

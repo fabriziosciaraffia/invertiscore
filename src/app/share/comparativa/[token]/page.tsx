@@ -78,6 +78,7 @@ export default async function ShareComparativaPage({
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
+  const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
   // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Igual que la
   // vista privada: patrimonio STR comparable con LTR. UF y fecha congeladas a la creación.
@@ -145,6 +146,7 @@ export default async function ShareComparativaPage({
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
+      edificioPermiteAirbnb={edificioPermiteAirbnb}
       ufValue={ufValue}
       printMode={printMode}
       createdAt={ltr.created_at ?? str.created_at ?? new Date().toISOString()}

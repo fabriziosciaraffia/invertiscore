@@ -11,12 +11,8 @@ import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
 import { NarrativaIAComparativa } from "@/components/comparativa/NarrativaIAComparativa";
-import {
-  InlineZona,
-  InlineSensibilidad,
-  InlineSubsidio,
-  InlineRiesgos,
-} from "@/components/comparativa/DrawersInlineComparativa";
+import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
+import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
   FullAnalysisResult,
   Veredicto,
@@ -49,6 +45,7 @@ interface Props {
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
   comisionAdministrador: number;
+  edificioPermiteAirbnb: string;
   ufValue: number;
   printMode: boolean;
   createdAt: string;
@@ -108,6 +105,17 @@ export function SharedComparativaClient(p: Props) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const uf = p.ufValue;
 
+  // Pirámide diferencial (D3) — findings motor-templated, recomputados por moneda.
+  const findings = useMemo(() => {
+    const ctx = ctxFromResults(p.ltrResults, p.strResults, {
+      modoGestion: p.modoGestion,
+      comisionAdministrador: p.comisionAdministrador,
+      costoAmoblamiento: p.costoAmoblamiento,
+      edificioPermiteAirbnb: p.edificioPermiteAirbnb,
+    });
+    return ctx ? buildFindingsComparativa(ctx, currency, uf) : [];
+  }, [p.ltrResults, p.strResults, p.modoGestion, p.comisionAdministrador, p.costoAmoblamiento, p.edificioPermiteAirbnb, currency, uf]);
+
   const recomendacion = useMemo(
     () => deriveRecomendacionFallback(p.strResults),
     [p.strResults],
@@ -133,7 +141,11 @@ export function SharedComparativaClient(p: Props) {
   const ltrNOIAnualY5 = ltrY5
     ? ltrY5.flujoAnual + (p.ltrResults?.metrics?.dividendo ?? 0) * 12
     : ltrNOIAnualY1 * Math.pow(1.03, 4);
-  const ltrCapital = p.ltrResults?.metrics?.pieCLP ?? 0;
+  // Capital inicial simétrico vs STR.capitalInvertido (ver comparativa-client): LTR
+  // inversionInicial del objeto retorno/exit; fallback a pieCLP. Coherente con la pirámide.
+  const ltrRetorno = p.ltrResults as unknown as { retorno?: { inversionInicial?: number }; exitScenario?: { inversionInicial?: number } } | null;
+  const ltrCapital =
+    ltrRetorno?.retorno?.inversionInicial ?? ltrRetorno?.exitScenario?.inversionInicial ?? p.ltrResults?.metrics?.pieCLP ?? 0;
 
   const strBase = p.strResults?.escenarios?.base;
   const strNOIMensual = strBase?.noiMensual ?? 0;
@@ -166,7 +178,7 @@ export function SharedComparativaClient(p: Props) {
       {!p.printMode && <PublicShareHeader date={fechaCorta} />}
 
       <main className="flex-1">
-        <div className="container mx-auto max-w-[900px] px-4 py-6">
+        <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-6">
           {/* CTA conversión — anzuelo (superficie Ink) · solo web */}
           {!p.printMode && (
             <div className="mb-5">
@@ -240,7 +252,12 @@ export function SharedComparativaClient(p: Props) {
 
           {p.strResults && <ViabilidadSTRBanner results={p.strResults} />}
 
-          {/* Tabla side-by-side */}
+          {/* Pirámide diferencial (D3) + drawers puente (D4) */}
+          {findings.length > 0 && (
+            <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
+          )}
+
+          {/* Tabla línea-por-línea — detalle completo, después de la pirámide */}
           <TablaSideBySide
             ltrNOIMensual={ltrNOIMensual}
             strNOIMensual={strNOIMensual}
@@ -284,32 +301,8 @@ export function SharedComparativaClient(p: Props) {
             cached={p.cachedAI}
           />
 
-          {/* Drawers expandidos INLINE como secciones */}
-          {p.strResults && (
-            <InlineZona
-              strResults={p.strResults}
-              currency={currency}
-              ufValue={uf}
-            />
-          )}
-          {p.ltrResults && p.strResults && (
-            <>
-              <InlineSensibilidad
-                ltrResults={p.ltrResults}
-                strResults={p.strResults}
-                currency={currency}
-                ufValue={uf}
-              />
-              <InlineSubsidio
-                ltrResults={p.ltrResults}
-                strResults={p.strResults}
-              />
-              <InlineRiesgos
-                ltrResults={p.ltrResults}
-                strResults={p.strResults}
-              />
-            </>
-          )}
+          {/* Drawers viejos reclasificados: Zona → F4 · Riesgos → F5 · Sensibilidad → hijos ·
+              Subsidio → detalle en los análisis individuales. La pirámide diferencial los absorbe. */}
 
           {/* CTA conversión — cierre (campo Signal Red) · solo en vista web */}
           {!p.printMode && (
