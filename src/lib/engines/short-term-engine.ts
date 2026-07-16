@@ -12,10 +12,12 @@ import {
 } from "../constants/subsidio";
 import {
   calcZonaSTR,
-  calcRecomendacionModalidad,
+  calcVeredictoComparativo,
   sobreRentaPctEsConfiable,
   type ZonaSTRScore,
   type RecomendacionModalidadSTR,
+  type VeredictoComparativo,
+  type ModoGestionAmbas,
 } from "./str-universo-santiago";
 import { calcInversionInicialCLP } from "../inversion-inicial";
 import { PLUSVALIA_PROYECCION_ANUAL } from "../plusvalia-proyeccion";
@@ -321,6 +323,13 @@ export interface ShortTermResult {
   // str-universo-santiago.ts. Recalibrar con data interna en V2.
   zonaSTR?: ZonaSTRScore;
   recomendacionModalidad?: RecomendacionModalidadSTR;
+
+  // D1+D2 (Rama superficie AMBAS) — veredicto comparativo tipado: banda refinada con
+  // STR_FRAGIL (break-even 90-110%), N/D por absoluto integrado al tipo, y señal de flip
+  // de gestión (D2) para que la Fase B la consuma como hallazgo. `recomendacion` == el
+  // campo `recomendacionModalidad` de arriba (backward-compat). Opcional para back-compat
+  // con análisis STR persistidos pre-D1 (el recompute-on-load lo repuebla en la superficie).
+  veredictoComparativo?: VeredictoComparativo;
 
   // Remediación 2026-06 — fuente de la ocupación del escenario BASE.
   // 'observada'        = percentiles.occupancy.p50 (o estimated_occupancy) de AirROI.
@@ -1177,12 +1186,31 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     airbnbData.percentiles.average_daily_rate.p50,
     airbnbData.percentiles.occupancy.p50,
   );
-  const recomendacionModalidad = calcRecomendacionModalidad(
+  // D1+D2 (Rama superficie AMBAS): veredicto comparativo tipado. Break-even por modo con
+  // la misma fórmula del motor ((costos+dividendo)/(1−comisión), anualizado / revenueBase),
+  // invariante al modo salvo la comisión. `str_auto`/`str_admin` ya calculados arriba dan la
+  // sobre-renta de cada modo para el flip de gestión.
+  const breakEvenAutoPct = revenueBase > 0 && (1 - COMISION_AIRBNB) > 0
+    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - COMISION_AIRBNB)) * 12) / revenueBase
+    : Infinity;
+  const breakEvenAdminPct = revenueBase > 0 && (1 - comisionAdministrador) > 0
+    ? Math.round(((costosOperativosTotales + dividendoMensual) / (1 - comisionAdministrador)) * 12) / revenueBase
+    : Infinity;
+  const veredictoComparativo = calcVeredictoComparativo({
+    modoActual: (modoGestion === "auto" ? "auto" : "admin") as ModoGestionAmbas,
+    tierZona: zonaSTR.tierZona,
+    ltrNoiMensual: ltr_noiMensual,
+    strNoiMensual: base.noiMensual,
+    sobreRenta,
     sobreRentaPct,
-    zonaSTR.tierZona,
-    // P3: cuando el ratio degenera, la banda ordena por sobre-renta ABSOLUTA en vez del pct.
-    { confiable: sobreRentaPctConfiable, sobreRenta, strNoiMensual: base.noiMensual },
-  );
+    sobreRentaPctConfiable,
+    breakEvenPctDelMercado,
+    strAutoNoiMensual: str_auto.noiMensual,
+    strAdminNoiMensual: str_admin.noiMensual,
+    breakEvenAutoPct,
+    breakEvenAdminPct,
+  });
+  const recomendacionModalidad = veredictoComparativo.recomendacion;
 
   return {
     // `veredicto` se preserva como placeholder de tipo. El api route
@@ -1221,6 +1249,7 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
     subsidioTasa,
     zonaSTR,
     recomendacionModalidad,
+    veredictoComparativo,
     occFuente,
     occObservada: occObs,
     occObservadaFuente,
