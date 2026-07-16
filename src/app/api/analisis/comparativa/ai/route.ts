@@ -180,6 +180,9 @@ export async function POST(request: Request) {
       ltrNoiMensual: strResults.comparativa?.ltr?.noiMensual,
       sobreRenta: sobreRentaCLP,
       strNoiMensual: strResults.comparativa?.str_auto?.noiMensual,
+      // D1: segunda condición — coincide con el hero para pares frágiles (recompute repuebla
+      // recomendacionModalidad, así que el shortcut suele cortar antes; esto cubre el legacy).
+      breakEvenPctDelMercado: strResults.breakEvenPctDelMercado,
     });
 
     // Modo gestión + comisión administrador

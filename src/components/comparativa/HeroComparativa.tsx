@@ -22,6 +22,11 @@ interface Props {
   ltrFlujoMensual: number;
   strFlujoMensual: number;
   zona: ZonaSTRScore | undefined;
+  // D1 — banda de fragilidad (break-even 90-110%). Cuando true, el par tiene ventaja de
+  // flujo STR pero margen frágil → `recomendacion` colapsa a INDIFERENTE y el hero lo
+  // explica en vez de decir "rinden parecido". `breakEvenPct` es el driver (1.00 = mercado).
+  fragil?: boolean;
+  breakEvenPct?: number;
   // UI state
   currency: "CLP" | "UF";
   ufValue: number;
@@ -37,29 +42,34 @@ export function HeroComparativa(p: Props) {
     : 0;
 
   const labelRecomendacion =
+    p.fragil ? "RECOMENDACIÓN · VENTAJA FRÁGIL" :
     p.recomendacion === "LTR_PREFERIDO" ? "RECOMENDACIÓN · RENTA LARGA" :
     p.recomendacion === "STR_VENTAJA_CLARA" ? "RECOMENDACIÓN · RENTA CORTA" :
     "RECOMENDACIÓN · DECISIÓN POR ESFUERZO";
 
   const titulo =
-    p.recomendacion === "LTR_PREFERIDO"
-      ? "Tu mejor jugada acá es renta larga"
-      : p.recomendacion === "STR_VENTAJA_CLARA"
-        ? `Renta corta justifica el esfuerzo: ${deltaPctNOI > 0 ? "+" : ""}${fmtPct(deltaPctNOI * 100, 0)} en flujo neto`
-        : "Ambas opciones rinden parecido — la decisión es por esfuerzo";
+    p.fragil
+      ? "Renta corta rinde más, pero con margen frágil"
+      : p.recomendacion === "LTR_PREFERIDO"
+        ? "Tu mejor jugada acá es renta larga"
+        : p.recomendacion === "STR_VENTAJA_CLARA"
+          ? `Renta corta justifica el esfuerzo: ${deltaPctNOI > 0 ? "+" : ""}${fmtPct(deltaPctNOI * 100, 0)} en flujo neto`
+          : "Ambas opciones rinden parecido — la decisión es por esfuerzo";
 
   const zonaInfo = p.zona
     ? `Tu zona (tier ${p.zona.tierZona}, p${p.zona.percentilADR} ADR · p${p.zona.percentilOcupacion} occ) `
     : "";
 
   const bajada =
-    p.recomendacion === "LTR_PREFERIDO"
-      ? p.zona?.tierZona === "baja"
-        ? `La demanda STR en ${p.comuna} es baja (tier ${p.zona.tierZona}, score ${p.zona.score}/100). El esfuerzo operativo de Airbnb no compensa acá.`
-        : "La sobre-renta STR vs LTR es marginal. La complejidad operativa no se justifica."
-      : p.recomendacion === "STR_VENTAJA_CLARA"
-        ? `${zonaInfo}${zonaInfo ? "sostiene" : "Los números sostienen"} el modelo. Si puedes asumir 8-12 hrs/semana o aceptar 20% al administrador, STR rinde más.`
-        : "La diferencia neta es chica. Lo que decide es cuánto tiempo quieres dedicarle.";
+    p.fragil
+      ? `Renta corta supera a renta larga en flujo, pero su punto de equilibrio queda al ${fmtPct((p.breakEvenPct ?? 0) * 100, 0)} de la facturación típica de la zona — poco colchón. Una temporada floja o una caída de ocupación se come la ventaja, así que no la damos como clara.`
+      : p.recomendacion === "LTR_PREFERIDO"
+        ? p.zona?.tierZona === "baja"
+          ? `La demanda STR en ${p.comuna} es baja (tier ${p.zona.tierZona}, score ${p.zona.score}/100). El esfuerzo operativo de Airbnb no compensa acá.`
+          : "La sobre-renta STR vs LTR es marginal. La complejidad operativa no se justifica."
+        : p.recomendacion === "STR_VENTAJA_CLARA"
+          ? `${zonaInfo}${zonaInfo ? "sostiene" : "Los números sostienen"} el modelo. Si puedes asumir 8-12 hrs/semana o aceptar 20% al administrador, STR rinde más.`
+          : "La diferencia neta es chica. Lo que decide es cuánto tiempo quieres dedicarle.";
 
   // Veredicto unificado — tono visual del Patrón 1 según severidad.
   // COMPRAR + AJUSTA → neutral. BUSCAR OTRA → Signal Red (criticidad real).
@@ -129,6 +139,33 @@ export function HeroComparativa(p: Props) {
       <p className="font-body text-[15px] text-[var(--franco-text-secondary)] leading-relaxed mb-5">
         {bajada}
       </p>
+
+      {/* D1 — advertencia de fragilidad (break-even 90-110%). Signal Red en tono warn:
+          atención real (la ventaja no es sólida), no criticidad de veredicto. */}
+      {p.fragil && (
+        <div
+          className="rounded-xl border p-3.5 mb-5 flex items-start gap-3"
+          style={{
+            background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+            borderColor: "color-mix(in srgb, var(--signal-red) 30%, transparent)",
+          }}
+        >
+          <span
+            className="font-mono text-[9px] uppercase tracking-[2px] font-semibold shrink-0 mt-[3px]"
+            style={{ color: "var(--signal-red)" }}
+          >
+            Margen<br />frágil
+          </span>
+          <p className="font-body text-[12.5px] text-[var(--franco-text-secondary)] leading-snug">
+            El punto de equilibrio de renta corta queda al{" "}
+            <span className="font-mono font-medium text-[var(--franco-text)]">
+              {fmtPct((p.breakEvenPct ?? 0) * 100, 0)}
+            </span>{" "}
+            de la facturación típica de la zona. La ventaja de flujo existe, pero sin colchón:
+            la dejamos como decisión pareja hasta que el margen aguante una temporada floja.
+          </p>
+        </div>
+      )}
 
       {/* KPI principal: delta NOI mensual + tier zona */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

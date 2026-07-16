@@ -232,6 +232,8 @@ export function SharedComparativaClient(p: Props) {
             ltrFlujoMensual={ltrFlujoMensual}
             strFlujoMensual={strFlujoMensual}
             zona={p.strResults?.zonaSTR}
+            fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
+            breakEvenPct={p.strResults?.veredictoComparativo?.breakEvenPctDelMercado}
             currency={currency}
             ufValue={uf}
           />
