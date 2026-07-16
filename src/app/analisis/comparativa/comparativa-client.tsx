@@ -43,6 +43,10 @@ interface Props {
   banos: number;
   superficie: number;
   precioUF: number;
+  antiguedad?: number;
+  piePct?: number;
+  plazoAnios?: number;
+  tasaPct?: number;
   ltrScore: number;
   strScore: number;
   // Resultados nested (refactor Step 1+2)
@@ -260,6 +264,10 @@ export function ComparativaClient(p: Props) {
             precioUF={p.precioUF}
             dormitorios={p.dormitorios}
             banos={p.banos}
+            antiguedad={p.antiguedad}
+            piePct={p.piePct}
+            plazoAnios={p.plazoAnios}
+            tasaPct={p.tasaPct}
             deltaNOIMensual={deltaNOIMensual}
             findings={findings}
             ltrId={p.ltrId}

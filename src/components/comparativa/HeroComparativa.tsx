@@ -9,6 +9,8 @@
 // Solo tokens del design system — cero hardcode (prep light-mode).
 
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent } from "lucide-react";
 import type { RecomendacionModalidadAmbas } from "@/lib/types";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
@@ -26,6 +28,12 @@ interface Props {
   precioUF: number;
   dormitorios: number;
   banos: number;
+  // Datos de propiedad comunes a ambas modalidades (chips canon). El arriendo declarado
+  // (LTR) y el modo de gestión (STR) NO van: son inputs de una modalidad, no de la propiedad.
+  antiguedad?: number;
+  piePct?: number;
+  plazoAnios?: number;
+  tasaPct?: number;
   // Delta de lo que renta la operación (NOI): STR − LTR
   deltaNOIMensual: number;
   // TOP-3 diferencial (los primeros del orden dinámico)
@@ -110,11 +118,27 @@ export function HeroComparativa(p: Props) {
         {p.direccion && (
           <p className="font-body text-[12px] mt-1" style={{ color: "var(--franco-text-secondary)" }}>{p.direccion}</p>
         )}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3">
-          <Meta label="SUPERFICIE" value={`${p.superficie} m²`} />
-          <Meta label="PRECIO" value={fmtUF(p.precioUF)} />
-          <Meta label="$/M²" value={fmtUF(precioM2UF)} />
-          <Meta label="DORM · BAÑOS" value={`${p.dormitorios}D · ${p.banos}B`} />
+        {/* Chips canon (HeroLTR/HeroSTR): físicos / financieros comunes a ambas modalidades.
+            Respetan el toggle CLP/UF. Sin chip de arriendo (LTR) ni de gestión (STR). */}
+        <div className="mt-3 flex flex-col gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
+            <Chip icon={<BedDouble />} k={p.dormitorios != null ? String(p.dormitorios) : "—"} unit="dorm" />
+            <Chip icon={<Bath />} k={p.banos != null ? String(p.banos) : "—"} unit="baño" />
+            <Chip icon={<Ruler />} k={p.superficie > 0 ? String(p.superficie) : "—"} unit="m²" />
+            {p.antiguedad != null && <Chip icon={<Clock />} k={String(p.antiguedad)} unit="años" />}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <Chip icon={<Building2 />} k={p.currency === "UF" ? fmtUF(p.precioUF) : fmtMM(p.precioUF * p.ufValue)} />
+            <Chip icon={<Scaling />} k={`UF ${(Math.round(precioM2UF * 10) / 10).toLocaleString("es-CL")}`} unit="/m²" />
+            {p.piePct != null && (
+              <Chip
+                icon={<Percent />}
+                k={`${Math.round(p.piePct)}%`}
+                unit="pie"
+                sub={p.plazoAnios != null && p.tasaPct != null ? `· ${p.plazoAnios} años · ${p.tasaPct.toLocaleString("es-CL", { maximumFractionDigits: 2 })}%` : undefined}
+              />
+            )}
+          </div>
         </div>
       </div>
 
@@ -199,12 +223,24 @@ export function HeroComparativa(p: Props) {
   );
 }
 
-function Meta({ label, value }: { label: string; value: string }) {
+// CLP abreviado en millones ("$139,7 MM"), miles bajo $1 MM. Espejo de HeroLTR/HeroSTR.
+function fmtMM(clp: number): string {
+  if (Math.abs(clp) < 1_000_000) return "$" + Math.round(clp / 1000).toLocaleString("es-CL") + " mil";
+  return "$" + (clp / 1_000_000).toLocaleString("es-CL", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + " MM";
+}
+
+// ── Chip fino con ícono — réplica del canon HeroLTR/HeroSTR (mismos tokens) ──
+function Chip({ icon, k, unit, sub }: { icon: ReactNode; k: string; unit?: string; sub?: string }) {
   return (
-    <div>
-      <p className="font-mono text-[9px] uppercase tracking-[2px] mb-0.5" style={{ color: "var(--franco-text-muted)" }}>{label}</p>
-      <p className="font-mono text-[13px] font-medium" style={{ color: "var(--franco-text)" }}>{value}</p>
-    </div>
+    <span
+      className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 whitespace-nowrap flex-none"
+      style={{ border: "0.5px solid var(--franco-border)", background: "var(--franco-bg-alt)" }}
+    >
+      <span className="w-3 h-3 shrink-0 text-[var(--franco-text-tertiary)] [&>svg]:w-3 [&>svg]:h-3">{icon}</span>
+      <span className="font-mono text-[12px] font-medium text-[var(--franco-text)]">{k}</span>
+      {unit && <span className="font-mono text-[10px] text-[var(--franco-text-muted)] tracking-[0.02em]">{unit}</span>}
+      {sub && <span className="font-mono text-[9.5px] text-[var(--franco-text-muted)]">{sub}</span>}
+    </span>
   );
 }
 

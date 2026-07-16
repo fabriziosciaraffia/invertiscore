@@ -35,6 +35,10 @@ interface Props {
   banos: number;
   superficie: number;
   precioUF: number;
+  antiguedad?: number;
+  piePct?: number;
+  plazoAnios?: number;
+  tasaPct?: number;
   ltrScore: number;
   strScore: number;
   ltrResults: FullAnalysisResult | null;
@@ -205,6 +209,10 @@ export function SharedComparativaClient(p: Props) {
             precioUF={p.precioUF}
             dormitorios={p.dormitorios}
             banos={p.banos}
+            antiguedad={p.antiguedad}
+            piePct={p.piePct}
+            plazoAnios={p.plazoAnios}
+            tasaPct={p.tasaPct}
             deltaNOIMensual={deltaNOIMensual}
             findings={findings}
             ltrId={p.ltrId}

@@ -138,6 +138,10 @@ export default async function ShareComparativaPage({
       banos={ltr.banos ?? str.banos ?? 0}
       superficie={ltr.superficie ?? str.superficie ?? 0}
       precioUF={ltr.precio ?? str.precio ?? 0}
+      antiguedad={(ltr.input_data as unknown as Record<string, unknown> | null)?.antiguedad as number | undefined}
+      piePct={(ltr.input_data as unknown as Record<string, unknown> | null)?.piePct as number | undefined}
+      plazoAnios={(ltr.input_data as unknown as Record<string, unknown> | null)?.plazoCredito as number | undefined}
+      tasaPct={(ltr.input_data as unknown as Record<string, unknown> | null)?.tasaInteres as number | undefined}
       ltrScore={ltr.score ?? 0}
       strScore={strResults?.francoScore?.score ?? 0}
       ltrResults={ltrResults}
