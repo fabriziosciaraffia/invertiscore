@@ -21,7 +21,7 @@ const seeds: Record<string, AmbasBaseline> = {};
 for (const s of AMBAS_SEEDS) {
   const rec = recomputeAmbasSeed(s.key, frozen);
   if (!rec) { console.log(`  ⚠️  ${s.key} sin fixture frozen — omitido`); continue; }
-  seeds[s.key] = ambasFactsFromSeed(rec);
+  seeds[s.key] = ambasFactsFromSeed(rec, frozen[s.key]?.input_data);
 }
 
 const payload = {
@@ -35,5 +35,5 @@ const path = join(__dirname, "ambas-baseline.json");
 writeFileSync(path, JSON.stringify(payload, null, 2) + "\n", "utf8");
 console.log(`ambas-baseline.json escrito (${Object.keys(seeds).length} seeds) → ${path}`);
 for (const [k, b] of Object.entries(seeds)) {
-  console.log(`  ${k}: ${b.banda} reco=${b.recomendacion} fragil=${b.fragil} nd=${b.porAbsoluto} be=${b.bePct}% sobre=${b.sobrePct}% flip=${b.flipCambia}(${b.flipAuto}/${b.flipAdmin})`);
+  console.log(`  ${k}: ${b.banda} reco=${b.recomendacion} fragil=${b.fragil} flip=${b.flipCambia} · pirámide=[${b.findingsOrden}]`);
 }

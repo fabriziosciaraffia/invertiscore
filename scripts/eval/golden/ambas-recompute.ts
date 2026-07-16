@@ -13,6 +13,7 @@ import fs from "fs";
 import path from "path";
 import { calcShortTerm } from "../../../src/lib/engines/short-term-engine";
 import { buildAirbnbData } from "../../../src/lib/api-helpers/analisis-pipeline";
+import { buildFindingsComparativa, type FindingsCtx } from "../../../src/lib/comparativa-findings";
 import { AMBAS_SEEDS, loadFrozenAmbas, type FrozenFixtureAmbas } from "./ambas-seeds";
 
 // Reconstrucción de inputs idéntica al tier STR (str-recompute.buildInputs) — producción-fiel.
@@ -39,6 +40,39 @@ export interface AmbasBaseline {
   flipCambia: boolean;
   flipAuto: string;
   flipAdmin: string;
+  // D3: composición + orden dinámico de la pirámide (ids en orden). STR-self-contained
+  // (banda + amoblamiento + edificio); las cifras LTR-dependientes NO entran al baseline.
+  findingsOrden: string;
+}
+
+// Orden/composición de la pirámide desde el seed STR (LTR-fields como placeholders: no
+// afectan qué findings aparecen ni su orden, que dependen de banda + amoblamiento + edificio).
+function findingsOrdenDe(rec: any, d: any): string {
+  const vc = rec.veredictoComparativo;
+  const base = rec.escenarios?.base;
+  const ctx: FindingsCtx = {
+    banda: vc?.banda ?? "INDIFERENTE",
+    ltrFlujoMensual: 0, strFlujoMensual: base?.flujoCajaMensual ?? 0,
+    ltrNOIMensual: 0, strNOIMensual: base?.noiMensual ?? 0,
+    modoGestion: (vc?.flipGestion?.modoActual ?? "auto"),
+    comisionAdministrador: typeof d?.comisionAdministrador === "number" ? d.comisionAdministrador : 0.2,
+    strAutoNOIMensual: rec.comparativa?.str_auto?.noiMensual ?? 0,
+    strAdminNOIMensual: rec.comparativa?.str_admin?.noiMensual ?? 0,
+    ingresoBrutoMensual: base?.ingresoBrutoMensual ?? 0,
+    flipCambiaVeredicto: vc?.flipGestion?.cambiaVeredicto ?? false,
+    recomendacionAuto: vc?.flipGestion?.recomendacionAuto ?? "",
+    recomendacionAdmin: vc?.flipGestion?.recomendacionAdmin ?? "",
+    ltrPatY10: 0, strPatY10: 0,
+    breakEvenPctDelMercado: rec.breakEvenPctDelMercado ?? 0,
+    breakEvenRevenueAnual: rec.breakEvenRevenueAnual ?? 0,
+    zonaTier: rec.zonaSTR?.tierZona, zonaPercentilADR: rec.zonaSTR?.percentilADR,
+    zonaPercentilOcupacion: rec.zonaSTR?.percentilOcupacion, zonaComuna: rec.zonaSTR?.comuna,
+    edificioPermiteAirbnb: typeof d?.edificioPermiteAirbnb === "string" ? d.edificioPermiteAirbnb : "no_seguro",
+    ltrCapitalInicial: 0, ltrCapitalEsSimetrico: false,
+    strCapitalInvertido: rec.capitalInvertido ?? 0,
+    costoAmoblamiento: typeof d?.costoAmoblamiento === "number" ? d.costoAmoblamiento : 0,
+  };
+  return buildFindingsComparativa(ctx, "CLP", 40000).map((f) => f.id).join(",");
 }
 
 // Recompute determinístico de UN seed (reusado por el tier de checks y por ambas-accept).
@@ -54,7 +88,7 @@ export function recomputeAmbasSeed(key: string, frozen: Record<string, FrozenFix
 const r1 = (x: number | null | undefined): number | null =>
   x == null || !isFinite(x) ? null : Math.round(x * 1000) / 10; // ×100 con 1 decimal
 
-export function ambasFactsFromSeed(rec: any): AmbasBaseline {
+export function ambasFactsFromSeed(rec: any, inputData?: any): AmbasBaseline {
   const vc = rec.veredictoComparativo;
   return {
     recomendacion: vc?.recomendacion ?? "?",
@@ -66,6 +100,7 @@ export function ambasFactsFromSeed(rec: any): AmbasBaseline {
     flipCambia: vc?.flipGestion?.cambiaVeredicto ?? false,
     flipAuto: vc?.flipGestion?.recomendacionAuto ?? "?",
     flipAdmin: vc?.flipGestion?.recomendacionAdmin ?? "?",
+    findingsOrden: findingsOrdenDe(rec, inputData ?? {}),
   };
 }
 
@@ -96,6 +131,7 @@ function checkSeed(f: AmbasBaseline, base: AmbasBaseline): { hard: number; drift
   H("flipCambia", f.flipCambia === base.flipCambia, `${f.flipCambia} vs ${base.flipCambia}`);
   H("flipAuto", f.flipAuto === base.flipAuto, `${f.flipAuto} vs ${base.flipAuto}`);
   H("flipAdmin", f.flipAdmin === base.flipAdmin, `${f.flipAdmin} vs ${base.flipAdmin}`);
+  H("findingsOrden", f.findingsOrden === base.findingsOrden, `${f.findingsOrden} vs ${base.findingsOrden}`);
   N("bePct", f.bePct, base.bePct, 0.5);
   N("sobrePct", f.sobrePct, base.sobrePct, 0.5);
   return { hard, drift, lines };
@@ -110,13 +146,13 @@ export function runAmbasTier(): { hard: number; drift: number } {
   for (const seed of AMBAS_SEEDS) {
     const rec = recomputeAmbasSeed(seed.key, frozen);
     if (!rec) { console.log(`  ⚠️  ${seed.key}  sin fixture frozen`); hard++; continue; }
-    const f = ambasFactsFromSeed(rec);
+    const f = ambasFactsFromSeed(rec, frozen[seed.key]?.input_data);
     let a = { hard: 0, drift: 0, lines: [] as string[] };
     if (baseline && baseline[seed.key]) a = checkSeed(f, baseline[seed.key]);
     else if (baseline) { console.log(`         (sin baseline para ${seed.key})`); }
     hard += a.hard; drift += a.drift;
     const status = a.hard > 0 ? "✗ FAIL" : a.drift > 0 ? "~ DRIFT" : "✓ PASS";
-    console.log(`  ${status}  ${seed.key}  ${f.banda} · reco=${f.recomendacion} · be=${f.bePct}% · sobre=${f.sobrePct}% · flip=${f.flipCambia}`);
+    console.log(`  ${status}  ${seed.key}  ${f.banda} · reco=${f.recomendacion} · be=${f.bePct}% · flip=${f.flipCambia} · [${f.findingsOrden}]`);
     for (const l of a.lines) console.log(l);
     if (!baseline) console.log(`         (sin ambas-baseline.json — corré ambas-accept.ts para congelar)`);
   }

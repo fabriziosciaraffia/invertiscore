@@ -10,7 +10,8 @@
       "sobrePct": 20.4,
       "flipCambia": true,
       "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO"
+      "flipAdmin": "LTR_PREFERIDO",
+      "findingsOrden": "breakeven,flujo,gestion,capital,patrimonio"
     },
     "AG-2-fragil-borde": {
       "recomendacion": "INDIFERENTE",
@@ -21,7 +22,8 @@
       "sobrePct": 47,
       "flipCambia": true,
       "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "INDIFERENTE"
+      "flipAdmin": "INDIFERENTE",
+      "findingsOrden": "breakeven,flujo,gestion,capital,patrimonio"
     },
     "AG-3-conflictiva-moneda": {
       "recomendacion": "INDIFERENTE",
@@ -32,7 +34,8 @@
       "sobrePct": 26.6,
       "flipCambia": true,
       "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO"
+      "flipAdmin": "LTR_PREFERIDO",
+      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
     },
     "AG-4-nd-degenerado-clara": {
       "recomendacion": "STR_VENTAJA_CLARA",
@@ -43,7 +46,8 @@
       "sobrePct": 321.5,
       "flipCambia": true,
       "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "INDIFERENTE"
+      "flipAdmin": "INDIFERENTE",
+      "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     },
     "AG-5-nd-degenerado-4ea0": {
       "recomendacion": "STR_VENTAJA_CLARA",
@@ -54,7 +58,8 @@
       "sobrePct": -3483.4,
       "flipCambia": false,
       "flipAuto": "STR_VENTAJA_CLARA",
-      "flipAdmin": "STR_VENTAJA_CLARA"
+      "flipAdmin": "STR_VENTAJA_CLARA",
+      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
     },
     "AG-6-ltr-preferido": {
       "recomendacion": "LTR_PREFERIDO",
@@ -65,7 +70,8 @@
       "sobrePct": -53.2,
       "flipCambia": false,
       "flipAuto": "LTR_PREFERIDO",
-      "flipAdmin": "LTR_PREFERIDO"
+      "flipAdmin": "LTR_PREFERIDO",
+      "findingsOrden": "flujo,breakeven,gestion,regulatorio,capital,patrimonio"
     },
     "AG-7-indiferente-5-15": {
       "recomendacion": "INDIFERENTE",
@@ -76,7 +82,8 @@
       "sobrePct": 12.2,
       "flipCambia": true,
       "flipAuto": "INDIFERENTE",
-      "flipAdmin": "LTR_PREFERIDO"
+      "flipAdmin": "LTR_PREFERIDO",
+      "findingsOrden": "flujo,breakeven,gestion,capital,patrimonio"
     }
   }
 }
