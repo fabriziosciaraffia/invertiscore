@@ -1047,33 +1047,45 @@ export interface AIAnalysisSTRv2 {
   francoCaveat?: string;
 }
 
-// ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Commit 3b · 2026-05-12) ──
-// Schema canónico para la narrativa del landing unificado de modalidad=Ambas.
-// 4 ángulos doctrinales (analysis-voice-franco):
-//   1. quienDeberiasSer  — perfil inversor + tolerancia operativa requerida para STR
-//   2. balance           — qué cambia en tu balance si eliges una vs otra
-//   3. switchPath        — viabilidad y costo de migrar LTR↔STR a futuro
-//   4. cierre            — posición personal de Franco (skill §1.10)
-// Persistencia: cacheada permanente en `ltr.results.comparativaAI` (jsonb).
+// ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Fase C · Plan C) ──
+// Schema canónico para la prosa del landing unificado de modalidad=Ambas. Fase C
+// reduce la prosa a APERTURA (motor) + 3 MOVIMIENTOS (IA): la pirámide diferencial
+// (comparativa-findings.ts) ya argumenta las cifras, así que la prosa narra solo lo
+// que las cards no pueden — el perfil, la migración y la condición.
+//   apertura (motor)  — fraseCanonica del #1 diferencial, coherente con los 4 estados
+//   1. quienDeberiasSer — para quién es cada modalidad (perfil, sin recitar cards)
+//   2. switchPath        — viabilidad y costo de migrar LTR↔STR a futuro
+//   3. cierre            — la CONDICIÓN ("esto se sostiene si…") + costo emocional; la
+//                          POSICIÓN de Franco vive como caja en el hero, la prosa NO la duplica
+// Persistencia: cacheada en `ltr.results.comparativaAI` (jsonb) con `promptVersion`;
+// invalidación lazy-on-open (la página del owner regenera al abrir si quedó vieja).
 export type RecomendacionModalidadAmbas =
   | "LTR_PREFERIDO"
   | "STR_VENTAJA_CLARA"
   | "INDIFERENTE";
 
 export interface AIAnalysisComparativa {
-  // Headline — 1 frase máx 25 palabras, refleja recomendacion del motor.
-  headline: string;
+  // Apertura DETERMINÍSTICA (motor, Plan C · Fase C): fraseCanonica del #1
+  // diferencial, coherente con los 4 estados. La escribe buildAperturaComparativa,
+  // no la IA. Legacy v0: `headline` (AI) — el renderer cae a `headline` cuando
+  // `apertura` falta (prosa vieja sin regenerar).
+  apertura?: string;
+  headline?: string;                 // legacy v0 (AI) — fallback de render
   conviene: {
     quienDeberiasSer: string;
-    balance: string;
     switchPath: string;
-    cierre: string;
+    cierre: string;                  // condición + costo emocional (la posición vive en el hero)
+    balance?: string;                // DEPRECADO (prosa v0) — ya no se genera ni renderiza
   };
   // Commit E.2 · 2026-05-13 — campo único de recomendación. Antes coexistían
   // `engineRecommendation`, `recomendacionFranco` y `recomendacionRationale`
   // con divergencia opcional. La doctrina post-E.2 colapsa a un solo valor:
   // el motor recomienda, la IA narra el matiz, no contradice.
   recomendacion: RecomendacionModalidadAmbas;
+  // Fase C — versión del prompt con que se generó la prosa. Driver de la
+  // invalidación lazy-on-open: si `promptVersion` < PROMPT_VERSION_AMBAS, la
+  // página del owner la regenera al abrir. Ausente ⇒ prosa v0 (siempre stale).
+  promptVersion?: number;
   // Audit-only NO renderizado. Si la IA cree que la recomendación del motor
   // es incorrecta, lo reporta acá para revisión humana.
   francoCaveat?: string;
