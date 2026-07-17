@@ -33,7 +33,9 @@ function colsNivel3(n: number): string {
 }
 
 export function PiramideComparativa({ findings, ltrId, strId }: Props) {
-  const [puente, setPuente] = useState<FindingComparativa | null>(null);
+  // A7: índice (no el finding) para derivar prev/next desde el ORDEN de la pirámide
+  // (fuente única, mismo patrón que AnalysisDrawer.sequence).
+  const [puenteIdx, setPuenteIdx] = useState<number | null>(null);
   if (findings.length === 0) return null;
 
   const nivel1 = findings[0];
@@ -44,7 +46,7 @@ export function PiramideComparativa({ findings, ltrId, strId }: Props) {
     <div className="mb-8">
       <div className="flex items-baseline gap-3 mb-4">
         <p className="font-mono text-[10px] uppercase tracking-[3px] text-[var(--franco-text-secondary)]">
-          02 · LO QUE DECIDE
+          LO QUE DECIDE
         </p>
         <h2 className="font-heading text-[19px] sm:text-[22px] font-bold text-[var(--franco-text)] leading-tight">
           Dónde se juega la diferencia
@@ -56,13 +58,13 @@ export function PiramideComparativa({ findings, ltrId, strId }: Props) {
 
       <div className="flex flex-col gap-3">
         {/* Nivel 1 — dominante, ancho completo */}
-        <FindingCard finding={nivel1} nivel={1} onOpen={() => setPuente(nivel1)} />
+        <FindingCard finding={nivel1} nivel={1} onOpen={() => setPuenteIdx(0)} />
 
         {/* Nivel 2 — los dos siguientes, en fila */}
         {nivel2.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {nivel2.map((f) => (
-              <FindingCard key={f.id} finding={f} nivel={2} onOpen={() => setPuente(f)} />
+            {nivel2.map((f, i) => (
+              <FindingCard key={f.id} finding={f} nivel={2} onOpen={() => setPuenteIdx(1 + i)} />
             ))}
           </div>
         )}
@@ -70,14 +72,21 @@ export function PiramideComparativa({ findings, ltrId, strId }: Props) {
         {/* Nivel 3 — base de chips recesivos (educativos + condicionales) */}
         {nivel3.length > 0 && (
           <div className={`grid grid-cols-1 ${colsNivel3(nivel3.length)} gap-3`}>
-            {nivel3.map((f) => (
-              <FindingCard key={f.id} finding={f} nivel={3} onOpen={() => setPuente(f)} />
+            {nivel3.map((f, i) => (
+              <FindingCard key={f.id} finding={f} nivel={3} onOpen={() => setPuenteIdx(3 + i)} />
             ))}
           </div>
         )}
       </div>
 
-      <DrawerPuente finding={puente} ltrId={ltrId} strId={strId} onClose={() => setPuente(null)} />
+      <DrawerPuente
+        findings={findings}
+        idx={puenteIdx}
+        ltrId={ltrId}
+        strId={strId}
+        onClose={() => setPuenteIdx(null)}
+        onNavigate={setPuenteIdx}
+      />
     </div>
   );
 }
@@ -158,14 +167,24 @@ function FindingCard({ finding: f, nivel, onOpen }: { finding: FindingComparativ
 }
 
 // ─── Drawer puente (D4) · planta qué se compara → aritmética → links al hijo ──
-function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingComparativa | null; ltrId: string; strId: string; onClose: () => void }) {
+// A7: navegación prev/next entre drawers desde el ORDEN de la pirámide (fuente única),
+// patrón AnalysisDrawer (sequence + flechas + ArrowLeft/Right). Label humano = kicker.
+function DrawerPuente({ findings, idx, ltrId, strId, onClose, onNavigate }: { findings: FindingComparativa[]; idx: number | null; ltrId: string; strId: string; onClose: () => void; onNavigate: (i: number) => void }) {
+  const prevIdx = idx != null && idx > 0 ? idx - 1 : null;
+  const nextIdx = idx != null && idx < findings.length - 1 ? idx + 1 : null;
   useEffect(() => {
-    if (!f) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", esc);
+    if (idx == null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowRight" && nextIdx != null) onNavigate(nextIdx);
+      if (e.key === "ArrowLeft" && prevIdx != null) onNavigate(prevIdx);
+    };
+    document.addEventListener("keydown", onKey);
     document.body.style.overflow = "hidden";
-    return () => { document.removeEventListener("keydown", esc); document.body.style.overflow = ""; };
-  }, [f, onClose]);
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+  }, [idx, nextIdx, prevIdx, onClose, onNavigate]);
+  if (idx == null) return null;
+  const f = findings[idx];
   if (!f) return null;
 
   const hrefHijo = (l: { hijo: "ltr" | "str"; seccion: string }) =>
@@ -251,6 +270,38 @@ function DrawerPuente({ finding: f, ltrId, strId, onClose }: { finding: FindingC
                 </span>
               </Link>
             ))}
+          </div>
+
+          {/* A7 · Navegación prev/next entre drawers (orden de la pirámide) */}
+          <div className="flex justify-between gap-2 mt-6 pt-4 border-t border-[var(--franco-border)]">
+            {prevIdx != null ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(prevIdx)}
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+              >
+                ← {findings[prevIdx].kicker}
+              </button>
+            ) : (
+              <span />
+            )}
+            {nextIdx != null ? (
+              <button
+                type="button"
+                onClick={() => onNavigate(nextIdx)}
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+              >
+                {findings[nextIdx].kicker} →
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] px-2 py-1.5"
+              >
+                Cerrar ✕
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -261,7 +261,7 @@ export function ComparativaClient(p: Props) {
           <div className="mb-8">
             <div className="mb-4">
               <p className="font-mono text-[10px] uppercase tracking-[3px] mb-1" style={{ color: "var(--franco-text-secondary)" }}>
-                03 · LA EVIDENCIA
+                LA EVIDENCIA
               </p>
               <h2 className="font-heading text-[19px] sm:text-[22px] font-bold leading-tight" style={{ color: "var(--franco-text)" }}>
                 El destino es el mismo; el camino, distinto

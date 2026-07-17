@@ -16,6 +16,7 @@ import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent } from "luci
 import type { RecomendacionModalidadAmbas, AIAnalysisComparativa } from "@/lib/types";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -98,11 +99,6 @@ const SEGMENT_SHORT: Record<Estado, string> = {
   corta: "Corta",
 };
 
-function verdictTone(verdict: Verdict | null): boolean {
-  // criticidad real: solo BUSCAR OTRA del lado ganador tiñe de rojo el mini-badge.
-  return verdict === "BUSCAR OTRA";
-}
-
 export function HeroComparativa(p: Props) {
   const estado = resolverEstado(p.recomendacion, p.fragil);
   const critico = estado === "fragil";
@@ -116,6 +112,10 @@ export function HeroComparativa(p: Props) {
   const precioM2UF = p.superficie > 0 ? p.precioUF / p.superficie : 0;
   const cierreCondicion = p.ai?.conviene?.cierre?.trim() || "";
   const fechaFirma = formatFecha(p.createdAt);
+  // A1 · título canon "Dirección corta · Comuna" (formatDireccionDisplay = calle+número
+  // antes de la 1ª coma, sin código postal/región). Fallback al nombre / "Depto NDNB".
+  const direccionCorta = formatDireccionDisplay(p.direccion);
+  const tituloPrincipal = direccionCorta || p.nombre || `Depto ${p.dormitorios}D${p.banos}B`;
 
   return (
     <div
@@ -126,12 +126,9 @@ export function HeroComparativa(p: Props) {
       <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
         <div className="min-w-0">
           <h1 className="font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
-            {p.nombre || `Depto ${p.dormitorios}D${p.banos}B`}
+            {tituloPrincipal}
             {p.comuna && <span className="font-normal text-[var(--franco-text-secondary)]"> · {p.comuna}</span>}
           </h1>
-          {p.direccion && (
-            <p className="font-body text-[12px] mt-1 m-0" style={{ color: "var(--franco-text-secondary)" }}>{p.direccion}</p>
-          )}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <span className="hidden sm:inline font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] whitespace-nowrap">
@@ -156,11 +153,11 @@ export function HeroComparativa(p: Props) {
           >
             {VERDICT_LABEL[estado]}
           </div>
-          <p className="font-heading font-bold text-[16px] leading-snug mt-2.5 m-0" style={{ color: "var(--franco-text)" }}>
+          <p className="font-body text-[13px] leading-snug mt-2 m-0" style={{ color: "var(--franco-text-secondary)" }}>
             {SUB[estado]}
           </p>
 
-          {/* Segmentos categóricos (G4): 4 estados, activo marcado */}
+          {/* Barra de estados categórica (A2): eje continuo con marcador en el activo */}
           <VeredictoSegments estado={estado} />
 
           {/* Delta badge — dirección en palabras */}
@@ -217,8 +214,8 @@ export function HeroComparativa(p: Props) {
 
         {/* Mini-scores de los hijos (evidencia secundaria) — stacked, donde el canon pone el mapa */}
         <div className="flex flex-col gap-3">
-          <MiniScore href={`/analisis/${p.ltrId}`} label="RENTA LARGA" score={p.ltrScore} verdict={p.ltrVerdict} red={verdictTone(p.ltrVerdict)} />
-          <MiniScore href={`/analisis/renta-corta/${p.strId}`} label="RENTA CORTA" score={p.strScore} verdict={p.strVerdict} red={verdictTone(p.strVerdict)} />
+          <MiniScore href={`/analisis/${p.ltrId}`} label="RENTA LARGA" score={p.ltrScore} verdict={p.ltrVerdict} />
+          <MiniScore href={`/analisis/renta-corta/${p.strId}`} label="RENTA CORTA" score={p.strScore} verdict={p.strVerdict} />
         </div>
       </div>
 
@@ -243,10 +240,10 @@ export function HeroComparativa(p: Props) {
                 </div>
               )}
               {p.ai.conviene?.quienDeberiasSer && (
-                <Movimiento label="01 · Quién tienes que ser" body={p.ai.conviene.quienDeberiasSer} />
+                <Movimiento label="Quién tienes que ser" body={p.ai.conviene.quienDeberiasSer} />
               )}
               {p.ai.conviene?.switchPath && (
-                <Movimiento label="02 · ¿Y si migro después?" body={p.ai.conviene.switchPath} />
+                <Movimiento label="¿Y si migro después?" body={p.ai.conviene.switchPath} />
               )}
             </div>
           ) : (
@@ -254,33 +251,6 @@ export function HeroComparativa(p: Props) {
               Los datos y la tabla comparativa están disponibles arriba.
             </p>
           )}
-
-          {/* Caja "La posición de Franco" — borde Signal Red (G2) + cierre-condición */}
-          <div
-            className="mt-5"
-            style={{
-              borderLeft: "3px solid var(--signal-red)",
-              borderRadius: "0 8px 8px 0",
-              background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
-            }}
-          >
-            <div className="px-4 py-3.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                La posición de Franco
-              </span>
-              <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
-                {FRANCO_POS[estado]}
-              </p>
-              {/* Cierre-condición (mov. 3 de la prosa) — junto a la posición */}
-              {p.aiLoading && !p.ai ? (
-                <div className="mt-2.5"><SkeletonLine width="88%" /></div>
-              ) : cierreCondicion ? (
-                <div className="font-body text-[13px] leading-[1.55] text-[var(--franco-text-secondary)] mt-2.5 pt-2.5" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}>
-                  {renderProsaMono(cierreCondicion)}
-                </div>
-              ) : null}
-            </div>
-          </div>
         </div>
 
         {/* TOP-3 diferencial + puente al acto 2 (G8) */}
@@ -311,6 +281,34 @@ export function HeroComparativa(p: Props) {
         </div>
       </div>
 
+      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) · borde Signal Red (G2) ═══ */}
+      <div className="px-6 md:px-8 pb-4">
+        <div
+          style={{
+            borderLeft: "3px solid var(--signal-red)",
+            borderRadius: "0 8px 8px 0",
+            background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+          }}
+        >
+          <div className="px-4 py-3.5">
+            <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
+              La posición de Franco
+            </span>
+            <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0 max-w-[80ch]">
+              {FRANCO_POS[estado]}
+            </p>
+            {/* Cierre-condición (mov. 3 de la prosa) — junto a la posición */}
+            {p.aiLoading && !p.ai ? (
+              <div className="mt-2.5"><SkeletonLine width="60%" /></div>
+            ) : cierreCondicion ? (
+              <div className="font-body text-[13px] leading-[1.55] text-[var(--franco-text-secondary)] mt-2.5 pt-2.5 max-w-[80ch]" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}>
+                {renderProsaMono(cierreCondicion)}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 
       {/* ═══ PIE · FIRMA (G6) ═══ */}
@@ -324,27 +322,56 @@ export function HeroComparativa(p: Props) {
   );
 }
 
-// ── Segmentos categóricos del veredicto (G4) ─────────────────────────────────
+// ── Barra de estados (A2) — adaptación categórica de la ScoreBar canon ───────
+// Eje continuo (mismo shape que HeroLTR/HeroSTR ScoreBar) con marcador en el estado
+// activo, en vez de una barra de score 0-100. Los 4 estados son 4 posiciones de MENOS
+// a MÁS sobre-renta (larga → parejas → frágil → corta). Track monocromo (color = solo
+// atención, §sistema); el marcador vira a Signal Red solo en VENTAJA FRÁGIL.
+const SEGMENT_POS: Record<Estado, number> = { larga: 12.5, parejas: 37.5, fragil: 62.5, corta: 87.5 };
 function VeredictoSegments({ estado }: { estado: Estado }) {
+  const pos = SEGMENT_POS[estado];
+  const red = estado === "fragil";
   return (
     <div className="mt-4">
-      <div className="flex gap-1.5">
+      <div
+        className="relative h-[7px] rounded-[4px]"
+        style={{ background: "linear-gradient(90deg, var(--franco-border) 0%, var(--franco-text-tertiary) 100%)" }}
+      >
+        {/* Ticks de los 4 estados (recesivos) */}
+        {SEGMENT_ORDER.map((s) => (
+          <div
+            key={s}
+            className="absolute top-1/2 w-[2px] h-[2px] rounded-full"
+            style={{ left: `${SEGMENT_POS[s]}%`, transform: "translate(-50%,-50%)", background: "var(--franco-bg)", opacity: s === estado ? 0 : 0.6 }}
+            aria-hidden
+          />
+        ))}
+        {/* Marcador en el estado activo */}
+        <div
+          className="absolute top-1/2 w-[14px] h-[14px] rounded-full"
+          style={{
+            left: `${pos}%`,
+            transform: "translate(-50%,-50%)",
+            background: red ? "var(--signal-red)" : "var(--franco-text)",
+            border: "3px solid var(--franco-bg)",
+            boxShadow: "0 0 0 1px var(--franco-border-strong)",
+          }}
+        />
+      </div>
+      <div className="flex mt-2.5">
         {SEGMENT_ORDER.map((s) => {
           const on = s === estado;
-          const red = on && s === "fragil";
           return (
-            <div
+            <span
               key={s}
-              className="flex-1 rounded-md text-center py-1.5 font-mono text-[9.5px] uppercase tracking-[0.06em] transition-colors"
+              className="flex-1 text-center font-mono text-[9.5px] uppercase tracking-[0.05em]"
               style={{
-                background: on ? (red ? "var(--signal-red)" : "var(--franco-text)") : "var(--franco-bg-alt)",
-                color: on ? (red ? "#fff" : "var(--franco-bg)") : "var(--franco-text-muted)",
-                border: on ? "none" : "0.5px solid var(--franco-border)",
+                color: on ? (s === "fragil" ? "var(--signal-red)" : "var(--franco-text)") : "var(--franco-text-muted)",
                 fontWeight: on ? 700 : 500,
               }}
             >
               {SEGMENT_SHORT[s]}
-            </div>
+            </span>
           );
         })}
       </div>
@@ -505,21 +532,35 @@ function FindingTooltip({ term, tip }: { term: string; tip: string }) {
   );
 }
 
-function MiniScore({ href, label, score, verdict, red }: { href: string; label: string; score: number; verdict: Verdict | null; red: boolean }) {
+// Badge de veredicto de la mini-card — espejo del VerdictBadge canon (HeroLTR/STR),
+// tamaño reducido. COMPRAR = Ink/blanco · AJUSTA = outline rojo · BUSCAR OTRA = rojo/blanco.
+function MiniVerdictBadge({ verdict }: { verdict: Verdict | null }) {
+  if (!verdict) return <span className="font-mono text-[10px]" style={{ color: "var(--franco-text-muted)" }}>—</span>;
+  const isCompra = verdict === "COMPRAR";
+  const isAjusta = verdict === "AJUSTA SUPUESTOS";
+  const bg = isCompra ? "var(--franco-text)" : isAjusta ? "transparent" : "var(--signal-red)";
+  const color = isCompra ? "var(--franco-bg)" : isAjusta ? "var(--signal-red)" : "#fff";
+  const border = isAjusta ? "0.5px solid color-mix(in srgb, var(--signal-red) 40%, transparent)" : undefined;
+  return (
+    <span className="inline-block font-mono text-[9px] font-bold uppercase tracking-[0.05em] px-1.5 py-0.5 rounded" style={{ background: bg, color, border }}>
+      {verdict}
+    </span>
+  );
+}
+
+function MiniScore({ href, label, score, verdict }: { href: string; label: string; score: number; verdict: Verdict | null }) {
   return (
     <Link
       href={href}
-      className="rounded-xl border p-3 flex items-center gap-3 transition-colors"
+      className="rounded-xl border p-3.5 flex items-center gap-3.5 transition-colors hover:border-[var(--franco-text-secondary)]"
       style={{ borderColor: "var(--franco-border)", background: "var(--franco-bg-alt)" }}
     >
-      <span className="font-mono font-bold text-[26px] leading-none" style={{ color: "var(--franco-text)" }}>{score}</span>
-      <div className="min-w-0">
+      <span className="font-mono font-bold text-[32px] leading-none tracking-[-0.02em]" style={{ color: "var(--franco-text)" }}>{score}</span>
+      <div className="min-w-0 flex flex-col gap-1">
         <p className="font-mono text-[9px] uppercase tracking-[0.05em] m-0" style={{ color: "var(--franco-text-muted)" }}>{label}</p>
-        <p className="font-mono text-[10.5px] font-medium mt-0.5 m-0" style={{ color: red ? "var(--signal-red)" : "var(--franco-text)" }}>
-          {verdict ?? "—"}
-        </p>
+        <MiniVerdictBadge verdict={verdict} />
       </div>
-      <span className="font-mono text-[10px] uppercase tracking-[0.04em] ml-auto" style={{ color: "var(--signal-red)" }}>Ver →</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.04em] ml-auto shrink-0" style={{ color: "var(--signal-red)" }}>Ver →</span>
     </Link>
   );
 }
