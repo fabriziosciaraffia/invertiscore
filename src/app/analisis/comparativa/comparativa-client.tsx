@@ -13,7 +13,7 @@ import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
-import { NarrativaIAComparativa } from "@/components/comparativa/NarrativaIAComparativa";
+import { useComparativaAI } from "@/components/comparativa/use-comparativa-ai";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
@@ -53,6 +53,7 @@ interface Props {
   ltrResults: FullAnalysisResult | null;
   strResults: ShortTermResult | null;
   cachedAI: AIAnalysisComparativa | null;
+  createdAt?: string;
   // Inputs específicos (necesarios para tabla + pirámide)
   costoAmoblamiento: number;
   modoGestion: "auto" | "admin";
@@ -65,39 +66,6 @@ interface Props {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable: boolean;
-}
-
-// ─── CurrencyToggle compartido ───────────────────────────────────────────
-function CurrencyToggle({
-  currency, onToggle, uf,
-}: { currency: "CLP" | "UF"; onToggle: () => void; uf: number }) {
-  return (
-    <div className="flex items-center justify-between border border-[var(--franco-border)] bg-[var(--franco-card)] rounded-2xl px-4 py-3">
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          className="relative flex h-8 w-20 items-center rounded-full bg-[var(--franco-border)] p-1 transition-colors"
-          aria-label="Cambiar moneda"
-        >
-          <div
-            className={`absolute h-6 w-9 rounded-full bg-[var(--franco-text)] transition-transform ${currency === "UF" ? "translate-x-[40px]" : "translate-x-0"}`}
-          />
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "CLP" ? "text-[var(--franco-bg)]" : "text-[var(--franco-text-secondary)]"}`}>
-            CLP
-          </span>
-          <span className={`relative z-10 flex-1 text-center text-xs font-medium ${currency === "UF" ? "text-[var(--franco-bg)]" : "text-[var(--franco-text-secondary)]"}`}>
-            UF
-          </span>
-        </button>
-        {currency === "CLP" && (
-          <span className="text-xs text-[var(--franco-text-secondary)]">
-            UF = ${uf.toLocaleString("es-CL")}
-          </span>
-        )}
-      </div>
-    </div>
-  );
 }
 
 // ─── Fallback de recomendacionModalidad para análisis legacy ─────────────
@@ -124,6 +92,12 @@ export function ComparativaClient(p: Props) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [deleting, setDeleting] = useState(false);
   const uf = p.ufValue;
+
+  // Prosa comparativa (Fase C) — integrada al hero. canGenerate=true: si el cache
+  // está vacío/viejo, el hook hace fetch → el endpoint regenera (lazy-on-open).
+  const { ai: comparativaAI, loading: aiLoading } = useComparativaAI(
+    p.ltrId, p.strId, p.cachedAI, true,
+  );
 
   // Pirámide diferencial (D3) — findings motor-templated, recomputados por moneda.
   const findings = useMemo(() => {
@@ -244,16 +218,7 @@ export function ComparativaClient(p: Props) {
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-8">
-          {/* Toggle moneda */}
-          <div className="mb-5">
-            <CurrencyToggle
-              currency={currency}
-              onToggle={() => setCurrency((c) => (c === "CLP" ? "UF" : "CLP"))}
-              uf={uf}
-            />
-          </div>
-
-          {/* ── ACTO 1 · Hero — veredicto de modalidad protagonista + TOP-3 + minis + posición ── */}
+          {/* ── ACTO 1 · Hero — veredicto + prosa integrada + posición + TOP-3 + toggle (F-C3b) ── */}
           <HeroComparativa
             recomendacion={recomendacion}
             fragil={p.strResults?.veredictoComparativo?.fragil ?? false}
@@ -276,13 +241,20 @@ export function ComparativaClient(p: Props) {
             ltrVerdict={ltrVerdict}
             strScore={p.strScore}
             strVerdict={strVerdict}
+            ai={comparativaAI}
+            aiLoading={aiLoading}
+            createdAt={p.createdAt}
             currency={currency}
+            onCurrencyChange={setCurrency}
             ufValue={uf}
           />
 
           {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}
+          {/* id ancla del puente "Cómo pesa cada diferencia ↓" del hero (G8) */}
           {findings.length > 0 && (
-            <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
+            <div id="piramide-comparativa" className="scroll-mt-20">
+              <PiramideComparativa findings={findings} ltrId={p.ltrId} strId={p.strId} />
+            </div>
           )}
 
           {/* ── ACTO 3 · La evidencia — superficie recesiva que respalda la pirámide ── */}
@@ -321,10 +293,6 @@ export function ComparativaClient(p: Props) {
               </div>
             )}
 
-            {/* Slot de prosa IA (la vieja hasta Fase C, mismo lugar) */}
-            <div className="mt-4">
-              <NarrativaIAComparativa ltrId={p.ltrId} strId={p.strId} cached={p.cachedAI} />
-            </div>
           </div>
 
           {/* Reclasificación de drawers viejos: Zona → F4 · Riesgos → F5 · Sensibilidad → hijos.

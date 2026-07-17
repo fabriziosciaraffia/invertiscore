@@ -201,6 +201,7 @@ export default async function ComparativaPage({
           ? ltrResults.comparativaAI
           : null
       }
+      createdAt={ltr.created_at ?? undefined}
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
