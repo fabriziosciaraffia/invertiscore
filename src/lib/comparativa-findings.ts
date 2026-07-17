@@ -253,7 +253,7 @@ function buildPatrimonio(x: FindingsCtx, c: Currency, uf: number): FindingCompar
     ksub: iguales ? "IGUAL EN LAS DOS · A 10 AÑOS" : `LARGA ${money(lPat, c, uf)} · CORTA ${money(sPat, c, uf)}`,
     // C5: concepto → evidencia (mismo número) → por qué. El "entonces qué" ya está en el titular; no repetir.
     cuerpo: iguales
-      ? `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito: acá, ${money(lPat, c, uf)} en las dos modalidades. Es idéntico porque la propiedad se valoriza y la deuda se amortiza igual, la arriendes corto o largo — arrendar es lo que hacés con el activo, no lo que lo construye.`
+      ? `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito: acá, ${money(lPat, c, uf)} en las dos modalidades. Es idéntico porque la propiedad se valoriza y la deuda se amortiza igual, la arriendes corto o largo — arrendar es lo que haces con el activo, no lo que lo construye.`
       : `El patrimonio a 10 años es lo que te queda si vendes y saldas el crédito: ${money(lPat, c, uf)} en renta larga y ${money(sPat, c, uf)} en renta corta. La propiedad se valoriza y la deuda se amortiza casi igual en las dos, así que la modalidad apenas mueve esta cifra.`,
     lado: "neutro",
     decisividad: 0.3,
