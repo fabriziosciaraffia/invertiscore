@@ -8,8 +8,9 @@
 //     --str          agrega el tier STR (GS-STR, BS1-BS8, 0 tokens)
 //     --ambas        agrega el tier AMBAS (GS-AMBAS veredicto comparativo D1+D2, 0 tokens)
 //     --all          LTR quick + STR + AMBAS (0 tokens)
-//     --full         recompute + generación fresca (AUTO) + semántico
+//     --full         recompute + generación fresca (AUTO) + semántico (LTR + AMBAS)
 //     --no-semantic  con --full, salta el juez Opus (solo AUTO)
+//     --ambas-semantic  standalone: solo el tier semántico AMBAS (juez Opus, cuesta tokens)
 //     --k=N          generaciones frescas por caso (default 2)
 //     --catch-test   auto-test: rompe invariantes en memoria y verifica que FALLA
 //
@@ -25,6 +26,7 @@ import { runGenerateTier } from "./generate";
 import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
 import { runAmbasTier } from "./ambas-recompute";
+import { runAmbasSemanticTier } from "./ambas-semantic";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -32,6 +34,7 @@ const kArg = argv.find((a) => a.startsWith("--k="));
 const K = kArg ? Math.max(1, parseInt(kArg.split("=")[1], 10) || 2) : 2;
 const MODE_FULL = has("--full");
 const NO_SEM = has("--no-semantic");
+const AMBAS_SEM = has("--ambas-semantic"); // tier semántico AMBAS standalone (cuesta tokens)
 
 function sb() {
   return createClient(
@@ -50,12 +53,33 @@ function printSeed(r: SeedReport) {
   }
 }
 
+async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
+  console.log("\n─── TIER AMBAS · checklist semántico comparativo (juez Opus) ───");
+  const sem = await runAmbasSemanticTier(sbClient);
+  const byBanda: Record<string, number> = {};
+  for (const s of sem) {
+    byBanda[s.bandaCaso] = (byBanda[s.bandaCaso] ?? 0) + 1;
+    const head = s.error ? `⚠ ERROR (${s.error})` : `${s.flags.length === 0 ? "✓" : "⚑"} ${s.flags.length} flags`;
+    console.log(`\n  ${s.key}  ${s.comuna} · ${s.bandaCaso}${s.flipCaso ? " · flip" : ""} — ${head}`);
+    for (const fl of s.flags) console.log(`      ⚑ [${fl.severidad}/${fl.categoria}] ${fl.detalle}`);
+  }
+  console.log("\n  cobertura por banda:", JSON.stringify(byBanda));
+  console.log("  (flags semánticos AMBAS = reporte para Fabrizio, NO bloquean)");
+}
+
 (async () => {
   console.log("════════════════════ GOLDEN SET · runner ════════════════════");
 
   if (has("--catch-test")) {
     const ok = await runCatchTest();
     process.exit(ok ? 0 : 1);
+  }
+
+  // Standalone: solo el tier semántico AMBAS (sin correr QUICK/STR/etc.).
+  if (AMBAS_SEM && !MODE_FULL) {
+    await printAmbasSemantic(sb());
+    console.log("\n  (tier semántico AMBAS standalone — no evalúa fallas duras)");
+    process.exit(0);
   }
 
   let totalHard = 0;
@@ -98,6 +122,9 @@ function printSeed(r: SeedReport) {
         for (const fl of s.flags) console.log(`      ⚑ [${fl.categoria}] ${fl.detalle}`);
       }
       console.log("\n  (flags semánticos = reporte para Fabrizio, NO bloquean)");
+
+      // Tier semántico AMBAS (prosa comparativa nueva) — mismo gate que el LTR.
+      await printAmbasSemantic(sb());
     }
   }
 

@@ -10,6 +10,7 @@ import type { AnalisisInput, FullAnalysisResult } from "../../src/lib/types";
 import { METRO_STATIONS, haversineDistance, findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
 import { generateAiAnalysis } from "../../src/lib/ai-generation";
+import { generateComparativaAI } from "../../src/lib/ai-generation-ambas-generate";
 
 export const JUDGE_MODEL = "claude-opus-4-8";
 
@@ -218,6 +219,133 @@ Audita la prosa contra la doctrina, los números del motor y los datasets de ver
     );
   }
 
+  parsed._usage = { input_tokens: msg.usage.input_tokens, output_tokens: msg.usage.output_tokens };
+  return parsed;
+}
+
+// ============================================================================
+// AMBAS — JUEZ COMPARATIVO CON ESPEJO EXACTO DEL PROMPT (Fase C · F-C2.3)
+// ============================================================================
+// La prosa comparativa es apertura (motor, determinística) + conviene.{quienDeberiasSer,
+// switchPath, cierre} (3 movimientos IA). El `balance` v0 está MUERTO. El `cierre` es la
+// CONDICIÓN ("esto se sostiene si…") + costo emocional, NO la posición de Franco (vive en
+// el hero). El veredicto es una banda de 4 estados. Juzgamos con REGLA ESPEJO: capturamos
+// el bloque-caso REAL que generateComparativaAI le pasa al modelo y lo tratamos como fuente
+// de verdad; cualquier cifra de la prosa que NO esté ahí es fabricación.
+
+/** Captura el bloque-caso REAL (system + user) que el generador comparativo arma para un
+ *  par (ltr,str), SIN llamar al modelo ni persistir. Reutiliza el monkey-patch del proto
+ *  compartido de la SDK (mismo _MsgProto que captureGeneratorPrompt): aborta con el sentinel
+ *  antes del model-call. persist:false por si acaso, aunque el sentinel corta antes. */
+export async function captureComparativaPrompt(
+  ltrId: string,
+  strId: string,
+  supabase: SupabaseClient,
+): Promise<GeneratorPrompt | null> {
+  let captured: GeneratorPrompt | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _MsgProto.create = function (body: any) {
+    captured = {
+      system: typeof body?.system === "string" ? body.system : JSON.stringify(body?.system ?? ""),
+      user: typeof body?.messages?.[0]?.content === "string"
+        ? body.messages[0].content
+        : JSON.stringify(body?.messages?.[0]?.content ?? ""),
+    };
+    throw new Error(CAPTURE_SENTINEL);
+  };
+  try {
+    await generateComparativaAI({ ltrId, strId, supabase, persist: false, log: () => {} });
+  } catch { /* sentinel u otro — captured ya quedó seteado si llegó al create */ }
+  finally {
+    _MsgProto.create = _origCreate; // restaurar SIEMPRE
+  }
+  return captured;
+}
+
+export const JUDGE_SYSTEM_AMBAS = `Eres un AUDITOR semántico de la prosa COMPARATIVA que genera "Franco", un asesor IA de inversión inmobiliaria chileno (refranco.ai). El usuario analizó AMBAS modalidades (renta larga LTR + renta corta STR) sobre la misma propiedad. NO eres Franco. Lees la prosa ya generada y reportas CUALQUIER problema real, con criterio. Cada hallazgo debe ser defendible con cita textual + razón. NO inventes problemas; mejor pocos sólidos que muchos dudosos. Si algo está bien, OMITELO.
+
+QUÉ ES ESTA PROSA (contexto imprescindible): el usuario YA vio, en la misma página, (a) el veredicto de banda + la posición corta de Franco en el HERO, y (b) una PIRÁMIDE de tarjetas que compara flujo mensual, esfuerzo, patrimonio a 10 años, break-even y capital de entrada CON SUS CIFRAS EXACTAS. La prosa NO repite nada de eso. La prosa es SOLO la continuación de 3 movimientos:
+  · conviene.quienDeberiasSer — para QUIÉN es cada modalidad (perfil, tolerancia, capacidad operativa). Sin cifras.
+  · conviene.switchPath — viabilidad/costo de migrar LTR↔STR, en rangos condicionales.
+  · conviene.cierre — la CONDICIÓN bajo la que la jugada se sostiene ("esto se sostiene si…") + costo emocional. NO la posición de Franco.
+Hay también un campo \`apertura\` (lo escribe el MOTOR, determinístico — NO lo juzgues por voz/recitación; es tu contexto, no prosa IA) y \`recomendacion\` (enum de banda, copiado del motor).
+
+FUENTE DE VERDAD CLAVE (REGLA ESPEJO): recibís el BLOQUE-CASO REAL — exactamente el texto que el generador le pasó al modelo, con TODOS los datos numéricos y el estadoVeredicto. Para chequeos numéricos/factuales, ESE bloque-caso es la fuente. Si un número o hecho aparece en el bloque-caso, la prosa lo conoce: NO es invención. Distinto es RECITARLO (ver criterio C).
+
+=== A) COHERENCIA PROSA vs VEREDICTO (banda) — el chequeo central ===
+El bloque-caso trae \`estadoVeredicto\` con uno de 4 estados. La prosa NUNCA debe sugerir un ganador distinto al de la banda:
+- LTR_PREFERIDO ("RENTA LARGA"): la renta larga gana. Si la prosa empuja al STR/Airbnb como la jugada, → otro, ALTA.
+- STR_VENTAJA_CLARA ("RENTA CORTA"): la renta corta gana limpio.
+- STR_FRAGIL ("VENTAJA FRÁGIL"): el STR gana PERO la ventaja es frágil (break-even alto / depende de ocupación). La prosa DEBE RECONOCER la fragilidad. Si la vende como triunfo limpio del STR, o si la aplana a "da lo mismo / parejas" borrando la ventaja, → otro, ALTA.
+- INDIFERENTE ("PAREJAS"): ninguna gana claramente. Si la prosa inventa un ganador nítido, → otro, ALTA.
+Si el bloque-caso dice \`flipGestion: SÍ\` (administrarlo tú vs delegarlo CAMBIA el veredicto), el cierre DEBERÍA reconocer esa bisagra; si la prosa la ignora por completo → otro, MEDIA.
+
+=== B) CERO CIFRAS NO PROVISTAS (afirmacion-falsa, ALTA) ===
+Cualquier monto ($/UF), porcentaje o plazo/timeline concreto en la prosa que NO esté en el bloque-caso y NO sea derivable de él es FABRICACIÓN → afirmacion-falsa, severidad ALTA, requiereHumano=true. REGLA ESPEJO: si la cifra SÍ está en el bloque-caso, no es fabricación (pero puede ser recitación, criterio C). Plazos exactos de estabilización/migración presentados como certeza ("en 90 días", "en 18 meses") son afirmacion-falsa aunque suenen plausibles: la doctrina exige rangos condicionales.
+
+=== C) CERO RECITACIÓN DE CIFRAS DE CARD (recitacion-card, MEDIA) ===
+Las tarjetas YA muestran: diferencia de flujo mensual, patrimonio a 10 años, capital de entrada, break-even, comisión del administrador. El bloque-caso lista esas cifras bajo "DATOS DEL CASO ... YA están en las tarjetas, NO los recites". La prosa NO debe reescribir esos montos: debe narrarlos en palabras ("esa ventaja mensual que ves arriba", "el capital extra que pide el corto"). Si la prosa reescribe un monto/porcentaje que coincide con una cifra de card → recitacion-card. (Referirse a ella en palabras SIN el número NO es hallazgo.)
+
+=== D) VOZ CHILENA · TUTEO NEUTRO (voz-tono) ===
+Prohibido voseo argentino: "tenés", "aportás", "querés", "empezás", "mirá", "pensá", "dejá", "decidí", cualquier 2ª persona regular en -ás/-és/-ís con tilde. Prohibidos chilenismos coloquiales ("cachái", "po", "weón", "bacán", "fome") y clichés de apertura ("Te voy a hablar claro", "Vamos al grano", "Mira, esto es así"). Debe ser tuteo neutro chileno ("tú puedes", "decides", "tienes"). Verbos conjugados en inglés ("Generates", "Returns") también → voz-tono.
+
+=== E) CERO NARRATIVA VIEJA (recitacion-vieja, MEDIA) ===
+La prosa v0 recitaba patrimonio/NOI como relato ("$38M de patrimonio a 10 años", "un NOI de $X al mes"). Flag CUALQUIER residuo de recitación de patrimonio o NOI en monto → recitacion-vieja. Además, el campo \`balance\` está MUERTO: si aparece contenido tipo "balance" (un resumen ejecutivo que vuelve a pesar pros y contras con cifras), reportalo.
+
+=== CIERRE — chequeos específicos ===
+- El \`cierre\` NO debe repetir la POSICIÓN de Franco (ej. "mi recomendación es renta larga", "yo iría por el corto", "no compres"). Eso vive en el hero. El cierre entra por la CONDICIÓN + costo emocional. Si el cierre restablece la posición → voz-tono, MEDIA (campo conviene.cierre).
+- El \`cierre\` NO debe ser una checklist genérica ni un resumen de balance con cifras.
+
+=== ENGINE-ISM (engine-ism, MEDIA) — cazalo también ===
+Prohibido exponer "el motor" como entidad ("el motor dice/recomienda/proyecta", "según el motor") o nombres técnicos internos (vmFranco, fallback, breakEven como jerga cruda, banda como token). Prohibido el VERBO-TRAYECTORIA del modelo ("el flujo se da vuelta / cruza / converge / se estabiliza") en vez de la consecuencia vivida. Traducí a consecuencia.
+
+=== SALIDA ===
+Devuelve SOLO JSON válido, sin texto alrededor:
+{ "resumen": "1-2 frases sobre el estado general de esta prosa comparativa", "hallazgos": [ { "categoria": "afirmacion-falsa|recitacion-card|recitacion-vieja|voz-tono|engine-ism|incoherencia-numerica-interna|otro", "campo": "ruta JSON exacta (ej: conviene.cierre)", "cita": "texto literal del problema", "porQue": "regla violada (A/B/C/D/E/cierre/engine-ism) + razón", "evidencia": "qué dato del bloque-caso lo respalda, si aplica", "severidad": "alta|media|baja", "requiereHumano": true|false } ] }
+Si no hay problemas: hallazgos: [].
+REGLAS DE SALIDA ESTRICTAS: SOLO problemas. NUNCA incluyas confirmaciones / "OK" / "no es hallazgo" / "cuadra" / "consistente" / "trazabilidad" / "se omite". Si algo está bien, OMITELO. NO juzgues el campo \`apertura\` (es del motor).`;
+
+export async function runJudgeAmbas(args: {
+  fixtureMeta: { id: string; modalidad: string; tier: string; banda: string; flip: boolean; comuna?: string; nota?: string };
+  aiAnalysis: unknown;
+  caseBlock: string;
+  veredictoBundle: unknown;
+}): Promise<JudgeResult> {
+  const userPrompt = `CONTEXTO DEL CASO (metadato, no es prosa a auditar): ${JSON.stringify(args.fixtureMeta)}
+
+=== BLOQUE-CASO REAL (exactamente lo que el generador comparativo le pasó al modelo — FUENTE DE VERDAD para cifras/veredicto/cards) ===
+${args.caseBlock}
+
+=== PROSA A AUDITAR (ai_analysis comparativo generado — juzgá solo conviene.* ; apertura es del motor) ===
+${JSON.stringify(args.aiAnalysis, null, 2)}
+
+=== VEREDICTO (banda + flip, para el chequeo de coherencia A) ===
+${JSON.stringify(args.veredictoBundle, null, 2)}
+
+Audita la prosa comparativa contra los criterios A-E, el cierre y engine-ism. Para cifras: si están en el BLOQUE-CASO no son invención (pero recitarlas es criterio C). Devolvé SOLO el JSON de hallazgos.`;
+
+  const msg = await anthropic.messages.create({
+    model: JUDGE_MODEL,
+    max_tokens: 4000,
+    system: JUDGE_SYSTEM_AMBAS,
+    messages: [{ role: "user", content: userPrompt }],
+  });
+
+  const text = msg.content.filter((b) => b.type === "text").map((b) => (b as { text: string }).text).join("");
+  let parsed: JudgeResult;
+  try {
+    const jsonStr = text.trim().replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+    parsed = JSON.parse(jsonStr);
+  } catch {
+    parsed = { resumen: "PARSE_ERROR", hallazgos: [] };
+    (parsed as JudgeResult & { _raw?: string })._raw = text.slice(0, 2000);
+  }
+  const SELF_OMIT = /no\s+hallazgo|se omite|no es hallazgo|incluido por trazabilidad|no-issue|\(\s*retiro|trazabilidad\)/i;
+  if (Array.isArray(parsed.hallazgos)) {
+    parsed.hallazgos = parsed.hallazgos.filter(
+      (h) => !SELF_OMIT.test(h.porQue ?? "") && !SELF_OMIT.test(h.cita ?? ""),
+    );
+  }
   parsed._usage = { input_tokens: msg.usage.input_tokens, output_tokens: msg.usage.output_tokens };
   return parsed;
 }
