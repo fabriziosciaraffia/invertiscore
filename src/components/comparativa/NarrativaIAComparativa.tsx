@@ -10,8 +10,10 @@ interface Props {
 }
 
 // ─── Narrativa IA "Cuál te conviene" · Patrón 4 (AI Insight) ────────────
-// Render del JSON estructurado de /api/analisis/comparativa/ai. 4 ángulos
-// doctrinales (quienDeberiasSer, balance, switchPath, cierre).
+// Render del JSON de /api/analisis/comparativa/ai. Fase C · Plan C: apertura motor
+// (fraseCanonica del #1 diferencial) + 3 movimientos IA (quienDeberiasSer, switchPath,
+// cierre). La posición de Franco NO va acá (vive en el hero); el cierre es la condición.
+// Fallback legacy: prosa v0 sin `apertura` cae a `headline`.
 // Cursiva editorial reservada para contenido IA (Patrón 4).
 export function NarrativaIAComparativa({ ltrId, strId, cached }: Props) {
   const [ai, setAi] = useState<AIAnalysisComparativa | null>(cached);
@@ -79,33 +81,29 @@ export function NarrativaIAComparativa({ ltrId, strId, cached }: Props) {
       {error && <ErrorState message={error} />}
       {ai && !error && (
         <>
-          <h3 className="font-heading text-[22px] sm:text-[26px] font-bold text-[var(--franco-text)] leading-snug mb-6">
-            {ai.headline}
-          </h3>
+          {/* Apertura DETERMINÍSTICA (motor) — fraseCanonica del #1 diferencial.
+              Fallback legacy a `headline` (prosa v0). */}
+          <p className="font-heading text-[19px] sm:text-[22px] font-bold text-[var(--franco-text)] leading-snug mb-6 italic">
+            {ai.apertura ?? ai.headline ?? ""}
+          </p>
 
           <Section
             label="01 · QUIÉN TIENES QUE SER"
             body={ai.conviene.quienDeberiasSer}
           />
           <Section
-            label="02 · QUÉ CAMBIA EN TU BALANCE"
-            body={ai.conviene.balance}
-          />
-          <Section
-            label="03 · ¿Y SI MIGRO DESPUÉS?"
+            label="02 · ¿Y SI MIGRO DESPUÉS?"
             body={ai.conviene.switchPath}
           />
           <Section
-            label="04 · POSICIÓN FRANCO"
+            label="03 · SI ESTO SE SOSTIENE"
             body={ai.conviene.cierre}
             isClosing={true}
           />
 
-          {/* Commit E.2 · 2026-05-13 — eliminada la nota "NOTA·FRANCO"
-              que mostraba `recomendacionRationale` cuando recomendacionFranco
-              divergía de engineRecommendation. La doctrina post-E.2 prohíbe
-              contradecir al motor en el render. Si la IA discrepa, lo reporta
-              en `francoCaveat` audit-only NO renderizado al usuario. */}
+          {/* Fase C — la sección "balance" (prosa v0) murió: sus cifras viven en la
+              pirámide. La posición de Franco vive en el hero; acá el cierre es la
+              condición. Prosa v0 sin regenerar renderiza sin `balance` (aceptable). */}
         </>
       )}
     </div>

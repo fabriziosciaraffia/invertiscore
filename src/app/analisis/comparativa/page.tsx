@@ -12,6 +12,7 @@ import { encodeShareToken } from "@/lib/share-token";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -191,7 +192,15 @@ export default async function ComparativaPage({
       strScore={strResults?.francoScore?.score ?? 0}
       ltrResults={ltrResults}
       strResults={strResults}
-      cachedAI={ltrResults?.comparativaAI ?? null}
+      // Cache VERSION-AWARE (Fase C): pasa la prosa persistida solo si su promptVersion
+      // coincide. Prosa v0 o versión vieja → null: el cliente hace fetch → el endpoint
+      // regenera y persiste (invalidación lazy-on-open). Esto SOLO ocurre en la página
+      // del owner; el share renderiza lo persistido tal cual (nunca regenera).
+      cachedAI={
+        ltrResults?.comparativaAI?.promptVersion === PROMPT_VERSION_AMBAS
+          ? ltrResults.comparativaAI
+          : null
+      }
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
