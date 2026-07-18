@@ -55,6 +55,10 @@ interface Props {
   currency: "CLP" | "UF";
   onCurrencyChange?: (c: "CLP" | "UF") => void;
   ufValue: number;
+  // Fase D — cuando el par está bloqueado, las mini-cards de los hijos abren el
+  // MODAL del resumen (onOpenChild) en vez de navegar al hijo (que redirigiría).
+  childrenBlocked?: boolean;
+  onOpenChild?: (role: "ltr" | "str") => void;
 }
 
 type Estado = "larga" | "corta" | "fragil" | "parejas";
@@ -214,8 +218,20 @@ export function HeroComparativa(p: Props) {
 
         {/* Mini-scores de los hijos (evidencia secundaria) — stacked, donde el canon pone el mapa */}
         <div className="flex flex-col gap-3">
-          <MiniScore href={`/analisis/${p.ltrId}`} label="RENTA LARGA" score={p.ltrScore} verdict={p.ltrVerdict} />
-          <MiniScore href={`/analisis/renta-corta/${p.strId}`} label="RENTA CORTA" score={p.strScore} verdict={p.strVerdict} />
+          <MiniScore
+            href={`/analisis/${p.ltrId}`}
+            label="RENTA LARGA"
+            score={p.ltrScore}
+            verdict={p.ltrVerdict}
+            onOpen={p.childrenBlocked && p.onOpenChild ? () => p.onOpenChild!("ltr") : undefined}
+          />
+          <MiniScore
+            href={`/analisis/renta-corta/${p.strId}`}
+            label="RENTA CORTA"
+            score={p.strScore}
+            verdict={p.strVerdict}
+            onOpen={p.childrenBlocked && p.onOpenChild ? () => p.onOpenChild!("str") : undefined}
+          />
         </div>
       </div>
 
@@ -548,19 +564,35 @@ function MiniVerdictBadge({ verdict }: { verdict: Verdict | null }) {
   );
 }
 
-function MiniScore({ href, label, score, verdict }: { href: string; label: string; score: number; verdict: Verdict | null }) {
-  return (
-    <Link
-      href={href}
-      className="rounded-xl border p-3.5 flex items-center gap-3.5 transition-colors hover:border-[var(--franco-text-secondary)]"
-      style={{ borderColor: "var(--franco-border)", background: "var(--franco-bg-alt)" }}
-    >
+function MiniScore({ href, label, score, verdict, onOpen }: { href: string; label: string; score: number; verdict: Verdict | null; onOpen?: () => void }) {
+  // Contenido común. Bloqueado (onOpen) → botón que abre el modal del resumen; si
+  // no, Link al hijo íntegro. Mismo look; el CTA cambia "Ver →" por "Ver análisis →".
+  const inner = (
+    <>
       <span className="font-mono font-bold text-[32px] leading-none tracking-[-0.02em]" style={{ color: "var(--franco-text)" }}>{score}</span>
       <div className="min-w-0 flex flex-col gap-1">
         <p className="font-mono text-[9px] uppercase tracking-[0.05em] m-0" style={{ color: "var(--franco-text-muted)" }}>{label}</p>
         <MiniVerdictBadge verdict={verdict} />
       </div>
-      <span className="font-mono text-[10px] uppercase tracking-[0.04em] ml-auto shrink-0" style={{ color: "var(--signal-red)" }}>Ver →</span>
+      <span className="font-mono text-[10px] uppercase tracking-[0.04em] ml-auto shrink-0" style={{ color: "var(--signal-red)" }}>
+        {onOpen ? "Ver análisis →" : "Ver →"}
+      </span>
+    </>
+  );
+  const cls =
+    "rounded-xl border p-3.5 flex items-center gap-3.5 transition-colors hover:border-[var(--franco-text-secondary)] text-left w-full";
+  const style = { borderColor: "var(--franco-border)", background: "var(--franco-bg-alt)" };
+
+  if (onOpen) {
+    return (
+      <button type="button" onClick={onOpen} className={cls} style={style}>
+        {inner}
+      </button>
+    );
+  }
+  return (
+    <Link href={href} className={cls} style={style}>
+      {inner}
     </Link>
   );
 }

@@ -13,6 +13,7 @@ import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 import { PROMPT_VERSION_AMBAS } from "@/lib/ai-generation-ambas";
+import { buildResumenLTR, buildResumenSTR } from "@/lib/resumen-anexo";
 import { ComparativaClient } from "./comparativa-client";
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ type STRResultsWithScore = ShortTermResult & {
 export default async function ComparativaPage({
   searchParams,
 }: {
-  searchParams: { ltr?: string; str?: string };
+  searchParams: { ltr?: string; str?: string; ver?: string };
 }) {
   const supabase = createClient();
   const ltrId = searchParams.ltr;
@@ -167,6 +168,28 @@ export default async function ComparativaPage({
     strMediana,
   ) ?? strResultsPersisted) as STRResultsWithScore | null;
 
+  // Fase D — gating del MODAL de resumen. El comparativo sigue íntegro (esto NO
+  // lo toca): solo decide si las mini-cards de los hijos abren el modal (bloqueado)
+  // o navegan al hijo íntegro. childrenBlocked = es un grupo AMBAS real, no
+  // desbloqueado, y el que mira no es subscriber (FrancoMensual/admin → íntegro).
+  const ambasGroupId = ltr.ambas_group_id ?? null;
+  const isAmbasGroup = !!ambasGroupId && ambasGroupId === str.ambas_group_id;
+  const isUnlocked = !!ltr.ambas_unlocked_at;
+  const childrenBlocked = isAmbasGroup && !isUnlocked && accessLevel !== "subscriber";
+  const ctaVariant: "unlock" | "adquisicion" = isOwner ? "unlock" : "adquisicion";
+  const initialVer: "ltr" | "str" | null =
+    searchParams.ver === "ltr" || searchParams.ver === "str" ? searchParams.ver : null;
+
+  // Datos del resumen (Variante A) de cada hijo — 100% persistido/recomputado,
+  // cero generación. Solo se construyen si el par está bloqueado (si no, el modal
+  // no se usa).
+  const ltrResumen = childrenBlocked
+    ? buildResumenLTR({ score: ltr.score ?? 0, results: ltrResults, inputData: ltrInput ?? undefined, ufValue: ltrUfFrozen })
+    : null;
+  const strResumen = childrenBlocked
+    ? buildResumenSTR({ results: strResults, inputData: strInput, ufValue: ltrUfFrozen })
+    : null;
+
   // Share token determinístico (Commit 3c) — sin DB column. Permite generar
   // URLs públicas `/share/comparativa/[token]` que decoderán al par (LTR, STR).
   const shareToken = encodeShareToken(ltr.id, str.id);
@@ -212,6 +235,12 @@ export default async function ComparativaPage({
       isSharedView={isSharedView}
       userCredits={userCredits}
       welcomeAvailable={welcomeAvailable}
+      ambasGroupId={ambasGroupId}
+      childrenBlocked={childrenBlocked}
+      ctaVariant={ctaVariant}
+      ltrResumen={ltrResumen}
+      strResumen={strResumen}
+      initialVer={initialVer}
     />
   );
 }

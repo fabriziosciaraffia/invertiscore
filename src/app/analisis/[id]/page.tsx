@@ -235,6 +235,25 @@ export default async function AnalisisDetallePage({
     accessLevel = isPremium ? "premium" : "free";
   }
 
+  // Fase D — hijo BLOQUEADO de un par AMBAS: el resumen dejó de ser página; vive
+  // como MODAL sobre el comparativo. El acceso directo (URL / deep-link) a un
+  // hijo bloqueado redirige al comparativo con el modal abierto (?ver=ltr). El
+  // hijo ÍNTEGRO (unlocked o subscriber/admin) y el standalone siguen como
+  // página completa (son el informe real). is_premium NO gatea acá (está true por
+  // el companion-flip). printMode (PDF) intacto. Reglas de bloqueo:
+  //  - subscriber (FrancoMensual/admin) → íntegro (no redirige).
+  //  - owner → bloqueado hasta ambas_unlocked_at.
+  //  - tercero (no-owner) → bloqueado siempre (el unlock es del owner, no público).
+  const isUnlocked = !!(data as Record<string, unknown>).ambas_unlocked_at;
+  const childBlocked =
+    isSubordinated &&
+    !printMode &&
+    accessLevel !== "subscriber" &&
+    (isOwner ? !isUnlocked : true);
+  if (childBlocked && subordinatedHref) {
+    redirect(`${subordinatedHref}&ver=ltr`);
+  }
+
   const UF_CLP = ufFrozen;
 
   // Basic metrics for free section (works with or without full results)

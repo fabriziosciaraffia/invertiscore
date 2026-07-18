@@ -15,6 +15,8 @@ import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioC
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
 import { useComparativaAI } from "@/components/comparativa/use-comparativa-ai";
 import { PiramideComparativa } from "@/components/comparativa/PiramideComparativa";
+import { ResumenAnexoModal } from "@/components/comparativa/ResumenAnexoModal";
+import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-findings";
 import type {
   FullAnalysisResult,
@@ -66,6 +68,15 @@ interface Props {
   isSharedView: boolean;
   userCredits: number;
   welcomeAvailable: boolean;
+  // Fase D — resumen (Variante A) de cada hijo para el MODAL. childrenBlocked =
+  // true cuando el par es un grupo AMBAS no desbloqueado y el que mira no es
+  // subscriber: las mini-cards abren el modal en vez de navegar al hijo.
+  ambasGroupId: string | null;
+  childrenBlocked: boolean;
+  ctaVariant: "unlock" | "adquisicion";
+  ltrResumen: ResumenAnexoData | null;
+  strResumen: ResumenAnexoData | null;
+  initialVer: "ltr" | "str" | null;
 }
 
 // ─── Fallback de recomendacionModalidad para análisis legacy ─────────────
@@ -92,6 +103,13 @@ export function ComparativaClient(p: Props) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
   const [deleting, setDeleting] = useState(false);
   const uf = p.ufValue;
+
+  // Fase D — modal del resumen de un hijo bloqueado. Auto-abre desde ?ver= (deep
+  // link / redirect del acceso directo al hijo). Solo si el par está bloqueado.
+  const [modalChild, setModalChild] = useState<"ltr" | "str" | null>(
+    p.childrenBlocked ? p.initialVer : null,
+  );
+  const modalData = modalChild === "ltr" ? p.ltrResumen : modalChild === "str" ? p.strResumen : null;
 
   // Prosa comparativa (Fase C) — integrada al hero. canGenerate=true: si el cache
   // está vacío/viejo, el hook hace fetch → el endpoint regenera (lazy-on-open).
@@ -216,6 +234,21 @@ export function ComparativaClient(p: Props) {
         }
       />
 
+      {/* Fase D — modal del resumen de un hijo bloqueado (contenido premium sobre
+          el comparativo; diferenciado de los drawers laterales). */}
+      <ResumenAnexoModal
+        open={!!modalChild}
+        onClose={() => setModalChild(null)}
+        data={modalData}
+        nombre={p.nombre}
+        comuna={p.comuna}
+        direccion={p.direccion}
+        analysisId={modalChild === "str" ? p.strId : p.ltrId}
+        ambasGroupId={p.ambasGroupId ?? ""}
+        ctaVariant={p.ctaVariant}
+        isLoggedIn={p.accessLevel !== "guest"}
+      />
+
       <main className="flex-1">
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-8">
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + posición + TOP-3 + toggle (F-C3b) ── */}
@@ -247,6 +280,8 @@ export function ComparativaClient(p: Props) {
             currency={currency}
             onCurrencyChange={setCurrency}
             ufValue={uf}
+            childrenBlocked={p.childrenBlocked}
+            onOpenChild={p.childrenBlocked ? setModalChild : undefined}
           />
 
           {/* ── ACTO 2 · Pirámide diferencial (D3) + drawers puente (D4) ── */}

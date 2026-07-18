@@ -175,6 +175,21 @@ export default async function STRResultPage({
     }
   }
 
+  // Fase D — hijo STR BLOQUEADO de un par AMBAS: espejo de LTR. El resumen vive
+  // como MODAL sobre el comparativo; el acceso directo por URL a un hijo bloqueado
+  // redirige al comparativo con el modal abierto (?ver=str). Íntegro (unlocked /
+  // subscriber) y standalone → página completa. printMode (PDF) intacto.
+  const isUnlocked = !!(data as Record<string, unknown>).ambas_unlocked_at;
+  const isSubordinated = !!subordinatedHref;
+  const childBlocked =
+    isSubordinated &&
+    !printMode &&
+    accessLevel !== "subscriber" &&
+    (isOwner ? !isUnlocked : true);
+  if (childBlocked && subordinatedHref) {
+    redirect(`${subordinatedHref}&ver=str`);
+  }
+
   const sharedProps = {
     analysisId: data.id,
     results,
