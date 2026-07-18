@@ -1121,4 +1121,9 @@ export interface Analisis {
   // comparten `ambas_group_id`; `ambas_role` marca el lado. NULL = suelto.
   ambas_group_id?: string | null;
   ambas_role?: "ltr" | "str" | null;
+  // Fase D (migración 20260717). Desbloqueo del informe íntegro de los hijos del
+  // par: NULL = hijos en resumen (owner sin unlock); timestamptz = grupo
+  // desbloqueado (hijos íntegros). Flipeada por payments/confirm (product
+  // 'unlock') sobre ambas filas del grupo. No aplica a análisis sueltos.
+  ambas_unlocked_at?: string | null;
 }
