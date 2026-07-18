@@ -270,12 +270,37 @@ export async function POST(request: Request) {
           const { data: userData } = await supabase.auth.admin.getUserById(userId);
           if (userData?.user?.email) {
             const amount = flowData.amount || 0;
+            // Unlock de AMBAS: resolver ltr/str del grupo para que el CTA del
+            // comprobante lleve a la comparativa (los DOS informes desbloqueados),
+            // no al hijo pelado. Fuente canónica: filas `analisis` del mismo
+            // ambas_group_id, mapeadas por ambas_role (igual que dashboard/páginas
+            // hijas). Si no se resuelven ambos ids, el correo cae al CTA por
+            // analysisId (comportamiento previo) — degradación limpia.
+            let ambasIds: { ltrId: string; strId: string } | undefined;
+            if (product === "unlock" && analysisId) {
+              const { data: child } = await supabase
+                .from("analisis")
+                .select("ambas_group_id")
+                .eq("id", analysisId)
+                .maybeSingle();
+              const groupId = (child as { ambas_group_id?: string } | null)?.ambas_group_id;
+              if (groupId) {
+                const { data: rows } = await supabase
+                  .from("analisis")
+                  .select("id, ambas_role")
+                  .eq("ambas_group_id", groupId);
+                const ltrId = rows?.find((r) => r.ambas_role === "ltr")?.id;
+                const strId = rows?.find((r) => r.ambas_role === "str")?.id;
+                if (ltrId && strId) ambasIds = { ltrId, strId };
+              }
+            }
             await sendPaymentConfirmationEmail(
               userData.user.email,
               resolveDisplayName(userData.user.user_metadata, userData.user.email),
               product,
               amount,
-              analysisId || undefined
+              analysisId || undefined,
+              ambasIds
             );
           }
         } catch (e) {

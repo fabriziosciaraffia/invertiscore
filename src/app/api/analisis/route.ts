@@ -133,6 +133,23 @@ export async function POST(request: Request) {
         }
         if (user.email) {
           try {
+            // Variante AMBAS: si esta fila (LTR) pertenece a un par, resolvemos el
+            // hermano STR por ambas_group_id para que el correo anuncie la
+            // COMPARATIVA y su CTA lleve a la vista comparativa. El hermano se crea
+            // en paralelo (Promise.allSettled en el wizard); acá ya pasó la IA, así
+            // que normalmente existe. Si no se resuelve (STR falló o carrera), cae
+            // al correo de análisis suelto — degradación limpia. Solo el lado LTR
+            // envía este correo (el endpoint STR no manda ready-email → sin duplicado).
+            let ambas: { ltrId: string; strId: string } | undefined;
+            if (ambasGroupId) {
+              const { data: sibling } = await dbClient
+                .from("analisis")
+                .select("id")
+                .eq("ambas_group_id", ambasGroupId)
+                .eq("ambas_role", "str")
+                .maybeSingle();
+              if (sibling?.id) ambas = { ltrId: data.id, strId: sibling.id };
+            }
             await sendAnalysisReadyEmail(
               user.email,
               resolveDisplayName(user.user_metadata, user.email),
@@ -140,6 +157,7 @@ export async function POST(request: Request) {
               result.score,
               readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
               data.id,
+              ambas,
             );
           } catch (e) {
             console.error("Analysis email error:", e);

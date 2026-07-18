@@ -262,7 +262,7 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   };
 }
 
-export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string) {
+export async function sendPaymentConfirmationEmail(to: string, name: string, product: string, amount: number, analysisId?: string, ambasIds?: { ltrId: string; strId: string }) {
   const { productName, unlocks, includes } = paymentPlanCopy(product, analysisId);
 
   // Bullets de "Qué incluye" derivados del producto. Última fila sin padding
@@ -281,12 +281,21 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
   const firstName = name.split(' ')[0] || '';
   const greeting = firstName ? `Hola ${firstName},` : 'Hola,';
 
-  // CTA: si el pago desbloqueó un análisis puntual (pro + analysisId), lo
-  // llevamos directo a ese análisis; si compró créditos/suscripción, al form.
-  const ctaUrl = analysisId
-    ? `${SITE_URL}/analisis/${analysisId}`
-    : `${SITE_URL}/analisis/nuevo-v2`;
-  const ctaText = analysisId ? 'Ver mi análisis →' : 'Empezar a analizar →';
+  // CTA: unlock de AMBAS → a la comparativa (los DOS informes, que es lo que se
+  // desbloqueó); si el pago desbloqueó un análisis puntual (+ analysisId), a ese
+  // análisis; si compró créditos/suscripción, al form.
+  const ctaUrl =
+    product === "unlock" && ambasIds
+      ? `${SITE_URL}/analisis/comparativa?ltr=${ambasIds.ltrId}&str=${ambasIds.strId}`
+      : analysisId
+        ? `${SITE_URL}/analisis/${analysisId}`
+        : `${SITE_URL}/analisis/nuevo-v2`;
+  const ctaText =
+    product === "unlock" && ambasIds
+      ? 'Ver mi comparativa completa →'
+      : analysisId
+        ? 'Ver mi análisis →'
+        : 'Empezar a analizar →';
 
   // Footer transaccional: disclaimer de pago (Flow) + preferencias de correo.
   // Sin unsubscribe (correo transaccional, no marketing).
@@ -599,10 +608,23 @@ export async function sendCheckoutRecoveryEmail(
   }
 }
 
-export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string) {
+export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }) {
   const firstName = name.split(' ')[0] || '';
-  const greeting = firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo';
-  const analysisUrl = `${SITE_URL}/analisis/${analysisId}`;
+  // Variante AMBAS: cuando el análisis pertenece a un par (ambas_group_id), el
+  // correo anuncia la COMPARATIVA (no el análisis suelto) y su CTA lleva a la
+  // vista comparativa con ambos hijos. El hero se mantiene (veredicto del LTR).
+  const isAmbas = !!ambas;
+  const greeting = isAmbas
+    ? (firstName ? `${firstName}, tu comparativa está lista` : 'Tu comparativa está lista')
+    : (firstName ? `${firstName}, tu análisis está listo` : 'Tu análisis está listo');
+  const intro = isAmbas
+    ? 'Franco ya corrió los dos escenarios sobre tu propiedad — arriendo de largo plazo y Airbnb — y tiene una posición sobre cuál conviene. Tu comparativa está lista.'
+    : 'Franco cruzó tu depto con datos reales de mercado. Acá está el veredicto. El análisis completo —con IA, proyección de patrimonio y escenarios de salida— te espera en tu cuenta.';
+  const ctaText = isAmbas ? 'Ver mi comparativa &rarr;' : 'Ver análisis completo &rarr;';
+  const subject = isAmbas ? 'Tu comparativa está lista' : `Tu análisis está listo — ${analysisTitle} (Score: ${score})`;
+  const analysisUrl = isAmbas
+    ? `${SITE_URL}/analisis/comparativa?ltr=${ambas.ltrId}&str=${ambas.strId}`
+    : `${SITE_URL}/analisis/${analysisId}`;
   // Hero dinámico: imagen generada por @vercel/og con el veredicto REAL del
   // análisis (no un caso fijo). Lee de DB por analisisId. Cache-friendly.
   const heroUrl = `${SITE_URL}/api/og/veredicto?analisisId=${encodeURIComponent(analysisId)}`;
@@ -624,7 +646,7 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
             <td style="padding: 8px 4px 20px 4px;">
               <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #FAFAF8; margin: 0 0 12px 0;">${greeting}</h1>
               <p style="font-family: 'Helvetica Neue', Arial, sans-serif; color: #A1A1AA; line-height: 1.7; font-size: 15px; margin: 0;">
-                Franco cruzó tu depto con datos reales de mercado. Acá está el veredicto. El análisis completo —con IA, proyección de patrimonio y escenarios de salida— te espera en tu cuenta.
+                ${intro}
               </p>
             </td>
           </tr>
@@ -640,7 +662,7 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
           <tr>
             <td align="center" style="padding: 28px 4px 6px 4px;">
               <a href="${analysisUrl}" style="display: inline-block; background: #C8323C; color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; font-family: 'Helvetica Neue', Arial, sans-serif;">
-                Ver análisis completo &rarr;
+                ${ctaText}
               </a>
             </td>
           </tr>
@@ -681,7 +703,7 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
     await getResend()?.emails.send({
       from: FROM_EMAIL,
       to,
-      subject: `Tu análisis está listo — ${analysisTitle} (Score: ${score})`,
+      subject,
       html,
     });
   } catch (error) {
