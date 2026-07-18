@@ -10,6 +10,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 const PRODUCTS: Record<string, { amount: number; subject: string }> = {
   // Modelo nuevo: pago único de 1 análisis (lee del catálogo único).
   single: { amount: FLOW_PRODUCTS.single.amount, subject: FLOW_PRODUCTS.single.subject },
+  // Fase D — desbloqueo one-off del informe íntegro de un par AMBAS (lee del
+  // catálogo único). Abre AMBOS hijos vía marca por ambas_group_id en confirm.
+  unlock: { amount: FLOW_PRODUCTS.unlock.amount, subject: FLOW_PRODUCTS.unlock.subject },
   // Legacy (deprecados, se conservan por compatibilidad de órdenes en vuelo).
   pro: { amount: 4990, subject: "Franco Pro — Análisis Premium" },
   pack3: { amount: 9990, subject: "Franco Pack 3× — 3 Análisis Premium" },
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { product, analysisId, quantity: rawQuantity, companionStrId } = body as {
+  const { product, analysisId, quantity: rawQuantity, companionStrId, ambasGroupId } = body as {
     product: string;
     analysisId?: string;
     quantity?: number | string;
@@ -39,6 +42,10 @@ export async function POST(request: Request) {
     // guarda en payment_data para que confirm desbloquee ambas filas y el
     // return rutee a la comparativa.
     companionStrId?: string;
+    // Fase D unlock: el grupo AMBAS a desbloquear. analysis_id lleva el hijo
+    // abierto (para ownership + redirect); ambas_group_id se guarda en
+    // payment_data como audit y confirm flipea la marca sobre TODO el grupo.
+    ambasGroupId?: string;
   };
 
   if (!product || !PRODUCTS[product]) {
@@ -90,6 +97,9 @@ export async function POST(request: Request) {
     } else if (quantity > 1) {
       subject = `Franco — ${quantity} análisis`;
     }
+  } else if (product === "unlock" && analysisComuna) {
+    // Unlock atado a un hijo → subject con comuna ("Franco — Informe completo Providencia").
+    subject = `Franco — Informe completo ${analysisComuna}`;
   }
   const commerceOrder = `franco-${randomUUID()}`;
 
@@ -137,10 +147,20 @@ export async function POST(request: Request) {
       quantity,
       status: "pending",
       analysis_id: analysisId || null,
-      // AMBAS pre-pago: guardamos el STR companion. confirm lo detecta para
-      // desbloquear/premiar la 2ª fila; el return lo lee para rutear a la
-      // comparativa. Solo presente en el flujo Ambas.
-      ...(companionStrId ? { payment_data: { companion_str_id: companionStrId } } : {}),
+      // payment_data lleva metadata del flujo AMBAS:
+      //  - companion_str_id (pre-pago single-AMBAS): confirm desbloquea la 2ª
+      //    fila y el return rutea a la comparativa.
+      //  - ambas_group_id (unlock, Fase D): audit del grupo desbloqueado. El
+      //    flip en confirm deriva el grupo del hijo (analysis_id), pero lo
+      //    guardamos acá como fuente de verdad del cobro.
+      ...(companionStrId || ambasGroupId
+        ? {
+            payment_data: {
+              ...(companionStrId ? { companion_str_id: companionStrId } : {}),
+              ...(ambasGroupId ? { ambas_group_id: ambasGroupId } : {}),
+            },
+          }
+        : {}),
     });
 
     if (insertError) {

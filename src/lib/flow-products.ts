@@ -12,6 +12,7 @@
 
 export type FlowProductKey =
   | "single"
+  | "unlock"
   | "plan10_mensual" | "plan10_annual"
   | "plan50_mensual" | "plan50_annual"
   | "unlimited_mensual" | "unlimited_annual";
@@ -34,6 +35,14 @@ export const FLOW_PRODUCTS: Record<FlowProductKey, FlowProduct> = {
   single: {
     kind: "one_time", amount: 9990, subject: "Franco — 1 análisis",
     plan: "single", billing: null, capacity: 1,
+  },
+  // Fase D — desbloqueo one-off del informe íntegro de los hijos de un par AMBAS
+  // (~50% del precio vigente $9.990, redondeo psicológico chileno). NO otorga
+  // crédito ni toca is_premium: solo marca `ambas_unlocked_at` por grupo en
+  // payments/confirm. plan/capacity nulos → no participa del modelo de créditos.
+  unlock: {
+    kind: "one_time", amount: 4990, subject: "Franco — Informe completo",
+    plan: undefined, billing: null, capacity: null,
   },
   plan10_mensual: {
     kind: "recurring", amount: 39990, subject: "Franco Plan 10 — mensual",

@@ -50,14 +50,16 @@ function PaymentReturnContent() {
             // AMBAS pre-pago: si el pago trae un STR companion en payment_data,
             // el analysis_id es el LTR → ruteamos a la comparativa con ambos ids.
             const companionStrId = (data.payment.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
+            // Fase D unlock: analysis_id es el hijo que se abrió → volvemos ahí
+            // (ya desbloqueado; la ruta auto-redirige a renta-corta si es STR).
             if (
               !redirectedRef.current &&
-              data.payment.product === "single" &&
-              data.payment.analysis_id
+              data.payment.analysis_id &&
+              (data.payment.product === "single" || data.payment.product === "unlock")
             ) {
               redirectedRef.current = true;
               setRedirecting(true);
-              if (companionStrId) {
+              if (data.payment.product === "single" && companionStrId) {
                 router.push(`/analisis/comparativa?ltr=${data.payment.analysis_id}&str=${companionStrId}`);
               } else {
                 router.push(`/analisis/${data.payment.analysis_id}`);

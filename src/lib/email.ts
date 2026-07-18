@@ -192,6 +192,17 @@ function paymentPlanCopy(product: string, analysisId?: string): {
   unlocks: string;       // qué tiene disponible ahora (frase corta, va en el intro)
   includes: string[];    // bullets de "Qué incluye", reflejan el producto real
 } {
+  // Fase D — desbloqueo del informe íntegro comparativo (product 'unlock').
+  // Antes del fp genérico: aunque 'unlock' vive en FLOW_PRODUCTS como one_time,
+  // no es "1 análisis" sino la apertura del íntegro de un par ya analizado.
+  if (product === "unlock") {
+    return {
+      productName: "Informe completo",
+      unlocks: "desbloqueaste el informe íntegro de tu comparativa: ambas modalidades con el análisis completo.",
+      includes: ANALYSIS_FEATURES,
+    };
+  }
+
   const fp = FLOW_PRODUCTS[product as FlowProductKey];
 
   if (fp) {

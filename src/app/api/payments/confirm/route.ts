@@ -182,6 +182,33 @@ export async function POST(request: Request) {
               .eq("pending_payment", true);
           }
         }
+      } else if (userId && product === "unlock") {
+        // Fase D — desbloqueo ADITIVO de los hijos de un par AMBAS. NO consume
+        // crédito ni toca is_premium (el crédito ya compró el comparativo
+        // íntegro; esto abre el informe íntegro de los DOS hijos). Deriva el
+        // grupo del hijo abierto (analysis_id) y flipea ambas_unlocked_at sobre
+        // AMBAS filas. El .is(...,null) es la guarda de idempotencia: un reenvío
+        // de webhook ve la marca ya puesta → no re-flipea.
+        if (analysisId) {
+          const { data: child } = await supabase
+            .from("analisis")
+            .select("ambas_group_id")
+            .eq("id", analysisId)
+            .maybeSingle();
+          const groupId = (child as { ambas_group_id?: string } | null)?.ambas_group_id;
+          if (groupId) {
+            const { error: unlockError } = await supabase
+              .from("analisis")
+              .update({ ambas_unlocked_at: new Date().toISOString() })
+              .eq("ambas_group_id", groupId)
+              .is("ambas_unlocked_at", null);
+            if (unlockError) {
+              console.error("[payments/confirm] unlock AMBAS falló:", unlockError);
+            }
+          } else {
+            console.error("[payments/confirm] unlock sin ambas_group_id, analysis:", analysisId);
+          }
+        }
       } else if (userId && product) {
         // Legacy pro/pack3 → contador user_credits.credits.
         const creditsToAdd = product === "pack3" ? 3 : 1;
@@ -299,6 +326,51 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("[payments/confirm] emisión boleta excepción:", e);
+        }
+      }
+
+      // Fase D — boleta DTE 39 del desbloqueo (product 'unlock'). Bloque separado
+      // del de 'single' (que queda byte-idéntico) para que el diff sea aditivo y
+      // el path de cobros existentes no se toque. Glosa/concepto 'unlock' viven
+      // en openfactura/client. Mismo kill-switch + cinturón try/catch: una falla
+      // de boleta jamás rompe el 200 que Flow espera.
+      if (userId && product === "unlock" && process.env.OPENFACTURA_ENABLED === "true") {
+        try {
+          const { data: dteUser } = await supabase.auth.admin.getUserById(userId);
+          const userEmail = dteUser?.user?.email;
+          // Comuna del hijo atado (analysis_id) → concepto "Informe completo en
+          // {comuna}" en el correo. Solo afecta el copy, no la glosa del DTE.
+          let comuna: string | undefined;
+          if (analysisId) {
+            const { data: analisisRow } = await supabase
+              .from("analisis")
+              .select("comuna")
+              .eq("id", analysisId)
+              .single();
+            comuna = (analisisRow?.comuna as string | undefined) || undefined;
+          }
+          if (userEmail) {
+            const result = await emitirBoletaDTE({
+              payment: {
+                id: paymentId,
+                user_id: userId,
+                product,
+                amount: payment.amount,
+                commerce_order: payment.commerce_order,
+                flow_order: payment.flow_order,
+                quantity: payment.quantity ?? 1,
+              },
+              userEmail,
+              comuna,
+            });
+            if (!result.ok && !result.skipped) {
+              console.error("[payments/confirm] emisión boleta unlock falló:", result.error);
+            }
+          } else {
+            console.error("[payments/confirm] sin email para emitir boleta unlock, user:", userId);
+          }
+        } catch (e) {
+          console.error("[payments/confirm] emisión boleta unlock excepción:", e);
         }
       }
 

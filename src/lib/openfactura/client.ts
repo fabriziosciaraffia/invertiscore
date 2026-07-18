@@ -92,6 +92,10 @@ export function glosaForProduct(product: string): string {
   if (product === "single") {
     return "Análisis de inversión inmobiliaria - refranco.ai";
   }
+  if (product === "unlock") {
+    // Fase D — desbloqueo del informe íntegro comparativo. Latin-1 safe.
+    return "Informe completo comparativo - refranco.ai";
+  }
   const m = product.match(/^(plan10|plan50|unlimited)_(mensual|annual)$/);
   if (m) {
     const nombre =
@@ -136,6 +140,13 @@ export function conceptoBoleta(
       label: `${n} análisis`,
       frase: n === 1 ? "tu análisis" : `tu compra de ${n} análisis`,
     };
+  }
+
+  // Fase D — desbloqueo del informe íntegro (product 'unlock').
+  if (product === "unlock") {
+    return opts?.comuna
+      ? { label: `Informe completo en ${opts.comuna}`, frase: `tu informe completo en ${opts.comuna}` }
+      : { label: "Informe completo", frase: "tu informe completo" };
   }
 
   // Fallback (legacy/desconocido) — no debería ocurrir en el path actual.
