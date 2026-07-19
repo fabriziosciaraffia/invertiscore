@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from "react";
 import { usePostHog } from "posthog-js/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 
 function PaymentReturnContent() {
@@ -61,6 +62,33 @@ function PaymentReturnContent() {
               setRedirecting(true);
               if (data.payment.product === "single" && companionStrId) {
                 router.push(`/analisis/comparativa?ltr=${data.payment.analysis_id}&str=${companionStrId}`);
+              } else if (data.payment.product === "unlock") {
+                // Fase D (decisión B): el unlock desbloqueó los DOS informes →
+                // volvemos a la comparativa. Resolvemos ltr/str por ambas_group_id
+                // (fuente canónica: filas `analisis` por ambas_role). Fallback
+                // EXACTO al hijo abierto si falta cualquier id (o falla la query).
+                let target = `/analisis/${data.payment.analysis_id}`;
+                try {
+                  const supa = createClient();
+                  const { data: child } = await supa
+                    .from("analisis")
+                    .select("ambas_group_id")
+                    .eq("id", data.payment.analysis_id)
+                    .maybeSingle();
+                  const groupId = (child as { ambas_group_id?: string } | null)?.ambas_group_id;
+                  if (groupId) {
+                    const { data: rows } = await supa
+                      .from("analisis")
+                      .select("id, ambas_role")
+                      .eq("ambas_group_id", groupId);
+                    const ltrId = rows?.find((r) => r.ambas_role === "ltr")?.id;
+                    const strId = rows?.find((r) => r.ambas_role === "str")?.id;
+                    if (ltrId && strId) target = `/analisis/comparativa?ltr=${ltrId}&str=${strId}`;
+                  }
+                } catch {
+                  /* fallback al hijo abierto (comportamiento previo) */
+                }
+                router.push(target);
               } else {
                 router.push(`/analisis/${data.payment.analysis_id}`);
               }
