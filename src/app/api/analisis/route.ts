@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
@@ -108,12 +109,16 @@ export async function POST(request: Request) {
       data.is_premium = true;
     }
 
-    // Background: generate AI analysis, luego mandar email cuando esté listo
-    // (o cuando falle — no bloqueamos la notificación por error IA, el page
-    // puede recuperar la IA vía polling /ai-status). No await: el response
-    // al cliente se devuelve inmediato.
+    // Trabajo diferido tras el response. waitUntil (@vercel/functions) garantiza
+    // que corra hasta terminar en serverless — un IIFE fire-and-forget sin await
+    // puede morir cuando se envía el response (mismo motivo por el que
+    // payments/confirm awaitea su IA). Orden deliberado: welcome → ready → IA.
+    // El ready va ANTES de generateAiAnalysis: no depende de la IA (score y
+    // veredicto ya están en `result`; el hero es on-demand vía @vercel/og), así
+    // no queda detrás de una llamada lenta/colgada. El response NO se bloquea.
     if (data?.id) {
-      (async () => {
+      const analysisId = data.id;
+      waitUntil((async () => {
         // Welcome email idempotente: garantiza que un usuario que llega directo
         // a /analisis/nuevo-v2 (vía deep-link o el héroe del onboarding) sin
         // pasar por /dashboard igual lo reciba. ensureWelcomeEmail usa el claim
@@ -126,29 +131,31 @@ export async function POST(request: Request) {
             resolveDisplayName(user.user_metadata, user.email),
           );
         }
-        try {
-          await generateAiAnalysis(data.id, dbClient);
-        } catch (e) {
-          console.error("Background AI generation failed:", e);
-        }
         if (user.email) {
           try {
             // Variante AMBAS: si esta fila (LTR) pertenece a un par, resolvemos el
             // hermano STR por ambas_group_id para que el correo anuncie la
             // COMPARATIVA y su CTA lleve a la vista comparativa. El hermano se crea
-            // en paralelo (Promise.allSettled en el wizard); acá ya pasó la IA, así
-            // que normalmente existe. Si no se resuelve (STR falló o carrera), cae
-            // al correo de análisis suelto — degradación limpia. Solo el lado LTR
-            // envía este correo (el endpoint STR no manda ready-email → sin duplicado).
+            // en PARALELO (Promise.allSettled en el wizard) y ahora el ready va
+            // antes de la IA, así que puede no existir aún → reintento acotado
+            // (máx 2 intentos, ≤5s total, en background). Si no aparece, fallback
+            // al correo de análisis suelto (mejor genérico que silencio). Solo el
+            // lado LTR envía (el endpoint STR no manda ready-email → sin duplicado).
             let ambas: { ltrId: string; strId: string } | undefined;
             if (ambasGroupId) {
-              const { data: sibling } = await dbClient
-                .from("analisis")
-                .select("id")
-                .eq("ambas_group_id", ambasGroupId)
-                .eq("ambas_role", "str")
-                .maybeSingle();
-              if (sibling?.id) ambas = { ltrId: data.id, strId: sibling.id };
+              for (let attempt = 0; attempt < 2; attempt++) {
+                const { data: sibling } = await dbClient
+                  .from("analisis")
+                  .select("id")
+                  .eq("ambas_group_id", ambasGroupId)
+                  .eq("ambas_role", "str")
+                  .maybeSingle();
+                if (sibling?.id) {
+                  ambas = { ltrId: analysisId, strId: sibling.id };
+                  break;
+                }
+                if (attempt === 0) await new Promise((r) => setTimeout(r, 2500));
+              }
             }
             await sendAnalysisReadyEmail(
               user.email,
@@ -156,14 +163,21 @@ export async function POST(request: Request) {
               body.nombre || `${body.comuna} - ${body.superficie}m²`,
               result.score,
               readVeredicto(result) || (result.score >= 70 ? "COMPRAR" : result.score >= 45 ? "AJUSTA SUPUESTOS" : "BUSCAR OTRA"),
-              data.id,
+              analysisId,
               ambas,
             );
           } catch (e) {
             console.error("Analysis email error:", e);
           }
         }
-      })();
+        // IA al final (no bloquea la notificación). El page la recupera vía
+        // polling /ai-status si acá falla. generateAiAnalysis intacto.
+        try {
+          await generateAiAnalysis(analysisId, dbClient);
+        } catch (e) {
+          console.error("Background AI generation failed:", e);
+        }
+      })());
     }
 
     return NextResponse.json(data);
