@@ -24,6 +24,10 @@ export type DrawerKeySTR =
   | "sensibilidad"
   | "ventajaLtr"
   | "tipoHuesped"
+  // largoPlazo (paridad drawer): prosa IA "¿Vale la pena a 10 años?". Fuera de la
+  // secuencia de pirámide — se abre desde la columna Patrimonio de AdvancedSectionSTR,
+  // como tipoHuesped desde ZonaCardSTR. Prose-only (NarrativeIA + CajaFranco).
+  | "largoPlazo"
   | "factibilidad"
   // rama drawers-propios (F2) — 6 drawers propios STR (dejan de ser chips solo-lectura
   // / de compartir rentabilidad). estructura_costos_str estrena drawer propio.
@@ -43,6 +47,7 @@ const DRAWER_META: Record<DrawerKeySTR, { label: string }> = {
   sensibilidad: { label: "Sensibilidad" },
   ventajaLtr: { label: "Ventaja vs arriendo largo" },
   tipoHuesped: { label: "Tipo de huésped" },
+  largoPlazo: { label: "A 10 años" },
   factibilidad: { label: "Regulación y riesgos" },
   financiamiento: { label: "Cómo estás financiando" },
   precio: { label: "El precio por metro" },

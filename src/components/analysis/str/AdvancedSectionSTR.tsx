@@ -37,6 +37,7 @@ export function AdvancedSectionSTR({
   valorUF,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   forceOpen = false,
+  onOpenLargoPlazo,
 }: {
   results: ShortTermResult;
   currency: "CLP" | "UF";
@@ -44,6 +45,11 @@ export function AdvancedSectionSTR({
   // forceOpen: legacy del colapso (alcance B: la sección ya no colapsa, siempre
   // visible). Se mantiene en la firma para no tocar el caller.
   forceOpen?: boolean;
+  /** paridad drawer — abre el drawer "A 10 años" (prosa IA largoPlazo) desde la columna
+   *  Patrimonio, fuera de la secuencia de pirámide (como ZonaCardSTR→tipoHuesped). El
+   *  caller lo pasa SOLO cuando hay prosa largoPlazo (premium/subscriber); sin él, sin
+   *  afordance (free/guest/legacy → solo el chart). */
+  onOpenLargoPlazo?: () => void;
 }) {
   // fix-occfuente-override 2026-07 — si el usuario definió la ocupación a mano, los rótulos
   // del bloque de escenarios NO la llaman "mediana observada": declaran procedencia.
@@ -121,6 +127,19 @@ export function AdvancedSectionSTR({
               por el finding de Retorno total, y en el canon LTR esa prosa vive en
               drawer, no inline. Sigue generada/persistida (cero cambio a generación). */}
           <PatrimonioChartSTR results={results} currency={currency} valorUF={valorUF} />
+          {/* paridad drawer — afordance al drawer "A 10 años" (juicio del horizonte:
+              instrumentos + condicional plusvalía + posición). Ink mono, NO Signal Red
+              (no es CTA). Solo si el caller pasó el handler (hay prosa). */}
+          {onOpenLargoPlazo && (
+            <button
+              type="button"
+              onClick={onOpenLargoPlazo}
+              className="mt-3 font-mono uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+              style={{ fontSize: 11 }}
+            >
+              Leer el análisis a 10 años →
+            </button>
+          )}
         </div>
         <div className="min-w-0">
           {subhead("Venta", "Si decides salir del activo")}

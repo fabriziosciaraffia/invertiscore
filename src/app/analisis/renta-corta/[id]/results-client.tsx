@@ -283,14 +283,20 @@ export function STRResultsClient({
         />
         <div style={{ height: 24 }} />
 
-        {/* ESCENARIOS Y PROYECCIÓN (07-10). str-paridad2: la prosa ai.largoPlazo se
-            retiró del render (sigue generada/persistida) — la sección es escenarios,
-            chart de patrimonio y venta, sin lead narrativo inline. */}
+        {/* ESCENARIOS Y PROYECCIÓN (07-10). La prosa ai.largoPlazo dejó de ir inline
+            (str-paridad2) y ahora vive en su drawer "A 10 años", abierto desde una
+            afordance en la columna Patrimonio (fuera de la secuencia de pirámide, como
+            ZonaCardSTR→tipoHuesped). Solo se pasa el handler si hay prosa. */}
         <AdvancedSectionSTR
           results={results}
           currency={currency}
           valorUF={ufValue}
           forceOpen={printMode}
+          onOpenLargoPlazo={
+            !printMode && (aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
+              ? () => setActiveDrawer("largoPlazo")
+              : undefined
+          }
         />
 
         {/* gap — Simulación → Zona */}

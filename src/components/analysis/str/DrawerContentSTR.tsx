@@ -67,6 +67,7 @@ export const DRAWER_TITULOS_STR: Record<DrawerKeySTR, string> = {
   sensibilidad: "Sensibilidad a ocupación y mercado",
   ventajaLtr: "STR vs arriendo largo",
   tipoHuesped: "Quién va a alojarse y cómo amoblar para él",
+  largoPlazo: "¿Vale la pena a 10 años?",
   factibilidad: "Regulación, zona y riesgos",
   // Drawers propios (F2) — preguntas deterministas (el % de retorno vive en el body).
   financiamiento: "¿Cómo estás financiando?",
@@ -380,6 +381,20 @@ export function DrawerContentSTR({
   if (activeKey === "estructuraCostos") {
     const h = hById<HallazgoEstructuraCostosStr>("estructura_costos_str");
     return h ? <DrawerEstructuraCostosStr hallazgo={h} results={results} currency={currency} valorUF={valorUF} /> : faltaHallazgo;
+  }
+
+  // largoPlazo (paridad drawer) — prose-only: JUICIO del horizonte (contrafactual de
+  // instrumentos + condicional de plusvalía + posición). El equity al vender, el valor a
+  // 10 años, la TIR y el multiplicador viven en los drawers patrimonio/plusvalia y en
+  // IndicatorsSTR — este drawer NO los recita (guard en el prompt v2). Sin waterfall.
+  if (activeKey === "largoPlazo") {
+    const seccion = ai?.largoPlazo;
+    return (
+      <>
+        <NarrativeIA text={seccion?.contenido} />
+        <CajaFranco text={seccion?.cajaAccionable} label="La apuesta que estás haciendo:" />
+      </>
+    );
   }
 
   if (activeKey === "rentabilidad") {
