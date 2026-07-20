@@ -13,6 +13,7 @@ import { getAvailableCredits } from "@/lib/credits-grant";
 import { isAdminUser } from "@/lib/admin";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
+import { hasNewAiStructure, PROMPT_VERSION_LTR } from "@/lib/ai-generation";
 import { prefetchMedianaComunaVenta, type MedianaComunaSnapshot } from "@/lib/api-helpers/analisis-pipeline";
 
 // Replica el formato de fecha de la vista AMBAS (shared-client → formatFechaCorta):
@@ -272,6 +273,15 @@ export default async function AnalisisDetallePage({
   // Fetch zone comparison data
   const zoneData = await getZoneComparison(analisis.comuna);
 
+  // F6 — freshness version-aware de la prosa persistida (lazy-on-open). Si quedó con
+  // promptVersion vieja (o pre-F6 sin marcador), NO la pasamos como inicial y marcamos
+  // aiStale → el client regenera al abrir vía POST (el server NO cobra: hadPriorProse).
+  // hasNewAiStructure filtra shapes legacy; PROMPT_VERSION_LTR filtra versión.
+  const ltrAiPersisted = (data as Record<string, unknown>).ai_analysis;
+  const ltrAiFresh = hasNewAiStructure(ltrAiPersisted)
+    && (ltrAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_LTR;
+  const ltrAiStale = !!ltrAiPersisted && typeof ltrAiPersisted === "object" && !ltrAiFresh;
+
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       {/* Navbar — oculto en print mode (el PDF agrega su propio header) */}
@@ -306,7 +316,8 @@ export default async function AnalisisDetallePage({
           resumenEjecutivo={resumenEjecutivo}
           ufValue={ufFrozen}
           zoneData={zoneData}
-          aiAnalysisInitial={(data as Record<string, unknown>).ai_analysis as Record<string, unknown> | undefined ?? undefined}
+          aiAnalysisInitial={ltrAiFresh ? (ltrAiPersisted as Record<string, unknown>) : undefined}
+          aiStale={ltrAiStale}
           nombre={analisis.nombre}
           ciudad={analisis.ciudad}
           createdAt={analisis.created_at}

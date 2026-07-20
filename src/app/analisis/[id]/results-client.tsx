@@ -76,6 +76,7 @@ export function PremiumResults({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   zoneData,
   aiAnalysisInitial,
+  aiStale = false,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   nombre = "", ciudad = "", createdAt = "", superficie = 0, precioUF = 0,
   demoAiData,
@@ -104,6 +105,7 @@ export function PremiumResults({
   ufValue: number;
   zoneData?: MarketDataRow[] | null;
   aiAnalysisInitial?: unknown;
+  aiStale?: boolean;
   nombre?: string;
   ciudad?: string;
   createdAt?: string;
@@ -223,6 +225,16 @@ export function PremiumResults({
     }
     if (!analysisId) return;
     if (hasAiV2(aiAnalysis)) return;
+
+    // F6 lazy-on-open: la prosa persistida quedó STALE (versión vieja) → el server no la
+    // pasó como inicial y marcó aiStale. El poll a /ai-status devolvería la MISMA prosa
+    // vieja como "ready", así que NUNCA polleamos en este caso: regeneramos directo vía
+    // POST (route no cobra: hadPriorProse). Guard !aiError → un fallo no reintenta; el
+    // effect corre una vez ([analysisId]) → sin loop.
+    if (aiStale) {
+      if (!aiError) generateAiManually();
+      return;
+    }
 
     let cancelled = false;
     setAiLoading(true);

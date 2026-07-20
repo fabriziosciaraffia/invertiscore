@@ -10,6 +10,7 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
+import { PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 
 export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
   const supabase = createClient();
@@ -190,6 +191,13 @@ export default async function STRResultPage({
     redirect(`${subordinatedHref}&ver=str`);
   }
 
+  // F6 — freshness version-aware (lazy-on-open). Prosa STR con promptVersion vieja (o
+  // pre-F6 sin marcador) NO se pasa como inicial → el client la regenera al abrir vía POST
+  // (route no cobra: hadPriorProse). Fresca ⇒ se sirve tal cual.
+  const strAiPersisted = data.ai_analysis;
+  const strAiFresh = !!strAiPersisted && typeof strAiPersisted === "object"
+    && (strAiPersisted as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
+
   const sharedProps = {
     analysisId: data.id,
     results,
@@ -205,7 +213,7 @@ export default async function STRResultPage({
     isSharedView,
     userCredits,
     welcomeAvailable,
-    aiAnalysisInitial: data.ai_analysis ?? null,
+    aiAnalysisInitial: strAiFresh ? data.ai_analysis : null,
     printMode,
     subordinatedHref,
   };
