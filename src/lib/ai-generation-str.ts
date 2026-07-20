@@ -255,7 +255,7 @@ Devuelve EXACTAMENTE esta estructura. Sin campos extra, sin texto fuera del JSON
     "cajaAccionable": string      // (≤75) fallback
   },
   "largoPlazo": {
-    "contenido": string,          // (≤85) juicio del horizonte · instrumentos (ángulo 3) + condicional plusvalía + posición · SIN recitar cards
+    "contenido": string,          // (≤95) juicio del horizonte · instrumentos (ángulo 3) + condicional plusvalía + posición · SIN recitar cards
     "cajaAccionable": string      // (≤75) la apuesta en una frase: qué tiene que ser cierto para que el retorno justifique 10 años de gestión e iliquidez
   },
   "riesgos": {
@@ -299,7 +299,7 @@ export const SECTION_BUDGETS_STR: Record<string, number> = {
   "vsLTR.cajaAccionable": 75,
   "operacion.contenido": 110,
   "operacion.cajaAccionable": 75,
-  "largoPlazo.contenido": 85,
+  "largoPlazo.contenido": 95,
   "largoPlazo.cajaAccionable": 75,
   "riesgos.contenido": 230,
   "riesgos.cajaAccionable": 75,
