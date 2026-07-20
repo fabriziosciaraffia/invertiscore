@@ -247,26 +247,6 @@ export function HeroLTR({
           <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
             {renderProsaMono(respuesta)}
           </div>
-
-          {cajaAccionable && (
-            <div
-              className="mt-5"
-              style={{
-                borderLeft: "3px solid var(--signal-red)",
-                borderRadius: "0 8px 8px 0",
-                background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
-              }}
-            >
-              <div className="px-4 py-3.5">
-                <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
-                  La posición de Franco
-                </span>
-                <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
-                  {cajaAccionable}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Findings TOP-3 por decisividad */}
@@ -298,6 +278,28 @@ export function HeroLTR({
           )}
         </div>
       </div>
+
+      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) ═══ */}
+      {cajaAccionable && (
+        <div className="px-6 md:px-8 pb-4">
+          <div
+            style={{
+              borderLeft: "3px solid var(--signal-red)",
+              borderRadius: "0 8px 8px 0",
+              background: "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+            }}
+          >
+            <div className="px-4 py-3.5">
+              <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
+                La posición de Franco
+              </span>
+              <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
+                {cajaAccionable}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 

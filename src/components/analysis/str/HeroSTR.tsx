@@ -234,32 +234,6 @@ export function HeroSTR({
             )}
             {reencuadre && <div className="mt-3">{renderProsaMono(reencuadre)}</div>}
           </div>
-
-          {cajaAccionable && (
-            <div
-              className="mt-5"
-              style={{
-                borderLeft: `3px solid ${isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)"}`,
-                borderRadius: "0 8px 8px 0",
-                background: isNeutro ? "var(--franco-bg-alt)" : "color-mix(in srgb, var(--signal-red) 5%, transparent)",
-              }}
-            >
-              <div className="px-4 py-3.5">
-                <span
-                  className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold block mb-1.5"
-                  style={{ color: isNeutro ? "var(--franco-text-tertiary)" : "var(--signal-red)" }}
-                >
-                  {cajaLabel}
-                </span>
-                <p
-                  className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
-                  style={{ fontStyle: isNeutro ? "normal" : "italic" }}
-                >
-                  {cajaAccionable}
-                </p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* TOP-3 findings */}
@@ -286,6 +260,34 @@ export function HeroSTR({
           )}
         </div>
       </div>
+
+      {/* ═══ POSICIÓN DE FRANCO — full-width, ambas columnas (A5) · isNeutro preservado ═══ */}
+      {cajaAccionable && (
+        <div className="px-6 md:px-8 pb-4">
+          <div
+            style={{
+              borderLeft: `3px solid ${isNeutro ? "var(--franco-text-secondary)" : "var(--signal-red)"}`,
+              borderRadius: "0 8px 8px 0",
+              background: isNeutro ? "var(--franco-bg-alt)" : "color-mix(in srgb, var(--signal-red) 5%, transparent)",
+            }}
+          >
+            <div className="px-4 py-3.5">
+              <span
+                className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold block mb-1.5"
+                style={{ color: isNeutro ? "var(--franco-text-tertiary)" : "var(--signal-red)" }}
+              >
+                {cajaLabel}
+              </span>
+              <p
+                className="font-body text-[13.5px] leading-[1.55] text-[var(--franco-text)] m-0"
+                style={{ fontStyle: isNeutro ? "normal" : "italic" }}
+              >
+                {cajaAccionable}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="h-px" style={{ background: "var(--franco-border)" }} />
 

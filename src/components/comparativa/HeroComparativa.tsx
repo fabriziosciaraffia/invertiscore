@@ -310,14 +310,14 @@ export function HeroComparativa(p: Props) {
             <span className="font-mono text-[10px] uppercase tracking-[0.06em] font-semibold text-[var(--signal-red)] block mb-1.5">
               La posición de Franco
             </span>
-            <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0 max-w-[80ch]">
+            <p className="font-body text-[13.5px] leading-[1.55] italic text-[var(--franco-text)] m-0">
               {FRANCO_POS[estado]}
             </p>
             {/* Cierre-condición (mov. 3 de la prosa) — junto a la posición */}
             {p.aiLoading && !p.ai ? (
               <div className="mt-2.5"><SkeletonLine width="60%" /></div>
             ) : cierreCondicion ? (
-              <div className="font-body text-[13px] leading-[1.55] text-[var(--franco-text-secondary)] mt-2.5 pt-2.5 max-w-[80ch]" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}>
+              <div className="font-body text-[13px] leading-[1.55] text-[var(--franco-text-secondary)] mt-2.5 pt-2.5" style={{ borderTop: "0.5px solid color-mix(in srgb, var(--signal-red) 20%, transparent)" }}>
                 {renderProsaMono(cierreCondicion)}
               </div>
             ) : null}
