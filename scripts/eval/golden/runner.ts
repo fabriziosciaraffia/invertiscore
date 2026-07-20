@@ -11,6 +11,7 @@
 //     --full         recompute + generación fresca (AUTO) + semántico (LTR + AMBAS)
 //     --no-semantic  con --full, salta el juez Opus (solo AUTO)
 //     --ambas-semantic  standalone: solo el tier semántico AMBAS (juez Opus, cuesta tokens)
+//     --str-semantic    standalone: coherencia modo-gestión STR (determinístico, cuesta tokens de gen)
 //     --k=N          generaciones frescas por caso (default 2)
 //     --catch-test   auto-test: rompe invariantes en memoria y verifica que FALLA
 //
@@ -27,6 +28,7 @@ import { runSemanticTier } from "./semantic";
 import { runStrTier } from "./str-recompute";
 import { runAmbasTier } from "./ambas-recompute";
 import { runAmbasSemanticTier } from "./ambas-semantic";
+import { runStrSemanticTier } from "./str-semantic";
 
 const argv = process.argv.slice(2);
 const has = (f: string) => argv.includes(f);
@@ -35,6 +37,7 @@ const K = kArg ? Math.max(1, parseInt(kArg.split("=")[1], 10) || 2) : 2;
 const MODE_FULL = has("--full");
 const NO_SEM = has("--no-semantic");
 const AMBAS_SEM = has("--ambas-semantic"); // tier semántico AMBAS standalone (cuesta tokens)
+const STR_SEM = has("--str-semantic"); // tier coherencia modo-gestión STR standalone (cuesta tokens de gen)
 
 function sb() {
   return createClient(
@@ -67,6 +70,17 @@ async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
   console.log("  (flags semánticos AMBAS = reporte para Fabrizio, NO bloquean)");
 }
 
+async function printStrSemantic() {
+  console.log("\n─── TIER STR · coherencia modo-gestión (determinístico, cuesta tokens de gen) ───");
+  const sem = await runStrSemanticTier();
+  for (const s of sem) {
+    const head = s.error ? `⚠ ERROR (${s.error})` : `${s.flags.length === 0 ? "✓" : "⚑"} ${s.flags.length} flags`;
+    console.log(`\n  ${s.key}  modo=${s.mode} — ${head}`);
+    for (const fl of s.flags) console.log(`      ⚑ [${fl.severidad}/${fl.categoria}] ${fl.detalle}`);
+  }
+  console.log("\n  (aserción modo-gestión STR = reporte, NO bloquea; test puro, prompts intactos)");
+}
+
 (async () => {
   console.log("════════════════════ GOLDEN SET · runner ════════════════════");
 
@@ -79,6 +93,13 @@ async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
   if (AMBAS_SEM && !MODE_FULL) {
     await printAmbasSemantic(sb());
     console.log("\n  (tier semántico AMBAS standalone — no evalúa fallas duras)");
+    process.exit(0);
+  }
+
+  // Standalone: solo el tier de coherencia modo-gestión STR.
+  if (STR_SEM && !MODE_FULL) {
+    await printStrSemantic();
+    console.log("\n  (tier modo-gestión STR standalone — reporte, no evalúa fallas duras)");
     process.exit(0);
   }
 
@@ -125,6 +146,9 @@ async function printAmbasSemantic(sbClient: ReturnType<typeof sb>) {
 
       // Tier semántico AMBAS (prosa comparativa nueva) — mismo gate que el LTR.
       await printAmbasSemantic(sb());
+
+      // Tier coherencia modo-gestión STR (F6 · audit b) — no-bloqueante.
+      await printStrSemantic();
     }
   }
 
