@@ -7,7 +7,7 @@ import { isAdminUser } from "@/lib/admin";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
-import { generateStrProse } from "@/lib/ai-generation-str";
+import { generateStrProse, PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
 
 const anthropic = new Anthropic();
 
@@ -33,6 +33,16 @@ function createSupabaseServer() {
       },
     }
   );
+}
+
+// Lock/debounce en proceso: colapsa aperturas concurrentes del MISMO analysisId a una
+// sola generación (evita doble LLM + doble write en el lazy-on-open). Espejo comparativa.
+const inflight = new Map<string, Promise<Record<string, unknown> | null>>();
+
+// Cache VERSION-AWARE: fresca solo si la versión del prompt coincide. Prosa pre-F6 (sin
+// promptVersion) o versión vieja → cae a regen (lazy-on-open).
+function cacheEstaFrescaSTR(ai: unknown): boolean {
+  return !!ai && typeof ai === "object" && (ai as { promptVersion?: number }).promptVersion === PROMPT_VERSION_STR;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -70,17 +80,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado para analizar este registro" }, { status: 403 });
     }
 
-    if (!analysis.is_premium && !isAdmin) {
+    // F6 — INVARIANTE DE PLATA: prosa previa en CUALQUIER shape/versión ⇒ ya se
+    // desbloqueó una vez; el regen por versión stale NUNCA vuelve a cobrar. El crédito
+    // se consume SOLO en la PRIMERA generación (sin prosa previa). Garantizado por código.
+    const hadPriorProse = !!analysis.ai_analysis && typeof analysis.ai_analysis === "object";
+
+    // Cache version-aware: sirve tal cual solo si está fresca. Stale/pre-F6 → regen.
+    if (cacheEstaFrescaSTR(analysis.ai_analysis)) {
+      return NextResponse.json(analysis.ai_analysis);
+    }
+
+    // Crédito SOLO en primera generación (sin prosa previa). Regen de stale = gratis.
+    if (!hadPriorProse && !analysis.is_premium && !isAdmin) {
       const credited = await consumeCredit(user.id, analysisId);
       if (!credited) {
         return NextResponse.json({ error: "Análisis no desbloqueado. Debes pagar para acceder al análisis IA." }, { status: 403 });
       }
-    }
-
-    // Cache: si ya hay ai_analysis (cualquier shape v2/v3), devolverlo. El render
-    // lee defensivamente por clave (back-compat con prosa v2 persistida).
-    if (analysis.ai_analysis && typeof analysis.ai_analysis === "object") {
-      return NextResponse.json(analysis.ai_analysis);
     }
 
     const input = analysis.input_data as Record<string, unknown> | null;
@@ -94,24 +109,41 @@ export async function POST(request: Request) {
 
     const comuna = (analysis.comuna as string) ?? (input.comuna as string) ?? "";
 
-    let aiResult;
-    try {
-      const gen = await generateStrProse({
-        anthropic,
-        inp: input,
-        r: results,
-        comuna,
-        logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
-      });
-      aiResult = gen.ai;
-    } catch (genError) {
-      console.error("[STR AI v3] generación falló:", genError);
-      return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
+    // Regen con lock/debounce por analysisId. La tarea genera Y persiste; si falla
+    // devuelve null (NO persiste → la versión no se sella → se reintenta al reabrir).
+    const existing = inflight.get(analysisId);
+    if (existing) {
+      const shared = await existing;
+      if (!shared) return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
+      return NextResponse.json(shared);
     }
-
-    await supabase.from("analisis").update({ ai_analysis: aiResult }).eq("id", analysisId);
-
-    return NextResponse.json(aiResult);
+    const task = (async (): Promise<Record<string, unknown> | null> => {
+      try {
+        const gen = await generateStrProse({
+          anthropic,
+          inp: input,
+          r: results,
+          comuna,
+          logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
+        });
+        const ai = gen.ai as unknown as Record<string, unknown>;
+        await supabase.from("analisis").update({ ai_analysis: ai }).eq("id", analysisId);
+        return ai;
+      } catch (genError) {
+        console.error("[STR AI v3] generación falló:", genError);
+        return null;
+      }
+    })();
+    inflight.set(analysisId, task);
+    try {
+      const aiResult = await task;
+      if (!aiResult) {
+        return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
+      }
+      return NextResponse.json(aiResult);
+    } finally {
+      inflight.delete(analysisId);
+    }
   } catch (error) {
     console.error("STR AI v3 error:", error);
     return NextResponse.json({ error: "Error generando análisis IA" }, { status: 500 });
