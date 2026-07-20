@@ -172,6 +172,25 @@ export function SubjectCardGrid({
           pirámide ni el root de AdvancedSection aportan ese margen). */}
       {simulationSlot && <div className="mt-6">{simulationSlot}</div>}
 
+      {/* paridad drawer — afordance al drawer "A 10 años" (prosa IA largoPlazo). El
+          DrawerLargoPlazo quedó huérfano en la migración grid→pirámide (HALLAZGO_DRAWER
+          es inyectivo y no lo mapea); se re-cablea acá como hermano de ZoneInsightMiniCard,
+          que ya abre su drawer fuera de la pirámide con setActiveDrawer. El slot
+          AdvancedSection no alcanza este estado (vive un nivel arriba), por eso el trigger
+          va en SubjectCardGrid y no dentro del slot. Solo si hay prosa; fuera de prev/next. */}
+      {simulationSlot && aiAnalysis?.largoPlazo?.contenido_clp?.trim() && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setActiveDrawer("largoPlazo")}
+            className="font-mono uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+            style={{ fontSize: 11 }}
+          >
+            Leer el análisis a 10 años →
+          </button>
+        </div>
+      )}
+
       {/* 5ª tarjeta ancha: Zona / POIs */}
       {analysisId && (
         <div className="mt-3">
