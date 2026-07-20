@@ -990,6 +990,10 @@ export interface AIAnalysisV2 {
   // gemelo). Vive acá y NO en results.hallazgos porque su mediana es async
   // (ver HallazgoSobreprecio en este archivo). null si no hay dato de zona.
   hallazgoSobreprecio?: HallazgoSobreprecio | null;
+  // F6 — versión del prompt con que se generó la prosa. Driver de la invalidación
+  // lazy-on-open: si `promptVersion` < PROMPT_VERSION_LTR, el análisis del owner la
+  // regenera al abrir. Ausente ⇒ prosa pre-F6 (siempre stale). Espejo comparativa.
+  promptVersion?: number;
 }
 
 // ─── STR — IA Análisis v2/v3 ──────────────────────────────────────
@@ -1045,6 +1049,10 @@ export interface AIAnalysisSTRv2 {
   // Audit-only NO renderizado. Si la IA cree que el motor está mal calibrado,
   // lo reporta acá para revisión humana sin contradecir al usuario.
   francoCaveat?: string;
+  // F6 — versión del prompt con que se generó la prosa. Driver de la invalidación
+  // lazy-on-open: si `promptVersion` < PROMPT_VERSION_STR, el análisis del owner la
+  // regenera al abrir. Ausente ⇒ prosa pre-F6 (siempre stale). Espejo comparativa.
+  promptVersion?: number;
 }
 
 // ─── Comparativa Ambas — IA narrativa "Cuál te conviene" (Fase C · Plan C) ──

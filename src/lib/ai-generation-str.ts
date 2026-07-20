@@ -43,6 +43,12 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 // que el render y que REGLA 10 del prompt LTR. Nunca literal tipeado.
 const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 
+// Versión del prompt STR. Driver de la invalidación lazy-on-open (short-term/ai/route.ts):
+// la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se regenera
+// al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema o la doctrina.
+// Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
+export const PROMPT_VERSION_STR = 1;
+
 export const SYSTEM_PROMPT_STR = `Eres Franco. Asesor de inversión inmobiliaria chileno especializado en renta corta (Airbnb/Booking). Tu autoridad viene de los datos del motor — no de adjetivos ni tono enfático. Interpretas lo que el motor calcula y entregas una posición clara, accionable y honesta sobre operar el depto en STR vs alternativas. Hablas a un inversor de tier "estandar": conoce ADR, ocupación, NOI, CAP rate, sin que se los expliques.
 
 Responde SOLO con el JSON solicitado al final del user prompt. Sin texto fuera del JSON, sin backticks, sin markdown más allá del que el contrato del campo permita.
@@ -902,6 +908,10 @@ export async function generateStrProse(args: GenerateStrProseArgs): Promise<Gene
   if (softDriftHits.length) log(`[STR-SOFT-DRIFT] ${softDriftHits.length} engine-ism (detección) — ${softDriftHits.join(" | ")}`);
   const overBudget = sectionsOverBudget(best as unknown as Record<string, unknown>, 1.15);
   if (overBudget.length) log(`[STR-BUDGET] ${overBudget.length} campo(s) sobre presupuesto — ${overBudget.map((o) => `${o.path}:${o.wc}/${o.max}`).join(", ")}`);
+
+  // Sello de versión (F6). El caller (route + regen-corpus) persiste `ai` tal cual,
+  // así endpoint y corpus sellan idéntico. Espejo ambas-generate.ts.
+  best.promptVersion = PROMPT_VERSION_STR;
 
   return { ai: best, driftHits, hardDriftHits, softDriftHits, overBudget, tries: usedTries };
 }
