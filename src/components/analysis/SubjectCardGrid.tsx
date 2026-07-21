@@ -10,6 +10,7 @@ import { HeroLTR } from "./HeroLTR";
 import { PiramideHallazgos, ordenarHallazgosPiramide } from "./PiramideHallazgos";
 import { HALLAZGO_DRAWER } from "./GenericFindingCard";
 import { hasAiV2 } from "./AIInsightSection";
+import { ProsaSkeleton, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Orquestador del análisis IA: Hero Verdict + Subject Card Grid 2×2 + card
@@ -24,6 +25,7 @@ import { hasAiV2 } from "./AIInsightSection";
 export function SubjectCardGrid({
   aiAnalysis,
   loading,
+  aiStale = false,
   error,
   currency,
   onCurrencyChange,
@@ -41,6 +43,10 @@ export function SubjectCardGrid({
 }: {
   aiAnalysis: AIAnalysisV2 | null;
   loading: boolean;
+  /** F6 lazy-on-open: la prosa persistida quedó stale (versión vieja) y se está
+   *  regenerando. La data del análisis ya existe → no secuestrar la página con el
+   *  overlay editorial fixed; skeleton inline en el lugar de la prosa. */
+  aiStale?: boolean;
   error: string | null;
   currency: "CLP" | "UF";
   onCurrencyChange: (c: "CLP" | "UF") => void;
@@ -102,9 +108,34 @@ export function SubjectCardGrid({
     }
   }, [hasReadyData, loadingDismissed]);
 
-  const showLoading = (loading && !aiAnalysis) || (hasReadyData && !loadingDismissed);
+  // La transición post-arribo (editorial 1100ms antes de revelar) es solo para la
+  // generación fresca; en regen stale ya no hay overlay que desvanecer, se revela directo.
+  const showLoading = (loading && !aiAnalysis) || (hasReadyData && !loadingDismissed && !aiStale);
 
   if (showLoading) {
+    // Regen stale on-open (F6): la data del análisis ya existía; en vez del overlay
+    // editorial full-page, mostramos la página con el shell del hero (label + título) y
+    // el ProsaSkeleton compartido en el lugar de la prosa. HeroLTR no puede renderizar
+    // sin data (aiAnalysis es null mientras regenera), así que va el placeholder inline.
+    if (aiStale && !aiAnalysis) {
+      return (
+        <div id="informe-pro-section" className="mb-8">
+          <div
+            className="rounded-[16px] overflow-hidden mb-3"
+            style={{ background: "var(--franco-bg)", border: "0.5px solid var(--franco-border-strong)" }}
+          >
+            <div className="px-6 md:px-8 py-6">
+              <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
+                Veredicto
+              </p>
+              <div className="mb-3.5"><SkeletonLine width="58%" /></div>
+              <ProsaSkeleton />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    // Generación fresca (sin prosa previa) + transición post-arribo: overlay editorial.
     return (
       <div id="informe-pro-section" className="mb-8 rounded-[16px] overflow-hidden">
         <LoadingEditorial isDataReady={hasReadyData} />

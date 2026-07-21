@@ -914,6 +914,7 @@ export function PremiumResults({
           <SubjectCardGrid
             aiAnalysis={aiAnalysis}
             loading={aiLoading}
+            aiStale={aiStale}
             error={aiError}
             currency={currency}
             onCurrencyChange={setCurrency}
