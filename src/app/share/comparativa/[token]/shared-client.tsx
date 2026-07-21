@@ -156,7 +156,7 @@ export function SharedComparativaClient(p: Props) {
           {/* CTA conversión — anzuelo (superficie Ink) · solo web */}
           {!p.printMode && (
             <div className="mb-5">
-              <ConversionHook href="/register" />
+              <ConversionHook href="/register?next=/analisis/nuevo-v2" />
             </div>
           )}
 
@@ -250,7 +250,7 @@ export function SharedComparativaClient(p: Props) {
           {/* CTA conversión — cierre (campo Signal Red) · solo en vista web */}
           {!p.printMode && (
             <div className="mt-8 mb-4">
-              <ConversionCloser href="/register" />
+              <ConversionCloser href="/register?next=/analisis/nuevo-v2" />
             </div>
           )}
 
