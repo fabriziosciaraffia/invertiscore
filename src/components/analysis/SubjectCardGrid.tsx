@@ -70,6 +70,20 @@ export function SubjectCardGrid({
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
+  // ── Dev switch de tratamientos del hero (Ronda 3) — ?hero= + ?verdict= ──
+  // Sin flag: base (Ronda 2). No persiste; solo para comparar en la página real.
+  //   ?hero=tinta | ?hero=verdicto  · ?verdict=COMPRAR|AJUSTA SUPUESTOS|BUSCAR OTRA
+  const [heroVerdictOverride, setHeroVerdictOverride] = useState<string | null>(null);
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const h = q.get("hero");
+    if (h === "tinta" || h === "verdicto") document.documentElement.setAttribute("data-hero", h);
+    const v = q.get("verdict");
+    if (v === "COMPRAR" || v === "AJUSTA SUPUESTOS" || v === "BUSCAR OTRA") setHeroVerdictOverride(v);
+    return () => document.documentElement.removeAttribute("data-hero");
+  }, []);
+  const veredictoEff = heroVerdictOverride ?? veredicto;
+
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
   // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
   // navegación prev/next del drawer se deriva de acá: "siguiente" = card siguiente
@@ -170,7 +184,7 @@ export function SubjectCardGrid({
         data={aiAnalysis}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
-        veredicto={veredicto}
+        veredicto={veredictoEff}
         score={score}
         propiedadTitle={propiedadTitle}
         inputData={inputData}

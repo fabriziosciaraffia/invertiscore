@@ -157,8 +157,8 @@ export function HeroSTR({
 
   return (
     <div
-      className="rounded-[16px] overflow-hidden mb-3"
-      style={{ background: "var(--franco-bg)", border: "0.5px solid var(--franco-border-strong)" }}
+      className="rounded-[16px] overflow-hidden mb-3 franco-hero-block"
+      data-verdict={v}
     >
       {/* F1 · IDENTIDAD */}
       <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
