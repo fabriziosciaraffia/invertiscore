@@ -1,8 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-
-type Theme = "dark" | "light";
+import { currentTheme, setTheme as applyTheme, type Theme } from "@/lib/theme";
 
 type ThemeCtx = {
   theme: Theme;
@@ -10,43 +9,30 @@ type ThemeCtx = {
   setTheme: (t: Theme) => void;
 };
 
-const STORAGE_KEY = "franco-landing-theme";
-
 const Ctx = createContext<ThemeCtx | null>(null);
 
+// Fase 1 · el provider de la landing dejó de tener estado/storage propio.
+// Ahora es un adapter fino sobre la fuente única (src/lib/theme): el tema real
+// lo aplica el script pre-paint (data-theme en <html>); acá solo lo reflejamos
+// en React y escribimos siempre al mismo lugar. Mantiene la API useLandingTheme
+// intacta para los consumers existentes (UnifiedNav).
 export function LandingThemeProvider({ children }: { children: React.ReactNode }) {
-  // Default dark. Lee localStorage en mount (evita FOUC con script inline en layout).
   const [theme, setThemeState] = useState<Theme>("dark");
 
+  // Lee el tema ya aplicado (evita FOUC — el atributo viene del pre-paint).
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY)) as Theme | null;
-    if (saved === "light" || saved === "dark") setThemeState(saved);
+    setThemeState(currentTheme());
   }, []);
-
-  // Aplica el atributo al wrapper (también lo mantiene sincronizado).
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const root = document.querySelector<HTMLElement>("[data-franco-root]");
-    if (root) root.setAttribute("data-franco-theme", theme);
-  }, [theme]);
 
   const setTheme = useCallback((t: Theme) => {
     setThemeState(t);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, t);
-    } catch {
-      /* ignore quota / private mode */
-    }
+    applyTheme(t); // atributo en <html> + persistencia (fuente única)
   }, []);
 
   const toggle = useCallback(() => {
     setThemeState((prev) => {
       const next: Theme = prev === "dark" ? "light" : "dark";
-      try {
-        window.localStorage.setItem(STORAGE_KEY, next);
-      } catch {
-        /* ignore */
-      }
+      applyTheme(next);
       return next;
     });
   }, []);

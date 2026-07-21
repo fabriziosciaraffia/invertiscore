@@ -2,24 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { Sun, Moon } from "lucide-react";
+import { currentTheme, setTheme, type Theme } from "@/lib/theme";
 
 export function ThemeToggle() {
   const [isLight, setIsLight] = useState(false);
 
   useEffect(() => {
-    setIsLight(document.documentElement.getAttribute("data-theme") === "light");
+    setIsLight(currentTheme() === "light");
   }, []);
 
   function toggle() {
-    const next = !isLight;
-    setIsLight(next);
-    if (next) {
-      document.documentElement.setAttribute("data-theme", "light");
-      localStorage.setItem("franco-theme", "light");
-    } else {
-      document.documentElement.removeAttribute("data-theme");
-      localStorage.setItem("franco-theme", "dark");
-    }
+    const next: Theme = isLight ? "dark" : "light";
+    setIsLight(next === "light");
+    setTheme(next); // fuente única: atributo en <html> + persistencia
   }
 
   return (
