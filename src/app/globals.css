@@ -116,39 +116,58 @@
     --franco-nav-bg: rgba(250,250,248,0.75);
     --franco-card: #FAFAF8;
     --franco-elevated: #FFFFFF;
-    --franco-text: #111111;
-    /* Fase 10 — alineado con escala Ink del skill franco-design-system.
-       Antes: secondary #888888, muted #BBBBBB → ratios 1.5-1.8:1 vs page bg
-       (fail WCAG AA). Tras refactor: Ink 600 / Ink 500 → 5.4 / 3.0 vs bg.
-       Dark mode no se toca (rgba sobre #0F0F0F siguen válidos). */
-    --franco-text-secondary: #5F5E5A;
-    --franco-text-muted: #888780;
-    --franco-text-tertiary: #B4B2A9;
-    --franco-border: #E5E5E5;
-    --franco-border-hover: #D5D5D5;
-    --franco-border-strong: #CCCCCC;
+    --franco-text: #1A1613;
+    /* ── Fase 2 · paleta light de primera clase ─────────────────────────
+       Todos los pares texto/fondo verificados contra el fondo REAL (page
+       #E8E6E1 = superficie más oscura tras el texto = peor caso). Piso AA
+       4.5 en TODO texto. Dark NO se toca — ni un valor. Ratios (page/card):
+         text        #1A1613 → 14.5 / 17.3   secondary #5A5852 → 5.7 / 6.8
+         muted       #676560 →  4.7 /  5.6   (antes #888780 = 2.9 · FAIL)
+         positive/warning #55534E → 6.2 / 7.4 (antes #B4B2A9 = 1.7 · FAIL)
+       tertiary y bar-fill pasan a rol GRÁFICO (no-texto): ~3:1 en card.
+       signal-red como TEXTO: 5.05 sobre card (AA) · 4.23 sobre page (falla →
+       usar sobre card, o variante red-ink #B0272F si va sobre el page base). */
+    --franco-text-secondary: #5A5852;
+    --franco-text-muted: #676560;
+    /* tertiary también carga TEXTO (eyebrows uppercase: PATRIMONIO/VENTA/etc.) →
+       debe ser AA. En light colapsa hacia muted (ambos AA); la jerarquía "faint"
+       se logra por tamaño/peso, no por color sub-AA. 4.60 page / 5.49 card. */
+    --franco-text-tertiary: #686660;
+    --franco-border: #C7C4BA;
+    --franco-border-hover: #B6B3A8;
+    --franco-border-strong: #9E9B90;
     --franco-input-bg: #FFFFFF;
+    /* Superficie hundida (nivel-3 / recessed). Light-only: en dark los consumers
+       usan el fallback inline y no se toca nada. */
+    --franco-sunken: #EFEDE7;
     --franco-wm-re: rgba(0,0,0,0.2);
-    --franco-wm-franco: #111111;
-    --franco-bar-track: #F0F0F0;
-    --franco-bar-fill: #D1D5DB;
-    /* Commit 1 · 2026-05-11 — Capa 1 binaria también en light mode.
-       Antes teal + amber-dark; ahora Ink (5F5E5A para v-adjust, B4B2A9 para
-       v-buy/positive). Sin teal ni amber en ningún modo. */
-    --franco-v-buy: #B4B2A9;
+    --franco-wm-franco: #1A1613;
+    --franco-bar-track: #E0DED6;
+    --franco-bar-fill: #8C8A80;
+    /* Fase 2 · veredictos/valores como Ink LEGIBLE (sin verde). positive/v-buy
+       eran #B4B2A9 (1.7:1, invisible) → Ink 600 #55534E (6.2:1). Los *-bg son
+       washes muy sutiles, se mantienen. */
+    --franco-v-buy: #55534E;
     --franco-v-buy-bg: rgba(180,178,169,0.08);
-    --franco-v-adjust: #5F5E5A;
+    --franco-v-adjust: #55534E;
     --franco-v-adjust-bg: rgba(95,94,90,0.08);
     --franco-v-avoid: #C8323C;
     --franco-v-avoid-bg: rgba(200,50,60,0.06);
-    --franco-positive: #B4B2A9;
-    --franco-warning: #5F5E5A;
+    --franco-positive: #55534E;
+    /* pos-text: color de VALOR positivo (dinero/KPI). Muchos consumers LTR usan
+       var(--ink-400) directo como "positivo" (#B4B2A9 = 1.7:1 en light, invisible).
+       Con var(--franco-pos-text, var(--ink-400)): dark cae al ink-400 (sin cambio),
+       light usa Ink 600 legible (6.2:1). */
+    --franco-pos-text: #55534E;
+    --franco-warning: #55534E;
     --franco-sc-bad-bg: rgba(200,50,60,0.04);
     --franco-sc-bad-border: rgba(200,50,60,0.12);
-    --franco-sc-good-bg: rgba(180,178,169,0.06);
-    --franco-sc-good-border: rgba(180,178,169,0.16);
-    --franco-score-gradient: linear-gradient(90deg, #C8323C, #5F5E5A 50%, #B4B2A9);
-    --franco-dot-fill: #111111;
+    --franco-sc-good-bg: rgba(85,83,78,0.06);
+    --franco-sc-good-border: rgba(85,83,78,0.16);
+    /* Gauge light legible: rojo → gold-light desaturado → Ink 600 (antes acababa
+       en #B4B2A9 invisible). Sin consumers hoy (los gauges hardcodean); canon-prep. */
+    --franco-score-gradient: linear-gradient(90deg, #C8323C, #9A6A48 50%, #55534E);
+    --franco-dot-fill: #1A1613;
     --franco-dot-border: #FFFFFF;
   }
 }
