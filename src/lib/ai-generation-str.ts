@@ -276,7 +276,16 @@ REGLA DURA — \`riesgos.contenido\`: EXACTO 3 riesgos, separados por DOBLE SALT
 Antes de escribir cualquier comparación entre dos números, verifica cuál es mayor. NUNCA "X supera a Y" sin comprobar X > Y; NUNCA "X cubre Y" sin comprobar X ≥ Y.
 - INCORRECTO: "tu NOI de $520K cubre el dividendo de $733K" ($520K < $733K).
 - CORRECTO: "tu NOI de $520K no alcanza a cubrir el dividendo de $733K — quedan $213K por aportar".
-Si dudas, escribe ambos montos en orden numérico antes de elegir el verbo.`;
+Si dudas, escribe ambos montos en orden numérico antes de elegir el verbo.
+
+## 15. Comparaciones de magnitud — usa solo múltiplos provistos
+
+Cuando una frase compara dos cifras, tienes dos caminos honestos y solo esos dos:
+
+1. Si el bloque de datos trae el múltiplo, la razón o la diferencia en puntos ya calculada, úsala tal cual — es la única base para decir "el doble", "la mitad", "X veces" o "N puntos más".
+2. Si el bloque no trae esa razón, nombra los dos montos absolutos y deja que el lector los compare ("aportas $382.744 frente a un dividendo de $530.341"). Ahí te detienes: no traduzcas esa relación a un múltiplo.
+
+Un múltiplo que calculas tú a partir de dos cifras del bloque es una afirmación que no puedes respaldar: suena redonda y puede estar equivocada. Es la disciplina de §1.4 (solo datos provistos), aplicada a las razones entre cifras, no solo a las cifras sueltas.`;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Presupuestos de palabras por sección (v3). Se inyectan en el user prompt y

@@ -600,7 +600,16 @@ Ejemplos del tipo de error a evitar:
 - INCORRECTO: "tu cuota de $890K supera el arriendo de $950K" ($890K < $950K, la relación está invertida).
 - CORRECTO: "el arriendo de $950K cubre tu cuota de $890K con holgura de $60K".
 
-Cuando la relación importa para el análisis, haz el cálculo explícito en tu razonamiento interno antes de redactar la frase. Si dudas, escribe ambos montos en orden numérico antes de elegir el verbo.`;
+Cuando la relación importa para el análisis, haz el cálculo explícito en tu razonamiento interno antes de redactar la frase. Si dudas, escribe ambos montos en orden numérico antes de elegir el verbo.
+
+## 15. Comparaciones de magnitud — usa solo múltiplos provistos
+
+Cuando una frase compara dos cifras, tienes dos caminos honestos y solo esos dos:
+
+1. Si el bloque de datos trae el múltiplo, la razón o la diferencia en puntos ya calculada, úsala tal cual — es la única base para decir "el doble", "la mitad", "X veces" o "N puntos más".
+2. Si el bloque no trae esa razón, nombra los dos montos absolutos y deja que el lector los compare ("aportas $382.744 frente a un dividendo de $530.341"). Ahí te detienes: no traduzcas esa relación a un múltiplo.
+
+Un múltiplo que calculas tú a partir de dos cifras del bloque es una afirmación que no puedes respaldar: suena redonda y puede estar equivocada. Es la disciplina de §1.4 (solo datos provistos), aplicada a las razones entre cifras, no solo a las cifras sueltas.`;
 
 function fmtCLP(n: number): string {
   return (n < 0 ? "-$" : "$") + Math.round(Math.abs(n)).toLocaleString("es-CL");
