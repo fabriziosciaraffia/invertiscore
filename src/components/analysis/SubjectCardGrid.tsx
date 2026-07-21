@@ -74,7 +74,8 @@ export function SubjectCardGrid({
   // Sin flag = base. El veredicto NO cambia el color del hero (vive en badge/slider/texto).
   useEffect(() => {
     const h = new URLSearchParams(window.location.search).get("hero");
-    if (h === "flotante" || h === "flotante-luz") document.documentElement.setAttribute("data-hero", h);
+    const allowed = ["flotante", "flotante-luz", "marco", "sangrado", "escenario"];
+    if (h && allowed.includes(h)) document.documentElement.setAttribute("data-hero", h);
     return () => document.documentElement.removeAttribute("data-hero");
   }, []);
 

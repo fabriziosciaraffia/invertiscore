@@ -770,6 +770,70 @@ input[type="number"] {
   background: linear-gradient(180deg, #FFFFFF 0%, #F4F4F6 100%);
 }
 
+/* ── Ronda 3C · variantes más marcadas ──────────────────────────────────── */
+
+/* (3) MARCO — "obra enmarcada": hero blanco con borde de tinta casi negra 2px
+ * (firme, no hairline), SIN sombra. Lienzo gris tenue como flotante. */
+[data-hero="marco"] {
+  --franco-bg: #F6F6F7;
+  --franco-card: #FFFFFF;
+}
+[data-hero="marco"] .franco-hero-block {
+  background: #FFFFFF;
+  border: 2px solid #0F0F0F;
+  box-shadow: none;
+}
+
+/* (4) SANGRADO — masthead full-bleed: banda blanca de borde a borde del viewport
+ * (hairlines arriba/abajo), el CONTENIDO se queda alineado a la columna y la
+ * banda bleedea detrás vía ::before (100vw + translateX centrado). Responsive:
+ * el overflow-x:clip global evita scroll horizontal en mobile. */
+[data-hero="sangrado"] {
+  --franco-bg: #F6F6F7;
+  --franco-card: #FFFFFF;
+}
+[data-hero="sangrado"] .franco-hero-block {
+  position: relative;
+  z-index: 0;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+[data-hero="sangrado"] .franco-hero-block::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 100vw;
+  transform: translateX(-50%);
+  background: #FFFFFF;
+  border-top: 0.5px solid var(--franco-border);
+  border-bottom: 0.5px solid var(--franco-border);
+  z-index: -1;
+}
+
+/* (5) ESCENARIO — flotante extremo: lienzo un escalón más gris (#EFEFF1, "se lee
+ * como escenario"), sombra papel-levantado más grande y difusa, escala interna
+ * +1 adicional (score/titular), aire interno y externo generoso. */
+[data-hero="escenario"] {
+  --franco-bg: #EFEFF1;
+  --franco-card: #FFFFFF;
+}
+[data-hero="escenario"] .franco-hero-block {
+  background: #FFFFFF;
+  border: 0.5px solid var(--franco-border);
+  box-shadow:
+    0 2px 6px rgba(15, 15, 15, 0.05),
+    0 44px 96px -24px rgba(15, 15, 15, 0.22);
+  padding-block: 12px;
+  margin-block: 20px 24px;
+}
+[data-hero="escenario"] .franco-hero-score { font-size: 64px; }
+[data-hero="escenario"] .franco-hero-title { font-size: 33px; }
+
 /* ═══ Fase 2 · Capa de interacción — ::selection Franco (FIJA, ambos temas) ═══
  * Opción A definitiva (decisión Fabrizio): rojo pleno + texto blanco. Excepción
  * declarada al "dark intacto": la selección es transversal. Cubre body, inputs
