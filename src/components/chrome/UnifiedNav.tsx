@@ -10,20 +10,17 @@
  *
  * ── Decisión de tokens ───────────────────────────────────────────────
  * El sitio usa el set **--franco-*** en TODAS las variantes (app, marketing,
- * minimal). La landing tiene su propio sistema de tema (--landing-*),
- * controlado por `LandingThemeProvider` vía el atributo `data-franco-theme`
- * sobre el wrapper `[data-franco-root]` — distinto del tema global de la app
- * (`data-theme` sobre <html>, que mueve los --franco-*).
+ * minimal). La landing pinta su chrome con el set propio --landing-*.
+ * Fase 1 · fuente única de tema: AMBOS sets responden ahora al mismo atributo
+ * `data-theme` sobre <html> (aplicado pre-paint). `data-franco-theme` quedó
+ * retirado.
  *
- * Por eso `variant="landing"`:
- *   - pinta su chrome con los tokens --landing-* (--landing-nav-bg,
- *     --landing-text, --landing-wm-*), que SÍ responden al toggle de la
- *     landing; usar --franco-* ahí dejaría el nav fuera de sync con el tema
- *     de la home.
- *   - usa el toggle de tema de la landing (`useLandingTheme`) en vez del
- *     ThemeToggle global, porque el global mueve --franco-* (data-theme) y no
- *     afectaría a las secciones de la home (que leen --landing-*).
- * El resto de las variantes usa --franco-* y el ThemeToggle global.
+ * Por eso `variant="landing"` sigue usando los tokens --landing-*
+ * (--landing-nav-bg, --landing-text, --landing-wm-*) para mantener el look de
+ * la home; y usa `useLandingTheme` sólo como adapter — que hoy escribe a la
+ * MISMA fuente única que el ThemeToggle global (src/lib/theme). El resto de las
+ * variantes usa --franco-* y el ThemeToggle global. Toggle en cualquier
+ * superficie ⇒ misma memoria de tema.
  *
  * ── Patrón SAFE ──────────────────────────────────────────────────────
  *   - Dropdown de usuario: always-mounted, se muestra con opacity +

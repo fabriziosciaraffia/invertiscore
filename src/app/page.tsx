@@ -24,7 +24,6 @@ export default function LandingPage() {
     <LandingThemeProvider>
       <div
         data-franco-root
-        data-franco-theme="dark"
         className="min-h-screen"
         style={{ background: "var(--landing-bg)", color: "var(--landing-text)" }}
       >

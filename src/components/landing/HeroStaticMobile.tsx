@@ -3,20 +3,19 @@
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-/* Hook · detecta si el tema actual es light leyendo data-franco-theme
- * en el elemento [data-franco-root]. Re-evalúa via MutationObserver. */
+/* Hook · detecta si el tema actual es light leyendo data-theme en <html>
+ * (fuente única de tema · Fase 1). Re-evalúa via MutationObserver. */
 function useIsLight(): boolean {
   const [isLight, setIsLight] = useState(false);
   useEffect(() => {
-    const root = document.querySelector("[data-franco-root]");
-    if (!root) return;
+    const root = document.documentElement;
     const update = () =>
-      setIsLight(root.getAttribute("data-franco-theme") === "light");
+      setIsLight(root.getAttribute("data-theme") === "light");
     update();
     const obs = new MutationObserver(update);
     obs.observe(root, {
       attributes: true,
-      attributeFilter: ["data-franco-theme"],
+      attributeFilter: ["data-theme"],
     });
     return () => obs.disconnect();
   }, []);

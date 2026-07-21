@@ -169,10 +169,11 @@ html {
 }
 
 /* ─── Landing scrollytelling — tokens por tema ───
- * Default dark. Toggle a light cambia el atributo `data-franco-theme`
- * en el wrapper <main>. Variables consumidas con bg-[var(--landing-bg)]
- * desde Tailwind arbitrary values. */
-[data-franco-theme="dark"] {
+ * Fase 1 · unificado a la fuente única de tema: estos tokens responden ahora a
+ * data-theme en <html> (antes data-franco-theme en el wrapper de la landing).
+ * Default dark = ausencia de atributo (:root). Los VALORES no cambian, sólo el
+ * selector que los activa. Consumidos con bg-[var(--landing-bg)] etc. */
+:root {
   --landing-bg: #0F0F0F;
   /* F.11 Phase 2.5 · ritmo visual sutil — alterna entre base e alt por sección. */
   --franco-bg-base: #0F0F0F;
@@ -215,7 +216,7 @@ html {
   --landing-mockup-solid-bg: #1A1A1A;
 }
 
-[data-franco-theme="light"] {
+[data-theme="light"] {
   --landing-bg: #FAFAF8;
   /* F.11 Phase 2.5 · ritmo visual sutil — alterna entre base e alt por sección. */
   --franco-bg-base: #FAFAF7;
@@ -576,7 +577,7 @@ input[type="number"] {
   overflow: hidden;
 }
 
-[data-franco-theme="light"] .s01-hero-dot {
+[data-theme="light"] .s01-hero-dot {
   background: rgba(0, 0, 0, 0.15);
 }
 
@@ -660,7 +661,7 @@ input[type="number"] {
   overflow: hidden;
 }
 
-[data-franco-theme="light"] .franco-mockup {
+[data-theme="light"] .franco-mockup {
   background: linear-gradient(
     180deg,
     rgba(0, 0, 0, 0.02) 0%,

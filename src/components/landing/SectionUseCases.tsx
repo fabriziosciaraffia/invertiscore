@@ -23,20 +23,19 @@ import { RevealOnScroll } from "./RevealOnScroll";
 
 const EASE = [0.215, 0.61, 0.355, 1] as const;
 
-/* Hook · detecta si el tema actual es light leyendo data-franco-theme.
- * Replicado de SectionWhatFrancoIs.tsx para mantener consistencia. */
+/* Hook · detecta si el tema actual es light leyendo data-theme en <html>
+ * (fuente única de tema · Fase 1). */
 function useLandingIsLight(): boolean {
   const [isLight, setIsLight] = useState(false);
   useEffect(() => {
-    const root = document.querySelector("[data-franco-root]");
-    if (!root) return;
+    const root = document.documentElement;
     const update = () =>
-      setIsLight(root.getAttribute("data-franco-theme") === "light");
+      setIsLight(root.getAttribute("data-theme") === "light");
     update();
     const obs = new MutationObserver(update);
     obs.observe(root, {
       attributes: true,
-      attributeFilter: ["data-franco-theme"],
+      attributeFilter: ["data-theme"],
     });
     return () => obs.disconnect();
   }, []);

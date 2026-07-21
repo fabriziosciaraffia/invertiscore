@@ -173,21 +173,19 @@ const S01_EASE = [0.215, 0.61, 0.355, 1] as const;
 const S01_DIRECCION = "Av. Manuel Montt 1234, Providencia";
 const S01_TYPING_SPEED_MS = 75;
 
-/* Hook · detecta si el tema actual es light leyendo data-franco-theme
- * en el elemento [data-franco-root]. Mismo patrón que HeroAnimatedDesktop /
- * HeroStaticMobile · re-evalúa via MutationObserver. */
+/* Hook · detecta si el tema actual es light leyendo data-theme en <html>
+ * (fuente única de tema · Fase 1). Re-evalúa via MutationObserver. */
 function useLandingIsLight(): boolean {
   const [isLight, setIsLight] = useState(false);
   useEffect(() => {
-    const root = document.querySelector("[data-franco-root]");
-    if (!root) return;
+    const root = document.documentElement;
     const update = () =>
-      setIsLight(root.getAttribute("data-franco-theme") === "light");
+      setIsLight(root.getAttribute("data-theme") === "light");
     update();
     const obs = new MutationObserver(update);
     obs.observe(root, {
       attributes: true,
-      attributeFilter: ["data-franco-theme"],
+      attributeFilter: ["data-theme"],
     });
     return () => obs.disconnect();
   }, []);
