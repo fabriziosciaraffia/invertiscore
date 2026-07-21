@@ -1397,7 +1397,7 @@ ${!tieneDiferenciaValida ? `- lecturaSinReferencia (narrá ESTA idea con tus pal
 PROYECCIÓN Y ALTERNATIVAS
 - Aporte de tu bolsillo acumulado a 5 años: ${fmtCLP(flujoNegAcum5)}
 - Aporte de tu bolsillo acumulado a 10 años: ${fmtCLP(flujoNegAcum10)}
-- lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión, lo que te queda en la mano) es ${fmtUF(exitEquityCLP/UF_CLP)} — NO la llames "ganancia neta", incluye recuperar lo que pusiste
+- lecturaPatrimonio (narra esta idea con tus palabras): en 10 años pones ${fmtUF(flujoNegAcum10/UF_CLP)} de tu bolsillo; si vendes, tu parte al liquidar (valor de venta − deuda − comisión) es ${fmtUF(exitEquityCLP/UF_CLP)}: un monto único, lo que es tuyo del activo a la venta. Preséntala así, como tu parte — no como "ganancia neta"
 - Valor proyectado de la propiedad a 5 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp5)}
 - Valor proyectado de la propiedad a 10 años (plusvalía a futuro: ${PROY_PCT}): ${fmtCLP(valorProp10)}
 - lecturaPlusvalia (narrá esta idea con tus palabras): de ${fmtUF(m.precioCLP/UF_CLP)} hoy a ${fmtUF(valorProp10/UF_CLP)} en 10 años — +${Math.round((valorProp10/m.precioCLP - 1)*100)}% acumulado por la proyección base de ${PROY_PCT} anual (a 5 años, ${fmtUF(valorProp5/UF_CLP)}, +${Math.round((valorProp5/m.precioCLP - 1)*100)}%)
