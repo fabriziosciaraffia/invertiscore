@@ -406,7 +406,9 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   const kpiSize = nivel === 1 ? "text-[36px]" : nivel === 2 ? "text-[28px]" : "text-[22px]";
   const resumenSize = nivel === 3 ? "text-[12.5px]" : "text-[13.5px]";
   const border = nivel === 1 ? "var(--franco-border-strong)" : "var(--franco-border)";
-  const bg = nivel === 3 ? "rgba(26,26,26,0.55)" : "var(--franco-card)";
+  // nivel-3 = superficie hundida. Light: --franco-sunken; dark: fallback inline
+  // (rgba dark original) → dark sin cambio. Fase 2.
+  const bg = nivel === 3 ? "var(--franco-sunken, rgba(26,26,26,0.55))" : "var(--franco-card)";
   const kickPrefix = esElMasDecisivo ? "Lo más decisivo" : "Ojo antes de firmar";
   const kick = nivel === 1 ? `${kickPrefix} · ${d.kick.toLowerCase()}` : d.kick;
 

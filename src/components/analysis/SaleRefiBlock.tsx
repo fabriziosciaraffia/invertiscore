@@ -118,11 +118,11 @@ export function SaleRefiBlock({
           onClick={() => setMode("venta")}
           className="py-2 px-3 rounded-md font-body text-sm transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
           style={{
-            background: mode === "venta" ? "rgba(250,250,248,0.08)" : "transparent",
-            color: mode === "venta" ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+            background: mode === "venta" ? "color-mix(in srgb, var(--franco-text) 8%, transparent)" : "transparent",
+            color: mode === "venta" ? "var(--franco-text)" : "var(--franco-text-secondary)",
             fontWeight: mode === "venta" ? 600 : 400,
             boxShadow: mode === "venta" ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
-            border: mode === "venta" ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+            border: mode === "venta" ? "1px solid color-mix(in srgb, var(--franco-text) 20%, transparent)" : "1px solid transparent",
           }}
         >
           Si vendes
@@ -132,11 +132,11 @@ export function SaleRefiBlock({
           onClick={() => setMode("refi")}
           className="py-2 px-3 rounded-md font-body text-sm transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
           style={{
-            background: mode === "refi" ? "rgba(250,250,248,0.08)" : "transparent",
-            color: mode === "refi" ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+            background: mode === "refi" ? "color-mix(in srgb, var(--franco-text) 8%, transparent)" : "transparent",
+            color: mode === "refi" ? "var(--franco-text)" : "var(--franco-text-secondary)",
             fontWeight: mode === "refi" ? 600 : 400,
             boxShadow: mode === "refi" ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
-            border: mode === "refi" ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+            border: mode === "refi" ? "1px solid color-mix(in srgb, var(--franco-text) 20%, transparent)" : "1px solid transparent",
           }}
         >
           Si refinancias
@@ -224,7 +224,7 @@ export function SaleRefiBlock({
               Ganancia neta{" "}
               <span
                 className="font-mono font-bold"
-                style={{ color: data.gananciaNeta >= 0 ? "var(--ink-400)" : "var(--signal-red)" }}
+                style={{ color: data.gananciaNeta >= 0 ? "var(--franco-pos-text, var(--ink-400))" : "var(--signal-red)" }}
               >
                 {data.gananciaNeta >= 0 ? "+" : "−"}{fmt(Math.abs(data.gananciaNeta))}
               </span>{" "}
@@ -286,11 +286,11 @@ export function SaleRefiBlock({
                     className="py-1.5 px-2 rounded-sm font-mono transition-all hover:text-[color-mix(in_srgb,var(--franco-text)_85%,transparent)]"
                     style={{
                       fontSize: 11,
-                      background: active ? "rgba(250,250,248,0.08)" : "transparent",
-                      color: active ? "var(--franco-text)" : "rgba(250,250,248,0.45)",
+                      background: active ? "color-mix(in srgb, var(--franco-text) 8%, transparent)" : "transparent",
+                      color: active ? "var(--franco-text)" : "var(--franco-text-secondary)",
                       fontWeight: active ? 700 : 400,
                       boxShadow: active ? "0 1px 3px rgba(0,0,0,0.3)" : "none",
-                      border: active ? "1px solid rgba(250,250,248,0.2)" : "1px solid transparent",
+                      border: active ? "1px solid color-mix(in srgb, var(--franco-text) 20%, transparent)" : "1px solid transparent",
                     }}
                   >
                     {Math.round(opt * 100)}%

@@ -7,7 +7,7 @@ import { InfoTooltip } from "@/components/ui/tooltip";
 // Hoy: warn renderiza igual que good (Ink), bad usa Signal Red. Reserva el rojo
 // para casos genuinamente críticos (per skill 8 usos permitidos de Signal Red).
 const TONE_COLORS: Record<Tone, string> = {
-  good: "var(--ink-400)",
+  good: "var(--franco-pos-text, var(--ink-400))",
   warn: "var(--franco-text)",
   bad: "var(--signal-red)",
   neutral: "var(--franco-text)",

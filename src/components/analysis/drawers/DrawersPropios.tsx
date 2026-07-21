@@ -124,7 +124,7 @@ type Cell = { k: string; v: string; tone?: "pos" | "red" | "plain"; small?: stri
 export function Chips({ label, cells, foot }: { label: string; cells: Cell[]; foot?: ReactNode }) {
   const cols = cells.length === 2 ? "repeat(2,1fr)" : "repeat(3,1fr)";
   const toneColor = (t?: Cell["tone"]) =>
-    t === "red" ? "var(--signal-red)" : t === "pos" ? "var(--ink-400)" : "var(--franco-text)";
+    t === "red" ? "var(--signal-red)" : t === "pos" ? "var(--franco-pos-text, var(--ink-400))" : "var(--franco-text)";
   return (
     <div
       style={{
@@ -266,7 +266,7 @@ export function Box({
         {label}
       </p>
       {big && (
-        <p className="font-mono font-bold m-0" style={{ fontSize: 24, lineHeight: 1.1, color: "var(--ink-400)", marginBottom: 3 }}>
+        <p className="font-mono font-bold m-0" style={{ fontSize: 24, lineHeight: 1.1, color: "var(--franco-pos-text, var(--ink-400))", marginBottom: 3 }}>
           {big}
         </p>
       )}

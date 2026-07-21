@@ -705,7 +705,7 @@ function renderProsaMono(texto: string): ReactNode {
           <span
             key={j}
             className="font-mono text-[13px] text-[var(--franco-text)] px-1 rounded"
-            style={{ background: "rgba(250,250,248,0.05)" }}
+            style={{ background: "color-mix(in srgb, var(--franco-text) 5%, transparent)" }}
           >
             {part}
           </span>
