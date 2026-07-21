@@ -9,9 +9,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { generateAiAnalysis } from "../../../src/lib/ai-generation";
-import { runAnalysis } from "../../../src/lib/analysis";
-import { buildEngineBundle, buildTruthBundle, runJudge } from "../judge";
-import { GOLDEN_SEEDS, GOLDEN_UF } from "./seeds";
+import { buildTruthBundle, captureGeneratorPrompt, runJudgeV2 } from "../judge";
+import { GOLDEN_SEEDS } from "./seeds";
 
 export interface SemanticReport {
   key: string;
@@ -26,14 +25,15 @@ export async function runSemanticTier(sb: SupabaseClient): Promise<SemanticRepor
     const ai = await generateAiAnalysis(seed.uuid, sb, { persist: false });
     if (!ai) { reports.push({ key: seed.key, flags: [{ categoria: "gen", detalle: "generación devolvió null" }] }); continue; }
 
-    const results = runAnalysis(seed.input, GOLDEN_UF, seed.mediana);
-    const engineBundle = buildEngineBundle(seed.input, results);
+    // REGLA ESPEJO: capturamos el bloque-caso REAL que el generador le pasó al modelo
+    // (incluye datoDP/datoFM y todo lo que el modelo vio) y juzgamos contra eso (V2).
+    const cap = await captureGeneratorPrompt(seed.uuid, sb);
     const truthBundle = buildTruthBundle(seed.input.comuna, seed.input.lat ?? null, seed.input.lng ?? null, seed.mediana);
     const fixtureMeta = { id: seed.key, modalidad: "LTR", tier: "experto", ejes: seed.ejes, nota: seed.nota };
 
     let judge;
     try {
-      judge = await runJudge({ fixtureMeta, aiAnalysis: ai, engineBundle, truthBundle });
+      judge = await runJudgeV2({ fixtureMeta, aiAnalysis: ai, caseBlock: cap?.user ?? "", truthBundle });
     } catch (e) {
       reports.push({ key: seed.key, flags: [{ categoria: "juez-error", detalle: String((e as Error)?.message ?? e) }] });
       continue;

@@ -10,6 +10,7 @@ import type { AnalisisInput, FullAnalysisResult } from "../../src/lib/types";
 import { METRO_STATIONS, haversineDistance, findNearestStation } from "../../src/lib/metro-stations";
 import { PLUSVALIA_HISTORICA, PLUSVALIA_DEFAULT } from "../../src/lib/plusvalia-historica";
 import { generateAiAnalysis } from "../../src/lib/ai-generation";
+import { generateStrProse } from "../../src/lib/ai-generation-str";
 import { generateComparativaAI } from "../../src/lib/ai-generation-ambas-generate";
 
 export const JUDGE_MODEL = "claude-opus-4-8";
@@ -393,6 +394,33 @@ export async function captureGeneratorPrompt(
   return captured;
 }
 
+/** Espejo STR de captureGeneratorPrompt: captura el prompt REAL (system + bloque-caso)
+ *  que generateStrProse arma para un caso STR ya recomputado, SIN llamar al modelo.
+ *  Aborta con el sentinel antes del model-call (cero costo de API, no persiste). */
+export async function captureStrPrompt(
+  args: { inp: Record<string, unknown>; r: unknown; comuna: string },
+): Promise<GeneratorPrompt | null> {
+  let captured: GeneratorPrompt | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  _MsgProto.create = function (body: any) {
+    captured = {
+      system: typeof body?.system === "string" ? body.system : JSON.stringify(body?.system ?? ""),
+      user: typeof body?.messages?.[0]?.content === "string"
+        ? body.messages[0].content
+        : JSON.stringify(body?.messages?.[0]?.content ?? ""),
+    };
+    throw new Error(CAPTURE_SENTINEL);
+  };
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await generateStrProse({ anthropic, inp: args.inp, r: args.r as any, comuna: args.comuna });
+  } catch { /* sentinel u otro — captured ya seteado si llegó al create */ }
+  finally {
+    _MsgProto.create = _origCreate;
+  }
+  return captured;
+}
+
 export const JUDGE_SYSTEM_V2 = `Eres un AUDITOR semántico de la prosa que genera "Franco", un asesor IA de inversión inmobiliaria chileno (refranco.ai). NO eres Franco. Lees la prosa ya generada y reportas CUALQUIER problema real, con criterio. Cada hallazgo debe ser defendible con cita textual + razón. NO inventes problemas; mejor pocos sólidos que muchos dudosos.
 
 FUENTE DE VERDAD CLAVE: recibís el BLOQUE-CASO REAL — exactamente el texto que el generador le pasó al modelo (todos los datos numéricos y de contexto que el modelo efectivamente vio). Para los chequeos numéricos/factuales, ESE bloque-caso es la fuente. Si un número o hecho aparece en el bloque-caso, la prosa PUEDE usarlo: NO es invención. Solo es problema si la prosa afirma algo que NO está en el bloque-caso y NO es derivable de él.
@@ -414,6 +442,7 @@ Aplica a TODOS los tiers — no es un concepto a glosar, es fraseo interno que n
 - CONTRA-FUENTE: la prosa contradice un número que SÍ está en el bloque-caso (categoria: incoherencia-contra-fuente). Ej clásico: el bloque-caso dice "flujoMensualNeto: -$62.569 — negativo" y la prosa dice "+$62.569 positivo" → contra-fuente ALTA (signo invertido). O la prosa computa el aporte como dividendo−arriendo ignorando el flujoMensualNeto provisto.
 - REGLA ANTI-FALSO-POSITIVO: antes de marcar contra-fuente o sin-fuente, BUSCÁ el número/dato en el BLOQUE-CASO (incluye arriendoZona, anomalías, sensibilidad de tasa, proyecciones, metro, plusvalía). Si está ahí o es derivable, NO es hallazgo. Solo marcá si genuinamente NO aparece.
 - TOLERANCIA: la prosa redondea a "K"/"M" y cifras redondas. NO marques diferencias dentro del redondeo ($262K para 262.856 es correcto). Si dudás, NO marques.
+- MAGNITUD / MÚLTIPLOS VERBALES (categoria: incoherencia-numerica-interna): toda comparación verbal de magnitud es una RAZÓN — "el doble", "más del doble", "la mitad", "casi la mitad", "el triple", "X veces", "un tercio", "N puntos más/menos". Verificála: (1) identificá las dos cifras que relaciona; ambas deben estar en el bloque-caso. (2) Calculá la razón real. (3) Si el múltiplo verbal NO coincide fuera del redondeo ("más del doble" exige ≥2,0×; "casi la mitad" ~0,45-0,55×; "el triple" ~3×; "X veces" ±0,3×N), es incoherencia-numerica-interna, severidad ALTA, requiereHumano=true. Ejemplos reales: "el flujo negativo de $382.744 es más del doble del dividendo" con dividendo $530.341 (razón 0,72×) → FALSA; "casi la mitad está en flujos negativos ($41M)" sobre $78M (52,6%, ya es MÁS de la mitad) → FALSA. Las cifras de instrumentos (depósito UF, fondo mutuo) vienen en el bloque-caso ya proyectadas con su múltiplo: un múltiplo verbal contra ellas se verifica igual que cualquier otro. Esto NO contradice A4 — A4 solo dice que no las marques como fabricadas por "no estar en la fuente"; acá se verifica la ARITMÉTICA de la razón, no la existencia de la cifra.
 
 === 3. VEREDICTO ===
 La prosa nunca contradice el veredicto del bloque-caso. Si lo hace → otro (alta).
