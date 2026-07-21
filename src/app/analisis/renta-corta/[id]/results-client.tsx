@@ -233,16 +233,11 @@ export function STRResultsClient({
           onCurrencyChange={setCurrency}
           valorUF={ufValue}
           createdAt={createdAt}
+          aiLoading={aiLoading && !aiAnalysis}
         />
 
-        {/* Indicador de loading IA — un pelo abajo del Hero cuando el análisis
-            premium aún no llega. Bajo perfil para no romper el flujo visual. */}
-        {aiLoading && !aiAnalysis && (
-          <p className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-signal-red mr-2 animate-pulse" aria-hidden />
-            Franco está completando el análisis…
-          </p>
-        )}
+        {/* Loading IA: el skeleton + copy viven ahora en el slot de prosa del Hero
+            (ProsaSkeleton). Acá abajo solo queda el indicador de error. */}
         {aiError && !aiAnalysis && (
           <p className="font-mono text-[11px] text-[var(--franco-text-secondary)] mb-3 mt-1 px-1">
             ● Análisis IA no disponible · {aiError}

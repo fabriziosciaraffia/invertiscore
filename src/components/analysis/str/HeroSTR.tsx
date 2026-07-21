@@ -9,6 +9,7 @@ import { fmtUF } from "@/components/analysis/utils";
 import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { ProsaSkeleton } from "@/components/analysis/ProsaSkeleton";
 
 /**
  * Hero de resultados STR (E.5) — port del patrón HeroLTR al módulo renta corta.
@@ -53,6 +54,7 @@ export function HeroSTR({
   onCurrencyChange,
   valorUF,
   createdAt,
+  aiLoading,
 }: {
   ai: AIAnalysisSTRv2 | null;
   results: ShortTermResult;
@@ -65,6 +67,7 @@ export function HeroSTR({
   onCurrencyChange: (c: "CLP" | "UF") => void;
   valorUF: number;
   createdAt?: string;
+  aiLoading?: boolean;
 }) {
   const v = (normalizeLegacyVerdict(veredicto) as STRVerdict | null) ?? "BUSCAR OTRA";
 
@@ -229,9 +232,7 @@ export function HeroSTR({
             {pregunta}
           </h2>
           <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-            {respuesta ? renderProsaMono(respuesta) : (
-              <p className="m-0 italic text-[var(--franco-text-muted)]">Franco está completando el análisis…</p>
-            )}
+            {respuesta ? renderProsaMono(respuesta) : aiLoading ? <ProsaSkeleton /> : null}
             {reencuadre && <div className="mt-3">{renderProsaMono(reencuadre)}</div>}
           </div>
         </div>

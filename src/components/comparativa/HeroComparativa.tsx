@@ -17,6 +17,7 @@ import type { RecomendacionModalidadAmbas, AIAnalysisComparativa } from "@/lib/t
 import type { FindingComparativa } from "@/lib/comparativa-findings";
 import { fmtMoney, fmtUF } from "@/components/analysis/utils";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { ProsaSkeleton, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 
 type Verdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -469,25 +470,6 @@ function renderProsaMono(texto: string): ReactNode {
       )}
     </p>
   ));
-}
-
-// ── Skeletons de carga de la prosa (el loader vive en el hero ahora) ──
-function ProsaSkeleton() {
-  return (
-    <div className="space-y-2 py-1">
-      <SkeletonLine width="70%" />
-      <SkeletonLine width="94%" />
-      <SkeletonLine width="85%" />
-      <div className="pt-2" />
-      <SkeletonLine width="88%" />
-      <SkeletonLine width="76%" />
-    </div>
-  );
-}
-function SkeletonLine({ width }: { width: string }) {
-  return (
-    <div className="h-3 rounded animate-pulse" style={{ width, background: "color-mix(in srgb, var(--franco-text) 6%, transparent)" }} />
-  );
 }
 
 // ── Chip fino con ícono — réplica del canon HeroLTR/HeroSTR ──
