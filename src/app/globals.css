@@ -781,3 +781,15 @@ input[type="number"] {
   border-top-color: #C8323C;
   background: color-mix(in srgb, #C8323C 7%, var(--franco-bg));
 }
+
+/* ═══ Fase 2 · Capa de interacción — ::selection Franco (dev switch: ?sel=) ═══
+ * Excepción declarada al "dark intacto": la selección es transversal a AMBOS
+ * temas (como los tooltips). SIN flag = selección nativa del browser. Dos
+ * candidatos para que Fabrizio compare seleccionando texto real (cubre body,
+ * inputs y mono — ::selection aplica a todo el texto seleccionado).
+ *   (a) rojo pleno + texto blanco (gesto editorial FT)
+ *   (b) lavado rojo tenue + tinta del tema */
+[data-sel="a"] ::selection      { background: #C8323C; color: #FFFFFF; }
+[data-sel="a"] ::-moz-selection { background: #C8323C; color: #FFFFFF; }
+[data-sel="b"] ::selection      { background: color-mix(in srgb, #C8323C 20%, transparent); color: var(--franco-text); }
+[data-sel="b"] ::-moz-selection { background: color-mix(in srgb, #C8323C 20%, transparent); color: var(--franco-text); }

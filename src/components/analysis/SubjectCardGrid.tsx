@@ -80,7 +80,12 @@ export function SubjectCardGrid({
     if (h === "tinta" || h === "verdicto") document.documentElement.setAttribute("data-hero", h);
     const v = q.get("verdict");
     if (v === "COMPRAR" || v === "AJUSTA SUPUESTOS" || v === "BUSCAR OTRA") setHeroVerdictOverride(v);
-    return () => document.documentElement.removeAttribute("data-hero");
+    const s = q.get("sel");
+    if (s === "a" || s === "b") document.documentElement.setAttribute("data-sel", s);
+    return () => {
+      document.documentElement.removeAttribute("data-hero");
+      document.documentElement.removeAttribute("data-sel");
+    };
   }, []);
   const veredictoEff = heroVerdictOverride ?? veredicto;
 
