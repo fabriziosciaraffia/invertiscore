@@ -8,6 +8,8 @@ import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import type { Hallazgo } from "@/lib/types";
 import { generateStrProse, PROMPT_VERSION_STR } from "@/lib/ai-generation-str";
+import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
+import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
 
 const anthropic = new Anthropic();
 
@@ -109,6 +111,29 @@ export async function POST(request: Request) {
 
     const comuna = (analysis.comuna as string) ?? (input.comuna as string) ?? "";
 
+    // FIX recompute-antes-de-promptear (espejo del render STR + ambas-generate). La fila
+    // persiste `results` de fórmula posiblemente vieja (pre-homologación); si prompteáramos
+    // desde ahí, la prosa citaría números stale mientras las cards (recompute-on-load)
+    // muestran los actuales. Recomputamos con el motor de hoy desde input + airbnbRaw
+    // congelado ANTES de promptear. UF y fecha CONGELADAS a la creación → idempotente.
+    // Legacy irreconstruible (sin airbnbRaw) → `?? results` (fallback seguro al persistido).
+    // Prompt-only: NO se persiste `results` acá (eso lo hace regen-corpus con gate aparte).
+    const precioCompraUF = Number(input.precioCompraUF) || 0;
+    const precioCompraCLP = Number(input.precioCompra) || 0;
+    const ufFrozen = precioCompraUF > 0 ? precioCompraCLP / precioCompraUF : 38800;
+    const asOfFrozen = new Date((analysis.created_at as string) ?? new Date().toISOString());
+    const medianaStr = await prefetchMedianaComunaVenta(
+      supabase,
+      {
+        comuna: (input.comuna as string) ?? comuna,
+        superficie: Number(input.superficieUtil) || 0,
+        dormitorios: Number(input.dormitorios) || 0,
+      },
+      ufFrozen,
+    );
+    const rGen = (recomputeShortTermForLegacy(input, results, ufFrozen, asOfFrozen, medianaStr) ?? results) as
+      ShortTermResult & { francoScore?: FrancoScoreSTR; hallazgos?: Hallazgo[] };
+
     // Regen con lock/debounce por analysisId. La tarea genera Y persiste; si falla
     // devuelve null (NO persiste → la versión no se sella → se reintenta al reabrir).
     const existing = inflight.get(analysisId);
@@ -122,7 +147,7 @@ export async function POST(request: Request) {
         const gen = await generateStrProse({
           anthropic,
           inp: input,
-          r: results,
+          r: rGen,
           comuna,
           logger: (m) => console.warn(`[STR AI v3] ${analysisId}: ${m}`),
         });

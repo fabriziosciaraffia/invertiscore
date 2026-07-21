@@ -15,6 +15,7 @@ import {
 } from "@/lib/constants/subsidio";
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
+import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { getComunaMedianaVentaUF } from "@/lib/comuna-stats";
 import { buildPrecioVsComuna } from "@/lib/precio-vs-comuna";
 import { buildHallazgoSobreprecio } from "@/lib/sobreprecio-hallazgo";
@@ -701,8 +702,20 @@ export async function generateAiAnalysis(analysisId: string, supabase: SupabaseC
     if (!analysis) return null;
 
     const input = analysis.input_data;
-    const results = analysis.results;
-    if (!input || !results) return null;
+    const persistedResults = analysis.results;
+    if (!input || !persistedResults) return null;
+
+    // FIX recompute-antes-de-promptear (espejo del render LTR). `results` persistido puede
+    // ser de fórmula vieja (pre-homologación); recomputamos con el motor de hoy ANTES de leer
+    // metrics/desglose/exitScenario, para que la prosa cite los MISMOS números que las cards
+    // (recompute-on-load). UF y fecha CONGELADAS a la creación → idempotente. La mediana async
+    // (sobreprecio) se resuelve más abajo y NO afecta metrics/exit, así que acá va sin ella;
+    // UF_CLP derivado abajo == ufFrozen (m.precioCLP = input.precio × ufFrozen), sin divergencia
+    // con las decisividades/sobreprecio/capex que este flujo recomputa aparte desde input.
+    // Legacy irreconstruible → `?? persistedResults`. Prompt-only: NO se persiste `results`.
+    const ufFrozen = persistedResults.metrics?.precioCLP ? persistedResults.metrics.precioCLP / input.precio : 38800;
+    const asOfFrozen = new Date(analysis.created_at ?? new Date().toISOString());
+    const results = recomputeResultsForLegacy(input, ufFrozen, undefined, asOfFrozen) ?? persistedResults;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const mLegacy = results.metrics as any;
