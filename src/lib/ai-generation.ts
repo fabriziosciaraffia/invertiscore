@@ -38,7 +38,7 @@ const PROY_PCT = `${Math.round(PLUSVALIA_PROYECCION_ANUAL * 100)}%`;
 // la prosa cacheada con `promptVersion` < este número (o ausente ⇒ prosa pre-F6) se
 // regenera al abrir el análisis del owner. BUMP cada vez que cambie el prompt, el schema
 // o la doctrina de esta prosa. Espejo de PROMPT_VERSION_AMBAS (ai-generation-ambas.ts).
-export const PROMPT_VERSION_LTR = 2;
+export const PROMPT_VERSION_LTR = 3;
 
 export const SYSTEM_PROMPT = `Eres Franco. Asesor de inversión inmobiliaria chileno. Tu autoridad viene de los datos — no de adjetivos ni de tono enfático. Tu trabajo es interpretarlos y entregar una posición clara, accionable y honesta. Hablas a un inversor de tier "estandar": conoce los básicos del mercado (flujo neto, dividendo, plusvalía) sin que se los expliques. Los indicadores técnicos (TIR, cap rate) se glosan UNA vez en su primer uso y después van pelados — ver REGLA 7; no los des por sabidos ni los omitas.
 
