@@ -75,18 +75,29 @@ export async function POST(request: Request) {
       .select("payment_data")
       .eq("commerce_order", flowData.commerceOrder)
       .maybeSingle();
-    const companionStrId =
-      (prePayment?.payment_data as { companion_str_id?: string } | null)?.companion_str_id;
+    const prePaymentData = prePayment?.payment_data as
+      | { companion_str_id?: string; ambas_group_id?: string }
+      | null;
+    const companionStrId = prePaymentData?.companion_str_id;
+    // Claves de negocio/audit escritas en payments/create que hay que preservar: el
+    // UPDATE de abajo redefine payment_data con la respuesta fresca de Flow, así que
+    // las re-inyectamos encima. companion_str_id → desbloqueo del STR companion;
+    // ambas_group_id → audit-trail del grupo AMBAS (fuente de verdad del cobro).
+    const preservedPaymentData = {
+      ...(prePaymentData?.companion_str_id ? { companion_str_id: prePaymentData.companion_str_id } : {}),
+      ...(prePaymentData?.ambas_group_id ? { ambas_group_id: prePaymentData.ambas_group_id } : {}),
+    };
 
-    // Update payment record. Preservamos companion_str_id dentro del payload de
-    // Flow para que las lecturas downstream (este handler + payments/status) lo vean.
+    // Update payment record. flowData define el payload fresco (no lo pisamos con el
+    // previo para no stale-out los campos de Flow en re-confirmaciones); encima
+    // re-inyectamos las claves de negocio para que las lecturas downstream las vean.
     const { error: updateError } = await supabase
       .from("payments")
       .update({
         status: newStatus,
         flow_status: flowData.status,
         flow_order: flowData.flowOrder,
-        payment_data: companionStrId ? { ...flowData, companion_str_id: companionStrId } : flowData,
+        payment_data: { ...flowData, ...preservedPaymentData },
         updated_at: new Date().toISOString(),
       })
       .eq("commerce_order", flowData.commerceOrder);
