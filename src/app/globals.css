@@ -730,66 +730,49 @@ input[type="number"] {
   .franco-tag-fade    { animation: franco-tag-fade 200ms ease-out; }
 }
 
-/* ═══ Fase 2 · Ronda 3 — Tratamientos del HERO (dev switch: ?hero=) ═════════
- * El hero se marca con .franco-hero-block + data-verdict. SIN flag = base
- * (idéntico a Ronda 2). ?hero=tinta | ?hero=verdicto activan los tratamientos.
- * Dark NO se toca; el default no cambia. */
+/* ═══ Fase 2 · Ronda 3B — Hero por ELEVACIÓN (dev switch: ?hero=) ══════════
+ * Decisión Fabrizio: el veredicto NO cambia el color del hero (vive en badge/
+ * slider/texto); el protagonismo se construye por ELEVACIÓN. SIN flag = base
+ * (idéntico a Ronda 2). Dark NO se toca. */
 .franco-hero-block {
   background: var(--franco-bg);
   border: 0.5px solid var(--franco-border-strong);
 }
 
-/* (1) HERO DE TINTA — el hero completo en el oscuro del tema dark, flotando
- * sobre la Galería blanca (masthead editorial). Redeclara los tokens franco
- * dark SOLO en el subtree del hero → score/slider/badge se ven como en dark;
- * el veredicto vive en el color del badge/slider sobre la tinta. */
-[data-hero="tinta"] .franco-hero-block {
-  --franco-bg: #0F0F0F;
-  --franco-card: #1A1A1A;
-  --franco-elevated: #222222;
-  --franco-text: #FAFAF8;
-  --franco-text-secondary: rgba(250,250,248,0.5);
-  --franco-text-muted: rgba(250,250,248,0.35);
-  --franco-text-tertiary: #888780;
-  --franco-border: rgba(250,250,248,0.06);
-  --franco-border-hover: rgba(250,250,248,0.12);
-  --franco-border-strong: rgba(250,250,248,0.15);
-  --franco-bg-alt: #161616;
-  --franco-sunken: rgba(255,255,255,0.04);
-  --franco-pos-text: #B4B2A9;
-  box-shadow: 0 24px 50px -16px rgba(0,0,0,0.35), 0 8px 20px -12px rgba(0,0,0,0.25);
+/* (1) FLOTANTE — el lienzo baja al gris más tenue (#F6F6F7) y el hero pasa a
+ * BLANCO PURO (único objeto blanco de la pantalla) con sombra grande difusa de
+ * papel-levantado: 2 capas (contacto sutil + difusa extendida), nunca dura.
+ * Las cards pasan a blanco con hairline: se distinguen del lienzo pero SIN
+ * sombra — la elevación es EXCLUSIVA del hero. + bump de escala interna
+ * (score/titular un punto arriba, un poco más de aire). */
+[data-hero="flotante"], [data-hero="flotante-luz"] {
+  --franco-bg: #F6F6F7;
+  --franco-card: #FFFFFF;
+}
+[data-hero="flotante"] .franco-hero-block,
+[data-hero="flotante-luz"] .franco-hero-block {
+  background: #FFFFFF;
+  border: 0.5px solid var(--franco-border);
+  box-shadow:
+    0 1px 2px rgba(15, 15, 15, 0.05),
+    0 28px 60px -16px rgba(15, 15, 15, 0.16);
+  padding-block: 4px;
+}
+[data-hero="flotante"] .franco-hero-score,
+[data-hero="flotante-luz"] .franco-hero-score { font-size: 58px; }
+[data-hero="flotante"] .franco-hero-title,
+[data-hero="flotante-luz"] .franco-hero-title { font-size: 30px; }
+
+/* (2) FLOTANTE + LUZ — idéntica a (1) + degradé cenital sutilísimo DENTRO del
+ * hero: blanco arriba → ~2% más frío/gris abajo. Imperceptible de frente,
+ * presente de reojo. */
+[data-hero="flotante-luz"] .franco-hero-block {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F4F4F6 100%);
 }
 
-/* (2) HERO DE VEREDICTO — Galería claro + lavado tenue del veredicto + regla
- * superior gruesa (5px) en el color pleno. Sistema completo de los 3 veredictos.
- * Doctrina binaria (Ink + Red): COMPRAR = Ink · AJUSTA = Red tenue · BUSCAR OTRA
- * = Red pleno. Distinción por hue (Ink vs Red) + intensidad del lavado; la
- * insignia ya separa AJUSTA (outline) de BUSCAR OTRA (sólido). */
-[data-hero="verdicto"] .franco-hero-block {
-  border-top-width: 5px;
-  border-top-style: solid;
-}
-[data-hero="verdicto"] .franco-hero-block[data-verdict="COMPRAR"] {
-  border-top-color: var(--franco-text);
-  background: color-mix(in srgb, var(--franco-text) 3%, var(--franco-bg));
-}
-[data-hero="verdicto"] .franco-hero-block[data-verdict="AJUSTA SUPUESTOS"] {
-  border-top-color: #C8323C;
-  background: color-mix(in srgb, #C8323C 4%, var(--franco-bg));
-}
-[data-hero="verdicto"] .franco-hero-block[data-verdict="BUSCAR OTRA"] {
-  border-top-color: #C8323C;
-  background: color-mix(in srgb, #C8323C 7%, var(--franco-bg));
-}
-
-/* ═══ Fase 2 · Capa de interacción — ::selection Franco (dev switch: ?sel=) ═══
- * Excepción declarada al "dark intacto": la selección es transversal a AMBOS
- * temas (como los tooltips). SIN flag = selección nativa del browser. Dos
- * candidatos para que Fabrizio compare seleccionando texto real (cubre body,
- * inputs y mono — ::selection aplica a todo el texto seleccionado).
- *   (a) rojo pleno + texto blanco (gesto editorial FT)
- *   (b) lavado rojo tenue + tinta del tema */
-[data-sel="a"] ::selection      { background: #C8323C; color: #FFFFFF; }
-[data-sel="a"] ::-moz-selection { background: #C8323C; color: #FFFFFF; }
-[data-sel="b"] ::selection      { background: color-mix(in srgb, #C8323C 20%, transparent); color: var(--franco-text); }
-[data-sel="b"] ::-moz-selection { background: color-mix(in srgb, #C8323C 20%, transparent); color: var(--franco-text); }
+/* ═══ Fase 2 · Capa de interacción — ::selection Franco (FIJA, ambos temas) ═══
+ * Opción A definitiva (decisión Fabrizio): rojo pleno + texto blanco. Excepción
+ * declarada al "dark intacto": la selección es transversal. Cubre body, inputs
+ * y mono (::selection aplica a todo el texto seleccionado). */
+::selection      { background: #C8323C; color: #FFFFFF; }
+::-moz-selection { background: #C8323C; color: #FFFFFF; }

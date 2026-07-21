@@ -70,24 +70,13 @@ export function SubjectCardGrid({
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
-  // ── Dev switch de tratamientos del hero (Ronda 3) — ?hero= + ?verdict= ──
-  // Sin flag: base (Ronda 2). No persiste; solo para comparar en la página real.
-  //   ?hero=tinta | ?hero=verdicto  · ?verdict=COMPRAR|AJUSTA SUPUESTOS|BUSCAR OTRA
-  const [heroVerdictOverride, setHeroVerdictOverride] = useState<string | null>(null);
+  // ── Dev switch de tratamientos del hero (Ronda 3B) — ?hero=flotante|flotante-luz ──
+  // Sin flag = base. El veredicto NO cambia el color del hero (vive en badge/slider/texto).
   useEffect(() => {
-    const q = new URLSearchParams(window.location.search);
-    const h = q.get("hero");
-    if (h === "tinta" || h === "verdicto") document.documentElement.setAttribute("data-hero", h);
-    const v = q.get("verdict");
-    if (v === "COMPRAR" || v === "AJUSTA SUPUESTOS" || v === "BUSCAR OTRA") setHeroVerdictOverride(v);
-    const s = q.get("sel");
-    if (s === "a" || s === "b") document.documentElement.setAttribute("data-sel", s);
-    return () => {
-      document.documentElement.removeAttribute("data-hero");
-      document.documentElement.removeAttribute("data-sel");
-    };
+    const h = new URLSearchParams(window.location.search).get("hero");
+    if (h === "flotante" || h === "flotante-luz") document.documentElement.setAttribute("data-hero", h);
+    return () => document.documentElement.removeAttribute("data-hero");
   }, []);
-  const veredictoEff = heroVerdictOverride ?? veredicto;
 
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
   // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La
@@ -189,7 +178,7 @@ export function SubjectCardGrid({
         data={aiAnalysis}
         currency={currency}
         onCurrencyChange={onCurrencyChange}
-        veredicto={veredictoEff}
+        veredicto={veredicto}
         score={score}
         propiedadTitle={propiedadTitle}
         inputData={inputData}

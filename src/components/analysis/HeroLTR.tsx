@@ -150,7 +150,7 @@ export function HeroLTR({
       {/* ═══ F1 · IDENTIDAD (compacto: sin subtítulo · rótulo modalidad a la derecha) ═══ */}
       <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
         <div className="min-w-0">
-          <h1 className="font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
+          <h1 className="franco-hero-title font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
             {hasDireccion ? (
               <>
                 {direccion}
@@ -183,7 +183,7 @@ export function HeroLTR({
           </span>
 
           <div className="flex items-center gap-4 mt-3">
-            <div className="font-mono font-bold text-[48px] md:text-[52px] leading-[0.9] tracking-[-0.02em] text-[var(--franco-text)]">
+            <div className="franco-hero-score font-mono font-bold text-[48px] md:text-[52px] leading-[0.9] tracking-[-0.02em] text-[var(--franco-text)]">
               {score}
               <span className="text-[22px] font-normal text-[var(--franco-text-muted)]">/100</span>
             </div>
