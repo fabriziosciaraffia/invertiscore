@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useId } from "react";
 import { createPortal } from "react-dom";
+import { Info } from "lucide-react";
 
 // Singleton: solo un tooltip abierto a la vez. Cuando una instancia abre,
 // dispatcha un evento que cierra todas las demas. Cada instancia escucha
@@ -262,10 +263,12 @@ export function InfoTooltip({
 
   // El trigger se renderiza inline (dentro del subtree temático), así que
   // --landing-* sí resuelven aquí sin necesidad de portal.
+  // Trigger discreto (Fase 2, ronda final): glifo Info muted, sin caja ni fondo
+  // — nota al pie, no botón. Mismo estilo en ambos temas (muted → aclara en hover).
   const triggerColors =
     tokenSet === "landing"
-      ? "bg-[var(--landing-text-secondary)] text-[var(--landing-card-bg)] hover:bg-[var(--landing-text)] hover:text-[var(--landing-card-bg)] focus:ring-[var(--landing-text-secondary)] focus:ring-offset-[var(--landing-bg)]"
-      : "bg-[var(--franco-text-tertiary)] text-[var(--franco-text)] hover:bg-[var(--franco-text-secondary)] hover:text-[var(--franco-card)] focus:ring-[var(--franco-text-secondary)] focus:ring-offset-[var(--franco-bg)]";
+      ? "text-[var(--landing-text-secondary)] hover:text-[var(--landing-text)] focus-visible:ring-[var(--landing-text-secondary)]"
+      : "text-[var(--franco-text-tertiary)] hover:text-[var(--franco-text-secondary)] focus-visible:ring-[var(--franco-text-secondary)]";
 
   return (
     <span className="inline-flex">
@@ -274,11 +277,11 @@ export function InfoTooltip({
         type="button"
         aria-label="Más información"
         aria-expanded={open}
-        className={`inline-flex items-center justify-center w-[14px] h-[14px] rounded-full font-mono text-[9px] cursor-help shrink-0 focus:outline-none focus:ring-2 focus:ring-offset-1 transition-colors ${triggerColors}`}
+        className={`inline-flex items-center justify-center align-middle cursor-help shrink-0 p-1 -m-1 rounded-full focus:outline-none focus-visible:ring-1 transition-colors ${triggerColors}`}
         onClick={handleToggle}
         {...hoverHandlers}
       >
-        ?
+        <Info size={12} strokeWidth={2} aria-hidden />
       </button>
       {open && (
         <TooltipBubble

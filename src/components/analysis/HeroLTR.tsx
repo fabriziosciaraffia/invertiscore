@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { AIAnalysisV2, AnalisisInput, FullAnalysisResult, Hallazgo } from "@/lib/types";
-import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet } from "lucide-react";
+import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent, Wallet, Info } from "lucide-react";
 import { fmtCLP, fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
@@ -755,9 +755,7 @@ function Tooltip({ term, tip }: { term: string; tip: string }) {
       <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] border-b border-dotted border-[var(--franco-border-strong)] cursor-help">
         {term}
       </span>
-      <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-[var(--franco-border-strong)] text-[8px] font-mono text-[var(--franco-text-muted)]">
-        i
-      </span>
+      <Info size={11} strokeWidth={2} className="text-[var(--franco-text-muted)] shrink-0" aria-hidden />
     </span>
   );
   return tip ? <HintTooltip content={tip}>{termEl}</HintTooltip> : termEl;

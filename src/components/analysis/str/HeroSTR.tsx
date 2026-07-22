@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { BedDouble, Bath, Ruler, Building2, Scaling, Percent, Wrench } from "lucide-react";
+import { BedDouble, Bath, Ruler, Building2, Scaling, Percent, Wrench, Info } from "lucide-react";
 import type { Hallazgo, AIAnalysisSTRv2 } from "@/lib/types";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import type { ShortTermResult, STRVerdict } from "@/lib/engines/short-term-engine";
@@ -461,9 +461,7 @@ function FindingTooltip({ term, tip }: { term: string; tip: string }) {
       <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] border-b border-dotted border-[var(--franco-border-strong)] cursor-help">
         {term}
       </span>
-      <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-[var(--franco-border-strong)] text-[8px] font-mono text-[var(--franco-text-muted)]">
-        i
-      </span>
+      <Info size={11} strokeWidth={2} className="text-[var(--franco-text-muted)] shrink-0" aria-hidden />
     </span>
   );
   return <HintTooltip content={tip}>{termEl}</HintTooltip>;

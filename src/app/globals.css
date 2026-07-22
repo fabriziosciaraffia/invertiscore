@@ -782,10 +782,23 @@ input[type="number"] {
  *    + la flecha .franco-card-arrow vira a --franco-text-secondary. El !important
  *    vence al border inline de las finding-cards. Sin sombra: la elevación es
  *    exclusiva del hero (Galería). */
+/* LA ELEVACIÓN ES ATENCIÓN. Reposo = plana (hairline, sin sombra). Hover/foco =
+ * la card FLOTA: lift (translateY) + versión menor de la sombra papel-levantado
+ * del hero. Paridad dark declarada por token --franco-card-hover-shadow:
+ *   · light: sombra 2 capas (lee sobre el lienzo gris).
+ *   · dark: la sombra no lee sobre #0F0F0F → se traduce por LUMINOSIDAD (inset
+ *     que aclara la superficie un paso). En ambos, el lift es el mismo gesto.
+ * transform/box-shadow (compositor) → sin jank en la pirámide completa. */
+:root                { --franco-card-hover-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.05); }
+[data-theme="light"] { --franco-card-hover-shadow: 0 2px 4px rgba(15, 15, 15, 0.05), 0 16px 32px -12px rgba(15, 15, 15, 0.16); }
+
 .franco-card-target {
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, border-color 0.18s ease-out;
 }
-.franco-card-target:hover {
+.franco-card-target:hover,
+.franco-card-target:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: var(--franco-card-hover-shadow) !important;
   border-color: var(--franco-border-hover) !important;
 }
 .franco-card-target:focus-visible {
@@ -795,9 +808,15 @@ input[type="number"] {
 .franco-card-arrow {
   transition: color 0.15s ease, transform 0.15s ease;
 }
-.franco-card-target:hover .franco-card-arrow {
+.franco-card-target:hover .franco-card-arrow,
+.franco-card-target:focus-visible .franco-card-arrow {
   color: var(--franco-text-secondary);
   transform: translateX(2px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .franco-card-target { transition: none; }
+  .franco-card-target:hover,
+  .franco-card-target:focus-visible { transform: none; }
 }
 
 /* ═══ Fase 2 · Tooltip estándar — sombra tokenizada (paridad de temas) ══════
