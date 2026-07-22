@@ -1,19 +1,29 @@
 // Fuente única de verdad del tema (Fase 1 · infraestructura).
 // ─────────────────────────────────────────────────────────────
 // Persistencia: localStorage["franco-theme"] con valores "light" | "dark".
-// Atributo aplicado: data-theme="light" en <html>. La AUSENCIA del atributo
-// = dark (default histórico intacto — no se cambia en esta fase).
+// Atributo aplicado: data-theme="light" en <html>. Mecanismo CSS intacto: la
+// AUSENCIA del atributo = dark.
+//
+// DEFAULT = LIGHT (cierre del capítulo Galería, decisión Fabrizio): quien NO
+// tiene preferencia guardada resuelve a light — el pre-paint le aplica
+// data-theme="light". Solo un 'dark' explícito guardado deja el atributo
+// ausente. Quien ya eligió conserva su elección; el default no se persiste
+// (cero migración forzada).
 //
 // El script pre-paint en layout.tsx replica el READ + la migración de la key
 // legacy de la landing INLINE (no puede importar este módulo). Si cambia la
-// lógica de lectura/migración, mantener ambos en sync.
+// lógica de lectura/migración/default, mantener ambos en sync.
 
 export type Theme = "dark" | "light";
 
 export const THEME_STORAGE_KEY = "franco-theme";
 const LEGACY_LANDING_KEY = "franco-landing-theme";
 
-/** Lee el tema persistido, migrando una vez desde la key legacy de la landing. */
+/**
+ * Lee el tema persistido, migrando una vez desde la key legacy de la landing.
+ * Sin preferencia guardada (o localStorage no disponible) → "light" (default
+ * del capítulo Galería). Mantener en sync con el pre-paint de layout.tsx.
+ */
 export function readStoredTheme(): Theme {
   try {
     const t = localStorage.getItem(THEME_STORAGE_KEY);
@@ -26,7 +36,7 @@ export function readStoredTheme(): Theme {
   } catch {
     /* private mode / quota — cae al default */
   }
-  return "dark";
+  return "light";
 }
 
 /** Tema activo según el atributo en <html> (ya aplicado pre-paint). */

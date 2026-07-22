@@ -83,7 +83,13 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var k='franco-theme',t=localStorage.getItem(k);if(t!=='light'&&t!=='dark'){var l=localStorage.getItem('franco-landing-theme');if(l==='light'||l==='dark'){t=l;localStorage.setItem(k,l);}}if(t==='light')document.documentElement.setAttribute('data-theme','light');}catch(e){}})();` }} />
+        {/* Pre-paint (sin flash): resuelve el tema ANTES del primer render.
+            DEFAULT = LIGHT (cierre del capítulo Galería): quien no tiene
+            preferencia guardada (o localStorage no disponible) ve light. Solo
+            un 'dark' explícito guardado deja el atributo ausente (= dark). Quien
+            ya eligió conserva su elección; cero migración forzada (no se
+            persiste el default). Mantener el READ en sync con theme.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){var t;try{var k='franco-theme';t=localStorage.getItem(k);if(t!=='light'&&t!=='dark'){var l=localStorage.getItem('franco-landing-theme');if(l==='light'||l==='dark'){t=l;localStorage.setItem(k,l);}}}catch(e){}if(t!=='dark')document.documentElement.setAttribute('data-theme','light');})();` }} />
       </head>
       <body className={`${sourceSerif.variable} ${ibmPlexSans.variable} ${jetbrainsMono.variable} font-body antialiased`}>
         <script
