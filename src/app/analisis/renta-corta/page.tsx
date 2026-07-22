@@ -199,7 +199,7 @@ function MoneyInput({
         <button
           type="button"
           onClick={onCurrencyToggle}
-          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--franco-text-muted)] cursor-pointer hover:text-white/70"
+          className="absolute right-2 top-1/2 -translate-y-1/2 font-mono text-[10px] text-[var(--franco-text-muted)] cursor-pointer hover:text-[var(--franco-text-secondary)]"
           title={`Cambiar a ${isUF ? "CLP" : "UF"}`}
         >
           {isUF ? "→CLP" : "→UF"}
@@ -809,16 +809,19 @@ export default function RentaCortaFormPage() {
 
         {/* Draft banner */}
         {showDraftBanner && (
-          <div className="mb-4 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <div
+            className="mb-4 flex items-center justify-between rounded-lg border border-[var(--franco-border-strong)] px-4 py-3"
+            style={{ background: "color-mix(in srgb, var(--franco-text) 4%, transparent)" }}
+          >
             <div className="flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-              <span className="text-sm text-amber-800">Tienes un análisis de renta corta sin terminar</span>
+              <AlertCircle className="h-4 w-4 text-[var(--franco-text-tertiary)]" />
+              <span className="text-sm text-[var(--franco-text)]">Tienes un análisis de renta corta sin terminar</span>
             </div>
             <div className="flex gap-2">
-              <button type="button" onClick={restoreDraft} className="rounded-md bg-amber-600 px-3 py-1 text-xs font-medium text-white hover:bg-amber-700">
+              <button type="button" onClick={restoreDraft} className="rounded-md bg-[var(--franco-text)] px-3 py-1 text-xs font-medium text-[var(--franco-bg)] transition-opacity hover:opacity-90">
                 Recuperar
               </button>
-              <button type="button" onClick={discardDraft} className="rounded-md border border-amber-300 px-3 py-1 text-xs text-amber-700 hover:bg-amber-100">
+              <button type="button" onClick={discardDraft} className="rounded-md border border-[var(--franco-border)] px-3 py-1 text-xs text-[var(--franco-text-secondary)] transition-colors hover:border-[var(--franco-border-hover)] hover:text-[var(--franco-text)]">
                 Descartar
               </button>
             </div>
@@ -877,7 +880,7 @@ export default function RentaCortaFormPage() {
               <button
                 type="button"
                 onClick={() => { setField("comuna", ""); setComunaSearch(""); setComunaOpen(true); }}
-                className="absolute right-3 top-[34px] text-xs text-[var(--franco-text-muted)] hover:text-white/70"
+                className="absolute right-3 top-[34px] text-xs text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)]"
               >✕</button>
             )}
             {comunaOpen && !form.comuna && (
@@ -906,8 +909,8 @@ export default function RentaCortaFormPage() {
 
           {/* Banner: comuna fuera del Gran Santiago */}
           {form.comuna && !COMUNAS_GRAN_SANTIAGO.includes(form.comuna) && (
-            <div className="rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-4 py-3">
-              <p className="font-body text-[12px] text-[#FBBF24]">
+            <div className="rounded-lg border border-[var(--franco-border-strong)] px-4 py-3">
+              <p className="font-body text-[12px] text-[var(--franco-text-secondary)]">
                 Los datos de Airbnb están optimizados para el Gran Santiago. La estimación puede ser menos precisa fuera de esta zona.
               </p>
             </div>
@@ -1143,8 +1146,8 @@ export default function RentaCortaFormPage() {
                     {form.cuotasPie} cuotas de {fmtUF(Math.round((calc.pieUF / Number(form.cuotasPie)) * 10) / 10)}
                   </p>
                 )}
-                <div className="mt-2 rounded-lg border border-[#FBBF24]/30 bg-[#FBBF24]/[0.06] px-3 py-2">
-                  <p className="font-body text-[11px] text-[#FBBF24]">
+                <div className="mt-2 rounded-lg border border-[var(--franco-border-strong)] px-3 py-2">
+                  <p className="font-body text-[11px] text-[var(--franco-text-secondary)]">
                     Durante los meses previos a la entrega pagarás las cuotas del pie sin generar ingresos. El análisis incluye este período.
                   </p>
                 </div>
