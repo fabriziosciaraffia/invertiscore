@@ -79,7 +79,7 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
                 {o.eyebrow}
               </span>
             )}
-            <h3 className="font-heading text-[24px] font-bold text-[var(--franco-text)] m-0 leading-tight">
+            <h3 className="wizard4-informe-cardtitle font-heading text-[24px] font-bold text-[var(--franco-text)] m-0 leading-tight">
               {o.nombre}
             </h3>
             <p className="font-body text-[13px] text-[var(--franco-text-secondary)] mt-1.5 mb-0 leading-relaxed">

@@ -767,6 +767,20 @@ input[type="number"] {
   .wizard4-reaction { animation: wizard4-reaction-in 360ms ease-out 90ms both; }
 }
 
+/* Regla de layout: en desktop cada pantalla del wizard cabe sin scroll vertical.
+   Criterio 1366x768. En viewports BAJOS (alto ≤ 820px, notebooks) comprimimos el
+   ritmo vertical — NO la tipografía de dato — para no empujar el CTA fuera de la
+   vista. El resumen (Fase 4) es la excepción declarada (puede scrollear).
+   Mobile (alto > 820) no se toca. */
+@media (max-height: 820px) {
+  .wizard4-main       { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+  .wizard4-headcard   { margin-bottom: 1rem !important; padding-top: 1rem !important; padding-bottom: 1rem !important; }
+  .wizard4-steptitle  { margin-bottom: 0.9rem !important; font-size: 26px !important; }
+  .wizard4-reaction   { margin-bottom: 0.9rem !important; }
+  /* El serif grande de la variante B baja un escalón bajo 820px de alto. */
+  .wizard4-informe-cardtitle { font-size: 20px !important; }
+}
+
 /* ═══ Fase 2 · FREEZE — Hero por elevación (flotante+luz) · PARIDAD DE TEMAS ═══
  * Flotante+luz ganó (decisión Fabrizio). La elevación del hero es DEFINITIVA,
  * sin flag. Paridad de diseño: MISMO concepto en ambos temas, valores propios.

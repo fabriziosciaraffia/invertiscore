@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Comparable } from "@/components/formulario-v3/MapaThumbnail";
+import { useAirRoiSuggestion, type AirRoiSuggestion } from "@/hooks/useAirRoiSuggestion";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 
 const UF_FALLBACK = 38800;
@@ -17,6 +18,14 @@ export interface WizardV4Data {
   comparablesCount: number;
   comparables: Comparable[];
   suggestionsLoading: boolean;
+  /** Arriendo mediana estimado (CLP/mes) de la zona, o null. */
+  arriendoSugerido: number | null;
+  /** N de arriendos comparables usados en la mediana. */
+  arriendoN: number;
+  /** GGCC típico estimado (CLP/mes) de la zona, o null. */
+  ggccSugerido: number | null;
+  /** Baseline AirROI (tarifa/ocupación) — solo activo en str/both. */
+  airRoi: AirRoiSuggestion;
 }
 
 export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
@@ -25,6 +34,9 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [comparablesCount, setComparablesCount] = useState(0);
   const [comparables, setComparables] = useState<Comparable[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [arriendoSugerido, setArriendoSugerido] = useState<number | null>(null);
+  const [arriendoN, setArriendoN] = useState(0);
+  const [ggccSugerido, setGgccSugerido] = useState<number | null>(null);
 
   // UF del día + tasa de mercado (una vez).
   useEffect(() => {
@@ -78,11 +90,17 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           const count = d?.sampleSize ?? d?.totalInRadius ?? 0;
           setComparablesCount(Number(count) || 0);
           setComparables(Array.isArray(d?.nearbyProperties) ? d.nearbyProperties : []);
+          setArriendoSugerido(typeof d?.arriendo === "number" ? d.arriendo : null);
+          setArriendoN(Number(d?.sampleSize) || 0);
+          setGgccSugerido(typeof d?.ggcc === "number" ? d.ggcc : null);
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
           setComparablesCount(0);
           setComparables([]);
+          setArriendoSugerido(null);
+          setArriendoN(0);
+          setGgccSugerido(null);
         })
         .finally(() => {
           if (seq === reqSeq.current) setSuggestionsLoading(false);
@@ -91,5 +109,29 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     return () => clearTimeout(t);
   }, [lat, lng, comuna, superficie, dormitorios]);
 
-  return { ufCLP, tasaMercado, comparablesCount, comparables, suggestionsLoading };
+  // Baseline AirROI — no-op salvo modalidad str/both (evita el costo del fetch
+  // en LTR puro). capacidadHuespedes se aproxima desde dormitorios cuando no se
+  // pide explícito (2 por dorm, mínimo 2).
+  const dorm = Number(answers.dormitorios) || 2;
+  const airRoi = useAirRoiSuggestion({
+    enabled: answers.modalidad === "str" || answers.modalidad === "both",
+    direccion: answers.direccion ?? "",
+    comuna: answers.comuna ?? "",
+    dormitorios: dorm,
+    banos: Number(answers.banos) || 1,
+    capacidadHuespedes: Math.max(2, dorm * 2),
+    ufClp: ufCLP,
+  });
+
+  return {
+    ufCLP,
+    tasaMercado,
+    comparablesCount,
+    comparables,
+    suggestionsLoading,
+    arriendoSugerido,
+    arriendoN,
+    ggccSugerido,
+    airRoi,
+  };
 }

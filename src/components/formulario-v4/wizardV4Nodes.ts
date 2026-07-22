@@ -91,6 +91,27 @@ export interface WizardV4Answers {
   pieUnidad?: PieUnidad;
   plazoCredito?: string; // "20" | "25" | "30"
   tasaInteres?: string; // % anual, coma decimal
+
+  // ── Acto 3 · cómo lo rentabilizas (ingresos con estimación/corrección) ──
+  arriendo?: string; // CLP/mes (LTR/both) — estimado o corregido
+  adrTarifa?: string; // CLP/noche (STR/both)
+  adrOcupacion?: string; // % ocupación estabilizada (STR/both)
+
+  // ── Supuestos DIFERIDOS (default silencioso; editables en el resumen) ──
+  gastosComunes?: string; // CLP/mes
+  contribuciones?: string; // CLP/trimestre
+  vacanciaPct?: string; // % (LTR)
+  comisionAdminPct?: string; // % administración LTR
+  // STR:
+  modoGestion?: "auto" | "administrador";
+  comisionStrPct?: string; // % operador STR
+  costoElectricidad?: string;
+  costoAgua?: string;
+  costoWifi?: string;
+  costoInsumos?: string;
+  mantencionStr?: string;
+  estaAmoblado?: boolean;
+  costoAmoblamiento?: string;
 }
 
 /** Pantallas de corrección inline (detours, no cuentan progreso). */

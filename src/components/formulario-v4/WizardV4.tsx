@@ -34,6 +34,7 @@ import {
   type ScreenProps,
 } from "./screensActo1";
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
+import { AdrFixScreen, AdrScreen, ArrFixScreen, ArrScreen } from "./screensActo3";
 import { InformeScreen } from "./screenInforme";
 
 /** Caja placeholder de contenido de pantalla (Acto 3 / resumen → Fases 3-4). */
@@ -80,9 +81,9 @@ export function WizardV4({ resume }: { resume: boolean }) {
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <UnifiedNav variant="app" />
 
-      <main className="max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-12">
+      <main className="wizard4-main max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-12">
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3). */}
-        <div className="mb-8 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm p-5 md:p-6">
+        <div className="wizard4-headcard mb-8 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm p-5 md:p-6">
           <div className="flex items-center gap-3 mb-4 min-w-0">
             {w.canGoBack && (
               <button
@@ -133,7 +134,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
           <div key={nav.current} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            <h1 className="font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 mb-6 leading-tight">
+            <h1 className="wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 mb-6 leading-tight">
               {NODE_TITLE[nav.current]}
             </h1>
 
@@ -185,13 +186,19 @@ function Screen({
     case "mod":
       return <InformeScreen {...screenProps} />;
 
-    // ── Acto 3 (placeholders — Fase 3) ──
+    // ── Acto 3 ──
     case "gate":
       return (
-        <div className="flex flex-col gap-3">
-          <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "si" })}>Sí permite</ChoiceTile>
-          <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no_seguro" })}>No estoy seguro</ChoiceTile>
-          <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no" })}>No permite</ChoiceTile>
+        <div className="flex flex-col gap-4">
+          <p className="font-body text-[14px] text-[var(--franco-text-secondary)] m-0 leading-relaxed">
+            Muchos edificios prohíben el arriendo por noche en su reglamento. Es lo primero que hay
+            que confirmar: sin permiso, la renta corta no corre.
+          </p>
+          <div className="flex flex-col gap-3">
+            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "si" })}>Sí permite</ChoiceTile>
+            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no_seguro" })}>No estoy seguro</ChoiceTile>
+            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no" })}>No permite</ChoiceTile>
+          </div>
         </div>
       );
     case "gateNo":
@@ -210,35 +217,13 @@ function Screen({
         </>
       );
     case "arr":
-      return (
-        <>
-          <PlaceholderBox node={node} />
-          <div className="flex flex-col sm:flex-row gap-3 mt-6">
-            <PrimaryBtn onClick={() => w.answer("arr", { arrModo: "estimacion" })}>Usar estimación →</PrimaryBtn>
-            <GhostBtn onClick={() => w.goDetour("arrFix", { arrModo: "corregir" })}>Corregir</GhostBtn>
-          </div>
-        </>
-      );
-    case "adr":
-      return (
-        <>
-          <PlaceholderBox node={node} />
-          <div className="flex flex-col sm:flex-row gap-3 mt-6">
-            <PrimaryBtn onClick={() => w.answer("adr", { adrModo: "estimacion" })}>Usar estimación →</PrimaryBtn>
-            <GhostBtn onClick={() => w.goDetour("adrFix", { adrModo: "corregir" })}>Corregir</GhostBtn>
-          </div>
-        </>
-      );
+      return <ArrScreen {...screenProps} />;
     case "arrFix":
+      return <ArrFixScreen {...screenProps} />;
+    case "adr":
+      return <AdrScreen {...screenProps} />;
     case "adrFix":
-      return (
-        <>
-          <PlaceholderBox node={node} />
-          <div className="mt-6">
-            <PrimaryBtn onClick={() => w.answer(node)}>Guardar y continuar →</PrimaryBtn>
-          </div>
-        </>
-      );
+      return <AdrFixScreen {...screenProps} />;
 
     case "resumen":
       return <ResumenPlaceholder w={w} />;
