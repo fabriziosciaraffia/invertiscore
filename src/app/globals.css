@@ -742,6 +742,23 @@ input[type="number"] {
   .franco-tag-fade    { animation: franco-tag-fade 200ms ease-out; }
 }
 
+/* Wizard v4 — transición slide+fade entre pantallas (una pregunta por pantalla).
+   El div se re-monta con key={nodeId}, así que la animación corre en cada
+   navegación. `data-dir` da la dirección (avanzar / chevron atrás). ~280ms.
+   Solo bajo no-preference: reduced motion no anima (sin cleanup necesario). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wizard4-in-forward {
+    from { opacity: 0; transform: translateX(16px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @keyframes wizard4-in-back {
+    from { opacity: 0; transform: translateX(-16px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .wizard4-screen[data-dir="forward"] { animation: wizard4-in-forward 280ms ease-out; }
+  .wizard4-screen[data-dir="back"]    { animation: wizard4-in-back 280ms ease-out; }
+}
+
 /* ═══ Fase 2 · FREEZE — Hero por elevación (flotante+luz) · PARIDAD DE TEMAS ═══
  * Flotante+luz ganó (decisión Fabrizio). La elevación del hero es DEFINITIVA,
  * sin flag. Paridad de diseño: MISMO concepto en ambos temas, valores propios.
