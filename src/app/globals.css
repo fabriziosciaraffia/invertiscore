@@ -825,3 +825,11 @@ input[type="number"] {
 :root                { --franco-shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.40); }
 [data-theme="light"] { --franco-shadow-pop: 0 10px 28px rgba(15, 15, 15, 0.12); }
 .franco-tooltip-bubble { box-shadow: var(--franco-shadow-pop); }
+
+/* ═══ Fase 3 · Lote 1 · Barra flotante (compare bar del dashboard) ══════════
+ * Sombra ASCENDENTE tokenizada — reemplaza el `shadow-black/20` hardcodeado que
+ * en light pesaba de más. Paridad por token: dark = negra densa (lee sobre
+ * #0F0F0F), light = tinta suave (lee sobre el lienzo gris). El signo negativo
+ * del blur proyecta hacia arriba, coherente con una barra anclada abajo. */
+:root                { --franco-shadow-bar: 0 -8px 24px rgba(0, 0, 0, 0.35); }
+[data-theme="light"] { --franco-shadow-bar: 0 -8px 24px rgba(15, 15, 15, 0.08); }
