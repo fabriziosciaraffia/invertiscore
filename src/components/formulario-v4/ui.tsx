@@ -59,18 +59,22 @@ export function GhostBtn({ children, onClick }: { children: ReactNode; onClick: 
   );
 }
 
-/** Tile seleccionable grande (una opción por fila). Hover-lift solo en no-elegidos. */
+/** Tile seleccionable grande (una opción por fila). Hover-lift solo en no-elegidos.
+ *  `ariaLabel`: nombre accesible explícito cuando el contenido es rico (título +
+ *  descripción en spans anidados no siempre computa un nombre claro). */
 export function ChoiceTile({
   children,
   selected,
   onClick,
   accent,
+  ariaLabel,
 }: {
   children: ReactNode;
   selected?: boolean;
   onClick: () => void;
   /** Borde Signal Red 1.5px (destacado, NO preseleccionado). */
   accent?: boolean;
+  ariaLabel?: string;
 }) {
   const base = "text-left rounded-xl px-5 py-4 font-body text-[15px] w-full transition-colors";
   if (selected) {
@@ -78,6 +82,8 @@ export function ChoiceTile({
       <button
         type="button"
         onClick={onClick}
+        aria-label={ariaLabel}
+        aria-pressed={true}
         className={`${base} bg-[var(--franco-text)] text-[var(--franco-bg)] border-[1.5px] border-[var(--franco-text)]`}
       >
         {children}
@@ -88,6 +94,7 @@ export function ChoiceTile({
     <button
       type="button"
       onClick={onClick}
+      aria-label={ariaLabel}
       className={`franco-tile-target ${base} bg-[var(--franco-card)] text-[var(--franco-text)] ${
         accent ? "border-[1.5px] border-signal-red" : "border-[0.5px] border-[var(--franco-border)]"
       }`}

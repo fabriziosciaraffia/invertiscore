@@ -134,13 +134,21 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
 export function TipoScreen({ answers, answer }: ScreenProps) {
   return (
     <div className="flex flex-col gap-3">
-      <ChoiceTile selected={answers.tipoPropiedad === "usado"} onClick={() => answer("tipo", { tipoPropiedad: "usado" })}>
+      <ChoiceTile
+        selected={answers.tipoPropiedad === "usado"}
+        onClick={() => answer("tipo", { tipoPropiedad: "usado" })}
+        ariaLabel="Usado. Ya tuvo dueño — se vende por particular o corredor."
+      >
         <span className="font-medium">Usado</span>
         <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
           Ya tuvo dueño — se vende por particular o corredor.
         </span>
       </ChoiceTile>
-      <ChoiceTile selected={answers.tipoPropiedad === "nuevo"} onClick={() => answer("tipo", { tipoPropiedad: "nuevo" })}>
+      <ChoiceTile
+        selected={answers.tipoPropiedad === "nuevo"}
+        onClick={() => answer("tipo", { tipoPropiedad: "nuevo" })}
+        ariaLabel="Nuevo. Primera venta directa de la inmobiliaria, incluye entrega futura o en verde."
+      >
         <span className="font-medium">Nuevo</span>
         <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
           Primera venta directa de la inmobiliaria (incluye entrega futura / en verde).
@@ -164,13 +172,21 @@ export function EntregaScreen({ answers, patchAnswers, answer }: ScreenProps) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3">
-        <ChoiceTile selected={estado === "inmediata"} onClick={() => patchAnswers({ estadoVenta: "inmediata" })}>
+        <ChoiceTile
+          selected={estado === "inmediata"}
+          onClick={() => patchAnswers({ estadoVenta: "inmediata" })}
+          ariaLabel="Entrega inmediata. Ya construido, listo para escriturar."
+        >
           <span className="font-medium">Entrega inmediata</span>
           <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
             Ya construido, listo para escriturar.
           </span>
         </ChoiceTile>
-        <ChoiceTile selected={futura} onClick={() => patchAnswers({ estadoVenta: "futura" })}>
+        <ChoiceTile
+          selected={futura}
+          onClick={() => patchAnswers({ estadoVenta: "futura" })}
+          ariaLabel="Entrega futura, en verde o en blanco. En construcción, se entrega más adelante."
+        >
           <span className="font-medium">Entrega futura (en verde / blanco)</span>
           <span className="block font-body text-[13px] text-[var(--franco-text-secondary)] mt-0.5">
             En construcción — se entrega más adelante.

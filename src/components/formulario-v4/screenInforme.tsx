@@ -45,6 +45,8 @@ export function InformeScreen({ answers, answer }: ScreenProps) {
             key={o.value}
             type="button"
             onClick={() => answer("mod", { modalidad: o.value })}
+            aria-label={`${o.nombre}. ${o.beneficio}`}
+            aria-pressed={selected}
             className={`franco-tile-target text-left rounded-xl px-5 py-4 w-full transition-colors ${
               selected
                 ? "bg-[var(--franco-text)] border-[1.5px] border-[var(--franco-text)]"

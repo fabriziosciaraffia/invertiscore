@@ -108,14 +108,17 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
     if (unidad !== "pct") equiv.push(`${Math.round(pct)}% del precio`);
   }
 
-  // F6: pie en cuotas — solo nuevo + entrega futura. Informativa: pie total /
-  // meses hasta la fecha de entrega. No aparece en usado ni entrega inmediata.
+  // F6: pie en cuotas — solo nuevo + entrega futura. Informativa (NO editable):
+  // pie total repartido parejo por los meses hasta la entrega. No aparece en
+  // usado ni entrega inmediata.
+  // TODO: editable con patrón estimación/corrección cuando exista motor
+  // pre-entrega (hoy el motor no consume calendario de pie).
   let enCuotas: string | null = null;
   if (answers.tipoPropiedad === "nuevo" && answers.estadoVenta === "futura" && clp > 0) {
     const meses = mesesHastaEntrega(answers.fechaEntregaMes ?? "", answers.fechaEntregaAnio ?? "");
     if (meses > 0) {
       const mesLbl = MES_ABBR[Number(answers.fechaEntregaMes) - 1] ?? "";
-      enCuotas = `≈ ${fmtCLP(Math.round(clp / meses))}/mes en ${meses} meses hasta la entrega (${mesLbl} ${answers.fechaEntregaAnio})`;
+      enCuotas = `≈ ${fmtCLP(Math.round(clp / meses))}/mes si lo pagas parejo hasta la entrega (${mesLbl} ${answers.fechaEntregaAnio})`;
     }
   }
 
