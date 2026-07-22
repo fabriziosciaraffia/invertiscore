@@ -757,6 +757,14 @@ input[type="number"] {
   }
   .wizard4-screen[data-dir="forward"] { animation: wizard4-in-forward 280ms ease-out; }
   .wizard4-screen[data-dir="back"]    { animation: wizard4-in-back 280ms ease-out; }
+
+  /* Reacción de Franco: fade suave con leve subida, entra apenas después de la
+     pantalla para leerse como Franco tomando la palabra. */
+  @keyframes wizard4-reaction-in {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: none; }
+  }
+  .wizard4-reaction { animation: wizard4-reaction-in 360ms ease-out 90ms both; }
 }
 
 /* ═══ Fase 2 · FREEZE — Hero por elevación (flotante+luz) · PARIDAD DE TEMAS ═══

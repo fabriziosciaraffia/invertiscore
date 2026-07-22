@@ -115,6 +115,7 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
             comparables={data.comparables}
             comparablesCount={data.comparablesCount}
             locationLabel={[comuna, ciudad].filter(Boolean).join(" · ")}
+            countLabel="propiedades en el sector"
           />
         </div>
       )}
@@ -262,51 +263,53 @@ export function TamanoScreen({ answers, patchAnswers, answer }: ScreenProps) {
         />
       </div>
 
-      <div>
-        <FieldLabel>Dormitorios</FieldLabel>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => patchAnswers({ esStudio: true, dormitorios: "0" })}
-            className={`font-mono text-[13px] px-4 h-10 rounded-lg border-[0.5px] transition-colors ${
-              answers.esStudio
-                ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
-            }`}
-          >
-            Studio
-          </button>
-          {["1", "2", "3", "4"].map((d) => {
-            const active = !answers.esStudio && answers.dormitorios === d;
-            return (
-              <button
-                key={d}
-                type="button"
-                onClick={() => patchAnswers({ esStudio: false, dormitorios: d })}
-                className={`font-mono text-[13px] px-4 h-10 rounded-lg border-[0.5px] transition-colors ${
-                  active
-                    ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                    : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
-                }`}
-              >
-                {d === "4" ? "4+" : d}
-              </button>
-            );
-          })}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <FieldLabel>Dormitorios</FieldLabel>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => patchAnswers({ esStudio: true, dormitorios: "0" })}
+              className={`font-mono text-[13px] px-3 h-10 rounded-lg border-[0.5px] transition-colors ${
+                answers.esStudio
+                  ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
+                  : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
+              }`}
+            >
+              Studio
+            </button>
+            {["1", "2", "3", "4"].map((d) => {
+              const active = !answers.esStudio && answers.dormitorios === d;
+              return (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => patchAnswers({ esStudio: false, dormitorios: d })}
+                  className={`font-mono text-[13px] w-10 h-10 rounded-lg border-[0.5px] transition-colors ${
+                    active
+                      ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
+                      : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[var(--franco-border)]"
+                  }`}
+                >
+                  {d === "4" ? "4+" : d}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
 
-      <div>
-        <FieldLabel>Baños</FieldLabel>
-        <Segmented
-          options={[
-            { value: "1", label: "1" },
-            { value: "2", label: "2" },
-            { value: "3", label: "3+" },
-          ]}
-          value={answers.banos}
-          onChange={(v) => patchAnswers({ banos: v })}
-        />
+        <div>
+          <FieldLabel>Baños</FieldLabel>
+          <Segmented
+            options={[
+              { value: "1", label: "1" },
+              { value: "2", label: "2" },
+              { value: "3", label: "3+" },
+            ]}
+            value={answers.banos}
+            onChange={(v) => patchAnswers({ banos: v })}
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">

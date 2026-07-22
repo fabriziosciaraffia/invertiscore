@@ -52,7 +52,7 @@ interface PersistedDraft {
 }
 
 const DEFAULT_NAV: WizardV4Nav = {
-  current: "dir",
+  current: "mod",
   history: [],
   answers: {},
   completed: {},
@@ -206,7 +206,7 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
     const t = setTimeout(() => {
       try {
         // Solo vale la pena guardar si el usuario avanzó algo.
-        if (nav.current === "dir" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
+        if (nav.current === "mod" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
           return;
         }
         const draft: PersistedDraft = {

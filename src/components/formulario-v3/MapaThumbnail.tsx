@@ -61,6 +61,7 @@ export function MapaThumbnail({
   comparablesCount,
   locationLabel,
   height = 120,
+  countLabel = "comparables cerca",
 }: {
   lat: number | null;
   lng: number | null;
@@ -68,6 +69,10 @@ export function MapaThumbnail({
   comparablesCount: number;
   locationLabel?: string;
   height?: number;
+  /** Sufijo del badge de conteo. Default "comparables cerca" (v3 intacto). El
+   *  wizard v4 pasa "propiedades en el sector" para no competir con el número de
+   *  comparables (sampleSize) que muestra la reacción de Franco. */
+  countLabel?: string;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [imgFailed, setImgFailed] = useState(false);
@@ -211,7 +216,7 @@ export function MapaThumbnail({
           style={{ background: "rgba(15,15,15,0.72)" }}
         >
           <span className="font-mono text-[10px] tracking-wide text-white">
-            {displayCount} comparables cerca
+            {displayCount} {countLabel}
           </span>
         </div>
       )}

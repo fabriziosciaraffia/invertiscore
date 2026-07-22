@@ -15,15 +15,35 @@ export function PrimaryBtn({
   onClick: () => void;
   disabled?: boolean;
 }) {
+  // Deshabilitado NO va como rojo fantasma (se leía como "roto"): pasa a outline
+  // inactivo Ink → comunica "falta completar", no "acción apagada".
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+      className="font-mono uppercase font-medium text-[12px] tracking-[0.06em] px-6 py-3.5 rounded-lg min-h-[44px] flex items-center justify-center gap-2 transition-colors text-white bg-signal-red hover:bg-signal-red/90 disabled:bg-transparent disabled:text-[var(--franco-text-muted)] disabled:border disabled:border-[var(--franco-border-strong)] disabled:cursor-not-allowed"
     >
       {children}
     </button>
+  );
+}
+
+/** Reacción de Franco: Franco hablando entre preguntas. Fondo sutil, borde izq
+ *  Signal Red, esquinas der redondeadas (0 X X 0), fade suave de entrada. */
+export function FrancoReaction({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="wizard4-reaction mb-7 rounded-r-lg border-l-2 border-signal-red pl-4 pr-4 py-3"
+      style={{ background: "color-mix(in srgb, var(--franco-text) 3.5%, transparent)" }}
+    >
+      <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-signal-red m-0 mb-1">
+        Franco
+      </p>
+      <p className="font-body text-[14px] italic text-[var(--franco-text-secondary)] m-0 leading-relaxed">
+        {children}
+      </p>
+    </div>
   );
 }
 

@@ -3,16 +3,17 @@
 //
 // Doctrina: una pregunta por pantalla (GOV.UK one-thing-per-page). Cada nodo es
 // una pantalla. Los "actos" son solo rótulo de contexto + barra de progreso; NO
-// son páginas. El grafo con ramas:
+// son páginas. La modalidad (EL INFORME) es la PRIMERA pantalla (selección de
+// producto). El gate del edificio sigue en el Acto 3. El grafo con ramas:
 //
-//   dir → tipo ─(usado)→ ant → tam → precio → pie → tasa → plazo → mod
-//              └(nuevo)→ ent → tam
+//   mod → dir → tipo ─(usado)→ ant → tam → precio → pie → tasa → plazo → [rama]
+//                    └(nuevo)→ ent → tam
 //
-//   mod ─(ltr)→ arr → resumen
-//       ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
-//       │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen
-//       └(both)→ gate ─(sí/no-seguro)→ arr → adr → resumen
-//                └(no)→ gateNo (ofrece seguir solo ltr)
+//   plazo ─(ltr)→ arr → resumen
+//         ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
+//         │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen
+//         └(both)→ gate ─(sí/no-seguro)→ arr → adr → resumen
+//                  └(no)→ gateNo (ofrece seguir solo ltr)
 //
 // tasaFix / arrFix / adrFix = detours de corrección inline (se entran con botón,
 // no por computeNext; su "siguiente" es el mismo que el de su pantalla padre).
@@ -142,7 +143,7 @@ export const NODE_TITLE: Record<NodeId, string> = {
   tasa: "Tu tasa hipotecaria",
   tasaFix: "Ingresa tu tasa pre-aprobada",
   plazo: "¿A cuántos años el crédito?",
-  mod: "Esto define el informe que Franco genera",
+  mod: "¿Qué informe quieres?",
   gate: "¿El edificio permite arriendo por noche?",
   gateNo: "El edificio no permite arriendo por noche",
   arr: "¿En cuánto lo arriendas al mes?",
@@ -160,6 +161,8 @@ export const NODE_TITLE: Record<NodeId, string> = {
  */
 export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
+    case "mod":
+      return "dir"; // modalidad es la primera pantalla; el flujo sigue con la propiedad
     case "dir":
       return "tipo";
     case "tipo":
@@ -179,12 +182,8 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasaFix":
       return "plazo";
     case "plazo":
-      return "mod";
-    case "mod":
-      if (a.modalidad === "ltr") return "arr";
-      if (a.modalidad === "str") return "gate";
-      if (a.modalidad === "both") return "gate";
-      return null;
+      // tras el financiamiento entra la rama del Acto 3 según la modalidad ya elegida
+      return a.modalidad === "str" || a.modalidad === "both" ? "gate" : "arr";
     case "gate":
       if (a.edificioPermiteAirbnb === "no") return "gateNo";
       // sí | no_seguro → both pide arr primero, str va directo a adr
@@ -214,7 +213,7 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
 export function computePlannedPath(a: WizardV4Answers): NodeId[] {
   const path: NodeId[] = [];
   const guard = new Set<NodeId>();
-  let n: NodeId | null = "dir";
+  let n: NodeId | null = "mod";
   while (n && !guard.has(n)) {
     guard.add(n);
     path.push(n);
@@ -226,6 +225,8 @@ export function computePlannedPath(a: WizardV4Answers): NodeId[] {
 /** Transición "feliz" para la planificación de progreso (nunca a fix/gateNo). */
 function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
   switch (node) {
+    case "mod":
+      return "dir";
     case "dir":
       return "tipo";
     case "tipo":
@@ -242,8 +243,6 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasa":
       return "plazo";
     case "plazo":
-      return "mod";
-    case "mod":
       // undecided → asume la rama más corta (ltr)
       if (a.modalidad === "str" || a.modalidad === "both") return "gate";
       return "arr";
@@ -327,7 +326,7 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;
     case "plazo":
-      return `Tu cuota queda en ${live?.cuota ?? "$X"} al mes. Ahora, la decisión grande.`;
+      return `Tu cuota queda en ${live?.cuota ?? "$X"} al mes. Ahora, lo que puede rendir.`;
     case "gate":
       return a.edificioPermiteAirbnb === "no_seguro"
         ? "Ok — el informe lo marcará como riesgo por confirmar antes de firmar."

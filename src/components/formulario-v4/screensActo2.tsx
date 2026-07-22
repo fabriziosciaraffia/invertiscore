@@ -5,13 +5,15 @@
 // tasaFix (estimación con corrección inline), plazo (segmented).
 
 import { useState } from "react";
+import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
-import { ChoiceTile, FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
+import { FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, pieCLP } from "./derive";
 
 const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
 const decOk = (v: string) => v === "" || /^\d*[,]?\d*$/.test(v);
+const MES_ABBR = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 
 // ── precio ────────────────────────────────────────────────────────────────────
 
@@ -106,6 +108,17 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
     if (unidad !== "pct") equiv.push(`${Math.round(pct)}% del precio`);
   }
 
+  // F6: pie en cuotas — solo nuevo + entrega futura. Informativa: pie total /
+  // meses hasta la fecha de entrega. No aparece en usado ni entrega inmediata.
+  let enCuotas: string | null = null;
+  if (answers.tipoPropiedad === "nuevo" && answers.estadoVenta === "futura" && clp > 0) {
+    const meses = mesesHastaEntrega(answers.fechaEntregaMes ?? "", answers.fechaEntregaAnio ?? "");
+    if (meses > 0) {
+      const mesLbl = MES_ABBR[Number(answers.fechaEntregaMes) - 1] ?? "";
+      enCuotas = `≈ ${fmtCLP(Math.round(clp / meses))}/mes en ${meses} meses hasta la entrega (${mesLbl} ${answers.fechaEntregaAnio})`;
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
@@ -130,6 +143,10 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
 
       {equiv.length > 0 && (
         <p className="font-mono text-[13px] text-[var(--franco-text-secondary)] m-0">= {equiv.join(" · ")}</p>
+      )}
+
+      {enCuotas && (
+        <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0">{enCuotas}</p>
       )}
 
       <div className="mt-1">
@@ -201,18 +218,46 @@ export function TasaFixScreen({ answers, data, patchAnswers, answer }: ScreenPro
 
 // ── plazo ─────────────────────────────────────────────────────────────────────
 
-export function PlazoScreen({ answers, answer }: ScreenProps) {
+export function PlazoScreen({ answers, patchAnswers, answer }: ScreenProps) {
+  const plazo = answers.plazoCredito || "25";
   return (
-    <div className="flex flex-col gap-3">
-      {["20", "25", "30"].map((p) => (
-        <ChoiceTile
-          key={p}
-          selected={answers.plazoCredito === p}
-          onClick={() => answer("plazo", { plazoCredito: p })}
-        >
-          <span className="font-mono">{p} años</span>
-        </ChoiceTile>
-      ))}
+    <div className="flex flex-col gap-6">
+      <div className="text-center">
+        <span className="font-mono text-[44px] font-bold text-[var(--franco-text)] leading-none">{plazo}</span>
+        <span className="font-mono text-[16px] text-[var(--franco-text-secondary)] ml-2">años</span>
+      </div>
+
+      <div>
+        <input
+          type="range"
+          min={15}
+          max={30}
+          step={5}
+          value={Number(plazo)}
+          onChange={(e) => patchAnswers({ plazoCredito: e.target.value })}
+          className="w-full h-2 cursor-pointer"
+          style={{ accentColor: "#C8323C" }}
+          aria-label="Plazo del crédito en años"
+        />
+        <div className="flex justify-between mt-2 px-0.5">
+          {["15", "20", "25", "30"].map((p) => (
+            <span
+              key={p}
+              className={`font-mono text-[11px] ${
+                p === plazo ? "text-[var(--franco-text)]" : "text-[var(--franco-text-muted)]"
+              }`}
+            >
+              {p}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <FuenteLine>Más plazo baja la cuota mensual, pero pagas más intereses en total.</FuenteLine>
+
+      <div className="mt-1">
+        <PrimaryBtn onClick={() => answer("plazo", { plazoCredito: plazo })}>Continuar →</PrimaryBtn>
+      </div>
     </div>
   );
 }

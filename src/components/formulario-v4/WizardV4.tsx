@@ -20,12 +20,11 @@ import {
   ACTO_LABEL,
   NODE_TITLE,
   reactionText,
-  stepCounter,
   type NodeId,
   type ReactionLive,
 } from "./wizardV4Nodes";
 import { cuotaCLP, fmtCLP, parseNum } from "./derive";
-import { ChoiceTile, GhostBtn, PrimaryBtn } from "./ui";
+import { ChoiceTile, FrancoReaction, GhostBtn, PrimaryBtn } from "./ui";
 import {
   AntiguedadScreen,
   DireccionScreen,
@@ -35,6 +34,7 @@ import {
   type ScreenProps,
 } from "./screensActo1";
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
+import { InformeScreen } from "./screenInforme";
 
 /** Caja placeholder de contenido de pantalla (Acto 3 / resumen → Fases 3-4). */
 function PlaceholderBox({ node }: { node: NodeId }) {
@@ -58,7 +58,6 @@ export function WizardV4({ resume }: { resume: boolean }) {
   const acto = ACTO_BY_NODE[nav.current];
   const actoLabel = ACTO_LABEL[acto];
   const progress = w.progress;
-  const { step, total } = stepCounter(nav.current, nav.answers);
 
   // Reacción de Franco con datos reales (comparables, UF del día, cuota).
   const live: ReactionLive = {};
@@ -81,30 +80,23 @@ export function WizardV4({ resume }: { resume: boolean }) {
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <UnifiedNav variant="app" />
 
-      <main className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
+      <main className="max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-12">
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3). */}
         <div className="mb-8 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm p-5 md:p-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-3 min-w-0">
-              {w.canGoBack && (
-                <button
-                  type="button"
-                  onClick={w.goBack}
-                  aria-label="Volver a la pregunta anterior"
-                  className="shrink-0 -ml-1 flex items-center justify-center w-8 h-8 rounded-lg text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-border)] transition-colors"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-              )}
-              <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] truncate">
-                {actoLabel}
-              </span>
-            </div>
-            {nav.current !== "resumen" && (
-              <span className="shrink-0 font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
-                Paso {step} de {total}
-              </span>
+          <div className="flex items-center gap-3 mb-4 min-w-0">
+            {w.canGoBack && (
+              <button
+                type="button"
+                onClick={w.goBack}
+                aria-label="Volver a la pregunta anterior"
+                className="shrink-0 -ml-1 flex items-center justify-center w-8 h-8 rounded-lg text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] hover:bg-[var(--franco-border)] transition-colors"
+              >
+                <ChevronLeft size={18} />
+              </button>
             )}
+            <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-tertiary)] truncate">
+              {actoLabel}
+            </span>
           </div>
           <div className="h-[3px] w-full rounded-full bg-[var(--franco-border)] overflow-hidden">
             <div
@@ -139,16 +131,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
         {/* Contenido de pantalla con transición slide+fade */}
         <div className="overflow-hidden">
           <div key={nav.current} className="wizard4-screen" data-dir={nav.dir}>
-            {reaction && (
-              <div className="mb-5 pl-3 border-l-2 border-signal-red">
-                <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">
-                  Franco
-                </p>
-                <p className="font-body text-[14px] italic text-[var(--franco-text-secondary)] m-0 leading-snug">
-                  {reaction}
-                </p>
-              </div>
-            )}
+            {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
             <h1 className="font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 mb-6 leading-tight">
               {NODE_TITLE[nav.current]}
@@ -198,21 +181,9 @@ function Screen({
     case "plazo":
       return <PlazoScreen {...screenProps} />;
 
-    // ── EL INFORME (placeholder — Fase 3) ──
+    // ── EL INFORME (primera pantalla) ──
     case "mod":
-      return (
-        <div className="flex flex-col gap-3">
-          <ChoiceTile selected={w.nav.answers.modalidad === "ltr"} onClick={() => w.answer("mod", { modalidad: "ltr" })}>
-            Informe renta larga
-          </ChoiceTile>
-          <ChoiceTile selected={w.nav.answers.modalidad === "str"} onClick={() => w.answer("mod", { modalidad: "str" })}>
-            Informe renta corta
-          </ChoiceTile>
-          <ChoiceTile accent selected={w.nav.answers.modalidad === "both"} onClick={() => w.answer("mod", { modalidad: "both" })}>
-            Informe comparativo
-          </ChoiceTile>
-        </div>
-      );
+      return <InformeScreen {...screenProps} />;
 
     // ── Acto 3 (placeholders — Fase 3) ──
     case "gate":
