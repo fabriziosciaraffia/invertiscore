@@ -70,14 +70,6 @@ export function SubjectCardGrid({
 }) {
   const [activeDrawer, setActiveDrawer] = useState<DrawerKey | null>(null);
 
-  // ── Dev switch de tratamientos del hero (Ronda 3B) — ?hero=flotante|flotante-luz ──
-  // Sin flag = base. El veredicto NO cambia el color del hero (vive en badge/slider/texto).
-  useEffect(() => {
-    const h = new URLSearchParams(window.location.search).get("hero");
-    const allowed = ["flotante", "flotante-luz", "profundo", "halo"];
-    if (h && allowed.includes(h)) document.documentElement.setAttribute("data-hero", h);
-    return () => document.documentElement.removeAttribute("data-hero");
-  }, []);
 
   // Secuencia de drawers = orden VISUAL de la pirámide (mismo array que renderiza),
   // filtrando las cards que tienen drawer y dedup por si dos cayeran al mismo. La

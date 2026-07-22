@@ -124,9 +124,11 @@
          positive/pos-text #52525B → 7.2/7.7
          signal-red TXT #C8323C → 4.93/5.28 (AA en ambos · el blanco lo destraba)
        gold = SOLO gráfico (gauge): 3.6 en card, no-texto. */
-    --franco-bg: #FFFFFF;
+    /* FREEZE flotante+luz: el lienzo baja al gris tenue y las cards a blanco puro.
+       Peor caso de texto = el lienzo #F6F6F7 (verificado AA). */
+    --franco-bg: #F6F6F7;
     --franco-nav-bg: rgba(255,255,255,0.8);
-    --franco-card: #F7F7F8;
+    --franco-card: #FFFFFF;
     --franco-elevated: #FFFFFF;
     --franco-text: #0F0F0F;
     --franco-text-secondary: #52525B;
@@ -730,87 +732,43 @@ input[type="number"] {
   .franco-tag-fade    { animation: franco-tag-fade 200ms ease-out; }
 }
 
-/* ═══ Fase 2 · Ronda 3B — Hero por ELEVACIÓN (dev switch: ?hero=) ══════════
- * Decisión Fabrizio: el veredicto NO cambia el color del hero (vive en badge/
- * slider/texto); el protagonismo se construye por ELEVACIÓN. SIN flag = base
- * (idéntico a Ronda 2). Dark NO se toca. */
+/* ═══ Fase 2 · FREEZE — Hero por elevación (flotante+luz) · PARIDAD DE TEMAS ═══
+ * Flotante+luz ganó (decisión Fabrizio). La elevación del hero es DEFINITIVA,
+ * sin flag. Paridad de diseño: MISMO concepto en ambos temas, valores propios.
+ *  · Light: hero blanco sobre lienzo gris tenue, elevado por sombra 2 capas
+ *    (papel-levantado) + degradé cenital.
+ *  · Dark: elevación por LUMINOSIDAD DE SUPERFICIE — el hero es un plano más
+ *    luminoso que el lienzo (#0F0F0F) y que las cards (#1A1A1A); degradé cenital
+ *    (más luminoso arriba: #242424 → #1B1B1B) + top-highlight. La sombra no
+ *    aporta sobre fondo oscuro → no se fuerza.
+ * Bump de escala (score 58 / titular 30) en AMBOS temas. */
+
+/* Dark (default) — elevación por luminosidad de superficie */
 .franco-hero-block {
-  background: var(--franco-bg);
-  border: 0.5px solid var(--franco-border-strong);
+  background: linear-gradient(180deg, #242424 0%, #1B1B1B 100%);
+  border: 0.5px solid rgba(250, 250, 248, 0.09);
+  border-top-color: rgba(255, 255, 255, 0.14);
+  padding-block: 4px;
 }
 
-/* (1) FLOTANTE — el lienzo baja al gris más tenue (#F6F6F7) y el hero pasa a
- * BLANCO PURO (único objeto blanco de la pantalla) con sombra grande difusa de
- * papel-levantado: 2 capas (contacto sutil + difusa extendida), nunca dura.
- * Las cards pasan a blanco con hairline: se distinguen del lienzo pero SIN
- * sombra — la elevación es EXCLUSIVA del hero. + bump de escala interna
- * (score/titular un punto arriba, un poco más de aire). */
-[data-hero="flotante"], [data-hero="flotante-luz"], [data-hero="halo"] {
-  --franco-bg: #F6F6F7;
-  --franco-card: #FFFFFF;
-}
-[data-hero="flotante"] .franco-hero-block,
-[data-hero="flotante-luz"] .franco-hero-block,
-[data-hero="halo"] .franco-hero-block {
-  background: #FFFFFF;
+/* Light — flotante + luz (papel levantado sobre lienzo gris tenue) */
+[data-theme="light"] .franco-hero-block {
+  background: linear-gradient(180deg, #FFFFFF 0%, #F4F4F6 100%);
   border: 0.5px solid var(--franco-border);
   box-shadow:
     0 1px 2px rgba(15, 15, 15, 0.05),
     0 28px 60px -16px rgba(15, 15, 15, 0.16);
   padding-block: 4px;
 }
-[data-hero="flotante"] .franco-hero-score,
-[data-hero="flotante-luz"] .franco-hero-score,
-[data-hero="halo"] .franco-hero-score { font-size: 58px; }
-[data-hero="flotante"] .franco-hero-title,
-[data-hero="flotante-luz"] .franco-hero-title,
-[data-hero="halo"] .franco-hero-title { font-size: 30px; }
 
-/* (2) FLOTANTE + LUZ — idéntica a (1) + degradé cenital sutilísimo DENTRO del
- * hero: blanco arriba → ~2% más frío/gris abajo. Imperceptible de frente,
- * presente de reojo. */
-[data-hero="flotante-luz"] .franco-hero-block {
-  background: linear-gradient(180deg, #FFFFFF 0%, #F4F4F6 100%);
-}
-
-/* ── Ronda 3D · más efecto DENTRO del idioma flotante ────────────────────── */
-
-/* (6) PROFUNDO — flotante intensificado (mismo concepto, dial arriba): sombra 2
- * capas más grande y difusa (papel genuinamente despegado, nunca dura), lienzo
- * UN pelo más gris (#F3F3F5 — se siente, no se ve; claramente < escenario),
- * escala interna y aire +1 sobre el flotante. */
-[data-hero="profundo"] {
-  --franco-bg: #F3F3F5;
-  --franco-card: #FFFFFF;
-}
-[data-hero="profundo"] .franco-hero-block {
-  background: #FFFFFF;
-  border: 0.5px solid var(--franco-border);
-  box-shadow:
-    0 2px 5px rgba(15, 15, 15, 0.05),
-    0 40px 84px -20px rgba(15, 15, 15, 0.20);
-  padding-block: 9px;
-  margin-block: 10px 16px;
-}
-[data-hero="profundo"] .franco-hero-score { font-size: 62px; }
-[data-hero="profundo"] .franco-hero-title { font-size: 32px; }
-
-/* (7) HALO — luz ambiental: el degradé SALE del hero y va al LIENZO. Radial
- * sutilísimo anclado al viewport (background-attachment: fixed): centro más
- * luminoso detrás del hero, apagándose hacia los bordes. Delta total ~2.4%
- * (#FAFAFB centro → #F4F4F6 borde). El hero usa el flotante base (blanco + sombra
- * base, definido arriba). CERO viñeta (es centro-CLARO, no borde-oscuro) y delta
- * mínimo → sin banding; si se nota como "efecto", recalibrar. */
-[data-hero="halo"] body {
-  background-color: #F4F4F6;
-  background-image: radial-gradient(135% 95% at 50% 26%, #FAFAFB 0%, rgba(250, 250, 251, 0) 62%);
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-}
+/* Bump de escala — ambos temas (scope al bloque para ganar specificity a las
+   utilidades text-[…] de Tailwind, que empatan a .clase sola). */
+.franco-hero-block .franco-hero-score { font-size: 58px; }
+.franco-hero-block .franco-hero-title { font-size: 30px; }
 
 /* ═══ Fase 2 · Capa de interacción — ::selection Franco (FIJA, ambos temas) ═══
- * Opción A definitiva (decisión Fabrizio): rojo pleno + texto blanco. Excepción
- * declarada al "dark intacto": la selección es transversal. Cubre body, inputs
- * y mono (::selection aplica a todo el texto seleccionado). */
+ * Opción A definitiva (decisión Fabrizio): rojo pleno + texto blanco. Paridad de
+ * temas por concepto: el mismo gesto (rojo pleno) en light y dark. Selector
+ * global (sin scope de tema) → cubre ambos. Body, inputs y mono. */
 ::selection      { background: #C8323C; color: #FFFFFF; }
 ::-moz-selection { background: #C8323C; color: #FFFFFF; }
