@@ -8,13 +8,17 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import type { Analisis, Desglose } from "@/lib/types";
 import { fmtM, fmtMult } from "@/components/analysis/utils";
 
-const CHART_COLORS = ["#B0BEC5", "#3b82f6", "#f59e0b"];
+// Paleta congelada Ink + Signal Red: las series NO se distinguen por matiz
+// (fuera de paleta), sino por tono de Ink + patrón de línea — misma doctrina
+// que PatrimonioChartComparativa (sólido vs dashed). Tokens → paridad de temas.
+const CHART_COLORS = ["var(--franco-text)", "var(--franco-text-secondary)", "var(--franco-text-tertiary)"];
+const CHART_DASH = ["0", "5 4", "1.5 4"];
 const UF_CLP = 38800;
 
 function getScoreColor(score: number) {
   if (score >= 70) return "var(--franco-positive)";
-  if (score >= 45) return "#eab308";
-  return "#ef4444";
+  if (score >= 45) return "var(--franco-text-secondary)";
+  return "var(--signal-red)";
 }
 
 // Commit E.1 revert visual · 2026-05-13: colapsado de 5 buckets
@@ -230,7 +234,7 @@ function getCellStyle(raw: number[], index: number, higherIsBetter: boolean): st
   const worst = higherIsBetter ? Math.min(...raw) : Math.max(...raw);
   if (raw.every((v) => v === val)) return "text-[var(--franco-text)]";
   if (val === best) return "font-bold text-[var(--franco-text)]";
-  if (val === worst) return "text-[#ef4444]";
+  if (val === worst) return "text-signal-red";
   return "text-[var(--franco-text)]";
 }
 
@@ -290,10 +294,15 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
               <polygon
                 key={a.id}
                 points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-                fill={CHART_COLORS[ai]}
-                fillOpacity={0.12}
-                stroke={CHART_COLORS[ai]}
-                strokeWidth="2"
+                style={{
+                  // fill/stroke van por style (no attr): var() no resuelve como
+                  // atributo SVG. Distinción por tono Ink + dash por serie.
+                  fill: CHART_COLORS[ai],
+                  fillOpacity: 0.12,
+                  stroke: CHART_COLORS[ai],
+                  strokeWidth: 2,
+                  strokeDasharray: CHART_DASH[ai],
+                }}
               />
             );
           })}
@@ -304,7 +313,7 @@ function RadarChart({ analisis }: { analisis: Analisis[] }) {
               const val = Number.isFinite(raw) ? (raw as number) : 0;
               const pct = Math.min(val / 100, 1);
               const p = getPoint(di, pct);
-              return <circle key={`${a.id}-${di}`} cx={p.x} cy={p.y} r="3" fill={CHART_COLORS[ai]} />;
+              return <circle key={`${a.id}-${di}`} cx={p.x} cy={p.y} r="3" style={{ fill: CHART_COLORS[ai] }} />;
             })
           )}
           {/* Labels */}
