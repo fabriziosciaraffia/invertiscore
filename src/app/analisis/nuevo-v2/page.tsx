@@ -832,8 +832,11 @@ function NuevoAnalisisV3Inner() {
       <UnifiedNav variant="app" />
 
       <main className="max-w-2xl mx-auto px-4 md:px-6 py-6 md:py-10">
-        {/* Header + stepper */}
-        <div className="mb-10">
+        {/* Header + stepper — versión atenuada del hero-block (dec. D · F3·L4):
+            superficie card + hairline + shadow-sm. Da jerarquía "estás en el
+            paso N" sin el bump de escala del hero ni robar peso al CTA. Dark:
+            eleva por luminosidad de superficie (card #1A1A1A sobre lienzo). */}
+        <div className="mb-10 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm p-5 md:p-6">
           <WizardStepper current={step} />
           <div className="mt-5">
             <h1 className="font-heading text-2xl md:text-[32px] font-bold text-[var(--franco-text)] m-0 mb-1.5 leading-tight">
