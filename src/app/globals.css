@@ -833,3 +833,25 @@ input[type="number"] {
  * del blur proyecta hacia arriba, coherente con una barra anclada abajo. */
 :root                { --franco-shadow-bar: 0 -8px 24px rgba(0, 0, 0, 0.35); }
 [data-theme="light"] { --franco-shadow-bar: 0 -8px 24px rgba(15, 15, 15, 0.08); }
+
+/* ═══ Fase 3 · Lote 4 · Tiles seleccionables — hover-lift en NO-seleccionados (dec. C) ═══
+ * Micro-elevación al hover en las opciones sin elegir (elevación = "esto es
+ * pickable"). NO se aplica al seleccionado (ya invertido/"hundido"). Sin arrow:
+ * el tile no navega, es un toggle. Versión menor del card-target. Paridad por
+ * token --franco-tile-hover-shadow:
+ *   · light: sombra papel-levantada pequeña (menor que la de card).
+ *   · dark: la sombra no lee sobre #0F0F0F → luminosidad (inset que aclara). */
+:root                { --franco-tile-hover-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.04); }
+[data-theme="light"] { --franco-tile-hover-shadow: 0 4px 10px -3px rgba(15, 15, 15, 0.10); }
+.franco-tile-target {
+  transition: transform 0.15s ease-out, box-shadow 0.15s ease-out, border-color 0.15s ease-out;
+}
+.franco-tile-target:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--franco-tile-hover-shadow);
+  border-color: var(--franco-border-hover);
+}
+@media (prefers-reduced-motion: reduce) {
+  .franco-tile-target { transition: border-color 0.15s ease-out; }
+  .franco-tile-target:hover { transform: none; box-shadow: none; }
+}
