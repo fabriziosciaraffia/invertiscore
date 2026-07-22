@@ -102,19 +102,17 @@ function FindingCard({ finding: f, nivel, onOpen }: { finding: FindingComparativ
   const bg = chip ? "color-mix(in srgb, var(--franco-text) 3%, var(--franco-card))" : "var(--franco-card)";
   const kick = nivel === 1 ? `Lo más decisivo · ${f.kicker.toLowerCase()}` : f.kicker;
 
-  // Nivel 3: chip recesivo, toda la card es el trigger (sin footer). Niveles 1-2: footer con link.
+  // Affordance de card completa (Fase 2): TODA la card es el trigger en los 3
+  // niveles (antes solo el chip nivel 3). El "Ver cómo se calcula →" pasa a
+  // afordancia visual (aria-hidden).
   return (
     <div
-      className={`rounded-2xl ${pad} ${chip ? "cursor-pointer transition-shadow hover:shadow-sm" : ""}`}
+      className={`rounded-2xl ${pad} franco-card-target cursor-pointer`}
       style={{ background: bg, border: `${nivel === 1 ? "0.75px" : "0.5px"} solid ${border}` }}
-      {...(chip
-        ? {
-            role: "button" as const,
-            tabIndex: 0,
-            onClick: onOpen,
-            onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } },
-          }
-        : {})}
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -152,14 +150,13 @@ function FindingCard({ finding: f, nivel, onOpen }: { finding: FindingComparativ
           <span className="font-body min-w-0 text-[11px]" style={{ color: "var(--franco-text-muted)" }}>
             {f.procedencia}
           </span>
-          <button
-            type="button"
-            onClick={onOpen}
-            className="font-mono uppercase tracking-[0.06em] shrink-0 transition-colors hover:text-[var(--franco-text-secondary)]"
+          <span
+            aria-hidden
+            className="franco-card-arrow font-mono uppercase tracking-[0.06em] shrink-0"
             style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
           >
             Ver cómo se calcula →
-          </button>
+          </span>
         </div>
       )}
     </div>

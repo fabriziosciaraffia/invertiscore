@@ -57,7 +57,7 @@ export function ZoneInsightMiniCard({ data, loading, error, onClick, currency }:
       type="button"
       onClick={onClick}
       disabled={loading && !data}
-      className="w-full text-left transition-colors disabled:cursor-wait"
+      className="franco-card-target w-full text-left transition-colors disabled:cursor-wait"
       style={{
         // Superficie recesiva (rediseño extras · D1): panel hundido bajo los
         // hallazgos sólidos de la pirámide. Murió la franja 3px + el degradé;

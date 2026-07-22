@@ -42,7 +42,7 @@ export function ZonaCardSTR({
     <button
       type="button"
       onClick={onOpen}
-      className="w-full text-left rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] transition-shadow hover:shadow-md"
+      className="franco-card-target w-full text-left rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] transition-colors"
       style={{ padding: "16px 18px" }}
     >
       <div className="grid grid-cols-[auto_1fr_auto] gap-4 items-center max-md:grid-cols-[auto_1fr]">

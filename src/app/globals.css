@@ -772,3 +772,30 @@ input[type="number"] {
  * global (sin scope de tema) → cubre ambos. Body, inputs y mono. */
 ::selection      { background: #C8323C; color: #FFFFFF; }
 ::-moz-selection { background: #C8323C; color: #FFFFFF; }
+
+/* ═══ Fase 2 · Affordance de card completa · paridad de temas ═══════════════
+ * Toda card clickeable lleva .franco-card-target: foco visible OBLIGATORIO +
+ * hover claro, ambos por TOKEN → paridad automática light/dark (mismo concepto,
+ * valores propios de cada tema).
+ *  · focus-visible: anillo Ink var(--franco-text) → oscuro en light, claro en dark.
+ *  · hover: borde → --franco-border-hover (light #CBCBD1 · dark rgba(250,250,248,0.12))
+ *    + la flecha .franco-card-arrow vira a --franco-text-secondary. El !important
+ *    vence al border inline de las finding-cards. Sin sombra: la elevación es
+ *    exclusiva del hero (Galería). */
+.franco-card-target {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+.franco-card-target:hover {
+  border-color: var(--franco-border-hover) !important;
+}
+.franco-card-target:focus-visible {
+  outline: 2px solid var(--franco-text);
+  outline-offset: 2px;
+}
+.franco-card-arrow {
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+.franco-card-target:hover .franco-card-arrow {
+  color: var(--franco-text-secondary);
+  transform: translateX(2px);
+}

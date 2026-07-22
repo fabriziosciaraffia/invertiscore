@@ -32,7 +32,7 @@ export function ReestructuracionMiniCard({
     <button
       type="button"
       onClick={onClick}
-      className="w-full text-left transition-colors hover:opacity-95 group relative overflow-hidden"
+      className="franco-card-target w-full text-left transition-colors hover:opacity-95 group relative overflow-hidden"
       style={{
         background: "linear-gradient(135deg, color-mix(in srgb, var(--franco-text) 5%, transparent) 0%, transparent 60%), var(--franco-card)",
         border: "1px solid var(--franco-border)",

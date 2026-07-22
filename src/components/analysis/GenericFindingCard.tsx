@@ -397,8 +397,10 @@ export function GenericFindingCard<K extends string = DrawerKey>({
   const openDetalle = () => {
     if (drawerKey && onOpenDrawer) onOpenDrawer(drawerKey);
   };
-  // Nivel 3: el chip completo es el trigger (sin texto extra). Niveles 1-2: link.
-  const chipClickable = nivel === 3 && hasDetalle;
+  // Affordance de card completa (Fase 2): TODA la card es el trigger cuando hay
+  // detalle, en los 3 niveles (antes solo nivel 3). El "Ver detalle →" pasa a ser
+  // afordancia visual (aria-hidden); interactivos anidados (palanca) con stopPropagation.
+  const cardClickable = hasDetalle;
 
   // Tokens de tamaño por nivel (escala del mockup: tier1 > tier2 > tier3).
   const pad = nivel === 1 ? "p-7" : nivel === 2 ? "p-6" : "p-4";
@@ -414,9 +416,9 @@ export function GenericFindingCard<K extends string = DrawerKey>({
 
   return (
     <div
-      className={`rounded-2xl ${pad} ${chipClickable ? "cursor-pointer transition-shadow hover:shadow-md" : ""}`}
+      className={`rounded-2xl ${pad} ${cardClickable ? "franco-card-target cursor-pointer" : ""}`}
       style={{ background: bg, border: `0.5px solid ${border}` }}
-      {...(chipClickable
+      {...(cardClickable
         ? {
             role: "button" as const,
             tabIndex: 0,
@@ -489,7 +491,12 @@ export function GenericFindingCard<K extends string = DrawerKey>({
 
       {/* palanca opcional (nivel 1): border-top + slot de acción */}
       {nivel === 1 && palanca ? (
-        <div className="mt-4 pt-3.5" style={{ borderTop: "0.5px solid var(--franco-border)" }}>
+        <div
+          className="mt-4 pt-3.5"
+          style={{ borderTop: "0.5px solid var(--franco-border)" }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {palanca}
         </div>
       ) : null}
@@ -510,14 +517,13 @@ export function GenericFindingCard<K extends string = DrawerKey>({
             <span />
           )}
           {hasDetalle ? (
-            <button
-              type="button"
-              onClick={openDetalle}
-              className="font-mono uppercase tracking-[0.06em] shrink-0 transition-colors hover:text-[var(--franco-text-secondary)]"
+            <span
+              aria-hidden
+              className="franco-card-arrow font-mono uppercase tracking-[0.06em] shrink-0"
               style={{ fontSize: 10, color: "var(--franco-text-tertiary)" }}
             >
               Ver detalle →
-            </button>
+            </span>
           ) : null}
         </div>
       ) : null}
