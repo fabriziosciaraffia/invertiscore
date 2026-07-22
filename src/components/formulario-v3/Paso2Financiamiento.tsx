@@ -315,7 +315,7 @@ export function Paso2Financiamiento({
                 className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                   state.estadoVenta === e
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
+                    : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                 }`}
               >
                 {e}
@@ -437,7 +437,7 @@ export function Paso2Financiamiento({
                   className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                     state.pieModoPago === m
                       ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                      : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
+                      : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                   }`}
                 >
                   {m === "contado" ? "Contado" : "En cuotas"}

@@ -292,7 +292,7 @@ export function BloqueOperacionSTR({
                   className={`text-left px-3 py-2.5 rounded-lg transition-all ${
                     active
                       ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                      : "bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                      : "franco-tile-target bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)]"
                   }`}
                 >
                   <div className={`font-body text-[13px] ${active ? "font-semibold" : "text-[var(--franco-text)]"}`}>{opt.label}</div>
@@ -331,7 +331,7 @@ export function BloqueOperacionSTR({
                   className={`text-left px-3 py-2.5 rounded-lg transition-all ${
                     active
                       ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]"
-                      : "bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                      : "franco-tile-target bg-[var(--franco-card)] border-[0.5px] border-[var(--franco-border)]"
                   }`}
                 >
                   <div className={`font-body text-[13px] ${active ? "font-semibold" : "text-[var(--franco-text)]"}`}>{opt.label}</div>

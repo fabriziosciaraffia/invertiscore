@@ -131,12 +131,12 @@ export function Paso1Propiedad({
           onChange={(e) => setState({ direccion: e.target.value })}
         />
         {state.direccion && state.direccion !== state.direccionConfirmada ? (
-          <p className="font-body text-[11px] mt-1 text-[#C8323C]">
+          <p className="font-body text-[11px] mt-1 text-signal-red">
             Selecciona la dirección de la lista de sugerencias.
           </p>
         ) : state.comuna ? (
           fueraDeZona ? (
-            <p className="font-body text-[11px] mt-1 text-[#C8323C]">
+            <p className="font-body text-[11px] mt-1 text-signal-red">
               {state.comuna} está fuera del Gran Santiago — por ahora no disponible.{" "}
               <button
                 type="button"
@@ -203,7 +203,7 @@ export function Paso1Propiedad({
                 className={`h-10 rounded-lg font-body text-[13px] font-medium capitalize transition-colors ${
                   state.tipoPropiedad === t
                     ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                    : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                    : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                 }`}
               >
                 {t}

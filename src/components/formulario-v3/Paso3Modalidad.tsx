@@ -241,7 +241,7 @@ export function Paso3Modalidad({
               key={o.key}
               type="button"
               onClick={() => selectModalidad(o.key)}
-              className="relative text-left rounded-xl border p-4 transition-all bg-[var(--franco-card)] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+              className="relative text-left rounded-xl border p-4 franco-tile-target bg-[var(--franco-card)] border-[var(--franco-border)]"
             >
               <p className="font-mono text-[10px] uppercase tracking-[0.06em] m-0 mb-1 font-semibold text-[var(--franco-text-muted)]">
                 {o.label}{o.star ? " ★" : ""}
@@ -439,7 +439,7 @@ export function Paso3Modalidad({
                         className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
                           active
                             ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                            : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                            : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                         }`}
                       >
                         {opt.label}
@@ -491,7 +491,7 @@ export function Paso3Modalidad({
                         className={`h-10 rounded-lg font-body text-[13px] font-medium transition-colors ${
                           active
                             ? "bg-[var(--franco-text)] text-[var(--franco-bg)]"
-                            : "bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)] hover:border-[var(--franco-border-hover)]"
+                            : "franco-tile-target bg-[var(--franco-card)] text-[var(--franco-text-secondary)] border-[0.5px] border-[var(--franco-border)]"
                         }`}
                       >
                         {opt.label}

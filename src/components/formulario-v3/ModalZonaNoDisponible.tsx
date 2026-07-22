@@ -105,7 +105,7 @@ export function ModalZonaNoDisponible({
                 if (status === "error") setStatus("idle");
               }}
               className="flex-1 h-10 rounded-lg border-[0.5px] bg-[var(--franco-card)] px-3 text-[14px] font-body text-[var(--franco-text)] placeholder:text-[var(--franco-text-muted)] focus:outline-none focus:ring-1 focus:ring-signal-red/20 focus:border-signal-red transition-colors"
-              style={{ borderColor: status === "error" ? "#C8323C" : "var(--franco-border)" }}
+              style={{ borderColor: status === "error" ? "var(--signal-red)" : "var(--franco-border)" }}
             />
             <button
               type="submit"
@@ -116,7 +116,7 @@ export function ModalZonaNoDisponible({
             </button>
           </div>
           {status === "error" && (
-            <p className="mt-2 font-body text-[12px] text-[#C8323C] m-0">
+            <p className="mt-2 font-body text-[12px] text-signal-red m-0">
               Revisa el email e intenta de nuevo.
             </p>
           )}
