@@ -12,6 +12,13 @@ import { readVeredicto } from "@/lib/results-helpers";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { fmtM, fmtPct, fmtMult } from "@/components/analysis/utils";
 import { sobreRentaPctEsConfiable } from "@/lib/engines/str-universo-santiago";
+import { InfoTooltip } from "@/components/ui/tooltip";
+
+// Fase 3 · Lote 1 — glosas de las métricas de card (paridad con el estándar de
+// tooltips Fase 2). El flujo es común a LTR/STR; primary/secondary llevan su
+// glosa junto al valor en getMetrics (la copy vive al lado de la lógica).
+const FLUJO_HINT =
+  "Flujo de caja mensual: lo que queda tras el arriendo menos dividendo, gastos comunes y contribuciones. En rojo si es negativo.";
 
 // Vocabulario unificado LTR + STR (Commit 1 · 2026-05-11). Análisis legacy
 // con strings antiguos (VIABLE / AJUSTA ESTRATEGIA / NO RECOMENDADO / AJUSTA
@@ -70,8 +77,8 @@ function isShortTerm(item: Analisis): boolean {
 type CardMetrics = {
   isSTR: boolean;
   flujoMensual: number;
-  primary: { label: string; value: string };
-  secondary: { label: string; value: string };
+  primary: { label: string; value: string; hint: string };
+  secondary: { label: string; value: string; hint: string };
 };
 
 function getMetrics(item: Analisis): CardMetrics {
@@ -91,10 +98,15 @@ function getMetrics(item: Analisis): CardMetrics {
     return {
       isSTR: true,
       flujoMensual: flujo,
-      primary: { label: "CAP RATE", value: fmtPct(capRatePct, 1) },
+      primary: {
+        label: "CAP RATE",
+        value: fmtPct(capRatePct, 1),
+        hint: "Cap rate: retorno operativo anual del inmueble (NOI sobre el precio), sin considerar apalancamiento.",
+      },
       secondary: {
         label: "VS LTR",
         value: !vsLtrConfiable ? "N/D" : sobreRentaPct === 0 ? "—" : `${sobreRentaPct > 0 ? "+" : ""}${sobreRentaPct.toFixed(0)}%`,
+        hint: "Cuánto más renta la modalidad corta frente al arriendo tradicional para la misma propiedad.",
       },
     };
   }
@@ -108,8 +120,16 @@ function getMetrics(item: Analisis): CardMetrics {
     return {
       isSTR: false,
       flujoMensual,
-      primary: { label: "RENT.", value: fmtPct(rentabilidadBruta, 1) },
-      secondary: { label: "RETORNO", value: multiplicador > 0 ? fmtMult(multiplicador, 1) : "—" },
+      primary: {
+        label: "RENT.",
+        value: fmtPct(rentabilidadBruta, 1),
+        hint: "Rentabilidad bruta anual: el arriendo de un año sobre el precio de compra, sin descontar gastos.",
+      },
+      secondary: {
+        label: "RETORNO",
+        value: multiplicador > 0 ? fmtMult(multiplicador, 1) : "—",
+        hint: "Multiplicador de capital: cuántas veces recuperas tu inversión inicial al vender, en el escenario de salida.",
+      },
     };
   }
 
@@ -119,8 +139,16 @@ function getMetrics(item: Analisis): CardMetrics {
   return {
     isSTR: false,
     flujoMensual,
-    primary: { label: "RENT.", value: fmtPct(rentabilidadBruta, 1) },
-    secondary: { label: "RETORNO", value: "—" },
+    primary: {
+      label: "RENT.",
+      value: fmtPct(rentabilidadBruta, 1),
+      hint: "Rentabilidad bruta anual: el arriendo de un año sobre el precio de compra, sin descontar gastos.",
+    },
+    secondary: {
+      label: "RETORNO",
+      value: "—",
+      hint: "Multiplicador de capital: cuántas veces recuperas tu inversión inicial al vender, en el escenario de salida.",
+    },
   };
 }
 
@@ -319,8 +347,16 @@ function AmbasCard({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
-      className={`cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 transition-all hover:border-[var(--franco-border-hover)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] border-[var(--franco-border)] ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
+      onKeyDown={(e) => {
+        // Solo la card en sí abre con teclado; los controles anidados (delete)
+        // manejan su propio Enter/Espacio.
+        if (e.target !== e.currentTarget) return;
+        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); }
+      }}
+      className={`franco-card-target group cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 border-[var(--franco-border)] ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
     >
       <div className="flex items-center gap-3.5">
         <ScoreCircle score={ltr.score} />
@@ -361,7 +397,7 @@ function AmbasCard({
         {/* Delete group-aware */}
         <button
           onClick={onDelete}
-          className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-signal-red"
+          className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-signal-red/10 hover:text-signal-red"
           title="Eliminar comparativa (borra ambos análisis)"
         >
           <Trash2 className="h-4 w-4" />
@@ -373,7 +409,10 @@ function AmbasCard({
           <span className="font-medium text-[var(--franco-text)]">Comparativa:</span>{" "}
           renta larga vs renta corta para esta propiedad.
         </p>
-        <span className="font-mono text-[10px] uppercase tracking-[1px] text-signal-red shrink-0 ml-3">Ver comparativa →</span>
+        <span className="font-mono text-[10px] uppercase tracking-[1px] text-signal-red shrink-0 ml-3">
+          Ver comparativa{" "}
+          <span className="inline-block transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0">→</span>
+        </span>
       </div>
     </div>
   );
@@ -684,8 +723,16 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                   return (
                     <div
                       key={item.id}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => handleCardClick(item)}
-                      className={`cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 transition-all hover:border-[var(--franco-border-hover)] hover:shadow-[0_2px_8px_rgba(0,0,0,0.2)] ${
+                      onKeyDown={(e) => {
+                        // Solo la card abre con teclado; checkbox y delete anidados
+                        // manejan su propio Enter/Espacio.
+                        if (e.target !== e.currentTarget) return;
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleCardClick(item); }
+                      }}
+                      className={`franco-card-target cursor-pointer rounded-xl border bg-[var(--franco-card)] p-4 px-5 ${
                         isSelected ? "border-[var(--franco-border-hover)]" : "border-[var(--franco-border)]"
                       } ${isDeleting ? "pointer-events-none opacity-50" : ""}`}
                     >
@@ -745,19 +792,28 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {/* Metrics (hidden on mobile) */}
                         <div className="hidden items-center gap-4 sm:flex">
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO</div>
+                            <div className="flex items-center justify-end gap-0.5">
+                              <span className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">FLUJO</span>
+                              <span onClick={(e) => e.stopPropagation()}><InfoTooltip content={FLUJO_HINT} /></span>
+                            </div>
                             <div className={`font-mono text-sm font-semibold ${m.flujoMensual < 0 ? "text-signal-red" : "text-[var(--franco-text)]"}`}>
                               {formatCLP(m.flujoMensual)}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.primary.label}</div>
+                            <div className="flex items-center justify-end gap-0.5">
+                              <span className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.primary.label}</span>
+                              <span onClick={(e) => e.stopPropagation()}><InfoTooltip content={m.primary.hint} /></span>
+                            </div>
                             <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
                               {m.primary.value}
                             </div>
                           </div>
                           <div className="min-w-[55px] text-right">
-                            <div className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.secondary.label}</div>
+                            <div className="flex items-center justify-end gap-0.5">
+                              <span className="font-body text-[9px] uppercase tracking-wide text-[var(--franco-text-muted)]">{m.secondary.label}</span>
+                              <span onClick={(e) => e.stopPropagation()}><InfoTooltip content={m.secondary.hint} /></span>
+                            </div>
                             <div className="font-mono text-sm font-semibold text-[var(--franco-text)]">
                               {m.secondary.value}
                             </div>
@@ -768,7 +824,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                         {item.id !== "6db7a9ac-f030-4ccf-b5a8-5232ae997fb1" && (
                           <button
                             onClick={(e) => handleDelete(e, item.id)}
-                            className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-red-950/30 hover:text-signal-red"
+                            className="shrink-0 rounded-lg p-2 text-[var(--franco-text-muted)] transition-colors hover:bg-signal-red/10 hover:text-signal-red"
                             title="Eliminar análisis"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -798,7 +854,10 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
 
       {/* ─── Floating Compare Bar ─── */}
       {selected.size >= 2 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--franco-border)] bg-[var(--franco-card)] shadow-2xl shadow-black/20">
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--franco-border)] bg-[var(--franco-card)]"
+          style={{ boxShadow: "var(--franco-shadow-bar)" }}
+        >
           <div className="mx-auto flex max-w-[820px] items-center justify-between px-5 py-3">
             <span className="font-body text-sm font-medium text-[var(--franco-text)]">
               {selected.size} análisis seleccionados
