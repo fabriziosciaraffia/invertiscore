@@ -123,14 +123,11 @@ export function HeroComparativa(p: Props) {
   const tituloPrincipal = direccionCorta || p.nombre || `Depto ${p.dormitorios}D${p.banos}B`;
 
   return (
-    <div
-      className="rounded-[16px] overflow-hidden mb-6"
-      style={{ background: "var(--franco-bg)", border: "0.5px solid var(--franco-border-strong)" }}
-    >
+    <div className="rounded-[16px] overflow-hidden mb-6 franco-hero-block">
       {/* ═══ F1 · IDENTIDAD + toggle (G7) ═══ */}
       <div className="flex items-start justify-between gap-6 px-6 md:px-8 pt-4 pb-3.5">
         <div className="min-w-0">
-          <h1 className="font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
+          <h1 className="franco-hero-title font-heading font-bold text-[23px] md:text-[27px] leading-[1.15] tracking-[-0.01em] text-[var(--franco-text)] m-0">
             {tituloPrincipal}
             {p.comuna && <span className="font-normal text-[var(--franco-text-secondary)]"> · {p.comuna}</span>}
           </h1>
