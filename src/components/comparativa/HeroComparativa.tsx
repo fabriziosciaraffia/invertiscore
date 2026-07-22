@@ -221,7 +221,7 @@ export function HeroComparativa(p: Props) {
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,52fr)_minmax(0,48fr)] gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]">
         {/* Cuerpo: apertura + movimientos 1-2 + caja posición */}
         <div className="min-w-0">
-          <p className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
+          <p className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
             Cuál te conviene
           </p>
 
