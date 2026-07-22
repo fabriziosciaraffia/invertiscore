@@ -16,6 +16,7 @@ import {
   BRANCH_ACTO3,
   computeNext,
   isBranchNode,
+  progressFor,
   reactionText,
   type NodeId,
   type WizardV4Answers,
@@ -132,6 +133,10 @@ export interface UseWizardV4 {
   nav: WizardV4Nav;
   /** Draft recuperable ofrecido vía banner (null si no hay o ya se resolvió). */
   draftPendiente: PersistedDraft | null;
+  /** Progreso 0..1 monotónico para la barra (nunca retrocede). */
+  progress: number;
+  /** Actualiza campos en vivo (inputs) SIN navegar. */
+  patchAnswers: (patch: Partial<WizardV4Answers>) => void;
   /** Responde la pantalla actual y navega según el grafo / modo. */
   answer: (node: NodeId, patch?: Partial<WizardV4Answers>) => void;
   /** Chevron atrás (no-op si no hay historial). */
@@ -156,6 +161,8 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
   const [nav, setNav] = useState<WizardV4Nav>(DEFAULT_NAV);
   const [draftPendiente, setDraftPendiente] = useState<PersistedDraft | null>(null);
   const mounted = useRef(false);
+  // Máximo de progreso alcanzado — la barra es monotónica (ver más abajo).
+  const highWater = useRef(0);
 
   // ── Mount: cargar draft. ?resume=1 (vuelta post-registro) rehidrata directo
   //    al resumen; si no, se ofrece vía banner y el form arranca limpio. ──
@@ -218,6 +225,10 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
     }, 500);
     return () => clearTimeout(t);
   }, [nav, draftPendiente]);
+
+  const patchAnswers = useCallback((patch: Partial<WizardV4Answers>) => {
+    setNav((s) => ({ ...s, answers: { ...s.answers, ...patch } }));
+  }, []);
 
   const answer = useCallback((node: NodeId, patch?: Partial<WizardV4Answers>) => {
     setNav((s) => {
@@ -396,14 +407,30 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
       /* ignore */
     }
     setDraftPendiente(null);
+    highWater.current = 0; // reinicia la barra al empezar de cero
     setNav(DEFAULT_NAV);
   }, []);
 
-  const canGoBack = nav.mode !== "edit" && nav.history.length > 0;
+  // Chevron atrás: oculto en primera pantalla (sin historial), en modo edición y
+  // en el resumen (su único mecanismo de edición son los lápices; un "atrás"
+  // genérico ahí es ambiguo tras un reask).
+  const canGoBack =
+    nav.mode !== "edit" && nav.current !== "resumen" && nav.history.length > 0;
+
+  // Barra de progreso MONOTÓNICA: nunca retrocede. Al elegir el informe
+  // comparativo el denominador crece (contador honesto "9 de 13"), pero si el %
+  // bajara en ese instante se clampea al máximo ya alcanzado y avanza desde ahí
+  // — no castigar visualmente la opción destacada. El contador (stepCounter) sí
+  // dice la verdad; la barra solo avanza. Se reinicia con "empezar de cero".
+  const raw = progressFor(nav.current, nav.answers);
+  if (raw > highWater.current) highWater.current = raw;
+  const progress = highWater.current;
 
   return {
     nav,
     draftPendiente,
+    progress,
+    patchAnswers,
     answer,
     goBack,
     goDetour,

@@ -52,6 +52,10 @@ export type EstimModo = "estimacion" | "corregir";
  * etc.) se agregan en Fases 2-4 extendiendo esta interfaz — se dejan opcionales
  * y sin index signature para conservar type-safety.
  */
+export type Antiguedad = "" | "0-2" | "3-5" | "6-10" | "11-20" | "20+";
+export type EstadoVenta = "inmediata" | "futura";
+export type PieUnidad = "clp" | "uf" | "pct";
+
 export interface WizardV4Answers {
   // ── Decisiones de rama (dirigen computeNext) ──
   tipoPropiedad?: TipoPropiedad;
@@ -60,6 +64,32 @@ export interface WizardV4Answers {
   edificioPermiteAirbnb?: GateResp;
   arrModo?: EstimModo;
   adrModo?: EstimModo;
+
+  // ── Acto 1 · qué compras ──
+  direccion?: string;
+  /** Última dirección confirmada vía Places (gate compara contra `direccion`). */
+  direccionConfirmada?: string;
+  lat?: number | null;
+  lng?: number | null;
+  comuna?: string;
+  ciudad?: string;
+  superficieUtil?: string; // m², decimal-locale
+  dormitorios?: string;
+  banos?: string;
+  esStudio?: boolean;
+  estacionamientos?: string;
+  bodegas?: string;
+  antiguedad?: Antiguedad; // solo usado
+  estadoVenta?: EstadoVenta; // solo nuevo
+  fechaEntregaMes?: string;
+  fechaEntregaAnio?: string;
+
+  // ── Acto 2 · cómo lo financias ──
+  precio?: string; // UF — SIN prefill (Franco no lo sugiere, lo evalúa)
+  pieMonto?: string; // valor crudo en la unidad elegida
+  pieUnidad?: PieUnidad;
+  plazoCredito?: string; // "20" | "25" | "30"
+  tasaInteres?: string; // % anual, coma decimal
 }
 
 /** Pantallas de corrección inline (detours, no cuentan progreso). */
