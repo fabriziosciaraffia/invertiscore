@@ -165,7 +165,7 @@ export function HeroComparativa(p: Props) {
           {/* Delta badge — dirección en palabras */}
           <div
             className="inline-flex items-baseline gap-2 mt-4 px-3 py-2 rounded-lg border"
-            style={{ borderColor: "var(--franco-border)", background: "var(--franco-bg-alt)" }}
+            style={{ borderColor: "var(--franco-border)", background: "var(--franco-sunken, #161616)" }}
           >
             <span className="font-mono font-bold text-[16px]" style={{ color: "var(--franco-text)" }}>
               {fmtMoney(deltaAbs, p.currency, p.ufValue)}/mes
@@ -560,7 +560,7 @@ function MiniScore({ href, label, score, verdict, onOpen }: { href: string; labe
   );
   const cls =
     "rounded-xl border p-3.5 flex items-center gap-3.5 transition-colors hover:border-[var(--franco-text-secondary)] text-left w-full";
-  const style = { borderColor: "var(--franco-border)", background: "var(--franco-bg-alt)" };
+  const style = { borderColor: "var(--franco-border)", background: "var(--franco-sunken, #161616)" };
 
   if (onOpen) {
     return (
