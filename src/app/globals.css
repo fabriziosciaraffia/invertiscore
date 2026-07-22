@@ -173,6 +173,16 @@
   }
 }
 
+/* ═══ Fase 3 · Lote 4 (fix) · color-scheme atado al tema ═══════════════════
+ * Los form controls (<input>/<select>/<textarea>) no re-resolvían
+ * var(--franco-card) en su background al togglear data-theme EN VIVO → se
+ * quedaban blancos en dark (texto claro sobre blanco = ilegible). Un <div> sí
+ * repinta; los controles nativos no. Atar color-scheme al tema fuerza el
+ * repaint del control nativo (y de paso alinea scrollbars/date-pickers/spinners
+ * /autofill al tema). Dark = ausencia de data-theme (theme.ts). */
+:root                { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
+
 html,
 body {
   overflow-x: clip;

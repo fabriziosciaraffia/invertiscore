@@ -56,8 +56,33 @@ export function persistTheme(theme: Theme): void {
   }
 }
 
+/**
+ * Fuerza el repaint de los form controls nativos tras un cambio de tema EN VIVO.
+ *
+ * Bug Chromium: <input>/<select>/<textarea> NO re-resuelven `var(--franco-*)` en
+ * su `background` cuando el custom property cambia en un ancestro sin recargar
+ * (el `--franco-card` del control ya vale el nuevo color, pero el pintado queda
+ * cacheado). Un <div> sí repinta; los controles nativos no → quedaban blancos
+ * en dark (texto claro sobre blanco = ilegible). El `color-scheme` atado al tema
+ * (globals.css) ayuda pero no es determinista.
+ *
+ * Toggle de `visibility` en <html> fuerza el repaint completo: es SÍNCRONO (el
+ * navegador no pinta el estado oculto porque no cruza un frame boundary dentro
+ * del task → imperceptible) y focus-safe (a diferencia de `display:none`,
+ * `visibility` NO quita el foco ni resetea el caret). Solo corre en el path de
+ * toggle en vivo; el pre-paint (layout.tsx) no lo necesita.
+ */
+function repaintFormControls(): void {
+  if (typeof document === "undefined") return;
+  const el = document.documentElement;
+  el.style.visibility = "hidden";
+  void el.offsetHeight; // fuerza el reflow entre las dos escrituras
+  el.style.visibility = "";
+}
+
 /** Cambia y persiste el tema en un solo lugar (atributo + storage). */
 export function setTheme(theme: Theme): void {
   applyThemeAttribute(theme);
   persistTheme(theme);
+  repaintFormControls();
 }
