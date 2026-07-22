@@ -5,6 +5,7 @@ import { IndicatorsSTR } from "./IndicatorsSTR";
 import { PatrimonioChartSTR } from "./PatrimonioChartSTR";
 import { SaleBlockSTR } from "./SaleBlockSTR";
 import { fmtMoney, fmtPct } from "../utils";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 /**
  * Patrón 7 — Advanced Section, variante Renta Corta.
@@ -206,8 +207,9 @@ function EscenarioCard({
       >
         {(escenario.flujoCajaMensual >= 0 ? "+" : "")}{fmtMoney(escenario.flujoCajaMensual, currency, valorUF)}
       </p>
-      <p className="font-mono text-[10px] text-[var(--franco-text-secondary)] uppercase tracking-[0.06em] mt-1 mb-3">
+      <p className="font-mono text-[10px] text-[var(--franco-text-secondary)] uppercase tracking-[0.06em] mt-1 mb-3 inline-flex items-center gap-1">
         FLUJO MENSUAL
+        <InfoTooltip content="Lo que te queda —o pones— cada mes con todo pagado: el arriendo menos los gastos operativos y menos la cuota del crédito. En negativo, es plata que sale de tu bolsillo." />
       </p>
       <p className="font-body text-[12px] text-[var(--franco-text-secondary)] leading-[1.5] mb-3 m-0">
         {subtitle}

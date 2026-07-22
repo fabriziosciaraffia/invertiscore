@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Info } from "lucide-react";
 import { fmtMoney } from "@/components/analysis/utils";
+import { InfoTooltip } from "@/components/ui/tooltip";
 
 interface Props {
   // NOI mensual (año 1)
@@ -191,39 +190,9 @@ function computeGanador(r: TableRow): "LTR" | "STR" | "—" {
   return strGana ? "STR" : "LTR";
 }
 
+// Parchework #3 migrado al estándar (Fase 2): antes bubble invertido hover/focus-only
+// (roto en touch). Ahora delega en InfoTooltip (portal + clamp + tap mobile + sombra
+// tokenizada, ambos temas).
 function Tooltip({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <span
-      className="relative inline-flex"
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
-    >
-      <button
-        type="button"
-        className="text-[var(--franco-text-muted)] hover:text-[var(--franco-text-secondary)] transition-colors"
-        aria-label="Más información"
-      >
-        <Info size={12} />
-      </button>
-      {open && (
-        <span
-          role="tooltip"
-          className="absolute z-10 left-5 top-0 w-[260px] rounded-md p-3 text-left"
-          style={{
-            background: "var(--franco-text)",
-            color: "var(--franco-bg)",
-            fontSize: 11,
-            lineHeight: 1.45,
-            fontFamily: "var(--font-body)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          }}
-        >
-          {text}
-        </span>
-      )}
-    </span>
-  );
+  return <InfoTooltip content={text} />;
 }

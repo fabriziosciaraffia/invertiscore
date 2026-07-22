@@ -173,7 +173,7 @@ function TooltipBubble({
     <div
       ref={bubbleRef}
       style={style}
-      className={`z-[9999] border font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[220px] shadow-lg pointer-events-auto ${bubbleColors}`}
+      className={`z-[9999] border font-body text-[11px] leading-snug p-2.5 px-3 rounded-lg w-[260px] franco-tooltip-bubble pointer-events-auto ${bubbleColors}`}
     >
       {content}
       <div className={`w-2 h-2 ${arrowColor}`} style={arrowStyle} />

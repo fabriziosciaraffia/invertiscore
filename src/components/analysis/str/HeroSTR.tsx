@@ -10,6 +10,7 @@ import { findingDisplay } from "@/components/analysis/GenericFindingCard";
 import { MapaThumbnail, type Comparable } from "@/components/formulario-v3/MapaThumbnail";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { ProsaSkeleton } from "@/components/analysis/ProsaSkeleton";
+import { Tooltip as HintTooltip, InfoTooltip } from "@/components/ui/tooltip";
 
 /**
  * Hero de resultados STR (E.5) — port del patrón HeroLTR al módulo renta corta.
@@ -187,8 +188,9 @@ export function HeroSTR({
       {/* F3 · SCORE+CHIPS | MAPA (66/34) */}
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,66fr)_minmax(0,34fr)] gap-x-8 gap-y-6 px-6 md:px-8 py-3">
         <div>
-          <span className="font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
+          <span className="inline-flex items-center gap-1 font-mono text-[11px] font-medium uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)]">
             Franco Score
+            <InfoTooltip content="Resume la calidad de la inversión en un número del 0 al 100: rentabilidad, flujo, plusvalía y riesgo juntos. De ahí sale el veredicto — sobre 70 conviene, bajo 45 no." />
           </span>
           <div className="flex items-center gap-4 mt-3">
             <div className="font-mono font-bold text-[48px] md:text-[52px] leading-[0.9] tracking-[-0.02em] text-[var(--franco-text)]">
@@ -443,35 +445,28 @@ const GLOSA_TOP3: Partial<Record<Hallazgo["id"], string>> = {
   estructura_financiamiento: "Cómo financias la compra: cuánto de pie y a qué tasa, frente al óptimo.",
 };
 
-// Término técnico con tooltip on-hover — espejo del `Tooltip` local de HeroLTR (D-A).
-// Self-contained a propósito (no toca el InfoTooltip compartido); paridad de affordance.
+// Término técnico con tooltip — delega en el bubble estándar (portal + clamp + tap
+// mobile + sombra tokenizada). Antes: bubble local hover-only con sombra hardcodeada
+// (parchework #5). Fase 2 · migrado al estándar.
 function FindingTooltip({ term, tip }: { term: string; tip: string }) {
-  return (
-    <span className="relative group inline-flex items-center gap-1 mt-1.5">
-      <span className={`font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] ${tip ? "border-b border-dotted border-[var(--franco-border-strong)] cursor-help" : ""}`}>
+  if (!tip) {
+    return (
+      <span className="mt-1.5 inline-flex items-center font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)]">
         {term}
       </span>
-      {tip && (
-        <>
-          <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-[var(--franco-border-strong)] text-[8px] font-mono text-[var(--franco-text-muted)]">
-            i
-          </span>
-          <span
-            className="pointer-events-none absolute bottom-[135%] left-0 z-10 w-[236px] rounded-lg p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-150"
-            style={{
-              background: "var(--franco-card)",
-              border: "0.5px solid var(--franco-border-strong)",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
-            }}
-          >
-            <span className="font-body text-[11px] leading-[1.45] text-[var(--franco-text-secondary)]">
-              {tip}
-            </span>
-          </span>
-        </>
-      )}
+    );
+  }
+  const termEl = (
+    <span className="inline-flex items-center gap-1 mt-1.5">
+      <span className="font-mono text-[10px] uppercase tracking-[0.05em] text-[var(--franco-text-muted)] border-b border-dotted border-[var(--franco-border-strong)] cursor-help">
+        {term}
+      </span>
+      <span className="inline-flex items-center justify-center w-3 h-3 rounded-full border border-[var(--franco-border-strong)] text-[8px] font-mono text-[var(--franco-text-muted)]">
+        i
+      </span>
     </span>
   );
+  return <HintTooltip content={tip}>{termEl}</HintTooltip>;
 }
 
 // ── Fila de finding: rank + titular + término + KPI (reusa findingDisplay) ──

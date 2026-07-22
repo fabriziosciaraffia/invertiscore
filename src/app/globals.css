@@ -799,3 +799,10 @@ input[type="number"] {
   color: var(--franco-text-secondary);
   transform: translateX(2px);
 }
+
+/* ═══ Fase 2 · Tooltip estándar — sombra tokenizada (paridad de temas) ══════
+ * Reemplaza las 3 sombras hardcodeadas del parchework (#3/#4/#5). El ancho
+ * unificado (260px) se setea en el componente. */
+:root                { --franco-shadow-pop: 0 8px 24px rgba(0, 0, 0, 0.40); }
+[data-theme="light"] { --franco-shadow-pop: 0 10px 28px rgba(15, 15, 15, 0.12); }
+.franco-tooltip-bubble { box-shadow: var(--franco-shadow-pop); }
