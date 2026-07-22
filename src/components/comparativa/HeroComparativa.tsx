@@ -15,7 +15,7 @@ import type { ReactNode } from "react";
 import { BedDouble, Bath, Ruler, Clock, Building2, Scaling, Percent } from "lucide-react";
 import type { RecomendacionModalidadAmbas, AIAnalysisComparativa } from "@/lib/types";
 import type { FindingComparativa } from "@/lib/comparativa-findings";
-import { fmtMoney, fmtUF } from "@/components/analysis/utils";
+import { fmtUF } from "@/components/analysis/utils";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { ProsaSkeleton, SkeletonLine } from "@/components/analysis/ProsaSkeleton";
 
@@ -109,11 +109,6 @@ export function HeroComparativa(p: Props) {
   const critico = estado === "fragil";
   const top3 = p.findings.slice(0, 3);
 
-  // Delta con dirección en palabras (mata el "−152%").
-  const ganaLarga = p.deltaNOIMensual < 0;
-  const deltaAbs = Math.abs(p.deltaNOIMensual);
-  const ganador = ganaLarga ? "renta larga" : "renta corta";
-
   const precioM2UF = p.superficie > 0 ? p.precioUF / p.superficie : 0;
   const cierreCondicion = p.ai?.conviene?.cierre?.trim() || "";
   const fechaFirma = formatFecha(p.createdAt);
@@ -161,19 +156,6 @@ export function HeroComparativa(p: Props) {
 
           {/* Barra de estados categórica (A2): eje continuo con marcador en el activo */}
           <VeredictoSegments estado={estado} />
-
-          {/* Delta badge — dirección en palabras */}
-          <div
-            className="inline-flex items-baseline gap-2 mt-4 px-3 py-2 rounded-lg border"
-            style={{ borderColor: "var(--franco-border)", background: "var(--franco-sunken, #101114)" }}
-          >
-            <span className="font-mono font-bold text-[16px]" style={{ color: "var(--franco-text)" }}>
-              {fmtMoney(deltaAbs, p.currency, p.ufValue)}/mes
-            </span>
-            <span className="font-body text-[11px]" style={{ color: "var(--franco-text-secondary)" }}>
-              gana {ganador} en lo que renta la operación
-            </span>
-          </div>
 
           {/* Banner de fragilidad (confirmado: como está) */}
           {p.fragil && (
@@ -247,9 +229,10 @@ export function HeroComparativa(p: Props) {
             <ProsaSkeleton />
           ) : p.ai ? (
             <div className="font-body text-left text-[14px] md:text-[15px] leading-[1.62] text-[var(--franco-text-secondary)] max-w-[65ch]">
-              {/* Apertura (motor) como lead */}
+              {/* Apertura (motor) como lead — mismo formato de prosa que los
+                  movimientos de abajo (sin destacado bold/italic/serif). */}
               {(p.ai.apertura ?? p.ai.headline) && (
-                <div className="font-heading font-bold text-[16.5px] md:text-[18px] leading-snug text-[var(--franco-text)] mb-4 italic">
+                <div className="mb-4">
                   {renderProsaMono(p.ai.apertura ?? p.ai.headline ?? "")}
                 </div>
               )}
