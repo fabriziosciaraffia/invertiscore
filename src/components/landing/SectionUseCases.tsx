@@ -281,7 +281,8 @@ function ProfileCarousel() {
               onClick={() => goIndex(i)}
               aria-pressed={active}
               aria-label={`Ver perfil ${p.id}: ${p.tabLabel}`}
-              className="flex-1 font-body"
+              className="landing-usecase-tab flex-1 font-body"
+              data-active={active}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -304,20 +305,6 @@ function ProfileCarousel() {
                 cursor: "pointer",
                 transition:
                   "background 200ms ease, border-color 200ms ease, color 200ms ease, transform 200ms ease",
-              }}
-              onMouseEnter={(e) => {
-                if (active) return;
-                e.currentTarget.style.borderColor = "rgba(200, 50, 60, 0.4)";
-                e.currentTarget.style.background = "var(--landing-card-bg-soft)";
-                e.currentTarget.style.color = "var(--landing-text)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                if (active) return;
-                e.currentTarget.style.borderColor = "var(--landing-card-border)";
-                e.currentTarget.style.background = "var(--landing-mockup-solid-bg)";
-                e.currentTarget.style.color = "var(--landing-text-muted)";
-                e.currentTarget.style.transform = "translateY(0)";
               }}
             >
               <span>{p.tabLabel}</span>

@@ -865,3 +865,18 @@ input[type="number"] {
   .franco-tile-target { transition: border-color 0.15s ease-out; }
   .franco-tile-target:hover { transform: none; box-shadow: none; }
 }
+
+/* ═══ Fase 3 · Lote 5 · Tabs de SectionUseCases — hover por CSS (no JS) ═══════
+ * Reemplaza el hover imperativo (onMouseEnter/Leave mutando style inline) por
+ * :hover CSS. El !important vence al style inline base del botón (mismo patrón
+ * que franco-card-target). Solo en tabs NO activos ([data-active="true"] se
+ * excluye). El transform no lleva !important: el base ya no setea transform. */
+.landing-usecase-tab:not([data-active="true"]):hover {
+  border-color: rgba(200, 50, 60, 0.4) !important;
+  background: var(--landing-card-bg-soft) !important;
+  color: var(--landing-text) !important;
+  transform: translateY(-1px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-usecase-tab:not([data-active="true"]):hover { transform: none; }
+}
