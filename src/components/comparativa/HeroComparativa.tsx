@@ -221,7 +221,7 @@ export function HeroComparativa(p: Props) {
       <div className="grid grid-cols-1 md:grid-cols-[minmax(0,52fr)_minmax(0,48fr)] gap-x-8 gap-y-8 px-6 md:px-8 py-[9px]">
         {/* Cuerpo: apertura + movimientos 1-2 + caja posición */}
         <div className="min-w-0">
-          <p className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] mb-3 m-0">
+          <p className="font-heading font-bold text-[15px] text-[var(--franco-text)] mb-3 m-0">
             Cuál te conviene
           </p>
 
@@ -380,7 +380,7 @@ function VeredictoSegments({ estado }: { estado: Estado }) {
 function Movimiento({ label, body }: { label: string; body: string }) {
   return (
     <div className="mt-4 first:mt-0">
-      <span className="font-mono text-[9.5px] uppercase tracking-[0.06em] text-[var(--franco-text-tertiary)] block mb-1">
+      <span className="font-heading font-bold text-[15px] text-[var(--franco-text)] block mb-1">
         {label}
       </span>
       <div>{renderProsaMono(body)}</div>
