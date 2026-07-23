@@ -26,6 +26,7 @@ import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
 import { subsidioAplicadoV4 } from "./wizardV4Subsidio";
+import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { TextInput } from "./ui";
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
@@ -92,6 +93,18 @@ function SupuestoEditable({
 
 const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
 
+/** "el arriendo" · "el arriendo y la tasa" · "a, b y c". */
+function joinVars(vars: string[]): string {
+  if (vars.length <= 1) return vars[0] ?? "";
+  return `${vars.slice(0, -1).join(", ")} y ${vars[vars.length - 1]}`;
+}
+
+/** Prefijo "a" con contracción: "el arriendo" → "al arriendo"; "la tasa" → "a la tasa". */
+function sensibleA(vars: string[]): string {
+  const s = joinVars(vars);
+  return s.startsWith("el ") ? `al ${s.slice(3)}` : `a ${s}`;
+}
+
 export function ResumenScreen({
   w,
   data,
@@ -108,6 +121,9 @@ export function ResumenScreen({
   const mod = a.modalidad;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  // Dry-run silencioso (FASE 5): card de sensibilidad si el deal está al filo.
+  const dryRun = useWizardV4DryRun(a, data);
 
   const canAnalyze = canAnalyzeFromTier(tier);
   const ctx: SubmitContext = {
@@ -308,6 +324,18 @@ export function ResumenScreen({
           </p>
         </div>
       </details>
+
+      {/* Card de sensibilidad adaptativa (FASE 5) — solo si el dry-run marcó al filo. */}
+      {dryRun.alFilo && dryRun.variablesSensibles.length > 0 && (
+        <div className="rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">
+            Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}
+          </p>
+          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">
+            Una diferencia pequeña cambia el veredicto. Si no estás seguro, tócalo arriba antes de generar.
+          </p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
