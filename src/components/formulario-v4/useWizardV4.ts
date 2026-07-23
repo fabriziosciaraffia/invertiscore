@@ -16,8 +16,8 @@ import {
   BRANCH_ACTO3,
   computeNext,
   isBranchNode,
+  nodeReacts,
   progressFor,
-  reactionText,
   type NodeId,
   type WizardV4Answers,
 } from "./wizardV4Nodes";
@@ -225,7 +225,7 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
     setNav((s) => {
       const answers: WizardV4Answers = { ...s.answers, ...patch };
       const completed = { ...s.completed, [node]: true };
-      const hasReaction = reactionText(node, answers) !== null;
+      const hasReaction = nodeReacts(node, answers);
 
       // ── Modo edición: retorno directo al resumen, salvo que cambie una rama ──
       if (s.mode === "edit") {

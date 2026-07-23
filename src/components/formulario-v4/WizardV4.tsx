@@ -11,7 +11,9 @@
 // Acto 3 + resumen: placeholders navegables (Fases 3-4).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useEffect } from "react";
 import { ChevronLeft } from "lucide-react";
+import { usePostHog } from "posthog-js/react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { useWizardV4 } from "./useWizardV4";
 import { useWizardV4Data } from "./useWizardV4Data";
@@ -26,6 +28,7 @@ import {
   type ReactionLive,
 } from "./wizardV4Nodes";
 import { cuotaCLP, fmtCLP, parseNum } from "./derive";
+import { avisoSubsidioAplica } from "./wizardV4Subsidio";
 import { ChoiceTile, FrancoReaction, GhostBtn, PrimaryBtn } from "./ui";
 import {
   AntiguedadScreen,
@@ -63,14 +66,24 @@ export function WizardV4({ resume }: { resume: boolean }) {
   const actoLabel = ACTO_LABEL[acto];
   const progress = w.progress;
 
-  // Reacción de Franco con datos reales (comparables, UF del día, cuota).
+  const posthog = usePostHog();
+
+  // Reacción de Franco con datos reales (comparables, UF del día, cuota, aviso subsidio).
   const live: ReactionLive = {};
   if (data.comparablesCount > 0) live.comparables = data.comparablesCount;
   const puf = parseNum(nav.answers.precio ?? "");
   if (puf > 0 && data.ufCLP > 0) live.precioCLP = fmtCLP(puf * data.ufCLP);
   const cuota = cuotaCLP(nav.answers, data.ufCLP);
   if (cuota > 0) live.cuota = fmtCLP(cuota);
+  live.subsidioAviso = avisoSubsidioAplica(nav.answers, data.precioM2UF);
   const reaction = nav.reactionSource ? reactionText(nav.reactionSource, nav.answers, live) : null;
+
+  // Evento del funnel: aviso de subsidio efectivamente mostrado.
+  const avisoVisible = nav.reactionSource === "tam" && live.subsidioAviso === true;
+  useEffect(() => {
+    if (avisoVisible) posthog?.capture("wizard4_subsidio_hint_shown", { comuna: nav.answers.comuna });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisoVisible]);
 
   const screenProps: ScreenProps = {
     answers: nav.answers,

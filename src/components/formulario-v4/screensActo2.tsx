@@ -5,11 +5,13 @@
 // tasaFix (estimación con corrección inline), plazo (segmented).
 
 import { useState } from "react";
+import { usePostHog } from "posthog-js/react";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
 import { FieldLabel, FuenteLine, PrimaryBtn, GhostBtn, Segmented, TextInput } from "./ui";
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, pieCLP } from "./derive";
+import { calificaSubsidioV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 
 const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
 const decOk = (v: string) => v === "" || /^\d*[,]?\d*$/.test(v);
@@ -167,8 +169,56 @@ function tasaStr(t: number): string {
   return t.toFixed(2).replace(".", ",");
 }
 
-export function TasaScreen({ data, answer, goDetour }: ScreenProps) {
+export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
+  const posthog = usePostHog();
   const t = data.tasaMercado;
+
+  // Capa aplicación del subsidio: si el precio real + tipo califican (nuevo ≤ UF
+  // 4.000), se ofrece la tasa subsidiada como opción explícita (destacada, NO
+  // preseleccionada). El delta fluye por tasaInteres, idéntico a v3.
+  if (calificaSubsidioV4(answers)) {
+    const tSub = tasaConSubsidioV4(t);
+    return (
+      <div className="flex flex-col gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            posthog?.capture("wizard4_subsidio_aplicado", { comuna: answers.comuna });
+            answer("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(tSub) });
+          }}
+          className="franco-tile-target text-left rounded-xl border-[1.5px] border-signal-red bg-[var(--franco-card)] px-5 py-4 w-full transition-colors"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red block mb-1">
+            Con subsidio
+          </span>
+          <span className="font-mono text-[26px] font-bold text-[var(--franco-text)] leading-none">{tasaStr(tSub)}%</span>
+          <span className="block font-body text-[12px] text-[var(--franco-text-secondary)] mt-2">
+            aplica solo a primera vivienda — verifica tu elegibilidad
+          </span>
+          <span className="block font-mono text-[11px] text-[var(--franco-text-muted)] mt-1">
+            subsidio estatal a la tasa para viviendas nuevas hasta UF 4.000 (Ley 21.748)
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => answer("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(t) })}
+          className="franco-tile-target text-left rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-5 py-4 w-full transition-colors"
+        >
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--franco-text-muted)] block mb-1">
+            Tasa de mercado
+          </span>
+          <span className="font-mono text-[22px] font-bold text-[var(--franco-text)] leading-none">{tasaStr(t)}%</span>
+          <span className="block font-mono text-[11px] text-[var(--franco-text-muted)] mt-2">tasa de mercado vigente hoy</span>
+        </button>
+
+        <GhostBtn onClick={() => goDetour("tasaFix", { tasaModo: "preaprobada" })}>
+          Tengo una tasa pre-aprobada distinta
+        </GhostBtn>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-5">

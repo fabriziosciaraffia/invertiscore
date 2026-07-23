@@ -338,6 +338,29 @@ export interface ReactionLive {
   precioCLP?: string;
   /** Cuota mensual calculada (reacción de `plazo`). */
   cuota?: string;
+  /** ¿Aplica el aviso anticipado de subsidio? (reacción de `tam`). */
+  subsidioAviso?: boolean;
+}
+
+/**
+ * ¿El nodo puede disparar una reacción de Franco? Lo usa el hook para setear
+ * `reactionSource` sin conocer los datos en vivo. El texto final (que puede ser
+ * null aun así — ej. aviso de subsidio no elegible) lo resuelve `reactionText`
+ * con `live` en el componente.
+ */
+export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
+  switch (node) {
+    case "dir":
+    case "precio":
+    case "plazo":
+      return true;
+    case "gate":
+      return a.edificioPermiteAirbnb === "no_seguro";
+    case "tam":
+      return a.tipoPropiedad === "nuevo"; // aviso de subsidio (se filtra por `live`)
+    default:
+      return false;
+  }
 }
 
 /**
@@ -356,6 +379,12 @@ export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLi
     case "gate":
       return a.edificioPermiteAirbnb === "no_seguro"
         ? "Ok — el informe lo marcará como riesgo por confirmar antes de firmar."
+        : null;
+    case "tam":
+      // Aviso anticipado de subsidio: solo programa + rango, JAMÁS el valor
+      // estimado del depto (regla de copy dura).
+      return a.tipoPropiedad === "nuevo" && live?.subsidioAviso
+        ? "Ojo: los departamentos nuevos hasta UF 4.000 pueden entrar al Subsidio a la Tasa (Ley 21.748) si es tu primera vivienda. Si el tuyo entra en rango, te lo ofrezco cuando pongas el precio."
         : null;
     default:
       return null;

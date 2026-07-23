@@ -25,6 +25,7 @@ import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
+import { subsidioAplicadoV4 } from "./wizardV4Subsidio";
 import { TextInput } from "./ui";
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
@@ -210,7 +211,15 @@ export function ResumenScreen({
             <Row
               label="Tasa"
               value={a.tasaInteres ? `${a.tasaInteres}%` : "—"}
-              tag={a.tasaModo === "preaprobada" ? "corregido por ti" : a.tasaModo === "estimada" ? "estimado" : undefined}
+              tag={
+                subsidioAplicadoV4(a, data.tasaMercado)
+                  ? "con subsidio"
+                  : a.tasaModo === "preaprobada"
+                    ? "corregido por ti"
+                    : a.tasaModo === "estimada"
+                      ? "estimado"
+                      : undefined
+              }
               onEdit={() => w.editField("tasa")}
             />
             <Row label="Plazo" value={a.plazoCredito ? `${a.plazoCredito} años` : "—"} onEdit={() => w.editField("plazo")} />

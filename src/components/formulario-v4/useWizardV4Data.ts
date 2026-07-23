@@ -41,7 +41,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [arriendoSugerido, setArriendoSugerido] = useState<number | null>(null);
   const [arriendoN, setArriendoN] = useState(0);
   const [ggccSugerido, setGgccSugerido] = useState<number | null>(null);
-  const [precioM2UF, setPrecioM2UF] = useState<number | null>(null);
+  const [precioM2Clp, setPrecioM2Clp] = useState<number | null>(null); // CLP/m² crudo del RPC
   const [radiusUsed, setRadiusUsed] = useState<number | null>(null);
 
   // UF del día + tasa de mercado (una vez).
@@ -81,26 +81,33 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     const seq = ++reqSeq.current;
     setSuggestionsLoading(true);
     const t = setTimeout(() => {
-      const params = new URLSearchParams({
+      const base = {
         comuna,
         superficie: String(parseFloat(superficie.replace(",", ".")) || 50),
         dormitorios: String(parseInt(dormitorios, 10) || 2),
         lat: String(lat),
         lng: String(lng),
-        type: "arriendo",
-      });
-      fetch(`/api/data/suggestions?${params.toString()}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((d) => {
+      };
+      const qArriendo = new URLSearchParams({ ...base, type: "arriendo" });
+      const qVenta = new URLSearchParams({ ...base, type: "venta" });
+      // Dos fetches (como v3): arriendo (comparables/arriendo/ggcc) + venta
+      // (precioM2 → valorMercadoFranco y aviso de subsidio). El endpoint solo
+      // devuelve precioM2 en la rama venta.
+      Promise.all([
+        fetch(`/api/data/suggestions?${qArriendo}`).then((r) => (r.ok ? r.json() : null)),
+        fetch(`/api/data/suggestions?${qVenta}`).then((r) => (r.ok ? r.json() : null)),
+      ])
+        .then(([arr, venta]) => {
           if (seq !== reqSeq.current) return; // respuesta obsoleta
-          const count = d?.sampleSize ?? d?.totalInRadius ?? 0;
+          const count = arr?.sampleSize ?? arr?.totalInRadius ?? 0;
           setComparablesCount(Number(count) || 0);
-          setComparables(Array.isArray(d?.nearbyProperties) ? d.nearbyProperties : []);
-          setArriendoSugerido(typeof d?.arriendo === "number" ? d.arriendo : null);
-          setArriendoN(Number(d?.sampleSize) || 0);
-          setGgccSugerido(typeof d?.ggcc === "number" ? d.ggcc : null);
-          setPrecioM2UF(typeof d?.precioM2UF === "number" ? d.precioM2UF : null);
-          setRadiusUsed(typeof d?.radiusUsed === "number" ? d.radiusUsed : null);
+          setComparables(Array.isArray(arr?.nearbyProperties) ? arr.nearbyProperties : []);
+          setArriendoSugerido(typeof arr?.arriendo === "number" ? arr.arriendo : null);
+          setArriendoN(Number(arr?.sampleSize) || 0);
+          setGgccSugerido(typeof arr?.ggcc === "number" ? arr.ggcc : null);
+          setRadiusUsed(typeof arr?.radiusUsed === "number" ? arr.radiusUsed : null);
+          // precioM2 viene en CLP/m² → se convierte a UF en el return (÷ ufCLP), igual que v3.
+          setPrecioM2Clp(typeof venta?.precioM2 === "number" ? venta.precioM2 : null);
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
@@ -109,7 +116,7 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           setArriendoSugerido(null);
           setArriendoN(0);
           setGgccSugerido(null);
-          setPrecioM2UF(null);
+          setPrecioM2Clp(null);
           setRadiusUsed(null);
         })
         .finally(() => {
@@ -142,7 +149,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     arriendoSugerido,
     arriendoN,
     ggccSugerido,
-    precioM2UF,
+    // precioM2 del RPC viene en CLP/m² → UF/m² (÷ ufCLP), como v3.
+    precioM2UF: precioM2Clp != null && ufCLP > 0 ? precioM2Clp / ufCLP : null,
     radiusUsed,
     airRoi,
   };
