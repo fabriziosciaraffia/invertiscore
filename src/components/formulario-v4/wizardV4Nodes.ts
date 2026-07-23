@@ -114,6 +114,12 @@ export interface WizardV4Answers {
   costoAmoblamiento?: string;
 }
 
+/** Todos los nodos válidos (para validar drafts al cargar). */
+export const ALL_NODES: ReadonlySet<NodeId> = new Set<NodeId>([
+  "dir", "tipo", "ent", "ant", "tam", "precio", "pie", "tasa", "tasaFix", "plazo",
+  "mod", "gate", "gateNo", "arr", "arrFix", "adr", "adrFix", "resumen",
+]);
+
 /** Pantallas de corrección inline (detours, no cuentan progreso). */
 export const FIX_NODES: ReadonlySet<NodeId> = new Set<NodeId>(["tasaFix", "arrFix", "adrFix"]);
 

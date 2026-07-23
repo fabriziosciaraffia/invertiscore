@@ -21,10 +21,15 @@ import {
   type NodeId,
   type WizardV4Answers,
 } from "./wizardV4Nodes";
-
-const DRAFT_KEY = "franco_wizard_v4_draft";
-const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24h, mismo criterio que v3
-const DRAFT_VERSION = 4;
+import {
+  cleanupOrphans,
+  getTabId,
+  keyFor,
+  mostRecentDraft,
+  removeDraft,
+  writeDraft,
+  type PersistedDraft,
+} from "./wizardV4Draft";
 
 type Mode = "flow" | "edit" | "reask";
 
@@ -39,16 +44,6 @@ export interface WizardV4Nav {
   reactionSource: NodeId | null;
   /** Dirección de la transición para la animación slide+fade. */
   dir: "forward" | "back";
-}
-
-interface PersistedDraft {
-  v: number;
-  savedAt: number;
-  answers: WizardV4Answers;
-  completed: Partial<Record<NodeId, boolean>>;
-  current: NodeId;
-  history: NodeId[];
-  mode: Mode;
 }
 
 const DEFAULT_NAV: WizardV4Nav = {
@@ -163,65 +158,61 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
   const mounted = useRef(false);
   // Máximo de progreso alcanzado — la barra es monotónica (ver más abajo).
   const highWater = useRef(0);
+  // Persistencia por pestaña (HALLAZGO-6a).
+  const tabId = useRef<string>("");
+  const draftVersion = useRef(0); // versión monotónica de la escritura de ESTA pestaña
+  const offeredKey = useRef<string | null>(null); // key del draft ofrecido en el banner
 
-  // ── Mount: cargar draft. ?resume=1 (vuelta post-registro) rehidrata directo
-  //    al resumen; si no, se ofrece vía banner y el form arranca limpio. ──
+  // ── Mount: limpiar huérfanas + ofrecer el draft más reciente entre pestañas.
+  //    ?resume=1 (vuelta post-registro, misma pestaña) rehidrata directo al
+  //    resumen; si no, se ofrece vía banner y el form arranca limpio. ──
   useEffect(() => {
     if (mounted.current) return;
     mounted.current = true;
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as PersistedDraft;
-      if (parsed.v !== DRAFT_VERSION) return;
-      if (Date.now() - parsed.savedAt > DRAFT_TTL_MS) {
-        localStorage.removeItem(DRAFT_KEY);
-        return;
-      }
-      if (resume) {
-        // Retomar y aterrizar en el resumen (el guest completó el wizard antes
-        // de registrarse; vuelve a pagar/generar).
-        setNav({
-          current: "resumen",
-          history: parsed.history ?? [],
-          answers: parsed.answers ?? {},
-          completed: parsed.completed ?? {},
-          mode: "flow",
-          editContext: null,
-          reactionSource: null,
-          dir: "forward",
-        });
-      } else {
-        setDraftPendiente(parsed);
-      }
-    } catch {
-      /* draft corrupto → ignorar */
+    tabId.current = getTabId();
+    cleanupOrphans(keyFor(tabId.current));
+    const candidate = mostRecentDraft();
+    if (!candidate) return;
+    offeredKey.current = candidate.key;
+    const d = candidate.draft;
+    if (resume) {
+      draftVersion.current = d.version ?? 0;
+      setNav({
+        current: "resumen",
+        history: d.history ?? [],
+        answers: d.answers ?? {},
+        completed: d.completed ?? {},
+        mode: "flow",
+        editContext: null,
+        reactionSource: null,
+        dir: "forward",
+      });
+    } else {
+      setDraftPendiente(d);
     }
   }, [resume]);
 
-  // ── Persistencia debounced (500ms). No persiste mientras hay un draft
-  //    pendiente sin resolver (evita pisar el guardado con el form limpio). ──
+  // ── Persistencia debounced (500ms) en la key de ESTA pestaña. No persiste
+  //    mientras hay un draft pendiente sin resolver (evita pisar con el form
+  //    limpio). Versión monotónica por escritura. ──
   useEffect(() => {
-    if (draftPendiente) return;
+    if (draftPendiente || !tabId.current) return;
     const t = setTimeout(() => {
-      try {
-        // Solo vale la pena guardar si el usuario avanzó algo.
-        if (nav.current === "mod" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
-          return;
-        }
-        const draft: PersistedDraft = {
-          v: DRAFT_VERSION,
-          savedAt: Date.now(),
+      // Solo vale la pena guardar si el usuario avanzó algo.
+      if (nav.current === "mod" && nav.history.length === 0 && Object.keys(nav.answers).length === 0) {
+        return;
+      }
+      draftVersion.current = writeDraft(
+        tabId.current,
+        {
           answers: nav.answers,
           completed: nav.completed,
           current: nav.current,
           history: nav.history,
           mode: nav.mode === "edit" ? "flow" : nav.mode,
-        };
-        localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-      } catch {
-        /* quota / privado → ignorar */
-      }
+        },
+        draftVersion.current,
+      );
     }, 500);
     return () => clearTimeout(t);
   }, [nav, draftPendiente]);
@@ -390,8 +381,11 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
   const resumeDraft = useCallback(() => {
     setDraftPendiente((d) => {
       if (d) {
+        // A partir de acá esta pestaña es la dueña del draft: continúa la versión
+        // monotónica desde la ofrecida y escribe en su propia key.
+        draftVersion.current = d.version ?? 0;
         setNav({
-          current: d.current ?? "dir",
+          current: d.current ?? "mod",
           history: d.history ?? [],
           answers: d.answers ?? {},
           completed: d.completed ?? {},
@@ -406,11 +400,10 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
   }, []);
 
   const discardDraft = useCallback(() => {
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch {
-      /* ignore */
-    }
+    // Borra la key de esta pestaña + la del draft que se había ofrecido.
+    removeDraft(tabId.current, offeredKey.current ?? undefined);
+    offeredKey.current = null;
+    draftVersion.current = 0;
     setDraftPendiente(null);
     highWater.current = 0; // reinicia la barra al empezar de cero
     setNav(DEFAULT_NAV);
