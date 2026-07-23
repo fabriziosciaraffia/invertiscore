@@ -9,6 +9,9 @@ import { consumeCredit } from "@/lib/access";
 import { generateAiAnalysis } from "@/lib/ai-generation";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
+import { sendMetaCapiEvent } from "@/lib/meta/capi";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 // Label legible para los correos internos (admin). Usa el subject del catálogo
 // real (single / plan10 / plan50 / unlimited) y cae a los nombres legacy o al
@@ -407,6 +410,27 @@ export async function POST(request: Request) {
           }
         } catch (e) {
           console.error("[payments/confirm] emisión boleta unlock excepción:", e);
+        }
+      }
+
+      // Meta CAPI: Purchase server-side (fuente de verdad; el pago está confirmado
+      // por Flow). event_id = commerce_order → Meta deduplica contra el Pixel del
+      // browser (/payments/return) y contra reenvíos del webhook. Bloque aislado:
+      // una falla de Meta JAMÁS rompe el 200 que Flow espera ni afecta créditos/
+      // email/boleta ya procesados arriba. Email hasheado dentro del helper.
+      if (userId) {
+        try {
+          const { data: capiUser } = await supabase.auth.admin.getUserById(userId);
+          await sendMetaCapiEvent({
+            eventName: "Purchase",
+            eventId: payment.commerce_order,
+            email: capiUser?.user?.email ?? null,
+            value: payment.amount,
+            currency: "CLP",
+            eventSourceUrl: SITE_URL,
+          });
+        } catch (e) {
+          console.error("[payments/confirm] Meta CAPI Purchase excepción:", e);
         }
       }
 

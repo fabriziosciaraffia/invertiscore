@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { usePostHog } from "posthog-js/react";
 import type { ResumenAnexoData } from "@/lib/resumen-anexo";
 import { formatDireccionDisplay } from "@/lib/format-direccion";
+import { FLOW_PRODUCTS } from "@/lib/flow-products";
+import { metaTrack } from "@/lib/meta/pixel";
 
 const SIGNAL_RED = "#C8323C";
 
@@ -76,6 +78,9 @@ export function ResumenAnexoModal({
       });
       const json = await res.json();
       if (json.url) {
+        // Meta Pixel: InitiateCheckout antes de redirigir a Flow (unlock AMBAS).
+        // Browser-only, sin event_id (no requiere dedup con CAPI).
+        metaTrack('InitiateCheckout', { value: FLOW_PRODUCTS.unlock.amount, currency: 'CLP' });
         window.location.href = json.url;
       } else {
         setError(json.error || "No se pudo iniciar el pago. Intenta de nuevo.");

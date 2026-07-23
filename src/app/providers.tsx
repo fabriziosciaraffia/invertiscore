@@ -1,8 +1,9 @@
 'use client'
 import posthog from 'posthog-js'
 import { PostHogProvider } from 'posthog-js/react'
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
 import { useUTMCapture } from '@/hooks/useUTMCapture'
+import { MetaPixel } from '@/components/analytics/MetaPixel'
 
 export function PHProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
@@ -17,5 +18,12 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
 
   useUTMCapture();
 
-  return <PostHogProvider client={posthog}>{children}</PostHogProvider>
+  return (
+    <PostHogProvider client={posthog}>
+      <Suspense fallback={null}>
+        <MetaPixel />
+      </Suspense>
+      {children}
+    </PostHogProvider>
+  )
 }

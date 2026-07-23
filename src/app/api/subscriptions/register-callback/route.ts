@@ -211,7 +211,18 @@ export async function POST(request: Request) {
     //  - Emitir en el alta podría facturar dinero que aún no fue cobrado.
     // Se resuelve tras entender el modelo de cobro de Flow y observar un cobro
     // real con túnel. Decisión probable: emitir solo en payment-callback.
-    return NextResponse.redirect(new URL("/payments/return?type=subscription&status=success", SITE_URL));
+
+    // Meta Pixel (browser): pasamos sub=<subscriptionId> + val=<precio plan> al
+    // return para que dispare Subscribe con event_id sub-<subscriptionId> y el
+    // value real → dedup con el Subscribe server-side (payment-callback, solo
+    // primer cobro). Solo en esta activación real: los redirects idempotentes de
+    // arriba (Flow reintentó el callback / reload) NO llevan sub → el browser
+    // Subscribe se omite ahí, y el server-side first-charge Subscribe queda como
+    // fuente de verdad.
+    const returnUrl = new URL("/payments/return?type=subscription&status=success", SITE_URL);
+    returnUrl.searchParams.set("sub", subData.subscriptionId);
+    returnUrl.searchParams.set("val", String(match.product.amount));
+    return NextResponse.redirect(returnUrl);
   } catch (err) {
     console.error("Register callback error:", err);
     return NextResponse.redirect(new URL("/payments/return?type=subscription&status=error", SITE_URL));

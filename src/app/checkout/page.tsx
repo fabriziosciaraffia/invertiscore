@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { FLOW_PRODUCTS, type FlowProductKey } from "@/lib/flow-products";
 import { fmtCLP, BASE_FEATURES } from "@/lib/pricing";
+import { metaTrack } from "@/lib/meta/pixel";
 
 /** Resumen de display derivado del catálogo único FLOW_PRODUCTS. */
 function resolveProduct(key: string) {
@@ -139,6 +140,10 @@ function CheckoutContent() {
       const data = await res.json();
       if (data.url) {
         posthog?.capture('payment_initiated', { product: productKey, amount: qty * product.amount, quantity: qty });
+        // Meta Pixel: InitiateCheckout antes de redirigir a Flow. Cubre créditos
+        // (single) y suscripciones — mismo handler. Browser-only, sin event_id
+        // (InitiateCheckout no requiere dedup con CAPI).
+        metaTrack('InitiateCheckout', { value: qty * product.amount, currency: 'CLP' });
         window.location.href = data.url;
       } else {
         setError(data?.details || data?.error || "Error al procesar el pago");

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { sendMetaCapiEvent } from "@/lib/meta/capi";
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url);
@@ -37,11 +38,41 @@ export async function GET(request: Request) {
     // exchangeCodeForSession es genérico: funciona tanto para el code de OAuth
     // (Google) como para el code del link de confirmación de email de Supabase.
     // Si falla (link expirado/ya usado), redirigimos a login con aviso claro.
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: sessionData, error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
       return NextResponse.redirect(
         new URL("/login?confirm_error=1", request.url),
       );
+    }
+
+    // Meta CAPI: CompleteRegistration SOLO en altas nuevas. Este route sirve tanto
+    // a la confirmación de email como al primer login OAuth (Google), pero también
+    // a logins de usuarios existentes vía OAuth — filtramos por created_at reciente
+    // (~10 min) para disparar solo en el alta y excluir logins recurrentes.
+    // event_id = reg-<userId> (idempotencia si Supabase reintenta el callback).
+    // Este request SÍ trae cookies/IP/UA del navegador → mejor match que los
+    // webhooks. Bloque aislado: una falla de Meta jamás rompe el flujo de auth.
+    try {
+      const user = sessionData?.user;
+      if (user?.created_at) {
+        const ageMs = Date.now() - new Date(user.created_at).getTime();
+        if (ageMs >= 0 && ageMs < 10 * 60 * 1000) {
+          await sendMetaCapiEvent({
+            eventName: "CompleteRegistration",
+            eventId: `reg-${user.id}`,
+            email: user.email ?? null,
+            eventSourceUrl: requestUrl.origin,
+            clientIp:
+              request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+              request.headers.get("x-real-ip"),
+            userAgent: request.headers.get("user-agent"),
+            fbp: cookieStore.get("_fbp")?.value ?? null,
+            fbc: cookieStore.get("_fbc")?.value ?? null,
+          });
+        }
+      }
+    } catch (e) {
+      console.error("[auth/callback] Meta CAPI CompleteRegistration excepción:", e);
     }
   }
 

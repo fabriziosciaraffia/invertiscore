@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { metaTrack } from "@/lib/meta/pixel";
 
 function PaymentReturnContent() {
   const searchParams = useSearchParams();
@@ -26,7 +27,25 @@ function PaymentReturnContent() {
 
   useEffect(() => {
     if (type === "subscription") {
-      setPaymentStatus(statusParam === "success" ? "paid" : "error");
+      const success = statusParam === "success";
+      setPaymentStatus(success ? "paid" : "error");
+      // Meta Pixel: Subscribe browser-side con value real del plan. event_id
+      // sub-<subscriptionId> → dedup con el Subscribe server-side (payment-callback,
+      // solo primer cobro). Ambos llevan value: Meta se queda con el primero que
+      // llega, así que el browser también manda monto para no perder la conversión
+      // por valor si gana la carrera. sub/val vienen del redirect de register-callback.
+      if (success) {
+        const sub = searchParams.get("sub");
+        const val = searchParams.get("val");
+        if (sub) {
+          const value = val ? Number(val) : undefined;
+          metaTrack(
+            "Subscribe",
+            Number.isFinite(value) ? { value, currency: "CLP" } : undefined,
+            `sub-${sub}`
+          );
+        }
+      }
       return;
     }
 
@@ -41,6 +60,16 @@ function PaymentReturnContent() {
           setAnalysisId(data.payment.analysis_id);
           if (data.payment.status === "paid") {
             posthog?.capture('pro_purchased', { product: data.payment.product, amount: data.payment.amount });
+            // Meta Pixel: Purchase browser-side. event_id = commerce_order → dedup
+            // con el Purchase server-side (payments/confirm). El pago está
+            // confirmado en ambos lados (status paid), así que ambos llevan value.
+            if (data.payment.commerce_order) {
+              metaTrack(
+                'Purchase',
+                { value: data.payment.amount, currency: 'CLP' },
+                data.payment.commerce_order
+              );
+            }
             setPaymentStatus("paid");
             // Single con análisis atado → llevar directo a la vista del análisis
             // comprado (la ruta auto-redirige a renta-corta si es STR). El push
@@ -110,7 +139,7 @@ function PaymentReturnContent() {
     };
 
     checkStatus();
-  }, [type, statusParam, order, router]);
+  }, [type, statusParam, order, router, searchParams]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[var(--franco-bg)]">

@@ -4,6 +4,9 @@ import { flowPost } from "@/lib/flow";
 import { recurringProductByAmount, recurringProductByPlan, addOneMonth } from "@/lib/credits-grant";
 import { sendPaymentFailedEmail } from "@/lib/email";
 import { processSubscriptionCharge } from "@/lib/subscriptions/process-charge";
+import { sendMetaCapiEvent } from "@/lib/meta/capi";
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://refranco.ai";
 
 // commerceOrder de un cargo de suscripción: "sus_<subId>_<invoiceId>_<ts>".
 // Capturamos el prefijo sus_<subId> para mapear contra user_credits.subscription_id.
@@ -95,6 +98,49 @@ export async function POST(request: Request) {
         "[payment-callback] processSubscriptionCharge →",
         JSON.stringify(result)
       );
+
+      // Meta CAPI: Subscribe SOLO en el primer cobro de esta suscripción. Se
+      // cuenta contra el nro de filas de cargo (franco-sub-pay-*) de ESTE user,
+      // EXCLUYENDO la del cargo actual → 0 previas = primer cobro. Las
+      // renovaciones (count ≥ 1) NO disparan nada.
+      //
+      // SEMÁNTICA DELIBERADA (no es bug — no lo "arregles"): el count es por
+      // user_id, no por subscription_id. Un usuario que canceló y se resuscribe
+      // tiene filas de cargo viejas → su NUEVA suscripción NO dispara Subscribe.
+      // Es intencional: un resuscriptor NO es una adquisición nueva para las
+      // campañas de Meta (ya fue conversión una vez). Si algún día se quiere
+      // contar resuscripciones como conversión, cambiar el .eq(user_id) por un
+      // filtro por subscription_id — pero es una decisión de producto, no un fix.
+      //
+      // event_id = sub-<subscriptionId> (mismo que dispara el browser en
+      // /payments/return) → Meta deduplica. Bloque aislado: una falla de Meta
+      // jamás rompe el 200 que Flow espera. subMatch[1] = "sus_<subId>".
+      if (subMatch) {
+        try {
+          const currentChargeOrder = `franco-sub-pay-${Number(flowData.flowOrder)}`;
+          const { count } = await supabase
+            .from("payments")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .like("commerce_order", "franco-sub-pay-%")
+            .neq("commerce_order", currentChargeOrder);
+          const isFirstCharge = (count ?? 0) === 0;
+
+          if (isFirstCharge) {
+            const { data: capiUser } = await supabase.auth.admin.getUserById(userId);
+            await sendMetaCapiEvent({
+              eventName: "Subscribe",
+              eventId: `sub-${subMatch[1]}`,
+              email: capiUser?.user?.email ?? flowData.payer ?? null,
+              value: Number(flowData.amount),
+              currency: "CLP",
+              eventSourceUrl: SITE_URL,
+            });
+          }
+        } catch (e) {
+          console.error("[payment-callback] Meta CAPI Subscribe excepción:", e);
+        }
+      }
 
       // Re-armar el lote mensual de planes ANUALES finitos SOLO ante un cargo FRESCO
       // (result.granted = se insertó un lote nuevo en este llamado). En un reenvío del
