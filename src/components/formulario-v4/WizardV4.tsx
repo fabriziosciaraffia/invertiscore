@@ -15,6 +15,8 @@ import { ChevronLeft } from "lucide-react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { useWizardV4 } from "./useWizardV4";
 import { useWizardV4Data } from "./useWizardV4Data";
+import { useWizardV4Tier } from "./useWizardV4Tier";
+import { ResumenScreen } from "./screenResumen";
 import {
   ACTO_BY_NODE,
   ACTO_LABEL,
@@ -55,6 +57,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
   const w = useWizardV4({ resume });
   const { nav } = w;
   const data = useWizardV4Data(nav.answers);
+  const { tier, isLoggedIn } = useWizardV4Tier();
 
   const acto = ACTO_BY_NODE[nav.current];
   const actoLabel = ACTO_LABEL[acto];
@@ -138,7 +141,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
               {NODE_TITLE[nav.current]}
             </h1>
 
-            <Screen node={nav.current} w={w} screenProps={screenProps} />
+            <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} />
           </div>
         </div>
       </main>
@@ -152,10 +155,16 @@ function Screen({
   node,
   w,
   screenProps,
+  data,
+  tier,
+  isLoggedIn,
 }: {
   node: NodeId;
   w: ReturnType<typeof useWizardV4>;
   screenProps: ScreenProps;
+  data: ReturnType<typeof useWizardV4Data>;
+  tier: ReturnType<typeof useWizardV4Tier>["tier"];
+  isLoggedIn: boolean;
 }) {
   switch (node) {
     // ── Acto 1 ──
@@ -237,64 +246,9 @@ function Screen({
       return <AdrFixScreen {...screenProps} />;
 
     case "resumen":
-      return <ResumenPlaceholder w={w} />;
+      return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} />;
 
     default:
       return <PlaceholderBox node={node} />;
   }
-}
-
-// ── Resumen (placeholder de FASE 1/2: edición + invalidación de rama) ──
-
-function ResumenPlaceholder({ w }: { w: ReturnType<typeof useWizardV4> }) {
-  const { answers } = w.nav;
-  const rows: Array<{ label: string; value: string; edit: NodeId }> = [
-    { label: "Dirección", value: answers.direccion || "—", edit: "dir" },
-    { label: "Tipo", value: answers.tipoPropiedad ?? "—", edit: "tipo" },
-    { label: "Superficie", value: answers.superficieUtil ? `${answers.superficieUtil} m²` : "—", edit: "tam" },
-    { label: "Precio (UF)", value: answers.precio || "—", edit: "precio" },
-    { label: "Modalidad", value: answers.modalidad ?? "—", edit: "mod" },
-  ];
-  if (answers.modalidad === "str" || answers.modalidad === "both") {
-    rows.push({ label: "Edificio permite Airbnb", value: answers.edificioPermiteAirbnb ?? "—", edit: "gate" });
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0">
-        Zonas del resumen (informe · respuestas · supuestos) en Fase 4. Acá, la mecánica de edición
-        con retorno directo e invalidación de rama.
-      </p>
-
-      <div className="rounded-xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-        <dl className="space-y-1.5">
-          {rows.map((r) => (
-            <div
-              key={r.edit}
-              className="flex items-center justify-between gap-3 py-1.5 border-b border-dashed border-[var(--franco-border)] last:border-b-0"
-            >
-              <dt className="font-body text-[13px] text-[var(--franco-text-secondary)]">{r.label}</dt>
-              <dd className="flex items-center gap-3 m-0 min-w-0">
-                <span className="font-mono text-[13px] text-[var(--franco-text)] truncate max-w-[180px]">{r.value}</span>
-                <button
-                  type="button"
-                  onClick={() => w.editField(r.edit)}
-                  className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-dotted"
-                >
-                  Editar →
-                </button>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-
-      <div className="pt-4 mt-2 border-t border-[var(--franco-border)]">
-        <PlaceholderBox node="resumen" />
-        <p className="font-body text-[12px] text-[var(--franco-text-muted)] mt-4 mb-0">
-          El botón «✦ Generar análisis» tier-aware (crédito / desbloquear / crear cuenta) llega en Fase 4.
-        </p>
-      </div>
-    </div>
-  );
 }

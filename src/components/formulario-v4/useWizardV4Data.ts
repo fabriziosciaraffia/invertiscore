@@ -24,6 +24,10 @@ export interface WizardV4Data {
   arriendoN: number;
   /** GGCC típico estimado (CLP/mes) de la zona, o null. */
   ggccSugerido: number | null;
+  /** UF/m² de venta de la zona (para valorMercadoFranco y aviso de subsidio). */
+  precioM2UF: number | null;
+  /** Radio (m) usado por el RPC de sugerencias. */
+  radiusUsed: number | null;
   /** Baseline AirROI (tarifa/ocupación) — solo activo en str/both. */
   airRoi: AirRoiSuggestion;
 }
@@ -37,6 +41,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
   const [arriendoSugerido, setArriendoSugerido] = useState<number | null>(null);
   const [arriendoN, setArriendoN] = useState(0);
   const [ggccSugerido, setGgccSugerido] = useState<number | null>(null);
+  const [precioM2UF, setPrecioM2UF] = useState<number | null>(null);
+  const [radiusUsed, setRadiusUsed] = useState<number | null>(null);
 
   // UF del día + tasa de mercado (una vez).
   useEffect(() => {
@@ -93,6 +99,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           setArriendoSugerido(typeof d?.arriendo === "number" ? d.arriendo : null);
           setArriendoN(Number(d?.sampleSize) || 0);
           setGgccSugerido(typeof d?.ggcc === "number" ? d.ggcc : null);
+          setPrecioM2UF(typeof d?.precioM2UF === "number" ? d.precioM2UF : null);
+          setRadiusUsed(typeof d?.radiusUsed === "number" ? d.radiusUsed : null);
         })
         .catch(() => {
           if (seq !== reqSeq.current) return;
@@ -101,6 +109,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
           setArriendoSugerido(null);
           setArriendoN(0);
           setGgccSugerido(null);
+          setPrecioM2UF(null);
+          setRadiusUsed(null);
         })
         .finally(() => {
           if (seq === reqSeq.current) setSuggestionsLoading(false);
@@ -132,6 +142,8 @@ export function useWizardV4Data(answers: WizardV4Answers): WizardV4Data {
     arriendoSugerido,
     arriendoN,
     ggccSugerido,
+    precioM2UF,
+    radiusUsed,
     airRoi,
   };
 }
