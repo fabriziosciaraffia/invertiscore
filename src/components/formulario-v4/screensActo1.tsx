@@ -57,6 +57,14 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
           const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
           const comunaFinal = match?.comuna || comunaRaw;
           const cubierta = isComunaDisponible(comunaFinal);
+          // REGRESIÓN-7: Google rellena el input con un texto distinto al
+          // formatted_address, y su `input` event (onChange de React) puede correr
+          // DESPUÉS de este handler → direccion (input) ≠ direccionConfirmada
+          // (formatted) → "no confirmada". Sincronizamos el input a la dirección
+          // canónica y usamos ESA misma cadena para ambos, de modo que un onChange
+          // posterior lea el mismo valor y no desincronice. También cura el caso en
+          // que Google no autocompleta el input (queda el texto tipeado).
+          if (inputRef.current) inputRef.current.value = addr;
           // Fuera de cobertura: registramos la comuna (para el mensaje explícito)
           // pero NO confirmamos ni guardamos coords → el draft no persiste una
           // dirección fuera de cobertura como válida y Continuar queda bloqueado.
