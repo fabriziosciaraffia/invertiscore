@@ -55,13 +55,18 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
             comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name ||
             "";
           const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
+          const comunaFinal = match?.comuna || comunaRaw;
+          const cubierta = isComunaDisponible(comunaFinal);
+          // Fuera de cobertura: registramos la comuna (para el mensaje explícito)
+          // pero NO confirmamos ni guardamos coords → el draft no persiste una
+          // dirección fuera de cobertura como válida y Continuar queda bloqueado.
           patchAnswers({
             direccion: addr,
-            direccionConfirmada: addr,
-            lat,
-            lng,
-            comuna: match?.comuna || comunaRaw,
+            comuna: comunaFinal,
             ciudad: match?.ciudad || "Santiago",
+            ...(cubierta
+              ? { direccionConfirmada: addr, lat, lng }
+              : { direccionConfirmada: undefined, lat: undefined, lng: undefined }),
           });
         });
         acRef.current = ac;
@@ -89,14 +94,17 @@ export function DireccionScreen({ answers, data, patchAnswers, answer }: ScreenP
           onChange={(e) => patchAnswers({ direccion: e.target.value })}
           className="w-full h-11 rounded-lg border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-3 text-[15px] font-body text-[var(--franco-text)] focus:border-signal-red focus:outline-none focus:ring-1 focus:ring-signal-red/20 transition-colors"
         />
-        {direccion && !confirmada ? (
-          <p className="font-body text-[11px] mt-1.5 text-signal-red">
-            Selecciona la dirección de la lista de sugerencias.
-          </p>
-        ) : fueraDeZona ? (
+        {/* Prioridad del mensaje: la cobertura manda. Si la comuna elegida está
+            fuera del Gran Santiago se muestra el mensaje de cobertura aunque el
+            estado "confirmado" no se haya seteado (BUG-1: antes ganaba el genérico). */}
+        {fueraDeZona ? (
           <p className="font-body text-[12px] mt-1.5 text-signal-red leading-snug">
             {comuna} está fuera del Gran Santiago — por ahora Franco no tiene datos suficientes acá.
             Prueba con otra comuna de la Región Metropolitana.
+          </p>
+        ) : direccion && !confirmada ? (
+          <p className="font-body text-[11px] mt-1.5 text-signal-red">
+            Selecciona la dirección de la lista de sugerencias.
           </p>
         ) : comuna ? (
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-1.5">

@@ -353,11 +353,16 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
 
   const gateNoSwitchToLtr = useCallback(() => {
     setNav((s) => {
+      // Cambia a renta larga e invalida SOLO lo STR. En AMBAS el arriendo ya se
+      // respondió (arr → gate → adr), así que se conserva y vamos directo al
+      // resumen; en STR puro arr está pendiente y caemos en arr.
       const answers: WizardV4Answers = {
         ...s.answers,
         modalidad: "ltr",
         edificioPermiteAirbnb: undefined,
         adrModo: undefined,
+        adrTarifa: undefined,
+        adrOcupacion: undefined,
       };
       const completed = { ...s.completed };
       delete completed["gate"];
@@ -411,11 +416,10 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
     setNav(DEFAULT_NAV);
   }, []);
 
-  // Chevron atrás: oculto en primera pantalla (sin historial), en modo edición y
-  // en el resumen (su único mecanismo de edición son los lápices; un "atrás"
-  // genérico ahí es ambiguo tras un reask).
-  const canGoBack =
-    nav.mode !== "edit" && nav.current !== "resumen" && nav.history.length > 0;
+  // Chevron atrás: oculto en primera pantalla (sin historial) y en modo edición.
+  // El resumen SÍ lleva chevron (CAMBIO-5): semántica = volver al último nodo del
+  // historial (atrás puro). Los lápices son la vía de edición dirigida (F4).
+  const canGoBack = nav.mode !== "edit" && nav.history.length > 0;
 
   // Barra de progreso MONOTÓNICA: nunca retrocede. Al elegir el informe
   // comparativo el denominador crece (contador honesto "9 de 13"), pero si el %

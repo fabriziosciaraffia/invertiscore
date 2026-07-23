@@ -11,9 +11,9 @@
 //
 //   plazo ─(ltr)→ arr → resumen
 //         ├(str)→ gate ─(sí/no-seguro)→ adr → resumen
-//         │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen
-//         └(both)→ gate ─(sí/no-seguro)→ arr → adr → resumen
-//                  └(no)→ gateNo (ofrece seguir solo ltr)
+//         │        └(no)→ gateNo ─(cambiar a ltr)→ arr → resumen  (arr pendiente)
+//         └(both)→ arr → gate ─(sí/no-seguro)→ adr → resumen      (agrupado por modalidad)
+//                          └(no)→ gateNo ─(seguir ltr)→ resumen   (arr ya listo)
 //
 // tasaFix / arrFix / adrFix = detours de corrección inline (se entran con botón,
 // no por computeNext; su "siguiente" es el mismo que el de su pantalla padre).
@@ -203,18 +203,19 @@ export function computeNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasaFix":
       return "plazo";
     case "plazo":
-      // tras el financiamiento entra la rama del Acto 3 según la modalidad ya elegida
-      return a.modalidad === "str" || a.modalidad === "both" ? "gate" : "arr";
+      // Acto 3 agrupado por modalidad: ltr y both empiezan por arr (renta larga
+      // primero); str va directo al gate (ahí el permiso mata todo el análisis).
+      return a.modalidad === "str" ? "gate" : "arr";
     case "gate":
       if (a.edificioPermiteAirbnb === "no") return "gateNo";
-      // sí | no_seguro → both pide arr primero, str va directo a adr
-      return a.modalidad === "both" ? "arr" : "adr";
+      // sí | no_seguro → str y both van a adr (en both, arr ya se respondió antes)
+      return "adr";
     case "gateNo":
       return null; // salida por botones explícitos (seguir LTR / volver)
     case "arr":
-      return a.modalidad === "both" ? "adr" : "resumen";
+      return a.modalidad === "both" ? "gate" : "resumen";
     case "arrFix":
-      return a.modalidad === "both" ? "adr" : "resumen";
+      return a.modalidad === "both" ? "gate" : "resumen";
     case "adr":
       return "resumen";
     case "adrFix":
@@ -264,13 +265,11 @@ function plannedNext(node: NodeId, a: WizardV4Answers): NodeId | null {
     case "tasa":
       return "plazo";
     case "plazo":
-      // undecided → asume la rama más corta (ltr)
-      if (a.modalidad === "str" || a.modalidad === "both") return "gate";
-      return "arr";
+      return a.modalidad === "str" ? "gate" : "arr";
     case "gate":
-      return a.modalidad === "both" ? "arr" : "adr";
+      return "adr";
     case "arr":
-      return a.modalidad === "both" ? "adr" : "resumen";
+      return a.modalidad === "both" ? "gate" : "resumen";
     case "adr":
       return "resumen";
     default:

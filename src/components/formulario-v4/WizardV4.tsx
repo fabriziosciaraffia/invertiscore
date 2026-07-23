@@ -196,18 +196,28 @@ function Screen({
           </p>
           <div className="flex flex-col gap-3">
             <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "si" })}>Sí permite</ChoiceTile>
-            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no_seguro" })}>No estoy seguro</ChoiceTile>
             <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no" })}>No permite</ChoiceTile>
+            <ChoiceTile onClick={() => w.answer("gate", { edificioPermiteAirbnb: "no_seguro" })}>No estoy seguro</ChoiceTile>
           </div>
         </div>
       );
-    case "gateNo":
+    case "gateNo": {
+      // En AMBAS el arriendo ya está respondido → la salida conserva la renta
+      // larga y va directo al resumen; el copy lo reconoce. En STR puro, seguir
+      // con LTR lleva a responder el arriendo (arr pendiente).
+      const esBoth = w.nav.answers.modalidad === "both";
       return (
         <>
           <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
             <p className="font-body text-[14px] text-[var(--franco-text-secondary)] m-0 leading-relaxed">
               El edificio no permite arriendo por noche. Sin permiso del reglamento, el informe de
               renta corta nace muerto — Franco no te va a dejar gastar un crédito en eso.
+              {esBoth && (
+                <>
+                  {" "}
+                  <span className="text-[var(--franco-text)]">Tu informe de renta larga sigue en pie — seguimos con ese.</span>
+                </>
+              )}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-start gap-3 mt-6">
@@ -216,6 +226,7 @@ function Screen({
           </div>
         </>
       );
+    }
     case "arr":
       return <ArrScreen {...screenProps} />;
     case "arrFix":
