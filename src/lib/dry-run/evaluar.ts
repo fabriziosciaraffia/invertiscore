@@ -14,6 +14,8 @@
 
 import { runAnalysis } from "@/lib/analysis";
 import type { AnalisisInput } from "@/lib/types";
+import { calcShortTerm, type ShortTermInputs } from "@/lib/engines/short-term-engine";
+import { calcFrancoScoreSTR, type ScoreSTRInputs } from "@/lib/engines/short-term-score";
 
 export interface AlFiloDetalle {
   /** Veredicto base (interno — NUNCA cruza el cable). */
@@ -87,4 +89,76 @@ function evaluarSpecs(
   // no revisado); las ya corregidas van después, pero igual se reportan.
   flip.sort((a, b) => Number(b.estimacion) - Number(a.estimacion));
   return { base, alFilo: flip.length > 0, variablesSensibles: flip.map((s) => s.label) };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STR — "al filo" perturbando tarifa y ocupación.
+//
+// Unidades (calibradas sobre GE-1..6 · decisión F5): TARIFA = ±% RELATIVO sobre
+// el ADR efectivo; OCUPACIÓN = ±pp ABSOLUTOS sobre la ocupación efectiva. Ambos
+// se aplican vía adrOverride/occOverride sobre `ejesAplicados.adrFinal` /
+// `.ocupacionFinal` (NO sobre los top-level del input) — reconstrucción idéntica
+// a la del motor. Al perturbar una, la otra queda intacta (override puntual).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const STR_DELTA_TARIFA = 0.1;   // % relativo sobre adrFinal
+export const STR_DELTA_OCC_PP = 0.05;  // puntos porcentuales absolutos sobre ocupacionFinal
+
+/** Contexto de score STR sin `results` (lo inyecta cada corrida del motor). */
+export type StrScoreCtx = Omit<ScoreSTRInputs, "results">;
+
+const clampOcc = (x: number) => Math.max(0.05, Math.min(0.98, x));
+
+/**
+ * Evalúa "al filo" para un input STR. Corre el motor base para leer el veredicto
+ * y el ADR/ocupación EFECTIVOS (ejesAplicados), luego perturba cada uno ±Δ y
+ * recoge los que flipean el veredicto.
+ * `esEstimacion`: la tarifa/ocupación siguen siendo estimación (el usuario no las
+ * corrigió) → mayor prioridad en la card. Ambas comparten el flag: el toggle del
+ * Acto 3 corrige las dos a la vez.
+ */
+export function evaluarStr(
+  inputs: ShortTermInputs,
+  scoreCtx: StrScoreCtx,
+  asOf: Date,
+  deltaTarifa: number,
+  deltaOccPp: number,
+  opts: { esEstimacion: boolean },
+): AlFiloDetalle {
+  const correr = (i: ShortTermInputs): { veredicto: string; adrFinal: number; occFinal: number } => {
+    const result = calcShortTerm(i, asOf);
+    const score = calcFrancoScoreSTR({ ...scoreCtx, results: result });
+    return {
+      veredicto: score.veredicto as string,
+      adrFinal: result.ejesAplicados?.adrFinal ?? NaN,
+      occFinal: result.ejesAplicados?.ocupacionFinal ?? NaN,
+    };
+  };
+
+  const b = correr(inputs);
+  const base = b.veredicto;
+
+  // Guard anti-NaN: sin ejes efectivos válidos no se puede perturbar → no al filo.
+  if (!Number.isFinite(b.adrFinal) || b.adrFinal <= 0 || !Number.isFinite(b.occFinal)) {
+    return { base, alFilo: false, variablesSensibles: [] };
+  }
+
+  const flip: { label: string; estimacion: boolean }[] = [];
+
+  // Tarifa: ±Δ relativo sobre el ADR efectivo (override), ocupación intacta.
+  const tarifaFlip = [1, -1].some((s) => {
+    const adrOverride = Math.round(b.adrFinal * (1 + s * deltaTarifa));
+    return correr({ ...inputs, adrOverride }).veredicto !== base;
+  });
+  if (tarifaFlip) flip.push({ label: VAR_TARIFA, estimacion: opts.esEstimacion });
+
+  // Ocupación: ±Δ pp absolutos sobre la ocupación efectiva (override), ADR intacto.
+  const occFlip = [1, -1].some((s) => {
+    const occOverride = clampOcc(b.occFinal + s * deltaOccPp);
+    return correr({ ...inputs, occOverride }).veredicto !== base;
+  });
+  if (occFlip) flip.push({ label: VAR_OCUPACION, estimacion: opts.esEstimacion });
+
+  flip.sort((a, z) => Number(z.estimacion) - Number(a.estimacion));
+  return { base, alFilo: flip.length > 0, variablesSensibles: flip.map((f) => f.label) };
 }

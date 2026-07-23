@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
 import type { AnalisisInput } from "@/lib/types";
 import { getUFValue } from "@/lib/uf";
-import { createSupabaseServer, requireAuthenticatedUser } from "@/lib/api-helpers/analisis-pipeline";
-import { evaluarLtr } from "@/lib/dry-run/evaluar";
+import {
+  createSupabaseServer,
+  requireAuthenticatedUser,
+  buildAirbnbData,
+  type ShortTermAnalysisBody,
+} from "@/lib/api-helpers/analisis-pipeline";
+import { getAirbnbEstimate } from "@/lib/airbnb/get-estimate";
+import type { ShortTermInputs } from "@/lib/engines/short-term-engine";
+import {
+  evaluarLtr,
+  evaluarStr,
+  type StrScoreCtx,
+  STR_DELTA_TARIFA,
+  STR_DELTA_OCC_PP,
+} from "@/lib/dry-run/evaluar";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/analisis/dry-run — FASE 5
@@ -35,13 +48,83 @@ function rateLimited(userId: string): boolean {
 interface DryRunBody {
   modalidad?: "ltr" | "str" | "both";
   ltr?: AnalisisInput;
-  str?: Record<string, unknown>;
+  str?: ShortTermAnalysisBody;
   flags?: {
     arriendoEstimacion?: boolean;
     tasaPerturbable?: boolean; // solo si el usuario aceptó la tasa estimada
     tasaEstimacion?: boolean;
-    adrEstimacion?: boolean;
+    adrEstimacion?: boolean; // false = el usuario corrigió tarifa/ocupación en el Acto 3
   };
+}
+
+// Rama STR: reconstruye el input del motor sobre AirROI cacheado (mismo mapeo que
+// buildShortTermAnalysisRow, sin persistir ni cobrar) y delega a evaluarStr. Fallo
+// silencioso (AirROI caído / sin datos) → sin variables. No toca el builder de
+// producción: replica su mapeo, como el calib.
+async function evaluarStrBranch(
+  str: ShortTermAnalysisBody,
+  uf: number,
+  asOf: Date,
+  esEstimacion: boolean,
+): Promise<string[]> {
+  const airbnb = await getAirbnbEstimate(
+    str.direccion,
+    str.comuna ?? "",
+    str.dormitorios,
+    str.banos,
+    str.capacidadHuespedes || 2,
+  );
+  if (!airbnb.success) return []; // AirROI caído o sin datos → sin card
+  const airbnbData = buildAirbnbData(airbnb.data, uf);
+
+  const antiguedadEsFallback = str.antiguedad == null;
+  const antiguedadResuelta = str.antiguedad ?? (str.tipoPropiedad === "nuevo" ? 0 : 5);
+
+  const inputs: ShortTermInputs = {
+    precioCompra: str.precioCompra,
+    superficie: str.superficieUtil,
+    dormitorios: str.dormitorios,
+    banos: str.banos,
+    tipoPropiedad: typeof str.tipoPropiedad === "string" ? str.tipoPropiedad : undefined,
+    antiguedad: antiguedadResuelta,
+    antiguedadEsFallback,
+    comuna: typeof str.comuna === "string" ? str.comuna : undefined,
+    piePercent: str.piePct / 100,
+    tasaCredito: str.tasaInteres / 100,
+    plazoCredito: str.plazoCredito,
+    airbnbData,
+    modoGestion: str.modoGestion,
+    comisionAdministrador: str.comisionAdministrador,
+    tipoEdificio: str.tipoEdificio,
+    habilitacion: str.habilitacion,
+    adminPro: str.adminPro === true,
+    adrOverride: typeof str.adrOverride === "number" ? str.adrOverride : null,
+    occOverride: typeof str.occOverride === "number" ? str.occOverride : null,
+    costoElectricidad: str.costoElectricidad,
+    costoAgua: str.costoAgua,
+    costoWifi: str.costoWifi,
+    costoInsumos: str.costoInsumos,
+    gastosComunes: str.gastosComunes,
+    mantencion: str.mantencion,
+    contribuciones: str.contribuciones || 0,
+    costoAmoblamiento: str.estaAmoblado ? 0 : (str.costoAmoblamiento || 0),
+    arriendoLargoMensual: str.arriendoLargoMensual,
+    valorUF: uf,
+  };
+
+  const scoreCtx: StrScoreCtx = {
+    precioCompra: str.precioCompra,
+    dormitorios: str.dormitorios,
+    superficie: str.superficieUtil,
+    regulacionEdificio: str.edificioPermiteAirbnb || "no_seguro",
+    lat: typeof str.lat === "number" ? str.lat : -33.4378,
+    lng: typeof str.lng === "number" ? str.lng : -70.6504,
+    revenueP50: airbnbData.percentiles?.revenue?.p50 ?? airbnbData.estimated_annual_revenue ?? 0,
+    monthlyRevenue: Array.isArray(airbnbData.monthly_revenue) ? airbnbData.monthly_revenue : [],
+  };
+
+  const d = evaluarStr(inputs, scoreCtx, asOf, STR_DELTA_TARIFA, STR_DELTA_OCC_PP, { esEstimacion });
+  return d.variablesSensibles;
 }
 
 export async function POST(request: Request) {
@@ -72,9 +155,17 @@ export async function POST(request: Request) {
       for (const v of d.variablesSensibles) if (!variables.includes(v)) variables.push(v);
     }
 
-    // Rama STR (str / lado STR de both): se conecta al cablear la card (necesita
-    // la reconstrucción AirROI-cacheada). Hasta entonces no aporta variables.
-    // TODO(F5): evaluarStr(body.str, uf, DELTA, flags) con tarifa/ocupación.
+    // Rama STR (str / lado STR de both): reconstruye sobre AirROI cacheado y
+    // perturba tarifa (±10% rel) + ocupación (±5pp abs). En BOTH se une con LTR.
+    if (body.str && (body.modalidad === "str" || body.modalidad === "both")) {
+      const strVars = await evaluarStrBranch(
+        body.str,
+        uf,
+        asOf,
+        flags.adrEstimacion !== false,
+      );
+      for (const v of strVars) if (!variables.includes(v)) variables.push(v);
+    }
 
     return NextResponse.json({ alFilo: variables.length > 0, variablesSensibles: variables });
   } catch {
