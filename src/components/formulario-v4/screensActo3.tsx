@@ -48,9 +48,15 @@ function SupuestosDetails({ summary, children }: { summary: string; children: Re
 export function ArrScreen({ answers, data, answer, goDetour }: ScreenProps) {
   const sugerido = data.arriendoSugerido;
   const listo = sugerido != null && sugerido > 0;
-  const fuenteArr = data.arriendoN > 0
-    ? `mediana de ${data.arriendoN} arriendos comparables publicados en la zona`
-    : "estimación de mercado para la zona";
+  // Tres tramos según el tamaño de la muestra: robusta (≥10), muestra chica
+  // (1-9, con caveat honesto) y sin datos (0). Franco declara la procedencia real.
+  const n = data.arriendoN;
+  const fuenteArr =
+    n >= 10
+      ? `mediana de ${n} arriendos comparables publicados en la zona`
+      : n > 0
+        ? `mediana de solo ${n} ${n === 1 ? "arriendo comparable" : "arriendos comparables"} en la zona — muestra chica, ajústalo si conoces el arriendo real`
+        : "sin comparables publicados — estimación de mercado";
 
   const sup = parseDecimalLocale(answers.superficieUtil ?? "");
   const ggcc = data.ggccSugerido ?? getGgccFallback(answers.comuna ?? "", sup) ?? 0;

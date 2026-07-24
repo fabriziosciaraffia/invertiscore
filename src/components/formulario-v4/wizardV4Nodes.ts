@@ -371,7 +371,11 @@ export function nodeReacts(node: NodeId, a: WizardV4Answers): boolean {
 export function reactionText(node: NodeId, a: WizardV4Answers, live?: ReactionLive): string | null {
   switch (node) {
     case "dir":
-      return `Zona cubierta. ${live?.comparables ?? "N"} comparables detectados cerca.`;
+      // Mismo número y mismo rótulo que el badge del mapa ("propiedades en el
+      // sector") — es cobertura geográfica del sector, NO los comparables
+      // filtrados. "Comparables" se reserva para `arr` (mediana con su propio N,
+      // filtrado por superficie/dorm) para que ningún número cambie de nombre.
+      return `Zona cubierta. ${live?.comparables ?? "N"} propiedades en el sector.`;
     case "precio":
       return `≈ ${live?.precioCLP ?? "$X"} al valor UF de hoy. Ahora, la plata.`;
     case "plazo":
