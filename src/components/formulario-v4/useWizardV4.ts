@@ -13,9 +13,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  BRANCH_ACTO3,
   computeNext,
-  isBranchNode,
   nodeReacts,
   progressFor,
   type NodeId,
@@ -57,73 +55,6 @@ const DEFAULT_NAV: WizardV4Nav = {
   dir: "forward",
 };
 
-/** Valor previo del campo de rama de `node` (para detectar cambio en edición). */
-function branchPrevValue(node: NodeId, a: WizardV4Answers): unknown {
-  if (node === "mod") return a.modalidad;
-  if (node === "tipo") return a.tipoPropiedad;
-  if (node === "gate") return a.edificioPermiteAirbnb;
-  return undefined;
-}
-
-function branchChanged(node: NodeId, prev: unknown, a: WizardV4Answers): boolean {
-  if (node === "mod") return prev !== a.modalidad;
-  if (node === "tipo") return prev !== a.tipoPropiedad;
-  if (node === "gate") return prev !== a.edificioPermiteAirbnb;
-  return false;
-}
-
-/**
- * Invalida las respuestas aguas abajo tras editar un nodo de rama. Cambiar
- * modalidad borra toda la rama del Acto 3; cambiar tipo borra el ent/ant que ya
- * no aplica; poner gate="no" borra el adr (nace muerto → salida gateNo).
- */
-function clearDownstream(
-  node: NodeId,
-  a: WizardV4Answers,
-  completed: Partial<Record<NodeId, boolean>>,
-): { answers: WizardV4Answers; completed: Partial<Record<NodeId, boolean>> } {
-  if (node === "mod") {
-    const answers: WizardV4Answers = {
-      ...a,
-      edificioPermiteAirbnb: undefined,
-      arrModo: undefined,
-      adrModo: undefined,
-    };
-    const c = { ...completed };
-    for (const n of BRANCH_ACTO3) delete c[n];
-    return { answers, completed: c };
-  }
-  if (node === "tipo") {
-    const c = { ...completed };
-    if (a.tipoPropiedad === "nuevo") delete c["ant"];
-    else delete c["ent"];
-    return { answers: a, completed: c };
-  }
-  if (node === "gate" && a.edificioPermiteAirbnb === "no") {
-    const c = { ...completed };
-    delete c["adr"];
-    delete c["adrFix"];
-    return { answers: { ...a, adrModo: undefined }, completed: c };
-  }
-  return { answers: a, completed };
-}
-
-/** Primer nodo aún no completado siguiendo el flujo desde `node`, o "resumen". */
-function firstUncompletedAfter(
-  node: NodeId,
-  a: WizardV4Answers,
-  completed: Partial<Record<NodeId, boolean>>,
-): NodeId {
-  let n = computeNext(node, a);
-  const guard = new Set<NodeId>();
-  while (n && n !== "resumen" && !guard.has(n)) {
-    guard.add(n);
-    if (!completed[n]) return n;
-    n = computeNext(n, a);
-  }
-  return "resumen";
-}
-
 /** Callback de instrumentación (PostHog). El hook lo llama FUERA del updater de
  *  setNav — nada de side-effects en el reducer (evita doble-fire en StrictMode).
  *  El hook no conoce PostHog; solo emite nombres+props semánticos. */
@@ -143,8 +74,6 @@ export interface UseWizardV4 {
   goBack: () => void;
   /** Entra a una pantalla de corrección inline (tasaFix/arrFix/adrFix). */
   goDetour: (fix: NodeId, patch?: Partial<WizardV4Answers>) => void;
-  /** Abre una pantalla en modo edición desde el resumen (retorno directo). */
-  editField: (node: NodeId) => void;
   /** gateNo: cambia a renta larga e invalida la rama STR. */
   gateNoSwitchToLtr: () => void;
   /** gateNo: "me equivoqué, volver" → regresa al gate. */
@@ -237,86 +166,15 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
   }, []);
 
   const answer = useCallback((node: NodeId, patch?: Partial<WizardV4Answers>) => {
-    // Instrumentación FUERA del updater. En edición, responder vuelve al resumen
-    // (no es un paso del funnel) → solo se emite en flow/reask.
+    // Instrumentación FUERA del updater (evita doble-fire en StrictMode).
     const s0 = navRef.current;
-    if (s0.mode !== "edit") {
-      emit("wizard4_answered", { node, modalidad: patch?.modalidad ?? s0.answers.modalidad });
-    }
+    emit("wizard4_answered", { node, modalidad: patch?.modalidad ?? s0.answers.modalidad });
     setNav((s) => {
+      // El resumen (documento maestro, F6) edita inline; ya no hay modo edición
+      // ni reask hacia pantallas. answer() solo avanza el flujo por el grafo.
       const answers: WizardV4Answers = { ...s.answers, ...patch };
       const completed = { ...s.completed, [node]: true };
       const hasReaction = nodeReacts(node, answers);
-
-      // ── Modo edición: retorno directo al resumen, salvo que cambie una rama ──
-      if (s.mode === "edit") {
-        if (
-          isBranchNode(node) &&
-          s.editContext &&
-          branchChanged(node, s.editContext.prev, answers)
-        ) {
-          const cleared = clearDownstream(node, answers, completed);
-          const start = firstUncompletedAfter(node, cleared.answers, cleared.completed);
-          if (start !== "resumen") {
-            return {
-              ...s,
-              answers: cleared.answers,
-              completed: cleared.completed,
-              mode: "reask",
-              editContext: null,
-              current: start,
-              history: [],
-              reactionSource: null,
-              dir: "forward",
-            };
-          }
-          return {
-            ...s,
-            answers: cleared.answers,
-            completed: cleared.completed,
-            mode: "flow",
-            editContext: null,
-            current: "resumen",
-            history: [],
-            reactionSource: null,
-            dir: "forward",
-          };
-        }
-        // Edición normal de un campo → vuelve al resumen.
-        return {
-          ...s,
-          answers,
-          completed,
-          mode: "flow",
-          editContext: null,
-          current: "resumen",
-          history: [],
-          reactionSource: null,
-          dir: "forward",
-        };
-      }
-
-      // ── Modo reask: recorre la rama nueva; salta lo ya completado; termina en resumen ──
-      if (s.mode === "reask") {
-        let next = computeNext(node, answers) ?? "resumen";
-        const guard = new Set<NodeId>();
-        while (next !== "resumen" && completed[next] && !guard.has(next)) {
-          guard.add(next);
-          next = computeNext(next, answers) ?? "resumen";
-        }
-        return {
-          ...s,
-          answers,
-          completed,
-          history: [...s.history, s.current],
-          current: next,
-          mode: next === "resumen" ? "flow" : "reask",
-          reactionSource: hasReaction ? node : null,
-          dir: "forward",
-        };
-      }
-
-      // ── Modo flow: siguiente según el grafo ──
       const next = computeNext(node, answers) ?? "resumen";
       return {
         ...s,
@@ -324,7 +182,6 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
         completed,
         history: [...s.history, s.current],
         current: next,
-        mode: "flow",
         reactionSource: hasReaction ? node : null,
         dir: "forward",
       };
@@ -333,11 +190,11 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
 
   const goBack = useCallback(() => {
     const s0 = navRef.current;
-    if (s0.mode !== "edit" && s0.history.length > 0) {
+    if (s0.history.length > 0) {
       emit("wizard4_back", { from: s0.current, to: s0.history[s0.history.length - 1] });
     }
     setNav((s) => {
-      if (s.mode === "edit" || s.history.length === 0) return s;
+      if (s.history.length === 0) return s;
       const history = s.history.slice(0, -1);
       const current = s.history[s.history.length - 1];
       return { ...s, current, history, dir: "back", reactionSource: null };
@@ -353,19 +210,6 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
       answers: patch ? { ...s.answers, ...patch } : s.answers,
       history: [...s.history, s.current],
       current: fix,
-      reactionSource: null,
-      dir: "forward",
-    }));
-  }, [emit]);
-
-  const editField = useCallback((node: NodeId) => {
-    emit("wizard4_edit_from_summary", { field: node });
-    setNav((s) => ({
-      ...s,
-      mode: "edit",
-      editContext: { node, prev: branchPrevValue(node, s.answers) },
-      current: node,
-      history: [],
       reactionSource: null,
       dir: "forward",
     }));
@@ -396,7 +240,6 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
         completed,
         history: [...s.history, s.current],
         current,
-        mode: current === "resumen" ? "flow" : s.mode === "reask" ? "reask" : "flow",
         reactionSource: null,
         dir: "forward",
       };
@@ -438,10 +281,9 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
     setNav(DEFAULT_NAV);
   }, []);
 
-  // Chevron atrás: oculto en primera pantalla (sin historial) y en modo edición.
-  // El resumen SÍ lleva chevron (CAMBIO-5): semántica = volver al último nodo del
-  // historial (atrás puro). Los lápices son la vía de edición dirigida (F4).
-  const canGoBack = nav.mode !== "edit" && nav.history.length > 0;
+  // Chevron atrás: oculto solo en la primera pantalla (sin historial). El resumen
+  // SÍ lleva chevron (semántica = volver al último nodo del historial).
+  const canGoBack = nav.history.length > 0;
 
   // Barra de progreso MONOTÓNICA: nunca retrocede. Al elegir el informe
   // comparativo el denominador crece (contador honesto "9 de 13"), pero si el %
@@ -460,7 +302,6 @@ export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: Wi
     answer,
     goBack,
     goDetour,
-    editField,
     gateNoSwitchToLtr,
     gateNoBack,
     resumeDraft,

@@ -77,10 +77,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
   const { tier, isLoggedIn } = useWizardV4Tier();
 
   const acto = ACTO_BY_NODE[nav.current];
-  // En modo edición el usuario saltó a un campo suelto desde el resumen — el
-  // rótulo de acto secuencial ("ACTO 2 · …") confunde (no está avanzando el
-  // flujo). Se reemplaza por un rótulo de contexto de edición.
-  const actoLabel = nav.mode === "edit" ? "EDITANDO" : ACTO_LABEL[acto];
+  const actoLabel = ACTO_LABEL[acto];
   // Chip de modalidad: persistente desde que se elige el informe, para que el
   // usuario nunca olvide qué está armando. Ink (no Signal Red — no es atención).
   const modLabel = nav.answers.modalidad ? MOD_CHIP[nav.answers.modalidad] : null;

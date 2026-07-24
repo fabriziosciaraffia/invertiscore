@@ -183,6 +183,7 @@ function NumField({
   tag,
   fuente,
   derived,
+  highlight,
   onCommit,
 }: {
   label: string;
@@ -194,10 +195,13 @@ function NumField({
   tag?: string;
   fuente?: string;
   derived?: string;
+  /** Anillo Signal Red transitorio cuando la card al-filo apunta a este campo. */
+  highlight?: boolean;
   onCommit: (v: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   return (
+    <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
     <FieldShell label={label} fuente={fuente}>
       {editing ? (
         <InlineInput
@@ -213,6 +217,7 @@ function NumField({
       )}
       {derived && <DerivedLine text={derived} />}
     </FieldShell>
+    </div>
   );
 }
 
@@ -402,6 +407,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const [editingDir, setEditingDir] = useState(false);
   const [editingTipo, setEditingTipo] = useState(false);
   const [editingMod, setEditingMod] = useState(false);
+  // R4: campo iluminado transitoriamente cuando la card al-filo apunta-adentro.
+  const [highlight, setHighlight] = useState<string | null>(null);
 
   const dryRun = useWizardV4DryRun(a, data);
   const alFilo = dryRun.alFilo && dryRun.variablesSensibles.length > 0;
@@ -563,6 +570,25 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     setCascade((prev) => (prev[c] ? { ...prev, [c]: "" } : prev));
   };
 
+  // Nivel 3: emite summary_level_opened solo al ABRIR (dato para futura poda).
+  const openDetalle = () => {
+    setDetalleOpen((o) => { if (!o) trackWizard(posthog, "wizard4_summary_level_opened", { card: "01", nivel: 3 }); return !o; });
+  };
+  const openL3 = (which: "sup" | "gest") => {
+    setL3((v) => { const next = v === which ? null : which; if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: "03", nivel: 3 }); return next; });
+  };
+
+  // Card al-filo apunta-adentro (R4): abre la card de la 1ª variable sensible y
+  // la ilumina ~1.5s.
+  const onAlfiloTap = () => {
+    const field = FIELD_FOR_VAR[dryRun.variablesSensibles[0]];
+    if (!field) return;
+    const card = FIELD_CARD[field];
+    if (card) { setOpenCard(card); setCascade((c) => (c[card] ? { ...c, [card]: "" } : c)); }
+    setHighlight(field);
+    window.setTimeout(() => setHighlight(null), 1500);
+  };
+
   // Validador % (0-99, tolera coma para tasa).
   const pctInt = (v: string) => v.replace(/\D/g, "").slice(0, 2);
   const tasaInput = (v: string) => v.replace(/[^\d,]/g, "").slice(0, 5);
@@ -615,7 +641,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             label="Precio" raw={fmtMiles(a.precio ?? "")} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
             derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: fmtMiles(v) })}
           />
-          <Nivel3 title="Detalle del depto" open={detalleOpen} onToggle={() => setDetalleOpen((o) => !o)}>
+          <Nivel3 title="Detalle del depto" open={detalleOpen} onToggle={openDetalle}>
             {/* Tipo: estructural → chips inline (muta el detalle + recalcula subsidio). */}
             <FieldShell label="Tipo">
               {editingTipo ? (
@@ -660,7 +686,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           ) : (
             <NumField
               label="Tasa" raw={a.tasaInteres ?? ""} display={a.tasaInteres ? `${a.tasaInteres}%` : "—"} suffix="%" inputMode="decimal" format={tasaInput}
-              tag={tasaTag} derived={cuotaStr}
+              tag={tasaTag} derived={cuotaStr} highlight={highlight === "tasa"}
               onCommit={(v) => commitEdit("tasa", { tasaModo: "preaprobada", tasaInteres: v })}
             />
           )}
@@ -696,7 +722,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             <NumField
               label="Arriendo" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
               tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
-              fuente={fuenteArriendo(data.arriendoN)}
+              fuente={fuenteArriendo(data.arriendoN)} highlight={highlight === "arr"}
               onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
             />
           )}
@@ -705,19 +731,19 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
               <NumField
                 label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? String(sugTarifa || ""))} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
-                fuente="datos de mercado Airbnb de la zona, últimos 90 días"
+                fuente="datos de mercado Airbnb de la zona, últimos 90 días" highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrTarifa: fmtMiles(v), adrModo: "corregir" })}
               />
               <NumField
                 label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={occVal > 0 ? `${occVal}%` : "—"} suffix="%" format={pctInt}
-                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
+                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"} highlight={highlight === "adr"}
                 onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
             </>
           )}
 
           {esLtr && (
-            <Nivel3 title="Supuestos del arriendo" open={l3 === "sup"} onToggle={() => setL3((v) => (v === "sup" ? null : "sup"))}>
+            <Nivel3 title="Supuestos del arriendo" open={l3 === "sup"} onToggle={() => openL3("sup")}>
               <NumField label="Gastos comunes" raw={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))} display={`$${fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}/mes`} suffix="$" tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: fmtMiles(v) })} />
               <NumField label="Contribuciones (trim.)" raw={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))} display={`$${fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}`} suffix="$" tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: fmtMiles(v) })} />
               <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
@@ -725,7 +751,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             </Nivel3>
           )}
           {esStr && (
-            <Nivel3 title="Gestión y costos" open={l3 === "gest"} onToggle={() => setL3((v) => (v === "gest" ? null : "gest"))}>
+            <Nivel3 title="Gestión y costos" open={l3 === "gest"} onToggle={() => openL3("gest")}>
               <NumField label="Costos operativos" raw={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))} display={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} suffix="$" tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: fmtMiles(v) })} />
               <NumField label="Mantención" raw={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} display={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} suffix="$" tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: fmtMiles(v) })} />
               <NumField label="Amoblamiento (capex)" raw={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} display={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} suffix="$" tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: fmtMiles(v) })} />
@@ -735,10 +761,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       </div>
 
       {alFilo && (
-        <div className="mt-4 lg:hidden rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+        <button type="button" onClick={onAlfiloTap} className="mt-4 lg:hidden w-full text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
-          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Si no estás seguro, tócalo antes de generar.</p>
-        </div>
+          <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
+        </button>
       )}
 
       {error && (
@@ -751,10 +777,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       <div className="hidden lg:grid grid-cols-2 gap-4 items-stretch mt-4">
         <div>
           {alFilo && (
-            <div className="h-full rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+            <button type="button" onClick={onAlfiloTap} className="h-full w-full text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
               <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
-              <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Revísalo antes de generar.</p>
-            </div>
+              <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
+            </button>
           )}
         </div>
         <div className="flex flex-col items-stretch justify-end gap-1.5">
