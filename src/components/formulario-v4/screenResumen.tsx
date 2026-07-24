@@ -757,28 +757,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             </>
           )}
 
-          {/* ── Nivel 2 · RENTA CORTA: gate (interruptor de existencia STR) + tarifa + ocupación ── */}
+          {/* ── Nivel 2 · RENTA CORTA: tarifa + ocupación (el gate bajó a Operación renta corta) ── */}
           {esStr && (
             <>
               {esLtr && <Subtitulo>Renta corta</Subtitulo>}
-              {gatePorCompletar ? (
-                <FieldShell label="Edificio permite Airbnb · por completar">
-                  <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
-                    {(["si", "no", "no_seguro"] as const).map((g) => (
-                      <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
-                        className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-                        {LABEL_GATE[g]}
-                      </button>
-                    ))}
-                  </div>
-                </FieldShell>
-              ) : (
-                <ChipsField
-                  label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
-                  options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
-                  onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
-                />
-              )}
               <NumField
                 label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? String(sugTarifa || ""))} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
@@ -800,7 +782,28 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             </Nivel3>
           )}
           {esStr && (
-            <Nivel3 title="Operación renta corta" open={l3 === "gest"} onToggle={() => openL3("gest")}>
+            // Si el gate está POR COMPLETAR (tras cambiar de modalidad) se fuerza
+            // abierto para que el usuario lo vea y desbloquee generar.
+            <Nivel3 title="Operación renta corta" open={l3 === "gest" || gatePorCompletar} onToggle={() => openL3("gest")}>
+              {/* Gate: interruptor de existencia de la mitad STR — primer campo del bloque. */}
+              {gatePorCompletar ? (
+                <FieldShell label="Edificio permite Airbnb · por completar">
+                  <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
+                    {(["si", "no", "no_seguro"] as const).map((g) => (
+                      <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
+                        className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+                        {LABEL_GATE[g]}
+                      </button>
+                    ))}
+                  </div>
+                </FieldShell>
+              ) : (
+                <ChipsField
+                  label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
+                  options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
+                  onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
+                />
+              )}
               <NumField label="Costos operativos" raw={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))} display={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} suffix="$" tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: fmtMiles(v) })} />
               <NumField label="Mantención" raw={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} display={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} suffix="$" tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: fmtMiles(v) })} />
               <NumField label="Amoblamiento (capex)" raw={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} display={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} suffix="$" tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: fmtMiles(v) })} />
