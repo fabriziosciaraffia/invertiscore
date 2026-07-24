@@ -136,13 +136,19 @@ export function WizardV4({ resume }: { resume: boolean }) {
     goDetour: w.goDetour,
   };
 
+  // El resumen (documento maestro) usa contenedor propio ancho (~1160px, deja
+  // ~100px de margen por lado en 1366) para que las 3 cards respiren y no hagan
+  // wrap agresivo. Las pantallas de pregunta siguen angostas (foco en 1 decisión).
+  const esResumen = nav.current === "resumen";
+
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <UnifiedNav variant="app" />
 
-      <main className="wizard4-main max-w-3xl mx-auto px-4 md:px-8 py-6 md:py-12">
-        {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3). */}
-        <div className="wizard4-headcard mb-8 rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm p-5 md:p-6">
+      <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-3 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
+        {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).
+            En el resumen (ancho, denso) se compacta el margen para caber en 1366x768. */}
+        <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-5" : "p-5 md:p-6 mb-8"}`}>
           <div className="flex items-center gap-3 mb-4 min-w-0">
             {w.canGoBack && (
               <button
@@ -198,7 +204,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
           <div key={nav.current} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            <h1 className="wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 mb-6 leading-tight">
+            <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-4" : "mb-6"}`}>
               {NODE_TITLE[nav.current]}
             </h1>
 

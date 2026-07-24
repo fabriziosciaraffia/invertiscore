@@ -595,9 +595,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const tasaInput = (v: string) => v.replace(/[^\d,]/g, "").slice(0, 5);
 
   return (
-    <div className="pb-44 lg:pb-8">
+    <div className="pb-44 lg:pb-1">
       {/* Header: chip de informe editable — tap abre el selector de modalidad. */}
-      <div className="mb-5">
+      <div className="mb-4">
         <button
           type="button"
           onClick={() => setEditingMod((o) => !o)}
@@ -780,17 +780,17 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         </div>
       )}
 
-      {/* Desktop: fila final al-filo (izq) + generar (der). */}
-      <div className="hidden lg:grid grid-cols-2 gap-4 items-stretch mt-4">
-        <div>
-          {alFilo && (
-            <button type="button" onClick={onAlfiloTap} className="h-full w-full text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
-              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
-              <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
-            </button>
-          )}
-        </div>
-        <div className="flex flex-col items-stretch justify-end gap-1.5">
+      {/* Desktop: fila final. Al-filo (si hay) crece a la izquierda; el CTA va
+          capado (~360px) para no volverse gigante al ancho nuevo. Sin al-filo,
+          el CTA queda centrado. */}
+      <div className="hidden lg:flex items-stretch justify-center gap-4 mt-4">
+        {alFilo && (
+          <button type="button" onClick={onAlfiloTap} className="flex-1 max-w-[760px] text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+            <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
+            <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">Una diferencia pequeña cambia el veredicto. Tócalo para ir directo a revisarlo.</p>
+          </button>
+        )}
+        <div className="w-full max-w-[360px] shrink-0 flex flex-col justify-end gap-1.5">
           <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
         </div>
