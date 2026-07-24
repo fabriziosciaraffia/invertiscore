@@ -145,7 +145,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
     <div className="min-h-screen bg-[var(--franco-bg)]">
       <UnifiedNav variant="app" />
 
-      <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-3 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
+      <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-1 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).
             En el resumen (ancho, denso) se compacta el margen para caber en 1366x768. */}
         <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-5" : "p-5 md:p-6 mb-8"}`}>

@@ -27,12 +27,11 @@ import { SINGLE_PRICE } from "@/lib/pricing";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
-import { antiguedadToNumber } from "@/components/formulario-v3/wizardV3State";
 import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
 import { COMUNAS } from "@/lib/comunas";
 import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
-import type { WizardV4Answers } from "./wizardV4Nodes";
+import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
@@ -74,6 +73,7 @@ const FIELD_FOR_VAR: Record<string, string> = {
 // Campo → card (para limpiar la nota de cascada al interactuar con esa card).
 const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
   precio: "01", gastosComunes: "01", contribuciones: "01",
+  entrega: "01", antiguedad: "01", tam: "01", estac: "01", bodega: "01",
   pie: "02", plazo: "02", tasa: "02",
   gate: "03", arr: "03", adr: "03",
   vacanciaPct: "03", comisionAdminPct: "03",
@@ -82,23 +82,15 @@ const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
 
 // ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
 
-function FieldShell({ label, children, fuente }: { label: string; children: ReactNode; fuente?: string }) {
+function FieldShell({ label, children, fuente, showFuente }: { label: string; children: ReactNode; fuente?: string; showFuente?: boolean }) {
   return (
-    <div className="py-2 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
+    <div className="py-1 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
       <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--franco-text-muted)] m-0 mb-0.5">{label}</p>
       {children}
-      {fuente && <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-0.5 leading-snug">{fuente}</p>}
+      {/* R7: la fuente/procedencia aparece SOLO con el editor abierto, no en reposo.
+          Los tags (· estimado / · corregido) sí quedan siempre visibles. */}
+      {fuente && showFuente && <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-1 leading-snug">{fuente}</p>}
     </div>
-  );
-}
-
-/** Campo estático (no editable) — dirección en R2 (estructural, edita en R3). */
-function StaticField({ label, value, derived, fuente }: { label: string; value: string; derived?: string; fuente?: string }) {
-  return (
-    <FieldShell label={label} fuente={fuente}>
-      <p className="font-mono text-[14px] text-[var(--franco-text)] m-0 leading-snug break-words">{value}</p>
-      {derived && <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0 mt-0.5">{derived}</p>}
-    </FieldShell>
   );
 }
 
@@ -110,6 +102,50 @@ function DerivedLine({ text }: { text: string }) {
 /** Tag "· estimado" / "· corregido por ti" / "· con subsidio". */
 function Tag({ tag }: { tag?: string }) {
   return tag ? <span className="text-[var(--franco-text-muted)] text-[11px]"> · {tag}</span> : null;
+}
+
+/** Subtítulo de agrupación por pertenencia dentro de una card (solo AMBAS). */
+function Subtitulo({ children }: { children: ReactNode }) {
+  return <p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--franco-text-tertiary)] m-0 mt-2 mb-0.5 first:mt-0">{children}</p>;
+}
+
+const ANTIGUEDADES: Array<{ value: Antiguedad; label: string }> = [
+  { value: "0-2", label: "0–2 años" }, { value: "3-5", label: "3–5 años" }, { value: "6-10", label: "6–10 años" }, { value: "11-20", label: "11–20 años" }, { value: "20+", label: "20+ años" },
+];
+
+const chipCls = (active: boolean) =>
+  `font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${active ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"}`;
+
+/** Editor compuesto de tamaño: superficie + dormitorios + baños. Los sub-campos
+ *  patchean en vivo; "Listo" cierra y emite el commit. */
+function TamanoField({ a, patch, onCommit }: { a: WizardV4Answers; patch: (p: Partial<WizardV4Answers>) => void; onCommit: () => void }) {
+  const [editing, setEditing] = useState(false);
+  const sup = parseDecimalLocale(a.superficieUtil ?? "");
+  const display = sup > 0 ? `${a.superficieUtil} m² · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
+  return (
+    <FieldShell label="Tamaño">
+      {editing ? (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input autoFocus value={a.superficieUtil ?? ""} inputMode="decimal"
+              onChange={(e) => { const v = e.target.value; if (v === "" || /^[\d.,]*$/.test(v)) patch({ superficieUtil: v }); }}
+              className="w-[90px] h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-mono text-[14px] text-[var(--franco-text)] focus:outline-none" />
+            <span className="font-mono text-[11px] text-[var(--franco-text-muted)]">m²</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => patch({ esStudio: true, dormitorios: "0" })} className={chipCls(!!a.esStudio)}>Studio</button>
+            {["1", "2", "3", "4"].map((d) => <button key={d} type="button" onClick={() => patch({ esStudio: false, dormitorios: d })} className={chipCls(!a.esStudio && a.dormitorios === d)}>{d === "4" ? "4+" : d}D</button>)}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {["1", "2", "3"].map((b) => <button key={b} type="button" onClick={() => patch({ banos: b })} className={chipCls(a.banos === b)}>{b}B</button>)}
+          </div>
+          <button type="button" onClick={() => { setEditing(false); onCommit(); }} className="self-start font-mono text-[11px] uppercase tracking-[0.08em] text-signal-red mt-1">✓ Listo</button>
+        </div>
+      ) : (
+        <EditableDisplay text={display} onStart={() => setEditing(true)} />
+      )}
+    </FieldShell>
+  );
 }
 
 /** Display editable: valor con punteado + lápiz + tinte rojo en hover. */
@@ -203,7 +239,7 @@ function NumField({
   const [editing, setEditing] = useState(false);
   return (
     <div className={highlight ? "rounded-lg -mx-1 px-1 ring-2 ring-signal-red transition-shadow duration-300" : ""}>
-    <FieldShell label={label} fuente={fuente}>
+    <FieldShell label={label} fuente={fuente} showFuente={editing}>
       {editing ? (
         <InlineInput
           initial={raw}
@@ -241,7 +277,7 @@ function ChipsField<T extends string>({
   const [editing, setEditing] = useState(false);
   const current = options.find((o) => o.value === value)?.label ?? "—";
   return (
-    <FieldShell label={label} fuente={fuente}>
+    <FieldShell label={label} fuente={fuente} showFuente={editing}>
       {editing ? (
         <div className="flex flex-wrap gap-1.5">
           {options.map((o) => (
@@ -459,17 +495,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const cuota = cuotaCLP(a, data.ufCLP);
   const cuotaStr = cuota > 0 ? `Cuota ≈ ${fmtCLP(cuota)}/mes · calculada` : undefined;
   const sup = parseDecimalLocale(a.superficieUtil ?? "");
-  const tamStr = sup > 0 ? `${a.superficieUtil} m² · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
 
   const conSubsidio = subsidioAplicadoV4(a, data.tasaMercado);
   const tasaTag = conSubsidio ? "con subsidio" : a.tasaModo === "preaprobada" ? "corregido por ti" : a.tasaModo === "estimada" ? "estimado" : undefined;
 
   // Detalle del depto (nivel 3 · card 01).
   const tipoStr = a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—";
-  const entregaAntig =
-    a.tipoPropiedad === "nuevo"
-      ? a.estadoVenta === "futura" && a.fechaEntregaMes && a.fechaEntregaAnio ? `Entrega ${a.fechaEntregaMes}/${a.fechaEntregaAnio}` : "Entrega inmediata"
-      : a.antiguedad ? `${antiguedadToNumber(a.antiguedad)} años` : "—";
   const nEstac = Number(a.estacionamientos) || 0;
   const nBodega = Number(a.bodegas) || 0;
 
@@ -658,9 +689,17 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
                 <EditableDisplay text={tipoStr} onStart={() => setEditingTipo(true)} />
               )}
             </FieldShell>
-            <StaticField label={a.tipoPropiedad === "nuevo" ? "Entrega" : "Antigüedad"} value={entregaAntig} />
-            <StaticField label="Tamaño" value={tamStr} />
-            <StaticField label="Estacionamiento y bodega" value={`${nEstac} estac · ${nBodega} bodega`} />
+            {a.tipoPropiedad === "nuevo" ? (
+              <ChipsField label="Entrega" value={a.estadoVenta}
+                options={[{ value: "inmediata" as const, label: "Inmediata" }, { value: "futura" as const, label: "Futura" }]}
+                onCommit={(v) => commitEdit("entrega", { estadoVenta: v })} />
+            ) : (
+              <ChipsField label="Antigüedad" value={a.antiguedad} options={ANTIGUEDADES}
+                onCommit={(v) => commitEdit("antiguedad", { antiguedad: v })} />
+            )}
+            <TamanoField a={a} patch={w.patchAnswers} onCommit={() => commitEdit("tam", {})} />
+            <NumField label="Estacionamientos" raw={nEstac ? String(nEstac) : ""} display={String(nEstac)} suffix="" format={(v) => v.replace(/\D/g, "").slice(0, 1)} onCommit={(v) => commitEdit("estac", { estacionamientos: v })} />
+            <NumField label="Bodegas" raw={nBodega ? String(nBodega) : ""} display={String(nBodega)} suffix="" format={(v) => v.replace(/\D/g, "").slice(0, 1)} onCommit={(v) => commitEdit("bodega", { bodegas: v })} />
           </Nivel3>
           {/* Gastos del depto: GGCC + contribuciones son del inmueble, no de la
               modalidad → viven acá en las 3 modalidades (taxonomía de v3 "Comunes"). */}
@@ -703,38 +742,43 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         {/* 03 · Cómo lo rentabilizas */}
         <ActCard num="03" title="Cómo lo rentabilizas" summaryLine={summary03} open={openCard === "03"} onToggle={() => toggleCard("03")}>
           {cascade["03"] && <CascadeNote text={cascade["03"]} />}
-          {esStr && (
-            gatePorCompletar ? (
-              // POR COMPLETAR: tras cambiar a una modalidad STR, el gate no tiene
-              // estimación posible → hay que responderlo. Bloquea generar.
-              <FieldShell label="Edificio permite Airbnb · por completar">
-                <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
-                  {(["si", "no", "no_seguro"] as const).map((g) => (
-                    <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
-                      className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
-                      {LABEL_GATE[g]}
-                    </button>
-                  ))}
-                </div>
-              </FieldShell>
-            ) : (
-              <ChipsField
-                label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
-                options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
-                onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
-              />
-            )
-          )}
+
+          {/* ── Nivel 2 · RENTA LARGA: arriendo + vacancia (la vacancia subió acá) ── */}
           {esLtr && (
-            <NumField
-              label="Arriendo" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
-              tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
-              fuente={fuenteArriendo(data.arriendoN)} highlight={highlight === "arr"}
-              onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
-            />
+            <>
+              {esStr && <Subtitulo>Renta larga</Subtitulo>}
+              <NumField
+                label="Arriendo mensual" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
+                tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
+                fuente={fuenteArriendo(data.arriendoN)} highlight={highlight === "arr"}
+                onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
+              />
+              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+            </>
           )}
+
+          {/* ── Nivel 2 · RENTA CORTA: gate (interruptor de existencia STR) + tarifa + ocupación ── */}
           {esStr && (
             <>
+              {esLtr && <Subtitulo>Renta corta</Subtitulo>}
+              {gatePorCompletar ? (
+                <FieldShell label="Edificio permite Airbnb · por completar">
+                  <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
+                    {(["si", "no", "no_seguro"] as const).map((g) => (
+                      <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
+                        className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+                        {LABEL_GATE[g]}
+                      </button>
+                    ))}
+                  </div>
+                </FieldShell>
+              ) : (
+                <ChipsField
+                  label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
+                  options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
+                  onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
+                />
+              )}
               <NumField
                 label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? String(sugTarifa || ""))} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
                 tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
@@ -749,16 +793,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             </>
           )}
 
+          {/* ── Nivel 3 · operación (título "Operación renta larga/corta" siempre) ── */}
           {esLtr && (
-            // En AMBAS el eyebrow "Solo renta larga" desambigua la pertenencia; en
-            // LTR puro no hay ambigüedad → título neutro.
-            <Nivel3 title={esStr ? "Solo renta larga" : "Supuestos del arriendo"} open={l3 === "sup"} onToggle={() => openL3("sup")}>
-              <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
+            <Nivel3 title="Operación renta larga" open={l3 === "sup"} onToggle={() => openL3("sup")}>
               <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={`${a.comisionAdminPct ?? "0"}%`} suffix="%" format={pctInt} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </Nivel3>
           )}
           {esStr && (
-            <Nivel3 title={esLtr ? "Solo renta corta" : "Gestión y costos"} open={l3 === "gest"} onToggle={() => openL3("gest")}>
+            <Nivel3 title="Operación renta corta" open={l3 === "gest"} onToggle={() => openL3("gest")}>
               <NumField label="Costos operativos" raw={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))} display={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} suffix="$" tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: fmtMiles(v) })} />
               <NumField label="Mantención" raw={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} display={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} suffix="$" tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: fmtMiles(v) })} />
               <NumField label="Amoblamiento (capex)" raw={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} display={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} suffix="$" tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: fmtMiles(v) })} />
@@ -783,7 +825,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       {/* Desktop: fila final. Al-filo (si hay) crece a la izquierda; el CTA va
           capado (~360px) para no volverse gigante al ancho nuevo. Sin al-filo,
           el CTA queda centrado. */}
-      <div className="hidden lg:flex items-stretch justify-center gap-4 mt-4">
+      <div className="hidden lg:flex items-stretch justify-center gap-4 mt-2">
         {alFilo && (
           <button type="button" onClick={onAlfiloTap} className="flex-1 max-w-[760px] text-left rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
             <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}</p>
