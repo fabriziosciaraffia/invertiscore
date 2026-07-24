@@ -73,9 +73,10 @@ const FIELD_FOR_VAR: Record<string, string> = {
 
 // Campo → card (para limpiar la nota de cascada al interactuar con esa card).
 const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
-  precio: "01", pie: "02", plazo: "02", tasa: "02",
+  precio: "01", gastosComunes: "01", contribuciones: "01",
+  pie: "02", plazo: "02", tasa: "02",
   gate: "03", arr: "03", adr: "03",
-  gastosComunes: "03", contribuciones: "03", vacanciaPct: "03", comisionAdminPct: "03",
+  vacanciaPct: "03", comisionAdminPct: "03",
   costoInsumos: "03", mantencionStr: "03", costoAmoblamiento: "03",
 };
 
@@ -367,7 +368,7 @@ function Nivel3({ title, open, onToggle, children }: { title: string; open: bool
 
 function ActCard({ num, title, summaryLine, open, onToggle, children }: { num: string; title: string; summaryLine: string; open: boolean; onToggle: () => void; children: ReactNode }) {
   return (
-    <section className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm overflow-hidden">
+    <section className="h-full rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={onToggle}
@@ -400,8 +401,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // Acordeón mobile: las 3 cards nacen COLAPSADAS (la línea-resumen es la
   // revisión de un vistazo). Desktop las muestra todas. null = ninguna abierta.
   const [openCard, setOpenCard] = useState<"01" | "02" | "03" | null>(null);
-  const [detalleOpen, setDetalleOpen] = useState(false);
-  const [l3, setL3] = useState<"sup" | "gest" | null>(null);
+  const [l3c01, setL3c01] = useState<"detalle" | "gastos" | null>(null); // card 01 acordeón
+  const [l3, setL3] = useState<"sup" | "gest" | null>(null); // card 03 acordeón
   // R3: notas de cascada por card (viven hasta la próxima interacción con la card).
   const [cascade, setCascade] = useState<Record<string, string>>({});
   const [editingDir, setEditingDir] = useState(false);
@@ -571,8 +572,8 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   };
 
   // Nivel 3: emite summary_level_opened solo al ABRIR (dato para futura poda).
-  const openDetalle = () => {
-    setDetalleOpen((o) => { if (!o) trackWizard(posthog, "wizard4_summary_level_opened", { card: "01", nivel: 3 }); return !o; });
+  const openL3c01 = (which: "detalle" | "gastos") => {
+    setL3c01((v) => { const next = v === which ? null : which; if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: "01", nivel: 3 }); return next; });
   };
   const openL3 = (which: "sup" | "gest") => {
     setL3((v) => { const next = v === which ? null : which; if (next) trackWizard(posthog, "wizard4_summary_level_opened", { card: "03", nivel: 3 }); return next; });
@@ -626,7 +627,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         {/* 01 · Qué compras */}
         <ActCard num="01" title="Qué compras" summaryLine={summary01} open={openCard === "01"} onToggle={() => toggleCard("01")}>
           {/* Dirección: editor inline = Places embebido con gate de cobertura. */}
@@ -641,7 +642,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             label="Precio" raw={fmtMiles(a.precio ?? "")} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
             derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: fmtMiles(v) })}
           />
-          <Nivel3 title="Detalle del depto" open={detalleOpen} onToggle={openDetalle}>
+          <Nivel3 title="Detalle del depto" open={l3c01 === "detalle"} onToggle={() => openL3c01("detalle")}>
             {/* Tipo: estructural → chips inline (muta el detalle + recalcula subsidio). */}
             <FieldShell label="Tipo">
               {editingTipo ? (
@@ -660,6 +661,12 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
             <StaticField label={a.tipoPropiedad === "nuevo" ? "Entrega" : "Antigüedad"} value={entregaAntig} />
             <StaticField label="Tamaño" value={tamStr} />
             <StaticField label="Estacionamiento y bodega" value={`${nEstac} estac · ${nBodega} bodega`} />
+          </Nivel3>
+          {/* Gastos del depto: GGCC + contribuciones son del inmueble, no de la
+              modalidad → viven acá en las 3 modalidades (taxonomía de v3 "Comunes"). */}
+          <Nivel3 title="Gastos del depto" open={l3c01 === "gastos"} onToggle={() => openL3c01("gastos")}>
+            <NumField label="Gastos comunes" raw={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))} display={`$${fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}/mes`} suffix="$" tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: fmtMiles(v) })} />
+            <NumField label="Contribuciones (trim.)" raw={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))} display={`$${fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}`} suffix="$" tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: fmtMiles(v) })} />
           </Nivel3>
         </ActCard>
 
@@ -743,15 +750,15 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           )}
 
           {esLtr && (
-            <Nivel3 title="Supuestos del arriendo" open={l3 === "sup"} onToggle={() => openL3("sup")}>
-              <NumField label="Gastos comunes" raw={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))} display={`$${fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}/mes`} suffix="$" tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" onCommit={(v) => commitEdit("gastosComunes", { gastosComunes: fmtMiles(v) })} />
-              <NumField label="Contribuciones (trim.)" raw={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))} display={`$${fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}`} suffix="$" tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" onCommit={(v) => commitEdit("contribuciones", { contribuciones: fmtMiles(v) })} />
+            // En AMBAS el eyebrow "Solo renta larga" desambigua la pertenencia; en
+            // LTR puro no hay ambigüedad → título neutro.
+            <Nivel3 title={esStr ? "Solo renta larga" : "Supuestos del arriendo"} open={l3 === "sup"} onToggle={() => openL3("sup")}>
               <NumField label="Vacancia" raw={a.vacanciaPct ?? "5"} display={`${a.vacanciaPct ?? "5"}%`} suffix="%" format={pctInt} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" onCommit={(v) => commitEdit("vacanciaPct", { vacanciaPct: v })} />
               <NumField label="Comisión administración" raw={a.comisionAdminPct ?? "0"} display={`${a.comisionAdminPct ?? "0"}%`} suffix="%" format={pctInt} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" onCommit={(v) => commitEdit("comisionAdminPct", { comisionAdminPct: v })} />
             </Nivel3>
           )}
           {esStr && (
-            <Nivel3 title="Gestión y costos" open={l3 === "gest"} onToggle={() => openL3("gest")}>
+            <Nivel3 title={esLtr ? "Solo renta corta" : "Gestión y costos"} open={l3 === "gest"} onToggle={() => openL3("gest")}>
               <NumField label="Costos operativos" raw={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))} display={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} suffix="$" tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("costoInsumos", { costoInsumos: fmtMiles(v) })} />
               <NumField label="Mantención" raw={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} display={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} suffix="$" tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} onCommit={(v) => commitEdit("mantencionStr", { mantencionStr: fmtMiles(v) })} />
               <NumField label="Amoblamiento (capex)" raw={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} display={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} suffix="$" tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" onCommit={(v) => commitEdit("costoAmoblamiento", { costoAmoblamiento: fmtMiles(v) })} />
