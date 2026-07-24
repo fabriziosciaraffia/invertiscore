@@ -1,123 +1,174 @@
 "use client";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wizard v4 — RESUMEN (FASE 4). Tres zonas:
-//   1) Informe a generar (lápiz → edita modalidad; el hook invalida la rama)
-//   2) Respuestas y estimaciones (lápices → retorno directo; rótulos
-//      "· estimado" / "· corregido por ti")
-//   3) Supuestos de Franco (plegado, editables INLINE, cada uno con su FUENTE
-//      también acá; rótulo "· corregido por ti" al editar)
-// Botón final tri-estado (guest / sin créditos / con créditos) — el gate real es
-// server-side; acá solo el copy. CTA sticky (excepción de layout: el resumen
-// scrollea pero el botón nunca se esconde). Eventos PostHog del funnel.
+// Wizard v4 — RESUMEN · DOCUMENTO MAESTRO (rediseño F6)
+//
+// El resumen es el documento maestro del deal: tres cards por acto (01 Qué
+// compras · 02 Cómo lo financias · 03 Cómo lo rentabilizas), cada una con un
+// nivel 2 (campos decisivos) y niveles 3 colapsables (detalle / supuestos).
+//
+// R1 (esta fase): ESTRUCTURA render-only — 3 cards numeradas, niveles, acordeón,
+// responsive (desktop grid 3-col siempre abierto · mobile stack acordeón con
+// línea-resumen), derivados en gris "· calculada/o". La EDICIÓN inline llega en
+// R2; las estructurales (dirección/tipo/modalidad + cascada) en R3.
+//
+// Se conserva: formato chileno, fuentes con caveat N<10, tags de subsidio,
+// botón tri-estado con micro-ancla, "el informe es final", draft, a11y.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePostHog } from "posthog-js/react";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, ChevronRight, Loader2 } from "lucide-react";
 import { SINGLE_PRICE } from "@/lib/pricing";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import { antiguedadToNumber } from "@/components/formulario-v3/wizardV3State";
 import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
-import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { subsidioAplicadoV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
-import { TextInput } from "./ui";
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
 const LABEL_GATE: Record<string, string> = { si: "Sí permite", no: "No permite", no_seguro: "No estoy seguro" };
 
 type Wizard = ReturnType<typeof useWizardV4>;
 
-// ── Fila lectura (zona 2) ─────────────────────────────────────────────────────
-function Row({ label, value, tag, onEdit }: { label: string; value: string; tag?: string; onEdit: () => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
-      <dt className="font-body text-[13px] text-[var(--franco-text-secondary)]">{label}</dt>
-      <dd className="flex items-center gap-3 m-0 min-w-0">
-        <span className="font-mono text-[13px] text-[var(--franco-text)] truncate max-w-[190px] text-right">
-          {value}
-          {tag && <span className="text-[var(--franco-text-muted)] text-[11px]"> · {tag}</span>}
-        </span>
-        <button
-          type="button"
-          onClick={onEdit}
-          aria-label={`Editar ${label}`}
-          className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-dotted"
-        >
-          Editar
-        </button>
-      </dd>
-    </div>
-  );
-}
-
-// ── Supuesto editable inline (zona 3) — valor + fuente + "corregido por ti" ──
-function SupuestoEditable({
-  label,
-  field,
-  value,
-  fuente,
-  suffix,
-  edited,
-  onChange,
-}: {
-  label: string;
-  field: string;
-  value: string;
-  fuente: string;
-  suffix: string;
-  edited: boolean;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="py-2.5 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
-      <div className="flex items-center justify-between gap-3">
-        <label htmlFor={`sup-${field}`} className="font-body text-[13px] text-[var(--franco-text-secondary)]">
-          {label}
-          {edited && <span className="text-[var(--franco-text-muted)] text-[11px]"> · corregido por ti</span>}
-        </label>
-        <div className="w-[130px] shrink-0">
-          <TextInput value={value} onChange={onChange} inputMode="numeric" mono suffix={suffix} />
-        </div>
-      </div>
-      <p className="font-mono text-[10px] text-[var(--franco-text-muted)] mt-1 m-0">{fuente}</p>
-    </div>
-  );
-}
-
-/** Formatea dígitos con separador de miles chileno (63000 → "63.000"). Tolerante:
- *  strippea todo lo no-dígito. parseNum() revierte los puntos al leer downstream. */
+/** Formatea dígitos con separador de miles chileno (63000 → "63.000"). */
 function fmtMiles(v: string | number): string {
   return String(v).replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-/** "el arriendo" · "el arriendo y la tasa" · "a, b y c". */
 function joinVars(vars: string[]): string {
   if (vars.length <= 1) return vars[0] ?? "";
   return `${vars.slice(0, -1).join(", ")} y ${vars[vars.length - 1]}`;
 }
-
-/** Prefijo "a" con contracción: "el arriendo" → "al arriendo"; "la tasa" → "a la tasa". */
 function sensibleA(vars: string[]): string {
   const s = joinVars(vars);
   return s.startsWith("el ") ? `al ${s.slice(3)}` : `a ${s}`;
 }
 
-// Variables al-filo (labels de la card) → campo editable del resumen. Habilita
-// wizard4_alfilo_edited cuando el usuario toca una variable que la card nombró.
-const FIELD_FOR_VAR: Record<string, string> = {
-  "el arriendo": "arr",
-  "la tasa": "tasa",
-  "la tarifa": "adr",
-  "la ocupación": "adr",
-};
+// ── Primitivos de presentación (render-only en R1) ──────────────────────────
+
+/** Campo de nivel 2: label chico arriba + valor. En R1 render-only; la edición
+ *  inline y la gramática visual (punteado/lápiz) llegan en R2. */
+function Field({
+  label,
+  value,
+  derived,
+  tag,
+  fuente,
+}: {
+  label: string;
+  value: string;
+  /** Valor calculado (gris, sin affordance) — ej. conversión CLP, cuota. */
+  derived?: string;
+  /** "estimado" / "corregido por ti" / "con subsidio". */
+  tag?: string;
+  /** Procedencia de la estimación (incluye caveat N<10). */
+  fuente?: string;
+}) {
+  return (
+    <div className="py-2 border-b border-dashed border-[var(--franco-border)] last:border-b-0">
+      <p className="font-mono text-[9px] uppercase tracking-[0.1em] text-[var(--franco-text-muted)] m-0 mb-0.5">
+        {label}
+      </p>
+      <p className="font-mono text-[14px] text-[var(--franco-text)] m-0 leading-snug break-words">
+        {value}
+        {tag && <span className="text-[var(--franco-text-muted)] text-[11px]"> · {tag}</span>}
+      </p>
+      {derived && (
+        <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0 mt-0.5">{derived}</p>
+      )}
+      {fuente && (
+        <p className="font-mono text-[10px] text-[var(--franco-text-muted)] m-0 mt-0.5 leading-snug">{fuente}</p>
+      )}
+    </div>
+  );
+}
+
+/** Bloque de nivel 3 colapsable (fondo hundido para marcar profundidad). Acordeón:
+ *  el caller garantiza que solo un hermano esté abierto. */
+function Nivel3({
+  title,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mt-2 rounded-lg overflow-hidden" style={{ background: "var(--franco-sunken, #161616)" }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors"
+      >
+        {title}
+        <ChevronRight size={14} className={`shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+      </button>
+      {open && <div className="px-3 pb-3 pt-0">{children}</div>}
+    </div>
+  );
+}
+
+/** Card de acto: número editorial (mono Signal Red) + título. En mobile es
+ *  colapsable con línea-resumen; en desktop siempre muestra el nivel 2. */
+function ActCard({
+  num,
+  title,
+  summaryLine,
+  open,
+  onToggle,
+  children,
+}: {
+  num: string;
+  title: string;
+  summaryLine: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm overflow-hidden">
+      {/* Header: en mobile es botón acordeón; en desktop es rótulo estático. */}
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="lg:pointer-events-none w-full text-left px-4 py-3 flex items-start justify-between gap-3"
+      >
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] uppercase tracking-[0.1em] m-0 mb-0.5">
+            <span className="text-signal-red">{num}</span>{" "}
+            <span className="text-[var(--franco-text-tertiary)]">{title}</span>
+          </p>
+          {/* Línea-resumen: solo mobile y solo cuando la card está cerrada. */}
+          {!open && (
+            <p className="lg:hidden font-mono text-[12px] text-[var(--franco-text-secondary)] m-0 truncate">
+              {summaryLine}
+            </p>
+          )}
+        </div>
+        <ChevronRight
+          size={16}
+          className={`lg:hidden shrink-0 mt-0.5 text-[var(--franco-text-muted)] transition-transform ${open ? "rotate-90" : ""}`}
+        />
+      </button>
+      {/* Contenido: desktop siempre; mobile solo si open. */}
+      <div className={`${open ? "block" : "hidden"} lg:block px-4 pb-3`}>{children}</div>
+    </section>
+  );
+}
 
 export function ResumenScreen({
   w,
@@ -138,26 +189,22 @@ export function ResumenScreen({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Acordeón mobile entre cards (solo una abierta). Desktop las muestra todas.
+  const [openCard, setOpenCard] = useState<"01" | "02" | "03">("01");
+  // Nivel 3 de la card 01 (único → toggle simple).
+  const [detalleOpen, setDetalleOpen] = useState(false);
+  // Nivel 3 de la card 03 (dos hermanos → acordeón).
+  const [l3, setL3] = useState<"sup" | "gest" | null>(null);
+
   // Dry-run silencioso (FASE 5): card de sensibilidad si el deal está al filo.
   const dryRun = useWizardV4DryRun(a, data);
   const alFilo = dryRun.alFilo && dryRun.variablesSensibles.length > 0;
   const alfiloKey = alFilo ? dryRun.variablesSensibles.join("|") : "";
 
-  // wizard4_alfilo_shown: una vez por set de variables mostrado.
   useEffect(() => {
     if (alfiloKey) trackWizard(posthog, "wizard4_alfilo_shown", { variablesSensibles: alfiloKey.split("|"), modalidad: mod });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alfiloKey]);
-
-  // Editar un campo desde el resumen. Si la card al-filo nombró la variable de
-  // ese campo, emite además wizard4_alfilo_edited (cierra el loop de medición).
-  const editFieldFromSummary = (node: string) => {
-    if (alFilo) {
-      const hit = dryRun.variablesSensibles.find((v) => FIELD_FOR_VAR[v] === node);
-      if (hit) trackWizard(posthog, "wizard4_alfilo_edited", { field: node, variable: hit });
-    }
-    w.editField(node as Parameters<typeof w.editField>[0]);
-  };
 
   const canAnalyze = canAnalyzeFromTier(tier);
   const ctx: SubmitContext = {
@@ -169,7 +216,6 @@ export function ResumenScreen({
     ggccSugerido: data.ggccSugerido,
   };
 
-  // ── Eventos de funnel: gate mostrado según estado ──
   useEffect(() => {
     if (tier == null || !mod) return;
     if (!isLoggedIn) trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod });
@@ -179,13 +225,38 @@ export function ResumenScreen({
 
   // ── Derivaciones de display ──
   const pUF = precioUF(a);
-  const precioStr = pUF > 0 ? `${fmtUF(pUF)} ≈ ${fmtCLP(pUF * data.ufCLP)}` : "—";
+  const precioStr = pUF > 0 ? fmtUF(pUF) : "—";
+  const precioCLP = pUF > 0 ? `≈ ${fmtCLP(pUF * data.ufCLP)} · calculada` : undefined;
   const pct = piePct(a, data.ufCLP);
   const pieStr = pct > 0 ? `${Math.round(pct)}% · ${fmtUF(pieUF(a, data.ufCLP))}` : "—";
+  const cuota = cuotaCLP(a, data.ufCLP);
+  const cuotaStr = cuota > 0 ? `Cuota ≈ ${fmtCLP(cuota)}/mes · calculada` : undefined;
   const sup = parseDecimalLocale(a.superficieUtil ?? "");
   const tamStr = sup > 0 ? `${a.superficieUtil} m² · ${a.esStudio ? "Studio" : (a.dormitorios ?? "—") + "D"} · ${a.banos ?? "—"}B` : "—";
 
-  // Defaults de supuestos (mismos que el plegado en arr/adr).
+  const tasaTag = subsidioAplicadoV4(a, data.tasaMercado)
+    ? "con subsidio"
+    : a.tasaModo === "preaprobada"
+      ? "corregido por ti"
+      : a.tasaModo === "estimada"
+        ? "estimado"
+        : undefined;
+
+  // Detalle del depto (nivel 3 · card 01).
+  const tipoStr = a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—";
+  const entregaAntig =
+    a.tipoPropiedad === "nuevo"
+      ? a.estadoVenta === "futura" && a.fechaEntregaMes && a.fechaEntregaAnio
+        ? `Entrega ${a.fechaEntregaMes}/${a.fechaEntregaAnio}`
+        : "Entrega inmediata"
+      : a.antiguedad
+        ? `${antiguedadToNumber(a.antiguedad)} años`
+        : "—";
+  const nEstac = Number(a.estacionamientos) || 0;
+  const nBodega = Number(a.bodegas) || 0;
+  const extrasStr = `${nEstac} estac · ${nBodega} bodega`;
+
+  // Supuestos (nivel 3 · card 03). Defaults idénticos al plegado del wizard.
   const ggccDef = data.ggccSugerido ?? getGgccFallback(a.comuna ?? "", sup) ?? 0;
   const contribDef = estimarContribuciones(pUF * data.ufCLP, a.tipoPropiedad === "nuevo");
   const dorm = Number(a.dormitorios) || 2;
@@ -197,211 +268,170 @@ export function ResumenScreen({
   async function onGenerar() {
     setError("");
     setSubmitting(true);
-    onTerminal(); // salida legítima → no cuenta como abandono
+    onTerminal();
     trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
     const res = await submitConCredito(a, ctx);
-    if (res.ok && res.redirect) {
-      window.location.href = res.redirect;
-    } else {
-      setError(res.error || "No pudimos generar el análisis.");
-      setSubmitting(false);
-    }
+    if (res.ok && res.redirect) window.location.href = res.redirect;
+    else { setError(res.error || "No pudimos generar el análisis."); setSubmitting(false); }
   }
 
   async function onDesbloquear() {
     setError("");
     setSubmitting(true);
-    onTerminal(); // salida a checkout → no es abandono
+    onTerminal();
     trackWizard(posthog, "wizard4_checkout_initiated", { modalidad: mod });
     const res = await comprarLocked(a, ctx);
-    if (res.ok && res.redirect) {
-      window.location.href = res.redirect;
-    } else {
-      setError(res.error || "No se pudo crear el análisis.");
-      setSubmitting(false);
-    }
+    if (res.ok && res.redirect) window.location.href = res.redirect;
+    else { setError(res.error || "No se pudo crear el análisis."); setSubmitting(false); }
   }
 
-  // Supuestos CLP: display con formato chileno (63.000) y parse tolerante — se
-  // guarda ya formateado; parseNum() lo revierte al construir el payload.
-  const milesChange = (field: string) => (v: string) => w.patchAnswers({ [field]: fmtMiles(v) });
+  // Línea-resumen (mobile) por card.
+  const sumamble01 = [a.direccion, tipoStr !== "—" ? tipoStr.toLowerCase() : null, sup > 0 ? `${a.superficieUtil} m²` : null, pUF > 0 ? fmtUF(pUF) : null].filter(Boolean).join(" · ") || "—";
+  const summary02 = [pct > 0 ? `${Math.round(pct)}% pie` : null, a.plazoCredito ? `${a.plazoCredito} años` : null, a.tasaInteres ? `${a.tasaInteres}%` : null].filter(Boolean).join(" · ") || "—";
+  const summary03 = esStr
+    ? [a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
+    : (a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—");
+
+  const toggleCard = (c: "01" | "02" | "03") => setOpenCard((prev) => (prev === c ? prev : c));
 
   return (
-    <div className="flex flex-col gap-5 pb-28">
-      {/* ── Zona 1 · Informe a generar ── */}
-      <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)] m-0 mb-1">
-              Informe a generar
-            </p>
-            <p className="font-heading text-[20px] font-bold text-[var(--franco-text)] m-0 leading-tight">
-              {mod ? LABEL_MOD[mod] : "—"}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => w.editField("mod")}
-            aria-label="Editar informe"
-            className="shrink-0 font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] underline underline-offset-4 decoration-dotted"
-          >
-            Editar
-          </button>
-        </div>
+    <div className="pb-44 lg:pb-8">
+      {/* ── Header del documento: chip de informe (editable en R3) ── */}
+      <div className="mb-5 flex items-center gap-3">
+        <button
+          type="button"
+          aria-label={`Informe: ${mod ? LABEL_MOD[mod] : "—"}. Editar más adelante.`}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-signal-red px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--franco-text)]"
+        >
+          <span className="text-[var(--franco-text-muted)]">Informe:</span>
+          <span className="font-medium">{mod ? LABEL_MOD[mod] : "—"}</span>
+          <span className="text-signal-red">▾</span>
+        </button>
       </div>
 
-      {/* ── Zona 2 · Respuestas y estimaciones ── */}
-      <div>
-        <p className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-muted)] mb-2">
-          Tus respuestas
-        </p>
-        <div className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] p-5">
-          <dl className="m-0">
-            <Row label="Dirección" value={a.direccion || "—"} onEdit={() => w.editField("dir")} />
-            <Row label="Tipo" value={a.tipoPropiedad === "nuevo" ? "Nuevo" : a.tipoPropiedad === "usado" ? "Usado" : "—"} onEdit={() => w.editField("tipo")} />
-            <Row label="Tamaño" value={tamStr} onEdit={() => w.editField("tam")} />
-            <Row label="Precio" value={precioStr} onEdit={() => w.editField("precio")} />
-            <Row label="Pie" value={pieStr} onEdit={() => w.editField("pie")} />
-            <Row
-              label="Tasa"
-              value={a.tasaInteres ? `${a.tasaInteres}%` : "—"}
-              tag={
-                subsidioAplicadoV4(a, data.tasaMercado)
-                  ? "con subsidio"
-                  : a.tasaModo === "preaprobada"
-                    ? "corregido por ti"
-                    : a.tasaModo === "estimada"
-                      ? "estimado"
-                      : undefined
-              }
-              onEdit={() => editFieldFromSummary("tasa")}
-            />
-            <Row label="Plazo" value={a.plazoCredito ? `${a.plazoCredito} años` : "—"} onEdit={() => w.editField("plazo")} />
-            {esStr && (
-              <Row label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : "—"} onEdit={() => w.editField("gate")} />
-            )}
-            {esLtr && (
-              <Row
-                label="Arriendo"
-                value={a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—"}
-                tag={a.arrModo === "corregir" ? "corregido por ti" : a.arrModo === "estimacion" ? "estimado" : undefined}
-                onEdit={() => editFieldFromSummary("arr")}
-              />
-            )}
-            {esStr && (
-              <Row
-                label="Tarifa · ocupación"
-                value={a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche · ${a.adrOcupacion ?? "—"}%` : "—"}
-                tag={a.adrModo === "corregir" ? "corregido por ti" : a.adrModo === "estimacion" ? "estimado" : undefined}
-                onEdit={() => editFieldFromSummary("adr")}
-              />
-            )}
-          </dl>
-        </div>
-      </div>
+      {/* ── Tres cards por acto ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        {/* 01 · Qué compras */}
+        <ActCard num="01" title="Qué compras" summaryLine={sumamble01} open={openCard === "01"} onToggle={() => toggleCard("01")}>
+          <Field label="Dirección" value={a.direccion || "—"} />
+          <Field label="Precio" value={precioStr} derived={precioCLP} />
+          <Nivel3 title="Detalle del depto" open={detalleOpen} onToggle={() => setDetalleOpen((o) => !o)}>
+            <Field label="Tipo" value={tipoStr} />
+            <Field label={a.tipoPropiedad === "nuevo" ? "Entrega" : "Antigüedad"} value={entregaAntig} />
+            <Field label="Tamaño" value={tamStr} />
+            <Field label="Estacionamiento y bodega" value={extrasStr} />
+          </Nivel3>
+        </ActCard>
 
-      {/* ── Zona 3 · Supuestos de Franco (plegado, editable inline) ── */}
-      <details className="rounded-xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] px-5 py-3 group">
-        <summary className="font-mono text-[11px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] cursor-pointer list-none flex items-center justify-between">
-          Supuestos de Franco
-          <span className="text-[var(--franco-text-muted)] group-open:rotate-180 transition-transform">▾</span>
-        </summary>
-        <div className="mt-2">
-          <SupuestoEditable
-            label="Gastos comunes" field="gastosComunes" suffix="$"
-            value={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}
-            edited={!!a.gastosComunes} fuente="gastos comunes típicos de la comuna"
-            onChange={milesChange("gastosComunes")}
-          />
-          <SupuestoEditable
-            label="Contribuciones (trim.)" field="contribuciones" suffix="$"
-            value={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}
-            edited={!!a.contribuciones} fuente="fórmula SII según avalúo estimado"
-            onChange={milesChange("contribuciones")}
-          />
+        {/* 02 · Cómo lo financias */}
+        <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
+          <Field label="Pie" value={pieStr} />
+          <Field label="Plazo" value={a.plazoCredito ? `${a.plazoCredito} años` : "—"} />
+          <Field label="Tasa" value={a.tasaInteres ? `${a.tasaInteres}%` : "—"} tag={tasaTag} derived={cuotaStr} />
+        </ActCard>
+
+        {/* 03 · Cómo lo rentabilizas */}
+        <ActCard num="03" title="Cómo lo rentabilizas" summaryLine={summary03} open={openCard === "03"} onToggle={() => toggleCard("03")}>
+          {esStr && (
+            <Field label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : "—"} />
+          )}
           {esLtr && (
-            <>
-              <SupuestoEditable
-                label="Vacancia" field="vacanciaPct" suffix="%"
-                value={a.vacanciaPct ?? "5"} edited={!!a.vacanciaPct}
-                fuente="promedio de meses sin arrendatario al año"
-                onChange={(v) => { if (v === "" || /^\d{0,2}$/.test(v)) w.patchAnswers({ vacanciaPct: v }); }}
-              />
-              <SupuestoEditable
-                label="Comisión administración" field="comisionAdminPct" suffix="%"
-                value={a.comisionAdminPct ?? "0"} edited={!!a.comisionAdminPct}
-                fuente="0 = autogestión; corredor típico 7-10%"
-                onChange={(v) => { if (v === "" || /^\d{0,2}$/.test(v)) w.patchAnswers({ comisionAdminPct: v }); }}
-              />
-            </>
+            <Field
+              label="Arriendo"
+              value={a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—"}
+              tag={a.arrModo === "corregir" ? "corregido por ti" : a.arrModo === "estimacion" ? "estimado" : undefined}
+              fuente={esLtr ? fuenteArriendo(data.arriendoN) : undefined}
+            />
           )}
           {esStr && (
-            <>
-              <SupuestoEditable
-                label="Costos operativos (luz+agua+wifi+insumos)" field="costoInsumos" suffix="$"
-                value={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}
-                edited={!!a.costoInsumos} fuente={`consumo operativo típico para ${dormLabel(dorm)}`}
-                onChange={milesChange("costoInsumos")}
-              />
-              <SupuestoEditable
-                label="Mantención" field="mantencionStr" suffix="$"
-                value={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} edited={!!a.mantencionStr}
-                fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`}
-                onChange={milesChange("mantencionStr")}
-              />
-              <SupuestoEditable
-                label="Amoblamiento (capex)" field="costoAmoblamiento" suffix="$"
-                value={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} edited={!!a.costoAmoblamiento}
-                fuente="capex inicial estimado si el depto no está amoblado"
-                onChange={milesChange("costoAmoblamiento")}
-              />
-            </>
+            <Field
+              label="Tarifa · ocupación"
+              value={a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche · ${a.adrOcupacion ?? "—"}%` : "—"}
+              tag={a.adrModo === "corregir" ? "corregido por ti" : a.adrModo === "estimacion" ? "estimado" : undefined}
+              fuente="datos de mercado Airbnb de la zona, últimos 90 días"
+            />
           )}
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] mt-3 mb-0">
-            Toda estimación lleva su fuente. Edita cualquiera si tienes datos más finos.
-          </p>
-        </div>
-      </details>
 
-      {/* Card de sensibilidad adaptativa (FASE 5) — solo si el dry-run marcó al filo. */}
+          {esLtr && (
+            <Nivel3 title="Supuestos del arriendo" open={l3 === "sup"} onToggle={() => setL3((v) => (v === "sup" ? null : "sup"))}>
+              <Field label="Gastos comunes" value={`$${fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}/mes`} tag={a.gastosComunes ? "corregido por ti" : undefined} fuente="gastos comunes típicos de la comuna" />
+              <Field label="Contribuciones (trim.)" value={`$${fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}`} tag={a.contribuciones ? "corregido por ti" : undefined} fuente="fórmula SII según avalúo estimado" />
+              <Field label="Vacancia" value={`${a.vacanciaPct ?? "5"}%`} tag={a.vacanciaPct ? "corregido por ti" : undefined} fuente="promedio de meses sin arrendatario al año" />
+              <Field label="Comisión administración" value={`${a.comisionAdminPct ?? "0"}%`} tag={a.comisionAdminPct ? "corregido por ti" : undefined} fuente="0 = autogestión; corredor típico 7-10%" />
+            </Nivel3>
+          )}
+          {esStr && (
+            <Nivel3 title="Gestión y costos" open={l3 === "gest"} onToggle={() => setL3((v) => (v === "gest" ? null : "gest"))}>
+              <Field label="Costos operativos" value={`$${fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}/mes`} tag={a.costoInsumos ? "corregido por ti" : undefined} fuente={`consumo operativo típico para ${dormLabel(dorm)}`} />
+              <Field label="Mantención" value={`$${fmtMiles(a.mantencionStr ?? String(costos.mantencion))}/mes`} tag={a.mantencionStr ? "corregido por ti" : undefined} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} />
+              <Field label="Amoblamiento (capex)" value={`$${fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))}`} tag={a.costoAmoblamiento ? "corregido por ti" : undefined} fuente="capex inicial estimado si el depto no está amoblado" />
+            </Nivel3>
+          )}
+        </ActCard>
+      </div>
+
+      {/* ── Fila final: card al-filo + CTA. Desktop lado a lado; mobile apilado (CTA sticky). ── */}
       {alFilo && (
-        <div className="rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+        <div className="mt-4 lg:hidden rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">
             Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}
           </p>
           <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">
-            Una diferencia pequeña cambia el veredicto. Si no estás seguro, tócalo arriba antes de generar.
+            Una diferencia pequeña cambia el veredicto. Si no estás seguro, tócalo antes de generar.
           </p>
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
+        <div className="mt-4 rounded-xl border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--signal-red)_5%,transparent)] px-4 py-3">
           <p className="font-body text-[13px] text-[var(--franco-text)] m-0">{error}</p>
         </div>
       )}
 
-      {/* ── Botón final tri-estado (sticky, nunca escondido) ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
+      {/* Desktop: fila final al-filo (izq) + generar (der), lado a lado. */}
+      <div className="hidden lg:grid grid-cols-2 gap-4 items-stretch mt-4">
+        <div>
+          {alFilo && (
+            <div className="h-full rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
+              <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">
+                Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}
+              </p>
+              <p className="font-body text-[13px] text-[var(--franco-text-secondary)] m-0 leading-snug">
+                Una diferencia pequeña cambia el veredicto. Revísalo antes de generar.
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-stretch justify-end gap-1.5">
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+        </div>
+      </div>
+
+      {/* Mobile: CTA sticky al fondo. */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
-          <FinalCTA
-            mod={mod}
-            isLoggedIn={isLoggedIn}
-            canAnalyze={canAnalyze}
-            submitting={submitting}
-            onGenerar={onGenerar}
-            onDesbloquear={onDesbloquear}
-            onTerminal={onTerminal}
-          />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">
-            {isLoggedIn && !canAnalyze
-              ? `Estás comprando este análisis${mod === "both" ? " comparativo" : ""}${a.comuna ? ` de ${a.comuna}` : ""}. Pagas y se desbloquea al instante.`
-              : "Después de esto, el informe es final."}
-          </p>
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
         </div>
       </div>
     </div>
   );
+}
+
+/** Fuente del arriendo LTR en 3 tramos (idéntica al Acto 3 · incluye caveat N<10). */
+function fuenteArriendo(n: number): string {
+  if (n >= 10) return `mediana de ${n} arriendos comparables publicados en la zona`;
+  if (n > 0) return `mediana de solo ${n} ${n === 1 ? "arriendo comparable" : "arriendos comparables"} en la zona — muestra chica, ajústalo si conoces el arriendo real`;
+  return "sin comparables publicados — estimación de mercado";
+}
+
+/** Caveat bajo el CTA: ancla pre-pago en desbloquear, inmutabilidad en el resto. */
+function ctaCaveat(isLoggedIn: boolean, canAnalyze: boolean, mod: string | undefined, comuna: string | undefined): string {
+  if (isLoggedIn && !canAnalyze) {
+    return `Estás comprando este análisis${mod === "both" ? " comparativo" : ""}${comuna ? ` de ${comuna}` : ""}. Pagas y se desbloquea al instante.`;
+  }
+  return "Después de esto, el informe es final.";
 }
 
 function FinalCTA({
@@ -424,7 +454,6 @@ function FinalCTA({
   const cls =
     "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60";
 
-  // Con créditos / subscriber / admin → generar (1 crédito).
   if (canAnalyze) {
     return (
       <button type="button" onClick={onGenerar} disabled={submitting} className={cls}>
@@ -432,25 +461,15 @@ function FinalCTA({
       </button>
     );
   }
-  // Logueado sin créditos → desbloquear (checkout).
   if (isLoggedIn) {
     return (
       <button type="button" onClick={onDesbloquear} disabled={submitting} className={cls}>
-        {submitting ? (
-          <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</>
-        ) : (
-          <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>
-        )}
+        {submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}
       </button>
     );
   }
-  // Guest → crear cuenta (preserva draft con resume).
   return (
-    <Link
-      href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`}
-      onClick={onTerminal}
-      className={cls}
-    >
+    <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>
       Crear cuenta gratis <ArrowRight size={14} />
     </Link>
   );
