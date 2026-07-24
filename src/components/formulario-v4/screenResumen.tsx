@@ -278,9 +278,11 @@ function ActCard({ num, title, summaryLine, open, onToggle, children }: { num: s
         className="lg:pointer-events-none w-full text-left px-4 py-3 flex items-start justify-between gap-3"
       >
         <div className="min-w-0">
-          <p className="font-mono text-[10px] uppercase tracking-[0.1em] m-0 mb-0.5">
-            <span className="text-signal-red">{num}</span>{" "}
-            <span className="text-[var(--franco-text-tertiary)]">{title}</span>
+          {/* Número mono Signal Red + título Source Serif 4 (14px/500, tinta) —
+              rima editorial con la pantalla del informe (mockup aprobado). */}
+          <p className="m-0 mb-0.5 flex items-baseline gap-1.5">
+            <span className="font-mono text-[11px] font-medium text-signal-red">{num}</span>
+            <span className="font-heading text-[14px] font-medium text-[var(--franco-text)] leading-tight">{title}</span>
           </p>
           {!open && <p className="lg:hidden font-mono text-[12px] text-[var(--franco-text-secondary)] m-0 truncate">{summaryLine}</p>}
         </div>
