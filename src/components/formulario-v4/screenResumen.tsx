@@ -27,6 +27,7 @@ import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4S
 import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
 import { subsidioAplicadoV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
+import { trackWizard } from "./track";
 import { TextInput } from "./ui";
 
 const LABEL_MOD: Record<string, string> = { ltr: "Renta larga", str: "Renta corta", both: "Comparativo" };
@@ -105,16 +106,27 @@ function sensibleA(vars: string[]): string {
   return s.startsWith("el ") ? `al ${s.slice(3)}` : `a ${s}`;
 }
 
+// Variables al-filo (labels de la card) → campo editable del resumen. Habilita
+// wizard4_alfilo_edited cuando el usuario toca una variable que la card nombró.
+const FIELD_FOR_VAR: Record<string, string> = {
+  "el arriendo": "arr",
+  "la tasa": "tasa",
+  "la tarifa": "adr",
+  "la ocupación": "adr",
+};
+
 export function ResumenScreen({
   w,
   data,
   tier,
   isLoggedIn,
+  onTerminal,
 }: {
   w: Wizard;
   data: WizardV4Data;
   tier: TierInfo | null;
   isLoggedIn: boolean;
+  onTerminal: () => void;
 }) {
   const posthog = usePostHog();
   const a = w.nav.answers;
@@ -124,6 +136,24 @@ export function ResumenScreen({
 
   // Dry-run silencioso (FASE 5): card de sensibilidad si el deal está al filo.
   const dryRun = useWizardV4DryRun(a, data);
+  const alFilo = dryRun.alFilo && dryRun.variablesSensibles.length > 0;
+  const alfiloKey = alFilo ? dryRun.variablesSensibles.join("|") : "";
+
+  // wizard4_alfilo_shown: una vez por set de variables mostrado.
+  useEffect(() => {
+    if (alfiloKey) trackWizard(posthog, "wizard4_alfilo_shown", { variablesSensibles: alfiloKey.split("|"), modalidad: mod });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [alfiloKey]);
+
+  // Editar un campo desde el resumen. Si la card al-filo nombró la variable de
+  // ese campo, emite además wizard4_alfilo_edited (cierra el loop de medición).
+  const editFieldFromSummary = (node: string) => {
+    if (alFilo) {
+      const hit = dryRun.variablesSensibles.find((v) => FIELD_FOR_VAR[v] === node);
+      if (hit) trackWizard(posthog, "wizard4_alfilo_edited", { field: node, variable: hit });
+    }
+    w.editField(node as Parameters<typeof w.editField>[0]);
+  };
 
   const canAnalyze = canAnalyzeFromTier(tier);
   const ctx: SubmitContext = {
@@ -138,8 +168,8 @@ export function ResumenScreen({
   // ── Eventos de funnel: gate mostrado según estado ──
   useEffect(() => {
     if (tier == null || !mod) return;
-    if (!isLoggedIn) posthog?.capture("wizard4_gate_auth_shown", { modalidad: mod });
-    else if (!canAnalyze) posthog?.capture("wizard4_gate_credits_shown", { modalidad: mod });
+    if (!isLoggedIn) trackWizard(posthog, "wizard4_gate_auth_shown", { modalidad: mod });
+    else if (!canAnalyze) trackWizard(posthog, "wizard4_gate_credits_shown", { modalidad: mod });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tier, isLoggedIn, canAnalyze, mod]);
 
@@ -163,7 +193,8 @@ export function ResumenScreen({
   async function onGenerar() {
     setError("");
     setSubmitting(true);
-    posthog?.capture("wizard4_submitted", { modalidad: mod });
+    onTerminal(); // salida legítima → no cuenta como abandono
+    trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
     const res = await submitConCredito(a, ctx);
     if (res.ok && res.redirect) {
       window.location.href = res.redirect;
@@ -176,7 +207,8 @@ export function ResumenScreen({
   async function onDesbloquear() {
     setError("");
     setSubmitting(true);
-    posthog?.capture("wizard4_checkout_initiated", { modalidad: mod });
+    onTerminal(); // salida a checkout → no es abandono
+    trackWizard(posthog, "wizard4_checkout_initiated", { modalidad: mod });
     const res = await comprarLocked(a, ctx);
     if (res.ok && res.redirect) {
       window.location.href = res.redirect;
@@ -236,7 +268,7 @@ export function ResumenScreen({
                       ? "estimado"
                       : undefined
               }
-              onEdit={() => w.editField("tasa")}
+              onEdit={() => editFieldFromSummary("tasa")}
             />
             <Row label="Plazo" value={a.plazoCredito ? `${a.plazoCredito} años` : "—"} onEdit={() => w.editField("plazo")} />
             {esStr && (
@@ -247,7 +279,7 @@ export function ResumenScreen({
                 label="Arriendo"
                 value={a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—"}
                 tag={a.arrModo === "corregir" ? "corregido por ti" : a.arrModo === "estimacion" ? "estimado" : undefined}
-                onEdit={() => w.editField("arr")}
+                onEdit={() => editFieldFromSummary("arr")}
               />
             )}
             {esStr && (
@@ -255,7 +287,7 @@ export function ResumenScreen({
                 label="Tarifa · ocupación"
                 value={a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche · ${a.adrOcupacion ?? "—"}%` : "—"}
                 tag={a.adrModo === "corregir" ? "corregido por ti" : a.adrModo === "estimacion" ? "estimado" : undefined}
-                onEdit={() => w.editField("adr")}
+                onEdit={() => editFieldFromSummary("adr")}
               />
             )}
           </dl>
@@ -326,7 +358,7 @@ export function ResumenScreen({
       </details>
 
       {/* Card de sensibilidad adaptativa (FASE 5) — solo si el dry-run marcó al filo. */}
-      {dryRun.alFilo && dryRun.variablesSensibles.length > 0 && (
+      {alFilo && (
         <div className="rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-4 pr-4 py-3">
           <p className="font-mono text-[10px] uppercase tracking-[0.1em] text-signal-red m-0 mb-1">
             Este análisis es sensible {sensibleA(dryRun.variablesSensibles)}
@@ -353,6 +385,7 @@ export function ResumenScreen({
             submitting={submitting}
             onGenerar={onGenerar}
             onDesbloquear={onDesbloquear}
+            onTerminal={onTerminal}
           />
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">
             Después de esto, el informe es final.
@@ -370,6 +403,7 @@ function FinalCTA({
   submitting,
   onGenerar,
   onDesbloquear,
+  onTerminal,
 }: {
   mod: string | undefined;
   isLoggedIn: boolean;
@@ -377,6 +411,7 @@ function FinalCTA({
   submitting: boolean;
   onGenerar: () => void;
   onDesbloquear: () => void;
+  onTerminal: () => void;
 }) {
   const cls =
     "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60";
@@ -405,6 +440,7 @@ function FinalCTA({
   return (
     <Link
       href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`}
+      onClick={onTerminal}
       className={cls}
     >
       Crear cuenta gratis <ArrowRight size={14} />

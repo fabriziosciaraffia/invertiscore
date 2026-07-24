@@ -11,10 +11,11 @@
 // Acto 3 + resumen: placeholders navegables (Fases 3-4).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 import { usePostHog } from "posthog-js/react";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
+import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
 import { useWizardV4Data } from "./useWizardV4Data";
 import { useWizardV4Tier } from "./useWizardV4Tier";
@@ -57,7 +58,13 @@ function PlaceholderBox({ node }: { node: NodeId }) {
 }
 
 export function WizardV4({ resume }: { resume: boolean }) {
-  const w = useWizardV4({ resume });
+  const posthog = usePostHog();
+  const emitEvent = useCallback(
+    (name: string, props?: Record<string, unknown>) => { trackWizard(posthog, name, props); },
+    [posthog],
+  );
+
+  const w = useWizardV4({ resume, onEvent: emitEvent });
   const { nav } = w;
   const data = useWizardV4Data(nav.answers);
   const { tier, isLoggedIn } = useWizardV4Tier();
@@ -66,7 +73,33 @@ export function WizardV4({ resume }: { resume: boolean }) {
   const actoLabel = ACTO_LABEL[acto];
   const progress = w.progress;
 
-  const posthog = usePostHog();
+  // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode).
+  const lastStep = useRef<NodeId | null>(null);
+  useEffect(() => {
+    if (lastStep.current === nav.current) return;
+    lastStep.current = nav.current;
+    trackWizard(posthog, "wizard4_step_viewed", { node: nav.current });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nav.current, posthog]);
+
+  // abandoned (best-effort): pagehide sin haber llegado a terminal (generar /
+  // pagar / crear cuenta), y solo si el usuario ya arrancó. terminatedRef lo
+  // marca la CTA final; navSnap da el nodo/modalidad al momento de salir.
+  const terminatedRef = useRef(false);
+  const markTerminal = useCallback(() => { terminatedRef.current = true; }, []);
+  const navSnap = useRef(nav);
+  useEffect(() => { navSnap.current = nav; }, [nav]);
+  useEffect(() => {
+    const onHide = () => {
+      if (terminatedRef.current) return;
+      const s = navSnap.current;
+      const started = s.answers.modalidad != null || s.history.length > 0;
+      if (!started) return;
+      trackWizard(posthog, "wizard4_abandoned", { node: s.current, modalidad: s.answers.modalidad });
+    };
+    window.addEventListener("pagehide", onHide);
+    return () => window.removeEventListener("pagehide", onHide);
+  }, [posthog]);
 
   // Reacción de Franco con datos reales (comparables, UF del día, cuota, aviso subsidio).
   const live: ReactionLive = {};
@@ -81,7 +114,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
   // Evento del funnel: aviso de subsidio efectivamente mostrado.
   const avisoVisible = nav.reactionSource === "tam" && live.subsidioAviso === true;
   useEffect(() => {
-    if (avisoVisible) posthog?.capture("wizard4_subsidio_hint_shown", { comuna: nav.answers.comuna });
+    if (avisoVisible) trackWizard(posthog, "wizard4_subsidio_hint_shown", { comuna: nav.answers.comuna });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avisoVisible]);
 
@@ -154,7 +187,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
               {NODE_TITLE[nav.current]}
             </h1>
 
-            <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} />
+            <Screen node={nav.current} w={w} screenProps={screenProps} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={markTerminal} />
           </div>
         </div>
       </main>
@@ -171,6 +204,7 @@ function Screen({
   data,
   tier,
   isLoggedIn,
+  onTerminal,
 }: {
   node: NodeId;
   w: ReturnType<typeof useWizardV4>;
@@ -178,6 +212,7 @@ function Screen({
   data: ReturnType<typeof useWizardV4Data>;
   tier: ReturnType<typeof useWizardV4Tier>["tier"];
   isLoggedIn: boolean;
+  onTerminal: () => void;
 }) {
   switch (node) {
     // ── Acto 1 ──
@@ -259,7 +294,7 @@ function Screen({
       return <AdrFixScreen {...screenProps} />;
 
     case "resumen":
-      return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} />;
+      return <ResumenScreen w={w} data={data} tier={tier} isLoggedIn={isLoggedIn} onTerminal={onTerminal} />;
 
     default:
       return <PlaceholderBox node={node} />;

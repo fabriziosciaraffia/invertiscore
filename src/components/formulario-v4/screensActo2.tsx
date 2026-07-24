@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { usePostHog } from "posthog-js/react";
+import { trackWizard } from "./track";
 import { mesesHastaEntrega } from "@/components/formulario-v3/wizardV3State";
 import type { ScreenProps } from "./screensActo1";
 import type { PieUnidad } from "./wizardV4Nodes";
@@ -183,7 +184,7 @@ export function TasaScreen({ answers, data, answer, goDetour }: ScreenProps) {
         <button
           type="button"
           onClick={() => {
-            posthog?.capture("wizard4_subsidio_aplicado", { comuna: answers.comuna });
+            trackWizard(posthog, "wizard4_subsidio_aplicado", { comuna: answers.comuna });
             answer("tasa", { tasaModo: "estimada", tasaInteres: tasaStr(tSub) });
           }}
           className="franco-tile-target text-left rounded-xl border-[1.5px] border-signal-red bg-[var(--franco-card)] px-5 py-4 w-full transition-colors"

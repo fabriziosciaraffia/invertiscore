@@ -124,6 +124,11 @@ function firstUncompletedAfter(
   return "resumen";
 }
 
+/** Callback de instrumentación (PostHog). El hook lo llama FUERA del updater de
+ *  setNav — nada de side-effects en el reducer (evita doble-fire en StrictMode).
+ *  El hook no conoce PostHog; solo emite nombres+props semánticos. */
+export type WizardV4Event = (name: string, props?: Record<string, unknown>) => void;
+
 export interface UseWizardV4 {
   nav: WizardV4Nav;
   /** Draft recuperable ofrecido vía banner (null si no hay o ya se resolvió). */
@@ -152,10 +157,20 @@ export interface UseWizardV4 {
   canGoBack: boolean;
 }
 
-export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
+export function useWizardV4({ resume, onEvent }: { resume: boolean; onEvent?: WizardV4Event }): UseWizardV4 {
   const [nav, setNav] = useState<WizardV4Nav>(DEFAULT_NAV);
   const [draftPendiente, setDraftPendiente] = useState<PersistedDraft | null>(null);
   const mounted = useRef(false);
+  // Estado más reciente para leer en los callbacks de acción sin re-crearlos, y
+  // callback de instrumentación en ref (para emitir con [] deps). Ambos se leen
+  // solo en event handlers, nunca durante el render.
+  const navRef = useRef(nav);
+  const onEventRef = useRef(onEvent);
+  useEffect(() => { navRef.current = nav; }, [nav]);
+  useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
+  const emit = useCallback((name: string, props?: Record<string, unknown>) => {
+    onEventRef.current?.(name, props);
+  }, []);
   // Máximo de progreso alcanzado — la barra es monotónica (ver más abajo).
   const highWater = useRef(0);
   // Persistencia por pestaña (HALLAZGO-6a).
@@ -222,6 +237,12 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
   }, []);
 
   const answer = useCallback((node: NodeId, patch?: Partial<WizardV4Answers>) => {
+    // Instrumentación FUERA del updater. En edición, responder vuelve al resumen
+    // (no es un paso del funnel) → solo se emite en flow/reask.
+    const s0 = navRef.current;
+    if (s0.mode !== "edit") {
+      emit("wizard4_answered", { node, modalidad: patch?.modalidad ?? s0.answers.modalidad });
+    }
     setNav((s) => {
       const answers: WizardV4Answers = { ...s.answers, ...patch };
       const completed = { ...s.completed, [node]: true };
@@ -308,18 +329,25 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
         dir: "forward",
       };
     });
-  }, []);
+  }, [emit]);
 
   const goBack = useCallback(() => {
+    const s0 = navRef.current;
+    if (s0.mode !== "edit" && s0.history.length > 0) {
+      emit("wizard4_back", { from: s0.current, to: s0.history[s0.history.length - 1] });
+    }
     setNav((s) => {
       if (s.mode === "edit" || s.history.length === 0) return s;
       const history = s.history.slice(0, -1);
       const current = s.history[s.history.length - 1];
       return { ...s, current, history, dir: "back", reactionSource: null };
     });
-  }, []);
+  }, [emit]);
 
   const goDetour = useCallback((fix: NodeId, patch?: Partial<WizardV4Answers>) => {
+    // goDetour solo entra a pantallas de corrección (tasaFix/arrFix/adrFix) → el
+    // campo corregido es la base sin el sufijo "Fix".
+    emit("wizard4_corrected", { field: fix.replace("Fix", "") });
     setNav((s) => ({
       ...s,
       answers: patch ? { ...s.answers, ...patch } : s.answers,
@@ -328,9 +356,10 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
       reactionSource: null,
       dir: "forward",
     }));
-  }, []);
+  }, [emit]);
 
   const editField = useCallback((node: NodeId) => {
+    emit("wizard4_edit_from_summary", { field: node });
     setNav((s) => ({
       ...s,
       mode: "edit",
@@ -340,7 +369,7 @@ export function useWizardV4({ resume }: { resume: boolean }): UseWizardV4 {
       reactionSource: null,
       dir: "forward",
     }));
-  }, []);
+  }, [emit]);
 
   const gateNoSwitchToLtr = useCallback(() => {
     setNav((s) => {
