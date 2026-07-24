@@ -28,6 +28,9 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { antiguedadToNumber } from "@/components/formulario-v3/wizardV3State";
+import { loadGoogleMaps } from "@/lib/loadGoogleMaps";
+import { COMUNAS } from "@/lib/comunas";
+import { isComunaDisponible } from "@/lib/comunas-disponibles";
 import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
@@ -66,6 +69,14 @@ const FIELD_FOR_VAR: Record<string, string> = {
   "la tasa": "tasa",
   "la tarifa": "adr",
   "la ocupación": "adr",
+};
+
+// Campo → card (para limpiar la nota de cascada al interactuar con esa card).
+const FIELD_CARD: Record<string, "01" | "02" | "03"> = {
+  precio: "01", pie: "02", plazo: "02", tasa: "02",
+  gate: "03", arr: "03", adr: "03",
+  gastosComunes: "03", contribuciones: "03", vacanciaPct: "03", comisionAdminPct: "03",
+  costoInsumos: "03", mantencionStr: "03", costoAmoblamiento: "03",
 };
 
 // ── Envoltorio de campo (label + valor/editor + tag + fuente) ────────────────
@@ -249,6 +260,87 @@ function ChipsField<T extends string>({
   );
 }
 
+const DIAS_MES = 30.44;
+
+/** Nota de cascada (estilo reacción de Franco) dentro de una card afectada. Vive
+ *  hasta la próxima interacción con esa card (R3). */
+function CascadeNote({ text }: { text: string }) {
+  return (
+    <div className="mb-2 rounded-r-lg border-l-2 border-signal-red bg-[color-mix(in_srgb,var(--franco-text)_3.5%,transparent)] pl-3 pr-3 py-2">
+      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-signal-red m-0 mb-0.5">Franco</p>
+      <p className="font-body text-[12px] italic text-[var(--franco-text-secondary)] m-0 leading-snug">{text}</p>
+    </div>
+  );
+}
+
+/** Editor inline de dirección: el mismo Places Autocomplete embebido en la card,
+ *  con gate de cobertura. Confirma solo comunas cubiertas; devuelve los datos de
+ *  la nueva dirección al padre (que decide la invalidación + cascada). */
+function DireccionEdit({ initial, onConfirm, onCancel }: {
+  initial: string;
+  onConfirm: (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number }) => void;
+  onCancel: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const acRef = useRef<any>(null);
+  const [fuera, setFuera] = useState<string | null>(null);
+  const doneRef = useRef(false);
+
+  useEffect(() => {
+    loadGoogleMaps().then(() => {
+      if (!inputRef.current || acRef.current) return;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const google = (window as any).google;
+      if (!google?.maps?.places) return;
+      const ac = new google.maps.places.Autocomplete(inputRef.current, {
+        types: ["address"], componentRestrictions: { country: "cl" },
+        fields: ["geometry", "formatted_address", "address_components"],
+      });
+      ac.addListener("place_changed", () => {
+        const place = ac.getPlace();
+        if (!place?.geometry?.location) return;
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const addr = place.formatted_address || inputRef.current?.value || "";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const comps = (place.address_components || []) as any[];
+        const comunaRaw = comps.find((c) => c.types.includes("locality"))?.long_name
+          || comps.find((c) => c.types.includes("administrative_area_level_3"))?.long_name || "";
+        const match = COMUNAS.find((c) => c.comuna.toLowerCase() === comunaRaw.toLowerCase());
+        const comunaFinal = match?.comuna || comunaRaw;
+        if (!isComunaDisponible(comunaFinal)) { setFuera(comunaFinal); return; }
+        setFuera(null);
+        doneRef.current = true;
+        onConfirm({ direccion: addr, comuna: comunaFinal, ciudad: match?.ciudad || "Santiago", lat, lng });
+      });
+      acRef.current = ac;
+      inputRef.current.focus();
+    }).catch(() => { /* ignore */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div>
+      <input
+        ref={inputRef}
+        type="text"
+        autoComplete="off"
+        defaultValue={initial}
+        placeholder="Ej: Av. Providencia 1234, Providencia"
+        onBlur={() => { if (!doneRef.current) setTimeout(() => { if (!doneRef.current) onCancel(); }, 150); }}
+        onKeyDown={(e) => { if (e.key === "Escape") { doneRef.current = true; onCancel(); } }}
+        className="w-full h-9 rounded-lg border-[1.5px] border-signal-red bg-[var(--franco-card)] px-2 font-body text-[14px] text-[var(--franco-text)] focus:outline-none"
+      />
+      {fuera ? (
+        <p className="font-body text-[11px] mt-1 text-signal-red leading-snug">{fuera} está fuera del Gran Santiago — Franco no tiene datos suficientes acá.</p>
+      ) : (
+        <p className="font-body text-[10px] mt-1 text-[var(--franco-text-muted)]">Elige una opción de la lista. Cambiar de comuna re-estima la zona.</p>
+      )}
+    </div>
+  );
+}
+
 // ── Estructura de cards ──────────────────────────────────────────────────────
 
 function Nivel3({ title, open, onToggle, children }: { title: string; open: boolean; onToggle: () => void; children: ReactNode }) {
@@ -305,6 +397,11 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const [openCard, setOpenCard] = useState<"01" | "02" | "03" | null>(null);
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [l3, setL3] = useState<"sup" | "gest" | null>(null);
+  // R3: notas de cascada por card (viven hasta la próxima interacción con la card).
+  const [cascade, setCascade] = useState<Record<string, string>>({});
+  const [editingDir, setEditingDir] = useState(false);
+  const [editingTipo, setEditingTipo] = useState(false);
+  const [editingMod, setEditingMod] = useState(false);
 
   const dryRun = useWizardV4DryRun(a, data);
   const alFilo = dryRun.alFilo && dryRun.variablesSensibles.length > 0;
@@ -336,6 +433,9 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   // si la card nombró esa variable) y re-dispara el dry-run (vía cambio de answers).
   const commitEdit = (field: string, patch: Partial<WizardV4Answers>) => {
     w.patchAnswers(patch);
+    // Interacción con la card → limpia su nota de cascada.
+    const card = FIELD_CARD[field];
+    if (card) setCascade((c) => (c[card] ? { ...c, [card]: "" } : c));
     trackWizard(posthog, "wizard4_edit_from_summary", { field });
     if (alFilo) {
       const v = dryRun.variablesSensibles.find((x) => FIELD_FOR_VAR[x] === field);
@@ -374,6 +474,66 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const esLtr = mod === "ltr" || mod === "both";
   const esStr = mod === "str" || mod === "both";
 
+  // Estimados de zona (fallback de display cuando el override queda vacío tras
+  // invalidar en una cascada de dirección).
+  const sugArriendo = data.arriendoSugerido ?? 0;
+  const occRef = data.airRoi.ocupacionReferencia;
+  const sugTarifa = data.airRoi.ingresoBrutoMensual > 0 && occRef > 0 ? Math.round(data.airRoi.ingresoBrutoMensual / (DIAS_MES * occRef)) : 0;
+  const sugOcc = occRef > 0 ? Math.round(occRef * 100) : 0;
+  const arriendoVal = parseNum(a.arriendo ?? "") || sugArriendo;
+  const tarifaVal = parseNum(a.adrTarifa ?? "") || sugTarifa;
+  const occVal = Number(a.adrOcupacion) || sugOcc;
+
+  // POR COMPLETAR (R3): tras cambiar de modalidad, la rama STR exige el gate
+  // (sin estimación posible). Bloquea generar hasta responderlo.
+  const gatePorCompletar = esStr && !a.edificioPermiteAirbnb;
+  const incompleto = gatePorCompletar;
+
+  // Confirmación de dirección nueva → invalidación + nota de cascada. Comuna
+  // distinta descarta TODO (estimados y corregidos); misma comuna conserva
+  // correcciones y solo refresca comparables.
+  const onDireccionConfirm = (d: { direccion: string; comuna: string; ciudad: string; lat: number; lng: number }) => {
+    setEditingDir(false);
+    const comunaCambio = d.comuna.toLowerCase() !== (a.comuna ?? "").toLowerCase();
+    const base = { direccion: d.direccion, direccionConfirmada: d.direccion, comuna: d.comuna, ciudad: d.ciudad, lat: d.lat, lng: d.lng };
+    if (comunaCambio) {
+      const teniaCorrecciones = a.arrModo === "corregir" || a.adrModo === "corregir" || !!a.gastosComunes || !!a.contribuciones;
+      w.patchAnswers({
+        ...base,
+        arriendo: undefined, arrModo: "estimacion",
+        adrTarifa: undefined, adrOcupacion: undefined, adrModo: "estimacion",
+        gastosComunes: undefined, contribuciones: undefined,
+      });
+      const listado = esStr && esLtr ? "arriendo, tarifa y ocupación" : esStr ? "tarifa y ocupación" : "arriendo";
+      let msg = `Cambié la zona a ${d.comuna} — re-estimé ${listado} y los supuestos de la zona.`;
+      if (teniaCorrecciones) msg += " Tus correcciones anteriores eran de la otra zona, las descarté.";
+      setCascade({ "03": msg });
+    } else {
+      w.patchAnswers(base);
+      setCascade({ "03": "Actualicé los comparables para la nueva dirección." });
+    }
+    trackWizard(posthog, "wizard4_edit_from_summary", { field: "dir", cascada: true });
+  };
+
+  const onTipoChange = (nuevo: "usado" | "nuevo") => {
+    setEditingTipo(false);
+    if (nuevo === a.tipoPropiedad) return;
+    const antesSub = calificaSubsidioV4(a);
+    w.patchAnswers({ tipoPropiedad: nuevo });
+    const despuesSub = calificaSubsidioV4({ ...a, tipoPropiedad: nuevo });
+    if (antesSub !== despuesSub) {
+      setCascade((c) => ({ ...c, "02": despuesSub ? "Este tipo califica para el subsidio a la tasa — revisá la opción en la tasa." : "Este tipo ya no califica para el subsidio; volví la tasa a mercado." }));
+    }
+    trackWizard(posthog, "wizard4_edit_from_summary", { field: "tipo", cascada: true });
+  };
+
+  const onModalidadChange = (nuevo: "ltr" | "str" | "both") => {
+    setEditingMod(false);
+    if (nuevo === mod) return;
+    w.patchAnswers({ modalidad: nuevo });
+    trackWizard(posthog, "wizard4_edit_from_summary", { field: "mod", cascada: true });
+  };
+
   async function onGenerar() {
     setError(""); setSubmitting(true); onTerminal();
     trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
@@ -396,7 +556,10 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     ? [a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : null, a.adrOcupacion ? `${a.adrOcupacion}%` : null, a.edificioPermiteAirbnb ? LABEL_GATE[a.edificioPermiteAirbnb] : null].filter(Boolean).join(" · ") || "—"
     : (a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—");
 
-  const toggleCard = (c: "01" | "02" | "03") => setOpenCard((prev) => (prev === c ? null : c));
+  const toggleCard = (c: "01" | "02" | "03") => {
+    setOpenCard((prev) => (prev === c ? null : c));
+    setCascade((prev) => (prev[c] ? { ...prev, [c]: "" } : prev));
+  };
 
   // Validador % (0-99, tolera coma para tasa).
   const pctInt = (v: string) => v.replace(/\D/g, "").slice(0, 2);
@@ -404,31 +567,68 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
   return (
     <div className="pb-44 lg:pb-8">
-      {/* Header: chip de informe (editable en R3). */}
-      <div className="mb-5 flex items-center gap-3">
+      {/* Header: chip de informe editable — tap abre el selector de modalidad. */}
+      <div className="mb-5">
         <button
           type="button"
-          aria-label={`Informe: ${mod ? LABEL_MOD[mod] : "—"}. Editable más adelante.`}
+          onClick={() => setEditingMod((o) => !o)}
+          aria-expanded={editingMod}
+          aria-label={`Informe: ${mod ? LABEL_MOD[mod] : "—"}. Toca para cambiar.`}
           className="inline-flex items-center gap-1.5 rounded-lg border border-signal-red px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.08em] text-[var(--franco-text)]"
         >
           <span className="text-[var(--franco-text-muted)]">Informe:</span>
           <span className="font-medium">{mod ? LABEL_MOD[mod] : "—"}</span>
           <span className="text-signal-red">▾</span>
         </button>
+        {editingMod && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {(["ltr", "str", "both"] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => onModalidadChange(m)}
+                className={`font-mono text-[11px] uppercase tracking-[0.06em] px-3 h-9 rounded-lg border-[0.5px] transition-colors ${
+                  m === mod ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"
+                }`}
+              >
+                {LABEL_MOD[m]}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
         {/* 01 · Qué compras */}
         <ActCard num="01" title="Qué compras" summaryLine={summary01} open={openCard === "01"} onToggle={() => toggleCard("01")}>
-          {/* Dirección: estructural → editable en R3. */}
-          <StaticField label="Dirección" value={a.direccion || "—"} />
+          {/* Dirección: editor inline = Places embebido con gate de cobertura. */}
+          <FieldShell label="Dirección">
+            {editingDir ? (
+              <DireccionEdit initial={a.direccion || ""} onConfirm={onDireccionConfirm} onCancel={() => setEditingDir(false)} />
+            ) : (
+              <EditableDisplay text={a.direccion || "—"} onStart={() => setEditingDir(true)} />
+            )}
+          </FieldShell>
           <NumField
             label="Precio" raw={fmtMiles(a.precio ?? "")} display={pUF > 0 ? fmtUF(pUF) : "—"} suffix="UF"
             derived={precioCLP} onCommit={(v) => commitEdit("precio", { precio: fmtMiles(v) })}
           />
           <Nivel3 title="Detalle del depto" open={detalleOpen} onToggle={() => setDetalleOpen((o) => !o)}>
-            {/* Tipo: estructural → editable en R3. */}
-            <StaticField label="Tipo" value={tipoStr} />
+            {/* Tipo: estructural → chips inline (muta el detalle + recalcula subsidio). */}
+            <FieldShell label="Tipo">
+              {editingTipo ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {(["usado", "nuevo"] as const).map((t) => (
+                    <button key={t} type="button" onClick={() => onTipoChange(t)}
+                      className={`font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] transition-colors ${t === a.tipoPropiedad ? "bg-[var(--franco-text)] text-[var(--franco-bg)] border-[var(--franco-text)]" : "border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)]"}`}>
+                      {t === "nuevo" ? "Nuevo" : "Usado"}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <EditableDisplay text={tipoStr} onStart={() => setEditingTipo(true)} />
+              )}
+            </FieldShell>
             <StaticField label={a.tipoPropiedad === "nuevo" ? "Entrega" : "Antigüedad"} value={entregaAntig} />
             <StaticField label="Tamaño" value={tamStr} />
             <StaticField label="Estacionamiento y bodega" value={`${nEstac} estac · ${nBodega} bodega`} />
@@ -437,6 +637,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
         {/* 02 · Cómo lo financias */}
         <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
+          {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
             label="Pie (% del precio)" raw={String(Math.round(pct) || "")} display={pieStr} suffix="%" format={pctInt}
             onCommit={(v) => commitEdit("pie", { pieUnidad: "pct", pieMonto: v })}
@@ -466,17 +667,33 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
         {/* 03 · Cómo lo rentabilizas */}
         <ActCard num="03" title="Cómo lo rentabilizas" summaryLine={summary03} open={openCard === "03"} onToggle={() => toggleCard("03")}>
+          {cascade["03"] && <CascadeNote text={cascade["03"]} />}
           {esStr && (
-            <ChipsField
-              label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
-              options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
-              onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
-            />
+            gatePorCompletar ? (
+              // POR COMPLETAR: tras cambiar a una modalidad STR, el gate no tiene
+              // estimación posible → hay que responderlo. Bloquea generar.
+              <FieldShell label="Edificio permite Airbnb · por completar">
+                <div className="flex flex-wrap gap-1.5 rounded-lg border border-dashed border-signal-red p-1.5">
+                  {(["si", "no", "no_seguro"] as const).map((g) => (
+                    <button key={g} type="button" onClick={() => commitEdit("gate", { edificioPermiteAirbnb: g })}
+                      className="font-mono text-[12px] px-2.5 h-8 rounded-lg border-[0.5px] border-[var(--franco-border-strong)] text-[var(--franco-text-secondary)] hover:text-[var(--franco-text)] transition-colors">
+                      {LABEL_GATE[g]}
+                    </button>
+                  ))}
+                </div>
+              </FieldShell>
+            ) : (
+              <ChipsField
+                label="Edificio permite Airbnb" value={a.edificioPermiteAirbnb}
+                options={[{ value: "si", label: "Sí permite" }, { value: "no", label: "No permite" }, { value: "no_seguro", label: "No estoy seguro" }]}
+                onCommit={(v) => commitEdit("gate", { edificioPermiteAirbnb: v })}
+              />
+            )
           )}
           {esLtr && (
             <NumField
-              label="Arriendo" raw={fmtMiles(a.arriendo ?? "")} display={a.arriendo ? `${fmtCLP(parseNum(a.arriendo))}/mes` : "—"} suffix="$"
-              tag={a.arrModo === "corregir" ? "corregido por ti" : a.arrModo === "estimacion" ? "estimado" : undefined}
+              label="Arriendo" raw={fmtMiles(a.arriendo ?? String(sugArriendo || ""))} display={arriendoVal > 0 ? `${fmtCLP(arriendoVal)}/mes` : "—"} suffix="$"
+              tag={a.arrModo === "corregir" ? "corregido por ti" : "estimado"}
               fuente={fuenteArriendo(data.arriendoN)}
               onCommit={(v) => commitEdit("arr", { arriendo: fmtMiles(v), arrModo: "corregir" })}
             />
@@ -484,13 +701,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           {esStr && (
             <>
               <NumField
-                label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? "")} display={a.adrTarifa ? `${fmtCLP(parseNum(a.adrTarifa))}/noche` : "—"} suffix="$"
-                tag={a.adrModo === "corregir" ? "corregido por ti" : a.adrModo === "estimacion" ? "estimado" : undefined}
+                label="Tarifa por noche" raw={fmtMiles(a.adrTarifa ?? String(sugTarifa || ""))} display={tarifaVal > 0 ? `${fmtCLP(tarifaVal)}/noche` : "—"} suffix="$"
+                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
                 fuente="datos de mercado Airbnb de la zona, últimos 90 días"
                 onCommit={(v) => commitEdit("adr", { adrTarifa: fmtMiles(v), adrModo: "corregir" })}
               />
               <NumField
-                label="Ocupación" raw={a.adrOcupacion ?? ""} display={a.adrOcupacion ? `${a.adrOcupacion}%` : "—"} suffix="%" format={pctInt}
+                label="Ocupación" raw={String(a.adrOcupacion ?? (sugOcc || ""))} display={occVal > 0 ? `${occVal}%` : "—"} suffix="%" format={pctInt}
+                tag={a.adrModo === "corregir" ? "corregido por ti" : "estimado"}
                 onCommit={(v) => commitEdit("adr", { adrOcupacion: v, adrModo: "corregir" })}
               />
             </>
@@ -538,16 +756,16 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
           )}
         </div>
         <div className="flex flex-col items-stretch justify-end gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
         </div>
       </div>
 
       {/* Mobile: CTA sticky. */}
       <div className="lg:hidden fixed bottom-0 left-0 right-0 z-20 border-t border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-bg)_92%,transparent)] backdrop-blur px-4 py-3">
         <div className="max-w-3xl mx-auto flex flex-col items-stretch gap-1.5">
-          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
-          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
+          <FinalCTA mod={mod} isLoggedIn={isLoggedIn} canAnalyze={canAnalyze} submitting={submitting} incompleto={incompleto} onGenerar={onGenerar} onDesbloquear={onDesbloquear} onTerminal={onTerminal} />
+          <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">{incompleto ? "Completa la card 03 para generar." : ctaCaveat(isLoggedIn, canAnalyze, mod, a.comuna)}</p>
         </div>
       </div>
     </div>
@@ -565,13 +783,16 @@ function ctaCaveat(isLoggedIn: boolean, canAnalyze: boolean, mod: string | undef
   return "Después de esto, el informe es final.";
 }
 
-function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, onGenerar, onDesbloquear, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; onGenerar: () => void; onDesbloquear: () => void; onTerminal: () => void }) {
-  const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60";
+function FinalCTA({ mod, isLoggedIn, canAnalyze, submitting, incompleto, onGenerar, onDesbloquear, onTerminal }: { mod: string | undefined; isLoggedIn: boolean; canAnalyze: boolean; submitting: boolean; incompleto: boolean; onGenerar: () => void; onDesbloquear: () => void; onTerminal: () => void }) {
+  const cls = "font-mono uppercase font-medium text-[12px] tracking-[0.06em] text-white px-6 py-3.5 rounded-lg bg-signal-red hover:bg-signal-red/90 transition-colors min-h-[48px] flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed";
   if (canAnalyze) {
-    return <button type="button" onClick={onGenerar} disabled={submitting} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar análisis · 1 crédito</>}</button>;
+    return <button type="button" onClick={onGenerar} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Generando…</> : <>✦ Generar análisis · 1 crédito</>}</button>;
   }
   if (isLoggedIn) {
-    return <button type="button" onClick={onDesbloquear} disabled={submitting} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
+    return <button type="button" onClick={onDesbloquear} disabled={submitting || incompleto} className={cls}>{submitting ? <><Loader2 className="w-4 h-4 animate-spin" /> Te llevamos a pagar…</> : <>Desbloquear este análisis{mod === "both" ? " comparativo" : ""} · {fmtCLP(SINGLE_PRICE)}</>}</button>;
+  }
+  if (incompleto) {
+    return <span className={`${cls} opacity-60 cursor-not-allowed`}>Crear cuenta gratis <ArrowRight size={14} /></span>;
   }
   return <Link href={`/register?next=${encodeURIComponent("/analisis/nuevo-v4?resume=1")}`} onClick={onTerminal} className={cls}>Crear cuenta gratis <ArrowRight size={14} /></Link>;
 }
