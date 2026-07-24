@@ -13,6 +13,11 @@ import type { WizardV4Answers } from "./wizardV4Nodes";
 
 export { fmtCLP, fmtUF, parseNum, parseDecimalLocale };
 
+/** Concordancia singular/plural de "dormitorio(s)". */
+export function dormLabel(n: number): string {
+  return `${n} ${n === 1 ? "dormitorio" : "dormitorios"}`;
+}
+
 /** Precio en UF (0 si vacío/ inválido). */
 export function precioUF(a: WizardV4Answers): number {
   return parseNum(a.precio ?? "");

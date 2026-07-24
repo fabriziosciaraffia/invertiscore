@@ -24,7 +24,7 @@ import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
 import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
-import { fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
+import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, piePct, pieUF, precioUF } from "./derive";
 import { subsidioAplicadoV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
 import { trackWizard } from "./track";
@@ -92,7 +92,11 @@ function SupuestoEditable({
   );
 }
 
-const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
+/** Formatea dígitos con separador de miles chileno (63000 → "63.000"). Tolerante:
+ *  strippea todo lo no-dígito. parseNum() revierte los puntos al leer downstream. */
+function fmtMiles(v: string | number): string {
+  return String(v).replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}
 
 /** "el arriendo" · "el arriendo y la tasa" · "a, b y c". */
 function joinVars(vars: string[]): string {
@@ -218,7 +222,9 @@ export function ResumenScreen({
     }
   }
 
-  const patchNum = (field: string) => (v: string) => { if (numOk(v)) w.patchAnswers({ [field]: v }); };
+  // Supuestos CLP: display con formato chileno (63.000) y parse tolerante — se
+  // guarda ya formateado; parseNum() lo revierte al construir el payload.
+  const milesChange = (field: string) => (v: string) => w.patchAnswers({ [field]: fmtMiles(v) });
 
   return (
     <div className="flex flex-col gap-5 pb-28">
@@ -303,15 +309,15 @@ export function ResumenScreen({
         <div className="mt-2">
           <SupuestoEditable
             label="Gastos comunes" field="gastosComunes" suffix="$"
-            value={a.gastosComunes ?? String(Math.round(ggccDef))}
+            value={fmtMiles(a.gastosComunes ?? String(Math.round(ggccDef)))}
             edited={!!a.gastosComunes} fuente="gastos comunes típicos de la comuna"
-            onChange={patchNum("gastosComunes")}
+            onChange={milesChange("gastosComunes")}
           />
           <SupuestoEditable
             label="Contribuciones (trim.)" field="contribuciones" suffix="$"
-            value={a.contribuciones ?? String(Math.round(contribDef))}
+            value={fmtMiles(a.contribuciones ?? String(Math.round(contribDef)))}
             edited={!!a.contribuciones} fuente="fórmula SII según avalúo estimado"
-            onChange={patchNum("contribuciones")}
+            onChange={milesChange("contribuciones")}
           />
           {esLtr && (
             <>
@@ -333,21 +339,21 @@ export function ResumenScreen({
             <>
               <SupuestoEditable
                 label="Costos operativos (luz+agua+wifi+insumos)" field="costoInsumos" suffix="$"
-                value={a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos)}
-                edited={!!a.costoInsumos} fuente={`operación típica para ${dorm} dormitorios`}
-                onChange={patchNum("costoInsumos")}
+                value={fmtMiles(a.costoInsumos ?? String(costos.costoElectricidad + costos.costoAgua + costos.costoWifi + costos.costoInsumos))}
+                edited={!!a.costoInsumos} fuente={`consumo operativo típico para ${dormLabel(dorm)}`}
+                onChange={milesChange("costoInsumos")}
               />
               <SupuestoEditable
                 label="Mantención" field="mantencionStr" suffix="$"
-                value={a.mantencionStr ?? String(costos.mantencion)} edited={!!a.mantencionStr}
-                fuente={`operación típica para ${dorm} dormitorios`}
-                onChange={patchNum("mantencionStr")}
+                value={fmtMiles(a.mantencionStr ?? String(costos.mantencion))} edited={!!a.mantencionStr}
+                fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`}
+                onChange={milesChange("mantencionStr")}
               />
               <SupuestoEditable
                 label="Amoblamiento (capex)" field="costoAmoblamiento" suffix="$"
-                value={a.costoAmoblamiento ?? String(costos.costoAmoblamiento)} edited={!!a.costoAmoblamiento}
+                value={fmtMiles(a.costoAmoblamiento ?? String(costos.costoAmoblamiento))} edited={!!a.costoAmoblamiento}
                 fuente="capex inicial estimado si el depto no está amoblado"
-                onChange={patchNum("costoAmoblamiento")}
+                onChange={milesChange("costoAmoblamiento")}
               />
             </>
           )}

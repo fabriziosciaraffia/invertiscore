@@ -10,7 +10,7 @@ import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import type { ScreenProps } from "./screensActo1";
 import { FuenteLine, GhostBtn, PrimaryBtn, TextInput } from "./ui";
-import { fmtCLP, parseNum, parseDecimalLocale, precioUF } from "./derive";
+import { dormLabel, fmtCLP, parseNum, parseDecimalLocale, precioUF } from "./derive";
 
 const numOk = (v: string) => v === "" || /^[\d.]*$/.test(v);
 
@@ -152,8 +152,8 @@ export function AdrScreen({ answers, data, answer, goDetour }: ScreenProps) {
 
       <SupuestosDetails summary="Gestión y costos">
         <SupuestoRow label="Modo de gestión" value={answers.modoGestion === "administrador" ? "Administrador" : "Auto-gestión"} fuente="por defecto operas tú; cámbialo si usas operador" />
-        <SupuestoRow label="Costos operativos" value={`${fmtCLP(totalOps)}/mes`} fuente={`luz + agua + wifi + insumos — operación típica para ${dorm} dormitorios`} />
-        <SupuestoRow label="Mantención" value={`${fmtCLP(costos.mantencion)}/mes`} fuente={`operación típica para ${dorm} dormitorios`} />
+        <SupuestoRow label="Costos operativos" value={`${fmtCLP(totalOps)}/mes`} fuente={`luz + agua + wifi + insumos — consumo operativo típico para ${dormLabel(dorm)}`} />
+        <SupuestoRow label="Mantención" value={`${fmtCLP(costos.mantencion)}/mes`} fuente={`provisión mensual de mantención para ${dormLabel(dorm)}`} />
         <SupuestoRow label="Amoblamiento" value={fmtCLP(costos.costoAmoblamiento)} fuente="capex inicial estimado si el depto no está amoblado" />
       </SupuestosDetails>
 
