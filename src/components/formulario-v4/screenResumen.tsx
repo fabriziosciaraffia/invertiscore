@@ -394,7 +394,9 @@ export function ResumenScreen({
             onTerminal={onTerminal}
           />
           <p className="font-body text-[11px] text-[var(--franco-text-muted)] text-center m-0">
-            Después de esto, el informe es final.
+            {isLoggedIn && !canAnalyze
+              ? `Estás comprando este análisis${mod === "both" ? " comparativo" : ""}${a.comuna ? ` de ${a.comuna}` : ""}. Pagas y se desbloquea al instante.`
+              : "Después de esto, el informe es final."}
           </p>
         </div>
       </div>
