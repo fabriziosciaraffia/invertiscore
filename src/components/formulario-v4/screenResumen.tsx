@@ -409,7 +409,7 @@ function ActCard({ num, title, summaryLine, open, onToggle, children }: { num: s
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="lg:pointer-events-none w-full text-left px-4 py-3 flex items-start justify-between gap-3"
+        className="lg:pointer-events-none w-full text-left px-4 py-2.5 flex items-start justify-between gap-3"
       >
         <div className="min-w-0">
           {/* Número mono Signal Red + título Source Serif 4 (14px/500, tinta) —
@@ -422,7 +422,7 @@ function ActCard({ num, title, summaryLine, open, onToggle, children }: { num: s
         </div>
         <ChevronRight size={16} className={`lg:hidden shrink-0 mt-0.5 text-[var(--franco-text-muted)] transition-transform ${open ? "rotate-90" : ""}`} />
       </button>
-      <div className={`${open ? "block" : "hidden"} lg:block px-4 pb-3`}>{children}</div>
+      <div className={`${open ? "block" : "hidden"} lg:block px-4 pb-2`}>{children}</div>
     </section>
   );
 }
@@ -623,12 +623,14 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
 
   // Validador % (0-99, tolera coma para tasa).
   const pctInt = (v: string) => v.replace(/\D/g, "").slice(0, 2);
+  // QA-1: el pie tolera 0-100 (no >100). Clamp al tope.
+  const piePctClamp = (v: string) => { const n = v.replace(/\D/g, "").slice(0, 3); return n === "" ? "" : String(Math.min(100, Number(n))); };
   const tasaInput = (v: string) => v.replace(/[^\d,]/g, "").slice(0, 5);
 
   return (
     <div className="pb-44 lg:pb-1">
       {/* Header: chip de informe editable — tap abre el selector de modalidad. */}
-      <div className="mb-4">
+      <div className="mb-2">
         <button
           type="button"
           onClick={() => setEditingMod((o) => !o)}
@@ -713,7 +715,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
         <ActCard num="02" title="Cómo lo financias" summaryLine={summary02} open={openCard === "02"} onToggle={() => toggleCard("02")}>
           {cascade["02"] && <CascadeNote text={cascade["02"]} />}
           <NumField
-            label="Pie (% del precio)" raw={String(Math.round(pct) || "")} display={pieStr} suffix="%" format={pctInt}
+            label="Pie (% del precio)" raw={String(Math.round(pct) || "")} display={pieStr} suffix="%" format={piePctClamp}
             onCommit={(v) => commitEdit("pie", { pieUnidad: "pct", pieMonto: v })}
           />
           <ChipsField

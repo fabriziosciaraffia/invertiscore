@@ -102,6 +102,8 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
   const pct = piePct(answers, data.ufCLP);
   const uf = pieUF(answers, data.ufCLP);
   const clp = pieCLP(answers, data.ufCLP);
+  // QA-1: el pie no puede superar el 100% del precio (absurdo aritmético).
+  const pieExcede = pct > 100;
 
   // Equivalencias en vivo: las otras dos unidades respecto a la que escribe.
   const equiv: string[] = [];
@@ -155,8 +157,14 @@ export function PieScreen({ answers, data, patchAnswers, answer }: ScreenProps) 
         <p className="font-mono text-[12px] text-[var(--franco-text-muted)] m-0">{enCuotas}</p>
       )}
 
+      {pieExcede && (
+        <p className="font-body text-[12px] text-signal-red m-0 leading-snug">
+          El pie no puede superar el 100% del precio. Ajústalo para continuar.
+        </p>
+      )}
+
       <div className="mt-1">
-        <PrimaryBtn onClick={() => answer("pie")} disabled={pct <= 0}>
+        <PrimaryBtn onClick={() => answer("pie")} disabled={pct <= 0 || pieExcede}>
           Continuar →
         </PrimaryBtn>
       </div>

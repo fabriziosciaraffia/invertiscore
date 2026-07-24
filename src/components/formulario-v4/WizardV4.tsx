@@ -148,7 +148,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
       <main className={`wizard4-main mx-auto px-4 md:px-8 ${esResumen ? "pt-6 pb-1 max-w-[1160px]" : "py-6 md:py-12 max-w-3xl"}`}>
         {/* Header: chevron + acto + progreso. Superficie card atenuada (dec. D v3).
             En el resumen (ancho, denso) se compacta el margen para caber en 1366x768. */}
-        <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-5" : "p-5 md:p-6 mb-8"}`}>
+        <div className={`wizard4-headcard rounded-2xl border-[0.5px] border-[var(--franco-border)] bg-[var(--franco-card)] shadow-sm ${esResumen ? "p-4 mb-3" : "p-5 md:p-6 mb-8"}`}>
           <div className="flex items-center gap-3 mb-4 min-w-0">
             {w.canGoBack && (
               <button
@@ -204,7 +204,7 @@ export function WizardV4({ resume }: { resume: boolean }) {
           <div key={nav.current} className="wizard4-screen" data-dir={nav.dir}>
             {reaction && <FrancoReaction>{reaction}</FrancoReaction>}
 
-            <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-4" : "mb-6"}`}>
+            <h1 className={`wizard4-steptitle font-heading text-2xl md:text-[30px] font-bold text-[var(--franco-text)] m-0 leading-tight ${esResumen ? "mb-2" : "mb-6"}`}>
               {NODE_TITLE[nav.current]}
             </h1>
 
