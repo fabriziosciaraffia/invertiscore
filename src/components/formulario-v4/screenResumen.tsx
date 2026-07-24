@@ -512,6 +512,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
       w.patchAnswers(base);
       setCascade({ "03": "Actualicé los comparables para la nueva dirección." });
     }
+    setOpenCard("03"); // en mobile, abre la card afectada para que la nota se vea
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "dir", cascada: true });
   };
 
@@ -523,6 +524,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     const despuesSub = calificaSubsidioV4({ ...a, tipoPropiedad: nuevo });
     if (antesSub !== despuesSub) {
       setCascade((c) => ({ ...c, "02": despuesSub ? "Este tipo califica para el subsidio a la tasa — revisá la opción en la tasa." : "Este tipo ya no califica para el subsidio; volví la tasa a mercado." }));
+      setOpenCard("02"); // en mobile, abre la card afectada para que la nota se vea
     }
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "tipo", cascada: true });
   };
