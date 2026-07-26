@@ -54,6 +54,7 @@ export function useWizardV4DryRun(answers: WizardV4Answers, data: WizardV4Data):
     }
     const ctx: SubmitContext = {
       ufCLP: data.ufCLP,
+      tasaMercado: data.tasaMercado,
       arriendoSugerido: data.arriendoSugerido,
       arriendoN: data.arriendoN,
       precioM2UF: data.precioM2UF,

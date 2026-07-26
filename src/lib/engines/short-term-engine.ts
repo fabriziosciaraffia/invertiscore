@@ -84,6 +84,12 @@ export interface ShortTermInputs {
   // Financiamiento
   piePercent: number;       // decimal: 0.20 = 20%
   tasaCredito: number;      // decimal: 0.045 = 4.5%
+  // Tasa hipotecaria de mercado vigente (decimal, ej. 0.0472). OPCIONAL: solo la
+  // envía el wizard v4. Alimenta subsidioTasa (tasa con subsidio = mercado − 0,6pp
+  // y el gate `aplicado`). Ausente (renta-corta legacy, análisis históricos,
+  // fixtures) ⇒ TASA_MERCADO_FALLBACK → comportamiento idéntico al previo. NO
+  // afecta la cuota (esa usa tasaCredito).
+  tasaMercado?: number;
   plazoCredito: number;     // años
 
   // AirROI
@@ -1158,7 +1164,9 @@ export function calcShortTerm(input: ShortTermInputs, asOf: Date = new Date()): 
   const tasaIngresadaPct = input.tasaCredito * 100;
   const subsidioTasa = (() => {
     const califica = calificaSubsidio(input.tipoPropiedad ?? "", precioUF);
-    const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
+    // Tasa de mercado real (wizard v4, decimal → %) o fallback (legacy → idéntico al previo).
+    const tasaMercadoPct = input.tasaMercado && input.tasaMercado > 0 ? input.tasaMercado * 100 : TASA_MERCADO_FALLBACK;
+    const tasaConSubsidio = calcTasaConSubsidio(tasaMercadoPct);
     return {
       califica,
       tasaConSubsidio,

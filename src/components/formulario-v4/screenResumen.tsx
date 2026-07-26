@@ -459,6 +459,7 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
   const canAnalyze = canAnalyzeFromTier(tier);
   const ctx: SubmitContext = {
     ufCLP: data.ufCLP,
+    tasaMercado: data.tasaMercado,
     arriendoSugerido: data.arriendoSugerido,
     arriendoN: data.arriendoN,
     precioM2UF: data.precioM2UF,

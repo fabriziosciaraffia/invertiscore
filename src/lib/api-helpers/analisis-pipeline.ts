@@ -402,6 +402,9 @@ export interface ShortTermAnalysisBody {
   precioCompraUF: number;
   piePct: number;
   tasaInteres: number;
+  /** Tasa hipotecaria de mercado vigente (%, ej. 4,72). OPCIONAL: solo v4.
+   *  Alimenta subsidioTasa. Ausente ⇒ fallback en el motor (idéntico al previo). */
+  tasaMercado?: number;
   plazoCredito: number;
   modoGestion: "auto" | "administrador";
   comisionAdministrador: number;
@@ -504,6 +507,8 @@ export async function buildShortTermAnalysisRow(
     comuna: typeof body.comuna === "string" ? body.comuna : undefined,
     piePercent: body.piePct / 100,
     tasaCredito: body.tasaInteres / 100,
+    // Tasa de mercado real (v4, % → decimal). Ausente en legacy ⇒ motor cae al fallback.
+    tasaMercado: typeof body.tasaMercado === "number" ? body.tasaMercado / 100 : undefined,
     plazoCredito: body.plazoCredito,
     airbnbData,
     modoGestion: body.modoGestion,

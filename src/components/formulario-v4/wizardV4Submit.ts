@@ -28,6 +28,9 @@ import type { WizardV4Answers } from "./wizardV4Nodes";
 
 export interface SubmitContext {
   ufCLP: number;
+  /** Tasa hipotecaria de mercado vigente (%, ej. 4,72). Alimenta subsidioTasa en
+   *  el motor (tasa con subsidio = mercado − 0,6pp y el gate `aplicado`). */
+  tasaMercado: number;
   /** Arriendo mediana de la zona (fallback para zonaRadio). */
   arriendoSugerido: number | null;
   arriendoN: number;
@@ -102,6 +105,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     piePct,
     plazoCredito: Number(a.plazoCredito) || 25,
     tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
+    tasaMercado: ctx.tasaMercado,
     gastos: ggccCLP(a, ctx, supUtil),
     contribuciones: contribCLP(a, Math.round(precioUF * ctx.ufCLP)),
     provisionMantencion: Math.round((precioUF * ctx.ufCLP * getMantencionRate(antigNum)) / 12),
@@ -165,6 +169,7 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     precioCompraUF: precioUF,
     piePct: derivePiePctLocal(a, ctx.ufCLP),
     tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
+    tasaMercado: ctx.tasaMercado,
     plazoCredito: Number(a.plazoCredito) || 25,
     modoGestion: a.modoGestion ?? "auto",
     comisionAdministrador:

@@ -37,6 +37,12 @@ export interface AnalisisInput {
   piePct: number;
   plazoCredito: number;
   tasaInteres: number;
+  // Tasa hipotecaria de mercado vigente (%, ej. 4,72). OPCIONAL: solo la envía el
+  // wizard v4 (data.tasaMercado). Alimenta subsidioTasa (tasa con subsidio =
+  // mercado − 0,6pp y el gate `aplicado`). Ausente (v3, análisis históricos,
+  // fixtures golden) ⇒ el motor cae a TASA_MERCADO_FALLBACK → comportamiento
+  // byte-idéntico al previo. NO afecta la cuota (esa usa tasaInteres).
+  tasaMercado?: number;
   gastos: number;
   contribuciones: number;
   provisionMantencion: number;

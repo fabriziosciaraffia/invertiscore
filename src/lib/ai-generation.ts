@@ -7,12 +7,6 @@ import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
 import { estimarContribuciones } from "@/lib/contribuciones";
 import { calcInversionInicialCLP } from "@/lib/inversion-inicial";
 import { calcCapexPuestaAPunto, buildHallazgoPuestaAPunto } from "@/lib/capex-puesta-a-punto";
-import {
-  TASA_MERCADO_FALLBACK,
-  calcTasaConSubsidio,
-  calificaSubsidio,
-  aplicaSubsidio,
-} from "@/lib/constants/subsidio";
 import { readVeredicto } from "@/lib/results-helpers";
 import { enrichMetricsLegacy } from "@/lib/analysis/enrich-metrics-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
@@ -1169,9 +1163,12 @@ ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
     // Bloque opcional de subsidio — datos puros, sin instrucciones (las reglas
     // viven en el system prompt + nota de compliance al final).
     const subsidioBloque = (() => {
-      if (!calificaSubsidio(input.tipo, input.precio)) return "";
-      const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
-      const usoTasaSubsidio = aplicaSubsidio(input.tasaInteres, tasaConSubsidio);
+      // Single-source: lee el subsidioTasa que emite el motor (calculado con la
+      // tasa de mercado real en v4; fallback en legacy). No recomputa la constante.
+      const st = m.subsidioTasa;
+      if (!st?.califica) return "";
+      const tasaConSubsidio = st.tasaConSubsidio;
+      const usoTasaSubsidio = st.aplicado;
       const creditoCLPSub = m.precioCLP * (1 - input.piePct / 100);
       const tasaMesSub = tasaConSubsidio / 100 / 12;
       const nMeses = input.plazoCredito * 12;

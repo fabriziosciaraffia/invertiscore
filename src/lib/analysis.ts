@@ -449,7 +449,9 @@ function calcMetrics(
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
     subsidioTasa: (() => {
       const califica = calificaSubsidioHelper(input.tipo, input.precio);
-      const tasaConSubsidio = calcTasaConSubsidio(TASA_MERCADO_FALLBACK);
+      // Tasa de mercado real (wizard v4) o fallback (v3/históricos → idéntico al previo).
+      const tasaMercado = input.tasaMercado && input.tasaMercado > 0 ? input.tasaMercado : TASA_MERCADO_FALLBACK;
+      const tasaConSubsidio = calcTasaConSubsidio(tasaMercado);
       return { califica, tasaConSubsidio, aplicado: califica && aplicaSubsidio(input.tasaInteres, tasaConSubsidio) };
     })(),
     capexPuestaAPuntoCLP: capexPuestaAPunto.montoCLP,
