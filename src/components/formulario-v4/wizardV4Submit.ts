@@ -106,6 +106,7 @@ export function buildLtrPayload(a: WizardV4Answers, ctx: SubmitContext) {
     plazoCredito: Number(a.plazoCredito) || 25,
     tasaInteres: parseDecimalLocale(a.tasaInteres ?? "") || 4.72,
     tasaMercado: ctx.tasaMercado,
+    esNuevo: a.tipoPropiedad === "nuevo",
     gastos: ggccCLP(a, ctx, supUtil),
     contribuciones: contribCLP(a, Math.round(precioUF * ctx.ufCLP)),
     provisionMantencion: Math.round((precioUF * ctx.ufCLP * getMantencionRate(antigNum)) / 12),

@@ -448,7 +448,13 @@ function calcMetrics(
     precioFlujoPositivoUF: Math.round(precioFlujoPositivoCLP / ufClp * 100) / 100,
     descuentoParaNeutro: Math.round(descuentoParaNeutro * 10) / 10,
     subsidioTasa: (() => {
-      const califica = calificaSubsidioHelper(input.tipo, input.precio);
+      // Gate de subsidio: la fuente de verdad de "nuevo" es la respuesta explícita
+      // del wizard (input.esNuevo), NO input.tipo (siempre "Departamento" en LTR) ni
+      // antiguedad===0 (un usado recién estrenado no califica: la ley exige primera
+      // venta). Ausente (v3/históricos) ⇒ chequeo legacy sobre tipo → false (idéntico).
+      const califica = input.esNuevo !== undefined
+        ? calificaSubsidioHelper(input.esNuevo ? "nuevo" : "usado", input.precio)
+        : calificaSubsidioHelper(input.tipo, input.precio);
       // Tasa de mercado real (wizard v4) o fallback (v3/históricos → idéntico al previo).
       const tasaMercado = input.tasaMercado && input.tasaMercado > 0 ? input.tasaMercado : TASA_MERCADO_FALLBACK;
       const tasaConSubsidio = calcTasaConSubsidio(tasaMercado);

@@ -43,6 +43,13 @@ export interface AnalisisInput {
   // fixtures golden) ⇒ el motor cae a TASA_MERCADO_FALLBACK → comportamiento
   // byte-idéntico al previo. NO afecta la cuota (esa usa tasaInteres).
   tasaMercado?: number;
+  // ¿Vivienda nueva? (respuesta explícita nuevo/usado del wizard). OPCIONAL: solo
+  // la envía el wizard v4. Fuente de verdad del gate de subsidio LTR (Ley 21.748
+  // exige primera venta → NUNCA derivar de antiguedad===0: un usado recién estrenado
+  // daría falso positivo legal). Ausente (v3, históricos, fixtures) ⇒ el motor cae
+  // al chequeo legacy sobre `tipo` (siempre false para LTR, bug v3 documentado que
+  // muere en el cutover) → comportamiento byte-idéntico al previo.
+  esNuevo?: boolean;
   gastos: number;
   contribuciones: number;
   provisionMantencion: number;
