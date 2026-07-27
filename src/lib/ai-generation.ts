@@ -1174,13 +1174,25 @@ ANCLAS DE NEGOCIACIÓN (REGLA 5 v10 — usar EXACTOS, no recalcular):
       const nMeses = input.plazoCredito * 12;
       const dividendoConSubsidio = Math.round((creditoCLPSub * tasaMesSub) / (1 - Math.pow(1 + tasaMesSub, -nMeses)));
       const ahorroDividendo = m.dividendo - dividendoConSubsidio;
+      // Directiva de narración CONDICIONADA al veredicto (decisión producto 2026-07-27):
+      // la palanca del subsidio no-aplicado se MANDA solo si el depto conviene
+      // (COMPRAR/AJUSTA) — ahí bajar la cuota mueve la aguja. En BUSCAR OTRA se silencia:
+      // una rebaja de 0,6pp no arregla un depto que no conviene. Aplicado → no narrar como
+      // mejora (sin cambios, validado F4). Espeja la lógica del bloque STR
+      // (ai-generation-str.ts) con voz LTR; "DEBES mencionar" es instrucción al modelo,
+      // el tono al usuario sigue siendo NO imperativo (regulatorio).
+      const palancaDirectiva = usoTasaSubsidio
+        ? `→ Ya aplicado: la tasa ingresada YA es la subsidiada y el dividendo la incorpora (ahorro ~0). NO la narres como mejora ni ahorro; a lo sumo, respaldo si las condiciones de financiamiento cambian antes de mayo 2027.`
+        : (veredictoMotor === "COMPRAR" || veredictoMotor === "AJUSTA SUPUESTOS")
+          ? `→ DEBES mencionar la palanca (veredicto ${veredictoMotor}, subsidio NO aplicado aún): el depto califica y la tasa subsidiada es ~${tasaConSubsidio}%. Pedirla al banco baja la cuota de ${fmtCLP(m.dividendo)} a ${fmtCLP(dividendoConSubsidio)} (~${fmtCLP(ahorroDividendo)}/mes menos), lo que mejora el flujo. Dato concreto, sin hype. Tono al usuario NO imperativo (regulatorio): "podrías pedirla", no "pídela".`
+          : `→ NO menciones el subsidio: el veredicto es BUSCAR OTRA y una rebaja de 0,6pp no arregla un depto que no conviene.`;
       return `
 SUBSIDIO LEY 21.748 (depto califica):
 - usoTasaSubsidio: ${usoTasaSubsidio}
 - tasaConSubsidio: ~${tasaConSubsidio}%
 - dividendoConSubsidio: ${fmtCLP(dividendoConSubsidio)} (vs actual ${fmtCLP(m.dividendo)}, ahorro ~${fmtCLP(ahorroDividendo)}/mes)
 - requisitos: primera vivienda, promesa firmada desde 2025, vigente hasta mayo 2027 o hasta agotar 50.000 cupos.
-- compliance: lenguaje NO imperativo al referirse al subsidio (regulatorio).`;
+${palancaDirectiva}`;
     })();
 
     // Bloque opcional CapEx puesta a punto — datos puros (cifras YA formateadas
