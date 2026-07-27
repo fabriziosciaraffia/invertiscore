@@ -211,7 +211,7 @@ export default async function ComunaPage({ params }: { params: { slug: string } 
               Analízalo en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
             </p>
             <Link
-              href={`/analisis/nuevo-v2?comuna=${encodeURIComponent(stats.nombre)}`}
+              href={`/analisis/nuevo-v4?comuna=${encodeURIComponent(stats.nombre)}`}
               className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
             >
               Analizar depto en {stats.nombre}

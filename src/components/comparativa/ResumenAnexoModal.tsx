@@ -337,7 +337,7 @@ export function ResumenAnexoModal({
                 cuál conviene.
               </p>
               <a
-                href={isLoggedIn ? "/analisis/nuevo-v2" : "/register"}
+                href={isLoggedIn ? "/analisis/nuevo-v4" : "/register"}
                 className="mt-3 inline-flex w-full items-center justify-center rounded-lg px-4 py-3 font-mono text-[11px] font-bold uppercase tracking-[0.03em] text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-5 sm:text-[12px] sm:tracking-[0.06em]"
                 style={{ background: SIGNAL_RED }}
               >

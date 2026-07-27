@@ -126,7 +126,7 @@ export function OnboardingClient() {
         <div className="mt-12 flex flex-col items-center gap-3">
           <button
             type="button"
-            onClick={() => go("/analisis/nuevo-v2")}
+            onClick={() => go("/analisis/nuevo-v4")}
             disabled={navigating}
             className="font-body text-white disabled:opacity-60"
             style={{

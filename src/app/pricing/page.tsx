@@ -50,7 +50,7 @@ export default function PricingPage() {
     supabase.auth.getUser().then(({ data }) => setUser(data.user ?? null));
   }, []);
 
-  const ctaHref = user ? "/analisis/nuevo-v2" : "/register";
+  const ctaHref = user ? "/analisis/nuevo-v4" : "/register";
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">

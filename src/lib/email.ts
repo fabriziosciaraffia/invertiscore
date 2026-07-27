@@ -109,7 +109,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
           <!-- CTA (HTML real, no imagen) + microcopy -->
           <tr>
             <td align="center" style="padding: 28px 4px 6px 4px;">
-              <a href="https://refranco.ai/analisis/nuevo-v2" style="display: inline-block; background: #C8323C; color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; font-family: 'Helvetica Neue', Arial, sans-serif;">
+              <a href="https://refranco.ai/analisis/nuevo-v4" style="display: inline-block; background: #C8323C; color: #FFFFFF; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; font-family: 'Helvetica Neue', Arial, sans-serif;">
                 Analizar mi primer depto &rarr;
               </a>
             </td>
@@ -289,7 +289,7 @@ export async function sendPaymentConfirmationEmail(to: string, name: string, pro
       ? `${SITE_URL}/analisis/comparativa?ltr=${ambasIds.ltrId}&str=${ambasIds.strId}`
       : analysisId
         ? `${SITE_URL}/analisis/${analysisId}`
-        : `${SITE_URL}/analisis/nuevo-v2`;
+        : `${SITE_URL}/analisis/nuevo-v4`;
   const ctaText =
     product === "unlock" && ambasIds
       ? 'Ver mi comparativa completa →'

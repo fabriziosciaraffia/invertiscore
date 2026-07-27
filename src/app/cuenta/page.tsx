@@ -204,7 +204,7 @@ export default async function CuentaPage() {
             {payments.length === 0 ? (
               <p className="font-body text-sm text-[var(--franco-text-muted)] py-2">
                 Todavía no has comprado nada.{" "}
-                <Link href="/analisis/nuevo-v2" className="text-signal-red hover:underline">
+                <Link href="/analisis/nuevo-v4" className="text-signal-red hover:underline">
                   Analiza tu primer departamento →
                 </Link>
               </p>

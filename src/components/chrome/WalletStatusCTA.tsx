@@ -165,7 +165,7 @@ function resolveVariant(args: {
       message: "Análisis ilimitados con FrancoMensual.",
       plan: "FRANCOMENSUAL",
       ctaLabel: "Crear otro análisis",
-      href: "/analisis/nuevo-v2",
+      href: "/analisis/nuevo-v4",
       tone: "neutral",
     };
   }
@@ -177,7 +177,7 @@ function resolveVariant(args: {
       message: `Tienes ${args.credits} análisis disponible${plural}.`,
       plan: `${args.credits} análisis`,
       ctaLabel: "Crear otro análisis",
-      href: "/analisis/nuevo-v2",
+      href: "/analisis/nuevo-v4",
       tone: "neutral",
     };
   }

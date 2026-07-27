@@ -204,7 +204,7 @@ export function UnifiedNav({
   ];
   const loggedLinks: NavLink[] = [
     { label: "Mis análisis", href: "/dashboard" },
-    { label: "Nuevo análisis", href: "/analisis/nuevo-v2" },
+    { label: "Nuevo análisis", href: "/analisis/nuevo-v4" },
     { label: "Precios", href: "/pricing" },
   ];
   const centerLinks = loggedIn ? loggedLinks : publicLinks;
@@ -247,7 +247,7 @@ export function UnifiedNav({
 
   // ── CTA primario (Signal Red) ─────────────────────────────────────
   const ctaPrimary = loggedIn
-    ? { label: "Nuevo análisis", href: "/analisis/nuevo-v2" }
+    ? { label: "Nuevo análisis", href: "/analisis/nuevo-v4" }
     : { label: "Analizar departamento", href: "/register" };
 
   // ───────────────────────── MINIMAL ───────────────────────────────

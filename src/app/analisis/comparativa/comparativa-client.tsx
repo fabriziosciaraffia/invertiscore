@@ -360,7 +360,7 @@ export function ComparativaClient(p: Props) {
           {/* Footer interno */}
           <div className="mb-4 flex justify-center">
             <Link
-              href="/analisis/nuevo-v2"
+              href="/analisis/nuevo-v4"
               className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.06em] text-signal-red hover:opacity-80 transition-opacity"
             >
               Comparar otra propiedad

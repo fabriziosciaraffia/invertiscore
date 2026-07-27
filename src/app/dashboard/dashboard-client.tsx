@@ -576,7 +576,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
             <div className="mx-auto mb-6 max-w-[360px] font-body text-[13px] text-[var(--franco-text-secondary)]">
               Renta larga, renta corta o ambas. Franco te dice si el número da en 30 segundos.
             </div>
-            <Link href="/analisis/nuevo-v2">
+            <Link href="/analisis/nuevo-v4">
               <button className="rounded-lg bg-signal-red px-7 py-3 font-body text-sm font-medium text-white shadow-[0_2px_12px_color-mix(in_srgb,var(--signal-red)_20%,transparent)]">
                 Analizar tu primera inversión →
               </button>
@@ -598,7 +598,7 @@ export function DashboardClient({ analisis, firstName = "" }: { analisis: Analis
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <Link href="/analisis/nuevo-v2">
+                <Link href="/analisis/nuevo-v4">
                   <button className="rounded-lg bg-signal-red px-5 py-2.5 font-body text-[13px] font-medium text-white shadow-[0_2px_10px_color-mix(in_srgb,var(--signal-red)_15%,transparent)]">
                     Analizar inversión →
                   </button>

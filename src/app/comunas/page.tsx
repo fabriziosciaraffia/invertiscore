@@ -96,7 +96,7 @@ export default async function ComunasIndexPage() {
             Analízalo gratis en 2 minutos. Franco te dice si comprar, negociar o seguir buscando.
           </p>
           <Link
-            href="/analisis/nuevo-v2"
+            href="/analisis/nuevo-v4"
             className="mt-5 inline-block rounded-lg bg-[#C8323C] px-8 py-3 font-body text-sm font-bold text-white hover:bg-[#b02a33]"
           >
             Analizar gratis

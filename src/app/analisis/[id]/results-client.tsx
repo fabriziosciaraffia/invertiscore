@@ -887,7 +887,7 @@ export function PremiumResults({
       {isSharedView && (
         <div className="bg-[var(--franco-card)] text-[var(--franco-text)] rounded-xl p-4 px-5 mb-4 flex items-center justify-between gap-3 flex-wrap border border-[var(--franco-border)]">
           <p className="font-body text-sm">Estás viendo un análisis compartido.</p>
-          <a href="/analisis/nuevo-v2" className="font-body text-sm font-medium text-signal-red hover:underline shrink-0">
+          <a href="/analisis/nuevo-v4" className="font-body text-sm font-medium text-signal-red hover:underline shrink-0">
             Analizar mi propio depto →
           </a>
         </div>
