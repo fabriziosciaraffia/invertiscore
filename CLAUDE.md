@@ -66,7 +66,7 @@ Emisión de **boleta electrónica afecta (TipoDTE 39)** cuando Flow confirma un 
 La identidad visual completa (paleta, tipografía, patrones, templates) vive en la skill **`franco-design-system`** — consultarla SIEMPRE para cualquier trabajo visual. La voz de marca y el copy van en **`brand-voice-franco`**; UX/microcopy en **`ux-cx-franco`**; doctrina de output IA en **`analysis-voice-franco`**. No dupliques la paleta completa ni los pesos tipográficos acá; leé la skill antes de cualquier cambio de UI.
 - **Nombre**: Franco. **Dominio**: refranco.ai.
 - **Wordmark**: "re" Source Serif 4 Regular (ghost, opacity 28%) + "franco" Source Serif 4 Bold + ".ai" en IBM Plex Sans SemiBold, Signal Red.
-- **Tagline brand**: RE FRANCO CON TU INVERSIÓN · **Tagline página**: REAL ESTATE EN SU ESTADO MÁS FRANCO (JetBrains Mono, uppercase).
+- **Tagline (único vigente)**: REAL ESTATE EN SU ESTADO MÁS FRANCO
 - **Fuentes**: Source Serif 4 (headings/wordmark), IBM Plex Sans (body/UI), JetBrains Mono (datos/scores/veredictos/tagline).
 - **Colores de marca**: exactamente **2** — Ink `#0F0F0F` + Signal Red `#C8323C`. **Cero ámbar, cero verde** — la jerarquía se resuelve con tipografía y escala de grises. (Neutros de fondo/borde permitidos: Warm Bg `#FAFAF8`, Cool Bg `#F0F0EC`, Border `#E6E6E2`, Muted `#71717A`.)
 - **Regla del rojo**: Signal Red solo cuando hay info que requiere atención (veredictos, métricas negativas, ".ai" del wordmark, CTAs premium). Nunca decoración.
