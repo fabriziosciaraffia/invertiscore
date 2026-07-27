@@ -2,9 +2,9 @@
 // Ruta DOCUMENTO LTR — GET /analisis/[id]/documento
 //
 // Vista dedicada del informe LTR como documento (contrato mockup-pdf-ltr.html
-// v2.1). Es la superficie que Puppeteer (render-pdf.ts) visitará en el goal 3;
-// convive con `?print=true` (que el goal 3 retira). Sin chrome de navegación:
-// el header/footer corridos y la paginación los aporta page.pdf().
+// v2.1). Es la superficie que Puppeteer (render-pdf.ts) visita para generar el
+// PDF LTR — reemplazó al modo `?print=true` (retirado). Sin chrome de
+// navegación: el header/footer corridos y la paginación los aporta page.pdf().
 //
 // Carga de datos y guard: espejo verbatim de /analisis/[id]/page.tsx — cero
 // recálculo ni lógica nueva de motor. Tema claro estructural (no lee el theme).

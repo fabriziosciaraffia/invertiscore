@@ -70,14 +70,14 @@
 
 /* ── Portada · property header ───────────────────────────────────────────── */
 .franco-doc .prop-meta {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 20px;
-  margin-top: 16px; padding-top: 14px; border-top: 0.5px dashed var(--border);
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px 20px;
+  margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border);
 }
 .franco-doc .prop-meta .cell .k { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 3px; }
 .franco-doc .prop-meta .cell .v { font-family: var(--mono); font-weight: 500; font-size: 14px; color: var(--text); }
 
 /* Veredicto block (3 variantes por color de acento). */
-.franco-doc .verdict { margin-top: 22px; padding: 20px 22px; border-radius: 12px; background: var(--sunken); border: 0.5px solid var(--border); }
+.franco-doc .verdict { margin-top: 14px; padding: 15px 20px; border-radius: 12px; background: var(--sunken); border: 0.5px solid var(--border); }
 .franco-doc .verdict .badge {
   display: inline-block; font-family: var(--mono); font-weight: 700; font-size: 12px;
   letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: 5px 11px;
@@ -91,7 +91,7 @@
 .franco-doc .verdict .headline { font-family: var(--serif); font-weight: 700; font-size: 20px; line-height: 1.28; margin: 14px 0 0; }
 
 /* Franco Score gauge */
-.franco-doc .score-wrap { margin-top: 16px; display: grid; grid-template-columns: 120px 1fr; gap: 26px; align-items: center; }
+.franco-doc .score-wrap { margin-top: 11px; display: grid; grid-template-columns: 120px 1fr; gap: 26px; align-items: center; }
 .franco-doc .score-num { font-family: var(--mono); font-weight: 700; font-size: 52px; line-height: 1; }
 .franco-doc .score-num small { font-size: 18px; color: var(--text-muted); font-weight: 500; }
 .franco-doc .score-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 4px; }
@@ -101,7 +101,7 @@
 .franco-doc .gauge-axis { display: flex; justify-content: space-between; margin-top: 6px; font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
 
 /* 4 dimensiones (desglose) */
-.franco-doc .dims { margin-top: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.franco-doc .dims { margin-top: 11px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
 .franco-doc .dim .dk { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
 .franco-doc .dim .dbar { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
 .franco-doc .dim .dbar > i { display: block; height: 100%; background: var(--ink-400); border-radius: 3px; }
@@ -109,11 +109,11 @@
 .franco-doc .dim .dw { font-family: var(--mono); font-size: 8.5px; color: var(--text-muted); }
 
 /* Síntesis ejecutiva */
-.franco-doc .exec { margin-top: 14px; padding: 14px 18px; border-radius: 10px; background: var(--sunken); }
+.franco-doc .exec { margin-top: 11px; padding: 11px 18px; border-radius: 10px; background: var(--sunken); }
 .franco-doc .exec p { margin: 0; font-family: var(--sans); font-size: 12.5px; line-height: 1.6; font-style: italic; color: var(--text); }
 
 /* Supuestos + índice (mitad inferior de portada) */
-.franco-doc .cover-lower { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 28px; margin-top: 16px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+.franco-doc .cover-lower { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 28px; margin-top: 11px; padding-top: 10px; border-top: 0.5px solid var(--border); }
 .franco-doc .block-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 13px; }
 .franco-doc .assump { display: grid; grid-template-columns: 1fr auto; row-gap: 10px; column-gap: 12px; }
 .franco-doc .assump .ak { font-family: var(--sans); font-size: 11.5px; color: var(--text-secondary); }

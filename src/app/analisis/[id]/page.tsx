@@ -65,15 +65,11 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function AnalisisDetallePage({
   params,
-  searchParams,
 }: {
   params: { id: string };
-  searchParams?: { print?: string };
 }) {
-  // Modo print (PDF headless): renderiza el cuerpo del análisis sin chrome de
-  // navegación ni CTAs de conversión, con AdvancedSection abierta, para que
-  // Puppeteer lo capture completo. Ver api/.../pdf (2b).
-  const printMode = searchParams?.print === "true";
+  // El PDF LTR ya no se genera desde acá (?print=true retirado): vive en la
+  // vista dedicada /analisis/[id]/documento. Esta página es solo el informe web.
 
   const supabase = createClient();
 
@@ -241,14 +237,13 @@ export default async function AnalisisDetallePage({
   // hijo bloqueado redirige al comparativo con el modal abierto (?ver=ltr). El
   // hijo ÍNTEGRO (unlocked o subscriber/admin) y el standalone siguen como
   // página completa (son el informe real). is_premium NO gatea acá (está true por
-  // el companion-flip). printMode (PDF) intacto. Reglas de bloqueo:
+  // el companion-flip). Reglas de bloqueo:
   //  - subscriber (FrancoMensual/admin) → íntegro (no redirige).
   //  - owner → bloqueado hasta ambas_unlocked_at.
   //  - tercero (no-owner) → bloqueado siempre (el unlock es del owner, no público).
   const isUnlocked = !!(data as Record<string, unknown>).ambas_unlocked_at;
   const childBlocked =
     isSubordinated &&
-    !printMode &&
     accessLevel !== "subscriber" &&
     (isOwner ? !isUnlocked : true);
   if (childBlocked && subordinatedHref) {
@@ -284,8 +279,7 @@ export default async function AnalisisDetallePage({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Navbar — oculto en print mode (el PDF agrega su propio header) */}
-      {!printMode && (accessLevel === "guest" ? (
+      {accessLevel === "guest" ? (
         <PublicShareHeader date={formatFechaCorta(analisis.created_at)} />
       ) : (
         <AnalysisNav
@@ -297,10 +291,10 @@ export default async function AnalisisDetallePage({
           isSharedView={isSharedView}
           subordinated={isSubordinated}
         />
-      ))}
+      )}
 
       <div className="container mx-auto max-w-6xl px-4 py-8">
-        {isSubordinated && !printMode && (
+        {isSubordinated && (
           <SubordinatedBanner href={subordinatedHref!} modalidad="LTR" />
         )}
         <PremiumResults
@@ -331,7 +325,6 @@ export default async function AnalisisDetallePage({
           ownerFirstName={ownerFirstName}
           analysesCount={analysesCount}
           isLoggedIn={isLoggedIn}
-          printMode={printMode}
         />
 
         {/* Fallback for old analyses without full results */}

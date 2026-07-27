@@ -3,9 +3,10 @@
 //
 // Endpoint: GET /api/analisis/[id]/pdf
 // Strategy: reusa el helper compartido src/lib/pdf/render-pdf.ts (Puppeteer +
-// @sparticuz/chromium). Navega a /analisis/[id]?print=true en headless Chrome
-// (modo print: sin chrome de nav ni CTAs, con AdvancedSection abierta) y emite
-// PDF A4 con header/footer. Hereda el fix de tema claro del helper.
+// @sparticuz/chromium). Navega a la VISTA DOCUMENTO /analisis/[id]/documento en
+// headless Chrome (server-rendered, clara por construcción, con sentinel
+// [data-doc-ready] para espera determinística) y emite PDF A4 con header
+// (dirección) + footer (tagline + paginación). Ya no usa ?print=true.
 //
 // Análogo a api/share/comparativa/[token]/pdf/route.ts, pero para un único
 // análisis LTR identificado por id (no por share token).
@@ -90,10 +91,15 @@ export async function GET(
 
     return renderPdf({
       request,
-      path: `/analisis/${id}?print=true`,
+      // Vista documento dedicada (reemplaza ?print=true). Server-rendered, clara
+      // por construcción, con sentinel [data-doc-ready] para espera determinística.
+      path: `/analisis/${id}/documento`,
       filename,
       headerLabel: direccionLabel,
       headerDate: fechaCorta,
+      forceLightTheme: false,        // el documento ya es claro (.franco-doc)
+      readySelector: "[data-doc-ready]",
+      chrome: "documento",           // header dirección + footer tagline vigente + paginación
     });
   } catch (error) {
     console.error("[LTR PDF] Error:", error);
