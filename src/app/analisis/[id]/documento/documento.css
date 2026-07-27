@@ -43,9 +43,17 @@
 
 .franco-doc * { box-sizing: border-box; }
 
-/* ── Secciones + saltos de página (contrato: page-breaks anotados) ───────── */
-.franco-doc .doc-section { break-before: page; }
-.franco-doc .doc-section:first-child { break-before: auto; }
+/* ── Secciones + saltos de página ────────────────────────────────────────
+   Capítulos FLUIDOS: los interiores (02-05) fluyen y llenan la hoja; solo
+   hallazgos y la sección final abren hoja propia (break-page). Ningún bloque
+   se corta a la mitad (break-inside: avoid por bloque, más abajo). */
+.franco-doc .doc-section { break-before: auto; }
+.franco-doc .doc-section.break-page { break-before: page; }
+/* Respiro entre capítulos que comparten hoja (gap mayor del mockup entre
+   piezas protagónicas). No aplica al que abre hoja (arranca arriba). */
+.franco-doc .doc-section + .doc-section:not(.break-page) { margin-top: 34px; }
+/* El título de capítulo no se queda huérfano al pie: viaja con su contenido. */
+.franco-doc .chapter { break-after: avoid; }
 /* Bloques que no deben cortarse a la mitad. */
 .franco-doc .avoid-break { break-inside: avoid; }
 

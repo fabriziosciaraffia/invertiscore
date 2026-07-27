@@ -200,8 +200,8 @@ export function DocumentoLTR({
         </div>
       </section>
 
-      {/* ═══════════ SECCIÓN 2 · HALLAZGOS ═══════════ */}
-      <section className="doc-section">
+      {/* ═══════════ SECCIÓN 2 · HALLAZGOS (abre hoja tras portada) ═══════════ */}
+      <section className="doc-section break-page">
         <p className="eyebrow">El detalle · {hallazgos.length} hallazgos</p>
         <h2 className="title">Empezando por lo adverso</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 2 }}>
@@ -316,8 +316,8 @@ export function DocumentoLTR({
         )}
       </section>
 
-      {/* ═══════════ SECCIÓN 6 · SIMULACIÓN + ZONA + CIERRE ═══════════ */}
-      <section className="doc-section">
+      {/* ═══════════ SECCIÓN 6 · SIMULACIÓN + ZONA + CIERRE (abre hoja propia) ═══════════ */}
+      <section className="doc-section break-page">
         <p className="eyebrow">Simulación · patrimonio a {exit.anios} años</p>
         <h2 className="title">Cómo se construye tu patrimonio</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 14 }}>
