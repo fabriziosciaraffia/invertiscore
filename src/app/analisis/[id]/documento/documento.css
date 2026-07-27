@@ -187,6 +187,12 @@
 .franco-doc .sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; break-inside: avoid; }
 .franco-doc .sim-block .sbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px; }
 .franco-doc .chart-slot { width: 100%; aspect-ratio: 320 / 200; background: var(--sunken); border: 0.5px dashed var(--border-strong); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+.franco-doc .chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; font-family: var(--mono); font-size: 8px; color: var(--text-secondary); }
+.franco-doc .chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.franco-doc .chart-legend .sw { display: inline-block; width: 8px; height: 8px; }
+.franco-doc .chart-legend .sw.red { background: var(--signal-red); }
+.franco-doc .chart-legend .sw.ink50 { background: var(--text); opacity: .5; }
+.franco-doc .chart-legend .sw.line { width: 12px; height: 2px; background: var(--text); }
 .franco-doc .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .franco-doc .kpi { background: var(--sunken); border-radius: 8px; padding: 10px 12px; }
 .franco-doc .kpi .kk { font-family: var(--mono); font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 4px; }

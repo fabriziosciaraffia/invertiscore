@@ -18,6 +18,8 @@ import type {
 import { ordenarHallazgosPiramide, esAdverso } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
 import { PLUSVALIA_PROYECCION_ANUAL } from "@/lib/plusvalia-proyeccion";
+import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
+import { PatrimonioChartSVG } from "./PatrimonioChartSVG";
 
 const pct = (n: number, d = 1) => n.toFixed(d).replace(".", ",") + "%";
 const dec = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
@@ -92,6 +94,11 @@ export function DocumentoLTR({
 
   // ── Exit scenario (waterfall + patrimonio) ──
   const exit = results.exitScenario;
+
+  // ── Serie del chart de patrimonio (misma fuente que el chart web) ──
+  const patrimonioRows = inputData
+    ? buildPatrimonioSeries(results.projections, results.metrics, inputData, ufFrozen, exit.anios)
+    : [];
 
   // ── AI narrative helpers (CLP fijo) ──
   const conviene = ai?.conviene;
@@ -320,8 +327,18 @@ export function DocumentoLTR({
         <div className="sim-grid">
           <div className="sim-block">
             <p className="sbl">09 · Patrimonio — barras apiladas</p>
-            {/* GOAL-2: SVG estático del patrimonio (aporte acumulado Signal Red · valor depto · línea patrimonio neto) */}
-            <div className="chart-slot">chart · goal-2</div>
+            {patrimonioRows.length > 0 ? (
+              <>
+                <PatrimonioChartSVG rows={patrimonioRows} valorUF={ufFrozen} />
+                <div className="chart-legend">
+                  <span><i className="sw red" />Aporte acumulado</span>
+                  <span><i className="sw ink50" />Valor depto</span>
+                  <span><i className="sw line" />Patrimonio neto</span>
+                </div>
+              </>
+            ) : (
+              <div className="chart-slot">sin proyección disponible</div>
+            )}
           </div>
           <div className="sim-block">
             <p className="sbl">08 · Indicadores @ {exit.anios} años</p>

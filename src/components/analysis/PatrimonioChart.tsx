@@ -7,6 +7,7 @@ import {
 } from "recharts";
 import { useSimulation } from "@/contexts/SimulationContext";
 import type { YearProjection, AnalysisMetrics, AnalisisInput } from "@/lib/types";
+import { buildPatrimonioSeries } from "@/lib/patrimonio-series";
 import { fmtAxisMoney, fmtMoney } from "./utils";
 
 /**
@@ -34,115 +35,12 @@ export function PatrimonioChart({
 }) {
   const { plazoAnios } = useSimulation();
 
-  const chartData = useMemo(() => {
-    const pieCLP = metrics.pieCLP ?? 0;
-    const precioCLP = metrics.precioCLP ?? 0;
-    const creditoInicial = Math.max(precioCLP - pieCLP, 0);
-    const gastosCierre = Math.round(precioCLP * 0.02);
-
-    // Patrimonio teórico = Valor − Deuda. SIN comisión 2% (esa va sólo en
-    // Card 10 "Si vendes"). Card 09 muestra patrimonio del activo, no
-    // liquidación. Ver audit/sesionA-auditoria-sim/ — fix H6.
-
-    // Valor depto a0 usa vmFrancoCLP (alineado con motor calcProjections que
-    // arranca de vmFrancoCLP). Antes a0 usaba precioCLP, generando salto/caída
-    // artificial entre a0 y a1 cuando vmFranco ≠ precio. Fix H1.
-    const vmFrancoUF = metrics.valorMercadoFrancoUF ?? 0;
-    const vmFrancoCLP = vmFrancoUF > 0 ? vmFrancoUF * valorUF : precioCLP;
-
-    // Cuotas pie: si la operación es entrega futura con pie en cuotas, las
-    // cuotas se reparten año a año durante construcción. Fix H5.
-    const totalCuotas = inputData.cuotasPie > 0 ? inputData.cuotasPie : 0;
-    const montoCuota = inputData.montoCuota > 0 ? inputData.montoCuota : 0;
-    const enCuotasPie = totalCuotas > 0 && montoCuota > 0;
-
-    // Inversión inicial visual del chart = pieCLP + 2% gastos cierre + corretaje
-    // inicial (usados, análisis nuevos — mismo número que inversionInicial del
-    // exit / drawer día 1). Atención: aporteAcum del chart sigue una semántica
-    // distinta a la del motor (capitalInvertido = pieCLP + gastosCompra, sin
-    // doble conteo de cuotas). Aquí, fix H5: las cuotas pagadas durante
-    // construcción se distribuyen año a año en aporteAcum para mostrar el avance
-    // del desembolso. No mezclar este número con capitalInvertido / cashOnCash.
-    const inversionInicial = pieCLP + gastosCierre + (metrics.corretajeInicialCLP ?? 0);
-
-    const rows: Array<{
-      anio: number;
-      aporteAcum: number;
-      // null pre-entrega: el activo aún no está en el patrimonio del comprador,
-      // así que el bar "Valor depto" no se dibuja (Recharts salta null en un stack).
-      // Rescata la intención del projData muerto de results-client.tsx, que ya
-      // anulaba el valor pre-escritura; la LÍNEA de patrimonio ya es honesta
-      // (= aporteAcum pre-entrega), el bar debe serlo también.
-      valorDepto: number | null;
-      patrimonioNeto: number;
-      flujoAcumulado: number;
-      deudaPendiente: number;
-      isPreEntrega: boolean;
-    }> = [];
-
-    // Año 0 — día de cierre. Patrimonio teórico = vmFranco − deuda activa.
-    // Modelo B3 liquidable (sesión B3-fix H3): para entrega futura el banco
-    // no ha disbursado el crédito todavía → deuda a0 = 0, patrimonio = vmFranco.
-    // Para inmediata, escritura es hoy → deuda a0 = creditoInicial.
-    const isEntregaFutura = inputData.estadoVenta === "futura";
-    const deudaA0 = isEntregaFutura ? 0 : creditoInicial;
-
-    // Año en que ocurre la escritura (entrega). Pre-entrega el activo aún no
-    // está en el patrimonio del comprador — el patrimonio es lo que ya puso
-    // (aporteAcum). Post-entrega aparece el activo: patrimonio = valor − deuda.
-    // Para entrega inmediata aniosEntrega = 0 → fórmula post-entrega aplica
-    // desde a0 (sin cambio vs. comportamiento previo).
-    // Ver audit/sesionB-bug-snapshot-residual-fix/.
-    const mesesPreEntregaCalc = (() => {
-      if (!inputData.fechaEntrega || inputData.estadoVenta === "inmediata") return 0;
-      const [a, me] = inputData.fechaEntrega.split("-").map(Number);
-      const now = new Date();
-      const ent = new Date(a, (me || 1) - 1);
-      const meses = Math.round((ent.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30));
-      return Math.max(0, meses);
-    })();
-    const aniosEntregaInternal = Math.ceil(mesesPreEntregaCalc / 12);
-
-    const a0PreEntrega = 0 < aniosEntregaInternal;
-    rows.push({
-      anio: 0,
-      aporteAcum: inversionInicial,
-      // pre-entrega: sin activo recibido → bar Valor depto oculto (null)
-      valorDepto: a0PreEntrega ? null : vmFrancoCLP,
-      patrimonioNeto: a0PreEntrega
-        ? inversionInicial               // pre-entrega: lo que pusiste
-        : vmFrancoCLP - deudaA0,         // entrega inmediata: equity en activo
-      flujoAcumulado: 0,
-      deudaPendiente: deudaA0,
-      isPreEntrega: a0PreEntrega,
-    });
-
-    // Años 1..plazoAnios
-    for (let i = 1; i <= plazoAnios; i++) {
-      const p = projections[i - 1];
-      if (!p) break;
-      // Cuotas pie pagadas hasta el año i (1 cuota/mes, máximo totalCuotas).
-      const cuotasPagadasHastaI = enCuotasPie
-        ? Math.min(totalCuotas, i * 12) * montoCuota
-        : 0;
-      const aporteAcum =
-        inversionInicial + cuotasPagadasHastaI + Math.abs(Math.min(0, p.flujoAcumulado));
-      const isPreEntrega = i < aniosEntregaInternal;
-      rows.push({
-        anio: i,
-        aporteAcum,
-        // pre-entrega: activo aún no recibido → bar Valor depto oculto (null)
-        valorDepto: isPreEntrega ? null : p.valorPropiedad,
-        patrimonioNeto: isPreEntrega
-          ? aporteAcum                          // pre-entrega: lo que pusiste
-          : p.valorPropiedad - p.saldoCredito,  // post-entrega: equity
-        flujoAcumulado: p.flujoAcumulado,
-        deudaPendiente: p.saldoCredito,
-        isPreEntrega,
-      });
-    }
-    return rows;
-  }, [projections, metrics, plazoAnios, valorUF, inputData]);
+  // Serie extraída a builder puro (src/lib/patrimonio-series.ts) — fuente única
+  // compartida con la vista documento (SVG estático). Comportamiento idéntico.
+  const chartData = useMemo(
+    () => buildPatrimonioSeries(projections, metrics, inputData, valorUF, plazoAnios),
+    [projections, metrics, plazoAnios, valorUF, inputData],
+  );
 
   // Año de entrega si es venta en blanco
   const entregaAnio = useMemo(() => {
