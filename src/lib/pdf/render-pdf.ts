@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
+import { DOC_CHROME_FONT_FACES } from "./doc-chrome-fonts";
 
 export function getOrigin(request: Request): string {
   const url = new URL(request.url);
@@ -118,12 +119,17 @@ export async function renderPdf(opts: {
     // tagline vigente en JetBrains Mono + "página N de M"; padding 12mm = margen
     // lateral del @page. Legacy (STR/comparativa): INTACTO (18mm, disclaimer).
     const isDoc = chrome === "documento";
+    // Fuentes de marca incrustadas (base64) para el chrome documento: los
+    // templates de Puppeteer no cargan las webfonts de la página. Chromium solo
+    // incrusta en el PDF las faces que cada template USA (header: serif+sans;
+    // footer: mono), así que el mismo <style> en ambos no duplica streams.
+    const docFontStyle = `<style>${DOC_CHROME_FONT_FACES}</style>`;
     const headerTemplate = isDoc
-      ? `
+      ? `${docFontStyle}
       <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #6b6b72;
                    width: 100%; padding: 0 12mm; display: flex; align-items: center;
                    justify-content: space-between;">
-        <span><span style="font-family: 'Source Serif 4', serif; font-style: italic; opacity: 0.5;">re</span><span style="font-family: 'Source Serif 4', serif; font-weight: bold;">franco</span><span style="color: #C8323C; font-weight: 600;">.ai</span></span>
+        <span><span style="font-family: 'Source Serif 4', serif; font-style: italic; opacity: 0.5;">re</span><span style="font-family: 'Source Serif 4', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-weight: 500;">.ai</span></span>
         <span>${escapeHtml(headerLabel)}</span>
       </div>
     `
@@ -137,7 +143,7 @@ export async function renderPdf(opts: {
     `;
 
     const footerTemplate = isDoc
-      ? `
+      ? `${docFontStyle}
       <div style="font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 8px; letter-spacing: 0.06em;
                    text-transform: uppercase; color: #6b6b72; width: 100%; padding: 0 12mm; display: flex;
                    align-items: center; justify-content: space-between;">

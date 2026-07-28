@@ -23,6 +23,9 @@ import { PatrimonioChartSVG } from "./PatrimonioChartSVG";
 
 const pct = (n: number, d = 1) => n.toFixed(d).replace(".", ",") + "%";
 const dec = (n: number, d = 1) => n.toFixed(d).replace(".", ",");
+const round1 = (n: number) => Math.round(n * 10) / 10;
+// UF SIN decimales — solo la superficie de la palanca del precio (QA punto 7).
+const fmtUFint = (uf: number) => "UF " + Math.round(uf).toLocaleString("es-CL");
 
 function verdictClass(v: Veredicto): string {
   if (v === "COMPRAR") return "comprar";
@@ -75,17 +78,39 @@ export function DocumentoLTR({
   // ── Desglose (4 dimensiones) ──
   const d = results.desglose;
 
-  // ── Negociación (NegociacionScenario) ──
+  // ── Negociación (NegociacionScenario) ── (QA punto 1)
   const neg = results.negociacion;
-  const razonNeg = neg?.razon ??
-    "Este precio te alinea con comparables y mejora la matemática de la operación.";
+  // ¿el precio sugerido MEJORA materialmente la TIR? (≥ 0,3 pts sobre lo actual,
+  // comparado sobre valores redondeados = lo que se muestra). En BUSCAR OTRA con
+  // TIR negativa el sugerido no mueve la aguja → no afirmar "mejora la matemática".
+  const tirActual = results.exitScenario.tir;
+  const tirMejoraPts = neg ? round1(neg.tirAlSugerido) - round1(tirActual) : 0;
+  const tirMejoraMaterial = tirMejoraPts >= 0.3;
+  // nunca "de X a Y" si redondean igual (QA punto 1c).
+  const tirDistinto = neg ? pct(tirActual) !== pct(neg.tirAlSugerido) : false;
 
-  // ── Condiciones del gate COMPRAR (estado ACTUAL) ──
+  // ── Condiciones del gate COMPRAR (estado ACTUAL) ── (QA punto 2)
   const gates = [
     { label: "Flujo mensual ≥ 0", ok: m.flujoNetoMensual >= 0, val: money(m.flujoNetoMensual) },
     { label: "Rentabilidad neta ≥ 4%", ok: m.rentabilidadNeta >= 4, val: pct(m.rentabilidadNeta) },
     { label: "Plusvalía inmediata ≥ 0", ok: (m.plusvaliaInmediataFrancoPct ?? 0) >= 0, val: pct(m.plusvaliaInmediataFrancoPct ?? 0) },
   ];
+  const gatesOkCount = gates.filter((g) => g.ok).length;
+  const allGatesOk = gatesOkCount === 3;
+  // Título + foot del gate según veredicto (COMPRAR llega por score/gates, no
+  // necesariamente por el gate3 de upgrade — no inventar mecánica).
+  const gateTitle =
+    veredicto === "COMPRAR" ? "Lo que sostiene el Comprar — hoy"
+    : veredicto === "BUSCAR OTRA" ? "Qué exigiría un Comprar — hoy"
+    : "Qué exige el motor para Comprar — hoy";
+  const gateFoot =
+    veredicto === "COMPRAR"
+      ? (allGatesOk
+          ? "El Comprar se apoya en estas tres, cumplidas hoy."
+          : "El Comprar viene del Franco Score; estas tres son el chequeo de fondo, y no todas se cumplen hoy — tenlo presente antes de firmar.")
+      : veredicto === "BUSCAR OTRA"
+        ? "Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
+        : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes.";
 
   // ── Hallazgos (pirámide, orden Filosofía 1) ──
   const hallazgos = ordenarHallazgosPiramide(results, ai);
@@ -188,20 +213,26 @@ export function DocumentoLTR({
           </div>
           <div>
             <p className="block-label">En este informe</p>
+            {/* Sin números de página: la paginación es fluida y los declaraba
+                falsos (QA punto 3). Queda la secuencia de capítulos con su líder. */}
             <div className="toc">
-              <div className="titem"><span className="tno">·</span><span className="tname">El detalle · {hallazgos.length} hallazgos</span><span className="tlead" /><span className="tpage">pág. 2</span></div>
-              <div className="titem"><span className="tno">02</span><span className="tname">Costo mensual</span><span className="tlead" /><span className="tpage">pág. 3</span></div>
-              <div className="titem tcrit"><span className="tno">03</span><span className="tname">Negociación</span><span className="tlead" /><span className="tpage">pág. 3</span></div>
-              <div className="titem"><span className="tno">04</span><span className="tname">Largo plazo</span><span className="tlead" /><span className="tpage">pág. 4</span></div>
-              <div className="titem tcrit"><span className="tno">05</span><span className="tname">La palanca del precio</span><span className="tlead" /><span className="tpage">pág. 5</span></div>
-              <div className="titem"><span className="tno">06</span><span className="tname">Zona · simulación</span><span className="tlead" /><span className="tpage">pág. 6</span></div>
+              <div className="titem"><span className="tno">·</span><span className="tname">El detalle · {hallazgos.length} hallazgos</span><span className="tlead" /></div>
+              <div className="titem"><span className="tno">02</span><span className="tname">Costo mensual</span><span className="tlead" /></div>
+              <div className="titem tcrit"><span className="tno">03</span><span className="tname">Negociación</span><span className="tlead" /></div>
+              <div className="titem"><span className="tno">04</span><span className="tname">Largo plazo</span><span className="tlead" /></div>
+              <div className="titem tcrit"><span className="tno">05</span><span className="tname">La palanca del precio</span><span className="tlead" /></div>
+              <div className="titem"><span className="tno">06</span><span className="tname">Zona · simulación</span><span className="tlead" /></div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═══════════ SECCIÓN 2 · HALLAZGOS (abre hoja tras portada) ═══════════ */}
-      <section className="doc-section break-page">
+      {/* ═══════════ SECCIÓN 2 · HALLAZGOS ═══════════
+          Fluye tras la portada (sin break-page): en el caso normal arranca hoja
+          nueva igual (la portada llena su hoja), y si la portada desborda por una
+          narrativa larga, el sobrante + hallazgos rellenan la hoja — nunca queda
+          una hoja bajo ~40% con supuestos+índice sueltos (QA punto 4). */}
+      <section className="doc-section">
         <p className="eyebrow">El detalle · {hallazgos.length} hallazgos</p>
         <h2 className="title">Empezando por lo adverso</h2>
         <p className="body sec" style={{ marginTop: 6, marginBottom: 2 }}>
@@ -269,23 +300,28 @@ export function DocumentoLTR({
         {neg && (
           <div className="chips">
             <p className="cl">Precio objetivo · lo que el motor sugiere</p>
+            {/* Grilla 2 o 3 columnas según haya techo — sin celda fantasma (QA 1b). */}
             <div className={`grid ${neg.precioLimiteUF != null ? "g3" : "g2"}`}>
-              <div className="c"><p className="ck">Precio sugerido</p><div className="cv pos">{fmtUF(neg.precioSugeridoUF)}</div></div>
+              <div className="c"><p className="ck">Precio sugerido</p><div className="cv pos">{fmtUFint(neg.precioSugeridoUF)}</div></div>
               <div className="c"><p className="ck">TIR al sugerido</p><div className="cv">{pct(neg.tirAlSugerido)}</div></div>
               {neg.precioLimiteUF != null && (
-                <div className="c"><p className="ck">Techo (TIR 6%)</p><div className="cv">{fmtUF(neg.precioLimiteUF)}</div></div>
+                <div className="c"><p className="ck">Techo (TIR 6%)</p><div className="cv">{fmtUFint(neg.precioLimiteUF)}</div></div>
               )}
             </div>
             <p className="foot">
-              {razonNeg} La TIR pasa de {pct(exit.tir)} a {pct(neg.tirAlSugerido)}.
+              {tirMejoraMaterial && tirDistinto ? (
+                <>{neg.razon ?? "Este precio te acerca a los comparables de la zona."} La TIR pasa de {pct(exit.tir)} a {pct(neg.tirAlSugerido)}.</>
+              ) : (
+                <>El precio no es la palanca de este caso: acercarlo al mercado de la zona apenas mueve el retorno (TIR {pct(exit.tir)}). Lo que decide acá vive en el flujo y los supuestos, no en el precio de entrada.</>
+              )}
               {neg.precioLimiteUF != null && (
-                <> El <b>techo</b> es {fmtUF(neg.precioLimiteUF)}: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar.</>
+                <> El <b>techo</b> es {fmtUFint(neg.precioLimiteUF)}: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar.</>
               )}
             </p>
           </div>
         )}
 
-        <p className="eyebrow" style={{ marginTop: 2 }}>Qué exige el motor para COMPRAR — hoy</p>
+        <p className="eyebrow" style={{ marginTop: 2 }}>{gateTitle}</p>
         <div className="gatecheck">
           {gates.map((g) => (
             <div className="grow" key={g.label}>
@@ -294,9 +330,7 @@ export function DocumentoLTR({
               <span className={`gs ${g.ok ? "" : "red"}`}>hoy {g.val}</span>
             </div>
           ))}
-          <p className="gatefoot">
-            Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes.
-          </p>
+          <p className="gatefoot">{gateFoot}</p>
         </div>
 
         {/* Riesgos: sólo si el análisis trae la sección (retirada del prompt LTR actual). */}

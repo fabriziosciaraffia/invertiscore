@@ -26,9 +26,14 @@
   --signal-red: #c8323c;
   --ink-400: #b4b2a9;
 
-  --serif: "Source Serif 4", Georgia, serif;
-  --sans: "IBM Plex Sans", system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+  /* Las fuentes las carga next/font en layout.tsx como variables sobre <body>
+     (--font-heading = Source Serif 4, --font-body = IBM Plex Sans, --font-mono =
+     JetBrains Mono). Referenciarlas por nombre literal ("Source Serif 4") NO
+     matchea el family hasheado de next/font → caía al fallback (títulos en sans
+     en el PDF). Usar la variable garantiza la webfont real en el render Puppeteer. */
+  --serif: var(--font-heading), Georgia, serif;
+  --sans: var(--font-body), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, monospace;
 
   background: var(--bg);
   color: var(--text);
@@ -44,9 +49,11 @@
 .franco-doc * { box-sizing: border-box; }
 
 /* ── Secciones + saltos de página ────────────────────────────────────────
-   Capítulos FLUIDOS: los interiores (02-05) fluyen y llenan la hoja; solo
-   hallazgos y la sección final abren hoja propia (break-page). Ningún bloque
-   se corta a la mitad (break-inside: avoid por bloque, más abajo). */
+   Documento FLUIDO: portada, hallazgos y capítulos 02-05 fluyen y llenan la
+   hoja; solo la sección final (simulación/cierre) abre hoja propia (break-page).
+   Así una portada con narrativa larga se rellena con hallazgos en vez de dejar
+   una hoja sparse (QA punto 4). Ningún bloque se corta a la mitad (break-inside:
+   avoid por bloque, más abajo). */
 .franco-doc .doc-section { break-before: auto; }
 .franco-doc .doc-section.break-page { break-before: page; }
 /* Respiro entre capítulos que comparten hoja (gap mayor del mockup entre
