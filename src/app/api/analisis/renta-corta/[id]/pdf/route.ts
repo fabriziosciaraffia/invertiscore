@@ -3,10 +3,10 @@
 //
 // Endpoint: GET /api/analisis/renta-corta/[id]/pdf
 // Strategy: reusa el helper compartido src/lib/pdf/render-pdf.ts (Puppeteer +
-// @sparticuz/chromium). Navega a /analisis/renta-corta/[id]?print=true en
-// headless Chrome (modo print: sin chrome de nav ni CTAs, con AdvancedSectionSTR
-// abierta) y emite PDF A4 con header/footer. Hereda el fix de tema claro del
-// helper.
+// @sparticuz/chromium). Navega a la vista documento dedicada
+// /analisis/renta-corta/[id]/documento (server-rendered, clara por construcción,
+// con sentinel [data-doc-ready] para espera determinística). Ya no usa
+// ?print=true ni el fix forceLightTheme — el documento es claro estructural.
 //
 // Espejo de api/analisis/[id]/pdf/route.ts (LTR), pero para un análisis de
 // renta corta identificado por id.
@@ -89,10 +89,15 @@ export async function GET(
 
     return renderPdf({
       request,
-      path: `/analisis/renta-corta/${id}?print=true`,
+      // Vista documento dedicada (reemplaza ?print=true). Server-rendered, clara
+      // por construcción, con sentinel [data-doc-ready] para espera determinística.
+      path: `/analisis/renta-corta/${id}/documento`,
       filename,
       headerLabel: direccionLabel,
       headerDate: fechaCorta,
+      forceLightTheme: false,        // el documento ya es claro (.franco-doc)
+      readySelector: "[data-doc-ready]",
+      chrome: "documento",           // header dirección + footer tagline vigente + paginación
     });
   } catch (error) {
     console.error("[STR PDF] Error:", error);

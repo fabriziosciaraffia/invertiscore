@@ -47,15 +47,12 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 
 export default async function STRResultPage({
   params,
-  searchParams,
 }: {
   params: { id: string };
-  searchParams?: { print?: string };
 }) {
-  // Modo print (PDF headless): renderiza el cuerpo del análisis sin chrome de
-  // navegación ni CTAs, con AdvancedSectionSTR abierta, para que Puppeteer lo
-  // capture completo. Espejo del modo print de LTR.
-  const printMode = searchParams?.print === "true";
+  // El PDF ya no usa esta página en modo print: navega a la vista documento
+  // dedicada /analisis/renta-corta/[id]/documento (server-rendered). Esta ruta
+  // es siempre la vista interactiva completa.
 
   const supabase = createClient();
 
@@ -179,12 +176,11 @@ export default async function STRResultPage({
   // Fase D — hijo STR BLOQUEADO de un par AMBAS: espejo de LTR. El resumen vive
   // como MODAL sobre el comparativo; el acceso directo por URL a un hijo bloqueado
   // redirige al comparativo con el modal abierto (?ver=str). Íntegro (unlocked /
-  // subscriber) y standalone → página completa. printMode (PDF) intacto.
+  // subscriber) y standalone → página completa. El PDF ya no pasa por acá.
   const isUnlocked = !!(data as Record<string, unknown>).ambas_unlocked_at;
   const isSubordinated = !!subordinatedHref;
   const childBlocked =
     isSubordinated &&
-    !printMode &&
     accessLevel !== "subscriber" &&
     (isOwner ? !isUnlocked : true);
   if (childBlocked && subordinatedHref) {
@@ -214,7 +210,6 @@ export default async function STRResultPage({
     userCredits,
     welcomeAvailable,
     aiAnalysisInitial: strAiFresh ? data.ai_analysis : null,
-    printMode,
     subordinatedHref,
   };
 

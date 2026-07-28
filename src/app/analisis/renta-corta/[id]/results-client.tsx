@@ -65,7 +65,6 @@ interface STRResultsProps {
   userCredits: number;
   welcomeAvailable?: boolean;
   aiAnalysisInitial?: unknown;
-  printMode?: boolean;
   /** Hijo subordinado de un AMBAS: link al comparativo. Si viene, se oculta el
    * Compartir propio y se muestra el banner de subordinación (migración 20260715). */
   subordinatedHref?: string | null;
@@ -85,7 +84,6 @@ export function STRResultsClient({
   userCredits,
   welcomeAvailable = true,
   aiAnalysisInitial,
-  printMode = false,
   subordinatedHref = null,
 }: STRResultsProps) {
   const [currency, setCurrency] = useState<"CLP" | "UF">("CLP");
@@ -165,8 +163,8 @@ export function STRResultsClient({
 
   return (
     <div className="min-h-screen bg-[var(--franco-bg)]">
-      {/* Chrome de nav/header — oculto en print mode (el PDF agrega su header) */}
-      {!printMode && (accessLevel === "guest" ? (
+      {/* Chrome de nav/header — el PDF usa la vista documento aparte, no esta página. */}
+      {accessLevel === "guest" ? (
         <PublicShareHeader date={formatFechaCorta(createdAt)} />
       ) : (
         <UnifiedNav
@@ -189,16 +187,16 @@ export function STRResultsClient({
             )
           }
         />
-      ))}
+      )}
 
       <main className="mx-auto max-w-[1100px] px-4 sm:px-6 py-6 md:py-8">
         {/* Banner de subordinación AMBAS — hijo STR de un comparativo. */}
-        {subordinatedHref && !printMode && (
+        {subordinatedHref && (
           <SubordinatedBanner href={subordinatedHref} modalidad="STR" />
         )}
 
-        {/* CTA conversión — anzuelo (superficie Ink) · solo guest, no en print */}
-        {accessLevel === "guest" && !printMode && (
+        {/* CTA conversión — anzuelo (superficie Ink) · solo guest */}
+        {accessLevel === "guest" && (
           <div className="mb-5">
             <ConversionHook href="/register" />
           </div>
@@ -286,9 +284,9 @@ export function STRResultsClient({
           results={results}
           currency={currency}
           valorUF={ufValue}
-          forceOpen={printMode}
+          forceOpen={false}
           onOpenLargoPlazo={
-            !printMode && (aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
+            (aiAnalysis as unknown as AIAnalysisSTRv2 | null)?.largoPlazo?.contenido?.trim()
               ? () => setActiveDrawer("largoPlazo")
               : undefined
           }
@@ -306,8 +304,8 @@ export function STRResultsClient({
           onOpen={() => setActiveDrawer("tipoHuesped")}
         />
 
-        {/* CTAs de dueño/wallet — ocultos en print mode */}
-        {!printMode && (
+        {/* CTAs de dueño/wallet */}
+        {(
           <>
             {/* CTA banner (free) */}
             <div style={{ height: 24 }} />
@@ -333,8 +331,8 @@ export function STRResultsClient({
           </>
         )}
 
-        {/* Link analizar otra propiedad — oculto en print mode (es navegación) */}
-        {!printMode && (
+        {/* Link analizar otra propiedad */}
+        {(
           <div className="mt-6 mb-4 flex items-center justify-center">
             <Link
               href="/analisis/renta-corta"
@@ -346,8 +344,8 @@ export function STRResultsClient({
           </div>
         )}
 
-        {/* CTA conversión — cierre (campo Signal Red) · solo guest, no en print */}
-        {accessLevel === "guest" && !printMode && (
+        {/* CTA conversión — cierre (campo Signal Red) · solo guest */}
+        {accessLevel === "guest" && (
           <div className="mt-8 mb-4">
             <ConversionCloser href="/register" />
           </div>
@@ -367,7 +365,7 @@ export function STRResultsClient({
 
         {/* Drawer de detalle (overlay) — abierto desde la pirámide o la card zona.
             E.2: estado levantado acá; el contenido vive en DrawerContentSTR. */}
-        {!printMode && activeDrawer && (
+        {activeDrawer && (
           <DrawerSTR
             activeKey={activeDrawer}
             titulo={DRAWER_TITULOS_STR[activeDrawer]}
@@ -389,8 +387,8 @@ export function STRResultsClient({
         )}
       </main>
 
-      {/* Footer del sitio — oculto en print mode (chrome, no cuerpo del análisis) */}
-      {!printMode && <AppFooter variant="minimal" />}
+      {/* Footer del sitio */}
+      <AppFooter variant="minimal" />
     </div>
   );
 }

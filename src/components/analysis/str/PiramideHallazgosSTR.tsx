@@ -12,7 +12,11 @@
 
 import type { Hallazgo } from "@/lib/types";
 import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
-import { cmpDecisividad, esAdverso, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import { filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+// Orden extraído a módulo puro server-safe (lo consume también la vista documento).
+// Re-exportado acá para no romper los importadores (results-client, DrawerSTR seq).
+import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
+export { ordenarHallazgosPiramideSTR };
 import type { DrawerKeySTR } from "./DrawerSTR";
 
 // Mapa hallazgo → drawer STR. Cada card abre un drawer cuyo título calza con ella.
@@ -35,28 +39,6 @@ export const HALLAZGO_DRAWER_STR: Partial<Record<Hallazgo["id"], DrawerKeySTR>> 
   estructura_costos_str: "estructuraCostos",
 };
 
-/** Dedup por id: el hallazgo CON titular gana; entre iguales, mayor decisividad. */
-function dedup(hallazgos: Hallazgo[]): Hallazgo[] {
-  const byId = new Map<string, Hallazgo>();
-  for (const h of hallazgos) {
-    const prev = byId.get(h.id);
-    const hT = !!h.titular;
-    const pT = prev ? !!prev.titular : false;
-    const gana = !prev || (hT && !pT) || (hT === pT && h.decisividad > prev.decisividad);
-    if (gana) byId.set(h.id, h);
-  }
-  return Array.from(byId.values());
-}
-
-// Orden EXACTO que renderiza la pirámide STR (Filosofía 1). Exportado (fix-drawers):
-// la navegación prev/next de los drawers se deriva de ESTE mismo array — un solo orden
-// de verdad. El componente lo consume tal cual; results-client lo usa para la secuencia.
-export function ordenarHallazgosPiramideSTR(hallazgos: Hallazgo[] | null | undefined): Hallazgo[] {
-  const gathered = dedup(Array.isArray(hallazgos) ? hallazgos.filter(Boolean) : []);
-  const adversos = gathered.filter(esAdverso).sort(cmpDecisividad);
-  const favorables = gathered.filter((h) => !esAdverso(h)).sort(cmpDecisividad);
-  return [...adversos, ...favorables];
-}
 
 export function PiramideHallazgosSTR({
   hallazgos,
