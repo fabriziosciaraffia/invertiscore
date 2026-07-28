@@ -12,6 +12,7 @@ import { NextResponse } from "next/server";
 import chromium from "@sparticuz/chromium";
 import puppeteer, { type Browser } from "puppeteer-core";
 import { DOC_CHROME_FONT_FACES } from "./doc-chrome-fonts";
+import { DOC_WORDMARK_LIGHT_DATA_URI } from "./doc-wordmark";
 
 export function getOrigin(request: Request): string {
   const url = new URL(request.url);
@@ -129,7 +130,7 @@ export async function renderPdf(opts: {
       <div style="font-family: 'IBM Plex Sans', sans-serif; font-size: 9px; color: #6b6b72;
                    width: 100%; padding: 0 12mm; display: flex; align-items: center;
                    justify-content: space-between;">
-        <span><span style="font-family: 'Source Serif 4', serif; font-style: italic; opacity: 0.5;">re</span><span style="font-family: 'Source Serif 4', serif; font-weight: 700;">franco</span><span style="color: #C8323C; font-weight: 500;">.ai</span></span>
+        <img src="${DOC_WORDMARK_LIGHT_DATA_URI}" alt="refranco.ai" style="height: 11px; display: block;" />
         <span>${escapeHtml(headerLabel)}</span>
       </div>
     `
