@@ -93,7 +93,7 @@ export function buildHallazgoOcupacionVsBanda(p: {
     titular = "Llenas más que la zona típica.";
     fraseCanonica =
       `Tu ocupación observada es ${pct0(occ)}%, sobre la banda típica de la comuna (${pct0(banda)}%). ` +
-      `El listing llena más que el promedio de la zona — buena señal para sostener el revenue.`;
+      `El listing llena más que el promedio de la zona — buena señal para sostener los ingresos brutos.`;
   } else {
     titular = "Necesitas llenar más que la zona típica.";
     fraseCanonica =
