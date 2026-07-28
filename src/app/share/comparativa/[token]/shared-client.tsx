@@ -3,9 +3,7 @@
 import { useState, useMemo } from "react";
 import { ConversionHook, ConversionCloser } from "@/components/chrome/SharedConversionCTA";
 import { PublicShareHeader } from "@/components/chrome/PublicShareHeader";
-import FrancoLogo from "@/components/franco-logo";
 import { HeroComparativa } from "@/components/comparativa/HeroComparativa";
-import { formatDireccionDisplay } from "@/lib/format-direccion";
 import { TablaSideBySide } from "@/components/comparativa/TablaSideBySide";
 import { PatrimonioChartComparativa } from "@/components/comparativa/PatrimonioChartComparativa";
 import { FlujoMensualChart } from "@/components/comparativa/FlujoMensualChart";
@@ -15,12 +13,11 @@ import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-find
 import type {
   FullAnalysisResult,
   AIAnalysisComparativa,
-  RecomendacionModalidadAmbas,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import { normalizeLegacyVerdict } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
-import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
+import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
 
@@ -49,23 +46,7 @@ interface Props {
   comisionAdministrador: number;
   edificioPermiteAirbnb: string;
   ufValue: number;
-  printMode: boolean;
   createdAt: string;
-}
-
-function deriveRecomendacionFallback(
-  strResults: ShortTermResult | null,
-): RecomendacionModalidadAmbas {
-  if (!strResults) return "INDIFERENTE";
-  return deriveRecomendacionModalidad({
-    recomendacionModalidad: strResults.recomendacionModalidad,
-    zonaSTR: strResults.zonaSTR,
-    sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
-    // P3 (Rama 0b): contexto para clasificar por absoluto cuando el ratio degenera.
-    ltrNoiMensual: strResults.comparativa?.ltr?.noiMensual,
-    sobreRenta: strResults.comparativa?.sobreRenta,
-    strNoiMensual: strResults.comparativa?.str_auto?.noiMensual,
-  });
 }
 
 function formatFechaCorta(iso: string): string {
@@ -134,44 +115,21 @@ export function SharedComparativaClient(p: Props) {
   const deltaNOIMensual = strNOIMensual - ltrNOIMensual;
 
   const fechaCorta = formatFechaCorta(p.createdAt);
-  const direccionDisplay = p.direccion
-    ? formatDireccionDisplay(p.direccion, p.comuna)
-    : `Depto ${p.dormitorios}D${p.banos}B en ${p.comuna}`;
 
   return (
     <div
       className="min-h-screen flex flex-col"
-      // En print mode renderizamos el subtree en TEMA CLARO: data-theme="light"
-      // resuelve los tokens --franco-* en su versión clara (bg, cards, texto)
-      // para todo el contenido del PDF. Sin esto el texto heredaba los tokens
-      // dark (#FAFAF8 ≈ blanco) sobre fondo blanco → ilegible.
-      data-theme={p.printMode ? "light" : undefined}
       style={{ background: "var(--franco-bg)" }}
     >
-      {/* Header público (solo en NO-print, ya que PDF agrega su propio header) */}
-      {!p.printMode && <PublicShareHeader date={fechaCorta} />}
+      {/* El PDF ya no usa esta página: vive en /share/comparativa/[token]/documento. */}
+      <PublicShareHeader date={fechaCorta} />
 
       <main className="flex-1">
         <div className="container mx-auto max-w-[1100px] px-4 sm:px-6 py-6">
-          {/* CTA conversión — anzuelo (superficie Ink) · solo web */}
-          {!p.printMode && (
-            <div className="mb-5">
-              <ConversionHook href="/register?next=/analisis/nuevo-v4" />
-            </div>
-          )}
-
-          {/* Banner identificador del análisis (visible siempre) */}
-          {p.printMode && (
-            <div className="mb-5 pb-4" style={{ borderBottom: "1px solid var(--franco-border)" }}>
-              <FrancoLogo inverted size="sm" href="/" />
-              <p className="font-mono text-[10px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mt-2">
-                ANÁLISIS COMPARATIVO · {direccionDisplay.toUpperCase()}
-              </p>
-              <p className="font-body text-[11px] text-[var(--franco-text-secondary)] mt-1">
-                Generado el {fechaCorta}
-              </p>
-            </div>
-          )}
+          {/* CTA conversión — anzuelo (superficie Ink) */}
+          <div className="mb-5">
+            <ConversionHook href="/register?next=/analisis/nuevo-v4" />
+          </div>
 
           {/* ── ACTO 1 · Hero — veredicto + prosa integrada + toggle (F-C3b) ── */}
           <HeroComparativa
@@ -200,7 +158,7 @@ export function SharedComparativaClient(p: Props) {
             aiLoading={aiLoading}
             createdAt={p.createdAt}
             currency={currency}
-            onCurrencyChange={p.printMode ? undefined : setCurrency}
+            onCurrencyChange={setCurrency}
             ufValue={uf}
           />
 
@@ -247,8 +205,8 @@ export function SharedComparativaClient(p: Props) {
 
           </div>
 
-          {/* CTA conversión — cierre (campo Signal Red) · solo en vista web */}
-          {!p.printMode && (
+          {/* CTA conversión — cierre (campo Signal Red) */}
+          {(
             <div className="mt-8 mb-4">
               <ConversionCloser href="/register?next=/analisis/nuevo-v4" />
             </div>
@@ -257,7 +215,7 @@ export function SharedComparativaClient(p: Props) {
           {/* Disclaimer */}
           <p
             className="font-body text-[11px] text-center mt-6"
-            style={{ color: p.printMode ? "#666" : "color-mix(in srgb, var(--franco-text) 35%, transparent)" }}
+            style={{ color: "color-mix(in srgb, var(--franco-text) 35%, transparent)" }}
           >
             Análisis generado por IA. Verifica los datos antes de tomar decisiones financieras.
             refranco.ai · análisis no constituye recomendación financiera.

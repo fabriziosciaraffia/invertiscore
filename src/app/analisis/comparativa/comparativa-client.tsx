@@ -21,14 +21,13 @@ import { ctxFromResults, buildFindingsComparativa } from "@/lib/comparativa-find
 import type {
   FullAnalysisResult,
   AIAnalysisComparativa,
-  RecomendacionModalidadAmbas,
 } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import {
   normalizeLegacyVerdict,
 } from "@/lib/types";
 import { readVeredicto } from "@/lib/results-helpers";
-import { deriveRecomendacionModalidad } from "@/lib/engines/str-universo-santiago";
+import { deriveRecomendacionFallback } from "@/lib/comparativa-recomendacion";
 
 type AccessLevel = "guest" | "free" | "premium" | "subscriber";
 type STRVerdict = "COMPRAR" | "AJUSTA SUPUESTOS" | "BUSCAR OTRA";
@@ -79,23 +78,8 @@ interface Props {
   initialVer: "ltr" | "str" | null;
 }
 
-// ─── Fallback de recomendacionModalidad para análisis legacy ─────────────
-// Delega en `deriveRecomendacionModalidad` del motor (única fuente de verdad
-// compartida con el endpoint comparativa/ai server-side).
-function deriveRecomendacionFallback(
-  strResults: ShortTermResult | null,
-): RecomendacionModalidadAmbas {
-  if (!strResults) return "INDIFERENTE";
-  return deriveRecomendacionModalidad({
-    recomendacionModalidad: strResults.recomendacionModalidad,
-    zonaSTR: strResults.zonaSTR,
-    sobreRentaPct: strResults.comparativa?.sobreRentaPct ?? 0,
-    // P3 (Rama 0b): contexto para clasificar por absoluto cuando el ratio degenera.
-    ltrNoiMensual: strResults.comparativa?.ltr?.noiMensual,
-    sobreRenta: strResults.comparativa?.sobreRenta,
-    strNoiMensual: strResults.comparativa?.str_auto?.noiMensual,
-  });
-}
+// `deriveRecomendacionFallback` vive en @/lib/comparativa-recomendacion (módulo
+// puro): lo comparten esta vista, la pública y el documento comparativo.
 
 // ─── Componente principal ───────────────────────────────────────────────
 export function ComparativaClient(p: Props) {
