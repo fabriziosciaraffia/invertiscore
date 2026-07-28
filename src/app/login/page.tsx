@@ -188,9 +188,9 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Franco tagline */}
-          <div className="mt-6 text-center font-body text-[11px] text-[var(--franco-text-secondary)]">
-            Re franco con tu inversión.
+          {/* Franco tagline (vigente) — JetBrains Mono uppercase, tratamiento del design system */}
+          <div className="mt-6 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--franco-text-tertiary)]">
+            Real estate en su estado más franco
           </div>
         </div>
       </div>

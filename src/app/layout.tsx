@@ -50,7 +50,7 @@ export const metadata: Metadata = {
     "invertir en departamentos Chile",
   ],
   openGraph: {
-    title: "Franco — Re franco con tu inversión",
+    title: "refranco.ai — Análisis de inversión inmobiliaria en Chile",
     description:
       "Analiza departamentos como inversión en Santiago. Franco Score, rentabilidad, flujo de caja y análisis con IA. Gratis, en 30 segundos.",
     type: "website",

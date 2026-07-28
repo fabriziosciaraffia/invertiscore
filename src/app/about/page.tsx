@@ -24,7 +24,7 @@ export default function AboutPage() {
             Usamos datos públicos del Banco Central, SII e información de mercado para mostrarte los números reales — sin maquillaje, sin conflictos de interés.
           </p>
           <p className="text-[var(--franco-text-secondary)]">
-            Franco es un proyecto de refranco.ai — re franco con tu inversión.
+            Franco es un proyecto de refranco.ai — real estate en su estado más franco.
           </p>
         </div>
 
