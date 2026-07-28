@@ -1,0 +1,249 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Vista DOCUMENTO AMBAS / COMPARATIVA — estilos dedicados.
+   Contrato: assets-export/mockup-pdf-ambas.html (5 hojas). Espeja la gramática
+   de los documentos LTR y STR + primitivas propias de la comparativa:
+   recomendación de modalidad (.reco + segments), face-off LTR|STR (.faceoff),
+   mini-scores por modalidad, y la tabla de gestión (.gest) heredada del STR.
+
+   Tema claro ESTRUCTURAL: no lee el theme del usuario. Selectores bajo
+   `.franco-doc`. Header/footer corridos + paginación los aporta Puppeteer
+   (render-pdf.ts chrome="documento"); acá solo el cuerpo, con @page A4.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@page {
+  size: A4;
+  margin: 18mm 12mm;
+}
+
+.franco-doc {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --sunken: #f0f0f2;
+  --text: #0f0f0f;
+  --text-secondary: #52525b;
+  --text-muted: #6b6b72;
+  --text-tertiary: #6a6a71;
+  --border: #dddde1;
+  --border-strong: #b0b0b8;
+  --signal-red: #c8323c;
+  --ink-400: #b4b2a9;
+
+  --serif: var(--font-heading), Georgia, serif;
+  --sans: var(--font-body), system-ui, sans-serif;
+  --mono: var(--font-mono), ui-monospace, monospace;
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  max-width: 186mm;
+  margin: 0 auto;
+  padding: 8mm 0;
+}
+
+.franco-doc * { box-sizing: border-box; }
+
+/* ── Secciones + saltos de página (documento fluido) ─────────────────────── */
+.franco-doc .doc-section { break-before: auto; }
+.franco-doc .doc-section.break-page { break-before: page; }
+.franco-doc .doc-section + .doc-section:not(.break-page) { margin-top: 34px; }
+.franco-doc .chapter { break-after: avoid; }
+.franco-doc .avoid-break { break-inside: avoid; }
+
+/* ── Tipografía / bloques base ───────────────────────────────────────────── */
+.franco-doc .eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary);
+  margin: 0 0 6px;
+}
+.franco-doc .display { font-family: var(--serif); font-weight: 700; font-size: 29px; line-height: 1.1; margin: 0; text-wrap: balance; }
+.franco-doc .title { font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.2; margin: 0; text-wrap: balance; }
+.franco-doc .subtitle { font-family: var(--serif); font-weight: 700; font-size: 17px; line-height: 1.25; margin: 0; }
+.franco-doc p.body { font-family: var(--sans); font-size: 12.5px; line-height: 1.62; color: var(--text); margin: 0 0 11px; }
+.franco-doc .body.sec { color: var(--text-secondary); }
+.franco-doc .num { font-family: var(--mono); font-weight: 500; }
+.franco-doc .divider { height: 0; border-top: 0.5px dashed var(--border); margin: 16px 0; }
+.franco-doc .chapter { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
+.franco-doc .chapter .no { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--text-tertiary); }
+.franco-doc .chapter.crit .no { color: var(--signal-red); }
+
+/* ── Portada · property header ───────────────────────────────────────────── */
+.franco-doc .prop-meta {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px 20px;
+  margin-top: 12px; padding-top: 12px; border-top: 0.5px dashed var(--border);
+}
+.franco-doc .prop-meta .cell .k { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 3px; }
+.franco-doc .prop-meta .cell .v { font-family: var(--mono); font-weight: 500; font-size: 14px; color: var(--text); }
+
+/* ── Recomendación de modalidad (banda) — variantes A/B del anexo ────────── */
+.franco-doc .reco { margin-top: 14px; padding: 16px 20px; border-radius: 12px; border: 0.5px solid var(--border); background: var(--sunken); break-inside: avoid; }
+.franco-doc .reco .badge { display: inline-block; font-family: var(--mono); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; border-radius: 6px; padding: 5px 11px; }
+/* corta (ventaja clara) → Ink sólido · frágil → outline rojo · larga (LTR preferido) → rojo pleno · parejas → Ink outline */
+.franco-doc .reco .badge.corta { color: var(--card); background: var(--text); }
+.franco-doc .reco .badge.fragil { color: var(--signal-red); border: 1px solid rgba(200,50,60,.35); background: var(--card); }
+.franco-doc .reco .badge.larga { color: #fff; background: var(--signal-red); }
+.franco-doc .reco .badge.parejas { color: var(--text-secondary); border: 1px solid var(--border-strong); background: var(--card); }
+.franco-doc .reco .headline { font-family: var(--serif); font-weight: 700; font-size: 19px; line-height: 1.28; margin: 12px 0 0; }
+
+/* Segments bar (larga · parejas · frágil · corta) */
+.franco-doc .segments { margin-top: 14px; }
+.franco-doc .segments .track { position: relative; height: 6px; border-radius: 4px; background: var(--ink-400); opacity: .5; }
+.franco-doc .segments .dotwrap { position: relative; height: 0; }
+.franco-doc .segments .dot { position: absolute; top: -9px; width: 12px; height: 12px; border-radius: 50%; background: var(--text); transform: translateX(-50%); box-shadow: 0 0 0 3px var(--card); }
+.franco-doc .segments .dot.fragil { background: var(--signal-red); }
+.franco-doc .segments .axis { display: flex; justify-content: space-between; margin-top: 8px; font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); }
+.franco-doc .segments .axis span { flex: 1; }
+.franco-doc .segments .axis span:nth-child(1) { text-align: left; }
+.franco-doc .segments .axis span:nth-child(2), .franco-doc .segments .axis span:nth-child(3) { text-align: center; }
+.franco-doc .segments .axis span:nth-child(4) { text-align: right; }
+.franco-doc .segments .axis .on { color: var(--text); font-weight: 700; }
+.franco-doc .segments .axis .on.fragil { color: var(--signal-red); }
+
+/* Banner de fragilidad (variante D · solo cuando fragil) */
+.franco-doc .fragil-banner { margin-top: 12px; border-left: 3px solid var(--signal-red); background: rgba(200,50,60,.05); border-radius: 0 10px 10px 0; padding: 11px 15px; break-inside: avoid; }
+.franco-doc .fragil-banner .fl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--signal-red); font-weight: 600; margin: 0 0 5px; }
+.franco-doc .fragil-banner .ft { font-family: var(--sans); font-size: 11.5px; line-height: 1.55; margin: 0; color: var(--text); }
+
+/* Mini-scores por modalidad (variante G) */
+.franco-doc .minis { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; break-inside: avoid; }
+.franco-doc .mini { border: 0.5px solid var(--border); border-radius: 10px; padding: 12px 15px; }
+.franco-doc .mini .ml { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 7px; }
+.franco-doc .mini .mrow { display: flex; align-items: center; justify-content: space-between; }
+.franco-doc .mini .mscore { font-family: var(--mono); font-weight: 700; font-size: 30px; }
+.franco-doc .mini .mscore small { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.franco-doc .mini .mbadge { font-family: var(--mono); font-weight: 700; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; border-radius: 5px; padding: 4px 8px; }
+.franco-doc .mini .mbadge.comprar { color: var(--card); background: var(--text); }
+.franco-doc .mini .mbadge.ajusta { color: var(--signal-red); border: 1px solid rgba(200,50,60,.35); background: var(--card); }
+.franco-doc .mini .mbadge.buscar { color: #fff; background: var(--signal-red); }
+
+/* Síntesis ejecutiva (apertura · cursiva editorial) */
+.franco-doc .exec { margin-top: 14px; padding: 11px 18px; border-radius: 10px; background: var(--sunken); break-inside: avoid; }
+.franco-doc .exec p { margin: 0; font-family: var(--sans); font-size: 12.5px; line-height: 1.6; font-style: italic; color: var(--text); }
+
+/* Supuestos (compartidos + por modalidad) + índice */
+.franco-doc .cover-lower { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 28px; margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--border); break-inside: avoid; }
+.franco-doc .block-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 12px; }
+.franco-doc .assump { display: grid; grid-template-columns: 1fr auto; row-gap: 7px; column-gap: 12px; }
+.franco-doc .assump .ak { font-family: var(--sans); font-size: 11.5px; color: var(--text-secondary); }
+.franco-doc .assump .av { font-family: var(--mono); font-weight: 500; font-size: 11.5px; text-align: right; color: var(--text); }
+.franco-doc .assump .av .u { color: var(--text-muted); font-weight: 400; }
+.franco-doc .assump .sep { grid-column: 1 / -1; height: 0; border-top: 0.5px dashed var(--border); }
+.franco-doc .assump .grouplbl { grid-column: 1 / -1; font-family: var(--mono); font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin: 5px 0 0; }
+.franco-doc .toc .titem { display: flex; align-items: baseline; gap: 9px; padding: 8px 0; border-bottom: 0.5px solid var(--border); }
+.franco-doc .toc .titem:last-child { border-bottom: 0; }
+.franco-doc .toc .tno { font-family: var(--mono); font-weight: 700; font-size: 11px; color: var(--text-tertiary); width: 20px; flex-shrink: 0; }
+.franco-doc .toc .tcrit .tno { color: var(--signal-red); }
+.franco-doc .toc .tname { font-family: var(--serif); font-weight: 700; font-size: 13px; white-space: nowrap; }
+.franco-doc .toc .tlead { flex: 1; border-bottom: 1px dotted var(--border-strong); transform: translateY(-3px); min-width: 12px; }
+
+/* ── Face-off: tabla frente-a-frente LTR | STR ───────────────────────────── */
+.franco-doc .faceoff { border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 16px 0 0; break-inside: avoid; }
+.franco-doc .faceoff .hdr, .franco-doc .faceoff .row { display: grid; grid-template-columns: 1.35fr 1fr 1fr; }
+.franco-doc .faceoff .hdr { background: var(--sunken); }
+.franco-doc .faceoff .hdr > div { padding: 10px 16px; font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
+.franco-doc .faceoff .hdr > div.hl { color: var(--text); font-weight: 700; }
+.franco-doc .faceoff .row { border-top: 0.5px solid var(--border); }
+.franco-doc .faceoff .row > div { padding: 9px 16px; }
+.franco-doc .faceoff .m { font-family: var(--sans); font-size: 11.5px; color: var(--text); }
+.franco-doc .faceoff .m small { color: var(--text-muted); font-size: 9.5px; }
+.franco-doc .faceoff .val { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+.franco-doc .faceoff .val.neg { color: var(--signal-red); }
+.franco-doc .faceoff .val.txt { font-size: 11px; font-weight: 500; }
+.franco-doc .faceoff .val small { font-weight: 400; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); display: block; margin-top: 1px; }
+.franco-doc .faceoff .col-win { background: rgba(15,15,15,.03); }
+.franco-doc .faceoff .foot { font-family: var(--sans); font-size: 10.5px; line-height: 1.5; color: var(--text-secondary); padding: 11px 16px; background: rgba(15,15,15,.02); border-top: 0.5px solid var(--border); }
+.franco-doc .modtag { font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--border-strong); color: var(--text-secondary); }
+
+/* ── Hallazgos comparativos ──────────────────────────────────────────────── */
+.franco-doc .hall { padding: 13px 0; border-bottom: 0.5px solid var(--border); display: grid; grid-template-columns: 26px 1fr 140px; gap: 14px; align-items: start; break-inside: avoid; }
+.franco-doc .hall:last-child { border-bottom: 0; }
+.franco-doc .hall .rank { font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--text-tertiary); padding-top: 2px; }
+.franco-doc .hall .h-titular { font-family: var(--serif); font-weight: 700; font-size: 14px; line-height: 1.3; margin: 0 0 4px; }
+.franco-doc .hall .h-frase { font-family: var(--sans); font-size: 11px; line-height: 1.5; color: var(--text-secondary); margin: 0; }
+.franco-doc .hall .h-val { text-align: right; }
+.franco-doc .hall .h-val .hv { font-family: var(--mono); font-weight: 700; font-size: 15px; line-height: 1.1; }
+.franco-doc .hall .h-val .hv.neg { color: var(--signal-red); }
+.franco-doc .hall .h-val .hd { font-family: var(--mono); font-size: 8.5px; letter-spacing: .05em; text-transform: uppercase; margin-top: 3px; color: var(--text-muted); }
+
+/* ── Primitivas compartidas (chips · box · gest · sens) ──────────────────── */
+.franco-doc .chips { background: rgba(15,15,15,.035); border: 0.5px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 14px; break-inside: avoid; }
+.franco-doc .chips > .cl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 11px; }
+.franco-doc .chips .grid { display: grid; gap: 12px; }
+.franco-doc .chips .grid.g4 { grid-template-columns: repeat(4, 1fr); }
+.franco-doc .chips .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+.franco-doc .chips .c .ck { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 4px; }
+.franco-doc .chips .c .cv { font-family: var(--mono); font-weight: 700; font-size: 18px; line-height: 1.05; }
+.franco-doc .chips .c .cv small { font-size: 11px; font-weight: 500; color: var(--text-secondary); }
+.franco-doc .chips .c .cv.pos { color: var(--ink-400); }
+.franco-doc .chips .c .cv.neg { color: var(--signal-red); }
+.franco-doc .chips .foot { font-family: var(--sans); font-size: 10.5px; line-height: 1.5; color: var(--text-secondary); margin: 11px 0 0; }
+
+.franco-doc .box { border-left: 3px solid var(--text-secondary); background: rgba(15,15,15,.035); border-radius: 0 8px 8px 0; padding: 12px 15px; margin: 0 0 12px; break-inside: avoid; }
+.franco-doc .box.red { border-left-color: var(--signal-red); background: rgba(200,50,60,.06); }
+.franco-doc .box .bl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 5px; }
+.franco-doc .box.red .bl { color: var(--signal-red); }
+.franco-doc .box .bt { font-family: var(--sans); font-size: 11.5px; line-height: 1.55; margin: 0; color: var(--text); }
+
+.franco-doc .gest { border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 2px 0 0; break-inside: avoid; }
+.franco-doc .gest .hdr, .franco-doc .gest .row { display: grid; grid-template-columns: 1.2fr 1fr 1fr; }
+.franco-doc .gest .hdr { background: var(--sunken); }
+.franco-doc .gest .hdr > div { padding: 8px 14px; font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
+.franco-doc .gest .hdr > div.hl { color: var(--text); font-weight: 700; }
+.franco-doc .gest .row { border-top: 0.5px solid var(--border); }
+.franco-doc .gest .row > div { padding: 9px 14px; }
+.franco-doc .gest .row > div.col-hl { background: rgba(15,15,15,.025); }
+.franco-doc .gest .gm { font-family: var(--sans); font-size: 11px; color: var(--text-secondary); }
+.franco-doc .gest .gv { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+.franco-doc .gest .gv.neg { color: var(--signal-red); }
+.franco-doc .gest .gv.pos { color: var(--ink-400); }
+
+.franco-doc .sens { border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 2px 0 8px; break-inside: avoid; }
+.franco-doc .sens .hdr, .franco-doc .sens .row { display: grid; grid-template-columns: 0.9fr 1.1fr 1fr 1fr; }
+.franco-doc .sens .hdr { background: var(--sunken); }
+.franco-doc .sens .hdr > div { padding: 8px 14px; font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
+.franco-doc .sens .row { border-top: 0.5px solid var(--border); }
+.franco-doc .sens .row.base { background: rgba(15,15,15,.025); }
+.franco-doc .sens .row > div { padding: 8px 14px; }
+.franco-doc .sens .pk { font-family: var(--mono); font-weight: 700; font-size: 11px; }
+.franco-doc .sens .pk small { font-weight: 400; color: var(--text-muted); font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; }
+.franco-doc .sens .sv { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
+.franco-doc .sens .sv.neg { color: var(--signal-red); }
+.franco-doc .sens .sv.pos { color: var(--ink-400); }
+
+.franco-doc .note { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: rgba(15,15,15,.35); margin: 6px 0 0; }
+
+/* Estrategia / bisagra (variante F) */
+.franco-doc .strat { border-left: 3px solid var(--signal-red); background: rgba(200,50,60,.05); border-radius: 0 8px 8px 0; padding: 13px 16px; margin: 4px 0 12px; break-inside: avoid; }
+.franco-doc .strat .sl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-red); margin: 0 0 5px; }
+.franco-doc .strat .st { font-family: var(--sans); font-size: 12px; line-height: 1.55; margin: 0; }
+
+/* Cierre — Franco se la juega (FRANCO_POS) */
+.franco-doc .cierre { border-left: 3px solid var(--signal-red); padding: 4px 0 4px 16px; margin-top: 8px; break-inside: avoid; }
+.franco-doc .cierre p { font-family: var(--serif); font-style: italic; font-size: 14px; line-height: 1.55; margin: 0; color: var(--text); }
+
+/* ── Charts (SVG estático) ───────────────────────────────────────────────── */
+.franco-doc .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; break-inside: avoid; }
+.franco-doc .sbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px; }
+.franco-doc .chart-slot { width: 100%; aspect-ratio: 320 / 200; background: var(--sunken); border: 0.5px dashed var(--border-strong); border-radius: 8px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 18px; font-family: var(--sans); font-size: 10.5px; line-height: 1.5; color: var(--text-secondary); }
+.franco-doc .chart-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; font-family: var(--mono); font-size: 8px; color: var(--text-secondary); }
+.franco-doc .chart-legend span { display: inline-flex; align-items: center; gap: 4px; }
+.franco-doc .chart-legend .sw { display: inline-block; width: 8px; height: 8px; }
+.franco-doc .chart-legend .sw.red { background: var(--signal-red); }
+.franco-doc .chart-legend .sw.ink { background: var(--text); }
+.franco-doc .chart-legend .sw.line { width: 12px; height: 2px; background: var(--text); }
+.franco-doc .chart-legend .sw.dash { width: 12px; height: 0; border-top: 2px dashed var(--ink-400); }
+
+/* ── Cierre del documento + disclaimer ───────────────────────────────────── */
+.franco-doc .doc-close { margin-top: 14px; padding: 13px 18px; border-radius: 12px; background: #111; color: #fafaf8; break-inside: avoid; }
+.franco-doc .doc-close .cl { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(250,250,248,.55); margin: 0 0 8px; }
+.franco-doc .doc-close .clink { font-family: var(--serif); font-weight: 700; font-size: 18px; }
+.franco-doc .doc-close .clink .ai { color: var(--signal-red); font-family: var(--sans); font-weight: 500; }
+.franco-doc .doc-close .cdis { font-family: var(--sans); font-size: 10.5px; line-height: 1.55; color: rgba(250,250,248,.55); margin: 10px 0 0; }
+
+.franco-doc .legal { margin-top: 12px; border-top: 0.5px solid var(--border); padding-top: 11px; break-inside: avoid; }
+.franco-doc .legal .ll { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px; }
+.franco-doc .legal p { font-family: var(--sans); font-size: 10px; line-height: 1.6; color: var(--text-muted); margin: 0; }
+
+@media print {
+  .franco-doc { max-width: none; margin: 0; padding: 0; }
+}

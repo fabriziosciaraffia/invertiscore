@@ -1,21 +1,30 @@
+// ─────────────────────────────────────────────────────────────────────────
+// Vista DOCUMENTO comparativa (AMBAS) — ruta dedicada que visita Puppeteer para
+// el PDF. Espejo estructural de los documentos LTR y STR: guard-only (el gate de
+// caché IA vive en la ruta /pdf), light por construcción, sentinel [data-doc-ready].
+//
+// Identifica el par igual que la vista pública: el token codifica {ltrId, strId}
+// (las dos filas del grupo AMBAS). Carga y recompute IDÉNTICOS a
+// /share/comparativa/[token] — incluida la homologación: el lado STR se recomputa
+// con la UF congelada del lado LTR (TIR-neutral) para que ambas bases CLP calcen.
+// Cero recálculo propio.
+// ─────────────────────────────────────────────────────────────────────────
+
 import { notFound } from "next/navigation";
-import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getUFValue, resolveUfForAnalysis } from "@/lib/uf";
 import { decodeShareToken } from "@/lib/share-token";
+import { formatDireccionDisplay } from "@/lib/format-direccion";
 import type { Analisis, FullAnalysisResult, AIAnalysisComparativa, AnalisisInput } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
 import type { FrancoScoreSTR } from "@/lib/engines/short-term-score";
 import { recomputeShortTermForLegacy } from "@/lib/analysis/recompute-short-term-for-legacy";
 import { recomputeResultsForLegacy } from "@/lib/analysis/recompute-results-for-legacy";
 import { prefetchMedianaComunaVenta } from "@/lib/api-helpers/analisis-pipeline";
-import { SharedComparativaClient } from "./shared-client";
+import { DocumentoAmbas } from "./DocumentoAmbas";
+import "./documento.css";
 
-export const metadata: Metadata = {
-  title: "Franco — Análisis comparativo Renta Larga vs Renta Corta",
-  description: "Análisis honesto de inversión inmobiliaria. Renta larga vs renta corta lado a lado.",
-  robots: { index: false, follow: false },
-};
+export const dynamic = "force-dynamic";
 
 type LTRResultsWithCache = FullAnalysisResult & {
   comparativaAI?: AIAnalysisComparativa;
@@ -27,7 +36,7 @@ type STRResultsWithScore = ShortTermResult & {
   francoScore?: FrancoScoreSTR;
 };
 
-export default async function ShareComparativaPage({
+export default async function DocumentoAmbasPage({
   params,
 }: {
   params: { token: string };
@@ -48,8 +57,7 @@ export default async function ShareComparativaPage({
     notFound();
   }
 
-  // Paridad con guards LTR/STR (E.1.1): SQL `tipo_analisis` es autoritativa;
-  // jsonb solo se consulta cuando SQL es null (análisis pre-migration 20260510).
+  // Guard de roles: SQL `tipo_analisis` autoritativa; jsonb solo si SQL es null.
   const ltrSql = (ltrRow as Record<string, unknown>).tipo_analisis as string | null | undefined;
   const strSql = (strRow as Record<string, unknown>).tipo_analisis as string | null | undefined;
   const ltrIsSTR =
@@ -71,27 +79,20 @@ export default async function ShareComparativaPage({
     notFound();
   }
 
-  // Inputs específicos para tabla (amoblamiento, modo gestión)
   const strInput = (str.input_data ?? null) as Record<string, unknown> | null;
   const costoAmoblamiento = (strInput?.costoAmoblamiento as number) ?? 0;
   const modoGestion = ((strInput?.modoGestion as string) ?? "auto") as "auto" | "admin";
   const comisionAdministrador = (strInput?.comisionAdministrador as number) ?? 0.2;
   const edificioPermiteAirbnb = (strInput?.edificioPermiteAirbnb as string) ?? "no_seguro";
 
-  // Recompute-on-load del lado STR (espejo LTR, rama comparabilidad-motores). Igual que la
-  // vista privada: patrimonio STR comparable con LTR. UF y fecha congeladas a la creación.
-  // Idempotente, cero DB writes. Fallback al persistido si falta airbnbRaw.
-  // P2 (Rama 0b): el lado STR adopta la UF real reconstruida del lado LTR del par (espejo de
-  // la vista privada). El recompute STR re-escala precio+revenue a esta UF (TIR-neutral),
-  // homologando la base CLP de ambos motores.
+  // Homologación: el lado STR adopta la UF real reconstruida del lado LTR.
   const ltrUfFrozen = resolveUfForAnalysis(
     ltrResultsPersisted as { metrics?: { precioCLP?: number | null } | null } | null,
     ltr.input_data as { precio?: number | null } | null,
     ufValue,
     ltr.id,
   );
-  // P1-C (Rama 0b): recompute LTR con el motor nuevo (base precioCLP), espejo de la vista
-  // privada. Preserva el cache de prosa `comparativaAI`. Fallback al persistido si falta input.
+
   const ltrInput = (ltr.input_data ?? null) as AnalisisInput | null;
   const ltrAsOfFrozen = new Date(ltr.created_at ?? new Date().toISOString());
   const ltrMediana = ltrInput
@@ -102,6 +103,7 @@ export default async function ShareComparativaPage({
       ? { ...recomputeResultsForLegacy(ltrInput, ltrUfFrozen, ltrMediana, ltrAsOfFrozen), comparativaAI: ltrResultsPersisted?.comparativaAI }
       : ltrResultsPersisted
   ) as LTRResultsWithCache;
+
   const strAsOfFrozen = new Date(str.created_at ?? new Date().toISOString());
   const strMediana = strInput
     ? await prefetchMedianaComunaVenta(
@@ -122,33 +124,27 @@ export default async function ShareComparativaPage({
     strMediana,
   ) ?? strResultsPersisted) as STRResultsWithScore;
 
+  const direccionLabel = ltr.direccion
+    ? formatDireccionDisplay(ltr.direccion as string, ltr.comuna as string | null)
+    : (ltr.comuna ? `Depto en ${ltr.comuna}` : "Análisis comparativo");
+
   return (
-    <SharedComparativaClient
-      ltrId={ltr.id}
-      strId={str.id}
-      nombre={ltr.nombre ?? str.nombre ?? ""}
-      comuna={ltr.comuna ?? str.comuna ?? ""}
-      direccion={ltr.direccion ?? str.direccion ?? ""}
-      ciudad={ltr.ciudad ?? str.ciudad ?? ""}
-      dormitorios={ltr.dormitorios ?? str.dormitorios ?? 0}
-      banos={ltr.banos ?? str.banos ?? 0}
-      superficie={ltr.superficie ?? str.superficie ?? 0}
-      precioUF={ltr.precio ?? str.precio ?? 0}
-      antiguedad={(ltr.input_data as unknown as Record<string, unknown> | null)?.antiguedad as number | undefined}
-      piePct={(ltr.input_data as unknown as Record<string, unknown> | null)?.piePct as number | undefined}
-      plazoAnios={(ltr.input_data as unknown as Record<string, unknown> | null)?.plazoCredito as number | undefined}
-      tasaPct={(ltr.input_data as unknown as Record<string, unknown> | null)?.tasaInteres as number | undefined}
-      ltrScore={ltr.score ?? 0}
-      strScore={strResults?.francoScore?.score ?? 0}
+    <DocumentoAmbas
+      token={params.token}
       ltrResults={ltrResults}
       strResults={strResults}
-      cachedAI={ltrResults?.comparativaAI ?? null}
+      ai={ltrResults?.comparativaAI ?? null}
+      ltrInput={(ltr.input_data ?? null) as Record<string, unknown> | null}
+      strInput={strInput}
+      ltrScore={ltr.score ?? 0}
+      strScore={strResults?.francoScore?.score ?? 0}
+      ufFrozen={ltrUfFrozen}
+      comuna={ltr.comuna ?? str.comuna ?? ""}
+      direccionLabel={direccionLabel}
       costoAmoblamiento={costoAmoblamiento}
       modoGestion={modoGestion}
       comisionAdministrador={comisionAdministrador}
       edificioPermiteAirbnb={edificioPermiteAirbnb}
-      ufValue={ufValue}
-      createdAt={ltr.created_at ?? str.created_at ?? new Date().toISOString()}
     />
   );
 }

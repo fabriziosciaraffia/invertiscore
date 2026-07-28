@@ -82,10 +82,6 @@ export async function GET(
     const direccionLabel = row.direccion
       ? formatDireccionDisplay(row.direccion as string, row.comuna as string | null)
       : (row.comuna ? `Depto en ${row.comuna}` : "Análisis de inversión");
-    const fechaCorta = new Date().toLocaleDateString("es-CL", {
-      day: "numeric", month: "long", year: "numeric",
-    });
-
     const safeName = direccionLabel.replace(/[^a-zA-Z0-9-_]+/g, "-").slice(0, 60);
     const filename = `franco-${safeName}-${id.slice(0, 8)}.pdf`;
 
@@ -96,10 +92,6 @@ export async function GET(
       path: `/analisis/${id}/documento`,
       filename,
       headerLabel: direccionLabel,
-      headerDate: fechaCorta,
-      forceLightTheme: false,        // el documento ya es claro (.franco-doc)
-      readySelector: "[data-doc-ready]",
-      chrome: "documento",           // header dirección + footer tagline vigente + paginación
     });
   } catch (error) {
     console.error("[LTR PDF] Error:", error);

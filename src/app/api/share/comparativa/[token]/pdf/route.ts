@@ -3,9 +3,11 @@
 //
 // Endpoint: GET /api/share/comparativa/[token]/pdf
 // Strategy: Puppeteer + @sparticuz/chromium en Vercel Functions (Node.js
-// runtime). Navega a /share/comparativa/[token]?print=true en headless
-// Chrome, espera a que la página termine de cargar (incluyendo Recharts +
-// narrativa IA si necesita generarse), y emite PDF A4 con header/footer.
+// runtime). Navega a la vista documento dedicada
+// /share/comparativa/[token]/documento (server-rendered, clara por construcción,
+// con sentinel [data-doc-ready]) y emite PDF A4 con el chrome "documento".
+// Ya no usa ?print=true: con esta migración muere el último consumidor del
+// flujo viejo (localStorage light + networkidle + chrome disclaimer).
 //
 // La mecánica genérica de render (browser, viewport, tema claro, goto, pdf
 // y respuesta) vive en src/lib/pdf/render-pdf.ts. Este route solo aporta lo
@@ -66,19 +68,14 @@ export async function GET(
     const direccionLabel = ltrRow.direccion
       ? formatDireccionDisplay(ltrRow.direccion as string, ltrRow.comuna as string | null)
       : (ltrRow.comuna ? `Depto en ${ltrRow.comuna}` : "Análisis comparativo");
-    const fechaCorta = new Date().toLocaleDateString("es-CL", {
-      day: "numeric", month: "long", year: "numeric",
-    });
-
     const safeName = direccionLabel.replace(/[^a-zA-Z0-9-_]+/g, "-").slice(0, 60);
     const filename = `franco-comparativa-${safeName}-${params.token.slice(0, 8)}.pdf`;
 
     return renderPdf({
       request,
-      path: `/share/comparativa/${params.token}?print=true`,
+      path: `/share/comparativa/${params.token}/documento`,
       filename,
       headerLabel: direccionLabel,
-      headerDate: fechaCorta,
     });
   } catch (error) {
     console.error("[Comparativa PDF] Error:", error);

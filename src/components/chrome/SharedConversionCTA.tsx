@@ -3,7 +3,7 @@
 /**
  * SharedConversionCTA — superficies de conversión para la vista compartida
  * pública (AMBAS / análisis compartidos). Dos piezas presentacionales, sin
- * lógica: el padre decide cuándo mostrarlas (gate guest / !printMode).
+ * lógica: el padre decide cuándo mostrarlas (gate guest).
  *
  *   • ConversionHook   — franja compacta split (superficie Ink + botón rojo).
  *                        Va ARRIBA, como anzuelo después del header.
