@@ -1,0 +1,950 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  MOCKUP VINCULANTE · PDF DOCUMENTO LTR (opción B — vista de documento dedicada)
+  ═══════════════════════════════════════════════════════════════════════════
+  Este archivo simula el PDF final del informe LTR, hoja A4 por hoja A4.
+  NO es código de la app. Contrato de diseño: nada se implementa hasta aprobar.
+
+  LEYENDA DE PROCEDENCIA DEL CONTENIDO
+  ------------------------------------
+  · ESTRUCTURA / PRIMITIVAS / TOKENS = reales (design-system + DrawersPropios.tsx).
+  · fraseCanonica de hallazgos = plantillas REALES del motor (src/lib/*-hallazgo.ts),
+    renderizadas con los números del caso.
+  · Prosa IA (veredicto, costo, negociación, largo plazo, riesgos) = PLACEHOLDER
+    redactado según analysis-voice-franco (no es el ai_analysis cacheado de este ID,
+    que vive en Supabase y no es accesible desde el repo). Marcado inline.
+  · Cifras del caso Providencia = PLACEHOLDER ilustrativo internamente consistente
+    (UF 5.500 · 60 m² · arriendo $950.000 · pie 20% · UF ≈ $39.000). NO son datos
+    de la fila 7710a017-… (row de DB, no extraíble).
+
+  Caso: Providencia · UF 5.500 · 60 m² · arriendo $950.000/mes · veredicto AJUSTA SUPUESTOS
+-->
+<meta charset="utf-8" />
+<title>Mockup PDF LTR — Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,600;0,700;1,400;1,600&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  :root {
+    /* Paleta GALERÍA (light) — Capítulo 5 del design-system (valores canónicos) */
+    --bg:              #F6F6F7;  /* lienzo detrás de las hojas */
+    --card:            #FFFFFF;  /* superficie hoja */
+    --sunken:          #F0F0F2;  /* superficie hundida */
+    --text:            #0F0F0F;  /* Ink — texto principal */
+    --text-secondary:  #52525B;
+    --text-muted:      #6B6B72;
+    --text-tertiary:   #6A6A71;  /* eyebrows */
+    --border:          #DDDDE1;  /* hairline */
+    --border-strong:   #B0B0B8;
+    --signal-red:      #C8323C;  /* acento único, invariante */
+    --ink-400:         #B4B2A9;  /* dato neutro / positivo sobrio */
+
+    /* fuentes */
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans:  'IBM Plex Sans', system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, monospace;
+
+    /* A4 a 96dpi */
+    --pw: 794px;
+    --ph: 1123px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    font-family: var(--sans);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    /* El padding superior deja lugar a la banda fija de advertencia. */
+    padding: 68px 0 80px;
+  }
+
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+
+  /* Barra de instrucciones del mockup (no es parte del documento) */
+  .mockup-bar {
+    max-width: var(--pw);
+    margin: 0 auto 32px;
+    padding: 14px 20px;
+    background: #1A1A1A;
+    color: #FAFAF8;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.7;
+    letter-spacing: 0.02em;
+  }
+  .mockup-bar b { color: #fff; }
+  .mockup-bar .r { color: var(--signal-red); }
+  .mockup-bar .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    border: 1px solid rgba(250,250,248,.25); margin-right: 6px; font-size: 10px;
+  }
+
+  /* ── HOJA A4 ─────────────────────────────────────────────────────── */
+  .page {
+    position: relative;
+    width: var(--pw);
+    height: var(--ph);
+    margin: 0 auto 34px;
+    background: var(--card);
+    box-shadow: 0 1px 2px rgba(15,15,15,.04), 0 12px 32px rgba(15,15,15,.10);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Header repetido — chrome */
+  .pg-header {
+    flex: 0 0 auto;
+    height: 46px;
+    padding: 0 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .wordmark { font-family: var(--serif); font-size: 15px; letter-spacing: -0.01em; }
+  .wordmark .re { opacity: .28; font-weight: 400; font-style: italic; }
+  .wordmark .franco { font-weight: 700; }
+  .wordmark .ai { font-family: var(--sans); font-weight: 500; color: var(--signal-red); font-size: 12px; }
+  .pg-header .addr {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em;
+    color: var(--text-tertiary); text-transform: uppercase;
+  }
+
+  /* Contenido — varía por página */
+  .content { flex: 1 1 auto; padding: 30px 44px 14px; overflow: hidden; }
+
+  /* Footer repetido — chrome */
+  .pg-footer {
+    flex: 0 0 auto;
+    height: 40px;
+    padding: 0 44px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-top: 0.5px solid var(--border);
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.04em;
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .pg-footer .tagline { color: var(--text-tertiary); }
+  .pg-footer .pagenum { color: var(--text-secondary); }
+
+  /* Anotación de chrome (solo pág. 1, para dejar claro qué se repite) */
+  .chrome-note {
+    position: absolute; right: 8px;
+    font-family: var(--mono); font-size: 8px; letter-spacing: .06em;
+    color: var(--signal-red); text-transform: uppercase; opacity: .7;
+    pointer-events: none;
+  }
+  .chrome-note.top { top: 50px; }
+  .chrome-note.bot { bottom: 46px; }
+  .page.annotate .pg-header { outline: 1px dashed rgba(200,50,60,.4); outline-offset: -2px; }
+  .page.annotate .pg-footer { outline: 1px dashed rgba(200,50,60,.4); outline-offset: -2px; }
+
+  /* Marca de salto de página entre hojas */
+  .pagebreak-mark {
+    max-width: var(--pw); margin: -22px auto 12px; text-align: center;
+    font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+    color: var(--text-muted); text-transform: uppercase;
+  }
+  .pagebreak-mark span {
+    display: inline-block; padding: 2px 12px;
+    border: 1px dashed var(--border-strong); border-radius: 20px; background: var(--bg);
+  }
+
+  /* ── Tipografía y bloques de contenido ───────────────────────────── */
+  .eyebrow {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary);
+    margin: 0 0 6px;
+  }
+  .display { font-family: var(--serif); font-weight: 700; font-size: 30px; line-height: 1.1; margin: 0; }
+  .title   { font-family: var(--serif); font-weight: 700; font-size: 21px; line-height: 1.2; margin: 0; }
+  .subtitle{ font-family: var(--serif); font-weight: 700; font-size: 17px; line-height: 1.25; margin: 0; }
+  p.body   { font-family: var(--sans); font-size: 12.5px; line-height: 1.62; color: var(--text); margin: 0 0 11px; }
+  .body.sec { color: var(--text-secondary); }
+  .num { font-family: var(--mono); font-weight: 500; }
+  .red { color: var(--signal-red); }
+  .ital { font-style: italic; }
+
+  .divider { height: 0; border-top: 0.5px dashed var(--border); margin: 16px 0; }
+
+  /* Chapter marker: número + título */
+  .chapter { display: flex; align-items: baseline; gap: 12px; margin: 0 0 12px; }
+  .chapter .no {
+    font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .06em;
+    color: var(--text-tertiary);
+  }
+  .chapter.crit .no { color: var(--signal-red); }
+
+  /* ── Portada · property header ───────────────────────────────────── */
+  .prop-meta {
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 10px 20px;
+    margin-top: 16px; padding-top: 14px; border-top: 0.5px dashed var(--border);
+  }
+  .prop-meta .cell .k {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--text-secondary); margin: 0 0 3px;
+  }
+  .prop-meta .cell .v { font-family: var(--mono); font-weight: 500; font-size: 14px; color: var(--text); }
+
+  /* Veredicto block (AJUSTA SUPUESTOS = texto Signal Red, sin wash pleno) */
+  .verdict {
+    margin-top: 22px; padding: 20px 22px; border-radius: 12px;
+    background: var(--sunken); border: 0.5px solid var(--border);
+  }
+  .verdict .badge {
+    display: inline-block; font-family: var(--mono); font-weight: 700; font-size: 12px;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--signal-red);
+    border: 1px solid rgba(200,50,60,.35); border-radius: 6px; padding: 5px 11px; background: var(--card);
+  }
+  .verdict .headline { font-family: var(--serif); font-weight: 700; font-size: 20px; line-height: 1.28; margin: 14px 0 0; }
+
+  /* Franco Score gauge */
+  .score-wrap { margin-top: 16px; display: grid; grid-template-columns: 120px 1fr; gap: 26px; align-items: center; }
+  .score-num { font-family: var(--mono); font-weight: 700; font-size: 52px; line-height: 1; }
+  .score-num small { font-size: 18px; color: var(--text-muted); font-weight: 500; }
+  .score-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 4px; }
+  .gauge { position: relative; height: 8px; border-radius: 5px;
+    background: linear-gradient(90deg,#C8323C 0%,#C8323C 14%,#B9793E 46%,#6E6C66 74%,#4A4A46 100%); }
+  .gauge .dot { position: absolute; top: 50%; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--text); transform: translate(-50%,-50%); box-shadow: 0 0 0 3px var(--card); }
+  .gauge-axis { display: flex; justify-content: space-between; margin-top: 6px;
+    font-family: var(--mono); font-size: 9px; color: var(--text-muted); }
+
+  /* 4 dimensiones */
+  .dims { margin-top: 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
+  .dim .dk { font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+  .dim .dbar { height: 5px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+  .dim .dbar > i { display: block; height: 100%; background: var(--ink-400); border-radius: 3px; }
+  .dim .dv { font-family: var(--mono); font-weight: 700; font-size: 15px; margin-top: 6px; }
+  .dim .dw { font-family: var(--mono); font-size: 8.5px; color: var(--text-muted); }
+
+  /* Síntesis ejecutiva */
+  .exec { margin-top: 14px; padding: 14px 18px; border-radius: 10px; background: var(--sunken); }
+  .exec p { margin: 0; font-family: var(--sans); font-size: 12.5px; line-height: 1.6; font-style: italic; color: var(--text); }
+
+  /* ── Hallazgos (documento, no cards) ─────────────────────────────── */
+  .hall { padding: 13px 0; border-bottom: 0.5px solid var(--border); display: grid;
+    grid-template-columns: 26px 1fr 132px; gap: 14px; align-items: start; }
+  .hall:last-child { border-bottom: 0; }
+  .hall .rank { font-family: var(--mono); font-weight: 700; font-size: 12px; color: var(--text-tertiary); padding-top: 2px; }
+  .hall .h-titular { font-family: var(--serif); font-weight: 700; font-size: 14px; line-height: 1.3; margin: 0 0 4px; }
+  .hall .h-frase { font-family: var(--sans); font-size: 11px; line-height: 1.5; color: var(--text-secondary); margin: 0; }
+  .hall .h-val { text-align: right; }
+  .hall .h-val .hv { font-family: var(--mono); font-weight: 700; font-size: 16px; line-height: 1.1; }
+  .hall .h-val .hd { font-family: var(--mono); font-size: 8.5px; letter-spacing: .05em; text-transform: uppercase; margin-top: 3px; }
+  .adverso .hd { color: var(--signal-red); }
+  .adverso .hv.neg { color: var(--signal-red); }
+  .favorable .hd { color: var(--text-muted); }
+  .hall-group-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-tertiary); margin: 18px 0 2px; }
+  .hall-group-label.first { margin-top: 6px; }
+
+  /* ── Primitivas de drawer (reales: Chips · Box · Decomp) ──────────── */
+  .chips { background: rgba(15,15,15,.035); border: 0.5px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 0 0 14px; }
+  .chips > .cl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 11px; }
+  .chips .grid { display: grid; gap: 12px; }
+  .chips .grid.g3 { grid-template-columns: repeat(3,1fr); }
+  .chips .grid.g2 { grid-template-columns: repeat(2,1fr); }
+  .chips .c .ck { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 4px; }
+  .chips .c .cv { font-family: var(--mono); font-weight: 700; font-size: 19px; line-height: 1.05; }
+  .chips .c .cv small { font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+  .chips .c .cv.pos { color: var(--ink-400); }
+  .chips .c .cv.neg { color: var(--signal-red); }
+  .chips .foot { font-family: var(--sans); font-size: 10.5px; line-height: 1.5; color: var(--text-secondary); margin: 11px 0 0; }
+
+  .box { border-left: 3px solid var(--text-secondary); background: rgba(15,15,15,.035);
+    border-radius: 0 8px 8px 0; padding: 12px 15px; margin: 0 0 12px; }
+  .box.red { border-left-color: var(--signal-red); background: rgba(200,50,60,.06); }
+  .box .bl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 5px; }
+  .box.red .bl { color: var(--signal-red); }
+  .box .bt { font-family: var(--sans); font-size: 11.5px; line-height: 1.55; margin: 0; color: var(--text); }
+  .box .big { font-family: var(--mono); font-weight: 700; font-size: 22px; color: var(--ink-400); margin: 0 0 3px; }
+
+  .decomp .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .decomp .dl { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); width: 84px; flex-shrink: 0; }
+  .decomp .track { flex: 1; height: 20px; background: rgba(15,15,15,.06); border-radius: 4px; position: relative; overflow: hidden; }
+  .decomp .track > i { position: absolute; inset: 0 auto 0 0; border-radius: 4px; }
+  .decomp .fill-strong { background: var(--ink-400); }
+  .decomp .fill-mid    { background: rgba(180,178,169,.55); }
+  .decomp .fill-red    { background: var(--signal-red); }
+  .decomp .dv { font-family: var(--mono); font-weight: 700; font-size: 11px; width: 96px; text-align: right; flex-shrink: 0; }
+  .decomp .dv.neg { color: var(--signal-red); }
+  .decomp .net { display: flex; justify-content: space-between; align-items: baseline;
+    border-top: 0.5px solid var(--border-strong); margin-top: 4px; padding-top: 9px; }
+  .decomp .net .nl { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+  .decomp .net .nv { font-family: var(--mono); font-weight: 700; font-size: 12px; }
+
+  .note { font-family: var(--mono); font-size: 9px; letter-spacing: .04em; text-transform: uppercase; color: rgba(15,15,15,.35); margin: 6px 0 0; }
+
+  /* Placeholder inline tag */
+  .ph {
+    display: inline-block; vertical-align: middle; font-family: var(--mono); font-size: 8px;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--signal-red);
+    border: 1px solid rgba(200,50,60,.3); border-radius: 4px; padding: 0 4px; margin-left: 6px; opacity: .8;
+  }
+  .ph-block { border-left: 2px dotted rgba(200,50,60,.35); padding-left: 12px; }
+
+  /* Estrategia sugerida (Franco se la juega, número específico) */
+  .strat { border-left: 3px solid var(--signal-red); background: rgba(200,50,60,.05);
+    border-radius: 0 8px 8px 0; padding: 13px 16px; margin: 4px 0 12px; }
+  .strat .sl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--signal-red); margin: 0 0 5px; }
+  .strat .st { font-family: var(--sans); font-size: 12px; line-height: 1.55; margin: 0; }
+  .strat .quote { font-family: var(--serif); font-style: italic; font-size: 13px; color: var(--text); margin: 8px 0 0; }
+
+  /* Riesgos list */
+  .risk { display: grid; grid-template-columns: 20px 1fr; gap: 10px; padding: 10px 0; border-bottom: 0.5px dashed var(--border); }
+  .risk:last-of-type { border-bottom: 0; }
+  .risk .ri { font-family: var(--mono); font-weight: 700; font-size: 11px; color: var(--text-tertiary); }
+  .risk .rt { font-family: var(--sans); font-size: 11.5px; line-height: 1.55; margin: 0; color: var(--text); }
+  .risk .rt b { font-weight: 500; }
+
+  /* Cierre — Franco se la juega */
+  .cierre { border-left: 3px solid var(--signal-red); padding: 4px 0 4px 16px; margin-top: 8px; }
+  .cierre p { font-family: var(--serif); font-style: italic; font-size: 14px; line-height: 1.55; margin: 0; color: var(--text); }
+
+  /* ── Simulación (charts como SVG estático) + zona + cierre doc ────── */
+  .sim-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .sim-block .sbl { font-family: var(--mono); font-size: 9.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 8px; }
+  .kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 4px 0 0; }
+  .kpi { background: var(--sunken); border-radius: 8px; padding: 10px 12px; }
+  .kpi .kk { font-family: var(--mono); font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); margin: 0 0 4px; }
+  .kpi .kv { font-family: var(--mono); font-weight: 700; font-size: 16px; }
+  .kpi .kv.neg { color: var(--signal-red); }
+
+  .zona { margin-top: 12px; border: 0.5px solid var(--border); border-radius: 10px; padding: 14px 18px; background: var(--card);
+    display: grid; grid-template-columns: 44px 1fr auto; gap: 16px; align-items: center; }
+  .zona .zicon { width: 40px; height: 40px; border-radius: 50%; border: 1.5px solid var(--border-strong); opacity: .7;
+    display: flex; align-items: center; justify-content: center; }
+  .zona .zq { font-family: var(--serif); font-style: italic; font-size: 12.5px; line-height: 1.5; color: var(--text); margin: 3px 0 0; }
+  .zona .zcount { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary);
+    border: 1px solid var(--border); border-radius: 20px; padding: 4px 10px; white-space: nowrap; }
+
+  .doc-close { margin-top: 14px; padding: 16px 20px; border-radius: 12px; background: #111; color: #FAFAF8; }
+  .doc-close .cl { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: rgba(250,250,248,.55); margin: 0 0 8px; }
+  .doc-close .clink { font-family: var(--serif); font-weight: 700; font-size: 18px; }
+  .doc-close .clink .ai { color: var(--signal-red); font-family: var(--sans); font-weight: 500; }
+  .doc-close .cdis { font-family: var(--sans); font-size: 10.5px; line-height: 1.55; color: rgba(250,250,248,.55); margin: 10px 0 0; }
+
+  .disclaimer { font-family: var(--sans); font-size: 9.5px; line-height: 1.5; color: var(--text-muted); text-align: center; margin: 14px 0 0; }
+
+  /* ── v2 · portada: supuestos clave + índice del documento ────────── */
+  .cover-lower { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 28px;
+    margin-top: 16px; padding-top: 14px; border-top: 0.5px solid var(--border); }
+  .block-label { font-family: var(--mono); font-size: 10px; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--text-tertiary); margin: 0 0 13px; }
+  .assump { display: grid; grid-template-columns: 1fr auto; row-gap: 10px; column-gap: 12px; }
+  .assump .ak { font-family: var(--sans); font-size: 11.5px; color: var(--text-secondary); }
+  .assump .av { font-family: var(--mono); font-weight: 500; font-size: 11.5px; text-align: right; color: var(--text); }
+  .assump .av .u { color: var(--text-muted); font-weight: 400; }
+  .assump .sep { grid-column: 1 / -1; height: 0; border-top: 0.5px dashed var(--border); }
+  .toc .titem { display: flex; align-items: baseline; gap: 9px; padding: 9px 0; border-bottom: 0.5px solid var(--border); }
+  .toc .titem:last-child { border-bottom: 0; }
+  .toc .tno { font-family: var(--mono); font-weight: 700; font-size: 11px; color: var(--text-tertiary); width: 20px; flex-shrink: 0; }
+  .toc .tcrit .tno { color: var(--signal-red); }
+  .toc .tname { font-family: var(--serif); font-weight: 700; font-size: 13px; white-space: nowrap; }
+  .toc .tlead { flex: 1; border-bottom: 1px dotted var(--border-strong); transform: translateY(-3px); min-width: 12px; }
+  .toc .tpage { font-family: var(--mono); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+
+  /* ── v2 · página 6: waterfall de venta + disclaimer legal ────────── */
+  .waterfall { margin-top: 4px; border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .waterfall .wrow { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 16px; border-bottom: 0.5px solid var(--border); }
+  .waterfall .wrow:last-child { border-bottom: 0; }
+  .waterfall .wrow.total { background: var(--sunken); }
+  .waterfall .wl { font-family: var(--sans); font-size: 12px; color: var(--text); }
+  .waterfall .wl.sub { color: var(--text-secondary); }
+  .waterfall .wv { font-family: var(--mono); font-weight: 500; font-size: 13px; }
+  .waterfall .wv.neg { color: var(--signal-red); }
+  .waterfall .wrow.total .wl { font-weight: 500; }
+  .waterfall .wrow.total .wv { font-weight: 700; font-size: 16px; }
+  .legal { margin-top: 16px; border-top: 0.5px solid var(--border); padding-top: 13px; }
+  .legal .ll { font-family: var(--mono); font-size: 9px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-tertiary); margin: 0 0 6px; }
+  .legal p { font-family: var(--sans); font-size: 10px; line-height: 1.6; color: var(--text-muted); margin: 0; }
+
+  /* ── v2 · página 5: comparativa de escenarios (pedido vs negociado) ── */
+  .compare2 { border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 2px 0 16px; }
+  .compare2 .hdr, .compare2 .row { display: grid; grid-template-columns: 1.35fr 1fr 1fr; }
+  .compare2 .hdr { background: var(--sunken); }
+  .compare2 .hdr > div { padding: 9px 15px; font-family: var(--mono); font-size: 9px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-secondary); }
+  .compare2 .hdr > div.hl { color: var(--text); font-weight: 700; }
+  .compare2 .row { border-top: 0.5px solid var(--border); }
+  .compare2 .row > div { padding: 10px 15px; }
+  .compare2 .row > div.col-hl { background: rgba(15,15,15,.025); }
+  .compare2 .m { font-family: var(--sans); font-size: 11.5px; color: var(--text); }
+  .compare2 .val { font-family: var(--mono); font-weight: 700; font-size: 13px; }
+  .compare2 .val.red { color: var(--signal-red); }
+  .compare2 .val.pos { color: var(--ink-400); }
+
+  /* ── v2.1 · página 5: condiciones del gate COMPRAR (estado actual) ── */
+  .gatecheck { border: 0.5px solid var(--border); border-radius: 10px; overflow: hidden; margin: 2px 0 8px; }
+  .gatecheck .grow { display: grid; grid-template-columns: 20px 1fr auto; align-items: baseline; gap: 10px; padding: 9px 15px; border-bottom: 0.5px solid var(--border); }
+  .gatecheck .gx { font-family: var(--mono); font-weight: 700; font-size: 13px; line-height: 1; color: var(--signal-red); }
+  .gatecheck .gm { font-family: var(--sans); font-size: 11.5px; color: var(--text); }
+  .gatecheck .gs { font-family: var(--mono); font-weight: 700; font-size: 11px; }
+  .gatecheck .gs.red { color: var(--signal-red); }
+  .gatecheck .gatefoot { font-family: var(--sans); font-size: 10px; line-height: 1.5; color: var(--text-secondary); margin: 0; padding: 10px 15px; background: rgba(15,15,15,.02); }
+</style>
+
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+
+<!-- ══════════════════ Barra guía del mockup (no es el documento) ══════════════════ -->
+<div class="mockup-bar">
+  <b>MOCKUP VINCULANTE · PDF DOCUMENTO LTR</b> — 6 hojas A4 (794×1123px @96dpi), tema claro estructural.<br />
+  <span class="tag">chrome</span> El <span class="r">recuadro punteado rojo</span> en la pág. 1 marca el header/footer que se REPITE en cada hoja.
+  <span class="tag">page-break</span> Las cápsulas punteadas entre hojas marcan dónde iría el <span class="num">page-break</span> real.
+  <span class="tag">PLACEHOLDER</span> etiquetas rojas = contenido no-real (prosa IA / cifras del caso). Ver comentario al inicio del HTML.
+</div>
+
+<!-- ════════════════════════════ PÁGINA 1 · PORTADA / VEREDICTO ════════════════════════════ -->
+<div class="page annotate">
+  <div class="chrome-note top">▲ header repetido</div>
+  <div class="chrome-note bot">▼ footer repetido</div>
+
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <p class="eyebrow">01 · Veredicto</p>
+    <h1 class="display">Depto 2D2B en Providencia</h1>
+    <p class="body sec" style="margin-top:6px">Análisis de inversión · renta larga (LTR) <span class="ph">cifras placeholder</span></p>
+
+    <!-- Property metadata -->
+    <div class="prop-meta">
+      <div class="cell"><p class="k">Superficie</p><div class="v">60 m²</div></div>
+      <div class="cell"><p class="k">Precio</p><div class="v">UF 5.500</div></div>
+      <div class="cell"><p class="k">$/m²</p><div class="v">UF 91,7</div></div>
+      <div class="cell"><p class="k">Pie</p><div class="v">20%</div></div>
+      <div class="cell"><p class="k">Financiamiento</p><div class="v">25 años · 4,1%</div></div>
+      <div class="cell"><p class="k">Arriendo</p><div class="v">$950.000/mes</div></div>
+    </div>
+
+    <!-- Veredicto -->
+    <div class="verdict">
+      <span class="badge">Ajusta supuestos</span>
+      <p class="headline">Buena zona, precio optimista: pagas 15% sobre la mediana del metro y el arriendo todavía no alcanza a cubrir la cuota.</p>
+    </div>
+
+    <!-- Franco Score + gauge -->
+    <div class="score-wrap">
+      <div>
+        <p class="score-label">Franco Score</p>
+        <div class="score-num">64<small>/100</small></div>
+      </div>
+      <div>
+        <div class="gauge"><div class="dot" style="left:64%"></div></div>
+        <div class="gauge-axis"><span>0 · Buscar otra</span><span>Ajusta</span><span>Comprar · 100</span></div>
+      </div>
+    </div>
+
+    <!-- 4 dimensiones -->
+    <div class="dims">
+      <div class="dim"><p class="dk">Rentabilidad</p><div class="dbar"><i style="width:74%"></i></div><div class="dv">74</div><div class="dw">peso 30%</div></div>
+      <div class="dim"><p class="dk">Flujo de caja</p><div class="dbar"><i style="width:71%"></i></div><div class="dv">71</div><div class="dw">peso 25%</div></div>
+      <div class="dim"><p class="dk">Plusvalía</p><div class="dbar"><i style="width:58%"></i></div><div class="dv">58</div><div class="dw">peso 25%</div></div>
+      <div class="dim"><p class="dk">Eficiencia</p><div class="dbar"><i style="width:52%"></i></div><div class="dv">52</div><div class="dw">peso 20%</div></div>
+    </div>
+
+    <!-- Síntesis ejecutiva (IA · cursiva reservada a contenido generado) -->
+    <div class="exec ph-block">
+      <p>La ubicación se sostiene: Providencia mantiene una plusvalía histórica real positiva y demanda de arriendo firme. El problema es el precio de entrada. A UF 91,7 el metro paga 15% sobre la mediana comunal, y con ese sobreprecio el arriendo de $950.000 no cubre la cuota: pones cerca de $72.000 de tu bolsillo cada mes. No es un mal depto — es un buen depto al precio equivocado. Hay una palanca clara antes de firmar, y vive en el precio.<span class="ph">prosa IA placeholder · analysis-voice</span></p>
+    </div>
+
+    <!-- v2 · mitad inferior de portada: supuestos del análisis (izq) + índice (der) -->
+    <div class="cover-lower">
+      <!-- (a) Supuestos clave — expande la metadata, transparencia de premisas -->
+      <div>
+        <p class="block-label">Supuestos del análisis</p>
+        <div class="assump">
+          <span class="ak">Pie</span><span class="av">20% <span class="u">· $42,9M</span></span>
+          <span class="sep"></span>
+          <span class="ak">Plazo del crédito</span><span class="av">25 <span class="u">años</span></span>
+          <span class="sep"></span>
+          <span class="ak">Tasa de interés</span><span class="av">4,1% <span class="u">anual</span></span>
+          <span class="sep"></span>
+          <span class="ak">Dividendo mensual</span><span class="av">$915.000</span>
+          <span class="sep"></span>
+          <span class="ak">Gastos comunes</span><span class="av">$85.000 <span class="u">/mes</span></span>
+          <span class="sep"></span>
+          <span class="ak">Contribuciones</span><span class="av">$22.000 <span class="u">/mes</span></span>
+          <span class="sep"></span>
+          <span class="ak">Vacancia asumida</span><span class="av">1 <span class="u">mes/año · 8%</span></span>
+          <span class="sep"></span>
+          <span class="ak">Plusvalía proyectada</span><span class="av">3,0% <span class="u">anual</span></span>
+        </div>
+      </div>
+
+      <!-- (b) Índice del documento — orienta el multi-página -->
+      <div>
+        <p class="block-label">En este informe</p>
+        <div class="toc">
+          <div class="titem"><span class="tno">·</span><span class="tname">El detalle · 9 hallazgos</span><span class="tlead"></span><span class="tpage">pág. 2</span></div>
+          <div class="titem"><span class="tno">02</span><span class="tname">Costo mensual</span><span class="tlead"></span><span class="tpage">pág. 3</span></div>
+          <div class="titem tcrit"><span class="tno">03</span><span class="tname">Negociación</span><span class="tlead"></span><span class="tpage">pág. 3</span></div>
+          <div class="titem"><span class="tno">04</span><span class="tname">Largo plazo</span><span class="tlead"></span><span class="tpage">pág. 4</span></div>
+          <div class="titem tcrit"><span class="tno">05</span><span class="tname">Riesgos</span><span class="tlead"></span><span class="tpage">pág. 5</span></div>
+          <div class="titem"><span class="tno">06</span><span class="tname">Zona · simulación</span><span class="tlead"></span><span class="tpage">pág. 6</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 1 de 6</span>
+  </div>
+</div>
+
+<div class="pagebreak-mark"><span>salto de página · page-break</span></div>
+
+<!-- ════════════════════════════ PÁGINA 2 · HALLAZGOS (pirámide en documento) ════════════════════════════ -->
+<div class="page">
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <p class="eyebrow">El detalle · 9 hallazgos</p>
+    <h2 class="title">Empezando por lo adverso</h2>
+    <p class="body sec" style="margin-top:6px;margin-bottom:2px">Ordenados por cuánto pesan en la decisión. Cada frase es la lectura determinística del motor; el detalle de cada uno abre su capítulo más adelante.</p>
+
+    <!-- ADVERSOS -->
+    <p class="hall-group-label first">Adversos — lo que baja el veredicto</p>
+
+    <!-- #1 corona · sobreprecio (fraseCanonica real: sobreprecio-hallazgo.ts) -->
+    <div class="hall adverso">
+      <div class="rank">1</div>
+      <div>
+        <p class="h-titular">Estás pagando caro el metro para esta comuna.</p>
+        <p class="h-frase">Tu precio por m² (UF 91,7) está 15% sobre la mediana de la comuna (UF 80,0). Estás pagando caro el metro para esta comuna.</p>
+      </div>
+      <div class="h-val"><div class="hv neg">+15%</div><div class="hd">sobre mediana</div></div>
+    </div>
+
+    <!-- #2 · flujo mensual (fraseCanonica real: flujo-mensual-hallazgo.ts, rama acotada) -->
+    <div class="hall adverso">
+      <div class="rank">2</div>
+      <div>
+        <p class="h-titular">Pones algo de tu bolsillo cada mes.</p>
+        <p class="h-frase">Tienes que poner $72.000 al mes de tu bolsillo — un aporte acotado frente al dividendo. Sostenible si tu flujo es estable; la plusvalía puede compensarlo.</p>
+      </div>
+      <div class="h-val"><div class="hv neg">−$72.000</div><div class="hd">/mes de tu bolsillo</div></div>
+    </div>
+
+    <!-- #3 · estructura financiamiento (pie sub-óptimo) -->
+    <div class="hall adverso">
+      <div class="rank">3</div>
+      <div>
+        <p class="h-titular">Tu pie está bajo el óptimo para esta operación.</p>
+        <p class="h-frase">Con 20% de pie el crédito queda alto y la cuota aprieta el flujo. Subir el pie hacia 25% es la palanca de menor riesgo: no depende del mercado, solo de cuánto pones día uno.</p>
+      </div>
+      <div class="h-val"><div class="hv">20%</div><div class="hd">óptimo 25%</div></div>
+    </div>
+
+    <!-- FAVORABLES -->
+    <p class="hall-group-label">Favorables — lo que lo sostiene</p>
+
+    <!-- #4 · patrimonio (fraseCanonica: patrimonio-hallazgo.ts) -->
+    <div class="hall favorable">
+      <div class="rank">4</div>
+      <div>
+        <p class="h-titular">A 10 años terminas con casi el doble de lo que pusiste.</p>
+        <p class="h-frase">Tras vender y saldar el crédito, tu parte es $98M frente a los $51,5M que aportaste: un multiplicador de 1,9× apoyado en la amortización y la plusvalía proyectada.</p>
+      </div>
+      <div class="h-val"><div class="hv">1,9×</div><div class="hd">sobre lo puesto</div></div>
+    </div>
+
+    <!-- #5 · plusvalía (fraseCanonica real: plusvalia-hallazgo.ts, rama favorable) -->
+    <div class="hall favorable">
+      <div class="rank">5</div>
+      <div>
+        <p class="h-titular">La comuna ganó valor real sobre la inflación, históricamente.</p>
+        <p class="h-frase">En la última década los departamentos en Providencia se valorizaron 2,9% anual, sobre el umbral de apreciación real (2,0%). Ganaron valor por sobre la inflación; es respaldo histórico, no garantía de que se repita.</p>
+      </div>
+      <div class="h-val"><div class="hv">2,9%</div><div class="hd">anual · real</div></div>
+    </div>
+
+    <!-- #6 · cap rate / rentabilidad operativa -->
+    <div class="hall favorable">
+      <div class="rank">6</div>
+      <div>
+        <p class="h-titular">La renta operativa cubre los costos con margen.</p>
+        <p class="h-frase">La rentabilidad operativa (4,2%) queda sobre lo que exige la zona: el arriendo paga los gastos directos antes de la cuota del crédito.</p>
+      </div>
+      <div class="h-val"><div class="hv">4,2%</div><div class="hd">cap rate</div></div>
+    </div>
+
+    <!-- #7 · sensibilidad -->
+    <div class="hall favorable">
+      <div class="rank">7</div>
+      <div>
+        <p class="h-titular">El veredicto aguanta un error razonable en el arriendo.</p>
+        <p class="h-frase">Tu arriendo puede caer hasta $855.000 —un 10% menos— antes de que la conclusión cambie. Todo lo que quede por encima de ese piso, aguanta.</p>
+      </div>
+      <div class="h-val"><div class="hv">−10%</div><div class="hd">colchón</div></div>
+    </div>
+
+    <!-- #8 · puesta a punto / estado -->
+    <div class="hall favorable">
+      <div class="rank">8</div>
+      <div>
+        <p class="h-titular">Depto casi nuevo: poca puesta a punto.</p>
+        <p class="h-frase">Con 4 años de antigüedad, el capex de entrada es mínimo — no cargas el flujo inicial con reparaciones mayores.</p>
+      </div>
+      <div class="h-val"><div class="hv">~$0,4M</div><div class="hd">capex estimado</div></div>
+    </div>
+
+    <!-- #9 · TIR (solo-lectura; fraseCanonica real: tir-hallazgo.ts, rama favorable) -->
+    <div class="hall favorable">
+      <div class="rank">9</div>
+      <div>
+        <p class="h-titular">Puesto todo junto, el retorno anual rinde lo suficiente.</p>
+        <p class="h-frase">Tu TIR —la rentabilidad anual de toda tu inversión— es 7,2%, sobre el mínimo de 6% que un deal apalancado debería rendir para valer el esfuerzo y la iliquidez. Ese número ya integra el arriendo, tus aportes mensuales y la venta proyectada a 10 años.</p>
+      </div>
+      <div class="h-val"><div class="hv">7,2%</div><div class="hd">TIR a 10 años</div></div>
+    </div>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 2 de 6</span>
+  </div>
+</div>
+
+<div class="pagebreak-mark"><span>salto de página · page-break</span></div>
+
+<!-- ════════════════════════════ PÁGINA 3 · 02 COSTO MENSUAL + 03 NEGOCIACIÓN ════════════════════════════ -->
+<div class="page">
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <!-- Capítulo 02 -->
+    <div class="chapter"><span class="no">02</span><h2 class="subtitle">Costo mensual — qué pasa con tu bolsillo cada mes</h2></div>
+
+    <p class="body ph-block">El arriendo de $950.000 no alcanza a cubrir la cuota de $915.000 más los gastos comunes y las contribuciones: cada mes pones cerca de $72.000 de tu bolsillo. Es un aporte acotado —8% del dividendo—, sostenible si tu ingreso es estable, pero significa que la propiedad todavía no se paga sola. La brecha no viene del arriendo, que está en línea con Providencia, sino de la cuota: el precio de entrada la infla.<span class="ph">prosa IA placeholder</span></p>
+
+    <!-- Decomp real (primitiva DrawersPropios) -->
+    <div class="decomp">
+      <div class="row"><span class="dl">Arriendo</span><span class="track"><i class="fill-strong" style="width:100%"></i></span><span class="dv">+$950.000</span></div>
+      <div class="row"><span class="dl">Cuota</span><span class="track"><i class="fill-red" style="width:96%"></i></span><span class="dv neg">−$915.000</span></div>
+      <div class="row"><span class="dl">Gastos + contrib.</span><span class="track"><i class="fill-mid" style="width:11%"></i></span><span class="dv neg">−$107.000</span></div>
+      <div class="net"><span class="nl">Sale de tu bolsillo</span><span class="nv" style="color:var(--signal-red)">−$72.000 / mes</span></div>
+    </div>
+
+    <div class="box">
+      <p class="bl">Hazte esta pregunta</p>
+      <p class="bt">¿Ese aporte de $72.000 al mes cabe en tu presupuesto sin apretar durante los años en que el arriendo no cubre la cuota? Si la respuesta es sí, el flujo es un dato a asumir, no un problema. Si aprieta, la palanca del precio (capítulo 03) es lo primero que hay que mover.</p>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Capítulo 03 -->
+    <div class="chapter crit"><span class="no">03</span><h2 class="subtitle">Negociación — dónde está la palanca</h2></div>
+
+    <p class="body ph-block">Toda la debilidad de este deal vive en el precio de entrada, y ahí es donde tienes margen real. Cada UF que bajes del precio entra directo a tu flujo (menos crédito, menos cuota) y a tu patrimonio a 10 años. No es negociar por negociar: es lo que separa un flujo negativo de uno neutro.<span class="ph">prosa IA placeholder</span></p>
+
+    <!-- Estrategia sugerida (número específico · Franco se la juega) -->
+    <div class="strat">
+      <p class="sl">Estrategia sugerida</p>
+      <p class="st">Apunta a <b class="num">UF 4.950</b> (10% menos). A ese precio el metro baja a la mediana de Providencia y tu aporte mensual cae de $72.000 a cerca de cero. Por debajo de UF 4.700 el flujo se da vuelta a favor; por encima de UF 5.200 sigues poniendo de tu bolsillo todos los meses.</p>
+      <p class="quote">“El metro en Providencia se está transando cerca de UF 80. A UF 91,7 estoy pagando un premio que el arriendo de la zona no sostiene — ¿hay espacio para acercarnos a UF 4.950?”</p>
+    </div>
+
+    <div class="chips">
+      <p class="cl">Qué mueve el precio</p>
+      <div class="grid g3">
+        <div class="c"><p class="ck">Precio pedido</p><div class="cv">UF 5.500</div></div>
+        <div class="c"><p class="ck">Objetivo</p><div class="cv pos">UF 4.950</div></div>
+        <div class="c"><p class="ck">Aporte resultante</p><div class="cv">~$0<small>/mes</small></div></div>
+      </div>
+      <p class="foot">A UF 4.950 el crédito baja ~UF 440, la cuota cae cerca de $53.000/mes y el flujo pasa de −$72.000 a prácticamente neutro. Es el único ajuste que no depende del mercado ni del inquilino.</p>
+    </div>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 3 de 6</span>
+  </div>
+</div>
+
+<div class="pagebreak-mark"><span>salto de página · page-break · (bloque nunca se corta a la mitad)</span></div>
+
+<!-- ════════════════════════════ PÁGINA 4 · 04 LARGO PLAZO (TIR · Patrimonio · Plusvalía) ════════════════════════════ -->
+<div class="page">
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <div class="chapter"><span class="no">04</span><h2 class="subtitle">Largo plazo — de dónde sale tu retorno</h2></div>
+
+    <p class="body ph-block">Tu TIR a 10 años es 7,2%, sobre el mínimo de 6% que un crédito apalancado debe rendir. Pero ese 7,2% no es el 5% de un depósito UF: te exige aportar mes a mes, aceptar el riesgo de vacancia y la iliquidez de un depto. La diferencia la construyen la amortización y la plusvalía proyectada, no la caja del arriendo. Vale saber cuál motor lo carga — porque uno de ellos es un supuesto, no plata en la mano.<span class="ph">prosa IA placeholder</span></p>
+
+    <!-- TIR · Chips (primitiva real DrawerTIRLtr) -->
+    <div class="chips">
+      <p class="cl">Tu retorno vs el piso</p>
+      <div class="grid g3">
+        <div class="c"><p class="ck">Tu TIR</p><div class="cv pos">7,2%</div></div>
+        <div class="c"><p class="ck">Piso exigible</p><div class="cv">6,0%</div></div>
+        <div class="c"><p class="ck">Margen</p><div class="cv pos">+1,2 pts</div></div>
+      </div>
+      <p class="foot">6,0% es el mínimo que un crédito apalancado debe rendir para pagar el esfuerzo y la iliquidez de tener un depto. Estás sobre el piso, pero con poco colchón.</p>
+    </div>
+
+    <!-- Patrimonio · Decomp de fuentes (DrawerTIRLtr rama flujo<0) -->
+    <div class="decomp">
+      <div class="row"><span class="dl">Plusvalía</span><span class="track"><i class="fill-strong" style="width:100%"></i></span><span class="dv">+$46,4M</span></div>
+      <div class="row"><span class="dl">Amortización</span><span class="track"><i class="fill-mid" style="width:62%"></i></span><span class="dv">+$28,7M</span></div>
+      <div class="row"><span class="dl">Flujo 10 años</span><span class="track"><i class="fill-red" style="width:18%"></i></span><span class="dv neg">−$8,6M</span></div>
+      <div class="net"><span class="nl">Suma de los tres, en bruto</span><span class="nv">$66,5M</span></div>
+    </div>
+
+    <div class="box">
+      <p class="bl">Qué significa</p>
+      <p class="bt">El grueso de tu retorno lo carga la <b>plusvalía</b> ($46,4M) — un supuesto a futuro, no plata en la mano. El arriendo que te queda y la deuda que amortizas son más firmes: dependen de que el depto se arriende, no de que la comuna siga subiendo. A 10 años terminas con $98M frente a los $51,5M que pusiste — un multiplicador de 1,9×.</p>
+    </div>
+
+    <!-- Plusvalía · procedencia + stress (DrawerPlusvaliaLtr) -->
+    <div class="chips">
+      <p class="cl">Histórico de Providencia</p>
+      <div class="grid g2">
+        <div class="c"><p class="ck">Se valorizó</p><div class="cv">2,9%<small>anual</small></div></div>
+        <div class="c"><p class="ck">Umbral real</p><div class="cv">2,0%<small>anual</small></div></div>
+      </div>
+      <p class="foot">2,9% anual — sobre el 2,0% que marca la apreciación real (valor por sobre inflación). Histórico 2014–2024 · Arenas &amp; Cayo, Tinsa, Propital, Activo Más. Referencia histórica, no garantía a futuro.</p>
+    </div>
+
+    <div class="box red">
+      <p class="bl">Qué pasa si se detiene</p>
+      <p class="bt">Si la comuna dejara de apreciarse (0% real), tu multiplicador a 10 años cae de <b>1,9× a 1,3×</b>: terminarías con bastante menos margen, apoyado en la amortización y una caja que ya es negativa. Es el supuesto más frágil de todo el análisis — no compres asumiendo que Providencia repite su mejor década.</p>
+    </div>
+
+    <p class="note">Montos en CLP · togglean con el switch de la versión interactiva · los tres motores salen del mismo cálculo de la venta a 10 años.</p>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 4 de 6</span>
+  </div>
+</div>
+
+<div class="pagebreak-mark"><span>salto de página · page-break</span></div>
+
+<!-- ════════════════════════════ PÁGINA 5 · 05 RIESGOS + CIERRE DEL ANÁLISIS ════════════════════════════ -->
+<div class="page">
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <div class="chapter crit"><span class="no">05</span><h2 class="subtitle">Riesgos — lo que puede salir distinto</h2></div>
+
+    <p class="body sec" style="margin-top:2px;margin-bottom:12px">Tres cosas pueden mover este análisis en contra. Ninguna es fatal por sí sola; las tres juntas explican por qué el veredicto es Ajusta supuestos y no Comprar.</p>
+
+    <div class="ph-block" style="margin-bottom:14px">
+      <div class="risk">
+        <div class="ri">01</div>
+        <p class="rt"><b>Vacancia.</b> Con flujo ya negativo, el margen de error es fino: dos meses sin arriendo al año te suman cerca de $1,9M de aporte extra. Antes de firmar, ten a mano un fondo de reserva de 3 meses de gastos (~$2,9M) — sin ese colchón, la inversión depende de que el inquilino ideal aparezca rápido y no se vaya.</p>
+      </div>
+      <div class="risk">
+        <div class="ri">02</div>
+        <p class="rt"><b>Sobreprecio de entrada.</b> Pagar 15% sobre la mediana no es fatal, pero te deja sin margen si la comuna se enfría: entras sin la ventaja de compra que amortigua un flujo negativo. Si no logras bajar el precio, este riesgo se queda contigo los 10 años.</p>
+      </div>
+      <div class="risk">
+        <div class="ri">03</div>
+        <p class="rt"><b>Dependencia de la plusvalía.</b> El grueso del retorno se apoya en que Providencia se siga apreciando. Es el supuesto más frágil: si se aplana, el 1,9× baja a 1,3×. No es una apuesta descabellada —el histórico la respalda— pero es una apuesta, no un hecho.</p>
+      </div>
+      <span class="ph">3 riesgos · prosa IA placeholder</span>
+    </div>
+
+    <!-- v2.1 · negociación afirmable — NegociacionScenario real (types.ts:732-743).
+         Reemplaza la tabla que proyectaba veredicto/score al precio negociado
+         (no son outputs del motor · cero divergencia motor/narrativa, E.2). -->
+    <p class="eyebrow" style="margin-top:4px">La palanca: el precio</p>
+    <div class="chips">
+      <p class="cl">Precio objetivo · lo que el motor sugiere</p>
+      <div class="grid g3">
+        <div class="c"><p class="ck">Precio sugerido</p><div class="cv pos">UF 4.950</div></div>
+        <div class="c"><p class="ck">TIR al sugerido</p><div class="cv">9,4%</div></div>
+        <div class="c"><p class="ck">Techo (TIR 6%)</p><div class="cv">UF 5.850</div></div>
+      </div>
+      <p class="foot">Pagas sobre el valor estimado de mercado de la zona; este precio te alinea con comparables y mejora la matemática — la TIR sube de 7,2% a 9,4%. El <b>techo</b> es UF 5.850: por encima de ese precio la operación deja de rendir el 6% mínimo que un crédito apalancado debe pagar. <span class="ph">precioSugerido · tirAlSugerido · precioLimite</span></p>
+    </div>
+
+    <!-- Condiciones del gate COMPRAR · estado ACTUAL (sin proyectar al sugerido) -->
+    <p class="eyebrow" style="margin-top:2px">Qué exige el motor para COMPRAR — hoy</p>
+    <div class="gatecheck">
+      <div class="grow"><span class="gx">✗</span><span class="gm">Flujo mensual ≥ 0</span><span class="gs red">hoy −$72.000</span></div>
+      <div class="grow"><span class="gx">✗</span><span class="gm">Rentabilidad neta ≥ 4%</span><span class="gs red">hoy 3,4%</span></div>
+      <div class="grow"><span class="gx">✗</span><span class="gm">Plusvalía inmediata ≥ 0</span><span class="gs red">hoy −7% (pagas sobre mercado)</span></div>
+      <p class="gatefoot">Las tres deben cumplirse a la vez para que el veredicto suba a Comprar; hoy no se cumple ninguna, y por eso el veredicto es Ajusta supuestos. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes.</p>
+    </div>
+
+    <!-- Cierre obligatorio · Franco se la juega (analysis-voice §1.10) -->
+    <p class="eyebrow" style="margin-top:6px">Siendo franco</p>
+    <div class="cierre ph-block">
+      <p>La ubicación es sólida; el precio no. Este depto es buena zona al precio equivocado. Si negocias a UF 4.950 la conversación cambia por completo: el flujo se neutraliza y la plusvalía deja de ser una muleta para pasar a ser un extra. Al precio pedido, en cambio, estás comprando apreciación futura con flujo negativo presente — y contándote que se paga solo cuando todavía no. No lo descartes: negócialo. Y si no baja, deja que otro pague el premio.</p>
+    </div>
+
+    <!-- Caja accionable · concreta (analysis-voice §2.6 cajaAccionable + P4 error típico) -->
+    <div class="box" style="margin-top:14px">
+      <p class="bl">Antes de firmar</p>
+      <p class="bt">Valida el arriendo con 3 publicaciones comparables de la zona — con flujo ya ajustado, ese número decide con qué vives mes a mes. Pide el certificado de gastos comunes al día y las últimas 3 actas del comité: un depto con premio de precio a veces esconde deuda o litigios. Y ten líquido un fondo de 3 meses de gastos (~$2,9M) antes de entrar.</p>
+    </div>
+    <p class="body ph-block" style="margin-top:12px">Si confías en que Providencia mantendrá su trayectoria de plusvalía y los $72.000 mensuales caben sin presión, la operación se sostiene con disciplina y paciencia. Si cualquiera de esas dos cosas te genera dudas, el precio es la palanca — no el optimismo.</p>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 5 de 6</span>
+  </div>
+</div>
+
+<div class="pagebreak-mark"><span>salto de página · page-break</span></div>
+
+<!-- ════════════════════════════ PÁGINA 6 · SIMULACIÓN + ZONA + CIERRE DEL DOCUMENTO ════════════════════════════ -->
+<div class="page">
+  <div class="pg-header">
+    <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+    <span class="addr">Providencia · Depto 2D2B</span>
+  </div>
+
+  <div class="content">
+    <p class="eyebrow">Simulación · patrimonio a 10 años</p>
+    <h2 class="title">Cómo se construye tu patrimonio</h2>
+    <p class="body sec" style="margin-top:6px;margin-bottom:14px">En el documento, la simulación interactiva se congela al escenario base del análisis (plazo 10 años · plusvalía proyectada 3%). Los números no se recalculan aquí.</p>
+
+    <div class="sim-grid">
+      <!-- Chart de patrimonio como SVG ESTÁTICO (ver recomendación en el reporte) -->
+      <div class="sim-block">
+        <p class="sbl">09 · Patrimonio — barras apiladas</p>
+        <svg viewBox="0 0 320 200" width="100%" role="img" aria-label="Patrimonio proyectado a 10 años">
+          <!-- ejes -->
+          <line x1="34" y1="10" x2="34" y2="170" stroke="#DDDDE1" stroke-width="1"/>
+          <line x1="34" y1="170" x2="314" y2="170" stroke="#DDDDE1" stroke-width="1"/>
+          <!-- grid labels Y -->
+          <text x="28" y="15" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#6B6B72">$100M</text>
+          <text x="28" y="93" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#6B6B72">$50M</text>
+          <text x="28" y="172" text-anchor="end" font-family="JetBrains Mono" font-size="7" fill="#6B6B72">$0</text>
+          <!-- barras: aporte acumulado (Signal Red · uso #8) abajo + valor depto (Ink 100/50%) arriba -->
+          <!-- Se muestran años 0,2,4,6,8,10 -->
+          <!-- año 0 -->
+          <rect x="44"  y="150" width="16" height="20" fill="#C8323C"/>
+          <rect x="44"  y="120" width="16" height="30" fill="#B4B2A9" opacity="0.5"/>
+          <!-- año 2 -->
+          <rect x="88"  y="146" width="16" height="24" fill="#C8323C"/>
+          <rect x="88"  y="104" width="16" height="42" fill="#B4B2A9" opacity="0.5"/>
+          <!-- año 4 -->
+          <rect x="132" y="143" width="16" height="27" fill="#C8323C"/>
+          <rect x="132" y="88"  width="16" height="55" fill="#B4B2A9" opacity="0.5"/>
+          <!-- año 6 -->
+          <rect x="176" y="141" width="16" height="29" fill="#C8323C"/>
+          <rect x="176" y="72"  width="16" height="69" fill="#B4B2A9" opacity="0.5"/>
+          <!-- año 8 -->
+          <rect x="220" y="140" width="16" height="30" fill="#C8323C"/>
+          <rect x="220" y="55"  width="16" height="85" fill="#B4B2A9" opacity="0.5"/>
+          <!-- año 10 -->
+          <rect x="264" y="139" width="16" height="31" fill="#C8323C"/>
+          <rect x="264" y="36"  width="16" height="103" fill="#B4B2A9" opacity="0.5"/>
+          <!-- línea patrimonio neto (Ink sólido con dots) -->
+          <polyline points="52,140 96,128 140,112 184,96 228,78 272,58"
+            fill="none" stroke="#0F0F0F" stroke-width="1.5"/>
+          <g fill="#0F0F0F">
+            <circle cx="52" cy="140" r="2"/><circle cx="96" cy="128" r="2"/><circle cx="140" cy="112" r="2"/>
+            <circle cx="184" cy="96" r="2"/><circle cx="228" cy="78" r="2"/><circle cx="272" cy="58" r="2.5"/>
+          </g>
+          <!-- X labels -->
+          <g font-family="JetBrains Mono" font-size="7" fill="#6B6B72" text-anchor="middle">
+            <text x="52" y="182">0</text><text x="96" y="182">2</text><text x="140" y="182">4</text>
+            <text x="184" y="182">6</text><text x="228" y="182">8</text><text x="272" y="182">10</text>
+          </g>
+        </svg>
+        <div style="display:flex;gap:14px;margin-top:2px;font-family:var(--mono);font-size:8px;color:var(--text-secondary)">
+          <span><span style="display:inline-block;width:8px;height:8px;background:#C8323C;vertical-align:middle;margin-right:4px"></span>Aporte acumulado</span>
+          <span><span style="display:inline-block;width:8px;height:8px;background:#B4B2A9;opacity:.5;vertical-align:middle;margin-right:4px"></span>Valor depto</span>
+          <span><span style="display:inline-block;width:12px;height:2px;background:#0F0F0F;vertical-align:middle;margin-right:4px"></span>Patrimonio neto</span>
+        </div>
+      </div>
+
+      <!-- Indicadores + escenario -->
+      <div class="sim-block">
+        <p class="sbl">08 · Indicadores @ 10 años</p>
+        <div class="kpis">
+          <div class="kpi"><p class="kk">TIR</p><div class="kv">7,2%</div></div>
+          <div class="kpi"><p class="kk">Cap rate</p><div class="kv">4,2%</div></div>
+          <div class="kpi"><p class="kk">Cash-on-cash</p><div class="kv neg">−1,7%</div></div>
+          <div class="kpi"><p class="kk">Payback</p><div class="kv">Año 9</div></div>
+          <div class="kpi"><p class="kk">Múltiplo</p><div class="kv">1,9×</div></div>
+          <div class="kpi"><p class="kk">Plusvalía proy.</p><div class="kv">3,0%</div></div>
+        </div>
+        <div class="box" style="margin-top:14px">
+          <p class="bl">Escenario base · congelado</p>
+          <p class="bt">Estos indicadores usan el escenario del análisis (plazo 10 años, plusvalía proyectada 3,0% anual, arriendo declarado). En la versión interactiva ajustas cada supuesto y todos recalculan; en el documento quedan fijos para dejar una foto estable.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- v2 · waterfall de venta full-width (Patrón 7.B.4 · Sale/Refi Block) -->
+    <p class="sbl" style="margin:12px 0 6px">10 · Venta a 10 años — de dónde salen los $134,8M</p>
+    <div class="waterfall">
+      <div class="wrow"><span class="wl">Valor de venta estimado <span class="wl sub">(año 10 · +3,0% anual)</span></span><span class="wv">$273,4M</span></div>
+      <div class="wrow"><span class="wl sub">− Deuda pendiente del crédito</span><span class="wv neg">−$130,0M</span></div>
+      <div class="wrow"><span class="wl sub">− Comisión de venta (2% + IVA)</span><span class="wv neg">−$8,6M</span></div>
+      <div class="wrow total"><span class="wl">Recibes en la mano</span><span class="wv">$134,8M</span></div>
+      <div class="wrow"><span class="wl sub">De eso, patrimonio neto sobre lo aportado ($51,5M)</span><span class="wv">$98M · 1,9×</span></div>
+    </div>
+
+    <!-- Zona (card recesiva, nunca Signal Red) -->
+    <div class="zona">
+      <div class="zicon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6A6A71" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="1" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="23"/><line x1="1" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="23" y2="12"/></svg>
+      </div>
+      <div>
+        <p class="eyebrow" style="margin-bottom:3px">Zona · Providencia</p>
+        <p class="zq">“Metro Manuel Montt a 350 m, eje Providencia con demanda de arriendo estable todo el año. El barrio sostiene la ocupación; el premio de precio no lo pone la ubicación puntual sino el metro cuadrado de la comuna.”<span class="ph">zone-insight placeholder</span></p>
+      </div>
+      <div class="zcount">20 lugares</div>
+    </div>
+
+    <!-- Cierre del documento -->
+    <div class="doc-close">
+      <p class="cl">Versión interactiva de este análisis</p>
+      <span class="clink">refranco<span class="ai">.ai</span>/analisis/7710a017</span>
+      <p class="cdis">Ajusta plazo, plusvalía y arriendo en vivo, abre cada hallazgo en detalle y comparte el análisis con quien quieras.</p>
+    </div>
+
+    <!-- Disclaimer legal — obligatorio -->
+    <div class="legal">
+      <p class="ll">Disclaimer</p>
+      <p><b style="font-weight:500;color:var(--text-secondary)">Franco no es asesor financiero.</b> Este informe tiene carácter referencial y educativo: no constituye una recomendación de inversión, una asesoría personalizada ni una oferta. Las cifras se basan en supuestos y proyecciones que pueden no cumplirse, y datos de mercado estimados que conviene verificar en su fuente. Antes de tomar una decisión, contrasta los números y consulta a un profesional para tu situación particular. Análisis generado por Franco · refranco.ai · Providencia, Santiago de Chile · UF referencia $39.000. <span class="ph">cifras ilustrativas</span></p>
+    </div>
+  </div>
+
+  <div class="pg-footer">
+    <span class="tagline">REAL ESTATE EN SU ESTADO MÁS FRANCO</span>
+    <span class="pagenum">página 6 de 6</span>
+  </div>
+</div>
