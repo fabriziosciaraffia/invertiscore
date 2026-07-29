@@ -22,6 +22,14 @@ interface Props {
 //   • STR — Ink 300 dashed (var(--franco-border) más oscuro / Ink 300)
 //   • Signal Red reservado para aporte acumulado (no usado en este chart;
 //     ver PatrimonioChartSTR para chart con aporte stacked).
+//
+// La serie arranca en el AÑO 1, igual que el canon del resto de las superficies
+// (DocumentoAmbas, PatrimonioChartSTR, buildPatrimonioSeriesSTR). Antes inyectaba
+// un año 0 con el capital aportado en NEGATIVO (LTR −pieCLP, STR −capitalInvertido):
+// eso es la convención de un flujo de caja (T0 = desembolso), no de un stock de
+// patrimonio (activo − deuda). Mezcladas en un mismo eje producían un salto de
+// ~$264MM entre año 0 y año 1 que no corresponde a ningún evento económico, además
+// de regalar ~28% del alto del gráfico a un punto que no era patrimonio.
 export function PatrimonioChartComparativa(p: Props) {
   const chartData = useMemo(() => {
     const ltrProj = p.ltrResults.projections ?? [];
@@ -33,15 +41,6 @@ export function PatrimonioChartComparativa(p: Props) {
     // leyenda decía "STR llega a $0" falsamente.
     const overlap = Math.min(ltrProj.length, strProj.length, 10);
     const data: Array<{ year: number; ltr: number | null; str: number | null }> = [];
-
-    // Año 0 — patrimonio negativo igual al capital inicial aportado.
-    const ltrCapitalInicial = p.ltrResults.metrics?.pieCLP ?? 0;
-    const strCapitalInicial = p.strResults.capitalInvertido ?? 0;
-    data.push({
-      year: 0,
-      ltr: -ltrCapitalInicial,
-      str: -strCapitalInicial,
-    });
 
     for (let i = 0; i < overlap; i++) {
       const ltrRow = ltrProj[i];
@@ -56,7 +55,8 @@ export function PatrimonioChartComparativa(p: Props) {
     return data;
   }, [p.ltrResults, p.strResults]);
 
-  if (chartData.length <= 1) {
+  // Sin el año 0 sintético, un array vacío es la única señal de "no hay serie".
+  if (chartData.length === 0) {
     return (
       <p className="font-body text-[13px] text-[var(--franco-text-secondary)]">
         Sin proyecciones disponibles para una de las modalidades.
