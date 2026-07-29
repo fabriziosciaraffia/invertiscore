@@ -213,9 +213,15 @@ export async function queryDashboardRows(
 /**
  * Filas `str` de los pares AMBAS presentes en una página. Se llama con los
  * `ambas_group_id` que trae `queryDashboardRows`, no con todos los del usuario.
+ *
+ * `userId` no es decorativo: la vista lleva una window function particionada por
+ * (user_id, grupo), y Postgres solo puede bajar el WHERE por debajo de esa
+ * window si el predicado toca las columnas del PARTITION BY. Sin el filtro de
+ * usuario la consulta escanea la tabla entera — medido: 512 ms contra ~90 ms.
  */
 export async function fetchAmbasSiblings(
   supabase: SupabaseClient,
+  userId: string,
   groupIds: string[],
 ): Promise<Map<string, AnalisisDashboardRow>> {
   const ids = Array.from(new Set(groupIds.filter(Boolean)));
@@ -224,6 +230,7 @@ export async function fetchAmbasSiblings(
   const { data, error } = await supabase
     .from(VIEW)
     .select("*")
+    .eq("user_id", userId)
     .in("ambas_group_id", ids)
     .eq("ambas_role", "str");
   if (error) throw new Error(`dashboard-query (ambas): ${error.message}`);
