@@ -7,5 +7,9 @@
     <tspan fill="#FAFAF8" opacity="0.28" font-weight="400" font-style="italic">re</tspan>
     <tspan fill="#FAFAF8" font-weight="700">franco</tspan>
   </text>
-  <text x="155" y="30" font-family="'IBM Plex Sans', sans-serif" font-size="16" font-weight="600" fill="#C8323C">.ai</text>
+  <!-- x=123.88: el gap de tinta "franco"→".ai" queda en 4.05 unidades, idéntico al de
+       refranco-wordmark-light.svg (medido con getBBox en Chrome, fuentes reales cargadas).
+       Antes: x=155 ⇒ gap 35.17. El ".ai" de IBM Plex Sans 600 no tiene bearing izquierdo
+       (bbox.x == atributo x), así que x = borde derecho de "franco" + 4.05. -->
+  <text x="123.88" y="30" font-family="'IBM Plex Sans', sans-serif" font-size="16" font-weight="600" fill="#C8323C">.ai</text>
 </svg>
