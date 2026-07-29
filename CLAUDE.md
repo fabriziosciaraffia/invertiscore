@@ -68,7 +68,8 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - **Wordmark**: "re" Source Serif 4 Regular (ghost, opacity 28%) + "franco" Source Serif 4 Bold + ".ai" en IBM Plex Sans SemiBold, Signal Red.
 - **Tagline (único vigente)**: REAL ESTATE EN SU ESTADO MÁS FRANCO
 - **Fuentes**: Source Serif 4 (headings/wordmark), IBM Plex Sans (body/UI), JetBrains Mono (datos/scores/veredictos/tagline).
-- **Colores de marca**: exactamente **2** — Ink `#0F0F0F` + Signal Red `#C8323C`. **Cero ámbar, cero verde** — la jerarquía se resuelve con tipografía y escala de grises. (Neutros de fondo/borde permitidos: Warm Bg `#FAFAF8`, Cool Bg `#F0F0EC`, Border `#E6E6E2`, Muted `#71717A`.)
+- **Colores de marca**: exactamente **2** — Ink `#0F0F0F` + Signal Red `#C8323C`. **Cero ámbar, cero verde** — la jerarquía se resuelve con tipografía y escala de grises.
+- **Neutros (light)**: la fuente de verdad es `src/app/globals.css`, bloque `[data-theme="light"]` — **no** los hexes citados en este archivo. Tras la migración "GALERÍA" los neutros son **fríos**: `--franco-bg` `#F6F6F7` · `--franco-border` `#DDDDE1` · `--franco-text-muted` `#6B6B72`. Los cálidos viejos (`#FAFAF8`, `#F0F0EC`, `#E6E6E2`, `#71717A`) quedaron obsoletos salvo donde sobreviven como tokens `--landing-*` propios de la landing.
 - **Regla del rojo**: Signal Red solo cuando hay info que requiere atención (veredictos, métricas negativas, ".ai" del wordmark, CTAs premium). Nunca decoración.
 - **Veredictos** (3 valores exactos): COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA. BUSCAR OTRA es el único con Signal Red (criticidad); COMPRAR y AJUSTA SUPUESTOS van en Ink. No usar "NEGOCIAR" (obsoleto). Tratamiento cromático completo en `franco-design-system`.
 
@@ -115,7 +116,10 @@ La identidad visual completa (paleta, tipografía, patrones, templates) vive en 
 - **Un paso a la vez**: ejecutá, reportá el output, esperá antes de continuar. No encadenar acciones irreversibles.
 - **Validá empíricamente** (sandbox, mediciones reales) antes de optimizar. No confíes en supuestos ni en docs sin verificar.
 - Mostrá el diff antes de que se apruebe un commit.
+- **Los reportes de los agentes también van en tuteo chileno, sin voseo.** Aplica al texto que el agente escribe para el usuario, no solo al copy del producto (ya se coló voseo 3 veces).
+- **QA vía browser: cada cifra reportada va con la URL exacta desde donde se leyó.** Sin URL la cifra no cuenta. Un mockup abierto en otra pestaña ya generó un bloqueante falso que costó un goal completo de diagnóstico.
 
 ## Skills y herramientas
 - Antes de cualquier cambio de **UI o de prompts de IA**, leé las skills en `~/.claude/skills/`: `franco-design-system`, `analysis-voice-franco`, `brand-voice-franco`, `ux-cx-franco`, `testing-patterns-franco`. El skill activo de diseño es `franco-design-system` (no `design-system-franco`, que es backup).
+- **Antes de cualquier trabajo visual en modo light, verificá los tokens contra `src/app/globals.css`** (`[data-theme="light"]`) — grep primero, teoría después. Los hexes de este archivo y de las skills pueden estar stale; el CSS no.
 - Validación visual: hay **Playwright MCP** disponible (invocación: «usa playwright mcp para [acción]»; docs en `docs/playwright-mcp.md`).
