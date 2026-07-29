@@ -84,6 +84,16 @@ export function PatrimonioChartComparativa(p: Props) {
   const strFlujoAcum = idxFlujo >= 0 ? (p.strResults.projections?.[idxFlujo]?.flujoAcumulado ?? 0) : 0;
   const patrimonioIgual = Math.abs(delta) < Math.max(1, Math.abs(lastLTR) * 0.005);
 
+  // Desambiguación bruto vs neto. Este chart grafica patrimonio BRUTO (activo −
+  // deuda); "tu parte al vender" del detalle ya descuenta el 2% de comisión + costos
+  // de cierre (short-term-engine `GASTOS_CIERRE_VENTA` · analysis.ts `comisionVenta`).
+  // Sin glosa quedaban dos cifras separadas ~4% conviviendo en la app sin explicación
+  // (caso Kennedy 7031: $366.074.202 acá vs $352.241.351 en el detalle STR).
+  // El monto exacto se muestra solo cuando hay UNA cifra a la que descontárselo; si el
+  // patrimonio difiere entre modalidades, la glosa se queda en el concepto.
+  const valorActivoFinal = idxFlujo >= 0 ? (p.ltrResults.projections?.[idxFlujo]?.valorPropiedad ?? 0) : 0;
+  const comisionVentaFinal = Math.round(valorActivoFinal * 0.02);
+
   return (
     <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 mb-6">
       <p className="font-mono text-[9px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mb-1">
@@ -195,6 +205,16 @@ export function PatrimonioChartComparativa(p: Props) {
               LTR llega a {fmtMoney(lastLTR, p.currency, p.ufValue)} · STR llega a {fmtMoney(lastSTR, p.currency, p.ufValue)}.
               La diferencia es el costo de oportunidad de elegir la modalidad menos eficiente para esta propiedad.
             </>
+          )}
+        </p>
+        <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
+          {patrimonioIgual && comisionVentaFinal > 0 ? (
+            <>
+              Es patrimonio bruto: el activo menos la deuda. Si vendes, la comisión de venta (2%) resta{" "}
+              <span className="font-mono">{fmtMoney(comisionVentaFinal, p.currency, p.ufValue)}</span> de esa cifra.
+            </>
+          ) : (
+            <>Es patrimonio bruto: el activo menos la deuda. La comisión de venta (2%) no está descontada.</>
           )}
         </p>
       </div>
