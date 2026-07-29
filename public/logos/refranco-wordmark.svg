@@ -3,13 +3,14 @@
     @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,700;1,400');
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@600');
   </style>
-  <text y="30" font-family="'Source Serif 4', serif" font-size="28">
-    <tspan fill="#FAFAF8" opacity="0.28" font-weight="400" font-style="italic">re</tspan>
-    <tspan fill="#FAFAF8" font-weight="700">franco</tspan>
-  </text>
-  <!-- x=123.88: el gap de tinta "franco"→".ai" queda en 4.05 unidades, idéntico al de
+  <!-- Los dos tspan van PEGADOS, sin salto de línea ni espacio entre ellos: XML colapsa
+       ese whitespace a un espacio real de ~6.1 unidades y el wordmark salía "re franco".
+       No reformatear a varias líneas. -->
+  <text y="30" font-family="'Source Serif 4', serif" font-size="28"><tspan fill="#FAFAF8" opacity="0.28" font-weight="400" font-style="italic">re</tspan><tspan fill="#FAFAF8" font-weight="700">franco</tspan></text>
+  <!-- x=117.77: el gap de tinta "franco"→".ai" queda en 4.05 unidades, idéntico al de
        refranco-wordmark-light.svg (medido con getBBox en Chrome, fuentes reales cargadas).
-       Antes: x=155 ⇒ gap 35.17. El ".ai" de IBM Plex Sans 600 no tiene bearing izquierdo
-       (bbox.x == atributo x), así que x = borde derecho de "franco" + 4.05. -->
-  <text x="123.88" y="30" font-family="'IBM Plex Sans', sans-serif" font-size="16" font-weight="600" fill="#C8323C">.ai</text>
+       El ".ai" de IBM Plex Sans 600 no tiene bearing izquierdo (bbox.x == atributo x), así
+       que x = borde derecho de "franco" (113.72) + 4.05. Si algún día se reintroduce el
+       whitespace entre los tspan, este valor vuelve a 123.88. -->
+  <text x="117.77" y="30" font-family="'IBM Plex Sans', sans-serif" font-size="16" font-weight="600" fill="#C8323C">.ai</text>
 </svg>
