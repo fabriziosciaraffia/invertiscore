@@ -29,17 +29,39 @@ export const FRANCO_MAP_STYLE_DARK: FrancoMapTypeStyle[] = [
   { featureType: "transit", stylers: [{ visibility: "off" }] },
 ];
 
+/**
+ * Paleta light — neutros FRÍOS del design system (dirección "Galería").
+ *
+ * La versión anterior arrastraba los defaults de Google sin editar: el ámbar de
+ * autopista (#f8d9a8) más una familia de grises cálidos, lo que teñía el mapa de
+ * crema contra las cards blancas. Regla de marca: cero ámbar — la jerarquía se
+ * resuelve con valor, no con color.
+ *
+ * Los hex espejan los tokens vivos de `globals.css` [data-theme="light"]:
+ *   land         --franco-bg           #F6F6F7  (el lienzo bajo las cards)
+ *   calles       --franco-card         #FFFFFF  (lo más claro = la trama vial)
+ *   hairlines    --franco-border       #DDDDE1  (bordes, strokes y autopistas)
+ *   labels       --franco-text-muted   #6B6B72
+ *   labels vía   --franco-text-tertiary #6A6A71
+ *
+ * Jerarquía vial sin color: calles #FFFFFF (lo más claro del mapa) < land
+ * #F6F6F7 < autopistas #DDDDE1. La autopista destaca por ser la cinta MÁS
+ * oscura, no por ser la más saturada.
+ *
+ * Única excepción cromática: el agua queda azulada a propósito. Un mapa con agua
+ * gris se lee roto — el azul acá es funcional (legibilidad), no decorativo.
+ */
 export const FRANCO_MAP_STYLE_LIGHT: FrancoMapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#f5f5f0" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#5a5a56" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
-  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#e0e0dc" }] },
+  { elementType: "geometry", stylers: [{ color: "#F6F6F7" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#6B6B72" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#FFFFFF" }] },
+  { featureType: "administrative", elementType: "geometry", stylers: [{ color: "#DDDDE1" }] },
   { featureType: "poi", stylers: [{ visibility: "off" }] },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
-  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#e8e8e4" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#f8d9a8" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6a6a66" }] },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#c8d6db" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#FFFFFF" }] },
+  { featureType: "road", elementType: "geometry.stroke", stylers: [{ color: "#DDDDE1" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#DDDDE1" }] },
+  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#6A6A71" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#CDD9DE" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
 ];
 

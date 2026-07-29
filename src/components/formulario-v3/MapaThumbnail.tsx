@@ -76,7 +76,7 @@ export function MapaThumbnail({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [imgFailed, setImgFailed] = useState(false);
-  const [theme, setTheme] = useState<FrancoMapTheme>("dark");
+  const [theme, setTheme] = useState<FrancoMapTheme>("light");
   const [origin, setOrigin] = useState<string>("");
 
   // Detectar theme actual + observar cambios en data-theme del <html>
