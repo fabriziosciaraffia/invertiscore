@@ -62,7 +62,17 @@ export function normalizarDireccion(direccion: string): string {
   for (const [re, canon] of VIAS) {
     if (re.test(s)) { s = s.replace(re, canon); break; }
   }
-  return s.replace(/[^a-z0-9ñ ]/g, "").trim();
+  s = s.replace(/[^a-z0-9ñ ]/g, "").trim();
+  // Ceros iniciales de la numeración fuera: «0181» y «181» se escriben ambas
+  // para la misma propiedad según de dónde venga el dato.
+  //
+  // CAVEAT (decidido por el goal, anotado acá para que no se re-descubra): en
+  // varias comunas de Santiago el cero inicial es SIGNIFICATIVO — marca el
+  // tramo anterior a la numeración principal, así que «Pedro de Valdivia 0181»
+  // y «Pedro de Valdivia 181» son direcciones distintas y a partir de acá caen
+  // en el mismo grupo. Es sobre-agrupación aceptada a cambio de no partir la
+  // misma propiedad escrita de dos formas.
+  return s.replace(/\b0+(\d)/g, "$1");
 }
 
 /** Clave de propiedad, o null si la fila no tiene dirección utilizable. */
@@ -78,12 +88,21 @@ export interface GrupoPropiedad {
   key: string;
   /** Fila más reciente del grupo: la que representa el estado actual. */
   vigente: AnalisisDashboardRow;
-  /** Todas las filas, de la más reciente a la más antigua. */
+  /**
+   * Hijas VISIBLES del grupo, ya ordenadas por el criterio activo. Los filtros
+   * se aplican aguas arriba (la consulta ya vino filtrada), así que todo lo que
+   * está acá pasó el filtro y el contador de la fila padre es el de estas.
+   */
   hijos: AnalisisDashboardRow[];
   /** Mejor score alcanzado por esta propiedad. */
   mejorScore: number;
   /** ¿Los hijos difieren en dormitorios o superficie? (síntoma del riesgo 1) */
   tipologiasDistintas: number;
+  /**
+   * ¿El precio de compra difiere entre hermanas? Cuando sí, es lo único que
+   * distingue una hija de otra a simple vista y se muestra en su fila.
+   */
+  preciosDistintos: boolean;
 }
 
 /** Un ítem del archivo agrupado: o una fila suelta, o un grupo de ≥2. */
@@ -91,20 +110,51 @@ export type ItemArchivo =
   | { kind: "fila"; row: AnalisisDashboardRow }
   | { kind: "grupo"; grupo: GrupoPropiedad };
 
-/** Valor por el que ordena un ítem: el del vigente, tanto para filas como grupos. */
-function representante(item: ItemArchivo): AnalisisDashboardRow {
-  return item.kind === "fila" ? item.row : item.grupo.vigente;
+/** Valor numérico de una fila para la columna por la que se está ordenando. */
+function valorDe(r: AnalisisDashboardRow, sort: DashboardSortKey): number | null {
+  switch (sort) {
+    case "score": return r.score_efectivo;
+    case "flujo": return Number(r.flujo);
+    case "cap": return r.cap_rate === null ? null : Number(r.cap_rate);
+    case "multiplicador": return r.multiplicador === null ? null : Number(r.multiplicador);
+    default: return null;
+  }
+}
+
+/**
+ * Valor con el que un GRUPO entra al orden: el MEJOR de sus hijas, no el de la
+ * vigente. Un grupo se posiciona por lo mejor que logró esa propiedad; si se
+ * usara la vigente, un grupo con un análisis excelente quedaría enterrado por
+ * una corrida posterior de tanteo.
+ *
+ * «Mejor» es el máximo también cuando el orden es ascendente: la dirección
+ * aplica a cómo se comparan los grupos entre sí, no a qué representa a cada uno.
+ */
+function mejorValor(hijos: AnalisisDashboardRow[], sort: DashboardSortKey): number | null {
+  let mejor: number | null = null;
+  for (const h of hijos) {
+    const v = valorDe(h, sort);
+    if (v === null) continue;
+    if (mejor === null || v > mejor) mejor = v;
+  }
+  return mejor;
+}
+
+/** Fecha con la que un grupo entra al orden: la más reciente de sus hijas. */
+function fechaGrupo(hijos: AnalisisDashboardRow[]): string {
+  return hijos.reduce((max, h) => (h.created_at > max ? h.created_at : max), hijos[0].created_at);
 }
 
 /**
  * Agrupa las unidades por propiedad y ordena los ítems resultantes.
  *
  * Un grupo de UNA sola fila no es un grupo: se degrada a fila suelta, porque
- * una fila con chevron y «1 análisis» es ruido.
+ * una fila padre con chevron y «1 análisis» es ruido.
  *
- * El orden se aplica sobre el VIGENTE de cada grupo, no sobre el mejor valor:
- * ordenar por score con el máximo histórico haría que un grupo suba por un
- * análisis que el usuario ya descartó.
+ * Dos órdenes distintos y a propósito:
+ *  · ENTRE ítems — un grupo entra por su MEJOR valor (ver `mejorValor`).
+ *  · DENTRO del grupo — las hijas se ordenan por el mismo criterio activo, así
+ *    que al expandir se lee de mejor a peor y no en un orden ajeno al header.
  */
 export function agruparPorPropiedad(
   rows: AnalisisDashboardRow[],
@@ -122,6 +172,20 @@ export function agruparPorPropiedad(
     else porClave.set(key, [row]);
   }
 
+  const signo = dir === "asc" ? 1 : -1;
+
+  /** Comparador de FILAS por el criterio activo. NULL siempre al final. */
+  const compararFilas = (a: AnalisisDashboardRow, b: AnalisisDashboardRow): number => {
+    if (sort === "fecha") return signo * a.created_at.localeCompare(b.created_at);
+    const va = valorDe(a, sort);
+    const vb = valorDe(b, sort);
+    if (va === null && vb === null) return b.created_at.localeCompare(a.created_at);
+    if (va === null) return 1;
+    if (vb === null) return -1;
+    if (va !== vb) return signo * (va - vb);
+    return b.created_at.localeCompare(a.created_at);
+  };
+
   const items: ItemArchivo[] = sueltas.map((row) => ({ kind: "fila" as const, row }));
 
   porClave.forEach((miembros, key) => {
@@ -129,47 +193,68 @@ export function agruparPorPropiedad(
       items.push({ kind: "fila", row: miembros[0] });
       return;
     }
-    const hijos = [...miembros].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const hijos = [...miembros].sort(compararFilas);
+    const vigente = miembros.reduce((m, h) => (h.created_at > m.created_at ? h : m), miembros[0]);
     const tipologias = new Set(hijos.map((h) => `${h.dormitorios}·${h.banos}·${Math.round(Number(h.superficie))}`));
+    const precios = new Set(hijos.map((h) => Math.round(Number(h.precio) * 100)));
     items.push({
       kind: "grupo",
       grupo: {
         key,
-        vigente: hijos[0],
+        vigente,
         hijos,
         mejorScore: hijos.reduce((m, h) => Math.max(m, h.score_efectivo), 0),
         tipologiasDistintas: tipologias.size,
+        preciosDistintos: precios.size > 1,
       },
     });
   });
 
-  const signo = dir === "asc" ? 1 : -1;
-  const valor = (r: AnalisisDashboardRow): number | null => {
-    switch (sort) {
-      case "score": return r.score_efectivo;
-      case "flujo": return Number(r.flujo);
-      case "cap": return r.cap_rate === null ? null : Number(r.cap_rate);
-      case "multiplicador": return r.multiplicador === null ? null : Number(r.multiplicador);
-      default: return null;
-    }
-  };
-
   items.sort((a, b) => {
-    const ra = representante(a);
-    const rb = representante(b);
-    if (sort === "fecha") return signo * ra.created_at.localeCompare(rb.created_at);
-    const va = valor(ra);
-    const vb = valor(rb);
+    if (sort === "fecha") {
+      const fa = a.kind === "fila" ? a.row.created_at : fechaGrupo(a.grupo.hijos);
+      const fb = b.kind === "fila" ? b.row.created_at : fechaGrupo(b.grupo.hijos);
+      return signo * fa.localeCompare(fb);
+    }
+    const va = a.kind === "fila" ? valorDe(a.row, sort) : mejorValor(a.grupo.hijos, sort);
+    const vb = b.kind === "fila" ? valorDe(b.row, sort) : mejorValor(b.grupo.hijos, sort);
     // Los NULL (filas legacy sin cap ni multiplicador) siempre al final, igual
     // que en la consulta SQL — nunca encabezan un ranking.
-    if (va === null && vb === null) return rb.created_at.localeCompare(ra.created_at);
+    if (va === null && vb === null) return 0;
     if (va === null) return 1;
     if (vb === null) return -1;
     if (va !== vb) return signo * (va - vb);
-    return rb.created_at.localeCompare(ra.created_at);
+    return 0;
   });
 
   return items;
+}
+
+/**
+ * Fila con la que se pinta la fila PADRE de un grupo.
+ *
+ * Es la vigente, salvo en la columna por la que se está ordenando: ahí lleva el
+ * mejor valor del grupo. Sin esto la tabla se lee rota — el grupo se posiciona
+ * por su mejor score (96) pero muestra el de la vigente (76), y queda un «76»
+ * arriba de un «96» en una tabla ordenada descendente.
+ *
+ * Las demás columnas siguen siendo las de la vigente: son el estado actual de
+ * la propiedad, no un récord histórico.
+ */
+export function filaResumenGrupo(
+  grupo: GrupoPropiedad,
+  sort: DashboardSortKey,
+): AnalisisDashboardRow {
+  if (sort === "fecha") return grupo.vigente;
+  const mejor = mejorValor(grupo.hijos, sort);
+  if (mejor === null) return grupo.vigente;
+  switch (sort) {
+    case "score": return { ...grupo.vigente, score_efectivo: mejor };
+    case "flujo": return { ...grupo.vigente, flujo: mejor };
+    case "cap": return { ...grupo.vigente, cap_rate: mejor };
+    case "multiplicador": return { ...grupo.vigente, multiplicador: mejor };
+    default: return grupo.vigente;
+  }
 }
 
 /** Cuántas UNIDADES representa la lista agrupada (no cuántos ítems). */

@@ -17,12 +17,14 @@ import Link from "next/link";
 import type { AnalisisDashboardRow, DashboardStats, DashboardSortKey } from "@/lib/dashboard-query";
 import type { Veredicto } from "@/lib/types";
 import type { ItemArchivo } from "./agrupar";
+import { filaResumenGrupo } from "./agrupar";
 import {
   buildHref,
   displayDireccion,
   fmtCap,
   fmtCLPSigned,
   fmtFechaCorta,
+  fmtUF,
   fmtMultiplicador,
   hrefAnalisis,
   hrefPdf,
@@ -43,6 +45,38 @@ import { RowActions } from "./row-actions";
 
 /** Hijos que se muestran al expandir un grupo antes de ofrecer «ver el resto». */
 const HIJOS_VISIBLES = 8;
+
+type GrupoItem = Extract<ItemArchivo, { kind: "grupo" }>;
+
+/** Una entrada de la lista mobile: fila suelta, cabecera de grupo, o hija. */
+interface ItemMobile {
+  row: AnalisisDashboardRow;
+  /** Presente solo en la cabecera de un grupo. */
+  grupo?: GrupoItem;
+  esHija?: boolean;
+  mostrarPrecio?: boolean;
+}
+
+/**
+ * Aplana los ítems agrupados a la lista lineal que consume mobile: cabecera de
+ * grupo seguida de sus hijas cuando está expandido. Se hace acá y no inline
+ * para que la lista tenga un tipo con nombre en vez de una unión anónima.
+ */
+function aplanarParaMobile(items: ItemArchivo[], params: DashboardParams): ItemMobile[] {
+  const out: ItemMobile[] = [];
+  for (const i of items) {
+    if (i.kind === "fila") { out.push({ row: i.row }); continue; }
+    out.push({ row: i.grupo.vigente, grupo: i });
+    if (!grupoAbierto(params, i.grupo.key)) continue;
+    const visibles = grupoMuestraTodos(params, i.grupo.key)
+      ? i.grupo.hijos
+      : i.grupo.hijos.slice(0, HIJOS_VISIBLES);
+    for (const h of visibles) {
+      out.push({ row: h, esHija: true, mostrarPrecio: i.grupo.preciosDistintos });
+    }
+  }
+  return out;
+}
 
 interface Props {
   /** Filas planas de la página (modo sin agrupar). */
@@ -154,22 +188,16 @@ function CeldasNumericas({ row, atenuado = false }: { row: AnalisisDashboardRow;
   );
 }
 
-/** Tipología de una fila: lo que distingue una unidad de otra en el mismo edificio. */
-function tipologia(row: AnalisisDashboardRow): string {
-  const dorm = row.dormitorios > 0 ? `${row.dormitorios}D` : "Studio";
-  const sup = Number(row.superficie);
-  return `${dorm}${row.banos > 0 ? `${row.banos}B` : ""}${sup > 0 ? ` · ${Math.round(sup)} m²` : ""}`;
-}
-
 // ─── Fila de análisis (suelta o hija de un grupo) ───────────────────────────
 
 function FilaAnalisis({
-  row, siblings, hijo = false, etiqueta, vigente = false,
+  row, siblings, hijo = false, mostrarPrecio = false, vigente = false,
 }: {
   row: AnalisisDashboardRow;
   siblings: Map<string, AnalisisDashboardRow>;
   hijo?: boolean;
-  etiqueta?: string | null;
+  /** Solo true cuando el precio DIFIERE entre hermanas: ahí sí distingue. */
+  mostrarPrecio?: boolean;
   vigente?: boolean;
 }) {
   const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
@@ -189,12 +217,18 @@ function FilaAnalisis({
                 className="h-px w-2.5 shrink-0 bg-[var(--franco-border-hover)]"
                 aria-hidden="true"
               />
-              <Link
-                href={abrir}
-                className="truncate font-body text-[13px] text-[var(--franco-text-secondary)] no-underline"
-              >
-                {etiqueta ?? tipologia(row)}
-              </Link>
+              {/* Sin etiqueta derivada: la hija comparte dirección con sus
+                  hermanas, así que repetirla (o inventar un rótulo) es ruido.
+                  Lo único que se muestra es el precio, y solo cuando difiere
+                  entre hermanas — ahí sí es lo que las distingue. */}
+              {mostrarPrecio && (
+                <Link
+                  href={abrir}
+                  className="truncate font-mono text-xs text-[var(--franco-text-secondary)] no-underline"
+                >
+                  {fmtUF(Number(row.precio))}
+                </Link>
+              )}
               {vigente && (
                 <span className="shrink-0 rounded border border-[var(--franco-border-hover)] px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.06em] text-[var(--franco-text-muted)]">
                   VIGENTE
@@ -247,6 +281,9 @@ function FilaGrupo({
 }) {
   const { grupo } = item;
   const v = grupo.vigente;
+  // En la columna por la que se ordena, el padre muestra el MEJOR valor del
+  // grupo — es por ese valor que está en esa posición de la tabla.
+  const resumen = filaResumenGrupo(grupo, params.sort);
 
   return (
     <tr className="border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))]">
@@ -263,17 +300,16 @@ function FilaGrupo({
           <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-[0.05em] text-[var(--franco-text)]">
             {grupo.hijos.length} análisis
           </span>
-          {/* La tipología del vigente solo se muestra si TODOS los hijos son la
-              misma: con varias sería una etiqueta falsa para el grupo entero.
-              En ese caso se declara cuántas hay — el aviso de sobre-agrupación
-              no se esconde, el usuario tiene que verlo antes de abrir. */}
+          {/* Comuna + mejor score (que es por lo que el grupo entra al orden) y,
+              si las hijas no son la misma unidad, cuántas tipologías hay: el
+              aviso de sobre-agrupación no se esconde, se ve antes de abrir. */}
           <span className="truncate font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
-            mejor {grupo.mejorScore} ·{" "}
-            {grupo.tipologiasDistintas > 1 ? `${grupo.tipologiasDistintas} tipologías` : tipologia(v)} · {v.comuna}
+            {v.comuna} · mejor {grupo.mejorScore}
+            {grupo.tipologiasDistintas > 1 && ` · ${grupo.tipologiasDistintas} tipologías`}
           </span>
         </Link>
       </td>
-      <CeldasNumericas row={v} atenuado />
+      <CeldasNumericas row={resumen} atenuado />
       <td />
     </tr>
   );
@@ -432,6 +468,7 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                                 row={hijo}
                                 siblings={siblings}
                                 hijo
+                                mostrarPrecio={grupo.preciosDistintos}
                                 vigente={hijo.id === grupo.vigente.id}
                               />,
                             );
@@ -459,40 +496,71 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
               </table>
             </div>
 
-            {/* ── Mobile: lista compacta ── */}
+            {/* ── Mobile: lista compacta ──
+                En agrupado la lista replica la jerarquía del desktop: el padre
+                es un item con contador y chevron, y sus hijas aparecen
+                indentadas al expandir con su propio menú «···». Antes solo se
+                veía la vigente y las hermanas eran inalcanzables desde el
+                teléfono. */}
             <ul className="md:hidden">
-              {(agrupado
-                ? items.flatMap((i) => (i.kind === "fila" ? [i.row] : [i.grupo.vigente]))
-                : rows
-              ).map((row) => {
+              {(agrupado ? aplanarParaMobile(items, params) : rows.map((row): ItemMobile => ({ row })))
+                .map(({ row, grupo, esHija, mostrarPrecio }, idx) => {
                 const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
                 const flujo = Number(row.flujo);
                 const abrir = hrefAnalisis(row, str?.id);
-                const grupo = agrupado
-                  ? items.find((i) => i.kind === "grupo" && i.grupo.vigente.id === row.id)
-                  : undefined;
-                const n = grupo && grupo.kind === "grupo" ? grupo.grupo.hijos.length : 0;
+                const esGrupo = grupo?.kind === "grupo";
+                const n = esGrupo ? grupo.grupo.hijos.length : 0;
+                const abierto = esGrupo ? grupoAbierto(params, grupo.grupo.key) : false;
+
                 return (
-                  <li key={row.id} className="relative flex items-center gap-3 border-b border-[var(--franco-border)] px-3.5 py-3 last:border-b-0">
-                    <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
+                  <li
+                    key={`${row.id}-${esHija ? "h" : "p"}-${idx}`}
+                    className={`relative flex items-center gap-3 border-b border-[var(--franco-border)] px-3.5 py-3 last:border-b-0 ${
+                      esHija ? "pl-8 bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]" : ""
+                    }`}
+                  >
+                    {/* El padre no navega al análisis: expande. */}
+                    {esGrupo ? (
+                      <Link href={toggleGrupoHref(params, grupo.grupo.key)} aria-expanded={abierto} className="absolute inset-0 z-0" aria-label={`${displayDireccion(row)}, ${n} análisis`} />
+                    ) : (
+                      <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
+                    )}
+
+                    {esGrupo && <Chevron abierto={abierto} />}
+
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={abrir}
-                        className="relative z-10 block truncate font-heading text-sm font-bold text-[var(--franco-text)] no-underline"
-                      >
-                        {displayDireccion(row)}
-                      </Link>
-                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                        <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{row.comuna}</span>
-                        <ModChip label={modalidadLabel(row)} />
-                        <VerdictBadge verdict={veredictoDisplay(row)} mini />
-                        {n > 1 && (
-                          <span className="rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[var(--franco-text)]">
-                            {n} ANÁLISIS
+                      {esHija ? (
+                        <div className="flex items-center gap-2">
+                          {mostrarPrecio && (
+                            <span className="font-mono text-xs text-[var(--franco-text-secondary)]">
+                              {fmtUF(Number(row.precio))}
+                            </span>
+                          )}
+                          <ModChip label={modalidadLabel(row)} />
+                          <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                        </div>
+                      ) : (
+                        <>
+                          <span className="relative z-10 block truncate font-heading text-sm font-bold text-[var(--franco-text)]">
+                            {displayDireccion(row)}
                           </span>
-                        )}
-                      </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{row.comuna}</span>
+                            {esGrupo ? (
+                              <span className="rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[var(--franco-text)]">
+                                {n} ANÁLISIS
+                              </span>
+                            ) : (
+                              <>
+                                <ModChip label={modalidadLabel(row)} />
+                                <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                              </>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
+
                     <div className="shrink-0 text-right">
                       <div
                         className="font-mono text-[13px] font-medium"
@@ -504,13 +572,17 @@ export function Archive({ rows, items, siblings, total, hasMore, params, stats, 
                         {row.score_efectivo} · {fmtFechaCorta(row.created_at)}
                       </div>
                     </div>
-                    <RowActions
-                      id={row.id}
-                      groupId={row.ambas_group_id}
-                      hrefAbrir={abrir}
-                      hrefPdf={hrefPdf(row)}
-                      variant="menu"
-                    />
+
+                    {/* El padre no tiene acciones propias: no es un análisis. */}
+                    {!esGrupo && (
+                      <RowActions
+                        id={row.id}
+                        groupId={row.ambas_group_id}
+                        hrefAbrir={abrir}
+                        hrefPdf={hrefPdf(row)}
+                        variant="menu"
+                      />
+                    )}
                   </li>
                 );
               })}

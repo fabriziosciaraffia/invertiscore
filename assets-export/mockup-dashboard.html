@@ -1,0 +1,1711 @@
+<!--
+  ═══════════════════════════════════════════════════════════════════════════
+  MOCKUP VINCULANTE · DASHBOARD v2 — escritorio + archivo
+  ═══════════════════════════════════════════════════════════════════════════
+  Rediseño de /dashboard. El dashboard actual es una lista plana de cards
+  (~3 por pantalla) que no escala: con 215 análisis es scroll infinito, sin
+  búsqueda, sin orden, sin agrupación.
+
+  Esto NO es código de la app. Es contrato de diseño: nada se implementa
+  hasta aprobar. Sin JS funcional — los estados (hover, filtro activo, grupo
+  expandido, orden por columna) están representados estáticamente.
+
+  LEYENDA DE PROCEDENCIA
+  ----------------------
+  · TOKENS / TIPOGRAFÍA / PRIMITIVAS = reales (franco-design-system, Capa 5
+    dark). Tema del mockup = DARK: el dashboard vive en la app, no es documento.
+  · CAMPOS = todos los de la fila `analisis` que HOY trae la query del
+    dashboard (`select("*")` con `pending_payment=false`, orden created_at desc).
+    Ver el inventario completo al pie del archivo.
+  · Lo que NO está en la fila hoy va marcado inline con el tag [REQUIERE QUERY].
+  · CIFRAS = PLACEHOLDER ilustrativo, internamente consistente (Providencia ·
+    Santiago · Ñuñoa, scores variados, mezcla de veredictos). Hoy = 28 jul 2026.
+
+  SECCIONES DEL ARCHIVO
+  ---------------------
+  A · Desktop 1440 — dashboard completo (header · continuar · stats · archivo)
+  B · Estado: búsqueda activa "Providencia" + orden por SCORE
+  C · Estado: usuario nuevo (0 análisis)
+  D · Mobile 390 — continuar (carrusel) + archivo (lista compacta)
+  E · Notas de implementación (inventario de campos · agrupación · estado)
+-->
+<meta charset="utf-8" />
+<title>Mockup Dashboard v2 — Franco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500;700&display=swap"
+  rel="stylesheet"
+/>
+
+<style>
+  /* ══ TOKENS · tema DARK (franco-design-system Capa 5, columna dark) ══ */
+  :root {
+    --bg:             #0F0F0F;
+    --card:           #1A1A1A;
+    --elevated:       #222222;
+    --sunken:         #151515;
+    --text:           #FAFAF8;
+    --text-secondary: rgba(250,250,248,.50);
+    --text-muted:     rgba(250,250,248,.35);
+    --text-tertiary:  #888780;
+    --border:         rgba(250,250,248,.06);
+    --border-hover:   rgba(250,250,248,.12);
+    --border-strong:  rgba(250,250,248,.15);
+    --signal-red:     #C8323C;
+    --ink-400:        #B4B2A9;
+
+    --serif: 'Source Serif 4', Georgia, serif;
+    --sans:  'IBM Plex Sans', system-ui, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, monospace;
+
+    /* Ancho de contenido = 1100px, el mismo container que ya usa UnifiedNav
+       variant="app" (max-w-[1100px]). El dashboard actual usa 820px: se ensancha
+       a 1100 sin tocar el chrome. */
+    --content: 1100px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { background: #0B0B0B; }
+  body {
+    margin: 0;
+    font-family: var(--sans);
+    color: var(--text);
+    background: #0B0B0B;
+    -webkit-font-smoothing: antialiased;
+    /* El padding superior deja lugar a la banda fija de advertencia. */
+    padding: 68px 0 90px;
+  }
+
+  /* ══ BANDA DE ADVERTENCIA ══
+     Todas las cifras de este archivo son placeholders inventados. Sin esta
+     banda el mockup se confunde con la app real: ya pasó una vez, con un
+     reporte de QA levantado contra estos números. */
+  .mockup-warning {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+    background: #C8323C; color: #FFFFFF;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 12px; font-weight: 700; letter-spacing: .18em;
+    text-align: center; padding: 10px 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,.45);
+  }
+
+  ::selection { background: var(--signal-red); color: #fff; }
+
+  /* ══ CHROME DEL MOCKUP (no es parte del producto) ══ */
+  .mockup-bar {
+    max-width: 1180px; margin: 0 auto 34px; padding: 15px 20px;
+    background: #1A1A1A; color: #FAFAF8; border: 1px solid rgba(250,250,248,.10);
+    border-radius: 10px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.8; letter-spacing: .02em;
+  }
+  .mockup-bar b { color: #fff; }
+  .mockup-bar .r { color: var(--signal-red); }
+  .mockup-bar .tag {
+    display: inline-block; padding: 1px 7px; border-radius: 4px;
+    border: 1px solid rgba(250,250,248,.25); margin-right: 6px; font-size: 10px;
+  }
+
+  .sec { max-width: 1180px; margin: 0 auto 20px; }
+  .sec-label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--text-tertiary);
+    padding: 26px 0 10px; border-top: 1px dashed rgba(250,250,248,.10);
+  }
+  .sec-label b { color: #fff; letter-spacing: .10em; }
+  .sec-sub {
+    font-family: var(--sans); font-size: 12px; color: var(--text-secondary);
+    max-width: 900px; line-height: 1.65; margin: -4px 0 14px;
+  }
+
+  /* Nota de diseño anclada al mockup */
+  .note {
+    max-width: 1180px; margin: 10px auto 0; padding: 10px 14px;
+    background: rgba(250,250,248,.03); border-left: 3px solid var(--ink-400);
+    border-radius: 0 8px 8px 0;
+    font-family: var(--sans); font-size: 12px; line-height: 1.7; color: var(--text-secondary);
+  }
+  .note b { color: var(--text); font-weight: 500; }
+  .note code { font-family: var(--mono); font-size: 11px; color: var(--ink-400); }
+
+  .rq {
+    display: inline-block; font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: .06em; padding: 1px 5px; border-radius: 3px; vertical-align: middle;
+    border: 1px solid rgba(250,250,248,.22); color: var(--text-tertiary);
+  }
+
+  /* ══ VIEWPORT SIMULADO ══ */
+  .viewport {
+    width: 1180px; margin: 0 auto; background: var(--bg);
+    border: 1px solid rgba(250,250,248,.10); border-radius: 12px; overflow: hidden;
+  }
+  .viewport-cap {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    color: var(--text-muted); text-align: right; max-width: 1180px;
+    margin: 6px auto 0;
+  }
+
+  /* ══ TOP BAR (chrome real: UnifiedNav variant="app") ══ */
+  .topbar {
+    height: 56px; border-bottom: .5px solid var(--border);
+    background: rgba(15,15,15,.85);
+    display: flex; align-items: center;
+  }
+  .topbar-in {
+    width: var(--content); margin: 0 auto; padding: 0 24px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wordmark { font-family: var(--serif); font-size: 17px; letter-spacing: -.01em; }
+  .wordmark .re { opacity: .28; font-weight: 400; font-style: italic; }
+  .wordmark .franco { font-weight: 700; }
+  .wordmark .ai { font-family: var(--sans); font-size: 11px; font-weight: 500;
+    letter-spacing: .06em; color: var(--signal-red); margin-left: 2px; }
+  .nav-links { display: flex; gap: 22px; }
+  .nav-links a {
+    font-family: var(--sans); font-size: 13px; font-weight: 500;
+    color: var(--text-secondary); text-decoration: none;
+  }
+  .nav-links a.on { color: var(--text); }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 1px solid var(--border-strong); background: var(--card);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 11px; color: var(--text-secondary);
+  }
+
+  /* ══ LIENZO DEL DASHBOARD ══ */
+  .page { width: var(--content); margin: 0 auto; padding: 20px 24px 40px; }
+
+  /* ── 1 · HEADER COMPACTO ────────────────────────────────────────── */
+  .dash-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding-bottom: 14px;
+  }
+  .dash-head h1 {
+    font-family: var(--serif); font-size: 22px; font-weight: 700;
+    margin: 0; letter-spacing: -.01em;
+  }
+  .dash-head .sub {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .06em;
+    color: var(--text-secondary); margin-left: 12px;
+  }
+  .btn-red {
+    font-family: var(--sans); font-size: 13px; font-weight: 500; color: #fff;
+    background: var(--signal-red); border: none; border-radius: 8px;
+    padding: 9px 18px; cursor: pointer; white-space: nowrap;
+  }
+
+  /* ── 2 · CONTINUAR ──────────────────────────────────────────────── */
+  .zone-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    letter-spacing: .10em; text-transform: uppercase; color: var(--text-tertiary);
+    display: flex; align-items: center; gap: 10px; margin: 6px 0 10px;
+  }
+  .zone-label::after {
+    content: ''; flex: 1; height: 1px; background: var(--border);
+  }
+
+  .cont-hero {
+    display: flex; align-items: center; gap: 20px;
+    background: linear-gradient(180deg, #242424 0%, #1B1B1B 100%);
+    border: 1px solid var(--border-hover); border-radius: 14px;
+    padding: 16px 20px; margin-bottom: 10px;
+    box-shadow: inset 0 1px 0 rgba(250,250,248,.05);
+    cursor: pointer;
+  }
+  .cont-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .cont-card {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer;
+  }
+  /* Card compacta: 2 líneas. L1 = dirección | modalidad · fecha relativa.
+     L2 = veredicto | flujo. Le da a la dirección el ancho que necesita. */
+  .cc-l1, .cc-l2 { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .cc-l2 { margin-top: 6px; }
+  .cc-right { margin-left: auto; display: flex; align-items: center; gap: 7px; flex: 0 0 auto; }
+  .cont-card.hovering {
+    background: var(--elevated); border-color: var(--border-hover);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+
+  /* Anillo de score */
+  .ring { position: relative; flex: 0 0 auto; }
+  .ring .n {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif); font-weight: 700;
+  }
+
+  .prop-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .prop-addr {
+    font-family: var(--serif); font-weight: 700; letter-spacing: -.01em;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .prop-comuna { font-family: var(--sans); color: var(--text-secondary); }
+  .dot-sep { color: var(--text-muted); }
+
+  /* Chips de modalidad */
+  .mod {
+    font-family: var(--mono); font-size: 8px; font-weight: 700; letter-spacing: .08em;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+    border: 1px solid var(--border-strong); color: var(--text-secondary);
+  }
+  .mod.str { border-color: rgba(200,50,60,.35); color: rgba(250,250,248,.72); }
+  .mod.ambas { border-color: var(--border-strong); background: rgba(250,250,248,.08); color: var(--text); }
+
+  /* Badges de veredicto */
+  .vb {
+    display: inline-flex; font-family: var(--mono); font-size: 9px; font-weight: 700;
+    letter-spacing: .05em; padding: 3px 9px; border-radius: 5px; white-space: nowrap;
+  }
+  .vb.buy    { color: var(--text); background: rgba(250,250,248,.08); border: 1.5px solid rgba(250,250,248,.18); }
+  .vb.adjust { color: var(--text-secondary); background: rgba(250,250,248,.04); border: 1.5px solid rgba(250,250,248,.12); }
+  .vb.avoid  { color: var(--signal-red); background: rgba(200,50,60,.06); border: 1.5px solid rgba(200,50,60,.25); }
+  .vb.mini   { font-size: 8px; padding: 2px 6px; border-width: 1px; }
+
+  .kpi { display: inline-block; text-align: right; min-width: 88px; }
+  .kpi .l {
+    font-family: var(--mono); font-size: 8px; font-weight: 500; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 2px;
+  }
+  .kpi .v { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+  .kpi .v.neg { color: var(--signal-red); }
+
+  .cont-when {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .05em;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .cont-cta {
+    font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: .10em;
+    text-transform: uppercase; color: var(--signal-red); white-space: nowrap;
+  }
+  .franco-line {
+    font-family: var(--sans); font-size: 12px; line-height: 1.55;
+    color: var(--text-secondary); margin-top: 7px;
+    border-top: 1px solid var(--border); padding-top: 7px;
+  }
+  .franco-line b { color: var(--text); font-weight: 500; }
+
+  /* ── 3 · FRANJA DE STATS ────────────────────────────────────────── */
+  .stats {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--card); margin: 18px 0 22px; overflow: hidden;
+  }
+  .stat {
+    padding: 10px 16px; border-right: 1px solid var(--border); cursor: pointer;
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .stat:last-child { border-right: none; }
+  .stat.hovering { background: var(--elevated); }
+  .stat .l {
+    font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-muted);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .stat .v { font-family: var(--mono); font-size: 20px; font-weight: 700; line-height: 1.1; }
+  .stat .v small { font-size: 12px; font-weight: 400; color: var(--text-muted); }
+  .stat .h {
+    font-family: var(--sans); font-size: 10px; color: var(--text-muted);
+    border-bottom: 1px dotted var(--border-strong); align-self: flex-start;
+  }
+  .stat.hovering .h { color: var(--signal-red); border-bottom-color: var(--signal-red); }
+  .stat .seg { display: flex; gap: 10px; font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .stat .seg i { font-style: normal; color: var(--text-muted); font-size: 9px; letter-spacing: .06em; }
+
+  /* ── 4 · ARCHIVO ────────────────────────────────────────────────── */
+  .archive {
+    border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); overflow: hidden;
+  }
+  .arch-top {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+  }
+  .search {
+    flex: 0 0 300px; display: flex; align-items: center; gap: 8px;
+    background: var(--sunken); border: 1px solid var(--border-hover);
+    border-radius: 8px; padding: 7px 11px;
+  }
+  .search svg { flex: 0 0 auto; opacity: .5; }
+  .search input, .search .fake {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: var(--sans); font-size: 13px; color: var(--text);
+  }
+  .search .fake.ph { color: var(--text-muted); }
+  .search .clear { font-family: var(--mono); font-size: 11px; color: var(--text-muted); cursor: pointer; }
+  .search.active { border-color: var(--border-strong); background: var(--elevated); }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-family: var(--sans); font-size: 12px; color: var(--text-secondary);
+    background: transparent; border: 1px solid var(--border);
+    border-radius: 7px; padding: 5px 10px; cursor: pointer; white-space: nowrap;
+  }
+  .chip .c { font-family: var(--mono); font-size: 10px; opacity: .65; margin-left: 5px; }
+  .chip.on { background: var(--text); border-color: var(--text); color: var(--bg); font-weight: 500; }
+  .chip.on-red { color: var(--signal-red); border-color: rgba(200,50,60,.40);
+    background: rgba(200,50,60,.06); border-width: 1.5px; }
+  .chip-sep { width: 1px; height: 20px; background: var(--border); }
+
+  .toggle-group {
+    margin-left: auto; display: flex; align-items: center; gap: 8px;
+    font-family: var(--sans); font-size: 12px; color: var(--text-secondary);
+    cursor: pointer; white-space: nowrap;
+  }
+  .switch {
+    width: 30px; height: 17px; border-radius: 9px; background: var(--text);
+    position: relative; flex: 0 0 auto;
+  }
+  .switch::after {
+    content: ''; position: absolute; top: 2px; right: 2px; width: 13px; height: 13px;
+    border-radius: 50%; background: var(--bg);
+  }
+  .switch.off { background: rgba(250,250,248,.14); }
+  .switch.off::after { right: auto; left: 2px; background: var(--text-muted); }
+
+  /* Tabla densa */
+  table.arch { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  table.arch th {
+    font-family: var(--mono); font-size: 9px; font-weight: 500; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-muted); text-align: left;
+    padding: 9px 10px; border-bottom: 1px solid var(--border-hover);
+    background: var(--sunken); white-space: nowrap; cursor: pointer;
+  }
+  table.arch th.num { text-align: right; }
+  table.arch th.sorted { color: var(--text); }
+  table.arch th .caret { font-size: 8px; margin-left: 3px; }
+  table.arch th .caret.idle { opacity: 0; }
+
+  table.arch td {
+    padding: 0 10px; height: 40px; vertical-align: middle;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--sans); font-size: 13px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  table.arch td.num {
+    text-align: right; font-family: var(--mono); font-size: 12px; font-weight: 500;
+  }
+  table.arch td.neg { color: var(--signal-red); }
+  table.arch td.dim { color: var(--text-muted); }
+  table.arch tr.row:hover, table.arch tr.row.hovering { background: var(--elevated); }
+  table.arch tr.row { cursor: pointer; }
+  .addr-cell { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .addr-cell .t { overflow: hidden; text-overflow: ellipsis; }
+  /* Serif = identidad de propiedad (Capa 2). Las filas hijas NO llevan dirección
+     sino la etiqueta del supuesto que las diferencia → se quedan en Sans. */
+  tr.row:not(.child) .addr-cell .t {
+    font-family: var(--serif); font-weight: 700; font-size: 13.5px; letter-spacing: -.01em;
+  }
+  .score-n { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+  .score-n.low { color: var(--signal-red); }
+  .score-n.mid { color: var(--text-secondary); }
+  .unit-tag {
+    font-family: var(--mono); font-size: 8px; letter-spacing: .05em;
+    color: var(--text-muted); margin-left: 4px;
+  }
+
+  /* Acciones en hover de fila */
+  .acts { display: flex; gap: 4px; justify-content: flex-end; opacity: 0; }
+  tr.hovering .acts, tr.row:hover .acts { opacity: 1; }
+  .act {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 6px;
+    border: 1px solid var(--border-hover); background: var(--card);
+    font-family: var(--mono); font-size: 10px; color: var(--text-secondary); cursor: pointer;
+  }
+  .act.danger { color: var(--signal-red); border-color: rgba(200,50,60,.30); }
+
+  /* Grupos por propiedad */
+  tr.group td {
+    background: var(--sunken); border-bottom: 1px solid var(--border-hover);
+    height: 44px;
+  }
+  tr.group.open td { border-bottom: 1px solid var(--border); }
+  .grp-head { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  /* Chevron dibujado en CSS (no glifo: JetBrains Mono no trae ▸/▾) */
+  .chev {
+    width: 14px; height: 14px; flex: 0 0 auto; position: relative;
+  }
+  .chev::before {
+    content: ''; position: absolute; left: 3px; top: 4px;
+    border-left: 5px solid var(--text-secondary);
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+  }
+  .chev.open::before {
+    left: 2px; top: 5px;
+    border-left: 4px solid transparent; border-right: 4px solid transparent;
+    border-top: 5px solid var(--text); border-bottom: none;
+  }
+  .grp-meta {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .04em;
+    color: var(--text-muted); white-space: nowrap;
+  }
+  .grp-count {
+    font-family: var(--mono); font-size: 9px; font-weight: 700; letter-spacing: .05em;
+    padding: 2px 7px; border-radius: 4px; background: rgba(250,250,248,.08);
+    color: var(--text); flex: 0 0 auto;
+  }
+  tr.child td { background: rgba(250,250,248,.015); }
+  tr.child td:first-child { position: relative; padding-left: 34px; }
+  tr.child td:first-child::before {
+    content: ''; position: absolute; left: 19px; top: 0; bottom: 0;
+    width: 1px; background: var(--border-hover);
+  }
+  tr.child.last td:first-child::before { bottom: 50%; }
+  tr.child .child-mark {
+    position: absolute; left: 19px; top: 50%; width: 9px; height: 1px;
+    background: var(--border-hover);
+  }
+  tr.child-more td {
+    background: rgba(250,250,248,.015); height: 34px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+    color: var(--text-secondary); padding-left: 34px;
+  }
+  .vigente {
+    font-family: var(--mono); font-size: 8px; font-weight: 700; letter-spacing: .06em;
+    color: var(--text-muted); border: 1px solid var(--border-hover);
+    padding: 1px 5px; border-radius: 3px;
+  }
+
+  .arch-foot {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 14px; border-top: 1px solid var(--border);
+    font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--text-muted);
+  }
+  .arch-foot .more {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    color: var(--text); border: 1px solid var(--border-hover);
+    border-radius: 7px; padding: 6px 14px; cursor: pointer;
+  }
+
+  /* ── ESTADO VACÍO ───────────────────────────────────────────────── */
+  .empty { padding: 62px 24px 70px; text-align: center; }
+  .empty .ghost {
+    display: flex; align-items: baseline; justify-content: center;
+    opacity: .08; margin-bottom: 26px; user-select: none;
+  }
+  .empty .ghost .re { font-family: var(--serif); font-size: 62px; font-style: italic; }
+  .empty .ghost .fr { font-family: var(--serif); font-size: 62px; font-weight: 700; }
+  .empty h2 { font-family: var(--serif); font-size: 26px; font-weight: 700; margin: 0 0 8px; }
+  .empty p {
+    font-family: var(--sans); font-size: 14px; color: var(--text-secondary);
+    max-width: 420px; margin: 0 auto 24px; line-height: 1.6;
+  }
+  .empty .btn-red { font-size: 14px; padding: 12px 26px; }
+  .empty .alt {
+    display: block; margin-top: 14px; font-family: var(--sans); font-size: 12px;
+    color: var(--text-secondary); text-decoration: none;
+  }
+  .empty-tri {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    max-width: 700px; margin: 40px auto 0; text-align: left;
+  }
+  .empty-tri > div {
+    border: 1px solid var(--border); border-radius: 10px; padding: 13px 15px;
+    background: var(--card);
+  }
+  .empty-tri .l {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px;
+  }
+  .empty-tri .t { font-family: var(--sans); font-size: 12.5px; color: var(--text-secondary); line-height: 1.55; }
+  .empty-tri .t b { color: var(--text); font-weight: 500; }
+
+  /* ── MOBILE 390 ─────────────────────────────────────────────────── */
+  .mob-wrap { display: flex; gap: 26px; justify-content: center; flex-wrap: wrap; }
+  .mob {
+    width: 390px; flex: 0 0 390px; background: var(--bg);
+    border: 1px solid rgba(250,250,248,.10); border-radius: 22px; overflow: hidden;
+  }
+  .mob-cap {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .08em;
+    color: var(--text-muted); text-align: center; padding: 8px 0 0;
+  }
+  .mob-bar {
+    height: 52px; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 16px; border-bottom: .5px solid var(--border);
+  }
+  .mob-body { padding: 14px 16px 22px; }
+  .mob-head h1 { font-family: var(--serif); font-size: 19px; font-weight: 700; margin: 0; }
+  .mob-head .sub { font-family: var(--mono); font-size: 10px; letter-spacing: .06em; color: var(--text-secondary); margin-top: 3px; }
+
+  .carousel {
+    display: flex; gap: 10px; overflow: hidden; margin: 0 -16px; padding: 0 16px;
+  }
+  .car-card {
+    flex: 0 0 300px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 13px 14px;
+  }
+  .car-card.first { background: linear-gradient(180deg,#242424,#1B1B1B); border-color: var(--border-hover); }
+  .car-dots { display: flex; gap: 5px; justify-content: center; margin-top: 10px; }
+  .car-dots span { width: 5px; height: 5px; border-radius: 50%; background: rgba(250,250,248,.18); }
+  .car-dots span.on { background: var(--text-secondary); width: 14px; border-radius: 3px; }
+
+  .mob-search {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--sunken); border: 1px solid var(--border-hover);
+    border-radius: 9px; padding: 9px 12px; margin-bottom: 10px;
+  }
+  .mob-chips { display: flex; gap: 6px; overflow: hidden; margin-bottom: 10px; }
+  .mlist { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .mrow {
+    padding: 11px 13px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 11px;
+  }
+  .mrow:last-child { border-bottom: none; }
+  .mrow-main { min-width: 0; flex: 1; }
+  .mrow-addr {
+    font-family: var(--serif); font-size: 14px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mrow-meta {
+    display: flex; align-items: center; gap: 6px; margin-top: 4px; flex-wrap: wrap;
+  }
+  .mrow-num { text-align: right; flex: 0 0 auto; }
+  .mrow-num .f { font-family: var(--mono); font-size: 13px; font-weight: 500; }
+  .mrow-num .f.neg { color: var(--signal-red); }
+  .mrow-num .d { font-family: var(--mono); font-size: 9px; color: var(--text-muted); margin-top: 3px; }
+  .mgroup {
+    padding: 11px 13px; background: var(--sunken); border-bottom: 1px solid var(--border-hover);
+    display: flex; align-items: center; gap: 9px;
+  }
+</style>
+
+<div class="mockup-warning">MOCKUP — DATOS FICTICIOS</div>
+
+<div class="mockup-bar">
+  <b>MOCKUP VINCULANTE · DASHBOARD v2</b> — contrato de diseño. No es código de la app; nada se implementa hasta aprobar.<br />
+  <span class="tag">TEMA</span> dark (el dashboard vive en la app, no es documento) ·
+  <span class="tag">DESKTOP</span> 1440px, contenido 1100px (mismo container que <code>UnifiedNav variant="app"</code>) ·
+  <span class="tag">MOBILE</span> 390px al final<br />
+  <span class="tag">DATOS</span> placeholder ilustrativo, internamente consistente · hoy = 28 jul 2026 ·
+  <span class="tag">CAMPOS</span> todos existen hoy en la fila <code>analisis</code>, salvo lo marcado <span class="rq">REQUIERE QUERY</span><br />
+  <span class="r">Sin JS.</span> Hover, filtro activo, orden por columna y grupo expandido están congelados en su estado.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     A · DESKTOP — DASHBOARD COMPLETO
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-label"><b>A · DESKTOP 1440</b> — dashboard completo</div>
+  <div class="sec-sub">
+    Jerarquía decidida por uso dominante (retomar): header compacto → CONTINUAR → stats accionables → ARCHIVO.
+    El archivo es la pieza que resuelve el problema de escala: búsqueda siempre visible, filtros, orden por columna
+    y agrupación por propiedad.
+  </div>
+</div>
+
+<div class="viewport">
+  <!-- TOP BAR — chrome real -->
+  <div class="topbar">
+    <div class="topbar-in">
+      <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+      <div class="nav-links">
+        <a href="#" class="on">Mis análisis</a>
+        <a href="#">Nuevo análisis</a>
+        <a href="#">Precios</a>
+      </div>
+      <div class="avatar">F</div>
+    </div>
+  </div>
+
+  <div class="page">
+    <!-- ── 1 · HEADER COMPACTO ──────────────────────────────────── -->
+    <div class="dash-head">
+      <div style="display:flex; align-items:baseline;">
+        <h1>Fabrizio, estas son tus inversiones</h1>
+        <span class="sub">215 ANÁLISIS · 187 PROPIEDADES</span>
+      </div>
+      <button class="btn-red">Analizar inversión →</button>
+    </div>
+
+    <!-- ── 2 · CONTINUAR ────────────────────────────────────────── -->
+    <div class="zone-label">Continuar</div>
+
+    <!-- Card dominante (el último análisis) -->
+    <div class="cont-hero">
+      <div class="ring" style="width:56px;height:56px;">
+        <svg width="56" height="56" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="23" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3.5" />
+          <circle cx="28" cy="28" r="23" fill="none" stroke="#FAFAF8" stroke-width="3.5"
+                  stroke-dasharray="109.8 144.5" stroke-linecap="round" transform="rotate(-90 28 28)" />
+        </svg>
+        <span class="n" style="font-size:19px;">76</span>
+      </div>
+
+      <div style="flex:1; min-width:0;">
+        <div class="prop-line">
+          <span class="prop-addr" style="font-size:19px;">Av. Pedro de Valdivia 0181</span>
+          <span class="dot-sep">·</span>
+          <span class="prop-comuna" style="font-size:13px;">Providencia</span>
+          <span class="mod ambas">AMBAS</span>
+          <span class="vb buy">COMPRAR</span>
+        </div>
+        <div class="franco-line">
+          <b>Siendo franco:</b> renta larga y renta corta dan positivo, pero la corta te obliga a operar.
+          Compara las dos antes de decidir.
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:26px;">
+        <div class="kpi">
+          <span class="l">Renta larga</span>
+          <span class="v">76 · ✓</span>
+        </div>
+        <div class="kpi">
+          <span class="l">Renta corta</span>
+          <span class="v">68 · ⚠</span>
+        </div>
+        <div class="kpi">
+          <span class="l">Flujo</span>
+          <span class="v">+$84.200</span>
+        </div>
+        <div style="text-align:right;">
+          <div class="cont-when" style="margin-bottom:6px;">hace 2 días</div>
+          <div class="cont-cta">Retomar →</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 cards compactas -->
+    <div class="cont-grid">
+      <div class="cont-card">
+        <div class="ring" style="width:40px;height:40px;">
+          <svg width="40" height="40" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3" />
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="rgba(250,250,248,.50)" stroke-width="3"
+                    stroke-dasharray="63.2 103.7" stroke-linecap="round" transform="rotate(-90 20 20)" />
+          </svg>
+          <span class="n" style="font-size:14px;">61</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div class="cc-l1">
+            <span class="prop-addr" style="font-size:13.5px;">Av. Manuel Montt 1420</span>
+            <span class="cc-right">
+              <span class="mod">LARGA</span>
+              <span class="cont-when">hace 4 días</span>
+            </span>
+          </div>
+          <div class="cc-l2">
+            <span class="vb adjust mini">AJUSTA SUPUESTOS</span>
+            <span class="cc-right">
+              <span class="kpi" style="min-width:0;">
+                <span class="l">Flujo</span>
+                <span class="v neg">−$118.400</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cont-card">
+        <div class="ring" style="width:40px;height:40px;">
+          <svg width="40" height="40" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3" />
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="#FAFAF8" stroke-width="3"
+                    stroke-dasharray="74.7 103.7" stroke-linecap="round" transform="rotate(-90 20 20)" />
+          </svg>
+          <span class="n" style="font-size:14px;">72</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div class="cc-l1">
+            <span class="prop-addr" style="font-size:13.5px;">Santa Isabel 0234</span>
+            <span class="cc-right">
+              <span class="mod str">CORTA</span>
+              <span class="cont-when">hace 6 días</span>
+            </span>
+          </div>
+          <div class="cc-l2">
+            <span class="vb buy mini">COMPRAR</span>
+            <span class="cc-right">
+              <span class="kpi" style="min-width:0;">
+                <span class="l">Flujo</span>
+                <span class="v">+$412.900</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cont-card">
+        <div class="ring" style="width:40px;height:40px;">
+          <svg width="40" height="40" viewBox="0 0 40 40">
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3" />
+            <circle cx="20" cy="20" r="16.5" fill="none" stroke="#C8323C" stroke-width="3"
+                    stroke-dasharray="39.4 103.7" stroke-linecap="round" transform="rotate(-90 20 20)" />
+          </svg>
+          <span class="n" style="font-size:14px;">38</span>
+        </div>
+        <div style="flex:1; min-width:0;">
+          <div class="cc-l1">
+            <span class="prop-addr" style="font-size:13.5px;">Av. Irarrázaval 3350</span>
+            <span class="cc-right">
+              <span class="mod">LARGA</span>
+              <span class="cont-when">hace 9 días</span>
+            </span>
+          </div>
+          <div class="cc-l2">
+            <span class="vb avoid mini">BUSCAR OTRA</span>
+            <span class="cc-right">
+              <span class="kpi" style="min-width:0;">
+                <span class="l">Flujo</span>
+                <span class="v neg">−$301.700</span>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 3 · FRANJA DE STATS ──────────────────────────────────── -->
+    <div class="stats">
+      <div class="stat">
+        <span class="l">Análisis</span>
+        <span class="v">215</span>
+        <span class="h">ver todos</span>
+      </div>
+      <div class="stat hovering">
+        <span class="l">Flujo positivo</span>
+        <span class="v">47<small> / 215</small></span>
+        <span class="h">filtrar por flujo positivo</span>
+      </div>
+      <div class="stat">
+        <span class="l">Score promedio</span>
+        <span class="v">58</span>
+        <span class="h">ordenar por score</span>
+      </div>
+      <div class="stat">
+        <span class="l">Por modalidad</span>
+        <span class="seg">
+          <span>138 <i>LARGA</i></span>
+          <span>52 <i>CORTA</i></span>
+          <span>25 <i>AMBAS</i></span>
+        </span>
+        <span class="h">filtrar por modalidad</span>
+      </div>
+    </div>
+
+    <!-- ── 4 · ARCHIVO ──────────────────────────────────────────── -->
+    <div class="zone-label">Archivo</div>
+
+    <div class="archive">
+      <div class="arch-top">
+        <div class="search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+          </svg>
+          <span class="fake ph">Buscar por dirección o comuna…</span>
+        </div>
+
+        <div class="chips">
+          <span class="chip on">Todas<span class="c">215</span></span>
+          <span class="chip">Renta larga<span class="c">138</span></span>
+          <span class="chip">Renta corta<span class="c">52</span></span>
+          <span class="chip">Ambas<span class="c">25</span></span>
+        </div>
+        <span class="chip-sep"></span>
+        <div class="chips">
+          <span class="chip">Comprar<span class="c">41</span></span>
+          <span class="chip">Ajusta supuestos<span class="c">108</span></span>
+          <span class="chip">Buscar otra<span class="c">66</span></span>
+        </div>
+
+        <div class="toggle-group">
+          <span class="switch"></span>
+          <span>Agrupar por propiedad</span>
+        </div>
+      </div>
+
+      <table class="arch">
+        <colgroup>
+          <col style="width:250px" /><col style="width:106px" /><col style="width:66px" />
+          <col style="width:128px" /><col style="width:56px" /><col style="width:94px" />
+          <col style="width:62px" /><col style="width:66px" /><col style="width:74px" />
+          <col style="width:96px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Dirección <span class="caret idle">↓</span></th>
+            <th>Comuna <span class="caret idle">↓</span></th>
+            <th>Mod.</th>
+            <th>Veredicto</th>
+            <th class="num">Score <span class="caret idle">↓</span></th>
+            <th class="num">Flujo <span class="caret idle">↓</span></th>
+            <th class="num">Cap <span class="caret idle">↓</span></th>
+            <th class="num">Retorno <span class="caret idle">↓</span></th>
+            <th class="num sorted">Fecha <span class="caret">↓</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ── GRUPO EXPANDIDO ────────────────────────────────── -->
+          <tr class="group open">
+            <td colspan="4">
+              <div class="grp-head">
+                <span class="chev open"></span>
+                <span class="prop-addr" style="font-size:13.5px;">Av. Pedro de Valdivia 0181</span>
+                <span class="grp-count">8 análisis</span>
+                <span class="grp-meta">Depto 2D1B · 54 m² · Providencia</span>
+              </div>
+            </td>
+            <td class="num"><span class="score-n">76</span></td>
+            <td class="num">+$84.200</td>
+            <td class="num dim">5,1%</td>
+            <td class="num dim">1,9×</td>
+            <td class="num dim">26 jul</td>
+            <td></td>
+          </tr>
+
+          <tr class="row child">
+            <td>
+              <span class="child-mark"></span>
+              <div class="addr-cell">
+                <span class="t" style="color:var(--text-secondary);">Comparativa larga vs corta</span>
+                <span class="vigente">VIGENTE</span>
+              </div>
+            </td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod ambas">AMBAS</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">76</span></td>
+            <td class="num">+$84.200</td>
+            <td class="num">5,1%</td>
+            <td class="num">1,9×</td>
+            <td class="num dim">26 jul</td>
+            <td><div class="acts"></div></td>
+          </tr>
+          <tr class="row child">
+            <td>
+              <span class="child-mark"></span>
+              <div class="addr-cell"><span class="t" style="color:var(--text-secondary);">Con pie 25% y tasa 4,7%</span></div>
+            </td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">64</span></td>
+            <td class="num neg">−$42.100</td>
+            <td class="num">4,4%</td>
+            <td class="num">1,6×</td>
+            <td class="num dim">22 jul</td>
+            <td><div class="acts"></div></td>
+          </tr>
+          <tr class="row child">
+            <td>
+              <span class="child-mark"></span>
+              <div class="addr-cell"><span class="t" style="color:var(--text-secondary);">Renta corta · ocupación 71%</span></div>
+            </td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod str">CORTA</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">71</span></td>
+            <td class="num">+$298.400</td>
+            <td class="num">6,2%</td>
+            <td class="num">2,1×</td>
+            <td class="num dim">19 jul</td>
+            <td><div class="acts"></div></td>
+          </tr>
+          <tr class="row child">
+            <td>
+              <span class="child-mark"></span>
+              <div class="addr-cell"><span class="t" style="color:var(--text-secondary);">Con pie 20%</span></div>
+            </td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">58</span></td>
+            <td class="num neg">−$96.300</td>
+            <td class="num">4,1%</td>
+            <td class="num">1,4×</td>
+            <td class="num dim">11 jul</td>
+            <td><div class="acts"></div></td>
+          </tr>
+          <tr class="row child last">
+            <td>
+              <span class="child-mark"></span>
+              <div class="addr-cell"><span class="t" style="color:var(--text-secondary);">Precio de lista UF 5.480</span></div>
+            </td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb avoid mini">BUSCAR OTRA</span></td>
+            <td class="num"><span class="score-n low">41</span></td>
+            <td class="num neg">−$188.700</td>
+            <td class="num">3,6%</td>
+            <td class="num">1,1×</td>
+            <td class="num dim">3 jul</td>
+            <td><div class="acts"></div></td>
+          </tr>
+          <tr class="child-more">
+            <td colspan="10">Ver los 3 análisis restantes ↓</td>
+          </tr>
+
+          <!-- ── GRUPO COLAPSADO ────────────────────────────────── -->
+          <tr class="group">
+            <td colspan="4">
+              <div class="grp-head">
+                <span class="chev"></span>
+                <span class="prop-addr" style="font-size:13.5px;">Av. Manuel Montt 1420</span>
+                <span class="grp-count">3 análisis</span>
+                <span class="grp-meta">Depto 1D1B · 38 m² · Providencia</span>
+              </div>
+            </td>
+            <td class="num"><span class="score-n mid">61</span></td>
+            <td class="num neg">−$118.400</td>
+            <td class="num dim">4,2%</td>
+            <td class="num dim">1,5×</td>
+            <td class="num dim">24 jul</td>
+            <td></td>
+          </tr>
+
+          <!-- ── FILAS SUELTAS ──────────────────────────────────── -->
+          <tr class="row hovering">
+            <td><div class="addr-cell"><span class="t">Santa Isabel 0234</span></div></td>
+            <td class="dim">Santiago</td>
+            <td><span class="mod str">CORTA</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">72</span></td>
+            <td class="num">+$412.900</td>
+            <td class="num">6,8%</td>
+            <td class="num">2,3×</td>
+            <td class="num dim">22 jul</td>
+            <td>
+              <div class="acts">
+                <span class="act" title="Abrir">→</span>
+                <span class="act" title="Descargar PDF">PDF</span>
+                <span class="act danger" title="Eliminar">✕</span>
+              </div>
+            </td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Irarrázaval 3350</span></div></td>
+            <td class="dim">Ñuñoa</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb avoid mini">BUSCAR OTRA</span></td>
+            <td class="num"><span class="score-n low">38</span></td>
+            <td class="num neg">−$301.700</td>
+            <td class="num">3,2%</td>
+            <td class="num">0,9×</td>
+            <td class="num dim">19 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Los Leones 1140</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">59</span></td>
+            <td class="num neg">−$77.500</td>
+            <td class="num">4,3%</td>
+            <td class="num">1,5×</td>
+            <td class="num dim">17 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Matta 1290</span></div></td>
+            <td class="dim">Santiago</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">78</span></td>
+            <td class="num">+$61.300</td>
+            <td class="num">5,6%</td>
+            <td class="num">2,0×</td>
+            <td class="num dim">15 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Chile España 440</span></div></td>
+            <td class="dim">Ñuñoa</td>
+            <td><span class="mod ambas">AMBAS</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">73</span></td>
+            <td class="num">+$122.800</td>
+            <td class="num">5,2%</td>
+            <td class="num">1,8×</td>
+            <td class="num dim">12 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Vicuña Mackenna 1450</span></div></td>
+            <td class="dim">Santiago</td>
+            <td><span class="mod str">CORTA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">55</span></td>
+            <td class="num">+$96.400</td>
+            <td class="num">4,9%</td>
+            <td class="num">1,3×</td>
+            <td class="num dim">10 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Dr. Johow 720</span></div></td>
+            <td class="dim">Ñuñoa</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">62</span></td>
+            <td class="num neg">−$54.900</td>
+            <td class="num">4,5%</td>
+            <td class="num">1,6×</td>
+            <td class="num dim">8 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Providencia 2124</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb avoid mini">BUSCAR OTRA</span></td>
+            <td class="num"><span class="score-n low">34</span></td>
+            <td class="num neg">−$346.200</td>
+            <td class="num">3,0%</td>
+            <td class="num">0,8×</td>
+            <td class="num dim">5 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">General Bustamante 26</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod str">CORTA</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">70</span></td>
+            <td class="num">+$351.100</td>
+            <td class="num">6,4%</td>
+            <td class="num">2,2×</td>
+            <td class="num dim">2 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Grecia 1180</span></div></td>
+            <td class="dim">Ñuñoa</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">57</span></td>
+            <td class="num neg">−$88.100</td>
+            <td class="num">4,2%</td>
+            <td class="num">1,4×</td>
+            <td class="num dim">29 jun</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <!-- Fila legacy: direccion NULL (cae a `nombre`) y sin results.metrics → cap/retorno "—" -->
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t" style="color:var(--text-secondary);">Depto 1D1B Santiago</span><span class="unit-tag">SIN DIRECCIÓN</span></div></td>
+            <td class="dim">Santiago</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb avoid mini">BUSCAR OTRA</span></td>
+            <td class="num"><span class="score-n low">29</span></td>
+            <td class="num neg">−$212.500</td>
+            <td class="num dim">—</td>
+            <td class="num dim">—</td>
+            <td class="num dim">24 jun</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Simón Bolívar 4890</span></div></td>
+            <td class="dim">Ñuñoa</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">60</span></td>
+            <td class="num neg">−$67.400</td>
+            <td class="num">4,4%</td>
+            <td class="num">1,5×</td>
+            <td class="num dim">21 jun</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="arch-foot">
+        <span>MOSTRANDO 16 DE 187 PROPIEDADES · 215 ANÁLISIS</span>
+        <span class="more">Cargar 25 más ↓</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="viewport-cap">viewport 1440 · contenido 1100 · 16 filas visibles sin scroll interno</div>
+
+<div class="note">
+  <b>Columna «Cap» — cambio respecto del brief (requiere tu OK).</b> El brief pedía una columna «rent.».
+  En un archivo con las tres modalidades mezcladas, «rentabilidad bruta» (LTR:
+  <code>results.metrics.rentabilidadBruta</code>, arriendo sobre precio, sin descontar gastos) y el número
+  equivalente de renta corta no comparten base: la corta solo tiene <code>escenarios.base.capRate</code> (NOI,
+  neto). Ordenar una columna donde una fila es bruta y la de al lado es neta produce un ranking falso.
+  <br />Por eso la columna muestra <b>cap rate para las tres modalidades</b> —
+  <code>results.metrics.capRate</code> (LTR, ya existe en el tipo) y <code>escenarios.base.capRate</code> (STR) —
+  con la misma base NOI/precio. Si prefieres conservar «rent. bruta», hay que aceptar que la columna solo
+  ordena dentro de renta larga, o abrir dos columnas.
+</div>
+
+<div class="note">
+  <b>Recencia = <code>created_at</code>.</b> La tabla <code>analisis</code> no tiene <code>updated_at</code>
+  ni ninguna marca de última apertura (verificado en <code>supabase/migrations/</code>: ninguna migración de
+  <code>analisis</code> agrega columnas de tiempo más allá de <code>created_at</code>). «Continuar» ordena por
+  creación en v1. Un «último abierto» real <span class="rq">REQUIERE QUERY</span> exige migración
+  (<code>last_opened_at timestamptz</code>) + un endpoint de touch al abrir el análisis.
+</div>
+
+<div class="note">
+  <b>Signal Red — usos en esta pantalla.</b> CTA «Analizar inversión» (uso 1) · flujos negativos (uso 2) ·
+  badge BUSCAR OTRA y anillo de score &lt; 40 (uso 3, criticidad — mismo criterio que
+  <code>ScoreCircle</code> hoy) · el <code>.ai</code> del wordmark (uso 4) · la acción eliminar del hover
+  (Capa 4: «Eliminar análisis en Signal Red para localización rápida»). En ninguna otra parte.
+  Cero ámbar, cero verde: la jerarquía la cargan tipografía y escala de Ink.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     B · ESTADO — BÚSQUEDA ACTIVA
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-label"><b>B · ESTADO</b> — búsqueda activa «Providencia» + orden por SCORE</div>
+  <div class="sec-sub">
+    La búsqueda matchea dirección y comuna. Cambia el orden activo a SCORE ↓ para mostrar el indicador
+    en otra columna. Los contadores de los chips se recalculan sobre el resultado de la búsqueda.
+  </div>
+</div>
+
+<div class="viewport">
+  <div class="page" style="padding-top:16px;">
+    <div class="archive">
+      <div class="arch-top">
+        <div class="search active">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+          </svg>
+          <span class="fake">Providencia</span>
+          <span class="clear">✕</span>
+        </div>
+
+        <div class="chips">
+          <span class="chip on">Todas<span class="c">31</span></span>
+          <span class="chip">Renta larga<span class="c">21</span></span>
+          <span class="chip">Renta corta<span class="c">6</span></span>
+          <span class="chip">Ambas<span class="c">4</span></span>
+        </div>
+        <span class="chip-sep"></span>
+        <div class="chips">
+          <span class="chip">Comprar<span class="c">7</span></span>
+          <span class="chip">Ajusta supuestos<span class="c">16</span></span>
+          <span class="chip">Buscar otra<span class="c">8</span></span>
+        </div>
+
+        <div class="toggle-group">
+          <span class="switch"></span>
+          <span>Agrupar por propiedad</span>
+        </div>
+      </div>
+
+      <table class="arch">
+        <colgroup>
+          <col style="width:250px" /><col style="width:106px" /><col style="width:66px" />
+          <col style="width:128px" /><col style="width:56px" /><col style="width:94px" />
+          <col style="width:62px" /><col style="width:66px" /><col style="width:74px" />
+          <col style="width:96px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Dirección <span class="caret idle">↓</span></th>
+            <th>Comuna <span class="caret idle">↓</span></th>
+            <th>Mod.</th>
+            <th>Veredicto</th>
+            <th class="num sorted">Score <span class="caret">↓</span></th>
+            <th class="num">Flujo <span class="caret idle">↓</span></th>
+            <th class="num">Cap <span class="caret idle">↓</span></th>
+            <th class="num">Retorno <span class="caret idle">↓</span></th>
+            <th class="num">Fecha <span class="caret idle">↓</span></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="group">
+            <td colspan="4">
+              <div class="grp-head">
+                <span class="chev"></span>
+                <span class="prop-addr" style="font-size:13.5px;">Av. Pedro de Valdivia 0181</span>
+                <span class="grp-count">8 análisis</span>
+                <span class="grp-meta">Depto 2D1B · 54 m² · Providencia</span>
+              </div>
+            </td>
+            <td class="num"><span class="score-n">76</span></td>
+            <td class="num">+$84.200</td>
+            <td class="num dim">5,1%</td>
+            <td class="num dim">1,9×</td>
+            <td class="num dim">26 jul</td>
+            <td></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">General Bustamante 26</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod str">CORTA</span></td>
+            <td><span class="vb buy mini">COMPRAR</span></td>
+            <td class="num"><span class="score-n">70</span></td>
+            <td class="num">+$351.100</td>
+            <td class="num">6,4%</td>
+            <td class="num">2,2×</td>
+            <td class="num dim">2 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="group">
+            <td colspan="4">
+              <div class="grp-head">
+                <span class="chev"></span>
+                <span class="prop-addr" style="font-size:13.5px;">Av. Manuel Montt 1420</span>
+                <span class="grp-count">3 análisis</span>
+                <span class="grp-meta">Depto 1D1B · 38 m² · Providencia</span>
+              </div>
+            </td>
+            <td class="num"><span class="score-n mid">61</span></td>
+            <td class="num neg">−$118.400</td>
+            <td class="num dim">4,2%</td>
+            <td class="num dim">1,5×</td>
+            <td class="num dim">24 jul</td>
+            <td></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Los Leones 1140</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb adjust mini">AJUSTA SUPUESTOS</span></td>
+            <td class="num"><span class="score-n mid">59</span></td>
+            <td class="num neg">−$77.500</td>
+            <td class="num">4,3%</td>
+            <td class="num">1,5×</td>
+            <td class="num dim">17 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+          <tr class="row">
+            <td><div class="addr-cell"><span class="t">Av. Providencia 2124</span></div></td>
+            <td class="dim">Providencia</td>
+            <td><span class="mod">LARGA</span></td>
+            <td><span class="vb avoid mini">BUSCAR OTRA</span></td>
+            <td class="num"><span class="score-n low">34</span></td>
+            <td class="num neg">−$346.200</td>
+            <td class="num">3,0%</td>
+            <td class="num">0,8×</td>
+            <td class="num dim">5 jul</td>
+            <td><div class="acts"><span class="act">→</span><span class="act">PDF</span><span class="act danger">✕</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="arch-foot">
+        <span>5 PROPIEDADES · 31 ANÁLISIS COINCIDEN CON «PROVIDENCIA»</span>
+        <span class="more">Cargar 25 más ↓</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Comportamiento del grupo bajo búsqueda.</b> Si la búsqueda matchea la propiedad (dirección o comuna),
+  el grupo aparece <b>colapsado</b> con su conteo completo — no se filtran los hijos, porque todos comparten
+  la misma dirección. Si el usuario apaga «Agrupar por propiedad», la tabla vuelve a filas planas y el
+  contador del pie pasa a «31 análisis».
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     C · ESTADO VACÍO
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-label"><b>C · ESTADO</b> — usuario nuevo (0 análisis)</div>
+  <div class="sec-sub">
+    Sin header, sin stats, sin archivo: la pantalla entera es la venta del primer análisis. El copy no se
+    disculpa por estar vacío — dice qué pasa cuando aprietas el botón. Tres bloques abajo responden la
+    objeción implícita («¿por qué te creo?») sin prometer retornos.
+  </div>
+</div>
+
+<div class="viewport">
+  <div class="topbar">
+    <div class="topbar-in">
+      <span class="wordmark"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+      <div class="nav-links">
+        <a href="#" class="on">Mis análisis</a>
+        <a href="#">Nuevo análisis</a>
+        <a href="#">Precios</a>
+      </div>
+      <div class="avatar">M</div>
+    </div>
+  </div>
+
+  <div class="page">
+    <div class="empty">
+      <div class="ghost">
+        <span class="re">re</span><span class="fr">franco</span>
+      </div>
+      <h2>Analiza tu primera inversión</h2>
+      <p>
+        Ingresas el depto, Franco te dice si los números dan: score, veredicto y cuánto sale de tu bolsillo
+        cada mes. Renta larga, renta corta o las dos comparadas.
+      </p>
+      <button class="btn-red">Analizar tu primera inversión →</button>
+      <a class="alt" href="#">O mira un análisis de ejemplo primero →</a>
+
+      <div class="empty-tri">
+        <div>
+          <div class="l">Toma 4 minutos</div>
+          <div class="t">Dirección, precio y pie. El resto Franco lo estima con datos de mercado y lo puedes corregir.</div>
+        </div>
+        <div>
+          <div class="l">Veredicto, no opinión</div>
+          <div class="t"><b>COMPRAR · AJUSTA SUPUESTOS · BUSCAR OTRA.</b> Sin matices en el veredicto; los matices van en el análisis.</div>
+        </div>
+        <div>
+          <div class="l">Sirve para negociar</div>
+          <div class="t">El precio que dicen los datos, no el que pide el vendedor. Con eso haces la oferta.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Nota de producto.</b> Hoy el usuario sin análisis ni <code>onboarding_completed</code> ve
+  <code>OnboardingClient</code>, no el dashboard (<code>dashboard/page.tsx:49</code>). Este estado vacío
+  aplica a quien ya pasó el onboarding y todavía no tiene análisis (o los borró todos). Nada de «créditos»
+  en el copy: el vocabulario de la UI es «el análisis».
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     D · MOBILE 390
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-label"><b>D · MOBILE 390</b> — continuar (carrusel) + archivo (lista compacta)</div>
+  <div class="sec-sub">
+    En mobile la tabla desaparece como tabla: cada análisis es una fila de lista con dirección + comuna +
+    modalidad + veredicto a la izquierda y flujo + fecha a la derecha. Cap y retorno se caen (se leen al abrir);
+    score va en el anillo. Ningún dato se pierde de la app — se reorganiza la prioridad.
+  </div>
+</div>
+
+<div class="mob-wrap">
+  <!-- ── Mobile: CONTINUAR ── -->
+  <div>
+    <div class="mob">
+      <div class="mob-bar">
+        <span class="wordmark" style="font-size:15px;"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+        <span style="font-family:var(--mono); font-size:16px; color:var(--text-secondary);">☰</span>
+      </div>
+      <div class="mob-body">
+        <div class="mob-head">
+          <h1>Fabrizio, estas son tus inversiones</h1>
+          <div class="sub">215 ANÁLISIS · 187 PROPIEDADES</div>
+        </div>
+
+        <button class="btn-red" style="width:100%; margin:14px 0 4px; padding:11px;">Analizar inversión →</button>
+
+        <div class="zone-label" style="margin-top:18px;">Continuar</div>
+
+        <div class="carousel">
+          <div class="car-card first">
+            <div style="display:flex; align-items:center; gap:11px;">
+              <div class="ring" style="width:44px;height:44px;">
+                <svg width="44" height="44" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3.2" />
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="#FAFAF8" stroke-width="3.2"
+                          stroke-dasharray="85.9 113.1" stroke-linecap="round" transform="rotate(-90 22 22)" />
+                </svg>
+                <span class="n" style="font-size:15px;">76</span>
+              </div>
+              <div style="min-width:0; flex:1;">
+                <div class="prop-addr" style="font-size:15px;">Av. Pedro de Valdivia 0181</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+                  <span class="prop-comuna" style="font-size:11px;">Providencia</span>
+                  <span class="mod ambas">AMBAS</span>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:11px;">
+              <span class="vb buy mini">COMPRAR</span>
+              <span class="kpi" style="min-width:0;"><span class="l">Flujo</span><span class="v">+$84.200</span></span>
+            </div>
+            <div class="franco-line" style="font-size:11.5px;">
+              <b>Siendo franco:</b> las dos modalidades dan positivo, pero la corta te obliga a operar.
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-top:9px;">
+              <span class="cont-when">hace 2 días</span>
+              <span class="cont-cta">Retomar →</span>
+            </div>
+          </div>
+
+          <div class="car-card">
+            <div style="display:flex; align-items:center; gap:11px;">
+              <div class="ring" style="width:44px;height:44px;">
+                <svg width="44" height="44" viewBox="0 0 44 44">
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(250,250,248,.10)" stroke-width="3.2" />
+                  <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(250,250,248,.50)" stroke-width="3.2"
+                          stroke-dasharray="69 113.1" stroke-linecap="round" transform="rotate(-90 22 22)" />
+                </svg>
+                <span class="n" style="font-size:15px;">61</span>
+              </div>
+              <div style="min-width:0; flex:1;">
+                <div class="prop-addr" style="font-size:15px;">Av. Manuel Montt 1420</div>
+                <div style="display:flex; align-items:center; gap:6px; margin-top:4px;">
+                  <span class="prop-comuna" style="font-size:11px;">Providencia</span>
+                  <span class="mod">LARGA</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="car-dots"><span class="on"></span><span></span><span></span><span></span></div>
+      </div>
+    </div>
+    <div class="mob-cap">390 · CONTINUAR (carrusel horizontal, 1 card + peek)</div>
+  </div>
+
+  <!-- ── Mobile: ARCHIVO ── -->
+  <div>
+    <div class="mob">
+      <div class="mob-bar">
+        <span class="wordmark" style="font-size:15px;"><span class="re">re</span><span class="franco">franco</span><span class="ai">.ai</span></span>
+        <span style="font-family:var(--mono); font-size:16px; color:var(--text-secondary);">☰</span>
+      </div>
+      <div class="mob-body">
+        <div class="zone-label" style="margin-top:0;">Archivo</div>
+
+        <div class="mob-search">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="opacity:.5">
+            <circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" stroke-linecap="round" />
+          </svg>
+          <span style="font-family:var(--sans); font-size:13px; color:var(--text-muted);">Buscar dirección o comuna…</span>
+        </div>
+
+        <div class="mob-chips">
+          <span class="chip on">Todas<span class="c">215</span></span>
+          <span class="chip">Larga<span class="c">138</span></span>
+          <span class="chip">Corta<span class="c">52</span></span>
+          <span class="chip">Ambas<span class="c">25</span></span>
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;">
+          <span style="font-family:var(--mono); font-size:9px; letter-spacing:.08em; color:var(--text-muted);">ORDEN · FECHA ↓</span>
+          <span class="toggle-group" style="margin:0; font-size:11px;">
+            <span class="switch" style="width:26px;height:15px;"></span>
+            <span>Agrupar</span>
+          </span>
+        </div>
+
+        <div class="mlist">
+          <div class="mgroup">
+            <span class="chev"></span>
+            <div style="flex:1; min-width:0;">
+              <div class="mrow-addr" style="font-size:13.5px;">Av. Pedro de Valdivia 0181</div>
+              <div class="grp-meta" style="margin-top:3px;">8 análisis · mejor 76 · 26 jul</div>
+            </div>
+            <span class="score-n">76</span>
+          </div>
+
+          <div class="mrow">
+            <div class="mrow-main">
+              <div class="mrow-addr">Santa Isabel 0234</div>
+              <div class="mrow-meta">
+                <span class="prop-comuna" style="font-size:11px;">Santiago</span>
+                <span class="mod str">CORTA</span>
+                <span class="vb buy mini">COMPRAR</span>
+              </div>
+            </div>
+            <div class="mrow-num">
+              <div class="f">+$412.900</div>
+              <div class="d">72 · 22 JUL</div>
+            </div>
+          </div>
+
+          <div class="mrow">
+            <div class="mrow-main">
+              <div class="mrow-addr">Av. Irarrázaval 3350</div>
+              <div class="mrow-meta">
+                <span class="prop-comuna" style="font-size:11px;">Ñuñoa</span>
+                <span class="mod">LARGA</span>
+                <span class="vb avoid mini">BUSCAR OTRA</span>
+              </div>
+            </div>
+            <div class="mrow-num">
+              <div class="f neg">−$301.700</div>
+              <div class="d">38 · 19 JUL</div>
+            </div>
+          </div>
+
+          <div class="mrow">
+            <div class="mrow-main">
+              <div class="mrow-addr">Los Leones 1140</div>
+              <div class="mrow-meta">
+                <span class="prop-comuna" style="font-size:11px;">Providencia</span>
+                <span class="mod">LARGA</span>
+                <span class="vb adjust mini">AJUSTA SUPUESTOS</span>
+              </div>
+            </div>
+            <div class="mrow-num">
+              <div class="f neg">−$77.500</div>
+              <div class="d">59 · 17 JUL</div>
+            </div>
+          </div>
+
+          <div class="mrow">
+            <div class="mrow-main">
+              <div class="mrow-addr">Av. Matta 1290</div>
+              <div class="mrow-meta">
+                <span class="prop-comuna" style="font-size:11px;">Santiago</span>
+                <span class="mod">LARGA</span>
+                <span class="vb buy mini">COMPRAR</span>
+              </div>
+            </div>
+            <div class="mrow-num">
+              <div class="f">+$61.300</div>
+              <div class="d">78 · 15 JUL</div>
+            </div>
+          </div>
+
+          <div class="mrow">
+            <div class="mrow-main">
+              <div class="mrow-addr">Chile España 440</div>
+              <div class="mrow-meta">
+                <span class="prop-comuna" style="font-size:11px;">Ñuñoa</span>
+                <span class="mod ambas">AMBAS</span>
+                <span class="vb buy mini">COMPRAR</span>
+              </div>
+            </div>
+            <div class="mrow-num">
+              <div class="f">+$122.800</div>
+              <div class="d">73 · 12 JUL</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align:center; margin-top:12px;">
+          <span class="more" style="font-family:var(--mono); font-size:10px; letter-spacing:.08em; color:var(--text); border:1px solid var(--border-hover); border-radius:7px; padding:8px 16px;">Cargar 25 más ↓</span>
+        </div>
+      </div>
+    </div>
+    <div class="mob-cap">390 · ARCHIVO (lista compacta, no tabla)</div>
+  </div>
+</div>
+
+<div class="note">
+  <b>Mobile — acciones de fila.</b> No hay hover. Abrir = tap en la fila. PDF y eliminar viven en swipe-left
+  o en un menú «···» al final de la fila (decisión de implementación; el mockup no la fija). Eliminar
+  mantiene su confirm explícito.
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     E · NOTAS DE IMPLEMENTACIÓN
+     ══════════════════════════════════════════════════════════════════ -->
+<div class="sec">
+  <div class="sec-label"><b>E · NOTAS</b> — inventario de campos · agrupación · estado nuevo</div>
+</div>
+
+<div class="mockup-bar" style="line-height:1.9;">
+  <b>E.1 · INVENTARIO — lo que la query de hoy YA trae</b><br />
+  <code>select("*").eq("user_id").eq("pending_payment", false).order("created_at", desc)</code> — cada fila trae:<br />
+  <span class="tag">OK</span> <b>id · user_id · nombre · comuna · ciudad · direccion · tipo · dormitorios · banos · superficie · antiguedad · precio · arriendo · gastos · contribuciones · score · desglose · resumen · results · input_data · is_premium · created_at · tipo_analisis · ambas_group_id · ambas_role · ambas_unlocked_at</b><br />
+  <br />
+  <b>Mapeo columna → campo</b><br />
+  · <b>Dirección</b> = <code>direccion</code> vía <code>formatDireccionDisplay()</code> (limpia el
+  <code>formatted_address</code> de Google). <span class="r">Nullable</span> → fallback a <code>nombre</code>
+  (autogenerado por el wizard: <code>"Depto 2D1B Providencia"</code>, <code>wizardV4Submit.ts:75</code>).<br />
+  · <b>Comuna</b> = <code>comuna</code> (columna, autoritativa).<br />
+  · <b>Modalidad</b> = <code>tipo_analisis</code> (<code>long-term</code> | <code>short-term</code>);
+  AMBAS = par con <code>ambas_group_id</code> compartido → <b>el chip AMBAS existe</b> (migración 20260715).<br />
+  · <b>Veredicto</b> = <code>results.francoScore.veredicto</code> / <code>results.veredicto</code> normalizado
+  con <code>normalizeLegacyVerdict()</code>; fallback por <code>score</code> (70 / 45 / 0).<br />
+  · <b>Score</b> = <code>score</code> (LTR) · <code>results.francoScore.score</code> (STR).<br />
+  · <b>Flujo</b> = <code>results.metrics.flujoNetoMensual</code> (LTR) ·
+  <code>results.escenarios.base.flujoCajaMensual</code> (STR).<br />
+  · <b>Cap</b> = <code>results.metrics.capRate</code> (LTR) · <code>results.escenarios.base.capRate</code> (STR).<br />
+  · <b>Retorno</b> = <code>results.exitScenario.multiplicadorCapital</code> — existe en ambos motores
+  (<code>short-term-engine.ts:900</code>).<br />
+  · <b>Fecha</b> = <code>created_at</code>.<br />
+  · <b>Metadata del grupo</b> (Depto 2D1B · 54 m²) = <code>dormitorios</code> + <code>banos</code> +
+  <code>superficie</code>, columnas top-level.<br />
+  · <b>PDF</b> = <code>GET /api/analisis/[id]/pdf</code> y <code>/api/analisis/renta-corta/[id]/pdf</code> — ya existen.<br />
+  <br />
+  <span class="r">FALTA (no está en la fila):</span><br />
+  · <span class="rq">REQUIERE QUERY</span> <b>última apertura.</b> No hay <code>updated_at</code> ni
+  <code>last_opened_at</code> en <code>analisis</code>. «Continuar» usa <code>created_at</code> en v1.
+  Para recencia-por-uso real: migración + touch endpoint.<br />
+  · <span class="rq">REQUIERE QUERY</span> <b>conteos globales de los chips y stats sobre 215 filas.</b>
+  Derivables en cliente si se traen todas las filas, pero eso es lo que hoy no escala. Ver E.3.<br />
+  · <b>Legacy sin <code>results</code>:</b> filas viejas no tienen <code>metrics</code> → Cap y Retorno
+  muestran «—» (fila «Depto 1D1B Santiago» del mockup). El flujo cae al cálculo crudo
+  <code>arriendo − gastos − contribuciones</code> que ya hace <code>getMetrics()</code>.
+</div>
+
+<div class="mockup-bar" style="line-height:1.9;">
+  <b>E.2 · CRITERIO DE AGRUPACIÓN PROPUESTO</b><br />
+  <br />
+  <b>Clave = <code>normalizar(direccion)</code> + <code>comuna</code>.</b> Normalizar = primer segmento
+  antes de la coma (lo que ya hace <code>formatDireccionDisplay</code>), minúsculas, sin tildes, colapsar
+  espacios, normalizar abreviaturas de vía (<code>av.</code> / <code>avda</code> / <code>avenida</code> → una sola).
+  Fila sin <code>direccion</code> → <b>no agrupa</b>: queda suelta.<br />
+  <br />
+  <span class="r">Por qué NO agrupar por <code>nombre</code>:</span> el wizard lo autogenera como
+  «Depto 2D1B Providencia». Decenas de propiedades distintas comparten ese string. Agruparía cosas que no
+  son la misma propiedad — el peor error posible acá.<br />
+  <br />
+  <span class="r">Por qué NO agregar <code>superficie</code> a la clave:</span> desagrega exactamente el caso
+  que queremos juntar. El uso dominante es «re-analicé el mismo depto cambiando supuestos», y la superficie
+  es uno de los supuestos que el usuario corrige entre corridas. Con superficie en la clave, dos corridas del
+  mismo depto (54 m² y 54,5 m²) caen en grupos distintos.<br />
+  <br />
+  <b>Riesgos asumidos</b><br />
+  1. <b>Sobre-agrupación por edificio.</b> Google Places suele devolver la dirección del edificio sin número
+  de depto. Dos unidades distintas de «Av. Pedro de Valdivia 0181» caen en el mismo grupo. Mitigación en el
+  mockup: la fila del grupo muestra <code>Depto 2D1B · 54 m²</code>, y si los hijos difieren en dormitorios o
+  superficie hay que <b>mostrar esa diferencia en la fila hija</b> en vez de la etiqueta de supuestos.
+  Alternativa si esto duele en datos reales: clave = dirección + dormitorios (más estable que superficie).<br />
+  2. <b>Sub-agrupación por variantes de formato.</b> «Pedro de Valdivia 181» vs «Av. Pedro de Valdivia 0181»
+  (el cero a la izquierda es real en Providencia) no matchean. La normalización de abreviaturas no cubre el
+  cero. Costo: grupos duplicados — molesto, no peligroso.<br />
+  3. <b>Filas sin dirección quedan siempre sueltas.</b> Es correcto (no hay clave confiable) pero significa
+  que el archivo histórico de un usuario viejo puede no agruparse casi nada. Por eso el toggle
+  «Agrupar por propiedad» debe poder <b>apagarse</b>, no ser el único modo.<br />
+  4. <b>El par AMBAS ya es un grupo.</b> La agrupación por propiedad es un <b>segundo</b> nivel encima del
+  colapso AMBAS que ya existe (<code>buildDisplayItems</code>). Un hijo del grupo puede ser un par AMBAS
+  colapsado — así está en el mockup (primer hijo del grupo expandido). No se pueden mezclar los dos niveles
+  en una sola pasada.<br />
+  <br />
+  <b>Etiqueta del hijo.</b> En el mockup los hijos se identifican por el supuesto que los diferencia
+  («Con pie 25% y tasa 4,7%»). Ese texto <span class="rq">REQUIERE QUERY</span>: hoy no existe como campo.
+  Se puede derivar en cliente de <code>input_data</code> (piePct, tasaInteres, precio) comparando cada hijo
+  contra el más reciente del grupo, o dejar la fila hija sin etiqueta en v1 y mostrar solo modalidad + fecha.
+  <b>Decisión pendiente.</b>
+</div>
+
+<div class="mockup-bar" style="line-height:1.9;">
+  <b>E.3 · QUÉ NECESITA ESTADO O ENDPOINT NUEVO</b><br />
+  <br />
+  <b>Búsqueda — server, no cliente.</b> Traer 215 filas con <code>results</code> y <code>input_data</code>
+  (jsonb grandes) es justamente el problema actual. Propuesta: la página deja de hacer
+  <code>select("*")</code> y pasa a un <b>select de proyección</b> (solo las columnas de la tabla + los 4
+  números extraídos) paginado. Dos caminos:<br />
+  · <b>a)</b> Vista/RPC en Postgres que aplane <code>results</code> a columnas
+  (<code>flujo</code>, <code>cap_rate</code>, <code>multiplicador</code>, <code>veredicto</code>) + índices
+  sobre <code>user_id, created_at</code> y trigram sobre <code>direccion</code>. Búsqueda y orden 100% server.
+  Es el camino correcto para 215+ y el que habilita el orden por columna sin traer todo.<br />
+  · <b>b)</b> Server Component con <code>searchParams</code> (<code>?q=&mod=&v=&sort=&page=</code>): el
+  filtro/orden viaja en la URL, la query se arma en el server. Sin RPC, pero el orden por flujo/cap exige
+  igual aplanar el jsonb.<br />
+  <b>Recomendación: (a) la vista aplanada, y (b) como forma de la UI encima.</b> URL como estado hace que
+  filtro + búsqueda + orden sean compartibles y sobrevivan al back del browser — que es lo que rompe hoy.<br />
+  <br />
+  <b>Orden por columna.</b> Server, sobre la vista aplanada. Sin ella, ordenar por flujo o cap obliga a
+  traer todo. Estado: <code>sort</code> + <code>dir</code> en la URL.<br />
+  <br />
+  <b>Expansión de grupos.</b> Estado local de cliente (<code>Set&lt;groupKey&gt;</code>), sin endpoint —
+  pero solo si los hijos ya vinieron. Con paginación server, un grupo de 8 cuyos hijos están repartidos entre
+  páginas queda incompleto. Propuesta: la consulta agrupada devuelve <b>una fila por grupo</b>
+  (con <code>count</code>, <code>max(score)</code>, <code>max(created_at)</code> vía window function) y los
+  hijos se piden al expandir: <code>GET /api/analisis/grupo?key=…</code>. Eso agrega un endpoint nuevo.<br />
+  <br />
+  <b>Stats accionables.</b> Los 4 números son agregados sobre TODAS las filas del usuario, no sobre la página
+  visible → deben venir de una query de agregación aparte (una sola RPC con
+  <code>count</code>, <code>avg(score)</code>, <code>count where flujo&gt;0</code>,
+  <code>count by tipo_analisis</code>). Clickear una stat = navegar con el filtro en la URL, sin estado propio.<br />
+  <br />
+  <b>Eliminar.</b> Ya existe (delete directo por Supabase client + confirm; group-aware por
+  <code>ambas_group_id</code>). Se mantiene. El análisis demo
+  (<code>6db7a9ac-f030-4ccf-b5a8-5232ae997fb1</code>) sigue sin botón de eliminar.<br />
+  <br />
+  <b>Lo que se cae del dashboard actual:</b> checkboxes de comparación + barra flotante «Comparar N».
+  El brief pide fila con hover sin checkboxes. Si <code>/comparar</code> se quiere conservar, la entrada
+  natural pasa a ser el grupo por propiedad («comparar los 8 análisis de esta dirección»).
+  <b>Decisión pendiente</b> — el mockup no la resuelve.
+</div>

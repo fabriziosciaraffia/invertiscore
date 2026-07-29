@@ -132,6 +132,13 @@ export function fmtCLPSigned(n: number): string {
   return `$0`;
 }
 
+/** Precio de compra en UF, formato chileno: `UF 5.480` (símbolo antes). */
+export function fmtUF(n: number | null | undefined): string {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v <= 0) return "—";
+  return `UF ${Math.round(v).toLocaleString("es-CL")}`;
+}
+
 /** Cap rate — ya viene en porcentaje desde la vista. NULL en filas legacy. */
 export function fmtCap(n: number | null): string {
   if (n === null || !Number.isFinite(n)) return "—";
