@@ -31,6 +31,10 @@ export interface DashboardParams {
   sort: DashboardSortKey;
   dir: SortDir;
   page: number;
+  /** Modo «Agrupar por propiedad». */
+  group: boolean;
+  /** Claves de grupo expandidas (solo aplica con `group`). */
+  open: string[];
 }
 
 export function parseParams(sp: Record<string, string | string[] | undefined>): DashboardParams {
@@ -50,6 +54,9 @@ export function parseParams(sp: Record<string, string | string[] | undefined>): 
     sort: SORTS.includes(sort) ? sort : "fecha",
     dir: one("dir") === "asc" ? "asc" : "desc",
     page: Number.isFinite(pageNum) && pageNum > 0 ? Math.min(pageNum, 40) : 0,
+    group: one("group") === "1",
+    // Tope de 12 grupos abiertos: la URL es estado compartible, no un buffer.
+    open: one("open").split("~").filter(Boolean).slice(0, 12),
   };
 }
 
@@ -69,9 +76,43 @@ export function buildHref(current: DashboardParams, patch: Partial<DashboardPara
   if (next.sort !== "fecha") sp.set("sort", next.sort);
   if (next.dir !== "desc") sp.set("dir", next.dir);
   if (next.page > 0) sp.set("page", String(next.page));
+  if (next.group) sp.set("group", "1");
+  if (next.group && next.open.length > 0) sp.set("open", next.open.join("~"));
 
   const qs = sp.toString();
   return qs ? `/dashboard?${qs}#archivo` : "/dashboard";
+}
+
+/**
+ * Estado de expansión de un grupo. La clave viaja en `?open=` y el prefijo `*`
+ * significa «además, mostrame todos los hijos».
+ *
+ * Por qué un prefijo y no una búsqueda por dirección: los miembros de un grupo
+ * tienen strings de dirección DISTINTOS que normalizan a la misma clave («Av.
+ * Providencia 1234» y «Avenida Providencia 1234»). Un `?q=` recuperaría solo
+ * una parte del grupo, y el link diría «ver los 59 restantes» para mostrar 28.
+ */
+export function grupoAbierto(p: DashboardParams, key: string): boolean {
+  return p.open.includes(key) || p.open.includes(`*${key}`);
+}
+
+export function grupoMuestraTodos(p: DashboardParams, key: string): boolean {
+  return p.open.includes(`*${key}`);
+}
+
+/** Href que alterna la expansión de un grupo, conservando el resto del estado. */
+export function toggleGrupoHref(current: DashboardParams, key: string): string {
+  const abierto = grupoAbierto(current, key);
+  const sinEste = current.open.filter((k) => k !== key && k !== `*${key}`);
+  const open = abierto ? sinEste : [...sinEste, key];
+  // La expansión no debe resetear la página: el usuario está mirando esta.
+  return buildHref(current, { open, page: current.page });
+}
+
+/** Href que expande un grupo a TODOS sus hijos. */
+export function verTodosHref(current: DashboardParams, key: string): string {
+  const sinEste = current.open.filter((k) => k !== key && k !== `*${key}`);
+  return buildHref(current, { open: [...sinEste, `*${key}`], page: current.page });
 }
 
 /** Click en un header de columna: misma columna alterna dirección, otra empieza desc. */

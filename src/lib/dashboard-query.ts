@@ -129,6 +129,70 @@ export function sanitizeSearch(raw: string): string {
 }
 
 /**
+ * Filtros compartidos por la consulta paginada y la consulta completa (modo
+ * agrupado). Están acá y no duplicados para que «buscar» y «filtrar» signifiquen
+ * exactamente lo mismo con y sin agrupación.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function aplicarFiltros(query: any, p: {
+  userId: string; q?: string; modalidad: ModalidadFilter; veredicto: VeredictoFilter;
+}) {
+  let out = query
+    .eq("user_id", p.userId)
+    // Regla existente: las filas bloqueadas pre-pago no son del usuario todavía.
+    .eq("pending_payment", false)
+    // Una fila por unidad. El lado `str` de un par se pide con fetchAmbasSiblings.
+    .eq("es_unidad", true);
+
+  // Modalidad. Espejo del dashboard actual: un AMBAS no pertenece a una
+  // modalidad única, así que solo aparece bajo "todas" o bajo su propio filtro.
+  if (p.modalidad === "ambas") {
+    out = out.not("ambas_group_id", "is", null);
+  } else if (p.modalidad === "long-term" || p.modalidad === "short-term") {
+    out = out.is("ambas_group_id", null).eq("tipo_analisis", p.modalidad);
+  }
+
+  // Veredicto: un par matchea si CUALQUIERA de sus dos lados lo tiene.
+  if (p.veredicto !== "todos") {
+    out = out.eq(VERDICT_COLUMN[p.veredicto], true);
+  }
+
+  if (p.q) {
+    const term = sanitizeSearch(p.q);
+    if (term) {
+      const like = `%${term}%`;
+      out = out.or(`direccion.ilike.${like},comuna.ilike.${like},nombre.ilike.${like}`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Todas las unidades que matchean el filtro, sin paginar. Solo la usa el modo
+ * «Agrupar por propiedad»: agrupar bien exige ver el conjunto completo, porque
+ * dos análisis de la misma dirección pueden caer en páginas distintas.
+ *
+ * El costo es asumible y está medido: una fila aplanada pesa ~0,7 KB, así que
+ * 215 unidades son ~150 KB contra los ~5 MB que traía el dashboard viejo. Si
+ * la agrupación pasa a ser el modo por defecto, esto se muda a SQL (vista
+ * agregada + endpoint de hijos); hoy, con el modo opt-in, no lo justifica.
+ */
+export async function fetchAllUnits(
+  supabase: SupabaseClient,
+  params: Omit<DashboardQueryParams, "page" | "pageSize" | "sort" | "dir">,
+  limite = 2000,
+): Promise<AnalisisDashboardRow[]> {
+  const { userId, q, modalidad = "todas", veredicto = "todos" } = params;
+  const { data, error } = await aplicarFiltros(supabase.from(VIEW).select("*"), {
+    userId, q, modalidad, veredicto,
+  })
+    .order("created_at", { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(`dashboard-query (todas): ${error.message}`);
+  return (data ?? []) as AnalisisDashboardRow[];
+}
+
+/**
  * Una página de la lista del archivo. Devuelve UNA fila por unidad:
  * los análisis sueltos y, de cada par AMBAS, el lado `ltr`.
  *
@@ -152,38 +216,10 @@ export async function queryDashboardRows(
     pageSize = DEFAULT_PAGE_SIZE,
   } = params;
 
-  let query = supabase
-    .from(VIEW)
-    .select("*", { count: "exact" })
-    .eq("user_id", userId)
-    // Regla existente: las filas bloqueadas pre-pago no son del usuario todavía.
-    .eq("pending_payment", false);
-
-  // Una fila por unidad. El lado `str` de un par se pide con fetchAmbasSiblings.
-  query = query.eq("es_unidad", true);
-
-  // Modalidad. Espejo del dashboard actual: un AMBAS no pertenece a una
-  // modalidad única, así que solo aparece bajo "todas" o bajo su propio filtro.
-  if (modalidad === "ambas") {
-    query = query.not("ambas_group_id", "is", null);
-  } else if (modalidad === "long-term" || modalidad === "short-term") {
-    query = query.is("ambas_group_id", null).eq("tipo_analisis", modalidad);
-  }
-
-  // Veredicto: un par matchea si CUALQUIERA de sus dos lados lo tiene.
-  if (veredicto !== "todos") {
-    query = query.eq(VERDICT_COLUMN[veredicto], true);
-  }
-
-  if (q) {
-    const term = sanitizeSearch(q);
-    if (term) {
-      const like = `%${term}%`;
-      query = query.or(
-        `direccion.ilike.${like},comuna.ilike.${like},nombre.ilike.${like}`,
-      );
-    }
-  }
+  let query = aplicarFiltros(
+    supabase.from(VIEW).select("*", { count: "exact" }),
+    { userId, q, modalidad, veredicto },
+  );
 
   const column = SORT_COLUMN[sort] ?? SORT_COLUMN.fecha;
   const ascending = dir === "asc";

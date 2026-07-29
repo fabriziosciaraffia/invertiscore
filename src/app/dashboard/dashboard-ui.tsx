@@ -116,6 +116,34 @@ export function ScoreRing({ score, size = 40 }: { score: number; size?: number }
   );
 }
 
+// ─── Chevron de grupo ───────────────────────────────────────────────────────
+// Dibujado en CSS y no como glifo: JetBrains Mono no trae ▸/▾ y el fallback de
+// fuente los renderiza de tamaños distintos entre estados.
+export function Chevron({ abierto }: { abierto: boolean }) {
+  return (
+    <span className="relative inline-block h-3.5 w-3.5 shrink-0" aria-hidden="true">
+      <span
+        className="absolute"
+        style={
+          abierto
+            ? {
+                left: 2, top: 5,
+                borderLeft: "4px solid transparent",
+                borderRight: "4px solid transparent",
+                borderTop: "5px solid var(--franco-text)",
+              }
+            : {
+                left: 3, top: 4,
+                borderTop: "4px solid transparent",
+                borderBottom: "4px solid transparent",
+                borderLeft: "5px solid var(--franco-text-secondary)",
+              }
+        }
+      />
+    </span>
+  );
+}
+
 // ─── Rótulo de zona ─────────────────────────────────────────────────────────
 export function ZoneLabel({ children, id }: { children: React.ReactNode; id?: string }) {
   return (

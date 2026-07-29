@@ -5,10 +5,12 @@ import { ensureWelcomeEmail, resolveDisplayName } from "@/lib/welcome";
 import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import {
   queryDashboardRows,
+  fetchAllUnits,
   fetchAmbasSiblings,
   fetchDashboardStats,
   type AnalisisDashboardRow,
 } from "@/lib/dashboard-query";
+import { agruparPorPropiedad, contarUnidades } from "./agrupar";
 import { OnboardingClient } from "./onboarding-client";
 import { Continuar } from "./continuar";
 import { StatsStrip } from "./stats-strip";
@@ -69,19 +71,37 @@ export default async function DashboardPage({
   // vez de saltar a un offset. Con 215 unidades el costo es irrelevante y la URL
   // sigue describiendo exactamente lo que se ve — un `?page=3` compartido
   // muestra las mismas 100 filas al que lo abre.
-  const [stats, page] = await Promise.all([
+  const filtros = {
+    userId: user.id,
+    q: params.q || undefined,
+    modalidad: params.mod,
+    veredicto: params.v,
+  };
+
+  const tope = (params.page + 1) * PAGE_SIZE;
+
+  // En modo agrupado hay que ver el conjunto completo: dos análisis de la misma
+  // dirección pueden caer en páginas distintas y el grupo saldría partido.
+  const [stats, plano, todas] = await Promise.all([
     fetchDashboardStats(supabase, user.id),
-    queryDashboardRows(supabase, {
-      userId: user.id,
-      q: params.q || undefined,
-      modalidad: params.mod,
-      veredicto: params.v,
-      sort: params.sort,
-      dir: params.dir,
-      page: 0,
-      pageSize: (params.page + 1) * PAGE_SIZE,
-    }),
+    params.group
+      ? Promise.resolve(null)
+      : queryDashboardRows(supabase, { ...filtros, sort: params.sort, dir: params.dir, page: 0, pageSize: tope }),
+    params.group ? fetchAllUnits(supabase, filtros) : Promise.resolve(null),
   ]);
+
+  // Agrupado: se agrupa y ordena en TS (la normalización de direcciones —
+  // tildes, abreviaturas de vía — es mucho más mantenible acá que en SQL) y
+  // recién después se pagina, esta vez por PROPIEDAD y no por fila.
+  const agrupacion = todas ? agruparPorPropiedad(todas, params.sort, params.dir) : null;
+  const itemsVisibles = agrupacion ? agrupacion.slice(0, tope) : undefined;
+
+  const filasPagina = plano?.rows ?? [];
+  const totalArchivo = todas ? todas.length : (plano?.total ?? 0);
+  const hayMas = agrupacion
+    ? (itemsVisibles?.length ?? 0) < agrupacion.length
+    : (plano?.hasMore ?? false);
+  const unidadesVisibles = itemsVisibles ? contarUnidades(itemsVisibles) : filasPagina.length;
 
   if (stats.total === 0) {
     return (
@@ -105,7 +125,7 @@ export default async function DashboardPage({
 
   // Los hermanos `str` de los pares AMBAS de ambas zonas, en una sola consulta,
   // y el «Siendo franco:» de la card hero — en paralelo, no encadenados.
-  const groupIds = [...page.rows, ...recientes.rows]
+  const groupIds = [...(todas ?? filasPagina), ...recientes.rows]
     .map((r) => r.ambas_group_id)
     .filter((g): g is string => Boolean(g));
   const hero: AnalisisDashboardRow | undefined = recientes.rows[0];
@@ -148,12 +168,14 @@ export default async function DashboardPage({
         <StatsStrip stats={stats} params={params} />
 
         <Archive
-          rows={page.rows}
+          rows={filasPagina}
+          items={itemsVisibles}
           siblings={siblings}
-          total={page.total}
-          hasMore={page.hasMore}
+          total={totalArchivo}
+          hasMore={hayMas}
           params={params}
           stats={stats}
+          unidadesVisibles={unidadesVisibles}
         />
       </div>
     </div>

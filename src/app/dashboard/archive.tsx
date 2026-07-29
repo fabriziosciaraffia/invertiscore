@@ -1,21 +1,22 @@
 /**
  * ARCHIVO — la pieza que resuelve el problema de escala.
  *
- * Desktop: tabla densa (filas de 40px, ~16 visibles) con búsqueda siempre
- * visible, chips de modalidad y veredicto con conteos reales, y orden por
- * columna. Mobile: la misma información como lista compacta, no como tabla.
+ * Desktop: tabla densa (filas de 40px) con búsqueda siempre visible, chips de
+ * modalidad y veredicto con conteos reales, orden por columna y agrupación por
+ * propiedad opcional. Mobile: la misma información como lista compacta.
  *
- * Todo el estado vive en la URL (`?q=&mod=&v=&sort=&dir=&page=`). Los chips y
- * los headers de columna son <Link>, así que filtran y ordenan sin JavaScript;
- * lo único que necesita cliente es el input de búsqueda (debounce) y el borrado.
+ * Todo el estado vive en la URL (`?q=&mod=&v=&sort=&dir=&page=&group=&open=`).
+ * Los chips, los headers de columna y los chevrons de grupo son <Link>, así que
+ * filtran, ordenan y expanden sin JavaScript; lo único que necesita cliente es
+ * el input de búsqueda (debounce) y el borrado.
  *
- * Sin agrupación por propiedad todavía — eso es el goal 3. Sin checkboxes ni
- * barra flotante de comparar: murieron con el dashboard viejo.
+ * Sin checkboxes ni barra flotante de comparar: murieron con el dashboard viejo.
  */
 
 import Link from "next/link";
-import type { AnalisisDashboardRow, DashboardStats } from "@/lib/dashboard-query";
+import type { AnalisisDashboardRow, DashboardStats, DashboardSortKey } from "@/lib/dashboard-query";
 import type { Veredicto } from "@/lib/types";
+import type { ItemArchivo } from "./agrupar";
 import {
   buildHref,
   displayDireccion,
@@ -28,22 +29,33 @@ import {
   modalidadLabel,
   sinDireccion,
   sortHref,
+  toggleGrupoHref,
+  grupoAbierto,
+  grupoMuestraTodos,
+  verTodosHref,
   veredictoDisplay,
   PAGE_SIZE,
   type DashboardParams,
 } from "./dashboard-helpers";
-import { ModChip, VerdictBadge, ZoneLabel, scoreColor } from "./dashboard-ui";
+import { Chevron, ModChip, VerdictBadge, ZoneLabel, scoreColor } from "./dashboard-ui";
 import { ArchiveSearch } from "./archive-search";
 import { RowActions } from "./row-actions";
-import type { DashboardSortKey } from "@/lib/dashboard-query";
+
+/** Hijos que se muestran al expandir un grupo antes de ofrecer «ver el resto». */
+const HIJOS_VISIBLES = 8;
 
 interface Props {
+  /** Filas planas de la página (modo sin agrupar). */
   rows: AnalisisDashboardRow[];
+  /** Ítems de la página en modo agrupado (grupos + filas sueltas). */
+  items?: ItemArchivo[];
   siblings: Map<string, AnalisisDashboardRow>;
   total: number;
   hasMore: boolean;
   params: DashboardParams;
   stats: DashboardStats;
+  /** Unidades representadas en pantalla (en agrupado ≠ cantidad de ítems). */
+  unidadesVisibles: number;
 }
 
 // ─── Chips ──────────────────────────────────────────────────────────────────
@@ -89,18 +101,16 @@ function Conteo({ n }: { n: number }) {
 // ─── Header de columna ordenable ────────────────────────────────────────────
 
 function Th({
-  params, sortKey, label, num = false, className = "",
+  params, sortKey, label, num = false,
 }: {
-  params: DashboardParams; sortKey?: DashboardSortKey; label: string; num?: boolean; className?: string;
+  params: DashboardParams; sortKey?: DashboardSortKey; label: string; num?: boolean;
 }) {
   const activo = sortKey !== undefined && params.sort === sortKey;
   const cls = `border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))] px-2.5 py-2 font-mono text-[9px] font-medium uppercase tracking-[0.09em] ${
     num ? "text-right" : "text-left"
-  } ${activo ? "text-[var(--franco-text)]" : "text-[var(--franco-text-muted)]"} ${className}`;
+  } ${activo ? "text-[var(--franco-text)]" : "text-[var(--franco-text-muted)]"}`;
 
-  if (!sortKey) {
-    return <th scope="col" className={cls}>{label}</th>;
-  }
+  if (!sortKey) return <th scope="col" className={cls}>{label}</th>;
   return (
     <th scope="col" className={cls} aria-sort={activo ? (params.dir === "asc" ? "ascending" : "descending") : "none"}>
       <Link href={sortHref(params, sortKey)} className="whitespace-nowrap text-inherit no-underline hover:text-[var(--franco-text)]">
@@ -113,13 +123,170 @@ function Th({
   );
 }
 
-// ─── Tabla ──────────────────────────────────────────────────────────────────
+// ─── Celdas numéricas compartidas ───────────────────────────────────────────
 
-export function Archive({ rows, siblings, total, hasMore, params, stats }: Props) {
+function CeldasNumericas({ row, atenuado = false }: { row: AnalisisDashboardRow; atenuado?: boolean }) {
+  const flujo = Number(row.flujo);
+  const dim = atenuado ? "text-[var(--franco-text-muted)]" : "text-[var(--franco-text)]";
+  return (
+    <>
+      <td className="h-10 px-2.5 text-right align-middle">
+        <span className="font-mono text-[13px] font-bold" style={{ color: scoreColor(row.score_efectivo) }}>
+          {row.score_efectivo}
+        </span>
+      </td>
+      <td
+        className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs font-medium"
+        style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}
+      >
+        {fmtCLPSigned(flujo)}
+      </td>
+      <td className={`h-10 px-2.5 text-right align-middle font-mono text-xs font-medium ${dim}`}>
+        {fmtCap(row.cap_rate === null ? null : Number(row.cap_rate))}
+      </td>
+      <td className={`h-10 px-2.5 text-right align-middle font-mono text-xs font-medium ${dim}`}>
+        {fmtMultiplicador(row.multiplicador === null ? null : Number(row.multiplicador))}
+      </td>
+      <td className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs text-[var(--franco-text-muted)]">
+        {fmtFechaCorta(row.created_at)}
+      </td>
+    </>
+  );
+}
+
+/** Tipología de una fila: lo que distingue una unidad de otra en el mismo edificio. */
+function tipologia(row: AnalisisDashboardRow): string {
+  const dorm = row.dormitorios > 0 ? `${row.dormitorios}D` : "Studio";
+  const sup = Number(row.superficie);
+  return `${dorm}${row.banos > 0 ? `${row.banos}B` : ""}${sup > 0 ? ` · ${Math.round(sup)} m²` : ""}`;
+}
+
+// ─── Fila de análisis (suelta o hija de un grupo) ───────────────────────────
+
+function FilaAnalisis({
+  row, siblings, hijo = false, etiqueta, vigente = false,
+}: {
+  row: AnalisisDashboardRow;
+  siblings: Map<string, AnalisisDashboardRow>;
+  hijo?: boolean;
+  etiqueta?: string | null;
+  vigente?: boolean;
+}) {
+  const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
+  const abrir = hrefAnalisis(row, str?.id);
+
+  return (
+    <tr
+      className={`group relative border-b border-[var(--franco-border)] hover:bg-[var(--franco-elevated)] ${
+        hijo ? "bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]" : ""
+      }`}
+    >
+      <td className={`h-10 truncate px-2.5 align-middle ${hijo ? "pl-9" : ""}`}>
+        <span className="flex items-center gap-2">
+          {hijo ? (
+            <>
+              <span
+                className="h-px w-2.5 shrink-0 bg-[var(--franco-border-hover)]"
+                aria-hidden="true"
+              />
+              <Link
+                href={abrir}
+                className="truncate font-body text-[13px] text-[var(--franco-text-secondary)] no-underline"
+              >
+                {etiqueta ?? tipologia(row)}
+              </Link>
+              {vigente && (
+                <span className="shrink-0 rounded border border-[var(--franco-border-hover)] px-1.5 py-px font-mono text-[8px] font-bold tracking-[0.06em] text-[var(--franco-text-muted)]">
+                  VIGENTE
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              <Link
+                href={abrir}
+                className="truncate font-heading text-[13.5px] font-bold tracking-[-0.01em] text-[var(--franco-text)] no-underline"
+              >
+                {displayDireccion(row)}
+              </Link>
+              {sinDireccion(row) && (
+                <span className="shrink-0 font-mono text-[8px] tracking-[0.05em] text-[var(--franco-text-muted)]">
+                  SIN DIRECCIÓN
+                </span>
+              )}
+            </>
+          )}
+        </span>
+      </td>
+      <td className="h-10 truncate px-2.5 align-middle font-body text-[13px] text-[var(--franco-text-muted)]">
+        {row.comuna}
+      </td>
+      <td className="h-10 px-2.5 align-middle"><ModChip label={modalidadLabel(row)} /></td>
+      <td className="h-10 px-2.5 align-middle"><VerdictBadge verdict={veredictoDisplay(row)} mini /></td>
+      <CeldasNumericas row={row} />
+      <td className="h-10 px-2.5 align-middle">
+        {/* Capa que hace clickeable TODA la fila. Va acá y no como ::after del
+            link de la dirección: esa celda trunca (overflow hidden) y
+            recortaría el overlay a su propio ancho. aria-hidden porque el link
+            accesible es el de la primera celda. */}
+        <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
+        <RowActions id={row.id} groupId={row.ambas_group_id} hrefAbrir={abrir} hrefPdf={hrefPdf(row)} />
+      </td>
+    </tr>
+  );
+}
+
+// ─── Fila de grupo ──────────────────────────────────────────────────────────
+
+function FilaGrupo({
+  item, params, abierto,
+}: {
+  item: Extract<ItemArchivo, { kind: "grupo" }>;
+  params: DashboardParams;
+  abierto: boolean;
+}) {
+  const { grupo } = item;
+  const v = grupo.vigente;
+
+  return (
+    <tr className="border-b border-[var(--franco-border-hover)] bg-[var(--franco-sunken,var(--franco-bg))]">
+      <td colSpan={4} className="h-11 px-2.5 align-middle">
+        <Link
+          href={toggleGrupoHref(params, grupo.key)}
+          aria-expanded={abierto}
+          className="flex min-w-0 items-center gap-2.5 no-underline"
+        >
+          <Chevron abierto={abierto} />
+          <span className="truncate font-heading text-[13.5px] font-bold tracking-[-0.01em] text-[var(--franco-text)]">
+            {displayDireccion(v)}
+          </span>
+          <span className="shrink-0 rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-[0.05em] text-[var(--franco-text)]">
+            {grupo.hijos.length} análisis
+          </span>
+          {/* La tipología del vigente solo se muestra si TODOS los hijos son la
+              misma: con varias sería una etiqueta falsa para el grupo entero.
+              En ese caso se declara cuántas hay — el aviso de sobre-agrupación
+              no se esconde, el usuario tiene que verlo antes de abrir. */}
+          <span className="truncate font-mono text-[10px] tracking-[0.04em] text-[var(--franco-text-muted)]">
+            mejor {grupo.mejorScore} ·{" "}
+            {grupo.tipologiasDistintas > 1 ? `${grupo.tipologiasDistintas} tipologías` : tipologia(v)} · {v.comuna}
+          </span>
+        </Link>
+      </td>
+      <CeldasNumericas row={v} atenuado />
+      <td />
+    </tr>
+  );
+}
+
+// ─── Archivo ────────────────────────────────────────────────────────────────
+
+export function Archive({ rows, items, siblings, total, hasMore, params, stats, unidadesVisibles }: Props) {
   const { por_modalidad: mod, por_veredicto: ver } = stats;
   const filtrando = params.q !== "" || params.mod !== "todas" || params.v !== "todos";
-
   const veredictos: Veredicto[] = ["COMPRAR", "AJUSTA SUPUESTOS", "BUSCAR OTRA"];
+  const agrupado = params.group && items !== undefined;
+  const vacio = agrupado ? items.length === 0 : rows.length === 0;
 
   // El `id` es real: los <Link> de chips y headers apuntan a #archivo para que
   // filtrar u ordenar deje la tabla a la vista y no el tope de la página.
@@ -162,9 +329,34 @@ export function Archive({ rows, siblings, total, hasMore, params, stats }: Props
               </Chip>
             ))}
           </div>
+
+          {/* Toggle de agrupación: <Link> con role de switch para que se anuncie
+              como control de dos estados sin necesitar JavaScript. */}
+          <Link
+            href={buildHref(params, { group: !params.group, open: [] })}
+            role="switch"
+            aria-checked={params.group}
+            className="ml-auto flex shrink-0 items-center gap-2 font-body text-xs text-[var(--franco-text-secondary)] no-underline"
+          >
+            <span
+              className="relative h-[17px] w-[30px] shrink-0 rounded-full transition-colors"
+              style={{ background: params.group ? "var(--franco-text)" : "color-mix(in srgb, var(--franco-text) 14%, transparent)" }}
+              aria-hidden="true"
+            >
+              <span
+                className="absolute top-0.5 h-[13px] w-[13px] rounded-full transition-all"
+                style={
+                  params.group
+                    ? { right: 2, background: "var(--franco-bg)" }
+                    : { left: 2, background: "var(--franco-text-muted)" }
+                }
+              />
+            </span>
+            Agrupar por propiedad
+          </Link>
         </div>
 
-        {rows.length === 0 ? (
+        {vacio ? (
           <div className="px-5 py-14 text-center">
             <p className="font-body text-[13px] text-[var(--franco-text-secondary)]">
               Ningún análisis coincide con este filtro.
@@ -213,95 +405,75 @@ export function Archive({ rows, siblings, total, hasMore, params, stats }: Props
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => {
-                    const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
-                    const flujo = Number(row.flujo);
-                    const abrir = hrefAnalisis(row, str?.id);
-                    return (
-                      <tr
-                        key={row.id}
-                        className="group relative border-b border-[var(--franco-border)] hover:bg-[var(--franco-elevated)]"
-                      >
-                        <td className="h-10 truncate px-2.5 align-middle">
-                          <span className="flex items-center gap-2">
-                            <Link
-                              href={abrir}
-                              className="truncate font-heading text-[13.5px] font-bold tracking-[-0.01em] text-[var(--franco-text)] no-underline"
-                            >
-                              {displayDireccion(row)}
-                            </Link>
-                            {sinDireccion(row) && (
-                              <span className="shrink-0 font-mono text-[8px] tracking-[0.05em] text-[var(--franco-text-muted)]">
-                                SIN DIRECCIÓN
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="h-10 truncate px-2.5 align-middle font-body text-[13px] text-[var(--franco-text-muted)]">
-                          {row.comuna}
-                        </td>
-                        <td className="h-10 px-2.5 align-middle">
-                          <ModChip label={modalidadLabel(row)} />
-                        </td>
-                        <td className="h-10 px-2.5 align-middle">
-                          <VerdictBadge verdict={veredictoDisplay(row)} mini />
-                        </td>
-                        <td className="h-10 px-2.5 text-right align-middle">
-                          <span className="font-mono text-[13px] font-bold" style={{ color: scoreColor(row.score_efectivo) }}>
-                            {row.score_efectivo}
-                          </span>
-                        </td>
-                        <td
-                          className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs font-medium"
-                          style={{ color: flujo < 0 ? "var(--signal-red)" : "var(--franco-text)" }}
-                        >
-                          {fmtCLPSigned(flujo)}
-                        </td>
-                        <td className="h-10 px-2.5 text-right align-middle font-mono text-xs font-medium text-[var(--franco-text)]">
-                          {fmtCap(row.cap_rate === null ? null : Number(row.cap_rate))}
-                        </td>
-                        <td className="h-10 px-2.5 text-right align-middle font-mono text-xs font-medium text-[var(--franco-text)]">
-                          {fmtMultiplicador(row.multiplicador === null ? null : Number(row.multiplicador))}
-                        </td>
-                        <td className="h-10 whitespace-nowrap px-2.5 text-right align-middle font-mono text-xs text-[var(--franco-text-muted)]">
-                          {fmtFechaCorta(row.created_at)}
-                        </td>
-                        <td className="h-10 px-2.5 align-middle">
-                          {/* Capa que hace clickeable TODA la fila. Va acá y no
-                              como ::after del link de la dirección: esa celda
-                              trunca (overflow hidden) y recortaría el overlay a
-                              su propio ancho. aria-hidden porque el link
-                              accesible es el de la dirección. */}
-                          <Link
-                            href={abrir}
-                            aria-hidden="true"
-                            tabIndex={-1}
-                            className="absolute inset-0 z-0"
-                          />
-                          <RowActions
-                            id={row.id}
-                            groupId={row.ambas_group_id}
-                            hrefAbrir={abrir}
-                            hrefPdf={hrefPdf(row)}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {/* flatMap y no map: un grupo abierto emite su fila MÁS las de
+                      sus hijos, y <tbody> solo acepta <tr> como hijos directos —
+                      no se puede envolver el bloque en un fragmento con estilo. */}
+                  {agrupado
+                    ? items.flatMap((item) => {
+                        if (item.kind === "fila") {
+                          return [<FilaAnalisis key={item.row.id} row={item.row} siblings={siblings} />];
+                        }
+                        const { grupo } = item;
+                        const abierto = grupoAbierto(params, grupo.key);
+                        const filas = [
+                          <FilaGrupo key={grupo.key} item={item} params={params} abierto={abierto} />,
+                        ];
+                        if (abierto) {
+                          // Un grupo puede tener decenas de análisis (el mayor
+                          // del set real tiene 67): expandirlo entero entierra
+                          // el resto del archivo. Se muestran los más recientes
+                          // y el resto queda a un click.
+                          const todos = grupoMuestraTodos(params, grupo.key);
+                          const visibles = todos ? grupo.hijos : grupo.hijos.slice(0, HIJOS_VISIBLES);
+                          for (const hijo of visibles) {
+                            filas.push(
+                              <FilaAnalisis
+                                key={hijo.id}
+                                row={hijo}
+                                siblings={siblings}
+                                hijo
+                                vigente={hijo.id === grupo.vigente.id}
+                              />,
+                            );
+                          }
+                          const restantes = grupo.hijos.length - visibles.length;
+                          if (restantes > 0) {
+                            filas.push(
+                              <tr key={`${grupo.key}-mas`} className="border-b border-[var(--franco-border)] bg-[color-mix(in_srgb,var(--franco-text)_2%,transparent)]">
+                                <td colSpan={10} className="h-9 pl-9 align-middle">
+                                  <Link
+                                    href={verTodosHref(params, grupo.key)}
+                                    className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-secondary)] no-underline hover:text-[var(--franco-text)]"
+                                  >
+                                    Ver los {restantes} análisis restantes ↓
+                                  </Link>
+                                </td>
+                              </tr>,
+                            );
+                          }
+                        }
+                        return filas;
+                      })
+                    : rows.map((row) => <FilaAnalisis key={row.id} row={row} siblings={siblings} />)}
                 </tbody>
               </table>
             </div>
 
-            {/* ── Mobile: lista compacta, no tabla ── */}
+            {/* ── Mobile: lista compacta ── */}
             <ul className="md:hidden">
-              {rows.map((row) => {
+              {(agrupado
+                ? items.flatMap((i) => (i.kind === "fila" ? [i.row] : [i.grupo.vigente]))
+                : rows
+              ).map((row) => {
                 const str = row.ambas_group_id ? siblings.get(row.ambas_group_id) : undefined;
                 const flujo = Number(row.flujo);
                 const abrir = hrefAnalisis(row, str?.id);
+                const grupo = agrupado
+                  ? items.find((i) => i.kind === "grupo" && i.grupo.vigente.id === row.id)
+                  : undefined;
+                const n = grupo && grupo.kind === "grupo" ? grupo.grupo.hijos.length : 0;
                 return (
                   <li key={row.id} className="relative flex items-center gap-3 border-b border-[var(--franco-border)] px-3.5 py-3 last:border-b-0">
-                    {/* Mismo overlay que en la tabla: el link visible trunca y
-                        recortaría su propio ::after. */}
                     <Link href={abrir} aria-hidden="true" tabIndex={-1} className="absolute inset-0 z-0" />
                     <div className="min-w-0 flex-1">
                       <Link
@@ -314,6 +486,11 @@ export function Archive({ rows, siblings, total, hasMore, params, stats }: Props
                         <span className="font-body text-[11px] text-[var(--franco-text-secondary)]">{row.comuna}</span>
                         <ModChip label={modalidadLabel(row)} />
                         <VerdictBadge verdict={veredictoDisplay(row)} mini />
+                        {n > 1 && (
+                          <span className="rounded bg-[color-mix(in_srgb,var(--franco-text)_8%,transparent)] px-1.5 py-0.5 font-mono text-[8px] font-bold text-[var(--franco-text)]">
+                            {n} ANÁLISIS
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="shrink-0 text-right">
@@ -342,7 +519,9 @@ export function Archive({ rows, siblings, total, hasMore, params, stats }: Props
             {/* ── Pie ── */}
             <div className="flex items-center justify-between gap-3 border-t border-[var(--franco-border)] px-3.5 py-2.5">
               <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-[var(--franco-text-muted)]">
-                Mostrando {rows.length} de {total}
+                {agrupado
+                  ? `Mostrando ${items.length} propiedades · ${unidadesVisibles} de ${total}`
+                  : `Mostrando ${rows.length} de ${total}`}
                 {filtrando ? " que coinciden" : ""}
               </span>
               {hasMore && (
