@@ -129,6 +129,12 @@ export function DocumentoAmbas({
   // ── Sensibilidad (P25–P90 · percentiles de ingresos de la zona) ──
   const sens = strResults?.sensibilidad ?? [];
   const breakEvenPct = (strResults?.breakEvenPctDelMercado ?? 0) * 100;
+  // P3 (Rama 0b) — cuando el % de sobre-renta no es confiable la celda cae a CLP absoluto.
+  // Sin glosa eso se lee como columna incompleta. `ltr_noiMensual = noiMensual − sobreRenta`
+  // es identidad exacta del motor (short-term-engine.ts:1114) y es constante entre filas.
+  // Filas legacy sin el flag (persistidas antes de P3) caen al mismo camino: undefined es falsy.
+  const hayPctNoConfiable = sens.some((r) => !r.sobreRentaPctConfiable);
+  const ltrNoiSens = sens.length > 0 ? sens[0].noiMensual - sens[0].sobreRenta : 0;
 
   // ── Charts (series server-side) ──
   const patLtr = ltrProj.slice(0, 10).map((p) => ({ anio: p.anio, patrimonioNeto: p.patrimonioNeto }));
@@ -428,12 +434,21 @@ export function DocumentoAmbas({
                     <div className="sv">{money(r.revenueAnual)}</div>
                     <div className="sv">{money(r.noiMensual)}</div>
                     <div className={`sv ${pos ? "pos" : "neg"}`}>
-                      {r.sobreRentaPctConfiable ? `${pos ? "+" : ""}${money(r.sobreRenta)} · ${pos ? "+" : ""}${Math.round(r.sobreRentaPct * 100)}%` : money(r.sobreRenta)}
+                      {r.sobreRentaPctConfiable
+                        ? `${pos ? "+" : ""}${money(r.sobreRenta)} · ${pos ? "+" : ""}${Math.round(r.sobreRentaPct * 100)}%`
+                        : <>{money(r.sobreRenta)} <small>· % n/a</small></>}
                     </div>
                   </div>
                 );
               })}
             </div>
+            {hayPctNoConfiable && (
+              <p className="note">
+                {ltrNoiSens <= 0
+                  ? "El % queda en n/a: el arriendo largo deja NOI ≤ 0, así que dividirlo no entrega un porcentaje que signifique algo. Compara la diferencia en pesos."
+                  : "El % queda en n/a donde el ratio se dispara sobre ±300% y deja de ordenar. Compara la diferencia en pesos."}
+              </p>
+            )}
             <div className={`box ${breakEvenPct > 100 ? "red" : ""}`}>
               <p className="bl">Dónde se cruza</p>
               <p className="bt">

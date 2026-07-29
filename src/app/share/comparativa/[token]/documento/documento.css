@@ -207,6 +207,8 @@
 .franco-doc .sens .pk { font-family: var(--mono); font-weight: 700; font-size: 11px; }
 .franco-doc .sens .pk small { font-weight: 400; color: var(--text-muted); font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; }
 .franco-doc .sens .sv { font-family: var(--mono); font-weight: 500; font-size: 11.5px; }
+/* Marcador "% n/a": es un caveat, no un valor — nunca hereda el rojo de .sv.neg. */
+.franco-doc .sens .sv small { font-weight: 400; color: var(--text-muted); font-size: 8.5px; letter-spacing: .04em; text-transform: uppercase; }
 .franco-doc .sens .sv.neg { color: var(--signal-red); }
 .franco-doc .sens .sv.pos { color: var(--ink-400); }
 
