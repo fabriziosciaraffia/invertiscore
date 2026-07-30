@@ -151,11 +151,19 @@ export async function requireAuthenticatedUser(
 
 // ─── Credit charge ─────────────────────────────────────
 
+/** Vía por la que se pagó el análisis. Espejo del `mode` de chargeAnalysisCredit
+ *  más `admin` (bypass, que nunca llega a cobrar). Solo `welcome` significa que
+ *  el usuario estrenó su análisis de bienvenida. */
+export type ChargeMode = "welcome" | "paid" | "subscription" | "admin";
+
 export interface ChargeOk {
   ok: true;
   /** True cuando llegamos PRIMERO al claim del prepaid charge (flujo AMBAS).
    * Caller debe llamar markPremiumAndClaimPrepaid con prepaidNeedClaim=true. */
   prepaidNeedClaim: boolean;
+  /** Cómo se pagó ESTE análisis. Lo consumen los endpoints para el evento Lead
+   * de Meta (solo `welcome` dispara). Aditivo: los callers destructuran parcial. */
+  mode: ChargeMode;
 }
 export interface ChargeErr {
   ok: false;
@@ -169,6 +177,9 @@ export interface ChargeErr {
  *   - Si NO viene prepaidChargeId y NO es admin: cobra crédito vía
  *     `chargeAnalysisCredit`.
  *   - Si NO viene y ES admin: bypass, no cobra.
+ *
+ * Devuelve además el `mode` (cómo se pagó): del propio chargeAnalysisCredit en el
+ * cobro normal, de payment_data.mode en el prepago AMBAS, y "admin" en el bypass.
  */
 export async function ensureCreditCharged(opts: {
   user: User;
@@ -197,13 +208,26 @@ export async function ensureCreditCharged(opts: {
       };
     }
 
+    // El `mode` real del cobro AMBAS lo persistió /api/credits/charge en
+    // payment_data junto al intent; acá solo lo leemos (el cobro ya ocurrió).
+    // Un valor ausente o desconocido cae a "paid" — el fallback conservador: no
+    // dispara Lead. Preferimos perder un evento antes que inventar un welcome.
+    const paymentData = charge.payment_data as
+      | { intent?: string; mode?: string }
+      | null;
+    const prepaidMode: ChargeMode =
+      paymentData?.mode === "welcome" ||
+      paymentData?.mode === "subscription" ||
+      paymentData?.mode === "admin"
+        ? paymentData.mode
+        : "paid";
+
     if (charge.consumed_at === null) {
-      return { ok: true, prepaidNeedClaim: true };
+      return { ok: true, prepaidNeedClaim: true, mode: prepaidMode };
     }
 
     // Ya consumido: solo permitido si intent='both' (segundo análisis del flujo AMBAS).
-    const intent = (charge.payment_data as { intent?: string } | null)?.intent;
-    if (intent !== "both") {
+    if (paymentData?.intent !== "both") {
       return {
         ok: false,
         response: NextResponse.json(
@@ -212,7 +236,7 @@ export async function ensureCreditCharged(opts: {
         ),
       };
     }
-    return { ok: true, prepaidNeedClaim: false };
+    return { ok: true, prepaidNeedClaim: false, mode: prepaidMode };
   }
 
   if (!isAdmin) {
@@ -223,8 +247,9 @@ export async function ensureCreditCharged(opts: {
         response: NextResponse.json({ error: charge.message }, { status: 403 }),
       };
     }
+    return { ok: true, prepaidNeedClaim: false, mode: charge.mode };
   }
-  return { ok: true, prepaidNeedClaim: false };
+  return { ok: true, prepaidNeedClaim: false, mode: "admin" };
 }
 
 // ─── Post-insert: premium + claim ──────────────────────

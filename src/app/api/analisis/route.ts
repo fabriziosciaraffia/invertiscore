@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { waitUntil } from "@vercel/functions";
 import type { AnalisisInput } from "@/lib/types";
+import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import { runAnalysis } from "@/lib/analysis";
 import { getUFValue } from "@/lib/uf";
 import { sendAnalysisReadyEmail } from "@/lib/email";
@@ -39,7 +41,7 @@ export async function POST(request: Request) {
 
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
-    const { prepaidNeedClaim } = charge;
+    const { prepaidNeedClaim, mode: chargeMode } = charge;
 
     // Pasar UF actual explícitamente al motor (antes era módulo-level mutable;
     // ver audit/sesionA-residual-2/diagnostico.md).
@@ -176,6 +178,46 @@ export async function POST(request: Request) {
           await generateAiAnalysis(analysisId, dbClient);
         } catch (e) {
           console.error("Background AI generation failed:", e);
+        }
+      })());
+    }
+
+    // Meta CAPI: Lead server-side — el usuario ESTRENÓ su análisis de bienvenida.
+    // Gate: chargeMode === 'welcome', la única vía por la que se consume el gratis
+    // (admin → 'admin', ilimitado → 'subscription', ledger/legacy → 'paid').
+    // event_id = id del análisis → idempotente si el POST se reintenta. Sin value:
+    // el gratis no factura. En AMBAS dispara SOLO este lado (LTR): el POST STR
+    // comparte el mismo cobro y duplicaría el evento — mismo criterio que el correo
+    // analysis-ready de arriba.
+    //
+    // waitUntil PROPIO, separado del bloque de arriba: el timeout de Meta (5s) no
+    // debe meterse delante del correo ni de la IA. Corre después del response.
+    // Este request SÍ viene del navegador (fetch del wizard), así que a diferencia
+    // de los webhooks de Flow lleva IP/UA/_fbp/_fbc → mejor match (patrón
+    // auth/callback). Se leen ACÁ, dentro del request, no dentro del deferred.
+    if (data?.id && chargeMode === "welcome" && user.email) {
+      const leadId = data.id as string;
+      const leadEmail = user.email;
+      const cookieStore = cookies();
+      const leadCtx = {
+        eventSourceUrl: new URL(request.url).origin,
+        clientIp:
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+        fbp: cookieStore.get("_fbp")?.value ?? null,
+        fbc: cookieStore.get("_fbc")?.value ?? null,
+      };
+      waitUntil((async () => {
+        try {
+          await sendMetaCapiEvent({
+            eventName: "Lead",
+            eventId: leadId,
+            email: leadEmail,
+            ...leadCtx,
+          });
+        } catch (e) {
+          console.error("[api/analisis] Meta CAPI Lead excepción:", e);
         }
       })());
     }

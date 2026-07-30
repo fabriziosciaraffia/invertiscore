@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { waitUntil } from "@vercel/functions";
 import { getUFValue } from "@/lib/uf";
+import { sendMetaCapiEvent } from "@/lib/meta/capi";
 import {
   createSupabaseServer,
   requireAuthenticatedUser,
@@ -31,7 +34,7 @@ export async function POST(request: Request) {
 
     const charge = await ensureCreditCharged({ user, prepaidChargeId });
     if (!charge.ok) return charge.response;
-    const { prepaidNeedClaim } = charge;
+    const { prepaidNeedClaim, mode: chargeMode } = charge;
 
     const ufValue = await getUFValue();
 
@@ -107,6 +110,40 @@ export async function POST(request: Request) {
           console.warn("[short-term] operadores_str_reportados insert falló (¿tabla aplicada?):", e);
         }
       }
+    }
+
+    // Meta CAPI: Lead server-side — el usuario estrenó su análisis de bienvenida
+    // en un STR SUELTO. `ambasGroupId === null` es el gate de dedup: en AMBAS el
+    // cobro es uno solo y lo reporta el lado LTR (mismo criterio que el correo
+    // analysis-ready), así que este lado se calla. Resto del contrato idéntico al
+    // de /api/analisis: event_id = id del análisis, email hasheado en el helper,
+    // sin value, waitUntil propio con su try/catch — Meta jamás rompe ni demora
+    // la creación.
+    if (data?.id && chargeMode === "welcome" && !ambasGroupId && user.email) {
+      const leadId = data.id as string;
+      const leadEmail = user.email;
+      const cookieStore = cookies();
+      const leadCtx = {
+        eventSourceUrl: new URL(request.url).origin,
+        clientIp:
+          request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+          request.headers.get("x-real-ip"),
+        userAgent: request.headers.get("user-agent"),
+        fbp: cookieStore.get("_fbp")?.value ?? null,
+        fbc: cookieStore.get("_fbc")?.value ?? null,
+      };
+      waitUntil((async () => {
+        try {
+          await sendMetaCapiEvent({
+            eventName: "Lead",
+            eventId: leadId,
+            email: leadEmail,
+            ...leadCtx,
+          });
+        } catch (e) {
+          console.error("[short-term] Meta CAPI Lead excepción:", e);
+        }
+      })());
     }
 
     return NextResponse.json(data);
