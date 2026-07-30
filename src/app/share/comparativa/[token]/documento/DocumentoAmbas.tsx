@@ -321,8 +321,8 @@ export function DocumentoAmbas({
                 <p className="chart-annot">
                   El activo termina en <span className="m">{money(ltrPatY10)}</span> con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual.{" "}
                   {ambosAportan
-                    ? "Sumando lo que pones de tu bolsillo por el camino, terminas con "
-                    : "Contando el flujo que acumula cada una por el camino, terminas con "}
+                    ? "Lo que cambia es cuánto pones de tu bolsillo por el camino. Descontándolo, terminas con "
+                    : "Lo que cambia es el flujo que acumula cada una por el camino. Contándolo, terminas con "}
                   <span className="m">{money(riquezaLtrY10)}</span> en renta larga y <span className="m">{money(riquezaStrY10)}</span> en renta corta.
                 </p>
               </>
