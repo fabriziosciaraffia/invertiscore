@@ -7,6 +7,7 @@ import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
 import { fmtDec } from "@/components/analysis/utils";
 import { NotaComposer, NotaCard } from "./notas-client";
+import { ReenviarInformeButton, type ReenvioInfo } from "./reenviar-informe-client";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export default async function AdminUsuarioDetallePage({
     paymentsRes,
     docsRes,
     notasRes,
+    reenviosRes,
   ] = await Promise.all([
     sb
       .from("user_credits")
@@ -88,7 +90,7 @@ export default async function AdminUsuarioDetallePage({
       .maybeSingle(),
     sb
       .from("analisis")
-      .select("id, comuna, tipo, dormitorios, banos, superficie, precio, arriendo, tipo_analisis, pending_payment, is_premium, results, created_at")
+      .select("id, comuna, tipo, dormitorios, banos, superficie, precio, arriendo, tipo_analisis, pending_payment, is_premium, results, created_at, ambas_group_id")
       .eq("user_id", userId)
       .order("created_at", { ascending: false }),
     sb
@@ -108,6 +110,16 @@ export default async function AdminUsuarioDetallePage({
       .select("id, texto, autor_email, created_at, updated_at")
       .eq("target_user_id", userId)
       .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    // Reenvíos EXITOSOS del informe. Es la única memoria de "este correo ya se
+    // mandó": la acción no tiene idempotencia, así que sin esto es imposible
+    // saberlo. Solo result='ok' — un intento fallido no significa correo enviado.
+    sb
+      .from("admin_audit_log")
+      .select("target_id, admin_email, created_at")
+      .eq("action", "resend_report")
+      .eq("target_user_id", userId)
+      .eq("result", "ok")
       .order("created_at", { ascending: false }),
   ]);
 
@@ -141,13 +153,13 @@ export default async function AdminUsuarioDetallePage({
     ? { label: "Pagador", tone: "ink-700" }
     : { label: "Gratis", tone: "muted" };
 
-  // ─── Timeline: fusión de 4 fuentes ordenada por fecha desc ───
+  // ─── Timeline: fusión de 5 fuentes ordenada por fecha desc ───
   const analisis = (analisisRes.data ?? []) as Array<{
     id: string; comuna: string | null; tipo: string | null; dormitorios: number | null;
     banos: number | null; superficie: number | null; precio: number | null; arriendo: number | null;
     tipo_analisis: string | null; pending_payment: boolean | null; is_premium: boolean | null;
     results: { veredicto?: string; francoVerdict?: string; engineSignal?: string } | null;
-    created_at: string;
+    created_at: string; ambas_group_id: string | null;
   }>;
   const docs = (docsRes.data ?? []) as Array<{
     id: string; estado: string; folio: number | null; error_mensaje: string | null; created_at: string;
@@ -155,6 +167,44 @@ export default async function AdminUsuarioDetallePage({
 
   const toMs = (d: string | null | undefined) => (d ? new Date(d).getTime() : null);
   const events: TimelineEvent[] = [];
+
+  // ─── Último reenvío OK por análisis (memoria de "el correo ya salió") ───
+  // La query viene ordenada desc, así que el primer hit de cada target_id es el
+  // más reciente. Si la tabla no existe todavía, degrada a "sin reenvíos".
+  if (reenviosRes.error) {
+    console.error("[admin/usuarios/[id]] admin_audit_log query error:", reenviosRes.error);
+  }
+  const ultimoReenvioPorAnalisis = new Map<string, ReenvioInfo>();
+  for (const r of (reenviosRes.data ?? []) as Array<{
+    target_id: string | null; admin_email: string; created_at: string;
+  }>) {
+    if (!r.target_id || ultimoReenvioPorAnalisis.has(r.target_id)) continue;
+    ultimoReenvioPorAnalisis.set(r.target_id, {
+      fechaLabel: `${fmtDateShort(r.created_at)} · ${fmtRelative(r.created_at)}`,
+      adminEmail: r.admin_email,
+    });
+  }
+
+  /**
+   * Por qué NO se puede reenviar el informe de esta fila (null = se puede).
+   * Espeja los guards del route handler, que los revalida igual — acá es para no
+   * hacerle perder el clic al operador y explicarle el motivo en el tooltip.
+   */
+  function motivoBloqueoReenvio(a: (typeof analisis)[number]): string | null {
+    if (a.pending_payment === true) {
+      return "Pendiente de pago: se computó pero no se cobró. Reenviar anunciaría un informe que el usuario no compró.";
+    }
+    if (a.is_premium !== true) {
+      return "Sin desbloquear (is_premium=false): el correo llevaría a un informe recortado.";
+    }
+    // tipo_analisis null = LTR legacy (mismo criterio que la etiqueta de arriba).
+    if (a.tipo_analisis === "short-term") {
+      return a.ambas_group_id
+        ? "Lado STR de un par AMBAS: el correo de la comparativa se reenvía desde la fila LTR del par."
+        : "No hay plantilla de correo para un análisis STR suelto.";
+    }
+    return null;
+  }
 
   // a) ANÁLISIS
   for (const a of analisis) {
@@ -195,16 +245,23 @@ export default async function AdminUsuarioDetallePage({
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between gap-3 mt-2">
+          <div className="flex items-end justify-between gap-3 mt-2">
             <span className="font-mono text-[10px] text-[var(--franco-text-muted)]">
               {fmtDateShort(a.created_at)} · {fmtRelative(a.created_at)}
             </span>
-            <Link
-              href={href}
-              className="font-body text-xs text-[var(--franco-text-muted)] hover:text-[#C8323C] transition-colors"
-            >
-              Ver informe →
-            </Link>
+            <div className="flex flex-col items-end gap-1.5">
+              <Link
+                href={href}
+                className="font-body text-xs text-[var(--franco-text-muted)] hover:text-[#C8323C] transition-colors"
+              >
+                Ver informe →
+              </Link>
+              <ReenviarInformeButton
+                analisisId={a.id}
+                motivoBloqueo={motivoBloqueoReenvio(a)}
+                ultimoReenvio={ultimoReenvioPorAnalisis.get(a.id) ?? null}
+              />
+            </div>
           </div>
         </article>
       ),

@@ -608,7 +608,22 @@ export async function sendCheckoutRecoveryEmail(
   }
 }
 
-export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }) {
+/**
+ * Variante que PROPAGA el error, para callers que necesitan saber si el correo
+ * salió de verdad (el reenvío manual desde /admin: su fila de auditoría diría
+ * result='ok' sobre un envío fallido). Devuelve el id de Resend.
+ *
+ * Tres fallos que la variante que traga el error hacía invisibles:
+ *   1. RESEND_API_KEY sin setear → getResend() null → el envío era un no-op mudo.
+ *   2. Resend devuelve { data, error } IN-BAND: un rechazo de la API (dominio,
+ *      destinatario inválido) no lanza y quedaba ignorado. Mismo criterio que
+ *      sendBoletaEmail, que ya documenta esta trampa.
+ *   3. Excepción de red: se logueaba y se seguía.
+ *
+ * sendAnalysisReadyEmail() envuelve a esta y mantiene el comportamiento
+ * histórico (traga y loguea) para el caller de /api/analisis.
+ */
+export async function sendAnalysisReadyEmailOrThrow(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }): Promise<string | null> {
   const firstName = name.split(' ')[0] || '';
   // Variante AMBAS: cuando el análisis pertenece a un par (ambas_group_id), el
   // correo anuncia la COMPARATIVA (no el análisis suelto) y su CTA lleva a la
@@ -699,13 +714,33 @@ export async function sendAnalysisReadyEmail(to: string, name: string, analysisT
 </body>
 </html>`;
 
+  const resend = getResend();
+  if (!resend) {
+    throw new Error('RESEND_API_KEY no está configurada: no se puede enviar el correo');
+  }
+
+  // Resend devuelve { data, error } — un error de API NO se lanza, viene in-band.
+  const { data: sent, error: sendError } = await resend.emails.send({
+    from: FROM_EMAIL,
+    to,
+    subject,
+    html,
+  });
+  if (sendError) {
+    throw new Error(`Resend rechazó el envío: ${sendError.message || JSON.stringify(sendError)}`);
+  }
+  return sent?.id ?? null;
+}
+
+/**
+ * Envío del "tu análisis está listo". Traga el error y solo loguea — el caller
+ * histórico (/api/analisis, dentro de waitUntil) no debe fallar la creación del
+ * análisis porque el correo no salió; la vista ya está creada y el usuario la ve
+ * igual. Para el reenvío manual usar sendAnalysisReadyEmailOrThrow.
+ */
+export async function sendAnalysisReadyEmail(to: string, name: string, analysisTitle: string, score: number, veredicto: string, analysisId: string, ambas?: { ltrId: string; strId: string }) {
   try {
-    await getResend()?.emails.send({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    });
+    await sendAnalysisReadyEmailOrThrow(to, name, analysisTitle, score, veredicto, analysisId, ambas);
   } catch (error) {
     console.error('Error sending analysis ready email:', error);
   }
