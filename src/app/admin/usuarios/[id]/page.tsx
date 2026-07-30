@@ -1,22 +1,14 @@
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
-import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
-import { isAdminUser } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-auth";
 import { resolveDisplayName } from "@/lib/welcome";
 import { readVeredicto } from "@/lib/results-helpers";
 import { StatusBadge, type StatusBadgeTone } from "@/components/ui/StatusBadge";
 import { fmtCLP, fmtNumber, fmtRelative, fmtDateShort, fmtPlanLabel } from "@/lib/admin-format";
 import { fmtDec } from "@/components/analysis/utils";
+import { NotaComposer, NotaCard } from "./notas-client";
 
 export const dynamic = "force-dynamic";
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 // Iniciales para el avatar (hasta 2 palabras del nombre resuelto).
 function initials(name: string, email: string): string {
@@ -47,14 +39,10 @@ export default async function AdminUsuarioDetallePage({
 }: {
   params: { id: string };
 }) {
-  // ─── Gate idéntico al de /admin (SIEMPRE antes del service role) ───
-  const supabaseAuth = createServerSupabase();
-  const { data: { user: adminUser } } = await supabaseAuth.auth.getUser();
-
-  if (!adminUser) redirect("/login");
-  if (!isAdminUser(adminUser.email)) redirect("/dashboard");
-
-  const sb = admin();
+  // ─── Gate compartido: autentica con el anon client y SOLO entonces entrega
+  // el client de service role (ver src/lib/admin-auth.ts). Mismos redirects que
+  // el gate inline que reemplaza: sin sesión → /login, sin allowlist → /dashboard.
+  const { sb } = await requireAdminPage();
   const userId = params.id;
 
   // ─── Resolver el usuario por id ───
@@ -75,6 +63,7 @@ export default async function AdminUsuarioDetallePage({
     analisisRes,
     paymentsRes,
     docsRes,
+    notasRes,
   ] = await Promise.all([
     sb
       .from("user_credits")
@@ -111,6 +100,14 @@ export default async function AdminUsuarioDetallePage({
       .from("documentos_tributarios")
       .select("id, estado, folio, error_mensaje, created_at")
       .eq("user_id", userId)
+      .order("created_at", { ascending: false }),
+    // Notas internas VIVAS (deleted_at IS NULL): una nota borrada desaparece del
+    // timeline pero sigue en la tabla (soft delete) y en admin_audit_log.
+    sb
+      .from("admin_notas")
+      .select("id, texto, autor_email, created_at, updated_at")
+      .eq("target_user_id", userId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }),
   ]);
 
@@ -289,6 +286,38 @@ export default async function AdminUsuarioDetallePage({
     });
   }
 
+  // e) NOTAS INTERNAS (quinta fuente del timeline). Si la migración
+  // 20260729_admin_audit_log_y_notas.sql todavía no se aplicó, la query falla y
+  // `data` viene null → el timeline sigue funcionando sin notas (degradación
+  // suave, mismo criterio que getAvailableCredits).
+  if (notasRes.error) {
+    console.error("[admin/usuarios/[id]] admin_notas query error:", notasRes.error);
+  }
+  const notas = (notasRes.data ?? []) as Array<{
+    id: string; texto: string; autor_email: string; created_at: string; updated_at: string;
+  }>;
+  for (const n of notas) {
+    // "editada" con tolerancia de 1s: al crear, created_at y updated_at salen del
+    // mismo now() y son iguales — el margen evita marcar como editada una nota nueva.
+    const editada =
+      new Date(n.updated_at).getTime() - new Date(n.created_at).getTime() > 1000;
+    events.push({
+      key: `nota-${n.id}`,
+      ms: toMs(n.created_at),
+      node: (
+        <NotaCard
+          nota={{
+            id: n.id,
+            texto: n.texto,
+            autorEmail: n.autor_email,
+            fechaLabel: `${fmtDateShort(n.created_at)} · ${fmtRelative(n.created_at)}`,
+            editada,
+          }}
+        />
+      ),
+    });
+  }
+
   // Orden cronológico inverso (sin fecha → al final).
   events.sort((a, b) => {
     if (a.ms == null) return 1;
@@ -342,6 +371,8 @@ export default async function AdminUsuarioDetallePage({
           {/* TIMELINE */}
           <section className="order-1">
             <h2 className="font-heading text-lg font-bold mb-3 text-[var(--franco-text)]">Timeline</h2>
+            {/* Alta de nota: la nota queda como evento del timeline (fuente e). */}
+            <NotaComposer targetUserId={userId} />
             {events.length === 0 ? (
               <div className="rounded-lg border border-[var(--franco-border)] bg-[var(--franco-card)] p-4 font-body text-sm text-[var(--franco-text-muted)]">
                 Sin actividad registrada.
