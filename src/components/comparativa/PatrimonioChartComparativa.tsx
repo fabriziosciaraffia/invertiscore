@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Line, XAxis, YAxis, CartesianGrid, Customized,
   Tooltip as RechartsTooltip, ResponsiveContainer, LineChart,
-  useOffset, useChartWidth, useChartHeight, useYAxisDomain,
+  useOffset, useChartWidth, useChartHeight,
 } from "recharts";
 import type { FullAnalysisResult } from "@/lib/types";
 import type { ShortTermResult } from "@/lib/engines/short-term-engine";
@@ -62,8 +62,8 @@ export function PatrimonioChartComparativa(p: Props) {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  // 100px de margen para el label + un área de plot que valga la pena.
-  const compact = chartWidth < 420;
+  // 40px de margen para el label vertical + un área de plot que valga la pena.
+  const compact = chartWidth < 340;
 
   const chartData = useMemo(() => {
     const ltrProj = p.ltrResults.projections ?? [];
@@ -171,9 +171,9 @@ export function PatrimonioChartComparativa(p: Props) {
         <ResponsiveContainer>
           <LineChart
             data={chartData}
-            margin={{ top: 10, right: compact ? 16 : 100, left: 0, bottom: 5 }}
+            margin={{ top: 10, right: compact ? 16 : 40, left: 0, bottom: 5 }}
           >
-            <CartesianGrid stroke="var(--franco-border)" strokeDasharray="2 2" vertical={false} />
+            <CartesianGrid stroke="var(--franco-border)" strokeDasharray="2 4" vertical={false} />
             <XAxis
               dataKey="year"
               tick={{ fontFamily: "var(--font-mono)", fontSize: 10, fill: "var(--franco-text-secondary)" }}
@@ -217,34 +217,39 @@ export function PatrimonioChartComparativa(p: Props) {
               }}
               labelFormatter={(year) => `Año ${year}`}
             />
-            {/* Activo — el destino común. Gruesa, Ink sólido. */}
+            {/* Activo — el destino común. Gruesa, Ink sólido. Dots SOLO en los
+                extremos (contrato del mockup): con 10 dots por serie el gráfico
+                se ensuciaba y las tres curvas competían por atención. */}
             <Line
               type="monotone"
               dataKey="activo"
               stroke="var(--franco-text)"
               strokeWidth={2.5}
-              dot={{ r: 3, fill: "var(--franco-text)" }}
+              dot={<ExtremosDot total={chartData.length} fill="var(--franco-text)" />}
+              activeDot={{ r: 3, fill: "var(--franco-text)" }}
               name="activo"
               connectNulls
             />
-            {/* Riqueza renta larga — fina, Ink secundario sólida. */}
+            {/* Riqueza renta larga — fina, Ink secundario sólida. Sin dots. */}
             <Line
               type="monotone"
               dataKey="riquezaLTR"
               stroke="var(--franco-text-secondary)"
               strokeWidth={1.5}
-              dot={{ r: 2, fill: "var(--franco-text-secondary)" }}
+              dot={false}
+              activeDot={{ r: 2.5, fill: "var(--franco-text-secondary)" }}
               name="riquezaLTR"
               connectNulls
             />
-            {/* Riqueza renta corta — fina, Ink secundario punteada. */}
+            {/* Riqueza renta corta — fina, Ink secundario punteada. Sin dots. */}
             <Line
               type="monotone"
               dataKey="riquezaSTR"
               stroke="var(--franco-text-secondary)"
               strokeWidth={1.5}
               strokeDasharray="6 4"
-              dot={{ r: 2, fill: "var(--franco-text-secondary)" }}
+              dot={false}
+              activeDot={{ r: 2.5, fill: "var(--franco-text-secondary)" }}
               name="riquezaSTR"
               connectNulls
             />
@@ -254,7 +259,10 @@ export function PatrimonioChartComparativa(p: Props) {
                   <BracketBrecha
                     top={Math.max(riquezaLTRFinal, riquezaSTRFinal)}
                     bottom={Math.min(riquezaLTRFinal, riquezaSTRFinal)}
-                    label={fmtMoney(Math.abs(brecha), p.currency, p.ufValue)}
+                    // Abreviado, como el mockup: el monto completo no cabe rotado
+                    // y la anotación de abajo ya lo da al peso.
+                    label={fmtAxisMoney(Math.abs(brecha), p.currency, p.ufValue)}
+                    yMax={yMax}
                   />
                 }
               />
@@ -263,7 +271,11 @@ export function PatrimonioChartComparativa(p: Props) {
         </ResponsiveContainer>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-5 mt-4">
+      {/* Separador de la leyenda — contrato del mockup (border-top + padding). */}
+      <div
+        className="flex flex-wrap items-center justify-center gap-5 mt-3.5 pt-3.5"
+        style={{ borderTop: "1px solid var(--franco-border)" }}
+      >
         <LegendItem variant="thick" label="Activo · ambas" />
         <LegendItem variant="thin" label="Riqueza · larga" />
         <LegendItem variant="dashed" label="Riqueza · corta" />
@@ -315,25 +327,39 @@ export function PatrimonioChartComparativa(p: Props) {
 // resultados positivos, no un egreso ni un valor negativo crítico — no calza en
 // ninguno de los 9 usos permitidos de la Capa 1 del design system, y ese sistema
 // es explícito en que un uso nuevo requiere validación, no criterio propio.
+// Dot que solo se pinta en el primer y último punto de la serie (contrato del
+// mockup: la línea del activo se ancla en sus extremos, no punto por punto).
+function ExtremosDot(props: { cx?: number; cy?: number; index?: number; total?: number; fill?: string }) {
+  const { cx, cy, index, total, fill } = props;
+  if (typeof cx !== "number" || typeof cy !== "number" || typeof index !== "number") return null;
+  if (index !== 0 && index !== (total ?? 0) - 1) return null;
+  return <circle cx={cx} cy={cy} r={3} fill={fill} />;
+}
+
 interface BracketProps {
   top: number;
   bottom: number;
   label: string;
+  yMax: number;
 }
 
-function BracketBrecha({ top, bottom, label }: BracketProps) {
+function BracketBrecha({ top, bottom, label, yMax }: BracketProps) {
   // `useOffset` da los cuatro márgenes que Recharts descuenta para construir sus
   // escalas; `usePlotArea` NO descuenta el margin top y deja el bracket ~6px
   // arriba de las curvas. Con offset + dimensiones del chart la escala coincide
   // exactamente con la que posiciona los dots.
+  //
+  // El dominio llega por prop, no por `useYAxisDomain`: ese hook despacha al
+  // store de Recharts durante el render y React lo reportaba como "Cannot update
+  // a component while rendering a different component". Como el dominio del eje
+  // ya lo fija este componente (`yMax`), el hook era redundante.
   const offset = useOffset();
   const chartWidth = useChartWidth();
   const chartHeight = useChartHeight();
-  const domain = useYAxisDomain();
 
-  const dMin = typeof domain?.[0] === "number" ? domain[0] : null;
-  const dMax = typeof domain?.[1] === "number" ? domain[1] : null;
-  if (!offset || !chartWidth || !chartHeight || dMin === null || dMax === null || dMax === dMin) {
+  const dMin = 0;
+  const dMax = yMax;
+  if (!offset || !chartWidth || !chartHeight || dMax <= dMin) {
     return null;
   }
 
@@ -349,25 +375,30 @@ function BracketBrecha({ top, bottom, label }: BracketProps) {
   const yBottom = toY(bottom);
   if (!Number.isFinite(x) || !Number.isFinite(yTop) || !Number.isFinite(yBottom)) return null;
 
-  const xBar = x + 10;
-  const serif = 6;
+  // Geometría del mockup: vertical 11px a la derecha del último punto, serifs de
+  // 4px hacia la izquierda, y el monto rotado 90° al lado. El label vertical es
+  // lo que permite un margen derecho de 40px en vez de 100 — con el texto
+  // horizontal el label se comía un tercio del área de plot.
+  const xBar = x + 11;
+  const serif = 4;
   const stroke = "var(--franco-text)";
+  const yMid = (yTop + yBottom) / 2;
+  const xLabel = xBar + 8;
 
   return (
     <g pointerEvents="none">
-      <line x1={x} y1={yTop} x2={xBar} y2={yTop} stroke={stroke} strokeWidth={1} />
-      <line x1={x} y1={yBottom} x2={xBar} y2={yBottom} stroke={stroke} strokeWidth={1} />
-      <line x1={xBar} y1={yTop} x2={xBar} y2={yBottom} stroke={stroke} strokeWidth={1} />
-      <line x1={xBar} y1={yTop} x2={xBar + serif} y2={yTop} stroke={stroke} strokeWidth={1} />
-      <line x1={xBar} y1={yBottom} x2={xBar + serif} y2={yBottom} stroke={stroke} strokeWidth={1} />
+      <line x1={xBar} y1={yTop} x2={xBar} y2={yBottom} stroke={stroke} strokeWidth={1.5} />
+      <line x1={xBar - serif} y1={yTop} x2={xBar} y2={yTop} stroke={stroke} strokeWidth={1.5} />
+      <line x1={xBar - serif} y1={yBottom} x2={xBar} y2={yBottom} stroke={stroke} strokeWidth={1.5} />
       <text
-        x={xBar + serif + 5}
-        y={(yTop + yBottom) / 2}
+        x={xLabel}
+        y={yMid}
+        transform={`rotate(90 ${xLabel} ${yMid})`}
         dominantBaseline="middle"
-        textAnchor="start"
+        textAnchor="middle"
         fontFamily="var(--font-mono)"
         fontSize={11}
-        fontWeight={600}
+        fontWeight={700}
         fill="var(--franco-text)"
       >
         {label}
