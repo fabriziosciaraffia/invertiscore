@@ -109,6 +109,24 @@ export function filasNivel3(resto: Hallazgo[]): { items: Hallazgo[]; cols: strin
   return [{ items: resto, cols: "md:grid-cols-3" }];
 }
 
+// Guard de corona honesta — criterio ÚNICO para LTR y STR (lo importa PiramideHallazgosSTR).
+// El kicker "Lo más decisivo" se gana solo si el coronado es el ÚNICO con la decisividad
+// máxima del set. Antes bastaba con empatar en el máximo (>=), y eso rompía en el caso
+// frecuente: DECISIVIDAD_FLOOR (0,85 en analysis.ts) pisa al MISMO valor a todo hallazgo
+// cuya neutralización flipea el veredicto o desarma un gate — ~1 de cada 4 análisis
+// (medido en 1488c9a). Con empate, quién corona lo decide el orden Filosofía 1 (adverso
+// primero) y quién va 01 en el TOP-3 lo decide el desempate por magnitud → dos "lo más
+// importante" distintos en la misma pantalla. Máximo ESTRICTO: si hay empate nadie reclama
+// el título y la corona cae al kicker existente "Ojo antes de firmar".
+// Devuelve false también cuando NADIE mueve el score (max≈0, posible en STR con adversos
+// todos solo-lectura) — ese guard ya existía y se conserva.
+export function coronaEsLaMasDecisiva(corona: Hallazgo, gathered: Hallazgo[]): boolean {
+  const max = Math.max(...gathered.map((h) => h.decisividad));
+  if (!(max > 1e-9)) return false;
+  const enElMaximo = gathered.filter((h) => h.decisividad >= max - 1e-9);
+  return enElMaximo.length === 1 && corona.decisividad >= max - 1e-9;
+}
+
 export function PiramideHallazgos({
   results,
   aiAnalysis,
@@ -132,16 +150,13 @@ export function PiramideHallazgos({
   const nivel3 = ordered.slice(3);
 
   // Kicker honesto de la corona: "Lo más decisivo" solo si el coronado (ordered[0],
-  // que el orden Filosofía 1 elige por "adverso primero") es TAMBIÉN el de mayor
-  // decisividad real del set. Si no lo es (ej. un favorable más decisivo que todos
-  // los adversos), la card muestra "Ojo antes de firmar" — así no contradice al
-  // TOP-3 del hero, que sí ordena por decisividad. Tolerancia float por si dos
-  // hallazgos empatan en el máximo.
-  // E.1b — guard de corona honesta: si NINGÚN hallazgo mueve el score (maxDecisividad≈0,
-  // posible en STR con adversos todos solo-lectura), la corona NO dice "Lo más decisivo".
-  // Para LTR es no-op (siempre hay decisivos > 0). Verificado en of-e1b-verify-piramide.
-  const maxDecisividad = Math.max(...gathered.map((h) => h.decisividad));
-  const esElMasDecisivo = maxDecisividad > 1e-9 && nivel1.decisividad >= maxDecisividad - 1e-9;
+  // que el orden Filosofía 1 elige por "adverso primero") es el ÚNICO de mayor
+  // decisividad real del set. Si no lo es —porque hay otro más decisivo (ej. un
+  // favorable sobre todos los adversos) o porque EMPATA en el máximo—, la card
+  // muestra "Ojo antes de firmar": así no contradice al TOP-3 del hero, que
+  // desempata por magnitud continua. Criterio en coronaEsLaMasDecisiva (compartido
+  // con la pirámide STR).
+  const esElMasDecisivo = coronaEsLaMasDecisiva(nivel1, gathered);
 
   // Eco literal apertura↔corona: la prosa (respuestaDirecta, Plan C) SIEMPRE abre con
   // la fraseCanonica del hallazgo #1 por decisividad (ai-generation.ts:1567-1592). Cuando

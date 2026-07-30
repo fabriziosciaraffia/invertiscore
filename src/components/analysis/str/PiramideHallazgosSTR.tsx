@@ -12,7 +12,7 @@
 
 import type { Hallazgo } from "@/lib/types";
 import { GenericFindingCard } from "@/components/analysis/GenericFindingCard";
-import { filasNivel3 } from "@/components/analysis/PiramideHallazgos";
+import { coronaEsLaMasDecisiva, filasNivel3 } from "@/components/analysis/PiramideHallazgos";
 // Orden extraído a módulo puro server-safe (lo consume también la vista documento).
 // Re-exportado acá para no romper los importadores (results-client, DrawerSTR seq).
 import { ordenarHallazgosPiramideSTR } from "@/lib/piramide-orden-str";
@@ -61,10 +61,10 @@ export function PiramideHallazgosSTR({
   const nivel2 = ordered.slice(1, 3);
   const nivel3 = ordered.slice(3);
 
-  // Corona honesta: "Lo más decisivo" solo si el coronado es también el de mayor decisividad
-  // real Y algún hallazgo mueve el score (guard STR: adversos todos solo-lectura ⇒ no).
-  const maxDecisividad = Math.max(...gathered.map((h) => h.decisividad));
-  const esElMasDecisivo = maxDecisividad > 1e-9 && nivel1.decisividad >= maxDecisividad - 1e-9;
+  // Corona honesta: "Lo más decisivo" solo si el coronado es el ÚNICO de mayor decisividad
+  // real (empate ⇒ no reclama el título) Y algún hallazgo mueve el score (guard STR:
+  // adversos todos solo-lectura ⇒ no). Mismo criterio que la pirámide LTR, un solo lugar.
+  const esElMasDecisivo = coronaEsLaMasDecisiva(nivel1, gathered);
 
   return (
     <section className="mt-3">
