@@ -25,3 +25,23 @@ export function metaTrack(
   if (typeof fbq !== "function") return;
   fbq("track", eventName, params, eventId ? { eventID: eventId } : undefined);
 }
+
+/**
+ * Dispara un evento CUSTOM (nombre propio, fuera del catálogo estándar de Meta).
+ * El comando es `trackCustom`, NO `track`: con `track` Meta descarta el evento
+ * por no reconocer el nombre. Mismas garantías que metaTrack — no-op si fbq no
+ * existe.
+ *
+ * Sin `eventId`: los customs de Franco son browser-only (no hay contraparte
+ * server-side que deduplicar). Si algún día un custom se envía también por CAPI,
+ * agregar el parámetro acá igual que en metaTrack.
+ */
+export function metaTrackCustom(
+  eventName: string,
+  params?: Record<string, unknown>
+): void {
+  if (typeof window === "undefined") return;
+  const fbq = (window as unknown as { fbq?: Fbq }).fbq;
+  if (typeof fbq !== "function") return;
+  fbq("trackCustom", eventName, params);
+}

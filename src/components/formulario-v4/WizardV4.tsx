@@ -18,7 +18,8 @@ import { UnifiedNav } from "@/components/chrome/UnifiedNav";
 import { trackWizard } from "./track";
 import { useWizardV4 } from "./useWizardV4";
 import { useWizardV4Data } from "./useWizardV4Data";
-import { useWizardV4Tier } from "./useWizardV4Tier";
+import { useWizardV4Tier, esNuevoConAnalisisGratis } from "./useWizardV4Tier";
+import { metaTrackCustom } from "@/lib/meta/pixel";
 import { ResumenScreen } from "./screenResumen";
 import {
   ACTO_BY_NODE,
@@ -42,6 +43,9 @@ import {
 import { PieScreen, PlazoScreen, PrecioScreen, TasaFixScreen, TasaScreen } from "./screensActo2";
 import { AdrFixScreen, AdrScreen, ArrFixScreen, ArrScreen } from "./screensActo3";
 import { InformeScreen } from "./screenInforme";
+
+/** Guard de sesión del StartFreeAnalysis (1 disparo por pestaña/sesión). */
+const SFA_SESSION_KEY = "meta_sfa_fired";
 
 /** Rótulo corto de modalidad para el chip del header (uppercase por CSS). */
 const MOD_CHIP: Record<string, string> = {
@@ -91,6 +95,39 @@ export function WizardV4({ resume }: { resume: boolean }) {
     trackWizard(posthog, "wizard4_step_viewed", { node: nav.current });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.current, posthog]);
+
+  // Meta Pixel · StartFreeAnalysis (custom, browser-only): "usuario elegible
+  // entró al wizard". Se evalúa al montar y de nuevo cuando llega /api/me/tier
+  // (el gate necesita el tier; mientras sea null no se decide nada). NO depende
+  // del nodo actual ni excluye ?resume=1: el recién registrado vuelve por
+  // /register?next=/analisis/nuevo-v4?resume=1 y ese es justamente el segmento
+  // que la campaña mide — como guest no disparó (tier="guest"), dispara al
+  // volver logueado.
+  //
+  // Una sola vez por sesión de navegador: sessionStorage para sobrevivir
+  // remounts/navegación same-tab, más un ref en memoria que cubre el doble
+  // render de StrictMode y el caso en que sessionStorage tire (modo privado) —
+  // ahí se dispara igual, degradado, antes que perder el evento.
+  //
+  // Sin event_id: no hay contraparte CAPI que deduplicar. Gate de infra
+  // heredado: sin NEXT_PUBLIC_META_PIXEL_ID no existe fbq y metaTrackCustom es
+  // no-op (mismo trato que PageView e InitiateCheckout).
+  const sfaFired = useRef(false);
+  useEffect(() => {
+    if (sfaFired.current) return;
+    if (!esNuevoConAnalisisGratis(tier)) return;
+    try {
+      if (sessionStorage.getItem(SFA_SESSION_KEY)) {
+        sfaFired.current = true;
+        return;
+      }
+      sessionStorage.setItem(SFA_SESSION_KEY, "1");
+    } catch {
+      // sessionStorage no disponible → seguimos con el guard en memoria.
+    }
+    sfaFired.current = true;
+    metaTrackCustom("StartFreeAnalysis");
+  }, [tier]);
 
   // abandoned (best-effort): pagehide sin haber llegado a terminal (generar /
   // pagar / crear cuenta), y solo si el usuario ya arrancó. terminatedRef lo
