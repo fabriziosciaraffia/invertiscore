@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Line, XAxis, YAxis, CartesianGrid, Customized,
   Tooltip as RechartsTooltip, ResponsiveContainer, LineChart,
@@ -40,17 +40,30 @@ interface Props {
 // --franco-text-secondary para las dos riquezas), diferenciadas por grosor y
 // dash. Sin Signal Red — ver nota del bracket más abajo.
 export function PatrimonioChartComparativa(p: Props) {
-  // El label del bracket vive en el margen derecho; en pantallas chicas ese
-  // margen se come el área de plot, así que ahí el bracket se retira y la brecha
-  // la carga la anotación de abajo (que siempre trae el monto).
-  const [compact, setCompact] = useState(false);
+  // El label del bracket vive en el margen derecho; cuando el chart es angosto
+  // ese margen se come el área de plot, así que ahí el bracket se retira y la
+  // brecha la carga la anotación de abajo (que siempre trae el monto).
+  //
+  // El criterio es el ancho REAL del chart, no una media query: la card vive en
+  // una columna, así que el viewport no dice cuánto espacio hay. Con
+  // ResizeObserver también sobrevive un resize de ventana sin recarga — con
+  // matchMedia el margen ancho quedaba aplicado y desbordaba la card.
+  // Arranca en compacto (chartWidth 0) para que el primer frame nunca desborde.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = useState(0);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 640px)");
-    const sync = () => setCompact(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
+    const el = wrapRef.current;
+    if (!el) return;
+    setChartWidth(el.clientWidth);
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (typeof w === "number") setChartWidth(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
+  // 100px de margen para el label + un área de plot que valga la pena.
+  const compact = chartWidth < 420;
 
   const chartData = useMemo(() => {
     const ltrProj = p.ltrResults.projections ?? [];
@@ -148,13 +161,13 @@ export function PatrimonioChartComparativa(p: Props) {
   return (
     <div className="rounded-2xl border border-[var(--franco-border)] bg-[var(--franco-card)] p-6 mb-6">
       <p className="font-mono text-[9px] uppercase tracking-[3px] text-[var(--franco-text-secondary)] mb-1">
-        PATRIMONIO NETO · 10 AÑOS
+        PATRIMONIO Y RIQUEZA · {lastYear} AÑOS
       </p>
       <h3 className="font-heading text-[18px] font-bold text-[var(--franco-text)] mb-4">
-        Cómo se construye tu patrimonio en cada modalidad
+        El activo construye igual; tu bolsillo hace la diferencia
       </h3>
 
-      <div style={{ width: "100%", height: 300 }}>
+      <div ref={wrapRef} style={{ width: "100%", height: 300 }}>
         <ResponsiveContainer>
           <LineChart
             data={chartData}
@@ -268,14 +281,14 @@ export function PatrimonioChartComparativa(p: Props) {
           className="font-mono uppercase mb-1"
           style={{ fontSize: 9, letterSpacing: "0.08em", color: "var(--franco-text-secondary)", fontWeight: 600 }}
         >
-          {`PATRIMONIO AL AÑO ${lastYear} · IDÉNTICO EN AMBAS MODALIDADES`}
+          {`AL AÑO ${lastYear} · EL ACTIVO EMPATA, EL CAMINO NO`}
         </p>
         <p className="font-body text-[13px] text-[var(--franco-text)] m-0 leading-snug">
-          Tu patrimonio a {lastYear} años es el mismo en las dos modalidades ({fmtMoney(activoFinal, p.currency, p.ufValue)}):
-          el depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo. La modalidad no cambia tu
-          patrimonio — cambia el flujo que embolsas por el camino: {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} de
-          riqueza total en renta larga vs {fmtMoney(riquezaSTRFinal, p.currency, p.ufValue)} en renta corta, una brecha
-          de {fmtMoney(Math.abs(brecha), p.currency, p.ufValue)} a favor de la {ganadora}.
+          El depto se aprecia igual y la deuda se amortiza igual, arriendes corto o largo: {fmtMoney(activoFinal, p.currency, p.ufValue)}{" "}
+          de activo neto de deuda en las dos modalidades. Lo que cambia es cuánto pones de tu bolsillo por el camino.
+          Descontándolo, terminas con {fmtMoney(riquezaLTRFinal, p.currency, p.ufValue)} en renta larga y{" "}
+          {fmtMoney(riquezaSTRFinal, p.currency, p.ufValue)} en renta corta — {fmtMoney(Math.abs(brecha), p.currency, p.ufValue)}{" "}
+          de diferencia a favor de la {ganadora}. Esa brecha es la decisión, no el activo.
         </p>
         <p className="font-body text-[12px] text-[var(--franco-text-secondary)] m-0 mt-2 leading-snug">
           {comisionVentaFinal > 0 ? (
