@@ -234,6 +234,16 @@
 .franco-doc .chart-legend .sw.ink { background: var(--text); }
 .franco-doc .chart-legend .sw.line { width: 12px; height: 2px; background: var(--text); }
 .franco-doc .chart-legend .sw.dash { width: 12px; height: 0; border-top: 2px dashed var(--ink-400); }
+/* Variantes finas del chart de patrimonio y riqueza: el activo va grueso (.line)
+   y las dos riquezas finas, diferenciadas solo por el dash. Clases propias en vez
+   de tocar .dash, que la usa la leyenda del chart de flujo. */
+.franco-doc .chart-legend .sw.thin { width: 12px; height: 0; border-top: 1.1px solid var(--ink-400); }
+.franco-doc .chart-legend .sw.thin-dash { width: 12px; height: 0; border-top: 1.1px dashed var(--ink-400); }
+
+/* Anotación bajo un chart: separa con hairline y cierra la lectura con los montos
+   al peso (el chart abrevia en el eje; acá va la cifra exacta). */
+.franco-doc .chart-annot { margin-top: 10px; padding-top: 9px; border-top: 0.5px solid var(--border); font-family: var(--sans); font-size: 9.5px; line-height: 1.5; color: var(--text-secondary); }
+.franco-doc .chart-annot .m { font-family: var(--mono); font-size: 9px; color: var(--text); }
 
 /* ── Cierre del documento + disclaimer ───────────────────────────────────── */
 .franco-doc .doc-close { margin-top: 14px; padding: 13px 18px; border-radius: 12px; background: #111; color: #fafaf8; break-inside: avoid; }

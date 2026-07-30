@@ -100,6 +100,19 @@ export function DocumentoAmbas({
   const strPatY10 = idxPat >= 0 ? (strProj[idxPat]?.patrimonioNeto ?? 0) : 0;
   const patrimonioIgual = Math.abs(strPatY10 - ltrPatY10) < Math.max(1, Math.abs(ltrPatY10) * 0.005);
 
+  // ── Riqueza acumulada = activo + flujo acumulado ─────────────────────────
+  // El activo empata por construcción (se aprecia y se amortiza igual arriendes
+  // corto o largo). Lo que separa a las modalidades es cuánto pusiste —o te
+  // dejaron— por el camino. Mismas series que alimentan el chart, para que el
+  // copy y la curva no puedan contradecirse.
+  const ltrFlujoAcumY10 = idxPat >= 0 ? (ltrProj[idxPat]?.flujoAcumulado ?? 0) : 0;
+  const strFlujoAcumY10 = idxPat >= 0 ? (strProj[idxPat]?.flujoAcumulado ?? 0) : 0;
+  const riquezaLtrY10 = ltrPatY10 + ltrFlujoAcumY10;
+  const riquezaStrY10 = strPatY10 + strFlujoAcumY10;
+  // Los dos flujos acumulados son negativos en el caso típico (pones de tu
+  // bolsillo). Si alguna modalidad acumula caja positiva, la frase se invierte.
+  const ambosAportan = ltrFlujoAcumY10 <= 0 && strFlujoAcumY10 <= 0;
+
   // ── Face-off: columna "Mejor" por comparación simple (cero derivación nueva) ──
   const winMoney = (l: number, s: number, altoGana = true) =>
     l === s ? "—" : (altoGana ? s > l : s < l) ? "STR" : "LTR";
@@ -137,8 +150,11 @@ export function DocumentoAmbas({
   const ltrNoiSens = sens.length > 0 ? sens[0].noiMensual - sens[0].sobreRenta : 0;
 
   // ── Charts (series server-side) ──
-  const patLtr = ltrProj.slice(0, 10).map((p) => ({ anio: p.anio, patrimonioNeto: p.patrimonioNeto }));
-  const patStr = strProj.slice(0, 10).map((p) => ({ anio: p.year, patrimonioNeto: p.patrimonioNeto }));
+  // flujoAcumulado viaja con la serie: el chart construye las dos curvas de
+  // riqueza con él (activo + flujo). Sin este campo el chart solo puede dibujar
+  // el activo, que es idéntico en las dos modalidades.
+  const patLtr = ltrProj.slice(0, 10).map((p) => ({ anio: p.anio, patrimonioNeto: p.patrimonioNeto, flujoAcumulado: p.flujoAcumulado }));
+  const patStr = strProj.slice(0, 10).map((p) => ({ anio: p.year, patrimonioNeto: p.patrimonioNeto, flujoAcumulado: p.flujoAcumulado }));
   const flujoEstacional = strResults?.flujoEstacional ?? [];
   const hayEstacionalidad = tieneEstacionalidad(flujoEstacional);
 
@@ -288,14 +304,22 @@ export function DocumentoAmbas({
         <p className="eyebrow" style={{ marginTop: 16 }}>La evidencia · mismo destino, dos caminos</p>
         <div className="chart-grid">
           <div>
-            <p className="sbl">Patrimonio neto · {Math.max(patLtr.length, patStr.length)} años</p>
-            {patLtr.length > 1 || patStr.length > 1 ? (
+            <p className="sbl">Patrimonio y riqueza · {Math.min(patLtr.length, patStr.length)} años</p>
+            {patLtr.length > 1 && patStr.length > 1 ? (
               <>
                 <PatrimonioComparativoSVG ltr={patLtr} str={patStr} valorUF={ufFrozen} />
                 <div className="chart-legend">
-                  <span><i className="sw line" />Corta · {money(strPatY10)}</span>
-                  <span><i className="sw dash" />Larga · {money(ltrPatY10)}</span>
+                  <span><i className="sw line" />Activo · ambas</span>
+                  <span><i className="sw thin" />Riqueza · larga</span>
+                  <span><i className="sw thin-dash" />Riqueza · corta</span>
                 </div>
+                <p className="chart-annot">
+                  El activo termina en <span className="m">{money(ltrPatY10)}</span> con cualquiera de las dos: el depto se aprecia igual y la deuda se amortiza igual.{" "}
+                  {ambosAportan
+                    ? "Sumando lo que pones de tu bolsillo por el camino, terminas con "
+                    : "Contando el flujo que acumula cada una por el camino, terminas con "}
+                  <span className="m">{money(riquezaLtrY10)}</span> en renta larga y <span className="m">{money(riquezaStrY10)}</span> en renta corta.
+                </p>
               </>
             ) : (
               <div className="chart-slot">Sin proyecciones disponibles para una de las modalidades.</div>
