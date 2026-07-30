@@ -255,7 +255,7 @@ export function HeroLTR({
           </div>
           <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mb-4">
             {topHallazgos.length > 0
-              ? `Los ${topHallazgos.length} hallazgos que más movieron el score, por decisividad.`
+              ? `Los ${topHallazgos.length} hallazgos que más movieron el score.`
               : "Hallazgos que definen el score."}
           </div>
 

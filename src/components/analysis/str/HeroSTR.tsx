@@ -246,7 +246,7 @@ export function HeroSTR({
           </div>
           <div className="font-body text-[11.5px] text-[var(--franco-text-muted)] mb-4">
             {top3.length > 0
-              ? `Los ${top3.length} hallazgos que más movieron el score, por decisividad.`
+              ? `Los ${top3.length} hallazgos que más movieron el score.`
               : "Hallazgos que definen el score."}
           </div>
 
