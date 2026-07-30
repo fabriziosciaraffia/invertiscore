@@ -20,7 +20,7 @@
  * confirmación es que la nota aparece en el timeline.
  */
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 const TEXTO_MAX = 2000;
@@ -50,11 +50,17 @@ export function NotaComposer({ targetUserId }: { targetUserId: string }) {
   const [texto, setTexto] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // El refresh va dentro de una transición y el botón queda pendiente hasta que
+  // el nuevo render del server aterriza: así "Guardando…" termina cuando la nota
+  // YA está en el timeline, y un refresh que no aplica se vuelve visible en vez
+  // de quedar como un textarea que se limpió sin que apareciera nada.
+  const [refrescando, startTransition] = useTransition();
 
   const vacio = texto.trim().length === 0;
+  const ocupado = busy || refrescando;
 
   async function guardar() {
-    if (busy || vacio) return;
+    if (ocupado || vacio) return;
     setBusy(true);
     setError(null);
     try {
@@ -68,7 +74,7 @@ export function NotaComposer({ targetUserId }: { targetUserId: string }) {
         return;
       }
       setTexto("");
-      router.refresh();
+      startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
     } finally {
@@ -90,7 +96,7 @@ export function NotaComposer({ targetUserId }: { targetUserId: string }) {
         value={texto}
         maxLength={TEXTO_MAX}
         onChange={(e) => setTexto(e.target.value)}
-        disabled={busy}
+        disabled={ocupado}
         placeholder="Contexto que el resto del equipo necesita saber de este usuario."
         className={TEXTAREA_CLASS}
       />
@@ -98,8 +104,8 @@ export function NotaComposer({ targetUserId }: { targetUserId: string }) {
         <span className="font-mono text-[10px] text-[var(--franco-text-muted)]">
           {texto.length}/{TEXTO_MAX}
         </span>
-        <button type="button" onClick={guardar} disabled={busy || vacio} className={BTN_CLASS}>
-          {busy ? "Guardando…" : "Guardar nota"}
+        <button type="button" onClick={guardar} disabled={ocupado || vacio} className={BTN_CLASS}>
+          {ocupado ? "Guardando…" : "Guardar nota"}
         </button>
       </div>
       {error && (
@@ -125,9 +131,12 @@ export function NotaCard({ nota }: { nota: NotaView }) {
   const [texto, setTexto] = useState(nota.texto);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refrescando, startTransition] = useTransition();
+
+  const ocupado = busy || refrescando;
 
   async function enviar(method: "PATCH" | "DELETE", body: Record<string, unknown>) {
-    if (busy) return;
+    if (ocupado) return;
     setBusy(true);
     setError(null);
     try {
@@ -141,12 +150,21 @@ export function NotaCard({ nota }: { nota: NotaView }) {
         return;
       }
       setEditando(false);
-      router.refresh();
+      startTransition(() => router.refresh());
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error de red");
     } finally {
       setBusy(false);
     }
+  }
+
+  // Confirmación antes de borrar: el soft delete se puede revertir en la DB, pero
+  // desde el panel no hay "deshacer" — un clic accidental esconde la nota y solo
+  // el audit log dice que existió.
+  function borrar() {
+    const preview = nota.texto.length > 80 ? `${nota.texto.slice(0, 80)}…` : nota.texto;
+    if (!window.confirm(`¿Borrar esta nota?\n\n"${preview}"`)) return;
+    void enviar("DELETE", { notaId: nota.id });
   }
 
   function cancelar() {
@@ -166,18 +184,18 @@ export function NotaCard({ nota }: { nota: NotaView }) {
             <button
               type="button"
               onClick={() => setEditando(true)}
-              disabled={busy}
+              disabled={ocupado}
               className={LINK_CLASS}
             >
               Editar
             </button>
             <button
               type="button"
-              onClick={() => enviar("DELETE", { notaId: nota.id })}
-              disabled={busy}
+              onClick={borrar}
+              disabled={ocupado}
               className={`${LINK_CLASS} hover:text-[var(--signal-red)]`}
             >
-              {busy ? "…" : "Borrar"}
+              {ocupado ? "…" : "Borrar"}
             </button>
           </div>
         )}
@@ -190,21 +208,21 @@ export function NotaCard({ nota }: { nota: NotaView }) {
             value={texto}
             maxLength={TEXTO_MAX}
             onChange={(e) => setTexto(e.target.value)}
-            disabled={busy}
+            disabled={ocupado}
             aria-label="Editar nota interna"
             className={`mt-2 ${TEXTAREA_CLASS}`}
           />
           <div className="mt-2 flex items-center justify-end gap-3">
-            <button type="button" onClick={cancelar} disabled={busy} className={LINK_CLASS}>
+            <button type="button" onClick={cancelar} disabled={ocupado} className={LINK_CLASS}>
               Cancelar
             </button>
             <button
               type="button"
               onClick={() => enviar("PATCH", { notaId: nota.id, texto })}
-              disabled={busy || texto.trim().length === 0}
+              disabled={ocupado || texto.trim().length === 0}
               className={BTN_CLASS}
             >
-              {busy ? "Guardando…" : "Guardar"}
+              {ocupado ? "Guardando…" : "Guardar"}
             </button>
           </div>
         </>

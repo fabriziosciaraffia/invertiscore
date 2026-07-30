@@ -112,8 +112,29 @@ type AuditRow = AdminAuditFields & {
 };
 
 /**
+ * Mezcla claves extra en `meta` sin asumir que meta es un objeto (es `unknown`:
+ * cada acción decide qué mandar).
+ */
+function metaConExtra(
+  meta: unknown,
+  extra: Record<string, unknown>
+): Record<string, unknown> {
+  if (meta && typeof meta === "object" && !Array.isArray(meta)) {
+    return { ...(meta as Record<string, unknown>), ...extra };
+  }
+  return meta == null ? extra : { valor: meta, ...extra };
+}
+
+/**
  * Inserta la fila de auditoría. NUNCA lanza: la acción ya ocurrió y un fallo del
  * log no puede convertirse en un error que invite a reintentar.
+ *
+ * RED DE SEGURIDAD FK (23503): target_user_id tiene FK a auth.users, así que una
+ * fila que arrastre un id INEXISTENTE se rechaza y la fila se pierde — justo el
+ * caso de los errores tipo "usuario no encontrado", que son los que MÁS importa
+ * registrar. Ante 23503 se reintenta con target_user_id NULL y el id crudo en
+ * meta: la fila de auditoría vale más que la referencia. Verificado contra la DB
+ * (insert con id inexistente → 23503; el mismo insert con NULL + meta → entra).
  */
 async function writeAuditRow(
   sb: SupabaseClient,
@@ -137,14 +158,33 @@ async function writeAuditRow(
 
   try {
     const { error } = await sb.from("admin_audit_log").insert(payload);
-    if (error) {
-      // Payload completo en el log: es la única copia que queda de la acción.
+    if (!error) return;
+
+    // 23503 = foreign_key_violation. El único candidato es target_user_id (el
+    // admin siempre existe): reintento con NULL y el id preservado en meta.
+    if (error.code === "23503" && payload.target_user_id) {
+      const { error: retryError } = await sb.from("admin_audit_log").insert({
+        ...payload,
+        target_user_id: null,
+        meta: metaConExtra(payload.meta, {
+          target_user_id_no_valido: payload.target_user_id,
+        }),
+      });
+      if (!retryError) return;
       console.error(
-        "[admin-audit] insert falló — acción SIN registrar:",
-        error.message,
+        "[admin-audit] reintento sin FK también falló — acción SIN registrar:",
+        retryError.message,
         JSON.stringify(payload)
       );
+      return;
     }
+
+    // Payload completo en el log: es la única copia que queda de la acción.
+    console.error(
+      "[admin-audit] insert falló — acción SIN registrar:",
+      error.message,
+      JSON.stringify(payload)
+    );
   } catch (e) {
     console.error(
       "[admin-audit] excepción escribiendo el log — acción SIN registrar:",

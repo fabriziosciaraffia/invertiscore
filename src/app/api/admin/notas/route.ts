@@ -77,6 +77,12 @@ function requireTexto(value: unknown): string {
  * bypassea RLS, así que un target_user_id equivocado escribiría igual: esta
  * validación es la red de contención. Devuelve el email para el snapshot de
  * auditoría.
+ *
+ * El id NO validado va en `meta`, NUNCA en targetUserId: esa columna tiene FK a
+ * auth.users, así que una fila de error arrastrando un id inexistente se
+ * rechazaba con 23503 y la auditoría se perdía en silencio — precisamente en el
+ * error que más importa registrar. (admin-audit.ts tiene además una red de
+ * seguridad para el mismo caso; esto lo evita en origen.)
  */
 async function requireTargetUser(
   sb: SupabaseClient,
@@ -85,8 +91,8 @@ async function requireTargetUser(
   const { data, error } = await sb.auth.admin.getUserById(targetUserId);
   if (error || !data?.user) {
     throw new AdminActionError("Usuario no encontrado", 404, {
-      targetUserId,
       targetType: "user",
+      meta: { targetUserIdNoValidado: targetUserId },
     });
   }
   return data.user.email ?? null;
