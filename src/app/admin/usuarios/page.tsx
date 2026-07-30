@@ -1,31 +1,17 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { createClient, type User } from "@supabase/supabase-js";
-import { isAdminUser } from "@/lib/admin";
+import { type User } from "@supabase/supabase-js";
+import { requireAdminPage } from "@/lib/admin-auth";
 import { getLedgerBalances } from "@/lib/credits-grant";
 import { resolveDisplayName } from "@/lib/welcome";
 import { UsuariosTable, type UsuarioRow } from "./usuarios-table";
 
 export const dynamic = "force-dynamic";
 
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
-
 export default async function AdminUsuariosPage() {
-  // Gate idéntico al de /admin (page.tsx): getUser con el anon server client,
-  // allowlist por ADMIN_EMAIL, redirect a /login o /dashboard.
-  const supabaseAuth = createServerSupabase();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (!isAdminUser(user.email)) redirect("/dashboard");
-
-  const sb = admin();
+  // Gate compartido (src/lib/admin-auth.ts): getUser con el anon server client,
+  // allowlist por ADMIN_EMAIL, redirect a /login o /dashboard, y solo entonces
+  // el client de service role.
+  const { sb } = await requireAdminPage();
 
   // ─── USUARIOS (paginar hasta agotar — listUsers tope 1000/página) ───
   // Una sola página truncaría la base; el buscador filtra client-side sobre las

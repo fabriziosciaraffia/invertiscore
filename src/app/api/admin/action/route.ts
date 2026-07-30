@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { isAdminUser } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin-auth";
 
 const ACTIONS = {
   "update-market": "/api/data/update-market",
@@ -11,38 +9,11 @@ const ACTIONS = {
 
 type ActionKey = keyof typeof ACTIONS;
 
-function createSupabaseServer() {
-  const cookieStore = cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // ignored
-          }
-        },
-      },
-    }
-  );
-}
-
 export async function POST(request: Request) {
   try {
-    const supabase = createSupabaseServer();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user || !isAdminUser(user.email)) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    }
+    // Gate compartido: mismo 403 { error: "No autorizado" } que antes.
+    const gate = await requireAdmin();
+    if (!gate.ok) return gate.response;
 
     const body = await request.json();
     const action = body?.action as ActionKey;

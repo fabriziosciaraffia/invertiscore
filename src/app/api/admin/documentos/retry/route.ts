@@ -1,59 +1,20 @@
 import { NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
-import { isAdminUser } from "@/lib/admin";
+import { requireAdmin } from "@/lib/admin-auth";
 import { emitirBoletaDTE } from "@/lib/openfactura/client";
-
-function createSupabaseServer() {
-  const cookieStore = cookies();
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // ignored
-          }
-        },
-      },
-    }
-  );
-}
-
-function createAdminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 export async function POST(request: Request) {
   try {
-    const supabase = createSupabaseServer();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user || !isAdminUser(user.email)) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-    }
+    // Gate compartido: mismo 403 { error: "No autorizado" } que antes, y el
+    // client de service role sale del propio gate (antes era inline acá).
+    const gate = await requireAdmin();
+    if (!gate.ok) return gate.response;
+    const admin = gate.sb;
 
     const body = await request.json().catch(() => ({}));
     const documentoId = (body as { documentoId?: string }).documentoId;
     if (!documentoId) {
       return NextResponse.json({ error: "documentoId requerido" }, { status: 400 });
     }
-
-    const admin = createAdminClient();
 
     // 1) Documento → payment_id
     const { data: doc, error: docErr } = await admin

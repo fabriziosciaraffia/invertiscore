@@ -1,8 +1,5 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createClient as createServerSupabase } from "@/lib/supabase/server";
-import { createClient } from "@supabase/supabase-js";
-import { isAdminUser } from "@/lib/admin";
+import { requireAdminPage } from "@/lib/admin-auth";
 import { hasSubscriptionAccess } from "@/lib/access";
 import { getLedgerBalances } from "@/lib/credits-grant";
 import { conceptoBoleta, type PaymentForDTE } from "@/lib/openfactura/client";
@@ -12,13 +9,6 @@ import { AdminActions } from "./admin-actions";
 import { RetryButton } from "./retry-button";
 
 export const dynamic = "force-dynamic";
-
-function admin() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
 
 function isStale(date: string | null | undefined, hoursThreshold: number): boolean {
   if (!date) return true;
@@ -32,14 +22,9 @@ function fmtToday(): string {
 
 
 export default async function AdminPage() {
-  // Auth check
-  const supabaseAuth = createServerSupabase();
-  const { data: { user } } = await supabaseAuth.auth.getUser();
-
-  if (!user) redirect("/login");
-  if (!isAdminUser(user.email)) redirect("/dashboard");
-
-  const sb = admin();
+  // Auth check — gate compartido (src/lib/admin-auth.ts): anon client primero,
+  // service role solo después de validar la allowlist. Mismos redirects.
+  const { sb } = await requireAdminPage();
   const now = new Date();
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
