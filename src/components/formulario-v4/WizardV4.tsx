@@ -72,7 +72,15 @@ function PlaceholderBox({ node }: { node: NodeId }) {
   );
 }
 
-export function WizardV4({ resume }: { resume: boolean }) {
+export function WizardV4({
+  resume,
+  comunaInicial = null,
+}: {
+  resume: boolean;
+  /** Comuna precargada desde ?comuna= (páginas SEO). Solo contexto: la pantalla
+   *  de dirección igual exige una dirección confirmada de Places. */
+  comunaInicial?: { comuna: string; ciudad: string } | null;
+}) {
   const posthog = usePostHog();
   const emitEvent = useCallback(
     (name: string, props?: Record<string, unknown>) => { trackWizard(posthog, name, props); },
@@ -90,6 +98,17 @@ export function WizardV4({ resume }: { resume: boolean }) {
   // usuario nunca olvide qué está armando. Ink (no Signal Red — no es atención).
   const modLabel = nav.answers.modalidad ? MOD_CHIP[nav.answers.modalidad] : null;
   const progress = w.progress;
+
+  // Precarga de comuna (?comuna=). Una sola vez y solo si el usuario todavía no
+  // tiene una: nunca debe pisar lo que ya eligió, ni al retomar un draft.
+  const comunaPrecargada = useRef(false);
+  useEffect(() => {
+    if (comunaPrecargada.current || !comunaInicial) return;
+    comunaPrecargada.current = true;
+    if (nav.answers.comuna) return;
+    w.patchAnswers({ comuna: comunaInicial.comuna, ciudad: comunaInicial.ciudad });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [comunaInicial]);
 
   // step_viewed: una vez por cambio de nodo (guard anti-doble en StrictMode).
   const lastStep = useRef<NodeId | null>(null);
