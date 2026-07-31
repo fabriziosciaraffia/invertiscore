@@ -9,6 +9,8 @@ import { fmtDec } from "@/components/analysis/utils";
 import { NotaComposer, NotaCard } from "./notas-client";
 import { ReenviarInformeButton, type ReenvioInfo } from "./reenviar-informe-client";
 import { OtorgarAnalisisForm, RevertirGrantButton } from "./grants-client";
+import { UnlimitedToggle, type UnlimitedEstado } from "./unlimited-client";
+import { hasSubscriptionAccess } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +72,7 @@ export default async function AdminUsuarioDetallePage({
   ] = await Promise.all([
     sb
       .from("user_credits")
-      .select("credits, is_unlimited, subscription_status, active_plan, subscription_ends_at, grace_ends_at")
+      .select("credits, is_unlimited, unlimited_source, subscription_status, active_plan, subscription_ends_at, grace_ends_at")
       .eq("user_id", userId)
       .maybeSingle(),
     // Lotes vivos: mismo criterio que getAvailableCredits/consumeCredit.
@@ -118,11 +120,12 @@ export default async function AdminUsuarioDetallePage({
     //  - resend_report: única memoria de "este correo ya se mandó" (la acción no
     //    tiene idempotencia, así que sin esto es imposible saberlo).
     //  - grant_credits: quién otorgó cada lote manual y por qué.
+    //  - toggle_unlimited: quién encendió el ilimitado a mano y por qué.
     // Solo result='ok' — un intento fallido no movió nada.
     sb
       .from("admin_audit_log")
       .select("action, target_id, admin_email, created_at, meta")
-      .in("action", ["resend_report", "grant_credits"])
+      .in("action", ["resend_report", "grant_credits", "toggle_unlimited"])
       .eq("target_user_id", userId)
       .eq("result", "ok")
       .order("created_at", { ascending: false }),
@@ -188,7 +191,7 @@ export default async function AdminUsuarioDetallePage({
   }
   const auditRows = (auditRes.data ?? []) as Array<{
     action: string; target_id: string | null; admin_email: string; created_at: string;
-    meta: { motivo?: string; reversion?: boolean } | null;
+    meta: { motivo?: string; reversion?: boolean; activar?: boolean } | null;
   }>;
 
   // Reenvíos OK por análisis ("el correo ya salió").
@@ -217,6 +220,31 @@ export default async function AdminUsuarioDetallePage({
       fechaLabel: `${fmtDateShort(r.created_at)} · ${fmtRelative(r.created_at)}`,
     });
   }
+
+  // Último ENCENDIDO manual del ilimitado (meta.activar === true): es lo que
+  // explica por qué este usuario tiene acceso sin tope. Los apagados no
+  // interesan acá — si está apagado, no hay estado que justificar.
+  const ultimoEncendidoUnlimited = auditRows.find(
+    (r) => r.action === "toggle_unlimited" && r.meta?.activar === true
+  );
+
+  // Estado del ilimitado con su ORIGEN. El flag solo no distingue "lo paga" de
+  // "se lo regalamos", que son dos cosas con consecuencias opuestas.
+  const unlimitedEstado: UnlimitedEstado = {
+    isUnlimited,
+    source: credits?.unlimited_source ?? null,
+    motivo: ultimoEncendidoUnlimited?.meta?.motivo ?? null,
+    porQuien: ultimoEncendidoUnlimited
+      ? `${ultimoEncendidoUnlimited.admin_email} · ${fmtDateShort(ultimoEncendidoUnlimited.created_at)}`
+      : null,
+    // Mismo criterio que el server (hasSubscriptionAccess): activa, en gracia
+    // vigente, o cancelada dentro del ciclo ya pagado.
+    suscripcionVigente: hasSubscriptionAccess({
+      subscription_status: subStatus,
+      grace_ends_at: credits?.grace_ends_at ?? null,
+      subscription_ends_at: credits?.subscription_ends_at ?? null,
+    }),
+  };
 
   /**
    * Por qué NO se puede reenviar el informe de esta fila (null = se puede).
@@ -542,6 +570,14 @@ export default async function AdminUsuarioDetallePage({
 
               {/* Alta de lote manual */}
               <OtorgarAnalisisForm targetUserId={userId} targetEmail={email || userId} />
+
+              {/* Toggle de ilimitado: va en la card de saldo porque es la otra
+                  palanca sobre lo mismo — cuánto puede analizar el usuario. */}
+              <UnlimitedToggle
+                targetUserId={userId}
+                targetEmail={email || userId}
+                estado={unlimitedEstado}
+              />
             </div>
 
             {/* Card SUSCRIPCIÓN */}
