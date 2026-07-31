@@ -34,7 +34,7 @@ import type { useWizardV4 } from "./useWizardV4";
 import type { WizardV4Answers, Antiguedad } from "./wizardV4Nodes";
 import type { WizardV4Data } from "./useWizardV4Data";
 import { canAnalyzeFromTier, type TierInfo } from "./useWizardV4Tier";
-import { comprarLocked, submitConCredito, type SubmitContext } from "./wizardV4Submit";
+import { comprarLocked, submitConCredito, type SubmitContext, type SubmitResult } from "./wizardV4Submit";
 import { dormLabel, fmtCLP, fmtUF, parseNum, parseDecimalLocale, cuotaCLP, piePct, pieUF, precioUF } from "./derive";
 import { calificaSubsidioV4, subsidioAplicadoV4, tasaConSubsidioV4 } from "./wizardV4Subsidio";
 import { useWizardV4DryRun } from "./useWizardV4DryRun";
@@ -576,19 +576,49 @@ export function ResumenScreen({ w, data, tier, isLoggedIn, onTerminal }: { w: Wi
     trackWizard(posthog, "wizard4_edit_from_summary", { field: "mod", cascada: true });
   };
 
+  /**
+   * Texto para la caja de error. Si el submit fue rechazado por el guard de
+   * plausibilidad (422), la primera anomalía ya viene ordenada por prioridad
+   * desde el server y trae la frase en tuteo — sin esto la caja mostraba el id
+   * de máquina (`input_implausible`).
+   */
+  function textoError(res: SubmitResult, fallback: string): string {
+    if (res.anomalias?.length) return res.anomalias[0].mensaje;
+    // `error` puede ser un id de máquina; nunca se muestra crudo.
+    return res.error && res.error !== "input_implausible" ? res.error : fallback;
+  }
+
   async function onGenerar() {
     setError(""); setSubmitting(true); onTerminal();
     trackWizard(posthog, "wizard4_submitted", { modalidad: mod });
     const res = await submitConCredito(a, ctx);
     if (res.ok && res.redirect) window.location.href = res.redirect;
-    else { setError(res.error || "No pudimos generar el análisis."); setSubmitting(false); }
+    else {
+      if (res.anomalias?.length) {
+        trackWizard(posthog, "wizard4_input_implausible", {
+          modalidad: mod,
+          reglas: res.anomalias.map((x) => x.regla),
+        });
+      }
+      setError(textoError(res, "No pudimos generar el análisis."));
+      setSubmitting(false);
+    }
   }
   async function onDesbloquear() {
     setError(""); setSubmitting(true); onTerminal();
     trackWizard(posthog, "wizard4_checkout_initiated", { modalidad: mod });
     const res = await comprarLocked(a, ctx);
     if (res.ok && res.redirect) window.location.href = res.redirect;
-    else { setError(res.error || "No se pudo crear el análisis."); setSubmitting(false); }
+    else {
+      if (res.anomalias?.length) {
+        trackWizard(posthog, "wizard4_input_implausible", {
+          modalidad: mod,
+          reglas: res.anomalias.map((x) => x.regla),
+        });
+      }
+      setError(textoError(res, "No se pudo crear el análisis."));
+      setSubmitting(false);
+    }
   }
 
   // Líneas-resumen (mobile) — se recomputan de answers → se actualizan al commit.

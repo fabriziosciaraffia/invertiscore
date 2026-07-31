@@ -24,6 +24,7 @@ import { getMantencionRate } from "@/lib/analysis";
 import { getGgccFallback } from "@/lib/services/market-suggestions";
 import { getCostosDefault } from "@/lib/engines/short-term-engine";
 import { estimarContribuciones } from "@/lib/contribuciones";
+import type { Anomalia } from "@/lib/plausibilidad";
 import type { WizardV4Answers } from "./wizardV4Nodes";
 
 export interface SubmitContext {
@@ -201,7 +202,28 @@ export function buildStrPayload(a: WizardV4Answers, ctx: SubmitContext) {
 export interface SubmitResult {
   ok: boolean;
   redirect?: string;
+  /** Id estable del error (ej. `input_implausible`) o texto ya legible. */
   error?: string;
+  /**
+   * Anomalías del guard de plausibilidad (422). Vienen ORDENADAS por prioridad
+   * desde el server — el consumidor muestra la primera. Ausente en el resto de
+   * los errores.
+   */
+  anomalias?: Anomalia[];
+}
+
+/**
+ * Error de fetch que conserva el payload del server. `Error.message` se aplanaba
+ * a `err.error`, o sea el id de máquina (`input_implausible`), y el array de
+ * anomalías se perdía acá — la caja roja terminaba mostrando el token crudo.
+ */
+class ApiError extends Error {
+  anomalias?: Anomalia[];
+  constructor(message: string, anomalias?: Anomalia[]) {
+    super(message);
+    this.name = "ApiError";
+    this.anomalias = anomalias;
+  }
 }
 
 async function postJson(url: string, body: unknown): Promise<{ id: string }> {
@@ -212,7 +234,10 @@ async function postJson(url: string, body: unknown): Promise<{ id: string }> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || "Error al crear el análisis");
+    throw new ApiError(
+      err.error || "Error al crear el análisis",
+      Array.isArray(err.anomalias) ? (err.anomalias as Anomalia[]) : undefined,
+    );
   }
   return res.json();
 }
@@ -230,14 +255,27 @@ export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): 
       return { ok: true, redirect: `/analisis/renta-corta/${id}` };
     }
     // both: pre-carga 1 crédito → ambos POSTs con chargeId + ambasGroupId.
+    //
+    // Los payloads viajan en el body del pre-cobro para que el guard de
+    // plausibilidad corra ANTES de descontar. Sin esto el crédito se descuenta
+    // acá y el rechazo llega recién en los POSTs hijos — y no hay rollback en
+    // el sistema, así que ese crédito se perdía.
     const chargeRes = await fetch("/api/credits/charge", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ intent: "both" }),
+      body: JSON.stringify({
+        intent: "both",
+        ltr: buildLtrPayload(a, ctx),
+        str: buildStrPayload(a, ctx),
+      }),
     });
     if (!chargeRes.ok) {
       const err = await chargeRes.json().catch(() => ({}));
-      return { ok: false, error: err.error || "No pudimos procesar tu análisis. Intenta de nuevo." };
+      return {
+        ok: false,
+        error: err.error || "No pudimos procesar tu análisis. Intenta de nuevo.",
+        anomalias: Array.isArray(err.anomalias) ? (err.anomalias as Anomalia[]) : undefined,
+      };
     }
     const { chargeId } = (await chargeRes.json()) as { chargeId: string };
     const ambasGroupId = crypto.randomUUID();
@@ -260,7 +298,11 @@ export async function submitConCredito(a: WizardV4Answers, ctx: SubmitContext): 
     }
     return { ok: false, error: "No pudimos generar el análisis. Intenta de nuevo." };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Error inesperado" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Error inesperado",
+      anomalias: err instanceof ApiError ? err.anomalias : undefined,
+    };
   }
 }
 
@@ -294,6 +336,10 @@ export async function comprarLocked(a: WizardV4Answers, ctx: SubmitContext): Pro
     const { id } = (await res.json()) as { id: string };
     return { ok: true, redirect: `/checkout?product=single&analysisId=${id}` };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Error inesperado" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Error inesperado",
+      anomalias: err instanceof ApiError ? err.anomalias : undefined,
+    };
   }
 }
