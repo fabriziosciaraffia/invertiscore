@@ -1578,6 +1578,12 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
     // (Partir por comas no sirve: deja la afirmación separada de su propia cifra, y
     // "Para que cambie de conclusión, el precio tendría que bajar a UF X" pasaría sin
     // control — verificado con las prosas reales del corpus.)
+    // Partir en oraciones SIN romper los números: "UF 2.228" lleva punto de miles y un
+    // split ingenuo por "." lo corta en "UF 2." — el guard leía 2 y lo comparaba contra
+    // 2.228. Se parte solo en punto SEGUIDO DE ESPACIO (o fin), que es puntuación real.
+    const enOraciones = (txt: string): string[] =>
+      txt.split(/(?<=[.!?])\s+/).map((o) => o.trim()).filter(Boolean);
+
     if (hallazgoDistanciaGen?.id === "distancia_veredicto") {
       const vD = hallazgoDistanciaGen.valor;
       // Números que SÍ pueden presentarse como distancia al veredicto.
@@ -1610,7 +1616,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
         ["cajaAccionable_clp", aiResult?.conviene?.cajaAccionable_clp],
       ] as [string, unknown][]) {
         if (typeof txt !== "string") continue;
-        for (const oracion of txt.match(/[^.]+\./g) ?? [txt]) {
+        for (const oracion of enOraciones(txt)) {
           if (!AFIRMA_BRECHA.test(oracion)) continue;
           const cifras = cifrasDe(oracion);
           if (cifras.length === 0) continue; // afirmación sin cifra: nada que contrastar
@@ -1651,7 +1657,7 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       // dentro de la misma oración — que es donde el castellano la pone.
       const NEGADOR = /\b(no|ni|tampoco|sin|lejos de|imposible)\b/i;
       const oracionesConOferta = (txt: string): string[] =>
-        (txt.match(/[^.]*\./g) ?? [txt])
+        enOraciones(txt)
           .filter((o) => {
             const m = o.match(OFERTAS_PROHIBIDAS);
             if (!m || m.index === undefined) return false;
