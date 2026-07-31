@@ -1347,18 +1347,35 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const dirHallazgo = (dir: string): string =>
       dir === "favorable" ? "a favor" : dir === "adverso" ? "en contra" : "neutral";
 
+    // Respuesta al veredicto que el motor antepone (ver el ensamblado más abajo). Se
+    // resuelve ACÁ porque su largo entra en el presupuesto: reservar una constante no
+    // alcanzaba — "Todavía no: tienes que ajustar los supuestos." son 7 palabras y con
+    // una reserva de 6 el total ensamblado se pasaba del techo (medido: 90 y 87 palabras
+    // en generación fresca). Ahora la reserva es exactamente lo que la frase ocupa.
+    const sensibilidadGen = (results.hallazgos as Hallazgo[] | undefined)?.find(
+      (h) => h.id === "sensibilidad",
+    );
+    const compraFragil =
+      sensibilidadGen?.id === "sensibilidad" &&
+      !sensibilidadGen.valor.firme &&
+      sensibilidadGen.valor.marginPct < sensibilidadGen.valor.corteFavorable;
+    const respuestaVeredicto =
+      veredictoMotor === "COMPRAR"
+        ? compraFragil
+          ? "Conviene, con una condición."
+          : "Conviene."
+        : veredictoMotor === "BUSCAR OTRA"
+          ? "No conviene."
+          : "Todavía no: tienes que ajustar los supuestos.";
+    const respuestaWC = respuestaVeredicto.trim().split(/\s+/).filter(Boolean).length;
+
     // PLAN C — presupuesto DINÁMICO de la continuación: máximo por caso = 85 − las
     // palabras que consume la apertura fija (fraseCanonica del #1). Se inyecta en el
     // userPrompt y se reusa en el guard post-LLM.
     const aperturaWC = hallazgosOrdenados.length > 0
       ? String(hallazgosOrdenados[0].fraseCanonica).trim().split(/\s+/).filter(Boolean).length
       : 0;
-    // + la respuesta al veredicto, que el motor antepone antes de la fraseCanonica
-    // ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.").
-    // Son 1-6 palabras; se reservan del techo de 85 para que el total ensamblado siga
-    // cumpliéndolo sin depender de que el guard recorte después.
-    const RESPUESTA_VEREDICTO_WC = 6;
-    const maxContinuacion = Math.max(30, 85 - aperturaWC - RESPUESTA_VEREDICTO_WC);
+    const maxContinuacion = Math.max(30, 85 - aperturaWC - respuestaWC);
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
@@ -1865,21 +1882,8 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       // a secas contradice al párrafo siguiente, que suele avisar que el arriendo declarado
       // está sobre mercado. La señal ya existe y es determinística: el margen de
       // `sensibilidad` bajo su propio corte favorable = el veredicto cuelga del arriendo.
-      const sensibilidadGen = (results.hallazgos as Hallazgo[] | undefined)?.find(
-        (h) => h.id === "sensibilidad",
-      );
-      const compraFragil =
-        sensibilidadGen?.id === "sensibilidad" &&
-        !sensibilidadGen.valor.firme &&
-        sensibilidadGen.valor.marginPct < sensibilidadGen.valor.corteFavorable;
-      const respuestaVeredicto =
-        veredictoMotor === "COMPRAR"
-          ? compraFragil
-            ? "Conviene, con una condición."
-            : "Conviene."
-          : veredictoMotor === "BUSCAR OTRA"
-            ? "No conviene."
-            : "Todavía no: tienes que ajustar los supuestos.";
+      // (`respuestaVeredicto` se resolvió arriba, junto al presupuesto, porque su largo
+      // se descuenta del techo de 85.)
       const anteponerVeredicto = (t: unknown): string => {
         const txt = typeof t === "string" ? t.trim() : "";
         if (!txt) return respuestaVeredicto;
