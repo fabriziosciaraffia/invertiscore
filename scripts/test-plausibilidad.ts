@@ -19,6 +19,8 @@ import {
   desdeBodyStr,
   formatearNumero,
   formatearPct,
+  valorParaMostrar,
+  META_REGLA,
   type Anomalia,
   type Regla,
   type PlausibilidadInput,
@@ -897,6 +899,88 @@ test("formatearPct no arrastra ceros de relleno", () => {
 test("no finitos caen a guion, no a NaN", () => {
   assert.equal(formatearNumero(NaN), "—");
   assert.equal(formatearPct(Infinity), "—");
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+seccion("19 · valorParaMostrar: el % va PEGADO y coincide con el mensaje");
+
+/**
+ * El modal separa número y unidad con 7-9px. Con el "%" en la unidad el símbolo
+ * quedaba huérfano de su cifra — "0,006" + gap + "% anual" — contra el formato
+ * del resto del sistema, que lo escribe pegado.
+ */
+
+test("ninguna unidad contiene '%'", () => {
+  const conPct = (Object.keys(META_REGLA) as Regla[]).filter((r) => META_REGLA[r].unidad.includes("%"));
+  assert.deepEqual(conPct, [], `unidades con % suelto: ${conPct.join(", ")}`);
+});
+
+test("yield: el número lleva el % pegado y la unidad es solo 'anual'", () => {
+  const a = evaluarPlausibilidad({
+    precioUF: 4_800_000, superficieM2: 45, ufCLP: UF, arriendoMensualCLP: 950_000,
+  }).find((x) => x.regla === "yield_imposible");
+  assert.ok(a);
+  const v = valorParaMostrar(a);
+  assert.equal(v.numero, "0,006%");
+  assert.equal(v.unidad, "anual");
+});
+
+test("tasa y ocupación también llevan el % pegado", () => {
+  const tasa = evaluarPlausibilidad({ precioUF: 5_500, superficieM2: 60, ufCLP: UF, tasaAnualPct: 45 })
+    .find((x) => x.regla === "tasa_fuera_rango");
+  assert.ok(tasa);
+  assert.equal(valorParaMostrar(tasa).numero, "45%");
+  assert.equal(valorParaMostrar(tasa).unidad, "anual");
+
+  const occ = evaluarPlausibilidad({
+    precioUF: 5_000, superficieM2: 50, ufCLP: 40_000,
+    str: { tarifaNocheCLP: 50_000, ocupacionPct: 990 },
+  }).find((x) => x.regla === "str_ocupacion_fuera_rango");
+  assert.ok(occ);
+  assert.equal(valorParaMostrar(occ).numero, "990%");
+});
+
+test("las unidades NO porcentuales quedan intactas", () => {
+  const a = evaluarPlausibilidad({ precioUF: 4_800_000, superficieM2: 45, ufCLP: UF })
+    .find((x) => x.regla === "uf_m2_fuera_rango");
+  assert.ok(a);
+  assert.equal(valorParaMostrar(a).numero, "106.667");
+  assert.equal(valorParaMostrar(a).unidad, "UF / m²");
+});
+
+/**
+ * COHERENCIA modal ↔ mensaje. Si difirieran sería el bug de los dos
+ * formateadores otra vez. Para el MISMO input el número mostrado en el modal
+ * tiene que aparecer literalmente dentro del mensaje.
+ */
+test("el número del modal aparece literal en el mensaje, para todas las reglas", () => {
+  const casos: PlausibilidadInput[] = [
+    { precioUF: 4_800_000, superficieM2: 45, ufCLP: UF, arriendoMensualCLP: 950_000 },
+    { precioUF: 4_800_000, superficieM2: 45, ufCLP: UF, arriendoMensualCLP: 673_000 },
+    { precioUF: 299, superficieM2: 29, ufCLP: UF },
+    { precioUF: 100_000, superficieM2: 1_001, ufCLP: UF },
+    { precioUF: 2_000, superficieM2: 20, ufCLP: 40_000, arriendoMensualCLP: 50_000 },
+    { precioUF: 5_500, superficieM2: 60, ufCLP: UF, tasaAnualPct: 45 },
+    { precioUF: 5_000, superficieM2: 50, ufCLP: 40_000, str: { tarifaNocheCLP: 50_000, ocupacionPct: 990 } },
+    { precioUF: 2_000, superficieM2: 20, ufCLP: 40_000, str: { tarifaNocheCLP: 2_000, ocupacionPct: 50 } },
+    { precioUF: 2_200, superficieM2: 20, ufCLP: 40_000, str: { tarifaNocheCLP: 100_000, ocupacionPct: 100 } },
+  ];
+  const fallos: string[] = [];
+  const vistas = new Set<Regla>();
+  for (const input of casos) {
+    for (const a of evaluarPlausibilidad(input)) {
+      vistas.add(a.regla);
+      const { numero } = valorParaMostrar(a);
+      // El mensaje puede llevar el número con prefijo ($ / UF); comparamos la
+      // parte numérica, que es la que tiene que coincidir dígito a dígito.
+      const soloDigitos = numero.replace(/^[$]/, "");
+      if (!a.mensaje.includes(soloDigitos)) {
+        fallos.push(`${a.regla}: modal="${numero}" no aparece en "${a.mensaje}"`);
+      }
+    }
+  }
+  assert.deepEqual(fallos, [], `divergencias modal↔mensaje:\n  ${fallos.join("\n  ")}`);
+  assert.equal(vistas.size, 9, `faltó cubrir alguna regla: ${[...vistas].join(", ")}`);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
