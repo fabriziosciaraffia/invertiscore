@@ -14,6 +14,7 @@ import type {
   Veredicto,
   AIAnalysisV2,
   Hallazgo,
+  HallazgoDistanciaVeredicto,
 } from "@/lib/types";
 import { ordenarHallazgosPiramide, esAdverso } from "@/components/analysis/PiramideHallazgos";
 import { fmtUF, fmtMoney } from "@/components/analysis/utils";
@@ -103,14 +104,43 @@ export function DocumentoLTR({
     veredicto === "COMPRAR" ? "Lo que sostiene el Comprar — hoy"
     : veredicto === "BUSCAR OTRA" ? "Qué exigiría un Comprar — hoy"
     : "Qué exige el motor para Comprar — hoy";
+  // Pie del bloque de gates. Para los veredictos que NO son Comprar, el hallazgo
+  // `distancia_veredicto` ya sabe qué falta: el pie deja de ser una afirmación fija
+  // ("este caso está lejos de ahí") y cita el número. Ese texto se disparaba igual en un
+  // Buscar otra a +10,7% de arriendo y en uno a +45% — desmentido por la propia pirámide.
+  const dist = (results.hallazgos ?? []).find(
+    (h): h is HallazgoDistanciaVeredicto => h.id === "distancia_veredicto",
+  );
+  const gateFootDistancia = (() => {
+    if (!dist) return null;
+    const v = dist.valor;
+    const objetivo = v.veredictoObjetivo === "COMPRAR" ? "Comprar" : "Ajusta supuestos";
+    if (v.esEstructural) {
+      const dm = v.deltaMinimoFueraDeTope;
+      const evidencia = dm
+        ? `ni ${dm.palanca === "precio" ? "bajando el precio" : "subiendo el arriendo"} un ${pct(Math.abs(dm.deltaPct))} cruza siquiera a ${objetivo}`
+        : `ninguna vía razonable lo acerca a ${objetivo}`;
+      return `Cumplir las tres es condición necesaria para un Comprar, y este caso no llega por ninguna vía razonable: ${evidencia}. No es cuestión de afinar un supuesto ni el precio.`;
+    }
+    const l = v.palancaMasBarata;
+    if (!l) return null;
+    const via =
+      l.palanca === "plazo"
+        ? `estirando el crédito de ${l.actual} a ${l.objetivo} años, sin poner capital,`
+        : l.palanca === "arriendo"
+          ? `con el arriendo en ${money(l.objetivo)} —${pct(Math.abs(l.deltaPct))} más que el declarado—`
+          : `cerrando en UF ${Math.round(l.objetivo).toLocaleString("es-CL")} —${pct(Math.abs(l.deltaPct))} menos—`;
+    return `Cumplir las tres es condición necesaria para un Comprar. Este caso no está lejos: ${via} el veredicto ya sube a ${objetivo}.`;
+  })();
   const gateFoot =
     veredicto === "COMPRAR"
       ? (allGatesOk
           ? "El Comprar se apoya en estas tres, cumplidas hoy."
           : "El Comprar viene del Franco Score; estas tres son el chequeo de fondo, y no todas se cumplen hoy — tenlo presente antes de firmar.")
-      : veredicto === "BUSCAR OTRA"
-        ? "Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
-        : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes.";
+      : (gateFootDistancia ??
+        (veredicto === "BUSCAR OTRA"
+          ? "Cumplir las tres es condición necesaria para un Comprar, pero este caso está lejos de ahí: no es cuestión de afinar un supuesto ni el precio."
+          : "Las tres deben cumplirse a la vez para que el veredicto suba a Comprar. Negociar mueve estos números — cuánto exactamente, se recalcula con el precio de cierre en mano, no antes."));
 
   // ── Hallazgos (pirámide, orden Filosofía 1) ──
   const hallazgos = ordenarHallazgosPiramide(results, ai);

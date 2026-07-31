@@ -1286,6 +1286,16 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "sobreprecio") ??
       null;
 
+    // DISTANCIA AL VEREDICTO (10º hallazgo): motor-seeded, se LEE de results.hallazgos —
+    // no se reconstruye acá porque su bisección necesita el closure veredictoAtPatch de
+    // runAnalysis. Entra al bloque del prompt (a diferencia de los otros solo-lectura, que
+    // se narran aparte o no se narran) porque responde "¿y ahora qué?", que es justo lo
+    // que la prosa debe cerrar. decisividad 0 ⇒ el sort lo deja último ⇒ NUNCA es la
+    // apertura fija. Ausente en COMPRAR.
+    const hallazgoDistanciaGen =
+      (results.hallazgos as Hallazgo[] | undefined)?.find((h) => h.id === "distancia_veredicto") ??
+      null;
+
     // Orden = pirámide, por decisividad DESC. .filter(Boolean) descarta nulls
     // (capex si antigüedad ≤2, sobreprecio sin mediana → cae lecturaSinReferencia,
     // flujo sin crédito, etc.). NO asume 6 fijos.
@@ -1296,12 +1306,14 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
       hallazgoSobreprecioGen,
       hallazgoPlusvaliaGen,
       hallazgoEstructuraGen,
+      hallazgoDistanciaGen,
     ]
       // NonNullable<typeof h> (no `Hallazgo`): este gather arma la lista para el PROMPT
-      // desde los 6 builders locales — NO incluye los hallazgos SOLO-LECTURA (TIR, narrado
-      // aparte vía lecturaTIR; y SENSIBILIDAD, que solo vive en la pirámide, sin feed de
-      // prosa). Narrowar a Hallazgo (que ya incluye esos read-only) haría el predicado
-      // inválido; narrowamos al propio tipo del array (los 6 sin null).
+      // desde los 6 builders locales + la distancia al veredicto (motor-seeded) — NO
+      // incluye el resto de los SOLO-LECTURA (TIR, narrado aparte vía lecturaTIR;
+      // SENSIBILIDAD y PATRIMONIO, que solo viven en la pirámide, sin feed de prosa).
+      // Narrowar a Hallazgo (que ya incluye esos read-only) haría el predicado inválido;
+      // narrowamos al propio tipo del array (los builders sin null).
       .filter((h): h is NonNullable<typeof h> => h != null)
       // Orden de la pirámide: decisividad DESC (el floor manda: vinculantes arriba)
       // y, DENTRO del mismo valor, magnitud continua DESC (desempate E4 — el que
@@ -1337,6 +1349,9 @@ ${hallazgosOrdenados
   .map((h, i) => `${i + 1}. [${pesoHallazgo(h.decisividad)} · ${dirHallazgo(h.direccion)} · confianza ${h.procedencia.confianza}] ${h.fraseCanonica}`)
   .join("\n")}
 
+${hallazgoDistanciaGen ? `
+DISTANCIA AL VEREDICTO (último de la lista). Este hallazgo trae los valores YA CALCULADOS de qué tendría que pasar para que el veredicto suba. REGLA DURA: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio. Si la frase dice que ningún ajuste realista alcanza, no ofrezcas uno igual. Es el material natural del cierre en \`conviene.cajaAccionable\`: la condición concreta bajo la que tu posición se sostiene.
+` : ""}
 CÓMO ESCRIBIR LA CONTINUACIÓN (contrato completo en §13): desarrollá UN SOLO matiz — el de mayor consecuencia en plata — que condiciona al #1, con su cifra y su consecuencia cuantificada. NO encadenes dos ni tres matices: el resto ya vive en la pirámide. MÁXIMO ${maxContinuacion} palabras (el total con la apertura no puede superar 85); arrancá donde termina la apertura, sin repetir su métrica ni sus palabras. Toda comparación de magnitud va con el porcentaje o múltiplo que ya trae el bloque ("+76% sobre", "+83% sobre") o nombrando los dos montos absolutos (§15), nunca como aproximación verbal. Confianza baja → cautela ("con los datos de zona disponibles…"), no disclaimer técnico.`
       : "";
 
