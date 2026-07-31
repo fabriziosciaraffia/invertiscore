@@ -103,8 +103,9 @@ export async function GET(request: Request) {
         next.getTime() < ends.getTime() &&
         iterations < MAX_CATCHUP_MONTHS
       ) {
-        const ok = await grantCredits(row.user_id, key, capacity, {});
-        if (!ok) {
+        // Devuelve el id del lote, o null si no otorgó. Mismo corte que antes.
+        const grantId = await grantCredits(row.user_id, key, capacity, {});
+        if (!grantId) {
           console.error(
             "[cron/monthly-grants] grantCredits falló, corta el catch-up para user:",
             row.user_id

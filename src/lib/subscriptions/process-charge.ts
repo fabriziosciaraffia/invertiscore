@@ -268,12 +268,12 @@ export async function processSubscriptionCharge(
       .maybeSingle();
 
     if (!existingGrant) {
-      granted = await grantCredits(
-        userId,
-        match.key,
-        match.product.capacity ?? 0,
-        { paymentId }
-      );
+      // grantCredits devuelve el id del lote (o null). Acá `granted` sigue siendo
+      // el booleano "¿este llamado insertó un lote?" que expone ProcessChargeResult.
+      granted =
+        (await grantCredits(userId, match.key, match.product.capacity ?? 0, {
+          paymentId,
+        })) !== null;
     }
   }
 
