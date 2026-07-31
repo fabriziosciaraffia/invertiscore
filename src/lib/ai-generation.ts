@@ -547,7 +547,7 @@ Devuelve un objeto con esta estructura exacta. Campos con sufijo _clp/_uf vienen
 \`\`\`
 
 Largos por campo:
-- conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN — la PRIMERA oración la pone el motor (la "PRIMERA ORACIÓN FIJA", que narra el #1) y se antepone sola; NO la escribas ni la repitas. Tu continuación:
+- conviene.respuestaDirecta: escribís SOLO la CONTINUACIÓN. El motor antepone DOS cosas por su cuenta: la RESPUESTA al veredicto ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.") y después la PRIMERA ORACIÓN FIJA que narra el #1. NO escribas ninguna de las dos ni las repitas — tampoco abras tu continuación afirmando o negando la conveniencia, porque quedaría dicho dos veces. Tu continuación:
   (1) UN SOLO MATIZ DECISIVO (el de mayor consecuencia en plata) que condiciona al #1, y SOLO si cambia la decisión: el supuesto que sostiene el caso (arriendo declarado vs mediana), el CapEx si el bloque pesa (§8.1), o la entrega futura. NO encadenes dos ni tres matices — el resto ya vive en la pirámide. ENTRA CON SU CIFRA O NO ENTRA (nada de vaguedades sin número). Termina en el matiz y su CONSECUENCIA cuantificada, NO en un imperativo de verificación.
   (2) PRESUPUESTO: la continuación tiene un MÁXIMO por caso que se te indica en el bloque de hallazgos ("MÁXIMO N palabras", = 85 − las palabras de la apertura fija). El TOTAL ensamblado (apertura + continuación) debe quedar ≤85. Un guard lo mide y puede pedirte recortar.
   PROHIBIDO: repetir la apertura fija; anunciar secciones ("lo verás en costos…"); parafrasear \`cajaAccionable\` — no cierres con imperativos de verificación ni "publicaciones comparables" (viven SOLO en cajaAccionable); relleno tranquilizador sin dato; comparaciones de magnitud fuera de §15 (con el % o múltiplo provisto, o los dos montos absolutos, nunca como aproximación verbal); dirección del % mal expresada — brechas de arriendo/precio DECLARADO vs mediana SIEMPRE como "X% SOBRE la mediana", nunca "X% más bajo" del declarado (imposible >100% más bajo); mencionar "hallazgo", el orden o la mecánica del prompt; listar hallazgos secundarios sin consecuencia.
@@ -1353,7 +1353,12 @@ estructuraFinancieraSugerida (si completás reestructuracion, USA ESTOS NÚMEROS
     const aperturaWC = hallazgosOrdenados.length > 0
       ? String(hallazgosOrdenados[0].fraseCanonica).trim().split(/\s+/).filter(Boolean).length
       : 0;
-    const maxContinuacion = Math.max(30, 85 - aperturaWC);
+    // + la respuesta al veredicto, que el motor antepone antes de la fraseCanonica
+    // ("Conviene." / "Todavía no: tienes que ajustar los supuestos." / "No conviene.").
+    // Son 1-6 palabras; se reservan del techo de 85 para que el total ensamblado siga
+    // cumpliéndolo sin depender de que el guard recorte después.
+    const RESPUESTA_VEREDICTO_WC = 6;
+    const maxContinuacion = Math.max(30, 85 - aperturaWC - RESPUESTA_VEREDICTO_WC);
 
     const hallazgosBloque = hallazgosOrdenados.length > 0
       ? `
@@ -1370,6 +1375,8 @@ ${hallazgoDistanciaGen ? `
 DISTANCIA AL VEREDICTO (último de la lista). Trae los valores YA CALCULADOS de qué tendría que pasar para que el veredicto suba.
 
 OBLIGATORIO: \`conviene.cajaAccionable\` DEBE nombrar esa distancia con su cifra. Es la condición concreta bajo la que tu posición se sostiene (§1.10) y es lo único del informe que responde "¿y ahora qué?".
+
+TAMBIÉN en \`conviene.respuestaDirecta\`, si el hallazgo NO es estructural: cierra tu continuación con UNA mención breve de esa distancia ("estás a X% de arriendo de que esto sea un Comprar"). Una sola frase corta, con la cifra tipada, SIN desarrollar las vías — el detalle vive en cajaAccionable y en su drawer. Si el hallazgo dice que ningún ajuste realista alcanza, NO menciones distancia en respuestaDirecta: no hay una que prometer y anunciarla sería falso.
 
 REGLA DURA de cifras: usa SOLO los montos y porcentajes que vienen en su frase. NUNCA los recalcules, NUNCA propongas una palanca que no esté ahí (el pie y la tasa NO son palancas de este análisis), NUNCA inventes un valor intermedio.
 
@@ -1846,6 +1853,43 @@ Devuelve SOLO el JSON. Aplica las reglas del system prompt al caso descrito arri
       };
       aiResult.conviene.respuestaDirecta_clp = armar(aiResult.conviene.respuestaDirecta_clp);
       aiResult.conviene.respuestaDirecta_uf = armar(aiResult.conviene.respuestaDirecta_uf);
+
+      // ─── LA RESPUESTA VA PRIMERO ────────────────────────────────────────────
+      // El usuario pregunta "¿conviene?" y hasta acá la prosa abría con el CAP rate o
+      // con el aporte mensual: el badge decía el veredicto, el texto no. La respuesta se
+      // antepone en el MOTOR y no por instrucción al modelo, por dos razones: la primera
+      // oración de respuestaDirecta ya era del motor (contrato Plan C), y así la línea
+      // más leída del informe no depende de que el LLM obedezca.
+      //
+      // COMPRAR condicional: cuando el veredicto se apoya en un supuesto frágil, "Conviene."
+      // a secas contradice al párrafo siguiente, que suele avisar que el arriendo declarado
+      // está sobre mercado. La señal ya existe y es determinística: el margen de
+      // `sensibilidad` bajo su propio corte favorable = el veredicto cuelga del arriendo.
+      const sensibilidadGen = (results.hallazgos as Hallazgo[] | undefined)?.find(
+        (h) => h.id === "sensibilidad",
+      );
+      const compraFragil =
+        sensibilidadGen?.id === "sensibilidad" &&
+        !sensibilidadGen.valor.firme &&
+        sensibilidadGen.valor.marginPct < sensibilidadGen.valor.corteFavorable;
+      const respuestaVeredicto =
+        veredictoMotor === "COMPRAR"
+          ? compraFragil
+            ? "Conviene, con una condición."
+            : "Conviene."
+          : veredictoMotor === "BUSCAR OTRA"
+            ? "No conviene."
+            : "Todavía no: tienes que ajustar los supuestos.";
+      const anteponerVeredicto = (t: unknown): string => {
+        const txt = typeof t === "string" ? t.trim() : "";
+        if (!txt) return respuestaVeredicto;
+        // Idempotencia: si por lo que sea ya arranca con la respuesta, no se duplica.
+        const primeras = txt.slice(0, 44).toLowerCase();
+        if (/^(conviene|no conviene|todavía no)/.test(primeras)) return txt;
+        return `${respuestaVeredicto} ${txt}`;
+      };
+      aiResult.conviene.respuestaDirecta_clp = anteponerVeredicto(aiResult.conviene.respuestaDirecta_clp);
+      aiResult.conviene.respuestaDirecta_uf = anteponerVeredicto(aiResult.conviene.respuestaDirecta_uf);
     }
 
     // FASE A — los 4 números de estructuraSugerida son DETERMINISTAS (motor), no
